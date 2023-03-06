@@ -1,0 +1,19 @@
+{
+  "uuid": "e9686746-96e6-4c47-9c45-b1310c7927f2",
+  "shortname": "permissions",
+  "is_active": true,
+  "description": {
+    "en": "# Hello.",
+    "ar": "# Hello.",
+    "kd": "# Hello."
+  },
+  "tags": [],
+  "created_at": "2022-08-23T07:44:36.399780",
+  "updated_at": "2022-12-26T09:50:03.571181",
+  "owner_shortname": "dmart",
+  "payload": {
+    "content_type": "json",
+    "schema_shortname": "folder_rendering",
+    "body": "permissions.json"
+  }
+}

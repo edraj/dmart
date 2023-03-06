@@ -1,0 +1,146 @@
+{
+    "name": "Channel",
+    "illustration": "channel",
+    "initial_state": [ 
+        { "name": "new", "roles" : ["default"]}
+      ],
+    "states": [
+        {
+            "name": "New",
+            "state": "new",
+            "next": [
+                {
+                    "roles": [
+                        "account_manager"
+                    ],
+                    "state": "pending",
+                    "action": "submit"
+                }
+            ]
+        },
+        {
+            "name": "approved",
+            "state": "approved",
+            "next": [
+                {
+                    "roles": [
+                        "backoffice"
+                    ],
+                    "state": "completed",
+                    "action": "complete"
+                },
+                {
+                    "roles": [
+                        "backoffice"
+                    ],
+                    "state": "failed",
+                    "action": "fail"
+                },
+                {
+                    "roles": [
+                        "account_manager"
+                    ],
+                    "state": "pending",
+                    "action": "update"
+                }
+            ]
+        },
+        {
+            "name": "Pending",
+            "state": "pending",
+            "next": [
+                {
+                    "roles": [
+                        "backoffice"
+                    ],
+                    "state": "rejected",
+                    "action": "reject"
+                },
+                {
+                    "roles": [
+                        "backoffice"
+                    ],
+                    "state": "approved",
+                    "action": "approve"
+                }
+            ]
+        },
+        {
+            "name": "Rejected",
+            "state": "rejected",
+            "next": [
+                {
+                    "roles": [
+                        "account_manager"
+                    ],
+                    "state": "pending",
+                    "action": "re_submit"
+                }
+            ]
+                      ,
+            "resolutions": [
+                {
+                    "key": "owner_name_not_match",
+                    "en": "Owner Name Not Match",
+                    "ar": "اسم صاحب نقطة البيع غير مطابق",
+                    "kd": "ناوی خاوەنی بنکەی فرۆشتن هاوشێوە نییە"
+                },
+                {
+                    "key": "missing_documents",
+                    "en": "Missing Documents",
+                    "ar": "نقص مستمسكات",
+                    "kd": "بەڵگەنامەکان تەواو نین"
+                },
+                {
+                    "key": "non_usim",
+                    "en": "NON USIM",
+                    "ar": "الشريحة لا تدعم الــ 4G",
+                    "kd": "سیمکارت لەگەڵ 4G ناگونجێت"
+                },
+                {
+                    "key": "sim_status_is_not_eligible",
+                    "en": "SIM status is not eligible",
+                    "ar": "حاله الشريحة لا تسمح بإضافة الخدمة",
+                    "kd": "باری سیمکارتەکە رێگا نادات خزمەتگوزارییەکە زیادبکرێت"
+                },
+                {
+                    "key": "expire_commitment",
+                    "en": "Expire Commitment",
+                    "ar": "نفاذ صلاحية التعهد",
+                    "kd": "بەڵێننامە بەسەرچووە"
+                }
+                ,
+                {
+                    "key": "channel_ticket_info_not_match",
+                    "en": "Channel Ticket info not match",
+                    "ar": "معلومات المكتب غير مطابقة",
+                    "kd": "زانیارییەکانی تیکت هاوشێوە نین"
+                }
+                ,
+                {
+                    "key": "Others",
+                    "en": "Others",
+                    "ar": "أخرى",
+                    "kd": "هی دیکە"
+                }
+            ]                        
+        },
+        {
+            "name": "Completed",
+            "state": "completed",
+            "next": [
+                {
+                    "roles": [
+                        "account_manager"
+                    ],
+                    "state": "pending",
+                    "action": "update"
+                }
+            ]
+        },
+        {
+            "name": "Failed",
+            "state": "failed"
+        }
+    ]
+}

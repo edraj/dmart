@@ -1,0 +1,446 @@
+from re import sub as res_sub
+from uuid import uuid4
+from fastapi import APIRouter, Request, Path, status
+from fastapi import APIRouter, Path, Depends, status
+from models.enums import ContentType, ResourceType, TaskType
+import utils.db as db
+import models.api as api
+from utils.helpers import camel_case
+from utils.custom_validations import validate_payload_with_schema
+import utils.regex as regex
+import models.core as core
+from fastapi.responses import FileResponse
+from typing import Any
+import sys
+from utils.access_control import access_control
+import utils.repository as repository
+from utils.plugins import plugin_manager
+from utils.settings import settings
+
+
+router = APIRouter()
+
+# Retrieve publically-available content
+
+
+@router.post("/query", response_model=api.Response, response_model_exclude_none=True)
+async def query_entries(query: api.Query) -> api.Response:
+
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=query.space_name,
+            branch_name=query.branch_name,
+            subpath=query.subpath,
+            action_type=core.ActionType.query,
+            user_shortname="anonymous",
+            attributes={"filter_shortnames": query.filter_shortnames},
+        )
+    )
+
+    redis_query_policies = await access_control.get_user_query_policies("anonymous")
+
+    total, records = await repository.serve_query(
+        query, "anonymous", redis_query_policies
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=query.space_name,
+            branch_name=query.branch_name,
+            subpath=query.subpath,
+            action_type=core.ActionType.query,
+            user_shortname="anonymous",
+            attributes={"filter_shortnames": query.filter_shortnames},
+        )
+    )
+
+    return api.Response(
+        status=api.Status.success,
+        records=records,
+        attributes={"total": total, "returned": len(records)},
+    )
+
+
+@router.get(
+    "/entry/{resource_type}/{space_name}/{subpath:path}/{shortname}",
+    response_model_exclude_none=True,
+)
+async def retrieve_entry_meta(
+    resource_type: core.ResourceType,
+    space_name: str = Path(..., regex=regex.SPACENAME),
+    subpath: str = Path(..., regex=regex.SUBPATH),
+    shortname: str = Path(..., regex=regex.SHORTNAME),
+    retrieve_json_payload: bool = False,
+    branch_name: str | None = settings.default_branch,
+) -> dict[str, Any]:
+
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.view,
+            resource_type=resource_type,
+            user_shortname="anonymous",
+        )
+    )
+
+    resource_class = getattr(sys.modules["models.core"], camel_case(resource_type))
+    meta = await db.load(
+        space_name=space_name,
+        subpath=subpath,
+        shortname=shortname,
+        class_type=resource_class,
+        user_shortname="anonymous",
+        branch_name=branch_name,
+    )
+    if meta is None:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="media", code=221, message="Request object is not available"
+            ),
+        )
+
+    if not await access_control.check_access(
+        user_shortname="anonymous",
+        space_name=space_name,
+        subpath=subpath,
+        resource_type=resource_type,
+        action_type=core.ActionType.view,
+        resource_is_active=meta.is_active,
+        resource_owner_shortname=meta.owner_shortname,
+        resource_owner_group=meta.owner_group_shortname,
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=401,
+                message="You don't have permission to this action [14]",
+            ),
+        )
+
+    if not retrieve_json_payload or (
+        not meta.payload or meta.payload.content_type != ContentType.json
+    ):
+        # TODO
+        # include locked before returning the dictionary
+        return meta.dict(exclude_none=True)
+
+    payload_body = db.load_resource_payload(
+        space_name=space_name,
+        subpath=subpath,
+        filename=meta.payload.body,
+        class_type=resource_class,
+        branch_name=branch_name,
+    )
+
+    if meta.payload and meta.payload.schema_shortname:
+        await validate_payload_with_schema(
+            payload_data=payload_body,
+            space_name=space_name,
+            branch_name=branch_name or settings.default_branch,
+            schema_shortname=meta.payload.schema_shortname,
+        )
+
+    meta.payload.body = payload_body
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.view,
+            resource_type=resource_type,
+            user_shortname="anonymous",
+        )
+    )
+
+    return meta.dict(exclude_none=True)
+
+
+# Public payload retrieval; can be used in "src=" in html pages
+@router.get(
+    "/payload/{resource_type}/{space_name}/{subpath:path}/{shortname}.{ext}",
+    response_model_exclude_none=True,
+)
+async def retrieve_entry_or_attachment_payload(
+    resource_type: core.ResourceType,
+    space_name: str = Path(..., regex=regex.SPACENAME),
+    subpath: str = Path(..., regex=regex.SUBPATH),
+    shortname: str = Path(..., regex=regex.SHORTNAME),
+    ext: str = Path(..., regex=regex.EXT),
+    branch_name: str | None = settings.default_branch,
+) -> FileResponse:
+
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.view,
+            resource_type=resource_type,
+            user_shortname="anonymous",
+        )
+    )
+
+    resource_class = getattr(sys.modules["models.core"], camel_case(resource_type))
+    meta = await db.load(
+        space_name=space_name,
+        subpath=subpath,
+        shortname=shortname,
+        class_type=resource_class,
+        user_shortname="anonymous",
+        branch_name=branch_name,
+    )
+    if (
+        meta.payload is None
+        or meta.payload.body is None
+        or meta.payload.body != f"{shortname}.{ext}"
+    ):
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="media", code=220, message="Request object is not available"
+            ),
+        )
+
+    if not await access_control.check_access(
+        user_shortname="anonymous",
+        space_name=space_name,
+        subpath=subpath,
+        resource_type=resource_type,
+        action_type=core.ActionType.view,
+        resource_is_active=meta.is_active,
+        resource_owner_shortname=meta.owner_shortname,
+        resource_owner_group=meta.owner_group_shortname,
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=401,
+                message="You don't have permission to this action [15]",
+            ),
+        )
+    # TODO check security labels for pubblic access
+    # assert meta.is_active
+    payload_path = db.payload_path(space_name, subpath, resource_class, branch_name)
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.view,
+            resource_type=resource_type,
+            user_shortname="anonymous",
+        )
+    )
+
+    media_file = payload_path / str(meta.payload.body)
+    return FileResponse(media_file)
+
+
+"""
+@router.post("/submit", response_model_exclude_none=True)
+async def submit() -> api.Response:
+    return api.Response(status=api.Status.success)
+"""
+
+
+@router.get(
+    "/query/{type}/{space_name}/{subpath:path}",
+    response_model=api.Response,
+    response_model_exclude_none=True,
+)
+async def query_via_urlparams(
+    query: api.Query = Depends(api.Query),
+) -> api.Response:
+
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=query.space_name,
+            branch_name=query.branch_name,
+            subpath=query.subpath,
+            action_type=core.ActionType.query,
+            user_shortname="anonymous",
+            attributes={"filter_shortnames": query.filter_shortnames},
+        )
+    )
+
+    redis_query_policies = await access_control.get_user_query_policies("anonymous")
+    total, records = await repository.serve_query(
+        query, "anonymous", redis_query_policies
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=query.space_name,
+            branch_name=query.branch_name,
+            subpath=query.subpath,
+            action_type=core.ActionType.query,
+            user_shortname="anonymous",
+            attributes={"filter_shortnames": query.filter_shortnames},
+        )
+    )
+
+    return api.Response(
+        status=api.Status.success,
+        records=records,
+        attributes={"total": total, "returned": len(records)},
+    )
+
+
+@router.post("/submit/{space_name}/{schema_shortname}/{subpath}")
+async def create_entry(
+    space_name: str,
+    schema_shortname: str,
+    subpath: str,
+    body: Request,
+    branch_name: str | None = settings.default_branch,
+):
+    allowed_models = {
+        "applications": ["log", "feedback"]
+    }
+    if (
+        space_name not in allowed_models
+        or schema_shortname not in allowed_models[space_name]
+    ):
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=401,
+                message="Not allowed schema_shortname",
+            ),
+        )
+
+    body_dict = await body.json()
+    if not await access_control.check_access(
+        user_shortname="anonymous",
+        space_name=space_name,
+        subpath=subpath,
+        resource_type=ResourceType.content,
+        action_type=core.ActionType.create,
+        record_attributes=body_dict,
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=401,
+                message="You don't have permission to this action [13]",
+            ),
+        )
+
+    uuid = uuid4()
+    shortname = str(uuid)[:8]
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.create,
+            schema_shortname=schema_shortname,
+            resource_type=ResourceType.content,
+            user_shortname="anonymous",
+        )
+    )
+
+    content_obj = core.Content(
+        uuid=uuid,
+        shortname=shortname,
+        is_active=True,
+        owner_shortname="anonymous",
+        payload=core.Payload(
+            content_type=ContentType.json,
+            schema_shortname=schema_shortname,
+            body=f"{shortname}.json",
+        ),
+    )
+
+    await validate_payload_with_schema(
+        payload_data=body_dict,
+        space_name=space_name,
+        branch_name=branch_name or settings.default_branch,
+        schema_shortname=content_obj.payload.schema_shortname, #type: ignore
+    )
+
+    await db.save(space_name, subpath, content_obj, branch_name)
+    await db.save_payload_from_json(
+        space_name, subpath, content_obj, body_dict, branch_name
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.create,
+            schema_shortname=schema_shortname,
+            resource_type=ResourceType.content,
+            user_shortname="anonymous",
+            attributes={}
+        )
+    )
+
+    return api.Response(status=api.Status.success)
+
+
+@router.post("/excute/{task_type}/{space_name}")
+async def excute(space_name: str, task_type: TaskType, record: core.Record):
+    meta = await db.load(
+        space_name=space_name,
+        subpath=record.subpath,
+        shortname=record.shortname,
+        class_type=core.Content,
+        user_shortname="anonymous",
+        branch_name=record.branch_name,
+    )
+
+    if (
+        meta.payload is None
+        or type(meta.payload.body) != str
+        or not meta.payload.body.endswith(".json")  # type: ignore
+    ):
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="media", code=220, message="Request object is not available"
+            ),
+        )
+
+    query_dict = db.load_resource_payload(
+        space_name=space_name,
+        subpath=record.subpath,
+        filename=meta.payload.body,  # type: ignore
+        class_type=core.Content,
+        branch_name=record.branch_name,
+    )
+
+    for param, value in record.attributes.items():
+        query_dict["search"] = query_dict["search"].replace(f"${param}", str(value))
+
+    query_dict["search"] = res_sub(
+        r"@\w*\:({|\()?\$\w*(}|\))?", "", query_dict["search"]
+    )
+
+    if "offset" in record.attributes:
+        query_dict["offset"] = record.attributes["offset"]
+
+    if "limit" in record.attributes:
+        query_dict["limit"] = record.attributes["limit"]
+
+    query_dict["subpath"] = query_dict["query_subpath"]
+    query_dict.pop("query_subpath")
+    filter_shortnames = record.attributes.get("filter_shortnames", [])
+    query_dict["filter_shortnames"] = filter_shortnames if isinstance(filter_shortnames, list) else []
+
+    return await query_entries(api.Query(**query_dict))

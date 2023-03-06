@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "title": "user_admin",
+  "additionalProperties": false,
+  "properties": {
+    "department": {
+      "type": "string",
+      "enum": [
+        "technical_support",
+        "backoffice",
+        "sales",
+        "others"
+      ]
+    },
+    "governorate_shortnames": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sales_id": {
+      "type": "string"
+    },
+    "alternative_msisdn": {
+      "type": "string",
+      "pattern": "^7[5789]\\d{8}$"
+    }
+  },
+  "required": []
+}

@@ -1,0 +1,26 @@
+{
+  "uuid": "497b7897-b453-4c21-9b2d-ec5bef2bc403",
+  "shortname": "view_activity_log",
+  "is_active": true,
+  "displayname": {"en":"View activity log", "ar":"View activity log", "kd":"View activity log"},
+  "tags": [],
+  "created_at": "2022-10-06T10:21:33.912450",
+  "updated_at": "2022-10-06T10:21:33.912459",
+  "owner_shortname": "dmart",
+  "subpaths": {
+    "ordering": [
+      "/"
+    ],
+    "management": [
+      "/"
+    ]
+  },
+  "resource_types": [
+    "history"
+  ],
+  "actions": [
+    "view",
+    "query"
+  ],
+  "conditions": []
+}

@@ -1,0 +1,25 @@
+**/__pycache__
+**/*.log
+.env
+secrets.env
+backend/config.env
+workspace.xml
+settings.json
+.vscode
+.coverage
+**/node_modules/
+backend/version.txt
+run
+/trash/
+/dist/
+**/.history
+src/tmp/
+.routify
+*.swp
+mycookies.jar
+# spaces/
+.DS_Store
+
+.python-version
+*-workspace
+*.tgz

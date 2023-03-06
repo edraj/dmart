@@ -1,0 +1,40 @@
+{
+  "uuid": "4baa4393-0fcb-4fbb-a824-35262a09553e",
+  "shortname": "access_personal",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2022-10-07T14:48:22.074676",
+  "updated_at": "2022-10-07T14:48:22.074681",
+  "owner_shortname": "dmart",
+  "subpaths": {
+    "personal": [
+      "people/__current_user__/private",
+      "people/__current_user__/protected",
+      "people/__current_user__/public",
+      "people/__current_user__/inbox",
+      "people/__current_user__/notifications"
+    ]
+  },
+  "resource_types": [
+    "user",
+    "media",
+    "content",
+    "history",
+    "locator",
+    "ticket",
+    "permission",
+    "notification",
+    "relationship",
+    "schema",
+    "group",
+    "comment",
+    "alteration",
+    "role",
+    "folder",
+    "space",
+    "json",
+    "acl"
+  ],
+  "actions": ["query", "view", "create", "update", "delete"],
+  "conditions": []
+}

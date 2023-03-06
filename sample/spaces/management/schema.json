@@ -1,0 +1,1 @@
+{"shortname_title": "Schema Shortname", "content_schema_shortnames": [], "index_attributes": [{"key": "shortname", "name": "Schema Shortname"}, {"key": "title", "name": "Title"}], "allow_create": true, "allow_update": true, "allow_delete": true, "use_media": false, "content_resource_types": []}

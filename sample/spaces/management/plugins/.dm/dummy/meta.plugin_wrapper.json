@@ -1,0 +1,17 @@
+{
+	"uuid": "b528ef44-4bb8-4deb-9924-6fe50367ab7a",
+	"shortname": "dummy",
+	"is_active": true,
+	"filters": {
+		"subpaths": ["__ALL__"],
+		"resource_types": ["__ALL__"],
+		"schema_shortnames": ["__ALL__"],
+		"actions": ["create", "update", "view"]
+	},
+	"type": "hook",
+	"listen_time": "after",
+	"created_at": "2022-08-11T11:27:28.866048",
+	"updated_at": "2022-08-11T11:27:28.866052",
+	"owner_shortname": "dmart",
+	"payload": { "content_type": "python", "body": "dummy.py" }
+}

@@ -1,0 +1,202 @@
+{
+  "title": "Folder schema",
+  "description": "Folder schema description",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "expand_children": {
+      "title": "Expand folders' children",
+      "description": "If the folder should expand children",
+      "type": "boolean"
+    },
+    "append_subpath": {
+      "title": "Append subpath",
+      "description": "Append string to the query subpath",
+      "type": "string"
+    },
+    "search_columns": {
+      "title": "Search columns",
+      "description": "Search columns title",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "workflow_shortnames": {
+      "title": "Workflow shortname",
+      "description": "workflow shortname field title",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "shortname_title": {
+      "title": "shortname field title",
+      "description": "shortname field title",
+      "type": "string"
+    },
+    "query": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "subpath",
+            "search"
+          ]
+        },
+        "search": {
+          "type": "string"
+        },
+        "filter_types": {
+          "type": "array",
+	  "items": {
+		  "type": "string"
+	  }
+        }
+      }
+    },
+    "icon": {
+      "title": "folder main icon",
+      "description": "The icon displayed next to the folder",
+      "type": "string"
+    },
+    "icon_opened": {
+      "title": "folder opened icon",
+      "description": "The icon displayed next to the folder when opened",
+      "type": "string"
+    },
+    "icon_closed": {
+      "title": "folder closed icon",
+      "description": "The icon displayed next to the folder when closed",
+      "type": "string"
+    },
+    "sort_by": {
+      "title": "sort by",
+      "description": "the field name to be used in ordering",
+      "type": "string"
+    },
+    "sort_type": {
+      "title": "sort order",
+      "description": "the ordering of the sort asc/desc",
+      "type": "string",
+      "enum": [
+        "ascending",
+        "descending"
+      ]
+    },
+    "content_resource_types": {
+      "title": "Resource types",
+      "description": "Resource types",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "content_schema_shortnames": {
+      "title": "schema shortname",
+      "description": "schema shortnames",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "filter": {
+      "title": "Additional filter options",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    "append_subpath": {
+      "title": "Append string to subpath",
+      "type": "string"
+    },
+    "index_attributes": {
+      "title": "index attributes",
+      "description": "the attributes from the schema that should be displayed in index page",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        }
+      },
+      "uniqueItems": true
+    },
+    "unique_fields": {
+      "title": "Unique Fields",
+      "description": "List of list of composite fields which should be unique accross the folder entries",
+      "type": "array",
+      "items": {
+        "title": "Composite unique list",
+        "type": "array",
+        "items": {
+          "title": "Field Name",
+          "type": "string"
+        }
+      }
+    },
+    "allow_view": {
+      "title": "flag to enable or disable resource view inside this folder",
+      "description": "flag to enable or disable resource view inside this folder",
+      "type": "boolean"
+    },
+    "allow_create": {
+      "title": "flag to enable or disable resource creation inside this folder",
+      "description": "flag to enable or disable resource creation inside this folder",
+      "type": "boolean"
+    },
+    "allow_create_category": {
+      "title": "flag to enable or disable folder creation inside this folder",
+      "description": "flag to enable or disable folder creation inside this folder",
+      "type": "boolean"
+    },
+    "allow_update": {
+      "title": "flag to enable or disable resource update inside this folder",
+      "description": "flag to enable or disable resource update inside this folder",
+      "type": "boolean"
+    },
+    "allow_delete": {
+      "title": "flag to enable or disable resource delete inside this folder",
+      "description": "flag to enable or disable resource delete inside this folder",
+      "type": "boolean"
+    },
+    "allow_csv": {
+      "title": "flag to enable or disable CSV download button",
+      "description": "Allow the user to download csv of the displayed list",
+      "type": "boolean"
+    },
+    "allow_upload_csv": {
+      "title": "flag to enable or disable CSV upload feature",
+      "description": "Allow the user to upload  csv",
+      "type": "boolean"
+    },
+    "use_media": {
+      "title": "does the content inside this folder has a media or not",
+      "description": "does the content inside this folder has a media or not",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "index_attributes"
+  ]
+}

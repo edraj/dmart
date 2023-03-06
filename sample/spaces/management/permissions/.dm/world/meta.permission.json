@@ -1,0 +1,36 @@
+{
+  "uuid": "1ee3081e-5d05-4010-8188-856d9e9fb7ee",
+  "shortname": "world",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2022-10-06T10:21:33.912450",
+  "updated_at": "2022-10-06T10:21:33.912459",
+  "owner_shortname": "dmart",
+  "subpaths": {
+    "test": [
+      "/"
+    ],
+    "applications": [
+      "/translations"
+    ]
+  },
+  "resource_types": [
+    "permission",
+    "schema",
+    "content",
+    "group",
+    "history",
+    "role",
+    "folder",
+    "media",
+    "user",
+    "comment"
+  ],
+  "actions": [
+    "view",
+    "query"
+  ],
+  "conditions": [
+    "is_active"
+  ]
+}

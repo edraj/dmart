@@ -1,0 +1,12 @@
+# export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
+
+mkdir -p ~/.config/systemd/user/
+cp -a ./dmart.service* ~/.config/systemd/user/
+
+systemctl --user daemon-reload
+
+# As root?
+loginctl enable-linger imx
+
+

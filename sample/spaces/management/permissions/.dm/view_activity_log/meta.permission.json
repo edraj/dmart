@@ -1,0 +1,23 @@
+{
+  "uuid": "40de465f-d499-4bc3-ac85-1f1a2de669cc",
+  "shortname": "view_log_order",
+  "is_active": true,
+  "displayname": {"en":"View order log", "ar":"View order log", "kd":"View order log"},
+  "tags": [],
+  "created_at": "2022-10-06T10:21:33.912450",
+  "updated_at": "2022-10-06T10:21:33.912459",
+  "owner_shortname": "dmart",
+  "subpaths": {
+    "ordering": [
+      "/"
+    ]
+  },
+  "resource_types": [
+    "history"
+  ],
+  "actions": [
+    "view",
+    "query"
+  ],
+  "conditions": []
+}

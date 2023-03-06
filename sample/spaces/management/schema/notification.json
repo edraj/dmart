@@ -1,0 +1,28 @@
+{
+  "title": "Notification ",
+  "additionalProperties": false,
+  "type": "object",
+  "properties": {
+    "is_read": {
+      "type": "string",
+      "enum": ["yes", "no"],
+      "default": "no"
+    },
+    "entry_shortname": {
+      "type": "string"
+    },
+    "entry_space": {
+      "type": "string"
+    },
+    "entry_subpath": {
+      "type": "string"
+    },
+    "action_by": {
+      "type": "string"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": ["update", "delete"]
+    }
+  }
+}

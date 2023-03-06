@@ -1,0 +1,29 @@
+{
+  "uuid": "84002df0-4dcd-4afc-88e3-2ccfd111274b",
+  "shortname": "view_collections",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2022-10-06T10:21:33.912450",
+  "updated_at": "2022-10-06T10:21:33.912459",
+  "owner_shortname": "dmart",
+  "subpaths": {
+    "ordering": [
+      "collections"
+    ]
+  },
+  "resource_types": [
+    "permission",
+    "content",
+    "history",
+    "folder",
+    "media",
+    "comment"
+  ],
+  "actions": [
+    "view",
+    "query"
+  ],
+  "conditions": [
+	  "is_active"
+  ]
+}

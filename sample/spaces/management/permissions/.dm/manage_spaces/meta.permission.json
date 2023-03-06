@@ -1,0 +1,24 @@
+{
+  "uuid": "b3737e43-69d3-4a1e-b04e-c9096bd1e95c",
+  "shortname": "manage_spaces",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2022-09-27T14:19:40.290461",
+  "updated_at": "2022-09-27T14:26:32.446144",
+  "owner_shortname": "dmart",
+  "subpaths": {
+    "__all_spaces__": [
+      "__all_subpaths__"
+    ]
+  },
+  "resource_types": [
+    "space"
+  ],
+  "actions": [
+    "view",
+    "create",
+    "update",
+    "delete"
+  ],
+  "conditions": []
+}

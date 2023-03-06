@@ -1,0 +1,12 @@
+[Unit]
+Description=Redis persistent key-value database
+After=network.target
+
+[Service]
+WorkingDirectory=%h/redis
+ExecStart=/usr/bin/redis-server myredis.conf --daemonize no --supervised systemd
+Type=notify
+Restart=always
+RestartSec=30
+
+[Install]
