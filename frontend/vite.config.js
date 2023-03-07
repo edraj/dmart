@@ -32,12 +32,14 @@ export default defineConfig({
     strictPort: true,
     port: 5000,
     proxy: {
-      '/user': 'http://localhost:8282',
-      '/info': 'http://localhost:8282',
-      '/managed': 'http://localhost:8282',
-      '/public': 'http://localhost:8282',
-      '/ws': {
-        target: 'ws://localhost:8484',
+      '^/docs.*': 'http://127.0.0.1:8282',
+      '^/openapi.json': 'http://127.0.0.1:8282',
+      '^/user/.*': 'http://127.0.0.1:8282',
+      '^/info/.*': 'http://127.0.0.1:8282',
+      '^/managed/.*': 'http://127.0.0.1:8282',
+      '^/public/.*': 'http://127.0.0.1:8282',
+      '^/ws': {
+        target: 'ws://127.0.0.1:8484',
         ws: true,
       },
     }

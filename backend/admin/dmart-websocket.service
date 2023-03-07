@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=%h/dmart/backend
-ExecStart=%h/dmart/backend/websockets.py
+ExecStart=%h/dmart/backend/websocket.py
 Restart=always
 RestartSec=30
 
