@@ -60,9 +60,9 @@ class Plugin(PluginBase):
         if not receivers or receivers.get("total", 0) == 0:
             return
 
-        receivers_shortnames = []
+        receivers_shortnames = set()
         for receiver in receivers['data']:
-            receivers_shortnames.append(json.loads(receiver.json)['shortname'])
+            receivers_shortnames.add(json.loads(receiver.json)['shortname'])
 
         notification_dict["branch_name"] = data.branch_name
         await send_notification(
