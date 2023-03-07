@@ -30,6 +30,16 @@ export default defineConfig({
   },
   server: {
     strictPort: true,
-    port: 5000
+    port: 5000,
+    proxy: {
+      '/user': 'http://localhost:8282',
+      '/info': 'http://localhost:8282',
+      '/managed': 'http://localhost:8282',
+      '/public': 'http://localhost:8282',
+      '/ws': {
+        target: 'ws://localhost:8484',
+        ws: true,
+      },
+    }
   },
 });
