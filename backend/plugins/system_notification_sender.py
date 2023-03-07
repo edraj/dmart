@@ -7,7 +7,7 @@ from utils.notification import send_notification
 from utils.redis_services import RedisServices
 from utils.repository import get_group_users
 from utils.settings import settings
-from utils.logger import logger
+from fastapi.logger import logger
 from utils.db import load, load_resource_payload
 
 

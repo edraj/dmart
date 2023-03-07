@@ -7,7 +7,7 @@ from models.api import Error, Exception
 from utils.async_request import AsyncRequest
 from utils.redis_services import RedisServices
 from utils.settings import settings
-from utils.logger import logger
+from fastapi.logger import logger
 
 
 send_otp_api = urllib.parse.urljoin(settings.comms_api, "sms/otp/send-sms")

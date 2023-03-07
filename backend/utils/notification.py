@@ -15,7 +15,7 @@ from utils.regex import FILENAME
 import os
 from pathlib import Path
 import utils.db as db
-from utils.logger import logger
+from fastapi.logger import logger
 
 
 async def send_notification(

@@ -14,7 +14,7 @@ import models.api as api
 import os
 import json
 from pathlib import Path
-from utils.logger import logger
+from fastapi.logger import logger
 from fastapi import status
 from datetime import datetime
 import aiofiles

@@ -8,8 +8,6 @@ from utils.helpers import branch_path, flatten_dict, flatten_list_of_dicts_in_di
 from utils.redis_services import RedisServices
 from models.api import Exception as API_Exception, Error as API_Error
 from utils.settings import settings
-from utils.logger import logger
-
 from pathlib import Path as FSPath
 from utils.settings import settings
 from jsonschema import Draft4Validator

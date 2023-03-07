@@ -5,7 +5,7 @@ from utils.helpers import camel_case
 from utils.notification import send_notification
 from utils.redis_services import RedisServices
 from utils.settings import settings
-from utils.logger import logger
+from fastapi.logger import logger
 from utils.db import load, load_resource_payload, save_payload_from_json
 
 

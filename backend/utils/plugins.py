@@ -17,7 +17,7 @@ from utils.spaces import get_spaces
 from importlib import import_module
 from importlib.util import find_spec, module_from_spec
 import sys
-from utils.logger import logger
+from fastapi.logger import logger
 
 
 # Allow python to search for modules inside "spaces" folder

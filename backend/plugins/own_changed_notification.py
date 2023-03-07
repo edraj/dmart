@@ -4,7 +4,7 @@ from models.enums import ContentType, ResourceType
 from utils.helpers import camel_case
 from utils.db import load, save, save_payload_from_json
 from uuid import uuid4
-from utils.logger import logger
+from fastapi.logger import logger
 
 
 class Plugin(PluginBase):

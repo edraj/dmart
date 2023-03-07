@@ -9,7 +9,7 @@ import utils.db as db
 from models import core
 from models.enums import ContentType, ResourceType
 from utils.settings import settings
-from utils.logger import logger
+from fastapi.logger import logger
 
 class Plugin(PluginBase):
 

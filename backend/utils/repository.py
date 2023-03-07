@@ -17,7 +17,7 @@ import utils.db as db
 from utils.redis_services import RedisServices
 import aiofiles
 from fastapi import status
-from utils.logger import logger
+from fastapi.logger import logger
 from utils.helpers import branch_path, camel_case, snake_case
 from utils.custom_validations import validate_payload_with_schema
 import subprocess

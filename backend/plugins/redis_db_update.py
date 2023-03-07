@@ -6,7 +6,7 @@ import utils.db as db
 from models import core
 from models.enums import ContentType, ResourceType
 from utils.redis_services import RedisServices
-from utils.logger import logger
+from fastapi.logger import logger
 
 
 class Plugin(PluginBase):

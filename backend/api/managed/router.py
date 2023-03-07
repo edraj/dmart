@@ -4,7 +4,7 @@ import hashlib
 from io import StringIO
 import os
 import uuid
-from utils.logger import logger
+from fastapi.logger import logger
 from uuid import uuid4
 from re import sub as res_sub
 from fastapi import APIRouter, Body, Depends, UploadFile, Path, Form, status

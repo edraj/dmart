@@ -1,5 +1,6 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python
 """ Main module """
+# from logging import handlers
 from starlette.datastructures import UploadFile
 import asyncio
 import json
@@ -17,6 +18,7 @@ from utils.jwt import JWTBearer
 from utils.spaces import initialize_spaces
 # import json_logging
 from fastapi import Depends, FastAPI, Request, Response, status
+from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from utils.access_control import access_control
@@ -26,10 +28,7 @@ from hypercorn.config import Config
 from starlette.concurrency import iterate_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import models.api as api
-from utils.logger import logger
 from utils.settings import settings
-
-#json_logging.init_fastapi(enable_json=True)
 
 app = FastAPI(
     title="Datamart API",
@@ -378,9 +377,6 @@ async def catchall():
 if __name__ == "__main__":
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
-    # config.loglevel = "ERROR"
-    # config.logger_class = logging.StreamHandler
-    config.accesslog = logger
     config.errorlog = logger
     config.backlog = 200
     config.logconfig = "./json_log.ini"
