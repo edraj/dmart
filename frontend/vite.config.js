@@ -25,7 +25,11 @@ export default defineConfig({
     pluginRewriteAll(),
   ],
   build: {
-    outDir: "./dist/sysadmin",
+    chunkSizeWarningLimit: 1000,
+    outDir: "./dist/",
   },
-  server: { port: 1337 },
+  server: {
+    strictPort: true,
+    port: 5000
+  },
 });

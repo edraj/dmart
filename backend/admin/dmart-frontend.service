@@ -1,0 +1,14 @@
+
+[Unit]
+Description=DMART frontend service
+After=network.target
+
+[Service]
+WorkingDirectory=%h/dmart/frontend/
+ExecStart=/usr/bin/yarn run dev --port 5001 --strictPort --logLevel silent --debug false --mode production
+Restart=on-failure
+# Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target
