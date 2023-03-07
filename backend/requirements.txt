@@ -14,4 +14,3 @@ jsonschema
 email-validator
 passlib[bcrypt]
 jq
-idna

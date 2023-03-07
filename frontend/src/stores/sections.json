@@ -1,0 +1,87 @@
+[
+  {
+    "name": "memberprofile",
+    "icon": "person-circle",
+    "children": [
+      {
+        "type": "link",
+        "name": "memberprofile"
+      }
+    ]
+  },
+  {
+    "name": "dashboard",
+    "icon": "house-door",
+    "children": [
+      {
+        "type": "link",
+        "name": "dashboard"
+      }
+    ]
+  },
+  {
+    "name": "Content",
+    "icon": "rss",
+    "children": [
+      {
+        "type": "folder",
+        "name": "subscriptions",
+        "expanded": false,
+        "children_loaded": false,
+        "resource_types": [],
+        "dmart_path": "/"
+      }
+    ]
+  },
+  {
+    "name": "notifications",
+    "icon": "bell",
+    "children": [
+      {
+        "type": "link",
+        "name": "notifications"
+      }
+    ]
+  },
+  {
+    "name": "sysadmin",
+    "icon": "gear",
+    "children": [
+      {
+        "type": "link",
+        "name": "sysadmin"
+      }
+    ]
+  },
+  {
+    "name": "tools",
+    "icon": "tools",
+    "children": [
+      {
+        "type": "link",
+        "name": "query",
+        "icon": "binoculars"
+      },
+      {
+        "type": "link",
+        "name": "console",
+        "icon": "terminal"
+      },
+      {
+        "type": "link",
+        "name": "terminal",
+        "icon": "terminal"
+      },
+      {
+        "type": "link",
+        "name": "logs",
+        "icon": "receipt-cutoff"
+      },
+      {
+        "type": "link",
+        "name": "events",
+        "icon": "receipt-cutoff"
+      }
+    ]
+  }
+]

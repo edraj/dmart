@@ -1,4 +1,4 @@
-#!/usr/bin/env -S BACKEND_ENV=config.env python
+#!/usr/bin/env -S BACKEND_ENV=config.env python3
 """ Main module """
 # from logging import handlers
 from starlette.datastructures import UploadFile
