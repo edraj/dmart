@@ -11,10 +11,12 @@ DMART is a Content Registry/Repository that is able to assimilate various types 
 - **Data longevity** : Time-proof data storage as data is stored in flat-files directly on the file system. This opens the door for easy access, inspection, validation, backup and change tracking. 
 - **User management and access control** : "Batteries included" to elevate the burden from the application development. 
 
+![Data Mart](./docs/data-mart.jpg)
+
 ## Core concepts
 
 - Each coherent information unit (data asset) is declared as **entry**. 
-- An entry includes all related information (meta, structured, textual and binary) 
+- An entry includes all related business information (meta, structured, textual and binary) that can be extended / augmented with attachments.
 - Entries are organized within arbitrary category structure (folders) 
 - Entries are indexed for fast search and retrieval.
 - Entries can be optionally linked by "weak" links (aka relations).
