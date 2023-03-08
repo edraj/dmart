@@ -1,7 +1,6 @@
 <script>
   import spaces, { getSpaces } from "../stores/spaces.js";
   import { active_entry } from "../stores/active_entry.js";
-  import Icon from "./Icon.svelte";
   import { _ } from "../i18n";
   import { status_line } from "../stores/status_line.js";
   import { ListGroup, ListGroupItem } from "sveltestrap";
@@ -11,11 +10,14 @@
   import { faPlusSquare } from "@fortawesome/free-regular-svg-icons";
   import DynamicFormModal from "./DynamicFormModal.svelte";
   import { dmart_spaces } from "../dmart.js";
+  import SchemaFormModal from "./SchemaFormModal.svelte";
 
   let head_height;
   let foot_height;
-  let props = [{ name: "space_name", value: "" }];
-  let entry_create_modal = false;
+  let props = [];
+  let pop_create_space_modal = false;
+  let pop_create_schema_modal = false;
+
   async function handleModelSubmit(data) {
     const space_name = data[0].value;
     const query = {
@@ -39,19 +41,40 @@
   }
 </script>
 
-<DynamicFormModal {props} bind:open={entry_create_modal} {handleModelSubmit} />
-
+{#key props}
+  <DynamicFormModal
+    {props}
+    bind:open={pop_create_space_modal}
+    {handleModelSubmit}
+  />
+  <SchemaFormModal {props} bind:open={pop_create_schema_modal} />
+{/key}
 <div bind:clientHeight={head_height}>
   <div class="row">
-    <h5 class="my-0 col-9">
-      {#if $spaces.icon}<Icon name={$spaces.icon} class="pe-1" />{/if}
-      {#if $spaces.name}{$_($spaces.name)}{/if}
-    </h5>
+    <h5 class="my-0 col-9">Schema</h5>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
       class="my-0 col-2 d-flex justify-content-end"
       on:click={() => {
-        entry_create_modal = true;
+        props = [
+          { name: "space_name", value: "" },
+          { name: "shortname", value: "" },
+        ];
+        pop_create_schema_modal = true;
+      }}
+    >
+      <Fa icon={faPlusSquare} size="x" color="green" />
+    </div>
+  </div>
+  <hr class="w-100 mt-1 mb-0" />
+  <div class="row">
+    <h5 class="my-0 col-9">Spaces</h5>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div
+      class="my-0 col-2 d-flex justify-content-end"
+      on:click={() => {
+        props = [{ name: "space_name", value: "" }];
+        pop_create_space_modal = true;
       }}
     >
       <Fa icon={faPlusSquare} size="x" color="green" />

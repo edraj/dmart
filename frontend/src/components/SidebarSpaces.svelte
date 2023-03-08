@@ -9,7 +9,7 @@
   import SidebarSubpaths from "./SidebarSubpaths.svelte";
   import { slide } from "svelte/transition";
   import { getSpaces } from "../stores/spaces.js";
-  import { dmart_spaces } from "../dmart.js";
+  import { dmart_folder, dmart_spaces } from "../dmart.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
 
   export let child;
@@ -41,11 +41,26 @@
     }
   }
 
+  let modalFlag = "create";
   async function handleModelSubmit(data) {
+    if (modalFlag === "create") {
+      const response = dmart_folder(
+        child.shortname,
+        "/",
+        data[0].value,
+        data[1].value
+      );
+      if (response.error) {
+        alert(response.error.message);
+      } else {
+        await getSpaces();
+      }
+      return;
+    }
     const space_name = data[0].value;
     const query = {
       space_name: child.shortname,
-      request_type: "update",
+      request_type: modalFlag,
       records: [
         {
           resource_type: "space",
@@ -63,12 +78,17 @@
     }
   }
 
-  let props = [{ name: "space_name", value: child.shortname }];
+  let props = [];
   let entry_create_modal = false;
 </script>
 
-<DynamicFormModal {props} bind:open={entry_create_modal} {handleModelSubmit} />
-
+{#key props}
+  <DynamicFormModal
+    {props}
+    bind:open={entry_create_modal}
+    {handleModelSubmit}
+  />
+{/key}
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
 <div
   on:mouseover={(e) => (displayActionMenu = true)}
@@ -82,13 +102,26 @@
           <b>{child.shortname}</b>
         </div>
 
-        <div class="col-1" hidden={!displayActionMenu}>
+        <div
+          class="col-1"
+          hidden={!displayActionMenu}
+          on:click={() => {
+            props = [
+              { name: "schema_shortname", value: "" },
+              { name: "shortname", value: "" },
+            ];
+            modalFlag = "create";
+            entry_create_modal = true;
+          }}
+        >
           <Fa icon={faPlusSquare} size="lg" color="green" />
         </div>
         <div
           class="col-1"
           hidden={!displayActionMenu}
           on:click={() => {
+            props = [{ name: "space_name", value: child.shortname }];
+            modalFlag = "update";
             entry_create_modal = true;
           }}
         >
