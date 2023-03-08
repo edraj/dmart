@@ -1,0 +1,12 @@
+{
+    "space_name": "test",
+    "request_type": "delete",
+    "records": [
+        {
+            "resource_type": "content",
+            "subpath": "content",
+            "shortname": "buyer_123",
+            "attributes": {}
+        }
+    ]
+}

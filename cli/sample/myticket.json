@@ -1,0 +1,23 @@
+{
+  "space_name": "test",
+  "request_type": "create",
+  "records": [
+    {
+      "resource_type": "ticket",
+      "subpath": "/mytickets",
+      "shortname": "an_example",
+      "attributes": {
+        "workflow_shortname": "myworkflow",
+        "is_active": true,
+        "payload": {
+          "schema_shortname": "ticket",
+          "content_type": "json",
+          "body": {
+            "assigne_shortname": "alibaba",
+            "ticket_type": "story"
+          }
+        }
+      }
+    }
+  ]
+}

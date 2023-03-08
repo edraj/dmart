@@ -1,0 +1,14 @@
+{
+  "resource_type": "ticket",
+  "subpath": "/myfolder",
+  "shortname": "an_example",
+  "attributes": {
+    "workflow_shortname": "myworkflow",
+    "is_active": true,
+    "payload": {
+      "schema_shortname": "test_schema",
+      "content_type": "json",
+      "body":"ticketbody.json"
+    }
+  }
+}

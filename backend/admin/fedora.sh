@@ -10,6 +10,9 @@ sudo dnf install python3-multipart python3-aiohttp python3-pydantic python3-json
 pip install --user hypercorn concurrent_log_handler jq pydantic[dotenv]
 
 
+# Pytest packages
+sudo dnf install python3-pytest-mock python3-pytest python3-pytest-httpx python3-pytest-asyncio
+
 # ?? python3-jsonschema
 
 # For cli

@@ -1,0 +1,10 @@
+#flake8-black
+#black
+#pytest-cov
+#coverage
+#ipdb
+#check-jsonschema
+httpx
+pytest
+pytest-asyncio
+pytest-mock
