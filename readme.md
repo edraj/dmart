@@ -11,7 +11,7 @@ DMART is a Content Registry/Repository that is able to assimilate various types 
 - **Data longevity** : Time-proof data storage as data is stored in flat-files directly on the file system. This opens the door for easy access, inspection, validation, backup and change tracking. 
 - **User management and access control** : "Batteries included" to elevate the burden from the application development. 
 
-![Data Mart](./docs/data-mart.jpg)
+<img src="./docs/data-mart.jpg" width="500">
 
 ## Core concepts
 
@@ -30,4 +30,4 @@ DMART is a Content Registry/Repository that is able to assimilate various types 
   - Redis as the operational data store. With RediSearch RedisJSON modules.
   - Intensive json-based logging for easier insights.  
 
-![one](./docs/datamart-one.png) ![two](./docs/datamart-two.png) ![three](./docs/datamart-three.png) ![four](./docs/datamart-four.png)
+<img src="./docs/datamart-one.png" width="50"> <img src="./docs/datamart-two.png" width="50"> <img src="./docs/datamart-three.png" width="50"> <img src="./docs/datamart-four.png" width="50">
