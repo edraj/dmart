@@ -3,7 +3,7 @@ import json
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
 from pydantic import Field
@@ -15,7 +15,6 @@ from models.enums import (
     Language,
     NotificationPriority,
     NotificationType,
-    RequestType,
     ResourceType,
     UserType,
     ValidationEnum,
@@ -245,6 +244,9 @@ class Relationship(Attachment):
     related_to: Locator
     attributes: dict[str, Any]
 
+
+class Alteration(Attachment):
+    requested_update: dict
 
 class Action(Resource):
     resource: Locator

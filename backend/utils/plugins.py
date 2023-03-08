@@ -68,7 +68,7 @@ class PluginManager:
                     self.store_plugin_in_its_action_dict(plugin_wrapper)
 
             except Exception as e:
-                logger.info(
+                logger.error(
                     f"PLUGIN_ERROR, Plugin {plugin_wrapper.shortname} Failed to load, error: {e.args}"
                 )
 

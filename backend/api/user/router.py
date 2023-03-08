@@ -517,7 +517,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         api.Error(
                             type="auth",
                             code=10,
-                            message=f"Bad creds [1] {key=} {value=}",
+                            message=f"Invalid username or password [1] {key=} {value=}",
                         ),
                     )
                 user = await db.load(
@@ -529,7 +529,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     branch_name=MANAGEMENT_BRANCH,
                 )
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
-        if user and (
+        if user and user.is_active and (
             request.invitation
             or password_hashing.verify_password(
                 request.password or "", user.password or ""
@@ -583,14 +583,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             return api.Response(status=api.Status.success, records=[record])
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="auth", code=14, message="Bad creds [2]"),
+            api.Error(type="auth", code=14, message="Invalid username or password [2]"),
         )
     except api.Exception as e:
         raise e
         if e.error.type == "db":
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="auth", code=14, message="Bad creds [3]"),
+                api.Error(type="auth", code=14, message="Invalid username or password [3]"),
             )
         else:
             raise e
@@ -705,7 +705,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             api.Error(
                 type="auth",
                 code=10,
-                message=f"Bad creds [1] {key=} {value=}",
+                message=f"Invalid username or password [4] {key=} {value=}",
             ),
         )
 

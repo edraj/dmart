@@ -62,52 +62,10 @@ async def serve_query(
                     )
 
         case api.QueryType.search:
-            search_res: list = []
-            total = 0
-            if not query.filter_schema_names:
-                query.filter_schema_names = ["meta"]
-            created_at_search = ""
-            if query.from_date and query.to_date:
-                created_at_search = (
-                    "["
-                    + f"{query.from_date.timestamp()} {query.to_date.timestamp()}"
-                    + "]"
-                )
-            elif query.from_date:
-                created_at_search = (
-                    "["
-                    + f"{query.from_date.timestamp()} {datetime(2199, 12, 31).timestamp()}"
-                    + "]"
-                )
-            elif query.to_date:
-                created_at_search = (
-                    "["
-                    + f"{datetime(2010, 1, 1).timestamp()} {query.to_date.timestamp()}"
-                    + "]"
-                )
-            for schema_name in query.filter_schema_names:
-                redis_res = await redis.search(
-                    space_name=query.space_name,
-                    branch_name=query.branch_name,
-                    schema_name=schema_name,
-                    search=str(query.search),
-                    filters={
-                        "resource_type": query.filter_types or [],
-                        "shortname": query.filter_shortnames or [],
-                        "tags": query.filter_tags or [],
-                        "subpath": [query.subpath] if query.subpath != "/" else [],
-                        "query_policies": redis_query_policies,
-                        "created_at": created_at_search,
-                    },
-                    limit=(query.limit + query.offset),
-                    offset=0,
-                    highlight_fields=list(query.highlight_fields.keys()),
-                    sort_by=query.sort_by,
-                    sort_type=query.sort_type or api.SortType.ascending,
-                )
-                if redis_res:
-                    search_res.extend(redis_res["data"])
-                    total += redis_res["total"]
+
+            query.include_fields = [] # Don't support include fields for now, will be supported after abandon meta doc enhancement
+            search_res, total = await redis_query_search(query, redis_query_policies)
+
             for redis_document in search_res:
                 redis_doc_dict = json.loads(redis_document.json)
                 meta_doc_content = {}
@@ -276,9 +234,6 @@ async def serve_query(
                             query.filter_types
                             and not ResourceType(resource_name) in query.filter_types
                         ):
-                            logger.info(
-                                resource_name + " resource is not listed in filter types"
-                            )
                             continue
 
                         if (
@@ -648,9 +603,6 @@ async def get_entry_attachments(
                 continue
 
             if filter_types and not ResourceType(attach_resource_name) in filter_types:
-                logger.info(
-                    attach_resource_name + " resource is not listed in filter types"
-                )
                 continue
 
             resource_class = getattr(
@@ -685,15 +637,73 @@ async def get_entry_attachments(
         attachments_files.close()
     attachments_iterator.close()
 
-    # SORT ALTERATION ATTACHMENTS BY ALTERATION.TIMESTAMP
+    # SORT ALTERATION ATTACHMENTS BY ALTERATION.CREATED_AT
     for attachment_name, attachments in attachments_dict.items():
         if attachment_name == ResourceType.alteration:
             attachments_dict[attachment_name] = sorted(
-                attachments, key=lambda d: d.attributes["timestamp"]
+                attachments, key=lambda d: d.attributes["created_at"]
             )
 
     return attachments_dict
 
+async def redis_query_search(query: api.Query, redis_query_policies: list = []) -> tuple:
+    redis = await RedisServices()
+    search_res: list = []
+    total = 0
+
+    if not query.filter_schema_names:
+        query.filter_schema_names = ["meta"]
+
+    created_at_search = ""
+
+    if query.from_date and query.to_date:
+        created_at_search = (
+            "["
+            + f"{query.from_date.timestamp()} {query.to_date.timestamp()}"
+            + "]"
+        )
+
+    elif query.from_date:
+        created_at_search = (
+            "["
+            + f"{query.from_date.timestamp()} {datetime(2199, 12, 31).timestamp()}"
+            + "]"
+        )
+
+    elif query.to_date:
+        created_at_search = (
+            "["
+            + f"{datetime(2010, 1, 1).timestamp()} {query.to_date.timestamp()}"
+            + "]"
+        )
+
+    for schema_name in query.filter_schema_names:
+        redis_res = await redis.search(
+            space_name=query.space_name,
+            branch_name=query.branch_name,
+            schema_name=schema_name,
+            search=str(query.search),
+            filters={
+                "resource_type": query.filter_types or [],
+                "shortname": query.filter_shortnames or [],
+                "tags": query.filter_tags or [],
+                "subpath": [query.subpath] if query.subpath != "/" else [],
+                "query_policies": redis_query_policies,
+                "created_at": created_at_search,
+            },
+
+            limit=(query.limit + query.offset),
+            offset=0,
+            highlight_fields=list(query.highlight_fields.keys()),
+            sort_by=query.sort_by,
+            sort_type=query.sort_type or api.SortType.ascending,
+            return_fields=query.include_fields if query.include_fields else []
+        )
+
+        if redis_res:
+            search_res.extend(redis_res["data"])
+            total += redis_res["total"]
+    return search_res, total
 
 async def get_resource_obj_or_none(
     *,

@@ -368,6 +368,7 @@ class RedisServices(object):
                     TextField(
                         "$.description.kd", sortable=True, as_name="description_kd"
                     ),
+                    TagField("$.is_active", as_name="is_active"),
                     TextField(
                         "$.payload.content_type",
                         no_stem=True,
@@ -816,6 +817,7 @@ class RedisServices(object):
         sort_by: str | None = None,
         highlight_fields: list[str] | None = None,
         schema_name: str = "meta",
+        return_fields: list = []
     ):
         # index_info = None
         # Tries to get the index from the provided space
@@ -854,6 +856,9 @@ class RedisServices(object):
 
         if sort_by:
             search_query.sort_by(sort_by, sort_type == SortType.ascending)
+
+        if return_fields:
+            search_query.return_fields(*return_fields)
 
         search_query.paging(offset, limit)
 

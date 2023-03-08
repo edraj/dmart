@@ -150,10 +150,37 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     )
 
     redis_query_policies = await access_control.get_user_query_policies(user_shortname)
+    restricted_fields = [
+        "id", 
+        "query_policies", 
+        "subpath", 
+        "branch_name", 
+        "resource_type", 
+        "meta_doc_id", 
+        "owner_shortname", 
+        "workflow_shortname"
+    ]
 
-    _, records = await repository.serve_query(
-        query, user_shortname, redis_query_policies
-    )
+    search_res, _ = await repository.redis_query_search(query, redis_query_policies)
+    json_data = []
+    for redis_document in search_res:
+        redis_doc_dict = redis_document.__dict__
+        if "json" in redis_doc_dict:
+            redis_doc_dict = json.loads(redis_doc_dict["json"])
+        json_data.append({k: v for k, v in redis_doc_dict.items() if k not in restricted_fields})
+
+    # Sort all entries from all schemas
+    if (
+        query.sort_by in core.Meta.__fields__
+        and len(query.filter_schema_names) > 1
+    ):
+        json_data = sorted(
+            json_data,
+            key=lambda d: d.attributes[query.sort_by]
+            if query.sort_by in d.attributes
+            else "",
+            reverse=(query.sort_type == api.SortType.descending),
+        )
 
     await plugin_manager.after_action(
         core.Event(
@@ -165,23 +192,10 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
     )
 
-    json_data = []
-    for record in records:
-        payloads = record.attributes["payload"]
-        if payloads is None:
-            continue
-        _data = {}
-        _data["shortname"] = record.shortname
-        _data = {**_data, **payloads.dict()["body"]}
-        _data["is_active"] = record.attributes["is_active"]
-        data = json_flater(_data)
-        json_data.append(data)
-
     v_path = StringIO()
     if len(json_data) == 0:
         return api.Response(
             status=api.Status.success,
-            records=records,
             attributes={"message": "The records are empty"},
         )
 
@@ -1976,3 +1990,42 @@ async def shoting_url(
         return RedirectResponse(url)
     else:
         return RedirectResponse(url="/frontend")
+
+
+@router.post(
+    "/apply-alteration/{space_name}/{alteration_name}",
+    response_model_exclude_none=True
+)
+async def apply_alteration(
+    space_name : str,
+    alteration_name : str,
+    on_entry: core.Record,
+    logged_in_user=Depends(JWTBearer())
+):
+    alteration_meta = await db.load(
+        space_name=space_name,
+        subpath=f"{on_entry.subpath}/{on_entry.shortname}",
+        shortname=alteration_name,
+        class_type=core.Alteration,
+        user_shortname=logged_in_user,
+        branch_name=on_entry.branch_name
+    )
+
+    on_entry.attributes = alteration_meta.requested_update
+    response = await serve_request(
+        request=api.Request(
+            space_name=space_name,
+            request_type=RequestType.update,
+            records=[on_entry]
+        ),
+        owner_shortname=logged_in_user
+    )
+
+    await db.delete(
+        space_name=space_name, 
+        subpath=f"{on_entry.subpath}/{on_entry.shortname}", 
+        meta=alteration_meta, 
+        branch_name=on_entry.branch_name, 
+        user_shortname=logged_in_user
+    )
+    return response
