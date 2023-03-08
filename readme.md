@@ -2,11 +2,11 @@
 
 A structure-oriented information management system (aka Data-as-a-Service DaaS).
 
-DMART is a Content Registry/Repository that is able to assimilate various types of data (structured, unstructured and binary).
+DMART is a Content Registry/Repository that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and update. 
 
 ## Top highlights ...
 
-- **Data-as-a-Service** : Backbone data store where the data assets get declared and used across multiple applications. The data assets are declared in the logical and business representation rather than classical RDBMS (physical). 
+- **Data-as-a-Service** : Backbone data store where the data assets get declared and used across multiple applications. The data assets are declared in the logical and business representation rather than classical RDBMS (physical).
 - **Standardized API** : Publicly accessible unified api layer to interact with the different types of data, simplifying the work of application developers.
 - **Data longevity** : Time-proof data storage as data is stored in flat-files directly on the file system. This opens the door for easy access, inspection, validation, backup and change tracking. 
 - **User management and access control** : "Batteries included" to elevate the burden from the application development. 
@@ -29,3 +29,5 @@ DMART is a Content Registry/Repository that is able to assimilate various types 
   - FastAPI as the api micro-framework 
   - Redis as the operational data store. With RediSearch RedisJSON modules.
   - Intensive json-based logging for easier insights.  
+
+![one](./docs/datamart-one.png) ![two](./docs/datamart-two.png) ![three](./docs/datamart-three.png) ![four](./docs/datamart-four.png)
