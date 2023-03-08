@@ -26,21 +26,21 @@ json_entry_shortname: str = "json_stuff"
 attachment_shortname: str = "my_comment"
 
 
-schema_record_path = f"../cli/sample/createschema.json"
+schema_record_path = f"../sample/test/createschema.json"
 schema_shortname = "test_schema"
-schema_payload_path = f"../cli/sample/schema.json"
+schema_payload_path = f"../sample/test/schema.json"
 
-content_record_path = f"../cli/sample/createcontent.json"
+content_record_path = f"../sample/test/createcontent.json"
 content_shortname = "buyer_123"
-content_payload_path = f"../cli/sample//data.json"
-attachment_record_path = f"../cli/sample/createmedia.json"
-attachment_payload_path = f"../cli/sample/logo.jpeg"
+content_payload_path = f"../sample/test//data.json"
+attachment_record_path = f"../sample/test/createmedia.json"
+attachment_payload_path = f"../sample/test/logo.jpeg"
 
-content_media_record_path = f"../cli/sample/createmedia_entry.json"
-content_media_payload_path = f"../cli/sample/logo.jpeg"
+content_media_record_path = f"../sample/test/createmedia_entry.json"
+content_media_payload_path = f"../sample/test/logo.jpeg"
 
 resources_schema_shortname = "test_schema"
-resources_csv_path = f"../cli/sample/resources.csv"
+resources_csv_path = f"../sample/test/resources.csv"
 csv_num_of_records = 11
 num_of_created_entries = 0
 
