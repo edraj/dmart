@@ -7,18 +7,50 @@
     ModalHeader,
   } from "sveltestrap";
   import { Form, FormGroup, Label, Input } from "sveltestrap";
+  import ContentJsonEditor from "./ContentJsonEditor.svelte";
+  import { createAjvValidator } from "svelte-jsoneditor";
+  import * as schema from "./../utils/SchemaValidator.json";
+  import { dmart_managed_schemas } from "../dmart";
+  import { toastPushSuccess, toastPushFail } from "../utils";
 
+  const validator = createAjvValidator({ schema });
+
+  let content = {
+    json: {
+      title: "Schema_Title",
+      description: "Schema_Description",
+      additionalProperties: false,
+      type: "object",
+      properties: {},
+    },
+    text: undefined,
+  };
   export let open = false;
   export let size = undefined;
   export let props;
-  export let handleModelSubmit;
+
+  let isSchemaValidated = false;
 
   function toggle() {
     open = !open;
   }
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
+    console.log({ fields });
     event.preventDefault();
-    handleModelSubmit(fields);
+    if (!isSchemaValidated) {
+      return;
+    }
+
+    const response = await dmart_managed_schemas(
+      fields[0].value,
+      fields[1].value,
+      JSON.parse(content.text)
+    );
+    if (response.status === "success") {
+      toastPushSuccess();
+    } else {
+      toastPushFail();
+    }
   }
 
   const fields = props.map((p) => {
@@ -37,7 +69,7 @@
 
 <Modal isOpen={open} {toggle} {size}>
   <ModalHeader />
-  <Form on:submit={handleSubmit}>
+  <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
       <FormGroup>
         {#each fields as field}
@@ -48,7 +80,14 @@
             required
             bind:value={field.value}
           />
+          <hr />
         {/each}
+        <ContentJsonEditor
+          bind:content
+          {validator}
+          bind:isSchemaValidated
+          handleSave={null}
+        />
       </FormGroup>
     </ModalBody>
     <ModalFooter>

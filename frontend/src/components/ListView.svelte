@@ -363,6 +363,7 @@
 {#if showModal}
   <Tabs>
     <TabList>
+      <Tab>Meta</Tab>
       <Tab>Content</Tab>
       <Tab>Attachments</Tab>
       <Tab>History</Tab>
@@ -370,9 +371,10 @@
 
     <TabPanel>
       <ContentJsonEditor bind:content={metaContent} {handleSave} />
+    </TabPanel>
+    <TabPanel>
       <ContentJsonEditor bind:content={bodyContent} {handleSave} />
     </TabPanel>
-
     <TabPanel>
       <AttachmentsManagment
         bind:content={metaContent.json.attachments}

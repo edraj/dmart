@@ -1,8 +1,10 @@
 <script context="module">
   import { Router, createRouter } from "@roxi/routify";
   import routes from "../.routify/routes.default.js";
+  import { SvelteToast } from "@zerodevx/svelte-toast";
 
   const router = createRouter({ routes });
+  const options = {};
 </script>
 
 <script>
@@ -25,5 +27,6 @@
 </script>
 
 <div id="routify-app">
+  <SvelteToast {options} />
   <Router {router} />
 </div>

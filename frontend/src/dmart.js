@@ -4,7 +4,7 @@ import { get } from "svelte/store";
 import signedin_user from "./stores/signedin_user";
 // import sha1 from "./sha1.js";
 
-export async function dmart_schemas() {
+export async function dmart_list_schemas() {
   return await dmart_query({ type: "subpath", subpath: "schema" });
 }
 
@@ -15,6 +15,45 @@ export async function dmart_login(username, password) {
   };
   return await dmart_request("user/login", browse_query);
   //return { "records": [{ "displayname": "ali", "shortname": "hisense" }] };//resp;
+}
+
+export async function dmart_create_folder(space_name, subpath, shortname) {
+  const request = {
+    space_name,
+    request_type: "create",
+    records: [
+      {
+        resource_type: "folder",
+        subpath,
+        shortname,
+        attributes: { is_active: true },
+      },
+    ],
+  };
+  return dmart_request("managed/request", request);
+}
+
+export async function dmart_managed_schemas(space_name, shortname, body) {
+  const request = {
+    space_name,
+    request_type: "create",
+    records: [
+      {
+        resource_type: "schema",
+        shortname,
+        subpath: "/schema",
+        attributes: {
+          is_active: true,
+          payload: {
+            content_type: "json",
+            schema_shortname: "meta_schema",
+            body,
+          },
+        },
+      },
+    ],
+  };
+  return dmart_request("managed/request", request);
 }
 
 export async function dmart_request(api_suburl, browse_query) {
@@ -319,20 +358,58 @@ export async function dmart_delete_content(
   return resp.results[0];
 }
 
-export async function dmart_folder(action, subpath, shortname) {
+export async function dmart_folder(
+  space_name,
+  subpath,
+  schema_shortname,
+  shortname
+) {
   const request = {
-    actor_shortname: get(signedin_user).shortname,
-    space_name: website.space_name,
-    request_type: action,
+    space_name,
+    request_type: "create",
     records: [
       {
         resource_type: "folder",
-        subpath: subpath,
-        shortname: shortname,
+        subpath,
+        shortname,
+        attributes: {
+          is_active: true,
+          payload: {
+            content_type: "json",
+            schema_shortname: "folder_rendering",
+            body: {
+              shortname_title: "Unique ID",
+              content_schema_shortnames: [schema_shortname],
+              index_attributes: [
+                {
+                  key: "shortname",
+                  name: "Unique ID",
+                },
+                {
+                  key: "created_at",
+                  name: "Created At",
+                },
+                {
+                  key: "owner_shortname",
+                  name: "Created By",
+                },
+              ],
+              allow_create: true,
+              allow_update: true,
+              allow_delete: true,
+              use_media: true,
+              expand_children: false,
+              content_resource_types: ["content"],
+              allow_upload_csv: true,
+              allow_csv: true,
+              filter: [],
+            },
+          },
+        },
       },
     ],
   };
-  let resp = await dmart_request(request);
+  let resp = await dmart_request("managed/request", request);
   return resp.results[0];
 }
 

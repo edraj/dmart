@@ -10,7 +10,7 @@
   import { _ } from "../i18n";
   import {
     dmart_query,
-    dmart_schemas,
+    dmart_list_schemas,
     dmart_content,
     dmart_postmedia,
   } from "../dmart";
@@ -22,7 +22,7 @@
 
   let schemas = [];
 
-  dmart_schemas().then((resp) => {
+  dmart_list_schemas().then((resp) => {
     schemas = resp.records.map((r) => ({
       shortname: r.shortname,
       payload: r.attributes.payload,

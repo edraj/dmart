@@ -1,6 +1,10 @@
 <script>
-  import { JSONEditor } from "svelte-jsoneditor";
+  import { createAjvValidator, JSONEditor } from "svelte-jsoneditor";
+  import * as schema from "./../utils/SchemaValidator.json";
 
+  const validator = createAjvValidator({ schema });
+
+  let onError;
   let data = {
     array: [1, 2, 3],
     boolean: true,
@@ -15,10 +19,16 @@
     json: data,
     text: undefined,
   };
-  $: console.log("contents changed:", content);
+  $: console.log("contents changed:", onError);
+
+  function handleChange(updatedContent, previousContent, patchResult) {
+    // content is an object { json: JSONData } | { text: string }
+    console.log("onChange: ", patchResult.contentErrors.validationErrors);
+    content = updatedContent;
+  }
 </script>
 
 <div>
   <!--JSONEditor bind:json /-->
-  <JSONEditor bind:content />
+  <JSONEditor bind:content {validator} onChange={handleChange} />
 </div>
