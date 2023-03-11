@@ -100,47 +100,48 @@
   async function infiniteHandler({ detail: { loaded, complete, error } }) {
     if (Object.keys(query).length <= 2) {
       complete();
-      return;
-    }
-    try {
-      query.limit = 50;
-      query.offset = 50 * page;
-      await dmart_query(query)
-        .then(async (json) => {
-          records = [...records, ...json.records.reverse()];
-          if (json.status == "success") {
-            lastbatch = json.attributes.returned;
-            total = json.attributes.total;
-            if (schema_shortname === "") {
-              schema_shortname =
-                records[0]?.attributes?.payload?.schema_shortname;
-            }
-            if (lastbatch) {
-              page += 1;
-              items = [...items, ...records];
+    } else {
+      try {
+        query.limit = 50;
+        query.offset = 50 * page;
+        await dmart_query(query)
+          .then(async (json) => {
+            records = [...records, ...json.records.reverse()];
+            if (json.status == "success") {
+              lastbatch = json.attributes.returned;
+              total = json.attributes.total;
+              if (schema_shortname === "") {
+                schema_shortname =
+                  records[0]?.attributes?.payload?.schema_shortname;
+              }
+              if (lastbatch) {
+                page += 1;
+                items = [...items, ...records];
+                loaded();
+              } else {
+                complete();
+              }
+              api_status = "success";
+              status_line.set(
+                `Loaded ${items.length - 1} of ${total}.<br/>api: ${api_status}`
+              );
             } else {
-              complete();
+              console.log("Error with query", json);
+              api_status = json || "Unknown error";
+              status_line.set(`api: ${api_status}`);
             }
-            api_status = "success";
-            status_line.set(
-              `Loaded ${items.length - 1} of ${total}.<br/>api: ${api_status}`
-            );
-          } else {
-            console.log("Error with query", json);
-            api_status = json || "Unknown error";
-            status_line.set(`api: ${api_status}`);
-          }
-        })
-        .catch((e) => {
-          console.log(e);
-          error();
-        });
-      if (filterable && search.options.length === 0) {
-        await fetchSearchKeys();
+          })
+          .catch((e) => {
+            console.log(e);
+            error();
+          });
+        if (filterable && search.options.length === 0) {
+          await fetchSearchKeys();
+        }
+      } catch (e) {
+        console.log(e);
+        error();
       }
-    } catch (e) {
-      console.log(e);
-      error();
     }
   }
 
@@ -155,14 +156,6 @@
     }
 
     return "not_applicable";
-  }
-  let listHeight;
-  let resizing = false;
-  function resize(e) {
-    if (resizing) {
-      details_split =
-        details_split - e.movementY > 0 ? details_split - e.movementY : 0;
-    }
   }
 
   const handleSave = async () => {
@@ -214,9 +207,11 @@
       infiniteId = Symbol();
     }, 500);
   }
+
+  let height;
 </script>
 
-<svelte:window on:mouseup={() => (resizing = false)} on:mousemove={resize} />
+<svelte:window bind:innerHeight={height} />
 
 {#if !showModal}
   {#if filterable}
@@ -260,9 +255,9 @@
       />
     </div>
   {/if}
-  <div class="list h-100" bind:offsetHeight={listHeight}>
+  <div class="list h-100">
     <VirtualList
-      height={listHeight - details_split - 5}
+      height={height - 105}
       width="auto"
       stickyIndices={[0]}
       itemCount={items.length}
@@ -316,14 +311,12 @@
         class:current={current_item == index}
       >
         {#if index == 0}
-          <div class="my-cell" style="width: 5%;">#</div>
           {#each Object.keys(cols) as col}
             <div class="my-cell" style="width: {cols[col].width};">
               <strong>{cols[col].title}</strong>
             </div>
           {/each}
         {:else}
-          <div class="my-cell" style="width: 5%;" />
           {#each Object.keys(cols) as col}
             <div class="my-cell" style=" width: {cols[col].width};">
               {value(cols[col].path.split("."), items[index], cols[col].type)}
@@ -338,10 +331,6 @@
         />
       </div>
     </VirtualList>
-    <hr
-      on:mousedown={() => (resizing = true)}
-      style="cursor: {resizing ? 'grabbing' : 'grab'}"
-    />
     {#if current_item && current_item > 0 && details_split > 0}
       <div
         class="one-item pt-2"
@@ -383,7 +372,7 @@
     </TabPanel>
 
     <TabPanel>
-      <div style="height: 100vh">
+      <div style="height: {height}">
         <svelte:self
           bind:query={history_query}
           bind:cols={history_cols}
