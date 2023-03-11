@@ -1,17 +1,21 @@
 # Data Mart (D-MART)
 
-A structure-oriented information management system (aka Data-as-a-Service DaaS).
+General-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS).
 
-DMART is a Content Registry/Repository that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and update. 
+DMART is a low-code content registry/repository (information inventory) platform that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and update. Thus valuable data assets can be maintained as in their mastered version and act as the single source of truth. 
 
 ## Top highlights ...
 
-- **Data-as-a-Service** : Backbone data store where the data assets get declared and used across multiple applications. The data assets are declared in the logical and business representation rather than classical RDBMS (physical).
+- **Data-as-a-Service** : Backbone data store where the data assets get declared and used across multiple applications and microservices. The data assets are declared in the logical and business representation rather than classical RDBMS (physical).
 - **Standardized API** : Publicly-accessible unified api layer allowing interaction with the different types of data; and simplifying the work of application developers.
-- **Data longevity** : Time-proof data storage, as data is stored in flat-files directly on the file system. This opens the door for easy access, inspection, validation, backup and change tracking. At any point in time, the redis index can be recreated from the flat-files.
+- **Data longevity** : Resilient and time-proof data storage, as data is stored in flat-files directly on the file system. This opens the door for easy access, inspection, validation, backup and change tracking. At any point in time, the redis index can be recreated from the flat-files.
 - **User management and access control** : "Batteries included" to elevate the burden from application development. 
 - **Microservice friendly** : Leveraging JWT shared secret, additional microservices can automatically leverage the user's session with dmart. There is also a compatilble FastApi skeleton git repository to facilitate the development of additional microservices.
 - **Extensible via plugins** : Specialized logic (plugins) can be added to react to certain types of activities and content.
+- **Entry-oriented** : As opposed to document-oriented NoSQL, entry-orientation revolves around consolidating the cohrrent information unit along side its belongings (textual and/or binary) as one entry. 
+
+
+
 
 <img src="./docs/data-mart.jpg" width="500">
 
@@ -25,8 +29,7 @@ DMART is a Content Registry/Repository that is able to assimilate various types 
   - Changes on entries are recorded for audit and tracking.
   - Structured content: Each structured json content (payload) is associated with a pre-defined json schema stored under the schema section in the space. 
   - Arbitrary attachments: An entity could have attachments (binary or otherwise)
-- Entries are stord and orgazined on the file-system (folder-based routes/structure)
-
+- Entries are stord and orgazined arbitrary hierarchical folder structure (aka categories) on the file-system. Facilitating folder-based routes.
 
 ## API layer (REST-like, JSON-API)
 
@@ -38,7 +41,9 @@ Full OpenApi 3 compliant documentation can be found [here](https://dmart.cc/docs
 
 ## Architecture and technology stack
 
-  - flat-file data persistence on standard file-system. Using folders, json, text and binary (media/documents) files. 
+<img src="./docs/backend.png" width="650"> 
+
+  - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files. 
   - Python 3.11 with emphasis on asyncio and type hinting
   - FastAPI as the api micro-framework (based on our _curated_ fastapi skeleton). 
   - Hypercorn (runner server)
