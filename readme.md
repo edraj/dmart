@@ -18,11 +18,23 @@ DMART is a Content Registry/Repository that is able to assimilate various types 
 ## Core concepts
 
 - Each coherent information unit (data asset) is declared as **entry**. 
-- An entry includes all related business information (meta, structured, textual and binary) that can be extended / augmented with attachments.
-- Entries are organized within arbitrary category structure (folders) 
-- Entries are indexed for fast search and retrieval.
-- Entries can be optionally linked by "weak" links (aka relations).
-- Changes on entries are recorded for audit and tracking.
+  - An entry includes all related business information (meta, structured, textual and binary) that can be extended / augmented with attachments.
+  - Entries are organized within arbitrary category structure (folders) 
+  - Entries are indexed for fast search and retrieval.
+  - Entries can be optionally linked by "weak" links (aka relations).
+  - Changes on entries are recorded for audit and tracking.
+- Flat-files and file-system are used to store and organize the content
+  - File-based routes: Entries are organized in an arbitrary (free from) folder-structure within a space root folder.
+  - Structured content: Each structured json content (payload) is associated with a defined jsom schema under the respective schema section in the space. 
+  - Arbitrary attachments: Any structured entity could have attachments (binary or otherwise)
+
+## API layer (REST-like, JSON-API)
+
+  - **Management**  : Create/update/delete schema, content, scripts, triggers, users and roles
+  - **Discovery**   : Users, paths, scripts, changes/history, schema and content
+  - **Consumption** : Content/attachments, scripts and submissions  
+
+Full OpenApi 3 compliant documentation can be found ![here](https://dmart.cc/docs) 
 
 ## Architecture and technology stack
 
@@ -33,3 +45,60 @@ DMART is a Content Registry/Repository that is able to assimilate various types 
   - Intensive json-based logging for easier insights.  
 
 <img src="./docs/datamart-one.png" width="50"> <img src="./docs/datamart-two.png" width="50"> <img src="./docs/datamart-three.png" width="50"> <img src="./docs/datamart-four.png" width="50">
+
+## Terminology 
+
+| Term | Description |
+|----|----|
+| space | Top-level business category that facilitates grouping of relevent conent. Permissions are defined within the space boundaries | 
+| subpath | The path within space that leads to an entry. e.g. `content/stuff/todo` |
+| entry | The basic unit of coherent information.|
+| attachment | Extra data associated with the entry. An attachment has its own payload |
+| payload | The actual content associated with the entry or attachment |
+| locator | A *link* to another entry (within the space or in another space). |
+| .dm | a hidden folder used to store meta information and attachments and their payload files |
+| permission | The listing of entitlement tuples: actions, content types and subpaths.
+| role | The association of a set of permissions to be granted to a user |
+
+
+## Entry composition
+
+ - A meta-file (json) that holds *meta* information about the entry; such as name, description, tags, attributes ...etc. 
+ - Within the meta file, each entry should have a globally unique UUID and a shortname that must be unique within the parent folder and across the sibling entries.
+ - A payload as a separate file (json, text or binary)
+ - Change history on that entry.
+ - An entry has an arbitrary number of attachments, each attachment has a meta-file and payload. 
+   - Alteration: Describing a change
+   - Comment 
+   - Relationship: A pointer to another entry
+   - Media: Binary payload such as images, videos ...etc
+
+## File disposition scheme
+
+| File path | Description |
+|----|----|
+| `[sub/path]/.dm/meta.folder.json` | The meta file of a Folder |
+| `[sub/path]/.dm/[entryshortname]/meta.[entrytype].json` | The meta file of a regular entry |
+| `[sub/path]/[entrypayload]` | The optional payload file of the entry. it may not clash with another payload file within that folder|
+| `[sub/path]/.dm/[entryshortname]/attachments.[attachementtype]/meta.[attachmentshortname].json` | The meta file of an attachment |
+| `[sub/path]/.dm/[entryshortname]/attachments.[attachementtype]/[attachmentpayload]` | The optional attachment payload file. it may not clash with meta.[xxx].json or another payload file within that folder|
+
+With this scheme, only proper entry main payload files appear to the user. All meta data and attachments data is stored in the hidden (.dm) folders.
+
+
+## Installation
+
+```
+git clone https://github.com/edraj/dmart.git
+cd dmart/backend
+
+# Copy sample spaces structure
+cp ../sample/spaces ../../
+
+# Install python modules
+pip install --user -r requirements.txt
+
+# Start DMART microservice
+./main.py
+
+```
