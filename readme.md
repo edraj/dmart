@@ -91,6 +91,21 @@ With this scheme, only proper entry main payload files appear to the user. All m
 
 ## Installation
 
+### Requirements 
+
+#### Requirements
+
+- git
+- jq
+- python >= 3.11
+- pip
+- redis
+- RedisJSON (rejson)
+- RediSearch
+
+
+### Steps 
+
 ```bash
 git clone https://github.com/edraj/dmart.git
 cd dmart/backend
