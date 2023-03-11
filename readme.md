@@ -2,13 +2,13 @@
 
 General-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS).
 
-DMART is a low-code information inventory platform (aka content registry/repository) that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and extend. Thus valuable data assets can be maintained as the mastered version and act as the single source of truth. 
+DMART is a low-code information inventory platform (aka content registry/repository) that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and extend. Thus, valuable data assets can be maintained as the mastered version and act as the single source of truth. 
 
 ## The problem DMART attempts to solve
 
-Valuable information (orginzational and indivual) is getting out of control!
+Valuable information (organizational and individual) is getting out of control!
 
-- Information is dispersed overy too many systems requiring multiple access contexts.
+- Information is dispersed over too many systems, requiring multiple access contexts.
 - Difficult to consolidate and link for consumption, insights, reporting and dashboards
 - Locked to vendors or application-specific data-formats
 - Chaotic and hard to discover / search the data piling up over the years
@@ -21,9 +21,9 @@ Valuable information (orginzational and indivual) is getting out of control!
 - **Standardized API** : Publicly-accessible unified api layer allowing interaction with the different types of data; and simplifying the work of application developers.
 - **Data longevity** : Resilient and time-proof data storage, as data is stored in flat-files directly on the file system. This opens the door for easy access, inspection, validation, backup and change tracking. At any point in time, the redis index can be recreated from the flat-files.
 - **User management and access control** : "Batteries included" to elevate the burden from application development. 
-- **Microservice friendly** : Leveraging JWT shared secret, additional microservices can automatically leverage the user's session with dmart. There is also a compatilble FastApi skeleton git repository to facilitate the development of additional microservices.
+- **Microservice friendly** : Leveraging JWT shared secret, additional microservices can automatically leverage the user's session with dmart. There is also a compatible FastApi skeleton git repository to facilitate the development of additional microservices.
 - **Extensible via plugins** : Specialized logic (plugins) can be added to react to certain types of activities and content.
-- **Entry-oriented** : As opposed to document-oriented NoSQL, entry-orientation revolves around consolidating the cohrrent information unit along side its belongings (textual and/or binary) as one entry. 
+- **Entry-oriented** : As opposed to document-oriented NoSQL, entry-orientation revolves around consolidating the coherent information unit alongside its belongings (known as "attachments" that can involve textual and/or binary) as one entry. 
 
 <img src="./docs/data-mart.jpg" width="500">
 
