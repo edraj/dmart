@@ -65,10 +65,10 @@ Full OpenApi 3 compliant documentation can be found [here](https://dmart.cc/docs
 
 | Term | Description |
 |----|----|
-| **space** | Top-level business category that facilitates grouping of relevent conent. Permissions are defined within the space boundaries | 
+| **space** | Top-level business category that facilitates grouping of relevant content. Permissions are defined within the space boundaries | 
 | **subpath** | The path within space that leads to an entry. e.g. `content/stuff/todo` |
 | **entry** | The basic unit of coherent information.|
-| **shortname** | The unique identifier that defferentiates an entry among its siblings (i.e. within a subpath) |
+| **shortname** | The unique identifier that differentiates an entry among its siblings (i.e. within a subpath) |
 | **meta** | Meta information associated with the entry such as owner, shortname, unique uuid, creation/update timestamp, tags ..etc|
 | **schema** | The entry under `schema` subpath providing schema definition that can be referenced by structured content entries or attachments |
 | **attachment** | Extra data associated with the entry. An attachment has its own payload |
