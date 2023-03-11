@@ -10,7 +10,7 @@ DMART is a Content Registry/Repository that is able to assimilate various types 
 - **Standardized API** : Publicly-accessible unified api layer allowing interaction with the different types of data; and simplifying the work of application developers.
 - **Data longevity** : Time-proof data storage, as data is stored in flat-files directly on the file system. This opens the door for easy access, inspection, validation, backup and change tracking. At any point in time, the redis index can be recreated from the flat-files.
 - **User management and access control** : "Batteries included" to elevate the burden from application development. 
-- **Microservice friendly** : Leveraging JWT shared secret, additional microservices can automatically leverage the user's session with dmart. There is also a compatilble FastApi skeleton git repository. 
+- **Microservice friendly** : Leveraging JWT shared secret, additional microservices can automatically leverage the user's session with dmart. There is also a compatilble FastApi skeleton git repository to facilitate the development of additional microservices. 
 
 <img src="./docs/data-mart.jpg" width="500">
 
