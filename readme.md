@@ -2,7 +2,7 @@
 
 General-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS).
 
-DMART is a low-code content registry/repository (information inventory) platform that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and update. Thus valuable data assets can be maintained as in their mastered version and act as the single source of truth. 
+DMART is a low-code content registry/repository (information inventory) platform that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and update. Thus valuable data assets can be maintained as the mastered version and act as the single source of truth. 
 
 ## Top highlights ...
 
