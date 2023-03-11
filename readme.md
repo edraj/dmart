@@ -91,7 +91,7 @@ With this scheme, only proper entry main payload files appear to the user. All m
 
 ## Installation
 
-```
+```bash
 git clone https://github.com/edraj/dmart.git
 cd dmart/backend
 
