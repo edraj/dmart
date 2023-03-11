@@ -16,12 +16,10 @@ DEMO_SPACE: str = "demo"
 MANAGEMENT_SPACE: str = f"{settings.management_space}"
 USERS_SUBPATH: str = "users"
 
-INVITATION = "ABCxyz"
 SHORTNAME = "alibaba"
 DISPLAYNAME = {"en": "Ali Baba"}
 EMAIL = "ali@baba.com"
-PASSWORD = "Password1234"
-INVITATION = "ABCxyz"
+PASSWORD = "OneTwoThree123"
 
 dirpath = f"{settings.spaces_folder}/{MANAGEMENT_SPACE}/{USERS_SUBPATH}/.dm/{SHORTNAME}"
 filepath = f"{dirpath}/meta.user.json"

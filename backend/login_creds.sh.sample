@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Super manager login creds. Do not leave spaces in the value
+export SUPERMAN='{"shortname":"dmart","password":"xxxx"}'
+
+# Exctra account used for testing
+export ALIBABA='{"shortname":"alibaba","password":"yyyy"}'

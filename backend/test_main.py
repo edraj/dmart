@@ -19,7 +19,7 @@ USERS_SUBPATH: str = "users"
 shortname: str = "alibaba"
 displayname: dict = {"en": "Ali Baba"}
 email: str = "ali_neww@baba.com"
-password: str = "Password1234"
+password: str = "OneTwoThree123"
 invitation: str = "A1B2C3"
 token: str = ""
 subpath = "nicepost"
@@ -78,7 +78,7 @@ def test_login():
     )
 
     response = client.post(
-        endpoint, json={**request_data, "password": "IncorrectPassword1234"}, headers=headers
+        endpoint, json={**request_data, "password": "IncorrectPasswordabc"}, headers=headers
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json().get("status") == "failed"
