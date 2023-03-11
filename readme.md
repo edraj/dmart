@@ -41,6 +41,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://dmart.cc/docs
   - flat-file data persistence on standard file-system. Using folders, json, text and binary (media/documents) files. 
   - Python 3.11 with emphasis on asyncio and type hinting
   - FastAPI as the api micro-framework (based on our _curated_ fastapi skeleton). 
+  - Hypercorn (runner server)
   - Redis as the operational data store. With sepecific leverage of RediSearch RedisJSON modules.
   - Intensive json-based logging for easier insights.  
 
