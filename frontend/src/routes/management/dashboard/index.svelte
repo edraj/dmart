@@ -7,13 +7,13 @@
       path: "uuid",
       title: "uuid",
       type: "string",
-      width: "15%",
+      width: "20%",
     },
     shortname: {
       path: "shortname",
       title: "shortname",
       type: "string",
-      width: "15%",
+      width: "10%",
     },
     owner_shortname: {
       path: "attributes.owner_shortname",
