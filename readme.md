@@ -60,7 +60,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://dmart.cc/docs
 | **payload** | The actual content associated with the entry or attachment |
 | **locator** | A *link* to another entry (within the space or in another space). |
 | **.dm** | The hidden folder used to store meta information and attachments and their payload files |
-| per****mission | The listing of entitlement tuples: actions, content types and subpaths.
+| **permission** | The listing of entitlement tuples: actions, content types and subpaths.
 | **role** | The association of a set of permissions to be granted to a user |
 
 
