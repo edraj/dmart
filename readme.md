@@ -9,7 +9,7 @@ DMART is a Content Registry/Repository that is able to assimilate various types 
 - **Data-as-a-Service** : Backbone data store where the data assets get declared and used across multiple applications. The data assets are declared in the logical and business representation rather than classical RDBMS (physical).
 - **Standardized API** : Publicly-accessible unified api layer allowing interaction with the different types of data; and simplifying the work of application developers.
 - **Data longevity** : Time-proof data storage, as data is stored in flat-files directly on the file system. This opens the door for easy access, inspection, validation, backup and change tracking. 
-- **User management and access control** : "Batteries included" to elevate the burden from the application development. 
+- **User management and access control** : "Batteries included" to elevate the burden from application development. Leveraging JWT shared secret other / additional microservices can automatically leverage the user's session with dmart.
 
 <img src="./docs/data-mart.jpg" width="500">
 
