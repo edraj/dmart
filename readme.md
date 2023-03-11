@@ -23,10 +23,10 @@ DMART is a Content Registry/Repository that is able to assimilate various types 
   - Entries are indexed for fast search and retrieval.
   - Entries can be optionally linked by "weak" links (aka relations).
   - Changes on entries are recorded for audit and tracking.
-- Flat-files and file-system are used to store and organize the content
-  - File-based routes: Entries are organized in an arbitrary (free from) folder-structure within a space root folder.
-  - Structured content: Each structured json content (payload) is associated with a defined jsom schema under the respective schema section in the space. 
-  - Arbitrary attachments: Any structured entity could have attachments (binary or otherwise)
+  - Structured content: Each structured json content (payload) is associated with a pre-defined json schema stored under the schema section in the space. 
+  - Arbitrary attachments: An entity could have attachments (binary or otherwise)
+- Entries are stord and orgazined on the file-system (folder-based routes/structure)
+
 
 ## API layer (REST-like, JSON-API)
 
