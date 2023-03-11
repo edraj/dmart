@@ -34,7 +34,7 @@ DMART is a Content Registry/Repository that is able to assimilate various types 
   - **Discovery**   : Users, paths, scripts, changes/history, schema and content
   - **Consumption** : Content/attachments, scripts and submissions  
 
-Full OpenApi 3 compliant documentation can be found ![here](https://dmart.cc/docs) 
+Full OpenApi 3 compliant documentation can be found [here](https://dmart.cc/docs)
 
 ## Architecture and technology stack
 
