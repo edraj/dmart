@@ -93,7 +93,6 @@
       })
       .catch((e) => {
         console.log(e);
-        error();
       });
   }
 
@@ -133,14 +132,12 @@
           })
           .catch((e) => {
             console.log(e);
-            error();
           });
         if (filterable && search.options.length === 0) {
           await fetchSearchKeys();
         }
       } catch (e) {
         console.log(e);
-        error();
       }
     }
   }
@@ -325,10 +322,11 @@
         {/if}
       </div>
       <div slot="footer">
-        <InfiniteLoading
-          on:infinite={infiniteHandler}
-          identifier={infiniteId}
-        />
+        <InfiniteLoading on:infinite={infiniteHandler} identifier={infiniteId}>
+          <span slot="noResults" />
+          <span slot="noMore" />
+          <span slot="error" />
+        </InfiniteLoading>
       </div>
     </VirtualList>
     {#if current_item && current_item > 0 && details_split > 0}

@@ -30,7 +30,8 @@ const getSpaceSubpaths = async (spaceName) => {
   });
   if (response.status === "success") {
     response.records.map((record) => {
-      record.subpath += record.shortname;
+      if (`/${record.shortname}` !== record.subpath)
+        record.subpath += record.shortname;
       return record;
     });
     return response.records;

@@ -409,8 +409,7 @@ export async function dmart_folder(
       },
     ],
   };
-  let resp = await dmart_request("managed/request", request);
-  return resp.results[0];
+  return await dmart_request("managed/request", request);
 }
 
 export async function dmart_update_embedded(
