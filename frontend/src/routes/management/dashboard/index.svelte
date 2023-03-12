@@ -12,12 +12,6 @@
       console.log({ value });
       query = value;
       cols = {
-        uuid: {
-          path: "uuid",
-          title: "uuid",
-          type: "string",
-          width: "20%",
-        },
         shortname: {
           path: "shortname",
           title: "shortname",

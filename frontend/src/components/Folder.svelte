@@ -132,21 +132,20 @@
       records: [
         {
           resource_type: "folder",
-          shortname: data.sshortname,
-          subpath: data.subapth,
+          shortname: data.shortname,
+          subpath: data.subpath,
           attributes: {},
         },
       ],
     };
 
-    const response = dmart_request("managed/request", request);
+    const response = await dmart_request("managed/request", request);
     if (response.status === "success") {
       toastPushSuccess();
+      await getSpaces();
     } else {
       toastPushFail();
     }
-
-    await getSpaces();
   }
 
   let displayActionMenu = false;
