@@ -1,19 +1,19 @@
 <script>
   import { contents } from "./../stores/contents.js";
-  import { dmart_entries, dmart_folder, dmart_query } from "../dmart.js";
+  import { dmart_entries, dmart_folder, dmart_request } from "../dmart.js";
   import { entries } from "../stores/entries.js";
-  import Icon from "./Icon.svelte";
-  import { getNotificationsContext } from "svelte-notifications";
+  import DynamicFormModal from "./DynamicFormModal.svelte";
   import { _ } from "../i18n";
   import { slide } from "svelte/transition";
   import Folder from "./Folder.svelte";
-  import spaces from "../stores/spaces.js";
+  import spaces, { getSpaces } from "../stores/spaces.js";
   import Fa from "sveltejs-fontawesome";
   import {
     faPlusSquare,
     faTrashCan,
     faEdit,
   } from "@fortawesome/free-regular-svg-icons";
+  import { toastPushFail, toastPushSuccess } from "../utils.js";
 
   let expanded = false;
 
@@ -64,7 +64,97 @@
       });
     }
   }
+
+  let props = [];
+  let entry_create_modal = false;
+  let modalFlag = "create";
+  async function handleModelSubmit(form) {
+    if (modalFlag === "create") {
+      const response = await dmart_folder(
+        data.space_name,
+        data.subpath,
+        form[0].value,
+        form[1].value
+      );
+      if (response.error) {
+        alert(response.error.message);
+      } else {
+        toastPushSuccess();
+        await getSpaces();
+      }
+    } else {
+      const response = await dmart_request("managed/request", {
+        space_name: data.space_name,
+        request_type: "update",
+        records: [
+          {
+            resource_type: "folder",
+            shortname: form[0].value,
+            subpath: data.subpath,
+            attributes: {},
+          },
+        ],
+      });
+      if (response.status === "success") {
+        toastPushSuccess();
+        await getSpaces();
+      } else {
+        toastPushFail();
+      }
+    }
+  }
+  function handleSubpathCreate() {
+    props = [
+      { name: "schema_shortname", value: "" },
+      { name: "shortname", value: "" },
+    ];
+    modalFlag = "create";
+    entry_create_modal = true;
+  }
+  function handleSubpathUpdate() {
+    props = [{ name: "shortname", value: data.shortname }];
+    modalFlag = "update";
+    entry_create_modal = true;
+  }
+  async function handleSubpathDelete() {
+    console.log({ data });
+    // const space_name = child.shortname;
+    if (
+      confirm(`Are you sure want to delete ${data.shortname} subpath`) === false
+    ) {
+      return;
+    }
+    const request = {
+      space_name: data.space_name,
+      request_type: "delete",
+      records: [
+        {
+          resource_type: "folder",
+          shortname: data.sshortname,
+          subpath: data.subapth,
+          attributes: {},
+        },
+      ],
+    };
+
+    const response = dmart_request("managed/request", request);
+    if (response.status === "success") {
+      toastPushSuccess();
+    } else {
+      toastPushFail();
+    }
+
+    await getSpaces();
+  }
 </script>
+
+{#key props}
+  <DynamicFormModal
+    {props}
+    bind:open={entry_create_modal}
+    {handleModelSubmit}
+  />
+{/key}
 
 <div>
   <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -72,19 +162,18 @@
     transition:slide={{ duration: 400 }}
     class:expanded
     class="d-flex row folder position-relative mt-1 ps-2"
-    on:click={toggle}
   >
-    <div class="col-7">
+    <div class="col-7" on:click={toggle}>
       {data.shortname}
     </div>
 
-    <div class="col-1">
+    <div class="col-1" on:click={() => handleSubpathCreate()}>
       <Fa icon={faPlusSquare} size="lg" color="green" />
     </div>
-    <div class="col-1">
+    <div class="col-1" on:click={() => handleSubpathUpdate()}>
       <Fa icon={faEdit} size="lg" color="yellow" />
     </div>
-    <div class="col-1">
+    <div class="col-1" on:click={async () => await handleSubpathDelete()}>
       <Fa icon={faTrashCan} size="lg" color="red" />
     </div>
 
@@ -94,7 +183,11 @@
 
 {#if data.subpaths}
   {#each data.subpaths as subapth (subapth.shortname + subapth.uuid)}
-    <div hidden={!expanded} style="padding-left: 5px;">
+    <div
+      hidden={!expanded}
+      style="padding-left: 5px;"
+      transition:slide={{ duration: 400 }}
+    >
       <Folder data={{ space_name: data.space_name, ...subapth }} />
     </div>
   {/each}
