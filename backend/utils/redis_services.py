@@ -22,6 +22,7 @@ import models.api as api
 from fastapi import status
 from redis.exceptions import ResponseError as RedisResponseError
 
+
 class RedisServices(object):
 
     CUSTOM_INDICES = [
@@ -103,9 +104,8 @@ class RedisServices(object):
         return self.init().__await__()
 
     async def init(self):
-        if not hasattr(self, "client"):
-            self.client = await Redis(connection_pool=self.__pool)
-            self.redis_indices: dict[str, dict[str, Search]] = {}
+        self.client = await Redis(connection_pool=self.__pool)
+        self.redis_indices: dict[str, dict[str, Search]] = {}
         return self
 
     def __del__(self):
@@ -118,6 +118,7 @@ class RedisServices(object):
                 loop.run_until_complete(self.client.close())
         except Exception:
             pass
+
 
     async def create_index(
         self, space_branch_name: str, schema_name: str, redis_schema: tuple
