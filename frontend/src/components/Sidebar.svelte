@@ -49,39 +49,7 @@
   />
   <SchemaFormModal {props} bind:open={pop_create_schema_modal} />
 {/key}
-<div bind:clientHeight={head_height}>
-  <div class="row">
-    <h5 class="my-0 col-9">Schema</h5>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div
-      class="my-0 col-2 d-flex justify-content-end"
-      on:click={() => {
-        props = [
-          { name: "space_name", value: "" },
-          { name: "shortname", value: "" },
-        ];
-        pop_create_schema_modal = true;
-      }}
-    >
-      <Fa icon={faPlusSquare} size="x" color="green" />
-    </div>
-  </div>
-  <hr class="w-100 mt-1 mb-0" />
-  <div class="row">
-    <h5 class="my-0 col-9">Spaces</h5>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div
-      class="my-0 col-2 d-flex justify-content-end"
-      on:click={() => {
-        props = [{ name: "space_name", value: "" }];
-        pop_create_space_modal = true;
-      }}
-    >
-      <Fa icon={faPlusSquare} size="x" color="green" />
-    </div>
-  </div>
-  <hr class="w-100 mt-1 mb-0" />
-</div>
+
 <div
   class="no-bullets scroller pe-0 w-100"
   style="height: calc(100% - {head_height +

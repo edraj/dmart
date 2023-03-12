@@ -99,7 +99,7 @@
     <div class="mb-2">
       <div class="d-flex row">
         <div class="col-7" on:click={() => (expanded = !expanded)}>
-          <b>{child.shortname}</b>
+          <b style="cursor: pointer;">{child.shortname}</b>
         </div>
 
         <div
@@ -114,7 +114,7 @@
             entry_create_modal = true;
           }}
         >
-          <Fa icon={faPlusSquare} size="lg" color="green" />
+          <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
         </div>
         <div
           class="col-1"
@@ -125,14 +125,14 @@
             entry_create_modal = true;
           }}
         >
-          <Fa icon={faEdit} size="lg" color="yellow" />
+          <Fa icon={faEdit} size="sm" color="dimgrey" />
         </div>
         <div
           class="col-1"
           hidden={!displayActionMenu}
           on:click={async () => await handleSpaceDelete()}
         >
-          <Fa icon={faTrashCan} size="lg" color="red" />
+          <Fa icon={faTrashCan} size="sm" color="dimgrey" />
         </div>
       </div>
     </div>

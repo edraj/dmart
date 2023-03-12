@@ -1,4 +1,5 @@
 <script>
+  import selectedSubpath from "./../stores/selected_subpath.js";
   import { contents } from "./../stores/contents.js";
   import { dmart_entries, dmart_folder, dmart_request } from "../dmart.js";
   import { entries } from "../stores/entries.js";
@@ -25,6 +26,7 @@
     children_subpath = data.subpath + "/" + data.shortname;
   }
   async function toggle() {
+    selectedSubpath.set(data.subpath);
     expanded = !expanded;
     if (!$entries[children_subpath]) {
       const _entries = await dmart_entries(
@@ -146,6 +148,8 @@
 
     await getSpaces();
   }
+
+  let displayActionMenu = false;
 </script>
 
 {#key props}
@@ -158,23 +162,40 @@
 
 <div>
   <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-mouse-events-have-key-events -->
   <div
     transition:slide={{ duration: 400 }}
-    class:expanded
-    class="d-flex row folder position-relative mt-1 ps-2"
+    class="d-flex row folder position-relative mt-1 ps-2 {$selectedSubpath ===
+    data.subpath
+      ? 'expanded'
+      : ''}"
+    on:mouseover={(e) => (displayActionMenu = true)}
+    on:mouseleave={(e) => (displayActionMenu = false)}
   >
     <div class="col-7" on:click={toggle}>
       {data.shortname}
     </div>
 
-    <div class="col-1" on:click={() => handleSubpathCreate()}>
-      <Fa icon={faPlusSquare} size="lg" color="green" />
+    <div
+      class="col-1"
+      hidden={!displayActionMenu}
+      on:click={() => handleSubpathCreate()}
+    >
+      <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
     </div>
-    <div class="col-1" on:click={() => handleSubpathUpdate()}>
-      <Fa icon={faEdit} size="lg" color="yellow" />
+    <div
+      class="col-1"
+      hidden={!displayActionMenu}
+      on:click={() => handleSubpathUpdate()}
+    >
+      <Fa icon={faEdit} size="sm" color="dimgrey" />
     </div>
-    <div class="col-1" on:click={async () => await handleSubpathDelete()}>
-      <Fa icon={faTrashCan} size="lg" color="red" />
+    <div
+      class="col-1"
+      hidden={!displayActionMenu}
+      on:click={async () => await handleSubpathDelete()}
+    >
+      <Fa icon={faTrashCan} size="sm" color="dimgrey" />
     </div>
 
     <span class="toolbar top-0 end-0 position-absolute px-0" />

@@ -12,7 +12,7 @@
   import "bootstrap";
 
   let showModal = false;
-
+  let shortname = "";
   let metaContent = {
     json: null,
     text: undefined,
@@ -291,7 +291,7 @@
               text: undefined,
             };
           }
-
+          shortname = records[index - 1].shortname;
           metaContent = {
             json: records[index - 1],
             text: undefined,
@@ -348,6 +348,8 @@
 {/if}
 
 {#if showModal}
+  <h3>Shortname: {shortname}</h3>
+  <hr />
   <Tabs>
     <TabList>
       <Tab>Meta</Tab>
@@ -382,6 +384,10 @@
 {/if}
 
 <style>
+  h3 {
+    margin-top: 8px;
+    margin-left: 8px;
+  }
   hr {
     color: green;
     background-color: blue;
