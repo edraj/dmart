@@ -11,6 +11,7 @@
   import DynamicFormModal from "./DynamicFormModal.svelte";
   import { dmart_spaces } from "../dmart.js";
   import SchemaFormModal from "./SchemaFormModal.svelte";
+  import { toastPushSuccess } from "../utils.js";
 
   let head_height;
   let foot_height;
@@ -36,7 +37,9 @@
     if (response.error) {
       alert(response.error.message);
     } else {
+      toastPushSuccess();
       await getSpaces();
+      pop_create_space_modal = false;
     }
   }
 </script>

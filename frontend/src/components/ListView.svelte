@@ -10,8 +10,10 @@
   import { toastPushSuccess, toastPushFail } from "../utils";
   import AttachmentsManagment from "./AttachmentsManagment.svelte";
   import "bootstrap";
+  import Fa from "sveltejs-fontawesome";
+  import { faCaretSquareLeft } from "@fortawesome/free-regular-svg-icons";
 
-  let showModal = false;
+  let showContentEditSection = false;
   let shortname = "";
   let metaContent = {
     json: null,
@@ -210,7 +212,7 @@
 
 <svelte:window bind:innerHeight={height} />
 
-{#if !showModal}
+{#if !showContentEditSection}
   {#if filterable}
     <div class="input-group mb-3">
       <button
@@ -276,7 +278,7 @@
           }
 
           current_item = index;
-          showModal = true;
+          showContentEditSection = true;
 
           if (records[index - 1]?.attributes?.payload?.body) {
             bodyContent = {
@@ -347,8 +349,19 @@
   </div>
 {/if}
 
-{#if showModal}
-  <h3>Shortname: {shortname}</h3>
+{#if showContentEditSection}
+  <div class="d-flex justify-content-between">
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div
+      class="back-icon"
+      on:click={() => {
+        showContentEditSection = false;
+      }}
+    >
+      <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
+    </div>
+    <h5>{shortname}</h5>
+  </div>
   <hr />
   <Tabs>
     <TabList>
@@ -384,7 +397,11 @@
 {/if}
 
 <style>
-  h3 {
+  .back-icon {
+    margin-top: 8px;
+    margin-left: 8px;
+  }
+  h5 {
     margin-top: 8px;
     margin-left: 8px;
   }

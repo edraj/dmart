@@ -83,6 +83,7 @@
       } else {
         toastPushSuccess();
         await getSpaces();
+        entry_create_modal = false;
       }
     } else {
       const response = await dmart_request("managed/request", {
@@ -100,6 +101,7 @@
       if (response.status === "success") {
         toastPushSuccess();
         await getSpaces();
+        entry_create_modal = false;
       } else {
         toastPushFail();
       }

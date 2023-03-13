@@ -53,7 +53,9 @@
       if (response.error) {
         alert(response.error.message);
       } else {
+        toastPushSuccess();
         await getSpaces();
+        entry_create_modal = false;
       }
       return;
     }
@@ -74,7 +76,9 @@
     if (response.error) {
       alert(response.error.message);
     } else {
+      toastPushSuccess();
       await getSpaces();
+      entry_create_modal = false;
     }
   }
 

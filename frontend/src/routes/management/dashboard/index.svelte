@@ -24,6 +24,18 @@
           type: "string",
           width: "15%",
         },
+        resource_type: {
+          path: "resource_type",
+          title: "Resource type",
+          type: "string",
+          width: "15%",
+        },
+        owner_shortname: {
+          path: "attributes.payload.schema_shortname",
+          title: "Schema shortname",
+          type: "string",
+          width: "15%",
+        },
         created_at: {
           path: "attributes.created_at",
           title: "Created At",
