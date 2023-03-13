@@ -80,43 +80,43 @@ class Plugin(PluginBase):
                 body=miss_shortname + ".json",
             ),
         )
-        redis = await RedisServices()
-        meta_doc_id, meta_json = redis.prepate_meta_doc(
-            data.space_name, data.branch_name, "misses", missed_obj_meta
-        )
-        if not miss_content:
-            await db.save(data.space_name, "misses", missed_obj_meta, data.branch_name)
-            await redis.save_doc(meta_doc_id, meta_json)
-            num_of_requests = 1
+        async with RedisServices() as redis_services:
+            meta_doc_id, meta_json = redis_services.prepate_meta_doc(
+                data.space_name, data.branch_name, "misses", missed_obj_meta
+            )
+            if not miss_content:
+                await db.save(data.space_name, "misses", missed_obj_meta, data.branch_name)
+                await redis_services.save_doc(meta_doc_id, meta_json)
+                num_of_requests = 1
 
-        else:
-            num_of_requests = miss_content["num_of_requests"] + 1
+            else:
+                num_of_requests = miss_content["num_of_requests"] + 1
 
-        await db.save_payload_from_json(
-            data.space_name,
-            "misses",
-            missed_obj_meta,
-            {
+            await db.save_payload_from_json(
+                data.space_name,
+                "misses",
+                missed_obj_meta,
+                {
+                    "requested_subpath": data.subpath,
+                    "requested_shortname": data.shortname,
+                    "num_of_requests": num_of_requests,
+                    "actioned": "No",
+                },
+                data.branch_name
+            )
+            payload_dict = {
+                **meta_json,
                 "requested_subpath": data.subpath,
                 "requested_shortname": data.shortname,
                 "num_of_requests": num_of_requests,
-                "actioned": "No",
-            },
-            data.branch_name
-        )
-        payload_dict = {
-            **meta_json,
-            "requested_subpath": data.subpath,
-            "requested_shortname": data.shortname,
-            "num_of_requests": num_of_requests,
-            "actioned": "No"
-            
-        }
-        await redis.save_payload_doc(
-            space_name=data.space_name,
-            branch_name=data.branch_name,
-            subpath="misses",
-            meta=missed_obj_meta,
-            payload=payload_dict,
-            resource_type=ResourceType.content
-        )
+                "actioned": "No"
+                
+            }
+            await redis_services.save_payload_doc(
+                space_name=data.space_name,
+                branch_name=data.branch_name,
+                subpath="misses",
+                meta=missed_obj_meta,
+                payload=payload_dict,
+                resource_type=ResourceType.content
+            )

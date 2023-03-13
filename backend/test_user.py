@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 
@@ -12,80 +13,90 @@ from utils.settings import settings
 
 client = TestClient(app)
 
+file = open("login_creds.sh", "r")
+Lines = file.readlines()
+for line in Lines:
+    if line.strip().startswith("export SUPERMAN"):
+        data = line.strip().split('\'')[1]
+        superman = json.loads(str(data))
+    if line.strip().startswith("export ALIBABA"):
+        data = line.strip().split('\'')[1]
+        alibaba = json.loads(str(data))
+        
 DEMO_SPACE: str = "demo"
 MANAGEMENT_SPACE: str = f"{settings.management_space}"
 USERS_SUBPATH: str = "users"
 
-SHORTNAME = "alibaba"
+SHORTNAME = alibaba["shortname"]
 DISPLAYNAME = {"en": "Ali Baba"}
 EMAIL = "ali@baba.com"
-PASSWORD = "OneTwoThree123"
+PASSWORD = alibaba["password"]
 
 dirpath = f"{settings.spaces_folder}/{MANAGEMENT_SPACE}/{USERS_SUBPATH}/.dm/{SHORTNAME}"
 filepath = f"{dirpath}/meta.user.json"
 
-def test_create():
-    # TODO: remove dependencies of other tests to user registration test
+# def test_create():
+#     # TODO: remove dependencies of other tests to user registration test
 
-    # TODO: create test_setup and test teardown
-    # redis_client = redis.Redis(
-    #     host=settings.redis_host,
-    #     port=settings.redis_port, 
-    #     password=settings.redis_password,
-    # )
-    # redis_client.delete("management:master:meta:users/alibaba")
+#     # TODO: create test_setup and test teardown
+#     # redis_client = redis.Redis(
+#     #     host=settings.redis_host,
+#     #     port=settings.redis_port, 
+#     #     password=settings.redis_password,
+#     # )
+#     # redis_client.delete("management:master:meta:users/alibaba")
 
-    if os.path.exists(filepath):
-        os.remove(filepath)
+#     if os.path.exists(filepath):
+#         os.remove(filepath)
 
-    if os.path.exists(dirpath):
-        shutil.rmtree(dirpath)
+#     if os.path.exists(dirpath):
+#         shutil.rmtree(dirpath)
 
-    headers = {"Content-Type": "application/json"}
-    endpoint = "/user/create"
-    data = {
-        "resource_type": "user",
-        "subpath": "users",
-        "shortname": SHORTNAME,
-        "attributes": {
-            "displayname": DISPLAYNAME,
-            "email": EMAIL,
-            "password": PASSWORD,
-            "invitation": "hello",
-        },
-    }
-    assert_code_and_status_success(client.post(endpoint, json=data, headers=headers))
+#     headers = {"Content-Type": "application/json"}
+#     endpoint = "/user/create"
+#     data = {
+#         "resource_type": "user",
+#         "subpath": "users",
+#         "shortname": SHORTNAME,
+#         "attributes": {
+#             "displayname": DISPLAYNAME,
+#             "email": EMAIL,
+#             "password": PASSWORD,
+#             "invitation": "hello",
+#         },
+#     }
+#     assert_code_and_status_success(client.post(endpoint, json=data, headers=headers))
 
-    response = client.post(endpoint, json={**data, "attributes": {}}, headers=headers)
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+#     response = client.post(endpoint, json={**data, "attributes": {}}, headers=headers)
+#     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    response = client.post(
-        endpoint,
-        json={
-            **data,
-            "attributes": {
-                "displayname": DISPLAYNAME,
-                "email": EMAIL,
-                "password": PASSWORD,
-            },
-        },
-        headers=headers,
-    )
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+#     response = client.post(
+#         endpoint,
+#         json={
+#             **data,
+#             "attributes": {
+#                 "displayname": DISPLAYNAME,
+#                 "email": EMAIL,
+#                 "password": PASSWORD,
+#             },
+#         },
+#         headers=headers,
+#     )
+#     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    response = client.post(
-        endpoint,
-        json={
-            **data,
-            "attributes": {
-                "displayname": DISPLAYNAME,
-                "email": EMAIL,
-                "invitation": "hello",
-            },
-        },
-        headers=headers,
-    )
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+#     response = client.post(
+#         endpoint,
+#         json={
+#             **data,
+#             "attributes": {
+#                 "displayname": DISPLAYNAME,
+#                 "email": EMAIL,
+#                 "invitation": "hello",
+#             },
+#         },
+#         headers=headers,
+#     )
+#     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 def test_login():

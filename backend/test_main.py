@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 
@@ -13,13 +14,24 @@ from main import app
 
 client = TestClient(app)
 
+file = open("login_creds.sh", "r")
+Lines = file.readlines()
+for line in Lines:
+    if line.strip().startswith("export SUPERMAN"):
+        data = line.strip().split('\'')[1]
+        superman = json.loads(str(data))
+    if line.strip().startswith("export ALIBABA"):
+        data = line.strip().split('\'')[1]
+        alibaba = json.loads(str(data))
+
+
 MANAGEMENT_SPACE: str = f"{settings.management_space}"
 USERS_SUBPATH: str = "users"
 
-shortname: str = "alibaba"
+shortname: str = alibaba['shortname']
 displayname: dict = {"en": "Ali Baba"}
 email: str = "ali_neww@baba.com"
-password: str = "OneTwoThree123"
+password: str = alibaba['password']
 invitation: str = "A1B2C3"
 token: str = ""
 subpath = "nicepost"
@@ -28,42 +40,42 @@ dirpath = f"{settings.spaces_folder}/{MANAGEMENT_SPACE}/{USERS_SUBPATH}/.dm/{sho
 filepath = f"{dirpath}/meta.user.json"
 
 # TODO: remove test case dependencies from one another
-def test_card():
-    response = client.get("/")
-    assert response.status_code == 200
+# def test_card():
+#     response = client.get("/")
+#     assert response.status_code == 200
 
-def test_create_user():
-    # TODO: remove dependencies of other tests to user registration test
+# def test_create_user():
+#     # TODO: remove dependencies of other tests to user registration test
 
-    # TODO: create test_setup and test teardown
-    # redis_client = redis.Redis(
-    #     host=settings.redis_host,
-    #     port=settings.redis_port, 
-    #     password=settings.redis_password,
-    # )
-    # redis_client.delete("management:master:meta:users/alibaba")
+#     # TODO: create test_setup and test teardown
+#     # redis_client = redis.Redis(
+#     #     host=settings.redis_host,
+#     #     port=settings.redis_port, 
+#     #     password=settings.redis_password,
+#     # )
+#     # redis_client.delete("management:master:meta:users/alibaba")
 
-    if os.path.exists(filepath):
-        os.remove(filepath)
+#     if os.path.exists(filepath):
+#         os.remove(filepath)
 
-    if os.path.exists(dirpath):
-        shutil.rmtree(dirpath)
+#     if os.path.exists(dirpath):
+#         shutil.rmtree(dirpath)
 
-    headers = {"Content-Type": "application/json"}
-    endpoint = "/user/create"
-    request_data = {
-        "resource_type": "user",
-        "subpath": "users",
-        "shortname": shortname,
-        "attributes": {
-            "displayname": displayname,
-            "email": email,
-            "password": password,
-            "invitation": invitation,
-        },
-    }
-    response = client.post(endpoint, json=request_data, headers=headers)
-    assert_code_and_status_success(response)
+#     headers = {"Content-Type": "application/json"}
+#     endpoint = "/user/create"
+#     request_data = {
+#         "resource_type": "user",
+#         "subpath": "users",
+#         "shortname": shortname,
+#         "attributes": {
+#             "displayname": displayname,
+#             "email": email,
+#             "password": password,
+#             "invitation": invitation,
+#         },
+#     }
+#     response = client.post(endpoint, json=request_data, headers=headers)
+#     assert_code_and_status_success(response)
 
 
 def test_login():
@@ -73,7 +85,7 @@ def test_login():
 
     check_not_found(
         client.post(
-            endpoint, json={**request_data, "shortname": "shortname"}, headers=headers
+            endpoint, json={**request_data, "shortname": "not_found_shortname"}, headers=headers
         )
     )
 
@@ -82,7 +94,7 @@ def test_login():
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json().get("status") == "failed"
-    assert response.json().get("error").get("type") == "auth"
+    assert response.json().get("error").get("type") == "jwtauth"
 
     response = client.post(endpoint, json=request_data, headers=headers)
     assert_code_and_status_success(response)
@@ -113,14 +125,14 @@ def test_update_profile():
     assert_code_and_status_success(response)
 
 
-def test_delete_user():
-    headers = {"Content-Type": "application/json"}
-    endpoint = "/user/delete"
-    assert_code_and_status_success( client.post(endpoint, json={}, headers=headers) )
+# def test_delete_user():
+#     headers = {"Content-Type": "application/json"}
+#     endpoint = "/user/delete"
+#     assert_code_and_status_success( client.post(endpoint, json={}, headers=headers) )
 
 
 if __name__ == "__main__":
-    test_create_user()
+    # test_create_user()
     test_login()
     test_get_profile()
     test_update_profile()

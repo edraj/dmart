@@ -167,16 +167,16 @@ async def validate_uniqueness(
         if not schema_name:
             continue
 
-        redis_services = await RedisServices()
-        redis_search_res = await redis_services.search(
-            space_name=space_name,
-            branch_name=record.branch_name,
-            search=redis_search_str,
-            limit=1,
-            offset=0,
-            filters={},
-            schema_name=schema_name,
-        )
+        async with RedisServices() as redis_services:
+            redis_search_res = await redis_services.search(
+                space_name=space_name,
+                branch_name=record.branch_name,
+                search=redis_search_str,
+                limit=1,
+                offset=0,
+                filters={},
+                schema_name=schema_name,
+            )
 
         if redis_search_res and redis_search_res["total"] > 0:
             raise API_Exception(
