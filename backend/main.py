@@ -207,7 +207,7 @@ async def middle(request: Request, call_next):
             status_code=400,
             content={
                 "status": "failed",
-                "error": {"code": 400, "message": str(e)},
+                "error": {"code": 400, "message": "Validation error [3]", "info": str(e)},
             },
         )
         response_body = json.loads(response.body.decode())
