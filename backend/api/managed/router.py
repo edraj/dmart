@@ -516,95 +516,95 @@ async def serve_request(
                     )
 
                     if record.resource_type == ResourceType.user:
-                        redis = await RedisServices()
                         invitation_token = sign_jwt(
                             {"shortname": record.shortname}, settings.jwt_access_expires
                         )
 
                         channel = ""
-                        if not record.attributes.get(
-                            "is_msisdn_verified", False
-                        ) and record.attributes.get("msisdn"):
-                            invitation_token = sign_jwt(
-                                {"shortname": record.shortname, "channel": "SMS"},
-                                settings.jwt_access_expires,
-                            )
-                            invitation_link = f"{settings.invitation_link}/auth/invitation?invitation={invitation_token}"
-                            token_uuid = str(uuid.uuid4())[:8]
-                            await redis.set(
-                                f"short/{token_uuid}",
-                                invitation_link,
-                                ex=60 * 60 * 48,
-                                nx=False,
-                            )
-                            link = f"{settings.public_app_url}/managed/s/{token_uuid}"
-                            invitation_message = f"Confirm your account via this link: {link}, This link can be used once and within the next 48 hours."
-                            channel += f"SMS:{record.attributes.get('msisdn')},"
-                            try:
-                                await send_sms(
-                                    msisdn=record.attributes.get("msisdn"),  # type: ignore
-                                    message=invitation_message,
+                        async with RedisServices() as redis_services:
+                            if not record.attributes.get(
+                                "is_msisdn_verified", False
+                            ) and record.attributes.get("msisdn"):
+                                invitation_token = sign_jwt(
+                                    {"shortname": record.shortname, "channel": "SMS"},
+                                    settings.jwt_access_expires,
                                 )
-                            except Exception as e:
-                                logger.error(
-                                    "Exception",
-                                    extra={
-                                        "props": {
-                                            "record": record,
-                                            "target": "msisdn",
-                                            "exception": e,
-                                        }
-                                    },
+                                invitation_link = f"{settings.invitation_link}/auth/invitation?invitation={invitation_token}"
+                                token_uuid = str(uuid.uuid4())[:8]
+                                await redis_services.set(
+                                    f"short/{token_uuid}",
+                                    invitation_link,
+                                    ex=60 * 60 * 48,
+                                    nx=False,
                                 )
-                        if not record.attributes.get(
-                            "is_email_verified", False
-                        ) and record.attributes.get("email"):
-                            invitation_token = sign_jwt(
-                                {"shortname": record.shortname, "channel": "EMAIL"},
-                                settings.jwt_access_expires,
-                            )
-                            invitation_link = f"{settings.invitation_link}/auth/invitation?invitation={invitation_token}"
-                            token_uuid = str(uuid.uuid4())[:8]
-                            await redis.set(
-                                f"short/{token_uuid}",
-                                invitation_link,
-                                ex=60 * 60 * 48,
-                                nx=True,
-                            )
-                            link = f"{settings.public_app_url}/managed/s/{token_uuid}"
-                            channel += f"EMAIL:{record.attributes.get('email')}"
-                            try:
-                                await send_email(
-                                    from_address=settings.email_sender,
-                                    to_address=record.attributes.get("email"),  # type: ignore
-                                    # message=f"Welcome, this is your invitation link: {invitation_link}",
-                                    message=generate_email_from_template(
-                                        "activation",
-                                        {
-                                            "link": link,
-                                            "name": record.attributes.get(
-                                                "displayname", {}
-                                            ).get("en", ""),
-                                            "shortname": record.shortname,
-                                            "msisdn": record.attributes.get("msisdn"),
+                                link = f"{settings.public_app_url}/managed/s/{token_uuid}"
+                                invitation_message = f"Confirm your account via this link: {link}, This link can be used once and within the next 48 hours."
+                                channel += f"SMS:{record.attributes.get('msisdn')},"
+                                try:
+                                    await send_sms(
+                                        msisdn=record.attributes.get("msisdn"),  # type: ignore
+                                        message=invitation_message,
+                                    )
+                                except Exception as e:
+                                    logger.error(
+                                        "Exception",
+                                        extra={
+                                            "props": {
+                                                "record": record,
+                                                "target": "msisdn",
+                                                "exception": e,
+                                            }
                                         },
-                                    ),
-                                    subject=generate_subject("activation"),
+                                    )
+                            if not record.attributes.get(
+                                "is_email_verified", False
+                            ) and record.attributes.get("email"):
+                                invitation_token = sign_jwt(
+                                    {"shortname": record.shortname, "channel": "EMAIL"},
+                                    settings.jwt_access_expires,
                                 )
-                            except Exception as e:
-                                logger.error(
-                                    "Exception",
-                                    extra={
-                                        "props": {
-                                            "record": record,
-                                            "target": "email",
-                                            "exception": e,
-                                        }
-                                    },
+                                invitation_link = f"{settings.invitation_link}/auth/invitation?invitation={invitation_token}"
+                                token_uuid = str(uuid.uuid4())[:8]
+                                await redis_services.set(
+                                    f"short/{token_uuid}",
+                                    invitation_link,
+                                    ex=60 * 60 * 48,
+                                    nx=True,
                                 )
-                        await redis.set(
-                            f"users:login:invitation:{invitation_token}", channel
-                        )
+                                link = f"{settings.public_app_url}/managed/s/{token_uuid}"
+                                channel += f"EMAIL:{record.attributes.get('email')}"
+                                try:
+                                    await send_email(
+                                        from_address=settings.email_sender,
+                                        to_address=record.attributes.get("email"),  # type: ignore
+                                        # message=f"Welcome, this is your invitation link: {invitation_link}",
+                                        message=generate_email_from_template(
+                                            "activation",
+                                            {
+                                                "link": link,
+                                                "name": record.attributes.get(
+                                                    "displayname", {}
+                                                ).get("en", ""),
+                                                "shortname": record.shortname,
+                                                "msisdn": record.attributes.get("msisdn"),
+                                            },
+                                        ),
+                                        subject=generate_subject("activation"),
+                                    )
+                                except Exception as e:
+                                    logger.error(
+                                        "Exception",
+                                        extra={
+                                            "props": {
+                                                "record": record,
+                                                "target": "email",
+                                                "exception": e,
+                                            }
+                                        },
+                                    )
+                            await redis_services.set(
+                                f"users:login:invitation:{invitation_token}", channel
+                            )
 
                     if separate_payload_data != None:
                         await db.save_payload_from_json(
@@ -1717,10 +1717,10 @@ async def recreate_redis_indices(
                 ),
             )
 
-    redis_services = await RedisServices()
-    await redis_services.create_indices_for_all_spaces_meta_and_schemas(
-        for_space, for_schemas
-    )
+    async with RedisServices() as redis_services:
+        await redis_services.create_indices_for_all_spaces_meta_and_schemas(
+            for_space, for_schemas
+        )
     loaded_data = await load_all_spaces_data_to_redis(for_space, for_subpaths)
     await initialize_spaces()
     await access_control.load_permissions_and_roles()
@@ -1841,14 +1841,15 @@ async def lock_entry(
     # if lock file is doesn't exist
     # elif lock file exit but lock_period expired
     # elif lock file exist and lock_period isn't expired but the owner want to extend the lock
-    lock_type = await RedisServices().save_lock_doc(
-        space_name,
-        branch_name,
-        subpath,
-        shortname,
-        logged_in_user,
-        settings.lock_period,
-    )
+    async with RedisServices() as redis_services:
+        lock_type = await redis_services.save_lock_doc(
+            space_name,
+            branch_name,
+            subpath,
+            shortname,
+            logged_in_user,
+            settings.lock_period,
+        )
 
     await db.store_entry_diff(
         space_name,
@@ -1878,9 +1879,10 @@ async def cancel_lock(
     branch_name: str | None = settings.default_branch,
     logged_in_user=Depends(JWTBearer()),
 ):
-    lock_payload = await RedisServices().get_lock_doc(
-        space_name, branch_name, subpath, shortname
-    )
+    async with RedisServices() as redis_services:
+        lock_payload = await redis_services.get_lock_doc(
+            space_name, branch_name, subpath, shortname
+        )
 
     if not lock_payload or lock_payload["owner_shortname"] != logged_in_user:
         raise api.Exception(
@@ -1892,7 +1894,9 @@ async def cancel_lock(
             ),
         )
 
-    await RedisServices().delete_lock_doc(space_name, branch_name, subpath, shortname)
+    async with RedisServices() as redis_services:
+        await redis_services.delete_lock_doc(space_name, branch_name, subpath, shortname)
+
     await db.store_entry_diff(
         space_name,
         branch_name,
@@ -1985,11 +1989,11 @@ async def execute(
 async def shoting_url(
     token: str,
 ):
-    redis = await RedisServices()
-    if url := await redis.get(f"short/{token}"):
-        return RedirectResponse(url)
-    else:
-        return RedirectResponse(url="/frontend")
+    async with RedisServices() as redis_services:
+        if url := await redis_services.get(f"short/{token}"):
+            return RedirectResponse(url)
+        else:
+            return RedirectResponse(url="/frontend")
 
 
 @router.post(

@@ -11,18 +11,18 @@ from fastapi.logger import logger
 import asyncio
 
 async def trigger_admin_notifications():
-    redis = await RedisServices()
     from_time = int((datetime.now() - timedelta(minutes=15)).timestamp()*1000)
     to_time = int(datetime.now().timestamp()*1000)
-    admin_notifications = await redis.search(
-        space_name=settings.management_space,
-        branch_name=settings.management_space_branch,
-        schema_name="admin_notification_request",
-        search=f"@subpath:/notifications/admin (-@status:finished) @scheduled_at:[{from_time} {to_time}]",
-        filters={},
-        limit=10000,
-        offset=0
-    )
+    async with RedisServices() as redis_services:
+        admin_notifications = await redis_services.search(
+            space_name=settings.management_space,
+            branch_name=settings.management_space_branch,
+            schema_name="admin_notification_request",
+            search=f"@subpath:/notifications/admin (-@status:finished) @scheduled_at:[{from_time} {to_time}]",
+            filters={},
+            limit=10000,
+            offset=0
+        )
 
     if admin_notifications["total"] == 0:
         return
@@ -31,15 +31,15 @@ async def trigger_admin_notifications():
         notification = json.loads(notification_doc.json)
 
         # Get notification receivers users
-        redis = await RedisServices()
-        receivers = await redis.search(
-            space_name=settings.management_space,
-            branch_name=settings.management_space_branch,
-            search=f"@subpath:users @msisdn:{'|'.join(notification['msisdns'])}",
-            filters={},
-            limit=10000,
-            offset=0
-        )
+        async with RedisServices() as redis_services:
+            receivers = await redis_services.search(
+                space_name=settings.management_space,
+                branch_name=settings.management_space_branch,
+                search=f"@subpath:users @msisdn:{'|'.join(notification['msisdns'])}",
+                filters={},
+                limit=10000,
+                offset=0
+            )
 
         # Try to send the notification 
         # and update the notification status to finished

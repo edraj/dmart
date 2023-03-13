@@ -62,9 +62,9 @@ async def load_data_to_redis(space_name, branch_name, subpath, allowed_resource_
     #    time: {int(time()) - start_time}
     #""")
     
-    redis_services = await RedisServices()
-    for redis_docs_chunk in redis_docs_chunks:
-        saved_docs += await redis_services.save_bulk(redis_docs_chunk)
+    async with RedisServices() as redis_services:
+        for redis_docs_chunk in redis_docs_chunks:
+            saved_docs += await redis_services.save_bulk(redis_docs_chunk)
 
 
     return {"subpath": subpath, "documents": len(saved_docs)}
@@ -127,6 +127,7 @@ async def generate_redis_docs(locators: list) -> list:
                     print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
 
         except:
+            del redis_services
             print(f"path: {one.space_name}/{one.subpath}/{one.shortname}")
             print("stacktrace:")
             print(f"    {traceback.format_exc()}")
@@ -246,19 +247,19 @@ async def main(
     flushall: bool = False
 ):
     
-    redis_services = await RedisServices()
-    if flushall:
-        print("FLUSHALL")
-        await redis_services.client.flushall()
+    async with RedisServices() as redis_services:
+        if flushall:
+            print("FLUSHALL")
+            await redis_services.client.flushall()
 
-    print("Intializing spaces")
-    await initialize_spaces()
+        print("Intializing spaces")
+        await initialize_spaces()
 
-    print(f"Creating Redis indices: {for_space=} {for_schemas=}")
-    await access_control.load_permissions_and_roles()
-    await redis_services.create_indices_for_all_spaces_meta_and_schemas(
-        for_space, for_schemas
-    )
+        print(f"Creating Redis indices: {for_space=} {for_schemas=}")
+        await access_control.load_permissions_and_roles()
+        await redis_services.create_indices_for_all_spaces_meta_and_schemas(
+            for_space, for_schemas
+        )
     res = await load_all_spaces_data_to_redis(for_space, for_subpaths)
     for space_name, loaded_data in res.items():
         if loaded_data:

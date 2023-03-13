@@ -104,6 +104,7 @@ class RedisServices(object):
         return self.init().__await__()
 
     async def init(self):
+        # if not hasattr(self, "client"):
         self.client = await Redis(connection_pool=self.__pool)
         self.redis_indices: dict[str, dict[str, Search]] = {}
         return self
@@ -118,6 +119,14 @@ class RedisServices(object):
                 loop.run_until_complete(self.client.close())
         except Exception:
             pass
+
+    async def __aenter__(self):
+        self.client = await Redis(connection_pool=self.__pool)
+        self.redis_indices: dict[str, dict[str, Search]] = {}
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.client.close()
 
 
     async def create_index(
@@ -719,7 +728,7 @@ class RedisServices(object):
             }
             result = await self.save_doc(lock_doc_id, payload, nx=True)
             if result is None:
-                lock_payload = await RedisServices().get_lock_doc(
+                lock_payload = await self.get_lock_doc(
                     space_name, branch_name, subpath, payload_shortname
                 )
                 if lock_payload["owner_shortname"] != owner_shortname:
