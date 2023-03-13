@@ -124,6 +124,7 @@ class PluginManager:
 
         space_plugins = Space.parse_raw(spaces[event.space_name]).active_plugins
 
+        loop = asyncio.get_event_loop()
         for plugin_model in self.plugins_wrappers[event.action_type]:
             if (
                 plugin_model.shortname in space_plugins
@@ -133,7 +134,7 @@ class PluginManager:
                 try:
                     plugin_execution = plugin_model.object.hook(event)  # type: ignore
                     if isawaitable(plugin_execution):
-                        await plugin_execution
+                        loop.create_task(plugin_execution)
                 except Exception as e:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
@@ -146,7 +147,7 @@ class PluginManager:
             return
 
         space_plugins = Space.parse_raw(spaces[event.space_name]).active_plugins
-
+        loop = asyncio.get_event_loop()
         for plugin_model in self.plugins_wrappers[event.action_type]:
             if (
                 plugin_model.shortname in space_plugins
@@ -156,7 +157,7 @@ class PluginManager:
                 try:
                     plugin_execution = plugin_model.object.hook(event)  # type: ignore
                     if isawaitable(plugin_execution):
-                        await plugin_execution
+                        loop.create_task(plugin_execution)
                 except Exception as e:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
