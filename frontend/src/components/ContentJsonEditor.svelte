@@ -1,5 +1,5 @@
 <script>
-  import { JSONEditor } from "svelte-jsoneditor";
+  import { JSONEditor, Mode } from "svelte-jsoneditor";
   import { faSave } from "@fortawesome/free-regular-svg-icons";
 
   export let content;
@@ -41,11 +41,12 @@
 
 {#if validator}
   <JSONEditor
+    mode={Mode.text}
     bind:content
     bind:validator
     onChange={handleChange}
     onRenderMenu={handleRenderMenu}
   />
 {:else}
-  <JSONEditor bind:content onRenderMenu={handleRenderMenu} />
+  <JSONEditor mode={Mode.text} bind:content onRenderMenu={handleRenderMenu} />
 {/if}

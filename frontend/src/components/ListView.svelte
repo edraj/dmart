@@ -10,9 +10,11 @@
   import { toastPushSuccess, toastPushFail } from "../utils";
   import AttachmentsManagment from "./AttachmentsManagment.svelte";
   import "bootstrap";
+  import Fa from "sveltejs-fontawesome";
+  import { faCaretSquareLeft } from "@fortawesome/free-regular-svg-icons";
 
-  let showModal = false;
-
+  let showContentEditSection = false;
+  let shortname = "";
   let metaContent = {
     json: null,
     text: undefined,
@@ -93,7 +95,6 @@
       })
       .catch((e) => {
         console.log(e);
-        error();
       });
   }
 
@@ -133,14 +134,12 @@
           })
           .catch((e) => {
             console.log(e);
-            error();
           });
         if (filterable && search.options.length === 0) {
           await fetchSearchKeys();
         }
       } catch (e) {
         console.log(e);
-        error();
       }
     }
   }
@@ -213,7 +212,7 @@
 
 <svelte:window bind:innerHeight={height} />
 
-{#if !showModal}
+{#if !showContentEditSection}
   {#if filterable}
     <div class="input-group mb-3">
       <button
@@ -279,7 +278,7 @@
           }
 
           current_item = index;
-          showModal = true;
+          showContentEditSection = true;
 
           if (records[index - 1]?.attributes?.payload?.body) {
             bodyContent = {
@@ -294,7 +293,7 @@
               text: undefined,
             };
           }
-
+          shortname = records[index - 1].shortname;
           metaContent = {
             json: records[index - 1],
             text: undefined,
@@ -325,10 +324,11 @@
         {/if}
       </div>
       <div slot="footer">
-        <InfiniteLoading
-          on:infinite={infiniteHandler}
-          identifier={infiniteId}
-        />
+        <InfiniteLoading on:infinite={infiniteHandler} identifier={infiniteId}>
+          <span slot="noResults" />
+          <span slot="noMore" />
+          <span slot="error" />
+        </InfiniteLoading>
       </div>
     </VirtualList>
     {#if current_item && current_item > 0 && details_split > 0}
@@ -349,7 +349,20 @@
   </div>
 {/if}
 
-{#if showModal}
+{#if showContentEditSection}
+  <div class="d-flex justify-content-between">
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div
+      class="back-icon"
+      on:click={() => {
+        showContentEditSection = false;
+      }}
+    >
+      <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
+    </div>
+    <h5>{shortname}</h5>
+  </div>
+  <hr />
   <Tabs>
     <TabList>
       <Tab>Meta</Tab>
@@ -384,6 +397,14 @@
 {/if}
 
 <style>
+  .back-icon {
+    margin-top: 8px;
+    margin-left: 8px;
+  }
+  h5 {
+    margin-top: 8px;
+    margin-left: 8px;
+  }
   hr {
     color: green;
     background-color: blue;
