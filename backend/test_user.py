@@ -100,7 +100,7 @@ def test_login():
     )
 
     response = client.post(
-        endpoint, json={**request_data, "password": "IncorrectPassword1234"}, headers=headers
+        endpoint, json={**request_data, "password": "IncorrectPass0000"}, headers=headers
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json().get("status") == "failed"
@@ -120,8 +120,7 @@ def test_update():
         "shortname": SHORTNAME,
         "attributes": {
             "displayname": {"en": "New display name"},
-            "email": "new@email.com",
-            "password": "Password12345",
+            "email": "new@email.com"
         },
     }
     assert_code_and_status_success(
