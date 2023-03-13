@@ -467,7 +467,7 @@ async def serve_query(
             path = f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl"
 
             if Path(path).is_file():
-                cmd = f"tail -n {query.limit + query.offset} {path} | head -n {query.limit} | tac"
+                cmd = f"tail -n +{query.offset} {path} | head -n {query.limit} | tac"
                 result = list(
                     filter(
                         None,
