@@ -27,10 +27,10 @@ async def initialize_spaces():
         space_obj.branches = branches_names
         spaces[space_name] = space_obj.json()
 
-    redis_services = await RedisServices()
-    await redis_services.save_doc(f"spaces", spaces)
+    async with RedisServices() as redis_services:
+        await redis_services.save_doc(f"spaces", spaces)
 
 
 async def get_spaces() -> dict:
-    redis_services = await RedisServices()
-    return await redis_services.get_doc_by_id("spaces")
+    async with RedisServices() as redis_services:
+        return await redis_services.get_doc_by_id("spaces")

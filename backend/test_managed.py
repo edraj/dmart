@@ -8,17 +8,29 @@ from utils.settings import settings
 import os
 from models.api import Query, QueryType
 
-# from pytest_mock import mocker
+from pytest_mock import mocker
 from main import app
 
 client = TestClient(app)
+
+
+creds_file = open("login_creds.sh", "r")
+Lines = creds_file.readlines()
+for line in Lines:
+    if line.strip().startswith("export SUPERMAN"):
+        data = line.strip().split('\'')[1]
+        superman = json.loads(str(data))
+    if line.strip().startswith("export ALIBABA"):
+        data = line.strip().split('\'')[1]
+        alibaba = json.loads(str(data))
+
 
 DEMO_SPACE: str = f"test"
 DEFAULT_BRANCH: str = settings.default_branch
 USERS_SUBPATH: str = "users"
 
-user_shortname: str = "dmart"
-password: str = "Password1234"
+user_shortname: str = superman["shortname"]
+password: str = superman["password"]
 
 subpath: str = "content"
 text_entry_shortname: str = "text_stuff"

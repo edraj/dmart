@@ -129,13 +129,13 @@ async def create_user(record: core.Record) -> api.Response:
             separate_payload_data,  # type: ignore
             MANAGEMENT_BRANCH,
         )
-    redis_services = await RedisServices()
-    await redis_services.save_meta_doc(
-        space_name=MANAGEMENT_SPACE,
-        branch_name=MANAGEMENT_BRANCH,
-        subpath=USERS_SUBPATH,
-        meta=user,
-    )
+    async with RedisServices() as redis_services:
+        await redis_services.save_meta_doc(
+            space_name=MANAGEMENT_SPACE,
+            branch_name=MANAGEMENT_BRANCH,
+            subpath=USERS_SUBPATH,
+            meta=user,
+        )
 
     await plugin_manager.after_action(
         core.Event(
@@ -294,7 +294,6 @@ async def update_profile(
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(type="request", code=19, message="Credential does not match"),
             )
-    redis = await RedisServices()
 
     # if "force_password_change" in profile.attributes:
     #     user.force_password_change = profile.attributes["force_password_change"]
@@ -309,14 +308,15 @@ async def update_profile(
 
     if "confirmation" in profile.attributes:
         result = None
-        if profile_user.email:
-            result = await redis.get_content_by_id(
-                f"users:otp:confirmation/email/{profile_user.email}"
-            )
-        elif profile_user.msisdn:
-            result = await redis.get_content_by_id(
-                f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
-            )
+        async with RedisServices() as redis_services:
+            if profile_user.email:
+                result = await redis_services.get_content_by_id(
+                    f"users:otp:confirmation/email/{profile_user.email}"
+                )
+            elif profile_user.msisdn:
+                result = await redis_services.get_content_by_id(
+                    f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
+                )
 
         if result is None or result != profile.attributes["confirmation"]:
             raise Exception(
@@ -431,10 +431,10 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     identifier = request.check_fields()
     try:
         if request.invitation:
-            redis = RedisServices()
-            invitation_token = await redis.getdel(
-                f"users:login:invitation:{request.invitation}"
-            )
+            async with RedisServices() as redis_services:
+                invitation_token = await redis_services.getdel(
+                    f"users:login:invitation:{request.invitation}"
+                )
             if not invitation_token:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -686,7 +686,6 @@ async def otp_request(
     response_model_exclude_none=True,
 )
 async def reset_password(user_request: PasswordResetRequest) -> api.Response:
-    redis = await RedisServices()
     result = user_request.check_fields()
     exception = api.Exception(
         status.HTTP_401_UNAUTHORIZED,
@@ -762,12 +761,15 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     )
 
     token_uuid = str(uuid.uuid4())[:8]
-    await redis.set(
-        f"short/{token_uuid}",
-        invitation_link,
-        ex=60 * 60 * 48,
-        nx=False,
-    )
+    async with RedisServices() as redis_services:
+        await redis_services.set(
+            f"short/{token_uuid}",
+            invitation_link,
+            ex=60 * 60 * 48,
+            nx=False,
+        )
+        await redis_services.set(f"users:login:invitation:{invitation_token}", 1)
+
     link = f"{settings.public_app_url}/managed/s/{token_uuid}"
 
     reset_password_message = f"Reset password via this link: {link}, This link can be used once and within the next 48 hours."
@@ -788,7 +790,6 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             message=reset_password_message,
             subject="Reset password",
         )
-    await redis.set(f"users:login:invitation:{invitation_token}", 1)
     return api.Response(status=api.Status.success)
 
 
@@ -801,7 +802,6 @@ async def confirm_otp(
     user_request: ConfirmOTPRequest, user=Depends(JWTBearer())
 ) -> api.Response:
     """Confirm OTP"""
-    redis = await RedisServices()
 
     result = user_request.check_fields()
     key = ""
@@ -810,7 +810,18 @@ async def confirm_otp(
     elif "email" in result:
         key = f"middleware:otp:otps/{result['email']}"
 
-    if code := await redis.get(key):
+    async with RedisServices() as redis_services:
+        code = await redis_services.get(key)
+        if not code:
+            raise Exception(
+                status.HTTP_400_BAD_REQUEST,
+                Error(
+                    type="OTP",
+                    code=308,
+                    message="Expired OTP",
+                ),
+            )
+
         if code != user_request.code:
             raise Exception(
                 status.HTTP_400_BAD_REQUEST,
@@ -836,7 +847,7 @@ async def confirm_otp(
             key = f"users:otp:confirmation/email/{user_request.email}"
             data.attributes["email"] = user_request.email
 
-        await redis.set(key, confirmation)
+        await redis_services.set(key, confirmation)
 
         response = await update_profile(data, shortname=user)
 
@@ -854,15 +865,7 @@ async def confirm_otp(
                 ),
             )
 
-    raise Exception(
-        status.HTTP_400_BAD_REQUEST,
-        Error(
-            type="OTP",
-            code=308,
-            message="Expired OTP",
-        ),
-    )
-
+    
 
 @router.post("/reset", response_model=api.Response, response_model_exclude_none=True)
 async def user_reset(
@@ -893,10 +896,10 @@ async def user_reset(
     invitation_token = sign_jwt({"shortname": shortname}, settings.jwt_access_expires)
 
     user_login_invitation_key = f"users:login:invitation:{invitation_token}"
-    redis = await RedisServices()
-    await redis.set(
-        user_login_invitation_key, invitation_token, settings.jwt_access_expires
-    )
+    async with RedisServices() as redis_services:
+        await redis_services.set(
+            user_login_invitation_key, invitation_token, settings.jwt_access_expires
+        )
 
     return api.Response(
         status=api.Status.success, attributes={"invitation_token": invitation_token}

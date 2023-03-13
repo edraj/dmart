@@ -27,9 +27,9 @@ def gen_alphanumeric(length=16):
 
 
 async def mock_sending_otp(msisdn):
-    redis = await RedisServices()
     key = f"users:otp:otps/{msisdn}"
-    await redis.set(key, "123456", settings.otp_token_ttl)
+    async with RedisServices() as redis_services:
+        await redis_services.set(key, "123456", settings.otp_token_ttl)
     json = {"status": "success", "data": {"status": "success"}}
     return json
 
@@ -61,9 +61,9 @@ async def email_send_otp(email: str, language: str):
     if settings.mock_smtp_api:
         return await mock_sending_otp(email)
     else:
-        redis = await RedisServices()
         code = "".join(random.choice("0123456789") for _ in range(6))
-        await redis.set(f"middleware:otp:otps/{email}", code)
+        async with RedisServices() as redis_services:
+            await redis_services.set(f"middleware:otp:otps/{email}", code)
         message = f"<p>Your OTP code is <b>{code}</b></p>"
         return await send_email(settings.email_sender, email, message, "OTP")
 

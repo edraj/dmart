@@ -8,9 +8,9 @@ def check_repeated_shortname(response):
 
 
 def check_not_found(response):
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "failed" == response.json().get("status")
-    assert "auth" == response.json().get("error").get("type")
+    assert "db" == response.json().get("error").get("type")
 
 
 def assert_code_and_status_success(response):
