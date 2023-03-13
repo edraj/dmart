@@ -6,34 +6,35 @@ SHORTNAME="97326c47"
 
 source ./login_creds.sh
 
-#echo -n -e "Create user: \t\t"
-#CREATE=$(jq -c -n --arg shortname "$SHORTNAME" --arg msisdn "$MSISDN" --arg password "$PASSWORD" '{resource_type: "user", subpath: "users", shortname: $shortname, attributes:{password: $password, msisdn:$msisdn, invitation: "hello"}}')
-#curl -s -H "$CT" -d "$CREATE" "${API_URL}/user/create?invitation=$INVITATION"  | jq .status
+# echo -n -e "Create user: \t\t"
+# CREATE=$(jq -c -n --arg shortname "$SHORTNAME" --arg msisdn "$MSISDN" --arg password "$PASSWORD" '{resource_type: "user", subpath: "users", shortname: $shortname, attributes:{password: $password, msisdn:$msisdn, invitation: "hello"}}')
+# curl -s -H "$CT" -d "$CREATE" "${API_URL}/user/create?invitation=$INVITATION"  | jq .status
 
-echo -n -e "Login: \t\t\t"
-AUTH_TOKEN=$(curl -i -s -H "$CT" -d "${ALIBABA}" ${API_URL}/user/login  | grep set-cookie | sed 's/^[^=]*=\(.*\); Http.*$/\1/g')
-echo " Auth : $AUTH_TOKEN"
+# echo -n -e "Login: \t\t\t"
+# curl -s -H "$CT" -d "${ALIBABA}" ${API_URL}/user/login | jq
+# AUTH_TOKEN=$(curl -i -s -H "$CT" -d "${ALIBABA}" ${API_URL}/user/login  | grep set-cookie | sed 's/^[^=]*=\(.*\); Http.*$/\1/g')
+# echo " Auth : $AUTH_TOKEN"
 
-#echo -n -e "Send OTP using MSISDN: \t"
-#curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"msisdn": "'${MSISDN}'"}' ${API_URL}/user/otp-request | jq . 
+# #echo -n -e "Send OTP using MSISDN: \t"
+# #curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"msisdn": "'${MSISDN}'"}' ${API_URL}/user/otp-request | jq . 
 
-#echo -n -e "Confirm OTP using MSISDN: \t"
-#curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"msisdn": "'${MSISDN}'", "code": "'${OTP_CODE}'"}' ${API_URL}/user/otp-confirm | jq . 
+# #echo -n -e "Confirm OTP using MSISDN: \t"
+# #curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"msisdn": "'${MSISDN}'", "code": "'${OTP_CODE}'"}' ${API_URL}/user/otp-confirm | jq . 
 
-echo -n -e "Get profile: \t\t"
-#curl -s -H "$AUTH" -H "$CT" $API_URL/user/profile | jq .status
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" $API_URL/user/profile | jq .status
+# echo -n -e "Get profile: \t\t"
+# #curl -s -H "$AUTH" -H "$CT" $API_URL/user/profile | jq .status
+# curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" $API_URL/user/profile | jq .status
 
-echo -n -e "Update profile: \t"
-UPDATE=$(jq -c -n --arg shortname "$SHORTNAME" '{resource_type: "user", subpath: "users", shortname: $shortname, attributes:{displayname: {"en": "New display name", "ar": "arabic", "kd": "kd"}}}')
-#curl -s -H "$AUTH" -H "$CT" -d "$UPDATE" $API_URL/user/profile | jq .status
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$UPDATE" $API_URL/user/profile | jq .status
+# echo -n -e "Update profile: \t"
+# UPDATE=$(jq -c -n --arg shortname "$SHORTNAME" '{resource_type: "user", subpath: "users", shortname: $shortname, attributes:{displayname: {"en": "New display name", "ar": "arabic", "kd": "kd"}}}')
+# #curl -s -H "$AUTH" -H "$CT" -d "$UPDATE" $API_URL/user/profile | jq .status
+# curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$UPDATE" $API_URL/user/profile | jq .status
 
-echo -n -e "Get profile: \t\t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" $API_URL/user/profile | jq .status
+# echo -n -e "Get profile: \t\t"
+# curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" $API_URL/user/profile | jq .status
 
-echo -n -e "Delete user: \t\t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{}' $API_URL/user/delete | jq .status
+# echo -n -e "Delete user: \t\t"
+# curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{}' $API_URL/user/delete | jq .status
 
 #echo -n -e "Create admin: \t\t"
 #CREATE=$(jq -c -n --arg shortname "$SUPER_ADMIN_SHORTNAME" --arg displayname "$DISPLAYNAME"  --arg password "$SUPER_ADMIN_PASSWORD" '{resource_type: "user", subpath: "users", shortname: $shortname, attributes:{"roles":["admin"],displayname: $displayname, password: $password, invitation: "hello"}}')
@@ -45,10 +46,10 @@ echo " Auth : $AUTH_TOKEN"
 # curl -s -c mycookies.jar -H "$CT" -d "$LOGIN" ${API_URL}/user/login | jq .status
 
 echo -n -e "Create user from admin: \t\t" 
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"create","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"roles": ["distributor_admin"], "msisdn": "7895412658", "email": "test@gmail.com"}}]}' ${API_URL}/managed/request | jq .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"create","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"roles": ["distributor_admin"], "msisdn": "7895412658", "email": "test_unqiue@gmail.com"}}]}' ${API_URL}/managed/request | jq .status
 
 echo -n -e "update user from admin: \t\t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"update","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"roles": ["ros"], "msisdn": "7895412658", "email": "test@gmail.com"}}]}' ${API_URL}/managed/request | jq .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"update","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"roles": ["ros"], "msisdn": "7895412658", "email": "test_unqiue@gmail.com"}}]}' ${API_URL}/managed/request | jq .status
 echo -n -e "Verify MSISDN and Email from admin side: \t\t"
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"update","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"is_email_verified":true,"is_msisdn_verified":true}}]}' ${API_URL}/managed/request | jq .status
 
@@ -56,7 +57,7 @@ echo -n -e "Reset user from admin side\t"
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d $'{"shortname": "distributor"}' ${API_URL}/user/reset | jq .status
 
 echo -n -e "Delete user from admin: \t\t" 
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"delete","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"roles": ["distributor_admin"], "msisdn": "7895412658", "email": "test@gmail.com"}}]}' ${API_URL}/managed/request | jq .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"delete","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{}}]}' ${API_URL}/managed/request | jq .status
 
 echo -n -e "Health check: \t\t"
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/health/management | jq .status
@@ -112,18 +113,18 @@ curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$REQUEST" ${API_URL}
 
 
 echo -n -e "Create Schema for workflows: \t\t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"'  'request_type: "create"' -F 'request_record=@"../cli/sample/createschemawork.json"' -F 'payload_file=@"../cli/sample/workflow_schema.json"' ${API_URL}/managed/resource_with_payload | jq .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"'  'request_type: "create"' -F 'request_record=@"../sample/test/createschemawork.json"' -F 'payload_file=@"../sample/test/workflow_schema.json"' ${API_URL}/managed/resource_with_payload | jq .status
 
 
 echo -n -e "Create content for workflows: \t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../cli/sample/createticket.json"' -F 'payload_file=@"../cli/sample/ticket_workflow.json"' ${API_URL}/managed/resource_with_payload  | jq .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../sample/test/createticket.json"' -F 'payload_file=@"../sample/test/ticket_workflow.json"' ${API_URL}/managed/resource_with_payload  | jq .status
 
 
 echo -n -e "Create Schema for ticket: \t\t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../cli/sample/createschema.json"' -F 'payload_file=@"../cli/sample/schema.json"' ${API_URL}/managed/resource_with_payload | jq .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../sample/test/createschema.json"' -F 'payload_file=@"../sample/test/schema.json"' ${API_URL}/managed/resource_with_payload | jq .status
 
 echo -n -e "Create ticket: \t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"'  'request_type: "create"' -F 'request_record=@"../cli/sample/ticketcontent.json"' -F 'payload_file=@"../cli/sample/ticketbody.json"' ${API_URL}/managed/resource_with_payload  | jq .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"'  'request_type: "create"' -F 'request_record=@"../sample/test/ticketcontent.json"' -F 'payload_file=@"../sample/test/ticketbody.json"' ${API_URL}/managed/resource_with_payload  | jq .status
 
 # echo -n -e "Move / rename ticket: \t"
 # curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "test","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder/an_example","shortname": "'${SHORTNAME}'","attributes": {"src_subpath": "/tickets/postpaid_prime","src_shortname": "'${SHORTNAME}'","dest_subpath": "/tickets/postpaid_prime","dest_shortname": "'${UPDATE_SHORTNAME}'","is_active": true}}]}' ${API_URL}/managed/request | jq .status
@@ -144,10 +145,10 @@ curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$REQUEST" ${API_URL}
 
 
 echo -n -e "Create Schema: \t\t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../cli/sample/createschema.json"' -F 'payload_file=@"../cli/sample/schema.json"' ${API_URL}/managed/resource_with_payload | jq .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../sample/test/createschema.json"' -F 'payload_file=@"../sample/test/schema.json"' ${API_URL}/managed/resource_with_payload | jq .status
 
 echo -n -e "Create content: \t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../cli/sample/createcontent.json"' -F 'payload_file=@"../cli/sample/data.json"' ${API_URL}/managed/resource_with_payload  | jq  .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../sample/test/createcontent.json"' -F 'payload_file=@"../sample/test/data.json"' ${API_URL}/managed/resource_with_payload  | jq .status 
 
 
 # echo -n -e "Comment on content: \t"
@@ -161,16 +162,16 @@ curl -s -H "accept: text/csv" -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d
 
 
 echo -n -e "Create content: \t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../cli/sample/createcontent.json"' -F 'payload_file=@"../cli/sample/data.json"' ${API_URL}/managed/resource_with_payload  | jq  .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../sample/test/createcontent.json"' -F 'payload_file=@"../sample/test/data.json"' ${API_URL}/managed/resource_with_payload  | jq  .status
 
 echo -n -e "Update content: \t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --data-binary "@../cli/sample/updatecontent.json" ${API_URL}/managed/request  | jq  .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --data-binary "@../sample/test/updatecontent.json" ${API_URL}/managed/request  | jq  .status
 
 echo -n -e "Delete content: \t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --data-binary "@../cli/sample/deletecontent.json" ${API_URL}/managed/request  | jq  .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --data-binary "@../sample/test/deletecontent.json" ${API_URL}/managed/request  | jq  .status
 
 echo -n -e "Upload attachment: \t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../cli/sample/createmedia.json"' -F 'payload_file=@"../cli/sample/logo.jpeg"' ${API_URL}/managed/resource_with_payload  | jq .status
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'request_record=@"../sample/test/createmedia.json"' -F 'payload_file=@"../sample/test/logo.jpeg"' ${API_URL}/managed/resource_with_payload  | jq .status
 
 echo -n -e "Query content: \t\t"
 RECORD=$(jq -c -n --arg subpath "$SUBPATH" '{space_name: "test", type: "subpath", subpath: $subpath}')

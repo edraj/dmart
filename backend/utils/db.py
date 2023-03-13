@@ -359,28 +359,28 @@ async def update(
             status_code=status.HTTP_404_NOT_FOUND,
             error=api.Error(type="update", code=30, message="does not exist"),
         )
-    redis = await RedisServices()
-    if await redis.is_entry_locked(
-        space_name, branch_name, subpath, meta.shortname, user_shortname
-    ):
-        raise api.Exception(
-            status_code=status.HTTP_403_FORBIDDEN,
-            error=api.Error(type="update", code=30, message="This entry is locked"),
-        )
-    elif await redis.get_lock_doc(space_name, branch_name, subpath, meta.shortname):
-        # if the current can release the lock that means he is the right user
-        await redis.delete_lock_doc(space_name, branch_name, subpath, meta.shortname)
-        await store_entry_diff(
-            space_name,
-            branch_name,
-            "/" + subpath,
-            meta.shortname,
-            user_shortname,
-            {},
-            {"lock_type": LockAction.unlock},
-            ["lock_type"],
-            core.Content,
-        )
+    async with RedisServices() as redis_services:
+        if await redis_services.is_entry_locked(
+            space_name, branch_name, subpath, meta.shortname, user_shortname
+        ):
+            raise api.Exception(
+                status_code=status.HTTP_403_FORBIDDEN,
+                error=api.Error(type="update", code=30, message="This entry is locked"),
+            )
+        elif await redis_services.get_lock_doc(space_name, branch_name, subpath, meta.shortname):
+            # if the current can release the lock that means he is the right user
+            await redis_services.delete_lock_doc(space_name, branch_name, subpath, meta.shortname)
+            await store_entry_diff(
+                space_name,
+                branch_name,
+                "/" + subpath,
+                meta.shortname,
+                user_shortname,
+                {},
+                {"lock_type": LockAction.unlock},
+                ["lock_type"],
+                core.Content,
+            )
 
     meta.updated_at = datetime.now()
     async with aiofiles.open(path / filename, "w") as file:
@@ -569,17 +569,17 @@ async def delete(
             status_code=status.HTTP_404_NOT_FOUND,
             error=api.Error(type="delete", code=30, message="does not exist"),
         )
-    redis = await RedisServices()
-    if await redis.is_entry_locked(
-        space_name, branch_name, subpath, meta.shortname, user_shortname
-    ):
-        raise api.Exception(
-            status_code=status.HTTP_403_FORBIDDEN,
-            error=api.Error(type="delete", code=30, message="This entry is locked"),
-        )
-    else:
-        # if the current can release the lock that means he is the right user
-        await redis.delete_lock_doc(space_name, branch_name, subpath, meta.shortname)
+    async with RedisServices() as redis_services:
+        if await redis_services.is_entry_locked(
+            space_name, branch_name, subpath, meta.shortname, user_shortname
+        ):
+            raise api.Exception(
+                status_code=status.HTTP_403_FORBIDDEN,
+                error=api.Error(type="delete", code=30, message="This entry is locked"),
+            )
+        else:
+            # if the current can release the lock that means he is the right user
+            await redis_services.delete_lock_doc(space_name, branch_name, subpath, meta.shortname)
 
     pathname = path / filename
     if pathname.is_file():

@@ -176,13 +176,13 @@ async def store_notification(
         branch_name=notification_dict["branch_name"],
     )
 
-    redis = await RedisServices()
-    await redis.save_meta_doc(
-        "personal",
-        notification_dict["branch_name"],
-        f"people/{receiver_shortname}/notifications",
-        notification_obj,
-    )
+    async with RedisServices() as redis_services:
+        await redis_services.save_meta_doc(
+            "personal",
+            notification_dict["branch_name"],
+            f"people/{receiver_shortname}/notifications",
+            notification_obj,
+        )
 
 
 # firebase_app = None

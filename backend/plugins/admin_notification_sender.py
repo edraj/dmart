@@ -48,15 +48,15 @@ class Plugin(PluginBase):
             return
 
         # Get msisdns users
-        redis = await RedisServices()
-        receivers = await redis.search(
-            space_name=settings.management_space,
-            branch_name=settings.management_space_branch,
-            search=f"@subpath:users @msisdn:{'|'.join(notification_dict['msisdns'])}",
-            filters={},
-            limit=10000,
-            offset=0
-        )
+        async with RedisServices() as redis_services:
+            receivers = await redis_services.search(
+                space_name=settings.management_space,
+                branch_name=settings.management_space_branch,
+                search=f"@subpath:users @msisdn:{'|'.join(notification_dict['msisdns'])}",
+                filters={},
+                limit=10000,
+                offset=0
+            )
         if not receivers or receivers.get("total", 0) == 0:
             return
 

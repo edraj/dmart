@@ -2,7 +2,7 @@ import asyncio
 import re
 import json
 from typing import Any
-from types import GenericAlias
+from uuid import UUID
 from redis.asyncio import BlockingConnectionPool, Redis
 from models.api import SortType
 import models.core as core
@@ -21,6 +21,7 @@ from utils.settings import settings
 import models.api as api
 from fastapi import status
 from redis.exceptions import ResponseError as RedisResponseError
+
 
 class RedisServices(object):
 
@@ -103,9 +104,9 @@ class RedisServices(object):
         return self.init().__await__()
 
     async def init(self):
-        if not hasattr(self, "client"):
-            self.client = await Redis(connection_pool=self.__pool)
-            self.redis_indices: dict[str, dict[str, Search]] = {}
+        # if not hasattr(self, "client"):
+        self.client = await Redis(connection_pool=self.__pool)
+        self.redis_indices: dict[str, dict[str, Search]] = {}
         return self
 
     def __del__(self):
@@ -118,6 +119,15 @@ class RedisServices(object):
                 loop.run_until_complete(self.client.close())
         except Exception:
             pass
+
+    async def __aenter__(self):
+        self.client = await Redis(connection_pool=self.__pool)
+        self.redis_indices: dict[str, dict[str, Search]] = {}
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.client.close()
+
 
     async def create_index(
         self, space_branch_name: str, schema_name: str, redis_schema: tuple
@@ -237,16 +247,13 @@ class RedisServices(object):
         self, class_ref: core.Resource, exclude_from_index: list
     ) -> tuple:
         class_types_to_redis_fields_mapper = {
-            "<class 'str'>": TextField,
-            "<class 'pydantic.types.ConstrainedStrValue'>": TextField,
-            "<class 'bool'>": TextField,
-            "<class 'pydantic.types.UUID4'>": TextField,
-            "<class 'list'>": TagField,
-            "<class 'datetime.datetime'>": NumericField,
-            "<class 'set'>": TagField,
-            "<class 'dict'>": TextField,
-            "<class 'UserType'>": TextField,
-            "<enum 'Language'>": TextField
+            str: TextField,
+            bool: TextField,
+            UUID: TextField,
+            list: TagField,
+            datetime: NumericField,
+            set: TagField,
+            dict: TextField,
         }
 
         redis_schema = [
@@ -259,18 +266,17 @@ class RedisServices(object):
             ),
             TagField("$.query_policies.*", as_name="query_policies"),
         ]
-        for field_name, field_value in class_ref.__fields__.items():
+        for field_name, model_field in class_ref.__fields__.items():
+            
             if field_name in exclude_from_index:
                 continue
 
-            mapper_key = str(
-                field_value.outer_type_
-                if not isinstance(field_value.outer_type_, GenericAlias)
-                else field_value.outer_type_.__origin__
-            )
-
-            if mapper_key not in class_types_to_redis_fields_mapper:
-                print(f"SKIPPING ... {mapper_key=} {class_types_to_redis_fields_mapper=}")
+            mapper_key = None
+            for field_type in model_field.outer_type_.__mro__:
+                if field_type in class_types_to_redis_fields_mapper.keys():
+                    mapper_key = field_type
+                    break
+            if not mapper_key:
                 continue
 
             redis_index_column_type = class_types_to_redis_fields_mapper[mapper_key]
@@ -722,7 +728,7 @@ class RedisServices(object):
             }
             result = await self.save_doc(lock_doc_id, payload, nx=True)
             if result is None:
-                lock_payload = await RedisServices().get_lock_doc(
+                lock_payload = await self.get_lock_doc(
                     space_name, branch_name, subpath, payload_shortname
                 )
                 if lock_payload["owner_shortname"] != owner_shortname:
