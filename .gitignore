@@ -28,5 +28,5 @@ src/tmp/
 *-workspace
 sample/spaces/eser
 sample/spaces/test
-history.json
-events.json
+history.jsonl
+events.jsonl
