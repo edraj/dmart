@@ -1,54 +1,24 @@
-start_tag = """<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <title>Email</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  </head>
-  <body style="margin: 0; padding: 0">
-"""
-end_tag = """</body>
-</html>
-"""
+from jinja2 import Environment, FileSystemLoader
 
 
 def generate_email_from_template(template, data):
+    environment = Environment(loader=FileSystemLoader("templates/"))
     match template:
         case "activation":
-            return f"""{start_tag}
-<p>Hi {data.get("name")}</p>
-<p>MSISDN: {data.get("msisdn")}</p>
-<p>Username: {data.get("shortname")}</p>
+            template = environment.get_template("activation.html.j2")
+            return template.render(
+                name=data.get("name"),
+                msisdn=data.get("msisdn"),
+                shortname=data.get("shortname"),
+                link=data.get("link"),
+            )
 
-<p>Welcome, we're happy to see you on board!</p>
-
-<p>Only Few steps are left to activate your account, please use the below account activation link.</p>
-
-<p>Activation Link:</p>
-
-<a href="{data["link"]}">{data["link"]}</a>
-
-<p>Regards,</p>
-
-
-{end_tag}"""
         case "reminder":
-            return f"""{start_tag}
-<p>Hi {data["name"]},</p>
-
-<p>We would like to remind you to activate your account. We will be happy to see you on board!</p>
-
-<p>Few steps are left to activate your account, please use the below account activation link.</p>
-
-<p>Activation Link:</p>
-
-{data["link"]}
-
-<p>Regards,</p>
-
-
-{end_tag}"""
+            template = environment.get_template("reminder.html.j2")
+            return template.render(
+                name=data.get("name"),
+                link=data.get("link"),
+            )
         case _:
             return ""
 
