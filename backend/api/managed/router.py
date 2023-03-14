@@ -1690,47 +1690,47 @@ async def retrieve_entry_meta(
     return meta.dict(exclude_none=True)
 
 
-@router.post("/reload-redis-data", response_model_exclude_none=True)
-async def recreate_redis_indices(
-    for_space: str | None = None,
-    for_schemas: list | None = None,
-    for_subpaths: list | None = None,
-    logged_in_user=Depends(JWTBearer()),
-):
+# @router.post("/reload-redis-data", response_model_exclude_none=True)
+# async def recreate_redis_indices(
+#     for_space: str | None = None,
+#     for_schemas: list | None = None,
+#     for_subpaths: list | None = None,
+#     logged_in_user=Depends(JWTBearer()),
+# ):
 
-    spaces = await get_spaces()
-    for space_name, space_json in spaces.items():
-        space_obj = core.Space.parse_raw(space_json)
-        if space_obj.indexing_enabled and not await access_control.check_access(
-            user_shortname=logged_in_user,
-            space_name=space_name,
-            subpath="/",
-            resource_type=ResourceType.content,
-            action_type=core.ActionType.create,
-        ):
-            raise api.Exception(
-                status.HTTP_401_UNAUTHORIZED,
-                api.Error(
-                    type="request",
-                    code=401,
-                    message="You don't have permission to this action [12]",
-                ),
-            )
+#     spaces = await get_spaces()
+#     for space_name, space_json in spaces.items():
+#         space_obj = core.Space.parse_raw(space_json)
+#         if space_obj.indexing_enabled and not await access_control.check_access(
+#             user_shortname=logged_in_user,
+#             space_name=space_name,
+#             subpath="/",
+#             resource_type=ResourceType.content,
+#             action_type=core.ActionType.create,
+#         ):
+#             raise api.Exception(
+#                 status.HTTP_401_UNAUTHORIZED,
+#                 api.Error(
+#                     type="request",
+#                     code=401,
+#                     message="You don't have permission to this action [12]",
+#                 ),
+#             )
 
-    async with RedisServices() as redis_services:
-        await redis_services.create_indices_for_all_spaces_meta_and_schemas(
-            for_space, for_schemas
-        )
-    loaded_data = await load_all_spaces_data_to_redis(for_space, for_subpaths)
-    await initialize_spaces()
-    await access_control.load_permissions_and_roles()
+#     async with RedisServices() as redis_services:
+#         await redis_services.create_indices_for_all_spaces_meta_and_schemas(
+#             for_space, for_schemas
+#         )
+#     loaded_data = await load_all_spaces_data_to_redis(for_space, for_subpaths)
+#     await initialize_spaces()
+#     await access_control.load_permissions_and_roles()
 
-    report = [
-        {"space_name": space_name, "index_data": index_data}
-        for space_name, index_data in loaded_data.items()
-    ]
+#     report = [
+#         {"space_name": space_name, "index_data": index_data}
+#         for space_name, index_data in loaded_data.items()
+#     ]
 
-    return api.Response(status=api.Status.success, attributes={"report": report})
+#     return api.Response(status=api.Status.success, attributes={"report": report})
 
 
 @router.get("/health/{space_name}", response_model_exclude_none=True)
