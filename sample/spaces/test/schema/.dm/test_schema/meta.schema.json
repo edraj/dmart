@@ -1,1 +1,0 @@
-{"uuid": "66c9fd4c-c870-47fb-9804-f839ab52c03d", "shortname": "test_schema", "is_active": false, "tags": [], "created_at": "2023-03-14T15:23:27.535307", "updated_at": "2023-03-14T15:23:27.535309", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "meta_schema", "checksum": "f572d828bdb058adaaaac1a68dccbd2da25107d8", "body": "test_schema.json"}}
