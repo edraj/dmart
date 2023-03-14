@@ -191,7 +191,7 @@ class RedisServices(object):
             return redis_schema_definition
 
         if "type" in property and property["type"] != "object":
-            if property["type"] in ["null", "boolean"]:
+            if property["type"] in ["null", "boolean"] or type(property["type"]) != str:
                 return redis_schema_definition
 
             property_name = key_chain.replace(".", "_")
