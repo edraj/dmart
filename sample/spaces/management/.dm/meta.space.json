@@ -16,9 +16,6 @@
   "active_plugins": [
     "action_log",
     "update_access_controls",
-    "system_notification_sender",
-    "admin_notification_sender",
-    "redis_db_update",
-    "reports_stats"
+    "redis_db_update"
   ]
 }

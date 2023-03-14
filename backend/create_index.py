@@ -75,7 +75,7 @@ def generate_redis_docs_process(locators: list):
 
 async def generate_redis_docs(locators: list) -> list:
     redis_docs = []
-    redis_man = await RedisServices()
+    redis_man : RedisServices = await RedisServices()
     for one in locators:
         try:
             myclass = getattr(sys.modules["models.core"], camel_case(one.type))

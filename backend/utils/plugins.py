@@ -134,7 +134,7 @@ class PluginManager:
                 try:
                     plugin_execution = plugin_model.object.hook(event)  # type: ignore
                     if isawaitable(plugin_execution):
-                        loop.create_task(plugin_execution)
+                        loop.create_task(plugin_execution)  # type: ignore
                 except Exception as e:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
@@ -157,7 +157,7 @@ class PluginManager:
                 try:
                     plugin_execution = plugin_model.object.hook(event)  # type: ignore
                     if isawaitable(plugin_execution):
-                        loop.create_task(plugin_execution)
+                        loop.create_task(plugin_execution)  # type: ignore
                 except Exception as e:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
