@@ -44,112 +44,289 @@ MANAGEMENT_BRANCH: str = settings.management_space_branch
 USERS_SUBPATH: str = "users"
 
 
-@router.post("/create", response_model=api.Response, response_model_exclude_none=True)
-async def create_user(record: core.Record) -> api.Response:
-    """Register a new user by invitation"""
-    if not record.attributes:
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50, message="Empty attributes"),
-        )
+# @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
+# async def create_user(record: core.Record) -> api.Response:
+#     """Register a new user by invitation"""
+#     if not record.attributes:
+#         raise api.Exception(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             error=api.Error(type="create", code=50, message="Empty attributes"),
+#         )
 
-    if "invitation" not in record.attributes:
-        # TBD validate invitation (simply it is a jwt signed token )
-        # jwt-signed shortname, email and expiration time
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="create", code=50, message="bad or missign invitation token"
-            ),
-        )
+#     if "invitation" not in record.attributes:
+#         # TBD validate invitation (simply it is a jwt signed token )
+#         # jwt-signed shortname, email and expiration time
+#         raise api.Exception(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             error=api.Error(
+#                 type="create", code=50, message="bad or missign invitation token"
+#             ),
+#         )
 
-    # TBD : Raise error if user already eists.
+#     # TBD : Raise error if user already eists.
 
-    if "password" not in record.attributes:
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50, message="empty password"),
-        )
-    if not re.match(rgx.PASSWORD, record.attributes["password"]):
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="jwtauth",
-                code=14,
-                message="password dose not match required rules",
-            ),
-        )
+#     if "password" not in record.attributes:
+#         raise api.Exception(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             error=api.Error(type="create", code=50, message="empty password"),
+#         )
+#     if not re.match(rgx.PASSWORD, record.attributes["password"]):
+#         raise api.Exception(
+#             status.HTTP_401_UNAUTHORIZED,
+#             api.Error(
+#                 type="jwtauth",
+#                 code=14,
+#                 message="password dose not match required rules",
+#             ),
+#         )
 
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=record.shortname,
-            action_type=core.ActionType.create,
-            resource_type=ResourceType.user,
-            user_shortname=record.shortname,
-        )
-    )
+#     await plugin_manager.before_action(
+#         core.Event(
+#             space_name=MANAGEMENT_SPACE,
+#             branch_name=MANAGEMENT_BRANCH,
+#             subpath=USERS_SUBPATH,
+#             shortname=record.shortname,
+#             action_type=core.ActionType.create,
+#             resource_type=ResourceType.user,
+#             user_shortname=record.shortname,
+#         )
+#     )
 
-    user = core.User.from_record(record=record, owner_shortname=record.shortname)
-    await validate_uniqueness(MANAGEMENT_SPACE, record)
+#     user = core.User.from_record(record=record, owner_shortname=record.shortname)
+#     await validate_uniqueness(MANAGEMENT_SPACE, record)
 
-    separate_payload_data = {}
-    if "payload" in record.attributes and "body" in record.attributes["payload"]:
-        schema_shortname = getattr(user.payload, "schema_shortname", None)
-        user.payload = core.Payload(
-            content_type=ContentType.json,
-            schema_shortname=schema_shortname,
-            body="",
-        )
-        if user.payload:
-            separate_payload_data = user.payload.body
-            user.payload.body = record.shortname + ".json"
+#     separate_payload_data = {}
+#     if "payload" in record.attributes and "body" in record.attributes["payload"]:
+#         schema_shortname = getattr(user.payload, "schema_shortname", None)
+#         user.payload = core.Payload(
+#             content_type=ContentType.json,
+#             schema_shortname=schema_shortname,
+#             body="",
+#         )
+#         if user.payload:
+#             separate_payload_data = user.payload.body
+#             user.payload.body = record.shortname + ".json"
 
-        if user.payload and separate_payload_data:
-            if not isinstance(separate_payload_data, str) and not isinstance(
-                separate_payload_data, Path
+#         if user.payload and separate_payload_data:
+#             if not isinstance(separate_payload_data, str) and not isinstance(
+#                 separate_payload_data, Path
+#             ):
+#                 if user.payload.schema_shortname:
+#                     await validate_payload_with_schema(
+#                         payload_data=separate_payload_data,
+#                         space_name=MANAGEMENT_SPACE,
+#                         branch_name=MANAGEMENT_BRANCH,
+#                         schema_shortname=user.payload.schema_shortname,
+#                     )
+
+#     await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user, MANAGEMENT_BRANCH)
+
+#     if separate_payload_data and isinstance(separate_payload_data, dict):
+#         await db.save_payload_from_json(
+#             MANAGEMENT_SPACE,
+#             USERS_SUBPATH,
+#             user,
+#             separate_payload_data,
+#             MANAGEMENT_BRANCH,
+#         )
+#     async with RedisServices() as redis_services:
+#         await redis_services.save_meta_doc(
+#             space_name=MANAGEMENT_SPACE,
+#             branch_name=MANAGEMENT_BRANCH,
+#             subpath=USERS_SUBPATH,
+#             meta=user,
+#         )
+
+#     await plugin_manager.after_action(
+#         core.Event(
+#             space_name=MANAGEMENT_SPACE,
+#             branch_name=MANAGEMENT_BRANCH,
+#             subpath=USERS_SUBPATH,
+#             shortname=record.shortname,
+#             action_type=core.ActionType.create,
+#             resource_type=ResourceType.user,
+#             user_shortname=record.shortname,
+#         )
+#     )
+
+#     return api.Response(status=api.Status.success)
+
+
+@router.post(
+    "/login",
+    response_model=api.Response,
+    response_model_exclude_none=True,
+)
+async def login(response: Response, request: UserLoginRequest) -> api.Response:
+    """Login and generate refresh token"""
+
+    shortname = ""
+    user = None
+    identifier = request.check_fields()
+    try:
+        if request.invitation:
+            async with RedisServices() as redis_services:
+                invitation_token = await redis_services.getdel(
+                    f"users:login:invitation:{request.invitation}"
+                )
+            if not invitation_token:
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(type="jwtauth", code=12, message="Invalid invitation"),
+                )
+
+            data = decode_jwt(request.invitation)
+            shortname = data.get("shortname", None)
+            if shortname is None:
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(type="jwtauth", code=12, message="Invalid invitation"),
+                )
+            user = await db.load(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                class_type=core.User,
+                user_shortname=shortname,
+                branch_name=MANAGEMENT_BRANCH,
+            )
+
+            old_version_flattend = flatten_dict(user.dict())
+            if (
+                data.get("channel") == "EMAIL"
+                and user.email
+                and f"EMAIL:{user.email}" in invitation_token
             ):
-                if user.payload.schema_shortname:
-                    await validate_payload_with_schema(
-                        payload_data=separate_payload_data,
+                user.is_email_verified = True
+            elif (
+                data.get("channel") == "SMS"
+                and user.msisdn
+                and f"SMS:{user.msisdn}" in invitation_token
+            ):
+                user.is_msisdn_verified = True
+            await db.update(
+                MANAGEMENT_SPACE,
+                USERS_SUBPATH,
+                user,
+                old_version_flattend,
+                flatten_dict(user.dict()),
+                ["is_email_verified", "is_msisdn_verified"],
+                MANAGEMENT_BRANCH,
+                shortname,
+            )
+        else:
+            if request.password and not re.match(rgx.PASSWORD, request.password):
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="jwtauth",
+                        code=14,
+                        message="password dose not match required rules",
+                    ),
+                )
+            if identifier is None:
+                raise api.Exception(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    api.Error(
+                        type="request", code=422, message="Something went wrong [2]"
+                    ),
+                )
+
+            if "shortname" in identifier:
+                shortname = identifier["shortname"]
+                user = await db.load(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=identifier["shortname"],
+                    class_type=core.User,
+                    user_shortname=identifier["shortname"],
+                    branch_name=MANAGEMENT_BRANCH,
+                )
+            else:
+                key, value = list(identifier.items())[0]
+                shortname = await access_control.get_user_by_criteria(key, value)
+                if shortname is None:
+                    raise api.Exception(
+                        status.HTTP_401_UNAUTHORIZED,
+                        api.Error(
+                            type="auth",
+                            code=10,
+                            message=f"Invalid username or password [1] {key=} {value=}",
+                        ),
+                    )
+                user = await db.load(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    class_type=core.User,
+                    user_shortname=shortname,
+                    branch_name=MANAGEMENT_BRANCH,
+                )
+        #! TODO: Implement check agains is_email_verified && is_msisdn_verified
+        if user and user.is_active and (
+            request.invitation
+            or password_hashing.verify_password(
+                request.password or "", user.password or ""
+            )
+        ):
+            access_token = sign_jwt(
+                {"username": shortname}, settings.jwt_access_expires
+            )
+            response.set_cookie(
+                value=access_token,
+                max_age=settings.jwt_access_expires,
+                **cookie_options,
+            )
+            record = core.Record(
+                resource_type=core.ResourceType.user,
+                subpath="users",
+                shortname=shortname,
+                attributes={
+                    "access_token": access_token,
+                    "type": user.type,
+                },
+            )
+            if user.displayname:
+                record.attributes["displayname"] = user.displayname
+
+            if request.firebase_token:
+                user.firebase_token = request.firebase_token
+                await db.update(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    meta=user,
+                    old_version_flattend=flatten_dict(user.dict()),
+                    new_version_flattend=flatten_dict(
+                        {"firebase_token": request.firebase_token}
+                    ),
+                    updated_attributes_flattend=["firebase_token"],
+                    branch_name=MANAGEMENT_BRANCH,
+                    user_shortname=shortname,
+                )
+                await plugin_manager.after_action(
+                    core.Event(
                         space_name=MANAGEMENT_SPACE,
                         branch_name=MANAGEMENT_BRANCH,
-                        schema_shortname=user.payload.schema_shortname,
+                        subpath=USERS_SUBPATH,
+                        shortname=shortname,
+                        action_type=core.ActionType.update,
+                        resource_type=ResourceType.user,
+                        user_shortname=shortname,
                     )
-
-    await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user, MANAGEMENT_BRANCH)
-
-    if separate_payload_data and isinstance(separate_payload_data, dict):
-        await db.save_payload_from_json(
-            MANAGEMENT_SPACE,
-            USERS_SUBPATH,
-            user,
-            separate_payload_data,
-            MANAGEMENT_BRANCH,
+                )
+            return api.Response(status=api.Status.success, records=[record])
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(type="auth", code=14, message="Invalid username or password [2]"),
         )
-    async with RedisServices() as redis_services:
-        await redis_services.save_meta_doc(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            meta=user,
-        )
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=record.shortname,
-            action_type=core.ActionType.create,
-            resource_type=ResourceType.user,
-            user_shortname=record.shortname,
-        )
-    )
-
-    return api.Response(status=api.Status.success)
+    except api.Exception as e:
+        if e.error.type == "db":
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(type="auth", code=14, message="Invalid username or password [3]", info=[{"details":str(e)}]),
+            )
+        else:
+            raise e
 
 
 @router.get("/profile", response_model=api.Response, response_model_exclude_none=True)
@@ -416,184 +593,6 @@ async def logout(
     response.set_cookie(value="", max_age=0, **cookie_options)
 
     return api.Response(status=api.Status.success, records=[])
-
-
-@router.post(
-    "/login",
-    response_model=api.Response,
-    response_model_exclude_none=True,
-)
-async def login(response: Response, request: UserLoginRequest) -> api.Response:
-    """Login and generate refresh token"""
-
-    shortname = ""
-    user = None
-    identifier = request.check_fields()
-    try:
-        if request.invitation:
-            async with RedisServices() as redis_services:
-                invitation_token = await redis_services.getdel(
-                    f"users:login:invitation:{request.invitation}"
-                )
-            if not invitation_token:
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(type="jwtauth", code=12, message="Invalid invitation"),
-                )
-
-            data = decode_jwt(request.invitation)
-            shortname = data.get("shortname", None)
-            if shortname is None:
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(type="jwtauth", code=12, message="Invalid invitation"),
-                )
-            user = await db.load(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                class_type=core.User,
-                user_shortname=shortname,
-                branch_name=MANAGEMENT_BRANCH,
-            )
-
-            old_version_flattend = flatten_dict(user.dict())
-            if (
-                data.get("channel") == "EMAIL"
-                and user.email
-                and f"EMAIL:{user.email}" in invitation_token
-            ):
-                user.is_email_verified = True
-            elif (
-                data.get("channel") == "SMS"
-                and user.msisdn
-                and f"SMS:{user.msisdn}" in invitation_token
-            ):
-                user.is_msisdn_verified = True
-            await db.update(
-                MANAGEMENT_SPACE,
-                USERS_SUBPATH,
-                user,
-                old_version_flattend,
-                flatten_dict(user.dict()),
-                ["is_email_verified", "is_msisdn_verified"],
-                MANAGEMENT_BRANCH,
-                shortname,
-            )
-        else:
-            if request.password and not re.match(rgx.PASSWORD, request.password):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="jwtauth",
-                        code=14,
-                        message="password dose not match required rules",
-                    ),
-                )
-            if identifier is None:
-                raise api.Exception(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    api.Error(
-                        type="request", code=422, message="Something went wrong [2]"
-                    ),
-                )
-
-            if "shortname" in identifier:
-                shortname = identifier["shortname"]
-                user = await db.load(
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    shortname=identifier["shortname"],
-                    class_type=core.User,
-                    user_shortname=identifier["shortname"],
-                    branch_name=MANAGEMENT_BRANCH,
-                )
-            else:
-                key, value = list(identifier.items())[0]
-                shortname = await access_control.get_user_by_criteria(key, value)
-                if shortname is None:
-                    raise api.Exception(
-                        status.HTTP_401_UNAUTHORIZED,
-                        api.Error(
-                            type="auth",
-                            code=10,
-                            message=f"Invalid username or password [1] {key=} {value=}",
-                        ),
-                    )
-                user = await db.load(
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    shortname=shortname,
-                    class_type=core.User,
-                    user_shortname=shortname,
-                    branch_name=MANAGEMENT_BRANCH,
-                )
-        #! TODO: Implement check agains is_email_verified && is_msisdn_verified
-        if user and user.is_active and (
-            request.invitation
-            or password_hashing.verify_password(
-                request.password or "", user.password or ""
-            )
-        ):
-            access_token = sign_jwt(
-                {"username": shortname}, settings.jwt_access_expires
-            )
-            response.set_cookie(
-                value=access_token,
-                max_age=settings.jwt_access_expires,
-                **cookie_options,
-            )
-            record = core.Record(
-                resource_type=core.ResourceType.user,
-                subpath="users",
-                shortname=shortname,
-                attributes={
-                    "access_token": access_token,
-                    "type": user.type,
-                },
-            )
-            if user.displayname:
-                record.attributes["displayname"] = user.displayname
-
-            if request.firebase_token:
-                user.firebase_token = request.firebase_token
-                await db.update(
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    meta=user,
-                    old_version_flattend=flatten_dict(user.dict()),
-                    new_version_flattend=flatten_dict(
-                        {"firebase_token": request.firebase_token}
-                    ),
-                    updated_attributes_flattend=["firebase_token"],
-                    branch_name=MANAGEMENT_BRANCH,
-                    user_shortname=shortname,
-                )
-                await plugin_manager.after_action(
-                    core.Event(
-                        space_name=MANAGEMENT_SPACE,
-                        branch_name=MANAGEMENT_BRANCH,
-                        subpath=USERS_SUBPATH,
-                        shortname=shortname,
-                        action_type=core.ActionType.update,
-                        resource_type=ResourceType.user,
-                        user_shortname=shortname,
-                    )
-                )
-            return api.Response(status=api.Status.success, records=[record])
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="auth", code=14, message="Invalid username or password [2]"),
-        )
-    except api.Exception as e:
-        raise e
-        if e.error.type == "db":
-            raise api.Exception(
-                status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="auth", code=14, message="Invalid username or password [3]"),
-            )
-        else:
-            raise e
 
 
 @router.post("/delete", response_model=api.Response, response_model_exclude_none=True)
