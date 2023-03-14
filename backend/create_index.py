@@ -131,9 +131,8 @@ async def generate_redis_docs(locators: list) -> list:
             print("stacktrace:")
             print(f"    {traceback.format_exc()}")
             pass
-        finally: 
-            if redis_man: 
-                del redis_man
+        
+    del redis_man
 
     return redis_docs
 
