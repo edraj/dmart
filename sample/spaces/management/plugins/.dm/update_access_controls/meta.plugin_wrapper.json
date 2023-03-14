@@ -1,0 +1,17 @@
+{
+	"uuid": "5ba3fc40-aee3-4ed1-9937-12a526b72ca0",
+	"shortname": "update_access_controls",
+	"is_active": true,
+	"filters": {
+		"subpaths": ["roles", "groups", "permissions", "users"],
+		"resource_types": ["group", "role", "permission", "user"],
+		"schema_shortnames": ["__ALL__"],
+		"actions": ["create", "update", "delete"]
+	},
+	"type": "hook",
+	"listen_time": "after",
+	"created_at": "2022-08-11T11:27:28.866048",
+	"updated_at": "2022-08-11T11:27:28.866052",
+	"owner_shortname": "dmart",
+	"payload": { "content_type": "python", "body": "update_access_controls.py" }
+}

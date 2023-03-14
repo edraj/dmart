@@ -1,0 +1,10 @@
+{
+  "resource_type": "schema",
+  "subpath": "schema",
+  "shortname": "ticket_workflows",
+  "attributes": {   "payload": {
+    "content_type": "json",
+    "body": "workflow_schema.json"} }
+
+
+}

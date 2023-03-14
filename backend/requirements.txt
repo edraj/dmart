@@ -1,0 +1,17 @@
+python-json-logger
+json_logging
+fastapi
+pydantic
+pydantic[email,dotenv]
+concurrent-log-handler
+hypercorn
+pyjwt
+redis
+aiofiles
+aiohttp
+python-multipart
+jsonschema
+email-validator
+passlib[bcrypt]
+jq
+segno

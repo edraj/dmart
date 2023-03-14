@@ -1,0 +1,12 @@
+[Unit]
+Description=DMART websocket service
+After=network.target
+
+[Service]
+WorkingDirectory=%h/dmart/backend
+ExecStart=%h/dmart/backend/websocket.py
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target

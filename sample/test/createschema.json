@@ -1,0 +1,8 @@
+{
+  "resource_type": "schema",
+  "subpath": "schema",
+  "shortname": "test_schema",
+  "attributes": {  "payload": {
+    "content_type": "json",
+    "body": "schema.json"} }
+}

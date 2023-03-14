@@ -1,0 +1,7 @@
+url = "http://localhost:8282"
+shortname = "dmart"
+password = "xxxx"
+query_limit = 50
+retrieve_json_payload = True
+default_space = "management"
+pagination = 50

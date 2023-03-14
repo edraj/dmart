@@ -1,0 +1,9 @@
+{
+  "resource_type": "content",
+  "subpath": "content",
+  "shortname": "buyer_123",
+  "attributes": { 
+    "content_type": "json",
+    "schema_shortname": "test_schema",
+    "tags": ["fun", "personal"] }
+}

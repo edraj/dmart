@@ -1,0 +1,18 @@
+{
+  "uuid": "5015d24a-7171-44e5-9dec-006e1a5be203",
+  "shortname": "logged_in",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2022-09-23T06:48:07.756547",
+  "updated_at": "2022-09-23T06:48:07.756551",
+  "owner_shortname": "dmart",
+  "permissions": [
+    "view_collections",
+    "access_personal",
+    "access_protected",
+    "access_public",
+    "access_inbox",
+ "create_log",
+ "view_workflows"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "shortname": "management",
+  "owner_shortname": "soheyb",
+  "displayname": {"en":"Management", "ar":"Management", "kd":"Management"},
+  "description": {"en":"A management / sample space", "ar":"A managment / sample space", "kd":"A managment / sample space"},
+  "uuid": "69ab4e02-b9ce-41e4-ada4-1e0869ccdc8f",
+  "resource_type": "Space",
+  "languages": [
+    "english"
+  ],
+  "indexing_enabled": true,
+  "primary_website": "https://dmart.cc",
+  "mirrors": [],
+  "check_health": true,
+  "branches": [],
+  "active_plugins": [
+    "action_log",
+    "update_access_controls",
+    "system_notification_sender",
+    "admin_notification_sender",
+    "redis_db_update",
+    "reports_stats"
+  ]
+}

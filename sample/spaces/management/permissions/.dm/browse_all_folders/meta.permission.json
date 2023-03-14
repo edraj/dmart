@@ -1,0 +1,23 @@
+{
+  "uuid": "4baa4393-0fcb-4fbb-a824-35262a09553e",
+  "shortname": "browse_all_folders",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2022-10-07T14:48:22.074676",
+  "updated_at": "2022-10-07T14:48:22.074681",
+  "owner_shortname": "dmart",
+  "subpaths": {
+    "__all_spaces__": [
+      "__all_subpaths__"
+    ]
+  },
+  "resource_types": [
+    "folder",
+    "space"
+  ],
+  "actions": [
+    "query",
+    "view"
+  ],
+  "conditions": []
+}

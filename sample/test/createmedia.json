@@ -1,0 +1,9 @@
+{
+  "resource_type": "media",
+  "subpath": "content/buyer_123",
+  "shortname": "receipt",
+  "attributes": { 
+    "tags": ["fun", "personal"],
+    "is_active": true
+  }
+}

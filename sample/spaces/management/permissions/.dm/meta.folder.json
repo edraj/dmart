@@ -1,0 +1,19 @@
+{
+  "uuid": "e9686746-96e6-4c47-9c45-b1310c7927f2",
+  "shortname": "permissions",
+  "is_active": true,
+  "description": {
+    "en": "# Ambiguus persequar terra tum factum\n\n## Sua pro\n\nLorem markdownum tremescere lapsus. Frondes oculos testantia, auras montes\nconditaque subdita certamina levis, emergit amplectitur illam. Conripiantque te\nin id posses **utrumque considere possim**, lapsasque utilibus facto, Perseus\nrelinquit; torum dona substravit. Dextra sua Pyramus delapsam: more, sine\npressus *Laurentes in* pigris ausorum Nestor montis *Iphis sudor*, in.\n\nArbore omnia certe vocat **rota sed cornibus** Tenos haerent erat est\n**maesto**, dei! Usus cacumine rupit. Haec atque, inplet inde, suis celeres\n[inque](https://dmart.cc/frontend) renarrant ibitis.",
+    "ar": "# Ambiguus persequar terra tum factum\n\n## Sua pro\n\nLorem markdownum tremescere lapsus. Frondes oculos testantia, auras montes\nconditaque subdita certamina levis, emergit amplectitur illam. Conripiantque te\nin id posses **utrumque considere possim**, lapsasque utilibus facto, Perseus\nrelinquit; torum dona substravit. Dextra sua Pyramus delapsam: more, sine\npressus *Laurentes in* pigris ausorum Nestor montis *Iphis sudor*, in.\n\nArbore omnia certe vocat **rota sed cornibus** Tenos haerent erat est\n**maesto**, dei! Usus cacumine rupit. Haec atque, inplet inde, suis celeres\n[inque](https://dmart.cc/frontend) renarrant ibitis.",
+    "kd": "# Ambiguus persequar terra tum factum\n\n## Sua pro\n\nLorem markdownum tremescere lapsus. Frondes oculos testantia, auras montes\nconditaque subdita certamina levis, emergit amplectitur illam. Conripiantque te\nin id posses **utrumque considere possim**, lapsasque utilibus facto, Perseus\nrelinquit; torum dona substravit. Dextra sua Pyramus delapsam: more, sine\npressus *Laurentes in* pigris ausorum Nestor montis *Iphis sudor*, in.\n\nArbore omnia certe vocat **rota sed cornibus** Tenos haerent erat est\n**maesto**, dei! Usus cacumine rupit. Haec atque, inplet inde, suis celeres\n[inque](https://dmart.cc/frontend) renarrant ibitis."
+  },
+  "tags": [],
+  "created_at": "2022-08-23T07:44:36.399780",
+  "updated_at": "2022-12-26T09:50:03.571181",
+  "owner_shortname": "dmart",
+  "payload": {
+    "content_type": "json",
+    "schema_shortname": "folder_rendering",
+    "body": "permissions.json"
+  }
+}

@@ -1,0 +1,10 @@
+{
+	"uuid": "78cf196e-b09a-4cea-a91e-117b73eb88f5",
+	"shortname": "protected",
+	"is_active": true,
+	"tags": [],
+	"created_at": "2022-10-26T10:41:18.538676",
+	"updated_at": "2022-11-11T13:52:44.699793",
+	"owner_shortname": "dmart",
+	"payload": { "content_type": "text", "body": "folderrrrrr" }
+}

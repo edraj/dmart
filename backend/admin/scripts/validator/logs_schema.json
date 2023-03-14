@@ -1,0 +1,120 @@
+{
+  "title": "Logs",
+  "type": "object",
+  "properties": {
+    "written_at": {
+      "type": "string",
+      "description": "Written at date"
+    },
+    "written_ts": {
+      "type": "number",
+      "description": "Written at Date in Nanoseconds"
+    },
+    "msg": {
+      "type": "string",
+      "description": "Message of error"
+    },
+    "type": {
+      "type": "string",
+      "description": "type of info"
+    },
+    "logger": {
+      "type": "string",
+      "description": "logger name"
+    },
+    "thread": {
+      "type": "string",
+      "description": "thread type"
+    },
+    "level": {
+      "type": "string",
+      "description": "type of log"
+    },
+    "module": {
+      "type": "string",
+      "description": "type of module"
+    },
+    "line_no": {
+      "type": "integer",
+      "description": "line number"
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "start execution time"
+    },
+    "duration": {
+      "type": "number",
+      "description": "duration of execution time"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Correlation ID"
+    },
+    "msisdn": {
+      "type": "string",
+      "description": "phone number"
+    },
+    "http_status": {
+      "type": "integer"
+    },
+    "request": {
+      "type": "object",
+      "description": "request object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "verb": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "query_params": {
+          "type": "object",
+          "properties": {}
+        },
+        "headers": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "description": "response object",
+      "properties": {
+        "headers": {
+          "type": "object",
+          "properties": {}
+        },
+        "http_status": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "headers"
+      ]
+    },
+    "exception": {
+      "type": "object",
+      "properties": {},
+      "description": "exception stack trace"
+    }
+  },
+  "required": [
+    "written_at",
+    "written_ts",
+    "msg",
+    "type",
+    "logger",
+    "thread",
+    "level",
+    "module",
+    "line_no",
+    "correlation_id"
+  ]
+}

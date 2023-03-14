@@ -1,0 +1,23 @@
+{
+  "title": "Ticket Schema",
+  "description": "Ticket Schema description",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "assigne_shortname": {
+      "type": "string",
+      "title": "assigne_shortname",
+      "readOnly": true,
+      "default": "assigne_shortname"
+    },
+    "ticket_type": {
+      "title": "ticket_type",
+      "type": "string",
+      "enum": [
+        "code_change",
+        "story",
+        "devops"
+      ]
+    }
+  }
+}

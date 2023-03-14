@@ -1,0 +1,1 @@
+{"uuid": "5df6a2b0-a493-4664-bf94-ad0a56279a70", "shortname": "myworkflow", "is_active": true, "tags": [], "created_at": "2023-03-13T07:29:52.379125", "updated_at": "2023-03-13T07:29:52.379127", "owner_shortname": "dmart", "payload": {"content_type": "json", "checksum": "0bbfc9c2789753065e5cb359bc39ccad78189bb5", "body": "myworkflow.json"}}
