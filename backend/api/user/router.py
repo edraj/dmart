@@ -121,12 +121,12 @@ async def create_user(record: core.Record) -> api.Response:
 
     await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user, MANAGEMENT_BRANCH)
 
-    if separate_payload_data:
+    if separate_payload_data and isinstance(separate_payload_data, dict):
         await db.save_payload_from_json(
             MANAGEMENT_SPACE,
             USERS_SUBPATH,
             user,
-            separate_payload_data,  # type: ignore
+            separate_payload_data,
             MANAGEMENT_BRANCH,
         )
     async with RedisServices() as redis_services:
@@ -189,10 +189,10 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
             user.payload
             and user.payload.content_type
             and user.payload.content_type == ContentType.json
-            and (path / user.payload.body).is_file()  # type: ignore
+            and (path / str(user.payload.body)).is_file()
         ):
             async with aiofiles.open(
-                path / user.payload.body, "r"  # type: ignore
+                path / str(user.payload.body), "r"  
             ) as payload_file_content:
                 attributes["payload"].body = json.loads(
                     await payload_file_content.read()
@@ -355,7 +355,7 @@ async def update_profile(
                         payload_data=separate_payload_data,
                         space_name=MANAGEMENT_SPACE,
                         branch_name=MANAGEMENT_BRANCH,
-                        schema_shortname=user.payload.schema_shortname,  # type: ignore
+                        schema_shortname=str(user.payload.schema_shortname),  
                     )
 
             if separate_payload_data:
@@ -363,7 +363,7 @@ async def update_profile(
                     MANAGEMENT_SPACE,
                     USERS_SUBPATH,
                     user,
-                    separate_payload_data,  # type: ignore,
+                    separate_payload_data, 
                     MANAGEMENT_BRANCH,
                 )
 

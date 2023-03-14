@@ -1,10 +1,10 @@
 from contextvars import ContextVar
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.requests import Request
-
+from typing import Optional
 REQUEST_DATA_CTX_KEY = "request_data"
 
-_request_data_ctx_var: ContextVar[dict] = ContextVar(REQUEST_DATA_CTX_KEY, default=None) #type: ignore
+_request_data_ctx_var: ContextVar[dict] = ContextVar(REQUEST_DATA_CTX_KEY, default=Optional[dict])
 
 def get_request_data() -> dict:
     return _request_data_ctx_var.get()
