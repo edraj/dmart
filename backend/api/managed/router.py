@@ -542,7 +542,7 @@ async def serve_request(
                                 channel += f"SMS:{record.attributes.get('msisdn')},"
                                 try:
                                     await send_sms(
-                                        msisdn=record.attributes.get("msisdn"),  # type: ignore
+                                        msisdn=record.attributes.get("msisdn", ""),
                                         message=invitation_message,
                                     )
                                 except Exception as e:
@@ -576,7 +576,7 @@ async def serve_request(
                                 try:
                                     await send_email(
                                         from_address=settings.email_sender,
-                                        to_address=record.attributes.get("email"),  # type: ignore
+                                        to_address=record.attributes.get("email", ""),
                                         # message=f"Welcome, this is your invitation link: {invitation_link}",
                                         message=generate_email_from_template(
                                             "activation",
@@ -606,12 +606,12 @@ async def serve_request(
                                 f"users:login:invitation:{invitation_token}", channel
                             )
 
-                    if separate_payload_data != None:
+                    if separate_payload_data != None and isinstance(separate_payload_data, dict):
                         await db.save_payload_from_json(
                             request.space_name,
                             record.subpath,
                             resource_obj,
-                            separate_payload_data,  # type: ignore
+                            separate_payload_data,
                             record.branch_name,
                         )
 
@@ -1400,9 +1400,9 @@ async def create_or_update_resource_with_payload(
         )
 
     if resource_obj.shortname == settings.auto_uuid_rule:
-        resource_obj.uuid = str(uuid4())  # type: ignore
-        resource_obj.shortname = resource_obj.uuid[:8]
-        resource_obj.payload.body = f"{resource_obj.uuid[:8]}.json"
+        resource_obj.uuid = uuid4()
+        resource_obj.shortname = str(resource_obj.uuid)[:8]
+        resource_obj.payload.body = f"{str(resource_obj.uuid)[:8]}.json"
 
     if (
         resource_content_type == ContentType.json
@@ -1457,7 +1457,7 @@ async def import_resources_from_csv(
 ):
 
     contents = await resources_file.read()
-    decoded = contents.decode()  # type: ignore
+    decoded = contents.decode()
     buffer = StringIO(decoded)
     csv_reader = csv.DictReader(buffer)
 
@@ -1941,7 +1941,7 @@ async def execute(
     if (
         meta.payload is None
         or type(meta.payload.body) != str
-        or not meta.payload.body.endswith(".json")  # type: ignore
+        or not str(meta.payload.body).endswith(".json")
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -1953,7 +1953,7 @@ async def execute(
     query_dict = db.load_resource_payload(
         space_name=space_name,
         subpath=record.subpath,
-        filename=meta.payload.body,  # type: ignore
+        filename=str(meta.payload.body),
         class_type=core.Content,
         branch_name=branch_name,
     )

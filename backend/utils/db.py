@@ -9,7 +9,7 @@ from utils.middleware import get_request_data
 from utils.redis_services import RedisServices
 from utils.settings import settings
 import models.core as core
-from typing import TypeVar, Type
+from typing import TypeVar, Type, Any
 import models.api as api
 import os
 import json
@@ -307,7 +307,7 @@ async def save_payload_from_json(
     space_name: str,
     subpath: str,
     meta: core.Meta,
-    payload_data: dict,
+    payload_data: dict[str, Any],
     branch_name: str | None = settings.default_branch,
 ):
     path, filename = metapath(
@@ -316,10 +316,10 @@ async def save_payload_from_json(
         meta.shortname,
         meta.__class__,
         branch_name,
-        meta.payload.schema_shortname,  # type: ignore
+        meta.payload.schema_shortname if meta.payload else None,
     )
     payload_file_path = payload_path(
-        space_name, subpath, meta.__class__, branch_name, meta.payload.schema_shortname  # type: ignore
+        space_name, subpath, meta.__class__, branch_name, meta.payload.schema_shortname if meta.payload else None
     )
 
     payload_filename = f"{meta.shortname}.json"

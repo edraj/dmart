@@ -319,10 +319,23 @@ class Ticket(Meta):
     collaborators: dict[str, str] | None = None  # list[Collabolator] | None = None
     resolution_reason: str | None = None
 
+class Event(BaseModel):
+    space_name: str
+    branch_name: str | None = Field(
+        default=settings.default_branch, regex=regex.SHORTNAME
+    )
+    subpath: str = Field(regex=regex.SUBPATH)
+    shortname: str | None = Field(default=None, regex=regex.SHORTNAME)
+    action_type: ActionType
+    resource_type: ResourceType | None = None
+    schema_shortname: str | None = None
+    attributes: dict = {}
+    user_shortname: str
+
 
 class PluginBase(ABC):
     @abstractmethod
-    def hook(self):
+    def hook(self, data: Event):
         pass
 
 
@@ -340,19 +353,6 @@ class PluginWrapper(Meta):
     ordinal: int = 9999
     object: PluginBase | None = None
 
-
-class Event(BaseModel):
-    space_name: str
-    branch_name: str | None = Field(
-        default=settings.default_branch, regex=regex.SHORTNAME
-    )
-    subpath: str = Field(regex=regex.SUBPATH)
-    shortname: str | None = Field(default=None, regex=regex.SHORTNAME)
-    action_type: ActionType
-    resource_type: ResourceType | None = None
-    schema_shortname: str | None = None
-    attributes: dict = {}
-    user_shortname: str
 
 
 class Notification(Meta):
