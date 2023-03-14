@@ -197,7 +197,7 @@ class RedisServices(object):
             property_name = key_chain.replace(".", "_")
             sortable = True
 
-            # Don't index array of json object
+
             if (
                 property["type"] == "array"
                 and property.get("items", {}).get("type", None) == "object"
@@ -414,10 +414,10 @@ class RedisServices(object):
                         as_name="collaborators_delivered_by",
                     ),
                     TextField(
-                        "$.collaborators.locked_by",
+                        "$.collaborators.processed_by",
                         sortable=True,
                         no_stem=True,
-                        as_name="collaborators_locked_by",
+                        as_name="collaborators_processed_by",
                     ),
                     TextField(
                         "$.resolution_reason",

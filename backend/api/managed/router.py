@@ -1819,8 +1819,8 @@ async def lock_entry(
             user_shortname=logged_in_user,
         )
         meta.collaborators = meta.collaborators if meta.collaborators else {}
-        if meta.collaborators.get("locked_by") != logged_in_user:
-            meta.collaborators["locked_by"] = logged_in_user
+        if meta.collaborators.get("processed_by") != logged_in_user:
+            meta.collaborators["processed_by"] = logged_in_user
             request = api.Request(
                 space_name=space_name,
                 request_type=api.RequestType.update,
