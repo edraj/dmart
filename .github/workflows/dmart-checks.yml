@@ -19,7 +19,8 @@ jobs:
     - name: Install dependencies
       run: |
         pip install --user pyright
-        pip install --user -r backend/requirements.txt backend/test-requirements.txt
+        pip install --user -r backend/requirements.txt
+        pip install --user -r backend/test-requirements.txt
     - name: Lint with pyright
       run: |
         pyright backend/
