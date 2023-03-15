@@ -127,15 +127,78 @@ With this scheme, only proper entry main payload files appear to the user. All m
 
 ```bash
 git clone https://github.com/edraj/dmart.git
-cd dmart/backend
+
+cd dmart 
+
+# Make logs folder
+mkdir logs
 
 # Copy sample spaces structure
-cp ../sample/spaces ../../
+cp sample/spaces ../
+
+
+cd backend
 
 # Install python modules
 pip install --user -r requirements.txt
 
+# Optionally, fine-tune your configuration
+cp config.env.sample config.env
+
 # Start DMART microservice
 ./main.py
 
+
+# Optionally: check admin folder for systemd scripts
+
 ```
+
+### Automated testing
+
+#### Installing python dependencies
+
+```bash
+pip install --user -r test-requirements.txt
+```
+
+#### Running
+
+```bash
+cd backend
+./curl.sh
+pytest
+```
+
+<img src="./docs/curl-test.png" width="350">
+<img src="./docs/pytest.png" width="450">
+
+
+
+### Using the command line tool
+
+DMART comes with a command line tool that can run from anywhere. It communicates with DMART over the api.
+
+```bash
+cd cli
+
+# Create config.ini with proper access details (url, credentials ...etc)
+cp config.ini.sample config.ini
+
+# Install additional packages
+pip install --user  -r requirements.txt
+
+# Start the cli tool
+./cli.py
+```
+
+<img src="./docs/cli" width="350">
+
+
+
+## Coming soon ...
+
+
+### Mobile app skeleton (based on SvelteNative and NativeScript)
+
+### Web app skeleton (based on Svelte)
+
