@@ -1,11 +1,12 @@
 import asyncio
-from inspect import isawaitable
+from inspect import iscoroutine
 import os
 from pathlib import Path
 import aiofiles
 from models.core import (
     ActionType,
     PluginWrapper,
+    PluginBase,
     Event,
     EventFilter,
     EventListenTime,
@@ -54,10 +55,10 @@ class PluginManager:
                 module_name = f"plugins.{plugin_wrapper.shortname}"
                 core_plugin_specs = find_spec(module_name)
 
-                if core_plugin_specs:
+                if core_plugin_specs and core_plugin_specs.loader:
                     module = module_from_spec(core_plugin_specs)
                     sys.modules[module_name] = module
-                    core_plugin_specs.loader.exec_module(module)  # type: ignore
+                    core_plugin_specs.loader.exec_module(module)
                     plugin_wrapper.object = module.Plugin()
                 else:
                     plugin_wrapper.object = import_module(
@@ -132,9 +133,11 @@ class PluginManager:
                 and self.matched_filters(plugin_model.filters, event)
             ):
                 try:
-                    plugin_execution = plugin_model.object.hook(event)  # type: ignore
-                    if isawaitable(plugin_execution):
-                        loop.create_task(plugin_execution)
+                    object = plugin_model.object
+                    if isinstance(object, PluginBase):
+                        plugin_execution = object.hook(event)
+                        if iscoroutine(plugin_execution):
+                            loop.create_task(plugin_execution)
                 except Exception as e:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
@@ -155,9 +158,11 @@ class PluginManager:
                 and self.matched_filters(plugin_model.filters, event)
             ):
                 try:
-                    plugin_execution = plugin_model.object.hook(event)  # type: ignore
-                    if isawaitable(plugin_execution):
-                        loop.create_task(plugin_execution)
+                    object = plugin_model.object
+                    if isinstance(object, PluginBase):
+                        plugin_execution = object.hook(event)
+                        if iscoroutine(plugin_execution):
+                            loop.create_task(plugin_execution)
                 except Exception as e:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 

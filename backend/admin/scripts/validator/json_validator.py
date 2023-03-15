@@ -4,6 +4,7 @@ import os
 import sys
 
 import jsonschema
+import jsonschema.exceptions
 import argparse
 from rich.console import Console
 from rich.progress import Progress
@@ -47,7 +48,7 @@ class SchemaValidator:
     def validate_row(self, json_row: dict):
         try:
             jsonschema.validate(instance=json_row, schema=self.schema)
-        except jsonschema.exceptions.ValidationError as error:  # type: ignore
+        except jsonschema.exceptions.ValidationError as error: 
             return error.message
         return None
 

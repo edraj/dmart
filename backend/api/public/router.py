@@ -365,12 +365,13 @@ async def create_entry(
         ),
     )
 
-    await validate_payload_with_schema(
-        payload_data=body_dict,
-        space_name=space_name,
-        branch_name=branch_name or settings.default_branch,
-        schema_shortname=content_obj.payload.schema_shortname, #type: ignore
-    )
+    if content_obj.payload and content_obj.payload.schema_shortname:
+        await validate_payload_with_schema(
+            payload_data=body_dict,
+            space_name=space_name,
+            branch_name=branch_name or settings.default_branch,
+            schema_shortname=content_obj.payload.schema_shortname,
+        )
 
     await db.save(space_name, subpath, content_obj, branch_name)
     await db.save_payload_from_json(
@@ -395,7 +396,7 @@ async def create_entry(
 
 
 @router.post("/excute/{task_type}/{space_name}")
-async def excute(space_name: str, task_type: TaskType, record: core.Record):
+async def excute(space_name: str, _: TaskType, record: core.Record):
     meta = await db.load(
         space_name=space_name,
         subpath=record.subpath,
@@ -408,7 +409,7 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
     if (
         meta.payload is None
         or type(meta.payload.body) != str
-        or not meta.payload.body.endswith(".json")  # type: ignore
+        or not str(meta.payload.body).endswith(".json")
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -420,7 +421,7 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
     query_dict = db.load_resource_payload(
         space_name=space_name,
         subpath=record.subpath,
-        filename=meta.payload.body,  # type: ignore
+        filename=str(meta.payload.body),
         class_type=core.Content,
         branch_name=record.branch_name,
     )

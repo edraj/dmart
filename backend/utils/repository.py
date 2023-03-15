@@ -21,7 +21,7 @@ from fastapi.logger import logger
 from utils.helpers import branch_path, camel_case, snake_case
 from utils.custom_validations import validate_payload_with_schema
 import subprocess
-from redis.commands.search.document import Document as RedisDocument #type: ignore
+from redis.commands.search.document import Document as RedisDocument
 
 
 async def serve_query(
@@ -410,9 +410,9 @@ async def serve_query(
                     and query.sort_type == api.SortType.descending
                 )
                 if query.sort_by in core.Record.__fields__:
-                    records = sorted(records, key=lambda record: record.__getattribute__(query.sort_by), reverse=sort_reverse)  # type: ignore
+                    records = sorted(records, key=lambda record: record.__getattribute__(str(query.sort_by)), reverse=sort_reverse)
                 else:
-                    records = sorted(records, key=lambda record: record.attributes[query.sort_by], reverse=sort_reverse)  # type: ignore
+                    records = sorted(records, key=lambda record: record.attributes[str(query.sort_by)], reverse=sort_reverse)
 
         case api.QueryType.counters:
             if not await access_control.check_access(
@@ -871,12 +871,13 @@ async def validate_subpath_data(
                     core.Folder,
                     branch_name,
                 )
-                await validate_payload_with_schema(
-                    payload_data=folder_meta_payload,
-                    space_name=space_name,
-                    branch_name=branch_name or settings.default_branch,
-                    schema_shortname=folder_meta_content.payload.schema_shortname, #type: ignore
-                )
+                if folder_meta_content.payload.schema_shortname:
+                    await validate_payload_with_schema(
+                        payload_data=folder_meta_payload,
+                        space_name=space_name,
+                        branch_name=branch_name or settings.default_branch,
+                        schema_shortname=folder_meta_content.payload.schema_shortname, 
+                    )
         except:
             invalid_folders.append(folder_name)
             validation_status = ValidationEnum.invalid
