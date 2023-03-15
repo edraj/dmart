@@ -199,7 +199,7 @@
   }
 </script>
 
-<Modal isOpen={open} {toggle} {size}>
+<Modal isOpen={open} {toggle} size={"lg"}>
   <ModalHeader>
     {#if data}
       {$_("edit")}
