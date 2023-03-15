@@ -1,0 +1,28 @@
+name: DMART App checks
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: i7
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: |
+        pip install --user pyright
+        pip install --user -r backend/requirements.txt backend/test-requirements.txt
+    - name: Lint with pyright
+      run: |
+        pyright backend/
+    - name: Test with pytest
+      run: |
+        cd backend; pytest
