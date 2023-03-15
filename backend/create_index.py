@@ -75,7 +75,7 @@ def generate_redis_docs_process(locators: list):
 
 async def generate_redis_docs(locators: list) -> list:
     redis_docs = []
-    redis_man = await RedisServices()
+    redis_man : RedisServices = await RedisServices()
     for one in locators:
         try:
             myclass = getattr(sys.modules["models.core"], camel_case(one.type))
@@ -131,9 +131,8 @@ async def generate_redis_docs(locators: list) -> list:
             print("stacktrace:")
             print(f"    {traceback.format_exc()}")
             pass
-        finally: 
-            if redis_man: 
-                del redis_man
+        
+    del redis_man
 
     return redis_docs
 

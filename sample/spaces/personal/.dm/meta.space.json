@@ -17,8 +17,6 @@
   "hide_space": true,
   "active_plugins": [
     "action_log",
-    "redis_db_update",
-    "system_notification_sender",
-    "reports_stats"
+    "redis_db_update"
   ]
 }
