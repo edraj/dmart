@@ -26,7 +26,8 @@ Valuable information (organizational and individual) is getting out of control!
 - **Microservice friendly** : Leveraging JWT shared secret, additional microservices can automatically leverage the user's session with dmart. There is also a compatible FastApi skeleton git repository to facilitate the development of additional microservices.
 - **Extensible via plugins** : Specialized logic (plugins) can be added to react to certain types of activities and content.
 - **Entry-oriented** : As opposed to document-oriented NoSQL, entry-orientation revolves around consolidating the coherent information unit alongside its belongings (known as "attachments" that can involve textual and/or binary) as one entry. 
-- **Tasks and workflows** : Configurable task (ticket) and workflow management. 
+- **Activities and workflows** : Configurable activity (ticket) and workflow management. 
+- **Messaging and notifications** : Ability to trigger different types of notifications and ability to store user messages.
 
 <img src="./docs/data-mart.jpg" width="500">
 
@@ -58,7 +59,9 @@ Full OpenApi 3 compliant documentation can be found [here](https://dmart.cc/docs
 <img src="./docs/backend.png" width="650"> 
 
   - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files. 
-  - Python 3.11 with emphasis on asyncio and type hinting
+  - Python 3.11 with emphasis on 
+    - asyncio : maximizing scalability and leverage of server resources and enabling background jobs (post api service time).
+    - type hinting and strengent linting (pyright).
   - FastAPI as the api micro-framework (based on our _curated_ fastapi skeleton) and full leverage of Pydantic and OpenApi version 3. 
   - Hypercorn (runner server)
   - Redis as the operational data store. With sepecific leverage of RediSearch RedisJSON modules.
