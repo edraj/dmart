@@ -20,7 +20,6 @@ jobs:
       run: |
         pip install --user pyright
         pip install --user -r backend/requirements.txt
-        pip install --user -r backend/test-requirements.txt
         mkdir logs/
         cp ~/login_creds.sh backend/
         cp ~/config.env backend/
