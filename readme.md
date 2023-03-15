@@ -169,7 +169,7 @@ cd backend
 pytest
 ```
 
-<img src="./docs/curl-test.png" width="350">
+<img src="./docs/curl-test.png" width="300">
 <img src="./docs/pytest.png" width="450">
 
 
@@ -191,7 +191,7 @@ pip install --user  -r requirements.txt
 ./cli.py
 ```
 
-<img src="./docs/cli.png" width="350">
+<img src="./docs/cli.png" width="450">
 
 
 
