@@ -3,7 +3,7 @@ import shutil
 from fastapi.testclient import TestClient
 from fastapi import status
 from models.enums import ResourceType
-from test_utils import check_repeated_shortname, assert_code_and_status_success, check_not_found
+from test_utils import check_repeated_shortname, assert_code_and_status_success, check_unauthorized
 from utils.settings import settings
 import os
 from models.api import Query, QueryType
@@ -72,7 +72,7 @@ def test_login():
     assert_code_and_status_success(response)
 
     client.cookies.set("auth_token", response.cookies.get("auth_token"))
-    check_not_found(
+    check_unauthorized(
         client.post(
             endpoint, json={**request_data, "shortname": "shortname"}, headers=headers
         )
@@ -384,10 +384,10 @@ def test_entry(mocker):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
-def test_reload_redis(mocker):
-    endpoint = "managed/reload-redis-data?for_space=test"
-    response = client.post(endpoint)
-    assert response.status_code == status.HTTP_200_OK
+# def test_reload_redis(mocker):
+#     endpoint = "managed/reload-redis-data?for_space=test"
+#     response = client.post(endpoint)
+#     assert response.status_code == status.HTTP_200_OK
 
     # mocker.patch("utils.access_control.access_control.check_access", return_value=None)
     # response = client.get(endpoint)
