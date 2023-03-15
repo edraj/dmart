@@ -191,7 +191,7 @@ pip install --user  -r requirements.txt
 ./cli.py
 ```
 
-<img src="./docs/cli" width="350">
+<img src="./docs/cli.png" width="350">
 
 
 
