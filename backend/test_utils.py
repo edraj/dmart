@@ -13,6 +13,12 @@ def check_not_found(response):
     assert "db" == response.json().get("error").get("type")
 
 
+def check_unauthorized(response):
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert "failed" == response.json().get("status")
+    assert "auth" == response.json().get("error", {}).get("type")
+
+
 def assert_code_and_status_success(response):
     if response.status_code != status.HTTP_200_OK:
         print(

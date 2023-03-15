@@ -6,7 +6,7 @@ import redis
 from fastapi.testclient import TestClient
 from fastapi import status
 
-from test_utils import assert_code_and_status_success, check_not_found
+from test_utils import assert_code_and_status_success, check_unauthorized
 # import test_managed as managed
 from utils.settings import settings
 
@@ -85,7 +85,7 @@ def test_login():
     endpoint = "/user/login"
     request_data = {"shortname": shortname, "password": password}
 
-    check_not_found(
+    check_unauthorized(
         client.post(
             endpoint, json={**request_data, "shortname": "not_found_shortname"}, headers=headers
         )
