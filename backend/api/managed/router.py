@@ -59,7 +59,7 @@ from api.user.service import (
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
 
-from backend.utils.pdf import generate_pdf_byte
+from utils.pdf import generate_pdf_byte
 
 router = APIRouter()
 
