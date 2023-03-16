@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import requests
 from uuid import uuid4
@@ -128,7 +129,7 @@ def translate_message_vars(message: str, entry: dict, locale: str):
             value = value[locale]
         if field in ["created_at", "updated_at"]:
             message = message.replace(
-                f"{{{field}}}", str(value.strftime("%Y-%m-%d %H:%M:%S"))
+                f"{{{field}}}", datetime.strptime(str(value), "%Y-%m-%dT%H:%M:%S.%f").strftime("%Y-%m-%d %H:%M:%S")
             )
         else:
             message = message.replace(f"{{{field}}}", str(value))
