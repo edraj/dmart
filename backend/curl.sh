@@ -76,13 +76,13 @@ curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"type": "search","s
 echo -n -e "Reload security: \t\t"
 curl -s -b mycookies.jar -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/reload-security-data  | jq .status
 
-echo -n -e "Delete test space: \t\t"
-DELETE=$(jq -c -n '{ "space_name": "test", "request_type": "delete", "records": [{ "resource_type": "space", "subpath": "/", "shortname": "test","attributes": {} } ]}')
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$DELETE" ${API_URL}/managed/space  | jq .status
-
-echo -n -e "Create a new space: \t\t"
-CREATE=$(jq -c -n '{ "space_name": "test", "request_type": "create", "records": [{ "resource_type": "space", "subpath": "/", "shortname": "test","attributes": {"hide_space": true} } ]}')
+echo -n -e "Create a new space (dummy): \t\t"
+CREATE=$(jq -c -n '{ "space_name": "dummy", "request_type": "create", "records": [{ "resource_type": "space", "subpath": "/", "shortname": "dummy","attributes": {"hide_space": true} } ]}')
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$CREATE" ${API_URL}/managed/space  | jq .status
+
+echo -n -e "Delete dummy space: \t\t"
+DELETE=$(jq -c -n '{ "space_name": "dummy", "request_type": "delete", "records": [{ "resource_type": "space", "subpath": "/", "shortname": "dummy","attributes": {} } ]}')
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$DELETE" ${API_URL}/managed/space  | jq .status
 
 echo -n -e "Query spaces: \t\t\t"
 RECORD=$(jq -c -n '{space_name: "test", type: "spaces", subpath: "/"}')
