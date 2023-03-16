@@ -67,6 +67,31 @@ export async function dmart_create_schemas(space_name, shortname, body) {
   return dmart_request("managed/request", request);
 }
 
+export async function dmart_resource_with_payload(
+  space_name,
+  request_record,
+  payload_file
+) {
+  const formData = new FormData();
+  formData.append("space_name", space_name);
+  formData.append("request_record", request_record, request_record.name);
+  formData.append("payload_file", payload_file, payload_file.name);
+
+  const browse_request = {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+    },
+    credentials: "include",
+    cache: "no-cache",
+    mode: "cors",
+    body: formData,
+  };
+  return await dmart_fetch(
+    `${website.backend}/managed/resource_with_payload`,
+    browse_request
+  );
+}
 export async function dmart_request(api_suburl, browse_query) {
   const browse_url = `${website.backend}/${api_suburl}`;
   const browse_headers = {
