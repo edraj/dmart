@@ -46,6 +46,8 @@ Valuable information (organizational and individual) is getting out of control!
   - Arbitrary attachments: An entity could have attachments (binary or otherwise)
 - Entries are stord and orgazined arbitrary hierarchical folder structure (aka categories) on the file-system. Facilitating folder-based routes.
 
+DMART is a "Data-first" platform to management your valuable data/information; allowing you to transform your perciption of data from liability into assets.
+
 <img src="./docs/tree.png" width="500">
 
 ## API layer (REST-like, JSON-API)
