@@ -7,7 +7,7 @@ from pypdf import PdfWriter, PdfReader
 from weasyprint import HTML
 from weasyprint.text.fonts import FontConfiguration
 
-from backend.utils.settings import settings
+from utils.settings import settings
 
 
 async def generate_pdf_byte(params: dict[str, str], template_name: str, appended_pdf: list[str]):

@@ -71,7 +71,9 @@ def test_login():
     response = client.post(endpoint, json=request_data, headers=headers)
     assert_code_and_status_success(response)
 
-    client.cookies.set("auth_token", response.cookies.get("auth_token"))
+    auth_token = response.cookies.get("auth_token")
+    if auth_token:
+        client.cookies.set("auth_token", auth_token)
     check_unauthorized(
         client.post(
             endpoint, json={**request_data, "shortname": "shortname"}, headers=headers
