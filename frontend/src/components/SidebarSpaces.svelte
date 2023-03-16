@@ -11,7 +11,6 @@
   import spaces, { getSpaces } from "../stores/spaces.js";
   import { dmart_folder, dmart_spaces } from "../dmart.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
-  import DynamicFormModalWithJe from "./JsonEditorModal.svelte";
   import JsonEditorModal from "./JsonEditorModal.svelte";
   import { toastPushSuccess } from "../utils";
 
