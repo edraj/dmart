@@ -15,6 +15,7 @@
     faEdit,
   } from "@fortawesome/free-regular-svg-icons";
   import { toastPushFail, toastPushSuccess } from "../utils.js";
+  import JsonEditorModal from "./JsonEditorModal.svelte";
 
   let expanded = false;
 
@@ -71,40 +72,18 @@
   let entry_create_modal = false;
   let modalFlag = "create";
   async function handleModelSubmit(form) {
-    if (modalFlag === "create") {
-      const response = await dmart_folder(
-        data.space_name,
-        data.subpath,
-        form[0].value,
-        form[1].value
-      );
-      if (response.error) {
-        alert(response.error.message);
-      } else {
-        toastPushSuccess();
-        await getSpaces();
-        entry_create_modal = false;
-      }
+    const response = await dmart_folder(
+      data.space_name,
+      data.subpath,
+      form[0].value,
+      form[1].value
+    );
+    if (response.error) {
+      alert(response.error.message);
     } else {
-      const response = await dmart_request("managed/request", {
-        space_name: data.space_name,
-        request_type: "update",
-        records: [
-          {
-            resource_type: "folder",
-            shortname: form[0].value,
-            subpath: data.subpath,
-            attributes: {},
-          },
-        ],
-      });
-      if (response.status === "success") {
-        toastPushSuccess();
-        await getSpaces();
-        entry_create_modal = false;
-      } else {
-        toastPushFail();
-      }
+      toastPushSuccess();
+      await getSpaces();
+      entry_create_modal = false;
     }
   }
   function handleSubpathCreate() {
@@ -115,10 +94,32 @@
     modalFlag = "create";
     entry_create_modal = true;
   }
-  function handleSubpathUpdate() {
-    props = [{ label: "Shortname", name: "shortname", value: data.shortname }];
-    modalFlag = "update";
-    entry_create_modal = true;
+
+  let subpathUpdateContent = { json: data, text: undefined };
+  let isSubpathUpdateModalOpen = false;
+  async function handleSubpathUpdate(content) {
+    const record = content.json ?? JSON.parse(content.text);
+    delete record.space_name;
+    delete record.type;
+    delete record.uuid;
+
+    const arr = record.subpath.split("/");
+    arr[arr.length - 1] = "";
+    const parentSubpath = arr.join("/");
+
+    const request = {
+      space_name: data.space_name,
+      request_type: "update",
+      records: [{ ...record, subpath: parentSubpath }],
+    };
+    const response = await dmart_request("managed/request", request);
+    if (response.error) {
+      alert(response.error.message);
+    } else {
+      toastPushSuccess();
+      await getSpaces();
+      entry_create_modal = false;
+    }
   }
   async function handleSubpathDelete() {
     console.log({ data });
@@ -161,6 +162,12 @@
   />
 {/key}
 
+<JsonEditorModal
+  bind:open={isSubpathUpdateModalOpen}
+  handleModelSubmit={handleSubpathUpdate}
+  bind:content={subpathUpdateContent}
+/>
+
 <div>
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-mouse-events-have-key-events -->
@@ -187,7 +194,7 @@
     <div
       class="col-1"
       hidden={!displayActionMenu}
-      on:click={() => handleSubpathUpdate()}
+      on:click={() => (isSubpathUpdateModalOpen = true)}
     >
       <Fa icon={faEdit} size="sm" color="dimgrey" />
     </div>
@@ -249,21 +256,9 @@
     border-bottom: thin dotted green;
   }
 
-  ul {
-    list-style: none;
-  }
-
-  li {
-    padding: 0;
-  }
-
   .toolbar {
     display: none;
     color: brown;
-  }
-
-  .toolbar span:hover {
-    color: green;
   }
 
   .folder:hover .toolbar {
