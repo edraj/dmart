@@ -16,3 +16,9 @@ passlib[bcrypt]
 jq
 segno
 jinja2
+pypdf
+weasyprint
+firebase_admin
+pillow
+dicttoxml
+pdf2image
