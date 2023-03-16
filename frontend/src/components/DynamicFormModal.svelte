@@ -22,11 +22,13 @@
   }
 
   const fields = props.map((p) => {
+    const { label, name, value } = p;
     return {
       type: "input",
-      name: p.name,
-      placeholder: p.name + "...",
-      value: p.value ?? "",
+      label,
+      name,
+      placeholder: label + "...",
+      value: value ?? "",
       rules: ["required"],
       messages: {
         required: "This field is required!",
@@ -41,7 +43,7 @@
     <ModalBody>
       <FormGroup>
         {#each fields as field}
-          <Label>{field.name}</Label>
+          <Label class="mt-3">{field.label}</Label>
           <Input
             name={field.name}
             placeholder={field.placeholder}

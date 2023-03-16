@@ -1,5 +1,6 @@
 <script>
   import Fa from "sveltejs-fontawesome";
+  import { Circle2 } from "svelte-loading-spinners";
   import {
     faTrashCan,
     faEye,
@@ -21,7 +22,7 @@
   } from "sveltestrap";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
   import { toastPushFail, toastPushSuccess } from "../utils";
-  import AudioPlayer, { stopAll } from "./AudioPlayer.svelte";
+  import AudioPlayer from "./AudioPlayer.svelte";
 
   export let attachments;
   export let space_name;
@@ -118,6 +119,7 @@
     );
     if (response.status === "success") {
       toastPushSuccess();
+      openCreateAttachemntModal = false;
     } else {
       toastPushFail();
     }
@@ -185,8 +187,9 @@
 
 <div class="row mx-auto w-75">
   {#await init}
-    <p>...</p>
+    <Circle2 size="200" color="#FF3E00" unit="px" duration="1s" />
   {:then _}
+    <div class="d-flex justify-content-center" />
     {#each _attachments as attachment}
       <hr />
       <div class="row mb-2">
