@@ -1305,15 +1305,16 @@ async def create_or_update_resource_with_payload(
                 message="Space name provided is empty or invalid [5]",
             ),
         )
-    if payload_file.filename.endswith(".json"):
+    payload_filename = payload_file.filename or ""
+    if payload_filename.endswith(".json"):
         resource_content_type = ContentType.json
     elif payload_file.content_type == "application/pdf":
         resource_content_type = ContentType.pdf
     elif payload_file.content_type == "text/markdown":
         resource_content_type = ContentType.markdown
-    elif "image/" in payload_file.content_type:
+    elif payload_file.content_type and "image/" in payload_file.content_type:
         resource_content_type = ContentType.image
-    elif "audio/" in payload_file.content_type:
+    elif payload_file.content_type and "audio/" in payload_file.content_type:
         resource_content_type = ContentType.audio
     else:
         raise api.Exception(
@@ -1382,7 +1383,7 @@ async def create_or_update_resource_with_payload(
             if "schema_shortname" not in record.attributes
             else record.attributes["schema_shortname"]
         ),
-        body=f"{record.shortname}." + payload_file.filename.split(".")[1],
+        body=f"{record.shortname}." + payload_filename.split(".")[1],
     )
     if (
         not isinstance(resource_obj, core.Attachment)
