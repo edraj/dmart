@@ -2055,9 +2055,9 @@ async def get_pdf(
 
     # append from meta
     if meta.reporter:
-        params["pos_name"] = meta.reporter.name
-        params["pos_type"] = meta.reporter.type
-        params["distributors"] = meta.reporter.distributor
+        params["pos_name"] = meta.reporter.name or ''
+        params["pos_type"] = meta.reporter.type or ''
+        params["distributors"] = meta.reporter.distributor or ''
 
     if not params.get("pos_name"):
         params["pos_name"] = meta.owner_shortname
