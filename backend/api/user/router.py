@@ -43,11 +43,12 @@ MANAGEMENT_SPACE: str = settings.management_space
 MANAGEMENT_BRANCH: str = settings.management_space_branch
 USERS_SUBPATH: str = "users"
 
-@router.get("/validate-unique", response_model=api.Response, response_model_exclude_none=True)
-async def validate_unique_user(
+@router.get("/check-existing", response_model=api.Response, response_model_exclude_none=True)
+async def check_existing_user_fields(
+    _=Depends(JWTBearer()),
     shortname: str | None = Query(default=None, regex=rgx.SHORTNAME), 
     msisdn: str | None = Query(default=None, regex=rgx.EXTENDED_MSISDN), 
-    email: str | None = Query(default=None, regex=rgx.EMAIL)
+    email: str | None = Query(default=None, regex=rgx.EMAIL),
 ):
     unique_fields = {
         "shortname": shortname,
