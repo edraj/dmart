@@ -74,8 +74,8 @@ export async function dmart_resource_with_payload(
 ) {
   const formData = new FormData();
   formData.append("space_name", space_name);
-  formData.append("request_record", request_record, request_record.name);
-  formData.append("payload_file", payload_file, payload_file.name);
+  formData.append("request_record", request_record);
+  formData.append("payload_file", payload_file);
 
   const browse_request = {
     method: "POST",
@@ -217,6 +217,22 @@ export function dmart_attachment_url(attachment) {
   }
 }
 
+export function ctorULRForAttachment(
+  resource_type,
+  space_name,
+  subpath,
+  shortname,
+  schema_shortname,
+  ext
+) {
+  return `${
+    website.backend
+  }/managed/payload/${resource_type}/${space_name}/${subpath.replace(
+    /\/+$/,
+    ""
+  )}/${shortname}.${schema_shortname}.${ext}`.replaceAll("..", ".");
+}
+
 export async function dmart_entry(
   resource_type,
   space_name,
@@ -233,11 +249,16 @@ export async function dmart_entry(
     mode: "cors",
     headers: { "Content-Type": `application/${content_type}` },
   };
+
+  const url = `${
+    website.backend
+  }/managed/payload/${resource_type}/${space_name}/${subpath.replace(
+    /\/+$/,
+    ""
+  )}/${shortname}.${schema_shortname}.${ext}`.replaceAll("..", ".");
+
   return await dmart_fetch(
-    `${website.backend}/managed/payload/${resource_type}/${space_name}/${subpath}/${shortname}.${schema_shortname}.${ext}`.replaceAll(
-      "..",
-      "."
-    ),
+    url,
     browse_request,
     content_type === "json" ? "json" : "blob"
   );

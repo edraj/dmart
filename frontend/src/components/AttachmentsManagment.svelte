@@ -5,9 +5,14 @@
     faEye,
     faPlusSquare,
   } from "@fortawesome/free-regular-svg-icons";
-  import { dmart_entry, dmart_resource_with_payload } from "../dmart";
+  import {
+    ctorULRForAttachment,
+    dmart_entry,
+    dmart_resource_with_payload,
+  } from "../dmart";
   import {
     Button,
+    Input,
     Label,
     Modal,
     ModalBody,
@@ -16,10 +21,14 @@
   } from "sveltestrap";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
   import { toastPushFail, toastPushSuccess } from "../utils";
+  import AudioPlayer, { stopAll } from "./AudioPlayer.svelte";
 
   export let attachments;
   export let space_name;
+  export let subpath;
+  export let entryShortname;
   let content;
+  let shortname;
 
   let _attachments = [];
 
@@ -57,7 +66,7 @@
               _attachments.push({
                 type,
                 title: element.shortname,
-                link: await dmart_entry(
+                content: await dmart_entry(
                   element.resource_type,
                   space_name,
                   element.subpath,
@@ -65,6 +74,14 @@
                   "",
                   getFileExtension(element.attributes.payload.body),
                   type
+                ),
+                link: ctorULRForAttachment(
+                  element.resource_type,
+                  space_name,
+                  element.subpath,
+                  element.shortname,
+                  "",
+                  getFileExtension(element.attributes.payload.body)
                 ),
               });
 
@@ -80,11 +97,23 @@
   }
   let init = initAttachments();
 
+  function jsonToFile(obj) {
+    console.log({ obj });
+    return new Blob([JSON.stringify(obj)], { type: "application/json" });
+  }
+
   let requestRecord, payloadFile;
   async function upload() {
     const response = await dmart_resource_with_payload(
       space_name,
-      requestRecord[0],
+      jsonToFile({
+        resource_type: "media",
+        subpath: subpath + "/" + entryShortname,
+        shortname,
+        attributes: {
+          is_active: true,
+        },
+      }),
       payloadFile[0]
     );
     if (response.status === "success") {
@@ -106,20 +135,12 @@
   <ModalBody>
     <div class="d-flex flex-column">
       <Label>Request Record</Label>
-      <input
-        accept="image/png, image/jpeg"
-        bind:files={requestRecord}
-        id="avatar"
-        name="avatar"
-        type="file"
-      />
+      <Input accept="image/png, image/jpeg" bind:value={shortname} />
       <hr />
       <Label>Payload File</Label>
-      <input
+      <Input
         accept="image/png, image/jpeg"
         bind:files={payloadFile}
-        id="avatar"
-        name="avatar"
         type="file"
       />
     </div>
@@ -128,7 +149,7 @@
     <Button
       type="button"
       color="secondary"
-      on:click={() => (openViewAttachmentModal = false)}>close</Button
+      on:click={() => (openCreateAttachemntModal = false)}>close</Button
     >
     <Button type="button" color="primary" on:click={async () => upload()}
       >Upload</Button
@@ -168,8 +189,10 @@
   {:then _}
     {#each _attachments as attachment}
       <hr />
-      <div class="row">
-        <p class="col-11" style="font-size: 1.25em;">{attachment.title}</p>
+      <div class="row mb-2">
+        <a class="col-11" style="font-size: 1.25em;" href={attachment.link}
+          >{attachment.title}</a
+        >
         <div class="col-1 d-flex justify-content-between">
           <!-- svelte-ignore a11y-click-events-have-key-events -->
           <div class="mx-1" on:click={() => handleDelete(attachment)}>
@@ -183,7 +206,7 @@
       </div>
 
       {#if attachment.type === "image"}
-        <img class="border" src={attachment.link} alt={attachment.title} />
+        <img class="border" src={attachment.content} alt={attachment.title} />
       {/if}
       {#if attachment.type === "pdf"}
         <object
@@ -191,10 +214,13 @@
           class="w-100 embed-responsive-item"
           style="height: 100vh;"
           type="application/pdf"
-          data={attachment.link}
+          data={attachment.content}
         >
           <p>For some reason PDF is not rendered here properly.</p>
         </object>
+      {/if}
+      {#if attachment.type === "audio"}
+        <AudioPlayer src={attachment.link} />
       {/if}
       <hr />
     {/each}
