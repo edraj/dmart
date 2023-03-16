@@ -96,48 +96,48 @@ def test_get_profile():
     assert_code_and_status_success(response)
 
 
-# def test_create_folder_resource():
-#     headers = {"Content-Type": "application/json"}
-#     endpoint = "/managed/request"
-#     request_data = {
-#         "space_name": DEMO_SPACE,
-#         "request_type": "create",
-#         "records": [
-#             {
-#                 "resource_type": "folder",
-#                 "subpath": "/",
-#                 "shortname": subpath,
-#                 "attributes": {},
-#             }
-#         ],
-#     }
+def test_create_folder_resource():
+    headers = {"Content-Type": "application/json"}
+    endpoint = "/managed/request"
+    request_data = {
+        "space_name": DEMO_SPACE,
+        "request_type": "create",
+        "records": [
+            {
+                "resource_type": "folder",
+                "subpath": "/",
+                "shortname": subpath,
+                "attributes": {},
+            }
+        ],
+    }
 
-#     assert_code_and_status_success(
-#         client.post(endpoint, json=request_data, headers=headers)
-#     )
+    assert_code_and_status_success(
+        client.post(endpoint, json=request_data, headers=headers)
+    )
 
-#     assert_resource_created(
-#         query=Query(
-#             type=QueryType.subpath,
-#             space_name=DEMO_SPACE,
-#             subpath="/",
-#             filter_shortnames=[subpath],
-#             filter_types=[ResourceType.folder],
-#             retrieve_json_payload=True,
-#             limit=1,
-#         ),
-#         res_shortname=subpath,
-#         res_subpath="/",
-#         res_attributes={},
-#     )
+    assert_resource_created(
+        query=Query(
+            type=QueryType.subpath,
+            space_name=DEMO_SPACE,
+            subpath="/",
+            filter_shortnames=[subpath],
+            filter_types=[ResourceType.folder],
+            retrieve_json_payload=True,
+            limit=1,
+        ),
+        res_shortname=subpath,
+        res_subpath="/",
+        res_attributes={},
+    )
 
-#     check_repeated_shortname(
-#         client.post(
-#             endpoint,
-#             json=request_data,
-#             headers=headers,
-#         )
-#     )
+    check_repeated_shortname(
+        client.post(
+            endpoint,
+            json=request_data,
+            headers=headers,
+        )
+    )
 
 
 def test_create_text_content_resource(mocker):
