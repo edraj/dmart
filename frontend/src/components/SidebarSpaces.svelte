@@ -8,13 +8,21 @@
   } from "@fortawesome/free-regular-svg-icons";
   import SidebarSubpaths from "./SidebarSubpaths.svelte";
   import { slide } from "svelte/transition";
-  import { getSpaces } from "../stores/spaces.js";
+  import spaces, { getSpaces } from "../stores/spaces.js";
   import { dmart_folder, dmart_spaces } from "../dmart.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
+  import DynamicFormModalWithJe from "./JsonEditorModal.svelte";
+  import JsonEditorModal from "./JsonEditorModal.svelte";
+  import { toastPushSuccess } from "../utils";
 
   export let child;
   export let displayActionMenu = false;
   let expanded = false;
+
+  let content = {
+    json: {},
+    text: undefined,
+  };
 
   async function handleSpaceDelete() {
     const space_name = child.shortname;
@@ -42,35 +50,30 @@
   }
 
   let modalFlag = "create";
-  async function handleModelSubmit(data) {
-    if (modalFlag === "create") {
-      const response = dmart_folder(
-        child.shortname,
-        "/",
-        data[0].value,
-        data[1].value
-      );
-      if (response.error) {
-        alert(response.error.message);
-      } else {
-        toastPushSuccess();
-        await getSpaces();
-        entry_create_modal = false;
-      }
-      return;
+  async function handleModelCreate(data) {
+    const response = dmart_folder(
+      child.shortname,
+      "/",
+      data[0].value,
+      data[1].value
+    );
+    if (response.error) {
+      alert(response.error.message);
+    } else {
+      toastPushSuccess();
+      await getSpaces();
+      entry_create_modal = false;
     }
-    const space_name = data[0].value;
+    return;
+  }
+
+  async function handleModelUpdate(content) {
+    const record = content.json ?? JSON.parse(content.text);
+    delete record.type;
     const query = {
       space_name: child.shortname,
       request_type: modalFlag,
-      records: [
-        {
-          resource_type: "space",
-          subpath: "/",
-          shortname: space_name,
-          attributes: {},
-        },
-      ],
+      records: [record],
     };
     const response = await dmart_spaces(query);
     if (response.error) {
@@ -84,14 +87,26 @@
 
   let props = [];
   let entry_create_modal = false;
+
+  $: {
+  }
 </script>
 
 {#key props}
-  <DynamicFormModal
-    {props}
-    bind:open={entry_create_modal}
-    {handleModelSubmit}
-  />
+  {#if modalFlag === "update"}
+    <JsonEditorModal
+      bind:open={entry_create_modal}
+      handleModelSubmit={handleModelUpdate}
+      bind:content
+    />
+  {/if}
+  {#if modalFlag === "create"}
+    <DynamicFormModal
+      {props}
+      bind:open={entry_create_modal}
+      handleModelSubmit={handleModelCreate}
+    />
+  {/if}
 {/key}
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
 <div
@@ -113,8 +128,12 @@
           hidden={!displayActionMenu}
           on:click={() => {
             props = [
-              { name: "schema_shortname", value: "" },
-              { name: "shortname", value: "" },
+              {
+                label: "Schema Shortname",
+                name: "schema_shortname",
+                value: "",
+              },
+              { label: "Shortname", name: "shortname", value: "" },
             ];
             modalFlag = "create";
             entry_create_modal = true;
@@ -126,9 +145,21 @@
           class="col-1"
           hidden={!displayActionMenu}
           on:click={() => {
-            props = [{ name: "space_name", value: child.shortname }];
-            modalFlag = "update";
+            props = [
+              {
+                label: "Space Name",
+                name: "space_name",
+                value: child.shortname,
+              },
+            ];
+            const space = $spaces.children.filter(
+              (e) => e.shortname === child.shortname
+            )[0];
+            delete space.subpaths;
+
+            content.json = space;
             entry_create_modal = true;
+            modalFlag = "update";
           }}
         >
           <Fa icon={faEdit} size="sm" color="dimgrey" />

@@ -109,14 +109,14 @@
   }
   function handleSubpathCreate() {
     props = [
-      { name: "schema_shortname", value: "" },
-      { name: "shortname", value: "" },
+      { label: "Schema Shortname", name: "schema_shortname", value: "" },
+      { label: "Shortname", name: "shortname", value: "" },
     ];
     modalFlag = "create";
     entry_create_modal = true;
   }
   function handleSubpathUpdate() {
-    props = [{ name: "shortname", value: data.shortname }];
+    props = [{ label: "Shortname", name: "shortname", value: data.shortname }];
     modalFlag = "update";
     entry_create_modal = true;
   }

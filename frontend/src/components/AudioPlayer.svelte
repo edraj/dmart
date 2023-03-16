@@ -19,7 +19,7 @@
   });
 </script>
 
-<div>
+<div class="d-flex justify-content-center mb-3">
   <audio bind:this={player} {src} controls>
     <track kind="captions" />
   </audio>
