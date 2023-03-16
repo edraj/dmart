@@ -28,16 +28,17 @@
   } from "sveltestrap";
   import { Form, FormGroup, Label, Input } from "sveltestrap";
   import { createAjvValidator, Mode } from "svelte-jsoneditor";
+  import { json } from "svelte-i18n";
 
   let showContentEditSection = false;
   let shortname = "";
   let metaContent = {
-    json: null,
+    json: {},
     text: undefined,
   };
   let metaContentAttachement = {};
   let bodyContent = {
-    json: null,
+    json: {},
     text: undefined,
   };
 
@@ -149,7 +150,6 @@
         await dmart_query(query)
           .then(async (json) => {
             records = [...records, ...json.records];
-            records.reverse();
             if (json.status == "success") {
               lastbatch = json.attributes.returned;
               total = json.attributes.total;
@@ -200,9 +200,11 @@
   }
 
   const handleSave = async () => {
-    const data = metaContent.json;
+    const data = { ...metaContent.json } ?? JSON.parse(metaContent.text);
     data.attributes.payload.body =
-      bodyContent.json ?? metaContent.json.attributes.payload.body;
+      bodyContent.json ??
+      JSON.parse(bodyContent.text) ??
+      data.attributes.payload.body;
     const response = await dmart_request("managed/request", {
       space_name: query.space_name,
       request_type: "update",
@@ -289,6 +291,7 @@
 
   $: {
     refJsonEditor?.expand(() => false);
+    console.log({ metaContent });
   }
 </script>
 
@@ -399,22 +402,23 @@
 
           current_item = index;
           showContentEditSection = true;
+          const record = records[index - 1];
 
-          if (records[index - 1]?.attributes?.payload?.body) {
+          if (record?.attributes?.payload?.body) {
             bodyContent = {
               json: await dmart_entry(
-                records[index - 1].resource_type,
+                record.resource_type,
                 query.space_name,
-                records[index - 1].subpath,
-                records[index - 1].shortname,
+                record.subpath,
+                record.shortname,
                 schema_shortname,
                 "json"
               ),
               text: undefined,
             };
           }
-          shortname = records[index - 1].shortname;
-          const json = { ...records[index - 1] };
+          shortname = record.shortname;
+          const json = { ...record };
           metaContentAttachement = json.attachments;
           delete json.attachments;
           metaContent = {
@@ -425,8 +429,8 @@
           history_query = {
             type: "history",
             space_name: query.space_name,
-            filter_shortnames: [records[index - 1].shortname],
-            subpath: records[index - 1].subpath,
+            filter_shortnames: [record.shortname],
+            subpath: record.subpath,
             retrieve_json_payload: true,
           };
         }}
@@ -484,22 +488,22 @@
     >
       <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
     </div>
-    <h5>{shortname}</h5>
+    <h5 class="mx-2">{shortname}</h5>
   </div>
   <hr />
   <Tabs>
     <TabList>
-      <Tab>Meta</Tab>
       <Tab>Content</Tab>
+      <Tab>Meta</Tab>
       <Tab>Attachments</Tab>
       <Tab>History</Tab>
     </TabList>
 
     <TabPanel>
-      <ContentJsonEditor bind:content={metaContent} {handleSave} />
+      <ContentJsonEditor bind:content={bodyContent} {handleSave} />
     </TabPanel>
     <TabPanel>
-      <ContentJsonEditor bind:content={bodyContent} {handleSave} />
+      <ContentJsonEditor bind:content={metaContent} {handleSave} />
     </TabPanel>
     <TabPanel>
       <AttachmentsManagment

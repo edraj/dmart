@@ -1,25 +1,36 @@
 <script>
   import Fa from "sveltejs-fontawesome";
-  import { faTrashCan, faEye } from "@fortawesome/free-regular-svg-icons";
-  import { dmart_entry } from "../dmart";
+  import {
+    faTrashCan,
+    faEye,
+    faPlusSquare,
+  } from "@fortawesome/free-regular-svg-icons";
+  import { dmart_entry, dmart_resource_with_payload } from "../dmart";
   import {
     Button,
+    Label,
     Modal,
     ModalBody,
     ModalFooter,
     ModalHeader,
   } from "sveltestrap";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
+  import { toastPushFail, toastPushSuccess } from "../utils";
 
   export let attachments;
-  let content;
   export let space_name;
+  let content;
 
   let _attachments = [];
 
-  let open = false;
-  function toggle() {
-    open = !open;
+  let openViewAttachmentModal = false;
+  function toggleViewAttachmentModal() {
+    openViewAttachmentModal = !openViewAttachmentModal;
+  }
+
+  let openCreateAttachemntModal = false;
+  function toggleCreateAttachemntModal() {
+    openCreateAttachemntModal = !openCreateAttachemntModal;
   }
 
   function getFileExtension(filename) {
@@ -33,7 +44,7 @@
       json: attachments.media.filter((e) => e.shortname === attachemntTitle)[0],
       text: undefined,
     };
-    open = true;
+    openViewAttachmentModal = true;
   }
 
   async function initAttachments() {
@@ -68,19 +79,88 @@
     }
   }
   let init = initAttachments();
+
+  let requestRecord, payloadFile;
+  async function upload() {
+    const response = await dmart_resource_with_payload(
+      space_name,
+      requestRecord[0],
+      payloadFile[0]
+    );
+    if (response.status === "success") {
+      toastPushSuccess();
+    } else {
+      toastPushFail();
+    }
+  }
 </script>
 
-<Modal isOpen={open} {toggle} size={"lg"}>
-  <ModalHeader />
+<Modal
+  isOpen={openCreateAttachemntModal}
+  toggle={toggleCreateAttachemntModal}
+  size={"lg"}
+>
+  <ModalHeader>
+    <h3>Add attachment</h3>
+  </ModalHeader>
   <ModalBody>
-    <ContentJsonEditor bind:content />
+    <div class="d-flex flex-column">
+      <Label>Request Record</Label>
+      <input
+        accept="image/png, image/jpeg"
+        bind:files={requestRecord}
+        id="avatar"
+        name="avatar"
+        type="file"
+      />
+      <hr />
+      <Label>Payload File</Label>
+      <input
+        accept="image/png, image/jpeg"
+        bind:files={payloadFile}
+        id="avatar"
+        name="avatar"
+        type="file"
+      />
+    </div>
   </ModalBody>
   <ModalFooter>
-    <Button type="button" color="secondary" on:click={() => (open = false)}
-      >close</Button
+    <Button
+      type="button"
+      color="secondary"
+      on:click={() => (openViewAttachmentModal = false)}>close</Button
+    >
+    <Button type="button" color="primary" on:click={async () => upload()}
+      >Upload</Button
     >
   </ModalFooter>
 </Modal>
+
+<Modal
+  isOpen={openViewAttachmentModal}
+  toggle={toggleViewAttachmentModal}
+  size={"lg"}
+>
+  <ModalHeader />
+  <ModalBody>
+    <ContentJsonEditor bind:content readOnly={true} />
+  </ModalBody>
+  <ModalFooter>
+    <Button
+      type="button"
+      color="secondary"
+      on:click={() => (openViewAttachmentModal = false)}>close</Button
+    >
+  </ModalFooter>
+</Modal>
+
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<div
+  class="d-flex justify-content-end mx-2 flex-row"
+  on:click={toggleCreateAttachemntModal}
+>
+  <Fa icon={faPlusSquare} size={"3x"} color={"grey"} />
+</div>
 
 <div class="row mx-auto w-75">
   {#await init}
