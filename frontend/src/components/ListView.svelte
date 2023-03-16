@@ -18,6 +18,7 @@
   import {
     faCaretSquareLeft,
     faPlusSquare,
+    faTrashCan,
   } from "@fortawesome/free-regular-svg-icons";
   import {
     Button,
@@ -200,7 +201,10 @@
   }
 
   const handleSave = async () => {
-    const data = { ...metaContent.json } ?? JSON.parse(metaContent.text);
+    const metaData = metaContent.json
+      ? { ...metaContent.json }
+      : JSON.parse(metaContent.text);
+    const data = { ...metaData };
     data.attributes.payload.body =
       bodyContent.json ??
       JSON.parse(bodyContent.text) ??
@@ -212,6 +216,7 @@
     });
     if (response.status === "success") {
       toastPushSuccess();
+      records[current_item - 1] = metaData;
     } else {
       toastPushFail();
     }
@@ -221,14 +226,19 @@
     search.selected = option;
   }
 
+  function refreshList() {
+    current_item = {};
+    page = 0;
+    records = [];
+    items = [{}];
+    infiniteId = Symbol();
+  }
+
   let delay;
   function handleSearchInput(event) {
     clearTimeout(delay);
     delay = setTimeout(async () => {
       const target = event.target.value;
-      records = [];
-      items = [{}];
-      page = 0;
       query =
         target === ""
           ? base_query
@@ -249,7 +259,7 @@
               offset: 50,
             };
       // await fetchRecords(q);
-      infiniteId = Symbol();
+      refreshList();
     }, 500);
   }
 
@@ -273,10 +283,7 @@
       );
       if (response.status === "success") {
         toastPushSuccess();
-        page = 0;
-        records = [];
-        items = [{}];
-        infiniteId = Symbol();
+        refreshList();
         open = false;
       } else {
         toastPushFail();
@@ -291,7 +298,33 @@
 
   $: {
     refJsonEditor?.expand(() => false);
-    console.log({ metaContent });
+  }
+
+  async function handleDelete() {
+    const { resource_type, branch_name, subpath, shortname } = {
+      ...records[current_item - 1],
+    };
+    const request = {
+      space_name: query.space_name,
+      request_type: "delete",
+      records: [
+        {
+          resource_type,
+          shortname,
+          subpath,
+          branch_name,
+          attributes: {},
+        },
+      ],
+    };
+    const response = await dmart_request("managed/request", request);
+    if (response.status === "success") {
+      toastPushSuccess();
+      refreshList();
+      showContentEditSection = false;
+    } else {
+      toastPushFail();
+    }
   }
 </script>
 
@@ -402,7 +435,18 @@
 
           current_item = index;
           showContentEditSection = true;
-          const record = records[index - 1];
+          const record = { ...records[index - 1] };
+
+          shortname = record.shortname;
+          const json = { ...record };
+          metaContentAttachement = json.attachments;
+          console.log({ metaContentAttachement });
+
+          delete json.attachments;
+          metaContent = {
+            json,
+            text: undefined,
+          };
 
           if (record?.attributes?.payload?.body) {
             bodyContent = {
@@ -410,26 +454,18 @@
                 record.resource_type,
                 query.space_name,
                 record.subpath,
-                record.shortname,
+                shortname,
                 schema_shortname,
                 "json"
               ),
               text: undefined,
             };
           }
-          shortname = record.shortname;
-          const json = { ...record };
-          metaContentAttachement = json.attachments;
-          delete json.attachments;
-          metaContent = {
-            json,
-            text: undefined,
-          };
 
           history_query = {
             type: "history",
             space_name: query.space_name,
-            filter_shortnames: [record.shortname],
+            filter_shortnames: [shortname],
             subpath: record.subpath,
             retrieve_json_payload: true,
           };
@@ -489,6 +525,15 @@
       <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
     </div>
     <h5 class="mx-2">{shortname}</h5>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div
+      class="back-icon"
+      on:click={async () => {
+        await handleDelete();
+      }}
+    >
+      <Fa icon={faTrashCan} size="lg" color="dimgrey" />
+    </div>
   </div>
   <hr />
   <Tabs>
@@ -509,6 +554,8 @@
       <AttachmentsManagment
         bind:attachments={metaContentAttachement}
         bind:space_name={query.space_name}
+        bind:subpath={query.subpath}
+        bind:entryShortname={records[current_item - 1].shortname}
       />
     </TabPanel>
 
