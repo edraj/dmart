@@ -118,7 +118,7 @@
     } else {
       toastPushSuccess();
       await getSpaces();
-      entryCreateModal = false;
+      isSubpathUpdateModalOpen = false;
     }
   }
   async function handleSubpathDelete() {
