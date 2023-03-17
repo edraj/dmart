@@ -26,7 +26,6 @@
     text: undefined,
   };
   export let open = false;
-  export let size = undefined;
   export let props;
 
   let isSchemaValidated = false;

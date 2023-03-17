@@ -69,7 +69,7 @@
   }
 
   let props = [];
-  let entry_create_modal = false;
+  let entryCreateModal = false;
   let modalFlag = "create";
   async function handleModelSubmit(form) {
     const response = await dmartFolder(
@@ -83,7 +83,7 @@
     } else {
       toastPushSuccess();
       await getSpaces();
-      entry_create_modal = false;
+      entryCreateModal = false;
     }
   }
   function handleSubpathCreate() {
@@ -92,7 +92,7 @@
       { label: "Shortname", name: "shortname", value: "" },
     ];
     modalFlag = "create";
-    entry_create_modal = true;
+    entryCreateModal = true;
   }
 
   let subpathUpdateContent = { json: data, text: undefined };
@@ -118,7 +118,7 @@
     } else {
       toastPushSuccess();
       await getSpaces();
-      entry_create_modal = false;
+      entryCreateModal = false;
     }
   }
   async function handleSubpathDelete() {
@@ -155,11 +155,7 @@
 </script>
 
 {#key props}
-  <DynamicFormModal
-    {props}
-    bind:open={entry_create_modal}
-    {handleModelSubmit}
-  />
+  <DynamicFormModal {props} bind:open={entryCreateModal} {handleModelSubmit} />
 {/key}
 
 <JsonEditorModal
