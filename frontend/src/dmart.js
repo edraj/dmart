@@ -233,7 +233,7 @@ export function ctorULRForAttachment(
   )}/${shortname}.${schema_shortname}.${ext}`.replaceAll("..", ".");
 }
 
-export async function dmart_entry(
+export async function dmartEntry(
   resource_type,
   space_name,
   subpath,
