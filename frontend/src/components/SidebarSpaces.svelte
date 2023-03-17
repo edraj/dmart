@@ -24,18 +24,18 @@
   };
 
   async function handleSpaceDelete() {
-    const space_name = child.shortname;
-    if (confirm(`Are you sure want to delete ${space_name} space`) === false) {
+    const spacename = child.shortname;
+    if (confirm(`Are you sure want to delete ${spacename} space`) === false) {
       return;
     }
     const query = {
-      space_name: space_name,
+      space_name: spacename,
       request_type: "delete",
       records: [
         {
           resource_type: "space",
           subpath: "/",
-          shortname: space_name,
+          shortname: spacename,
           attributes: {},
         },
       ],
@@ -61,7 +61,7 @@
     } else {
       toastPushSuccess();
       await getSpaces();
-      entry_create_modal = false;
+      entryCreateModal = false;
     }
     return;
   }
@@ -80,12 +80,12 @@
     } else {
       toastPushSuccess();
       await getSpaces();
-      entry_create_modal = false;
+      entryCreateModal = false;
     }
   }
 
   let props = [];
-  let entry_create_modal = false;
+  let entryCreateModal = false;
 
   $: {
   }
@@ -94,7 +94,7 @@
 {#key props}
   {#if modalFlag === "update"}
     <JsonEditorModal
-      bind:open={entry_create_modal}
+      bind:open={entryCreateModal}
       handleModelSubmit={handleModelUpdate}
       bind:content
     />
@@ -102,7 +102,7 @@
   {#if modalFlag === "create"}
     <DynamicFormModal
       {props}
-      bind:open={entry_create_modal}
+      bind:open={entryCreateModal}
       handleModelSubmit={handleModelCreate}
     />
   {/if}
@@ -135,7 +135,7 @@
               { label: "Shortname", name: "shortname", value: "" },
             ];
             modalFlag = "create";
-            entry_create_modal = true;
+            entryCreateModal = true;
           }}
         >
           <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
@@ -157,7 +157,7 @@
             delete space.subpaths;
 
             content.json = space;
-            entry_create_modal = true;
+            entryCreateModal = true;
             modalFlag = "update";
           }}
         >

@@ -27,7 +27,7 @@
       shortname: r.shortname,
       payload: r.attributes.payload,
     }));
-    schema_shortname = schemas?.[0].shortname;
+    schemaShortname = schemas?.[0].shortname;
   });
 
   const { addNotification } = getNotificationsContext();
@@ -37,20 +37,20 @@
   export let subpath = null;
   export let data = null;
   export let parent_shortname = undefined;
-  export let fix_resource_type = undefined;
+  export let fixResourceType = undefined;
 
   let shortname;
   let displayname;
   let resource_type;
-  let schema_shortname;
+  let schemaShortname;
   let payload = "";
   let payload_type = "json";
   let tags;
   let description;
-  let displayed_subpath;
+  let displayedSubpath;
   let mediafile;
 
-  if (fix_resource_type) resource_type = fix_resource_type;
+  if (fixResourceType) resource_type = fixResourceType;
   else resource_type = "content";
 
   if (data) {
@@ -71,8 +71,8 @@
     displayname = description = tags = "";
   }
 
-  displayed_subpath = subpath;
-  if (parent_shortname) displayed_subpath = `${subpath}/${parent_shortname}`;
+  displayedSubpath = subpath;
+  if (parent_shortname) displayedSubpath = `${subpath}/${parent_shortname}`;
 
   async function handle() {
     let record = {
@@ -132,7 +132,7 @@
         record.attributes.payload = {
           // checksum: `sha1:${sha1(payload)}`,
           body: JSON.parse(payload),
-          schema_shortname: schema_shortname,
+          schema_shortname: schemaShortname,
           content_type: payload_type,
           bytesize: new Blob([payload]).size,
         };
@@ -212,7 +212,7 @@
     <Input
       id="subpath"
       title={$_("subpath")}
-      value={displayed_subpath}
+      value={displayedSubpath}
       readonly={true}
       type="text"
     />
@@ -236,7 +236,7 @@
       bind:value={description}
     />
 
-    {#if fix_resource_type || data}
+    {#if fixResourceType || data}
       <Input
         id="resource_type"
         title={$_("resource_type")}
@@ -283,10 +283,10 @@
         </Input>
 
         <Input
-          id="schema_shortname"
+          id="schemaShortname"
           type="select"
           title={$_("schame_shortname")}
-          bind:value={schema_shortname}
+          bind:value={schemaShortname}
         >
           {#each schemas as schema}
             <option value={schema.shortname}>{schema.shortname}</option>

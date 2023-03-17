@@ -5,7 +5,7 @@
   import InfiniteLoading from "svelte-infinite-loading";
   import { dmartCreateContent, dmartGetSchemas, dmartRequest } from "../dmart";
   import { onDestroy } from "svelte";
-  import { dmart_entry, dmartQuery } from "../dmart";
+  import { dmartEntry, dmartQuery } from "../dmart";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
   import { toastPushSuccess, toastPushFail } from "../utils";
   import AttachmentsManagment from "./AttachmentsManagment.svelte";
@@ -39,8 +39,8 @@
     text: undefined,
   };
 
-  let history_query;
-  let history_cols = {
+  let historyQuery;
+  let historyCols = {
     owner_shortname: {
       path: "attributes.owner_shortname",
       title: "Owner shorname",
@@ -90,7 +90,7 @@
   let lastbatch;
   let page = 0;
   let items = [{}];
-  let current_item = {};
+  let currentItem = {};
   let api_status = "-";
   let records = [];
   let schema_shortname = "";
@@ -212,7 +212,7 @@
     });
     if (response.status === "success") {
       toastPushSuccess();
-      records[current_item - 1] = metaData;
+      records[currentItem - 1] = metaData;
     } else {
       toastPushFail();
     }
@@ -223,7 +223,7 @@
   }
 
   function refreshList() {
-    current_item = {};
+    currentItem = {};
     page = 0;
     records = [];
     items = [{}];
@@ -298,7 +298,7 @@
 
   async function handleDelete() {
     const { resource_type, branch_name, subpath, shortname } = {
-      ...records[current_item - 1],
+      ...records[currentItem - 1],
     };
     const request = {
       space_name: query.space_name,
@@ -429,7 +429,7 @@
             return;
           }
 
-          current_item = index;
+          currentItem = index;
           showContentEditSection = true;
           const record = { ...records[index - 1] };
 
@@ -446,7 +446,7 @@
 
           if (record?.attributes?.payload?.body) {
             bodyContent = {
-              json: await dmart_entry(
+              json: await dmartEntry(
                 record.resource_type,
                 query.space_name,
                 record.subpath,
@@ -458,7 +458,7 @@
             };
           }
 
-          history_query = {
+          historyQuery = {
             type: "history",
             space_name: query.space_name,
             filter_shortnames: [shortname],
@@ -466,7 +466,7 @@
             retrieve_json_payload: true,
           };
         }}
-        class:current={current_item == index}
+        class:current={currentItem == index}
       >
         {#if index == 0}
           {#each Object.keys(cols) as col}
@@ -491,17 +491,17 @@
       </div>
     </VirtualList>
 
-    {#if current_item && current_item > 0 && details_split > 0}
+    {#if currentItem && currentItem > 0 && details_split > 0}
       <div
         class="one-item pt-2"
         style="height: {details_split}px; overflow: hide;"
       >
-        {#each Object.keys(items[current_item]) as key}
+        {#each Object.keys(items[currentItem]) as key}
           <span class="w-50" style="text-align: right;"
             ><strong>{key}: </strong></span
           >
           <span class="w-50">
-            <code>{JSON.stringify(items[current_item][key]).trim()}</code>
+            <code>{JSON.stringify(items[currentItem][key]).trim()}</code>
           </span>
         {/each}
       </div>
@@ -551,15 +551,15 @@
         bind:attachments={metaContentAttachement}
         bind:space_name={query.space_name}
         bind:subpath={query.subpath}
-        bind:entryShortname={records[current_item - 1].shortname}
+        bind:entryShortname={records[currentItem - 1].shortname}
       />
     </TabPanel>
 
     <TabPanel>
       <div style="height: {height}">
         <svelte:self
-          bind:query={history_query}
-          bind:cols={history_cols}
+          bind:query={historyQuery}
+          bind:cols={historyCols}
           details_split={0}
         />
       </div>

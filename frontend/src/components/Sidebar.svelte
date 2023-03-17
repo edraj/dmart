@@ -13,11 +13,11 @@
   import SchemaFormModal from "./SchemaFormModal.svelte";
   import { toastPushSuccess } from "../utils.js";
 
-  let head_height;
-  let foot_height;
+  let headHeight;
+  let footHeight;
   let props = [];
-  let pop_create_space_modal = false;
-  let pop_create_schema_modal = false;
+  let popCreateSpaceModal = false;
+  let popCreateSchemaModal = false;
 
   async function handleModelSubmit(data) {
     const space_name = data[0].value;
@@ -39,7 +39,7 @@
     } else {
       toastPushSuccess();
       await getSpaces();
-      pop_create_space_modal = false;
+      popCreateSpaceModal = false;
     }
   }
 </script>
@@ -47,16 +47,16 @@
 {#key props}
   <DynamicFormModal
     {props}
-    bind:open={pop_create_space_modal}
+    bind:open={popCreateSpaceModal}
     {handleModelSubmit}
   />
-  <SchemaFormModal {props} bind:open={pop_create_schema_modal} />
+  <SchemaFormModal {props} bind:open={popCreateSchemaModal} />
 {/key}
 
 <div
   class="no-bullets scroller pe-0 w-100"
-  style="height: calc(100% - {head_height +
-    foot_height}px); overflow: hidden auto;"
+  style="height: calc(100% - {headHeight +
+    footHeight}px); overflow: hidden auto;"
 >
   <ListGroup flush class="w-100">
     {#each $spaces.children as child (child.uuid)}
@@ -66,7 +66,7 @@
     {/each}
   </ListGroup>
 </div>
-<div class="w-100" bind:clientHeight={foot_height}>
+<div class="w-100" bind:clientHeight={footHeight}>
   {#if $active_entry.data}
     <hr class="my-0" />
     <p class="lh-1 my-0">

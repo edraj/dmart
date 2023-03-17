@@ -8,7 +8,7 @@
   } from "@fortawesome/free-regular-svg-icons";
   import {
     ctorULRForAttachment,
-    dmart_entry,
+    dmartEntry,
     dmarRresourceWithPayload,
   } from "../dmart";
   import {
@@ -67,7 +67,7 @@
               _attachments.push({
                 type,
                 title: element.shortname,
-                content: await dmart_entry(
+                content: await dmartEntry(
                   element.resource_type,
                   space_name,
                   element.subpath,
