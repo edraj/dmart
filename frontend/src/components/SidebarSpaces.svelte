@@ -9,7 +9,7 @@
   import SidebarSubpaths from "./SidebarSubpaths.svelte";
   import { slide } from "svelte/transition";
   import spaces, { getSpaces } from "../stores/spaces.js";
-  import { dmart_folder, dmart_spaces } from "../dmart.js";
+  import { dmartFolder, dmartSpaces } from "../dmart.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
   import JsonEditorModal from "./JsonEditorModal.svelte";
   import { toastPushSuccess } from "../utils";
@@ -40,7 +40,7 @@
         },
       ],
     };
-    const response = await dmart_spaces(query);
+    const response = await dmartSpaces(query);
     if (response.error) {
       alert(response.error.message);
     } else {
@@ -50,7 +50,7 @@
 
   let modalFlag = "create";
   async function handleModelCreate(data) {
-    const response = dmart_folder(
+    const response = dmartFolder(
       child.shortname,
       "/",
       data[0].value,
@@ -74,7 +74,7 @@
       request_type: modalFlag,
       records: [record],
     };
-    const response = await dmart_spaces(query);
+    const response = await dmartSpaces(query);
     if (response.error) {
       alert(response.error.message);
     } else {

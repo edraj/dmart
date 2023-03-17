@@ -1,5 +1,5 @@
 import { writable } from "svelte/store";
-import { dmart_request } from "../dmart";
+import { dmartRequest } from "../dmart";
 
 const local = JSON.parse(localStorage.getItem("spaces"));
 const { subscribe, set } = writable(local);
@@ -21,7 +21,7 @@ const spaces = {
  * @returns list of subpaths of the given space name
  */
 const getSpaceSubpaths = async (spaceName) => {
-  const response = await dmart_request("managed/query", {
+  const response = await dmartRequest("managed/query", {
     type: "subpath",
     space_name: spaceName,
     subpath: "/",
@@ -45,7 +45,7 @@ const getSpaceSubpaths = async (spaceName) => {
  * set 'space_managment.spaces' as array (str) of spaces
  */
 export const getSpaces = async () => {
-  const response = await dmart_request("managed/query", {
+  const response = await dmartRequest("managed/query", {
     type: "spaces",
     space_name: "demo",
     subpath: "/",

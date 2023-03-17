@@ -9,7 +9,7 @@
   import Fa from "sveltejs-fontawesome";
   import { faPlusSquare } from "@fortawesome/free-regular-svg-icons";
   import DynamicFormModal from "./DynamicFormModal.svelte";
-  import { dmart_spaces } from "../dmart.js";
+  import { dmartSpaces } from "../dmart.js";
   import SchemaFormModal from "./SchemaFormModal.svelte";
   import { toastPushSuccess } from "../utils.js";
 
@@ -33,7 +33,7 @@
         },
       ],
     };
-    const response = await dmart_spaces(query);
+    const response = await dmartSpaces(query);
     if (response.error) {
       alert(response.error.message);
     } else {

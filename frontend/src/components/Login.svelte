@@ -10,7 +10,7 @@
     Button,
   } from "sveltestrap";
   import signedin_user from "../stores/signedin_user.js";
-  import { dmart_login } from "../dmart.js";
+  import { dmartLogin } from "../dmart.js";
   import { _ } from "../i18n";
 
   let username;
@@ -19,7 +19,7 @@
   async function handleSubmit() {
     // TBD KEFAH CHECK
     event.preventDefault();
-    let resp = await dmart_login(username, password);
+    let resp = await dmartLogin(username, password);
     let user = resp.records[0];
     if (user.attributes?.displayname?.en) {
       user.displayname = user.attributes.displayname.en;

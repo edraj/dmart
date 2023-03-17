@@ -10,7 +10,7 @@
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
   import { createAjvValidator } from "svelte-jsoneditor";
   import * as schema from "./../utils/SchemaValidator.json";
-  import { dmart_create_schemas } from "../dmart";
+  import { dmartCreateSchemas } from "../dmart";
   import { toastPushSuccess, toastPushFail } from "../utils";
 
   const validator = createAjvValidator({ schema });
@@ -40,7 +40,7 @@
       return;
     }
 
-    const response = await dmart_create_schemas(
+    const response = await dmartCreateSchemas(
       fields[0].value,
       fields[1].value,
       JSON.parse(content.text)

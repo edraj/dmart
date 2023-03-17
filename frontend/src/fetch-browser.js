@@ -1,5 +1,4 @@
-
-export default async function dmart_fetch(url, request) {
+export default async function dmartFetch(url, request) {
   let response = await window.fetch(url, request);
   const reader = response.body.getReader();
   var td = new TextDecoder("utf-8");

@@ -9,7 +9,7 @@
   import {
     ctorULRForAttachment,
     dmart_entry,
-    dmart_resource_with_payload,
+    dmarRresourceWithPayload,
   } from "../dmart";
   import {
     Button,
@@ -105,7 +105,7 @@
 
   let requestRecord, payloadFile;
   async function upload() {
-    const response = await dmart_resource_with_payload(
+    const response = await dmarRresourceWithPayload(
       space_name,
       jsonToFile({
         resource_type: "media",
