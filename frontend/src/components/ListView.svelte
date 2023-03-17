@@ -335,6 +335,7 @@
         <Input placeholder="Shortname..." bind:value={contentShortname} />
         <hr />
 
+        <Label>Content</Label>
         <ContentJsonEditor
           bind:content
           {validator}
@@ -345,6 +346,7 @@
 
         <hr />
 
+        <Label>Schema</Label>
         <ContentJsonEditor
           bind:self={refJsonEditor}
           content={contentSchema}
