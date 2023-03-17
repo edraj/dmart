@@ -365,15 +365,14 @@
 {#if !showContentEditSection}
   {#if filterable}
     <div class="input-group mb-3">
-      <button
+      <!-- <button
         class="btn btn-outline-secondary dropdown-toggle"
         type="button"
         data-bs-toggle="dropdown"
         aria-expanded="false">Filter</button
-      >
-      <ul class="dropdown-menu">
+      > -->
+      <!-- <ul class="dropdown-menu">
         <li>
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
           <p
             class="dropdown-item"
             style="cursor: pointer;"
@@ -384,7 +383,6 @@
         </li>
         {#each search.options as option (option)}
           <li>
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
             <p
               class="dropdown-item"
               style="cursor: pointer;"
@@ -394,7 +392,7 @@
             </p>
           </li>
         {/each}
-      </ul>
+      </ul> -->
       <input
         on:input={handleSearchInput}
         placeholder="{search.selected}..."
@@ -408,6 +406,7 @@
       </div>
     </div>
   {/if}
+
   <div class="list">
     <VirtualList
       height={height - 105}
