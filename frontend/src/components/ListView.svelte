@@ -116,6 +116,7 @@
     }
   }
 
+  // TODO TBRemoved
   async function fetchSearchKeys() {
     if (records.length === 0) {
       search.options = [];
@@ -174,9 +175,9 @@
           .catch((e) => {
             console.log(e);
           });
-        if (filterable && search.options.length === 0) {
-          await fetchSearchKeys();
-        }
+        // if (filterable && search.options.length === 0) {
+        //   await fetchSearchKeys();
+        // }
       } catch (e) {
         console.log(e);
       }
