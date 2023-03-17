@@ -1,7 +1,7 @@
 <script>
   import selectedSubpath from "./../stores/selected_subpath.js";
   import { contents } from "./../stores/contents.js";
-  import { dmart_entries, dmart_folder, dmart_request } from "../dmart.js";
+  import { dmartEntries, dmartFolder, dmartRequest } from "../dmart.js";
   import { entries } from "../stores/entries.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
   import { _ } from "../i18n";
@@ -30,7 +30,7 @@
     selectedSubpath.set(data.subpath);
     expanded = !expanded;
     if (!$entries[children_subpath]) {
-      const _entries = await dmart_entries(
+      const _entries = await dmartEntries(
         data.space_name,
         data.subpath,
         [data.resource_type],
@@ -72,7 +72,7 @@
   let entry_create_modal = false;
   let modalFlag = "create";
   async function handleModelSubmit(form) {
-    const response = await dmart_folder(
+    const response = await dmartFolder(
       data.space_name,
       data.subpath,
       form[0].value,
@@ -112,7 +112,7 @@
       request_type: "update",
       records: [{ ...record, subpath: parentSubpath }],
     };
-    const response = await dmart_request("managed/request", request);
+    const response = await dmartRequest("managed/request", request);
     if (response.error) {
       alert(response.error.message);
     } else {
@@ -142,7 +142,7 @@
       ],
     };
 
-    const response = await dmart_request("managed/request", request);
+    const response = await dmartRequest("managed/request", request);
     if (response.status === "success") {
       toastPushSuccess();
       await getSpaces();

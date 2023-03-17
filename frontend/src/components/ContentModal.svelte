@@ -9,10 +9,10 @@
   import Input from "./Input.svelte";
   import { _ } from "../i18n";
   import {
-    dmart_query,
-    dmart_list_schemas,
-    dmart_content,
-    dmart_postmedia,
+    dmartQuery,
+    dmartListSchemas,
+    dmartContent,
+    dmartPostMedia,
   } from "../dmart";
   // import sha1 from "../sha1";
   import { entries } from "../stores/entries.js";
@@ -22,7 +22,7 @@
 
   let schemas = [];
 
-  dmart_list_schemas().then((resp) => {
+  dmartListSchemas().then((resp) => {
     schemas = resp.records.map((r) => ({
       shortname: r.shortname,
       payload: r.attributes.payload,
@@ -111,7 +111,7 @@
         record.subpath = subpath.substring(0, subpath.lastIndexOf("/"));
         console.log(`Fixing subpath: from ${subpath} to ${record.subpath}`);
       }
-      resp = await dmart_content("update", record);
+      resp = await dmartContent("update", record);
       op = "updated";
     } else {
       if (resource_type == "media") {
@@ -123,7 +123,7 @@
             content_type: mediafile.type,
             bytesize: mediafile.size,
           };
-          resp = await dmart_postmedia(record, mediafile);
+          resp = await dmartPostMedia(record, mediafile);
         } else {
           alert("Media file must be selected");
           resp = { status: "failed" };
@@ -136,7 +136,7 @@
           content_type: payload_type,
           bytesize: new Blob([payload]).size,
         };
-        resp = await dmart_content("create", record);
+        resp = await dmartContent("create", record);
       }
       op = "created";
     }
@@ -146,7 +146,7 @@
         // If this is not attachment, add it as main entry.
         let entry = {
           data: (
-            await dmart_query({
+            await dmartQuery({
               type: "subpath",
               subpath: record.subpath,
               filter_shortnames: [record.shortname],

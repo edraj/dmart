@@ -3,7 +3,7 @@
   import { active_entry } from "../stores/active_entry.js";
   import ContentModal from "./ContentModal.svelte";
   import { entries } from "../stores/entries.js";
-  import { dmart_delete_content } from "../dmart.js";
+  import { dmartDeleteContent } from "../dmart.js";
   import { getNotificationsContext } from "svelte-notifications";
   import { _ } from "../i18n";
 
@@ -35,7 +35,7 @@
         `Are you sure you want to delete "${data.displayname}" under ${data.subpath}?`
       )
     ) {
-      let result = await dmart_delete_content(
+      let result = await dmartDeleteContent(
         data.resource_type,
         data.subpath,
         data.shortname

@@ -1,4 +1,4 @@
-export default async function dmart_fetch(url, request, type = "json") {
+export default async function dmartFetch(url, request, type = "json") {
   let response = await fetch(url, request);
   switch (type) {
     case "json":

@@ -3,13 +3,9 @@
   import { status_line } from "./../stores/status_line.js";
   import VirtualList from "svelte-tiny-virtual-list";
   import InfiniteLoading from "svelte-infinite-loading";
-  import {
-    dmart_create_content,
-    dmart_get_schemas,
-    dmart_request,
-  } from "../dmart";
+  import { dmartCreateContent, dmartGetSchemas, dmartRequest } from "../dmart";
   import { onDestroy } from "svelte";
-  import { dmart_entry, dmart_query } from "../dmart";
+  import { dmart_entry, dmartQuery } from "../dmart";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
   import { toastPushSuccess, toastPushFail } from "../utils";
   import AttachmentsManagment from "./AttachmentsManagment.svelte";
@@ -125,7 +121,7 @@
       search.options = [];
     }
 
-    await dmart_get_schemas(query.space_name, schema_shortname)
+    await dmartGetSchemas(query.space_name, schema_shortname)
       .then((json) => {
         const schema = json.records[0].attributes["payload"].body;
         search.options = Object.keys(schema["properties"]);
@@ -148,7 +144,7 @@
       try {
         query.limit = 50;
         query.offset = 50 * page;
-        await dmart_query(query)
+        await dmartQuery(query)
           .then(async (json) => {
             records = [...records, ...json.records];
             if (json.status == "success") {
@@ -209,7 +205,7 @@
       bodyContent.json ??
       JSON.parse(bodyContent.text) ??
       data.attributes.payload.body;
-    const response = await dmart_request("managed/request", {
+    const response = await dmartRequest("managed/request", {
       space_name: query.space_name,
       request_type: "update",
       records: [data],
@@ -274,7 +270,7 @@
     e.preventDefault();
 
     if (isSchemaValidated) {
-      const response = await dmart_create_content(
+      const response = await dmartCreateContent(
         base_query.space_name,
         base_query.subpath,
         contentShortname === "" ? "auto" : contentShortname,
@@ -317,7 +313,7 @@
         },
       ],
     };
-    const response = await dmart_request("managed/request", request);
+    const response = await dmartRequest("managed/request", request);
     if (response.status === "success") {
       toastPushSuccess();
       refreshList();
