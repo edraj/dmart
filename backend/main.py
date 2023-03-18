@@ -15,6 +15,7 @@ from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
+from utils.plugins import plugin_manager
 from utils.spaces import initialize_spaces
 # import json_logging
 from fastapi import Depends, FastAPI, Request, Response, status
@@ -354,6 +355,8 @@ app.include_router(
 app.include_router(
     info, prefix="/info", tags=["info"], dependencies=[Depends(capture_body)]
 )
+# load plugins
+asyncio.run(plugin_manager.load_plugins(app, capture_body))
 
 @app.options("/{x:path}", include_in_schema=False)
 async def myoptions():
