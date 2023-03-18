@@ -101,8 +101,9 @@ class PluginManager:
         plugins_iterator.close()
 
     def store_plugin_in_its_action_dict(self, plugin_wrapper: PluginWrapper):
-        for action in plugin_wrapper.filters.actions:
-            self.plugins_wrappers.setdefault(action, []).append(plugin_wrapper)
+        if plugin_wrapper.filters:
+            for action in plugin_wrapper.filters.actions:
+                self.plugins_wrappers.setdefault(action, []).append(plugin_wrapper)
 
     def sort_plugins(self):
         """Sort plugins based on plugin_wrapper.ordinal"""
@@ -154,6 +155,7 @@ class PluginManager:
             if (
                 plugin_model.shortname in space_plugins
                 and plugin_model.listen_time == EventListenTime.before
+                and plugin_model.filters
                 and self.matched_filters(plugin_model.filters, event)
             ):
                 try:
@@ -179,6 +181,7 @@ class PluginManager:
             if (
                 plugin_model.shortname in space_plugins
                 and plugin_model.listen_time == EventListenTime.after
+                and plugin_model.filters
                 and self.matched_filters(plugin_model.filters, event)
             ):
                 try:
