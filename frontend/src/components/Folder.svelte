@@ -129,6 +129,11 @@
     ) {
       return;
     }
+
+    const arr = data.subpath.split("/");
+    arr[arr.length - 1] = "";
+    const parentSubpath = arr.join("/");
+
     const request = {
       space_name: data.space_name,
       request_type: "delete",
@@ -136,7 +141,7 @@
         {
           resource_type: "folder",
           shortname: data.shortname,
-          subpath: data.subpath,
+          subpath: parentSubpath,
           attributes: {},
         },
       ],

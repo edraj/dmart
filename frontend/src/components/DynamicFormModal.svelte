@@ -9,7 +9,6 @@
   import { Form, FormGroup, Label, Input } from "sveltestrap";
 
   export let open = false;
-  export let size = undefined;
   export let props;
   export let handleModelSubmit;
 
