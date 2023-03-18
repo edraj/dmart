@@ -10,6 +10,7 @@
     ctorULRForAttachment,
     dmartEntry,
     dmarRresourceWithPayload,
+    dmartRequest,
   } from "../dmart";
   import {
     Button,
@@ -48,7 +49,29 @@
     return ext == null ? "" : ext[1];
   }
 
-  function handleDelete(params) {}
+  async function handleDelete(item) {
+    console.log({ item });
+    const request = {
+      space_name,
+      request_type: "delete",
+      records: [
+        {
+          resource_type: "content",
+          shortname: item.title,
+          subpath: `${subpath}/.dm/${entryShortname}/attachments.media`,
+          branch_name: "master",
+          attributes: {},
+        },
+      ],
+    };
+    const response = await dmartRequest("managed/requst", request);
+    if (response.status === "success") {
+      toastPushSuccess();
+      _attachments = _attachments.filter((e) => e.title === item.title);
+    } else {
+      toastPushFail();
+    }
+  }
   function handleView(attachemntTitle) {
     content = {
       json: attachments.media.filter((e) => e.shortname === attachemntTitle)[0],
@@ -198,7 +221,10 @@
         >
         <div class="col-1 d-flex justify-content-between">
           <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <div class="mx-1" on:click={() => handleDelete(attachment)}>
+          <div
+            class="mx-1"
+            on:click={async () => await handleDelete(attachment)}
+          >
             <Fa icon={faTrashCan} size="2x" color="red" />
           </div>
           <!-- svelte-ignore a11y-click-events-have-key-events -->
