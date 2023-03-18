@@ -347,9 +347,9 @@ class EventFilter(BaseModel):
 
 
 class PluginWrapper(Meta):
-    filters: EventFilter
-    listen_time: EventListenTime
-    type: PluginType
+    filters: EventFilter | None = None
+    listen_time: EventListenTime | None = None
+    type: PluginType | None = None
     ordinal: int = 9999
     object: PluginBase | None = None
 
