@@ -69,7 +69,7 @@ class PluginManager:
                             dependencies=[Depends(capture_body)]
                         )
                     else:
-                        raise Exception('Failed to load')
+                        raise Exception(f'Failed to load API {plugin_wrapper.shortname}')
                 except Exception as e:
                     logger.error(
                         f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"
