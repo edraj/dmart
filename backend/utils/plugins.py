@@ -1,8 +1,9 @@
 import asyncio
-import importlib
 from inspect import iscoroutine
 import os
 from pathlib import Path
+from typing import Any
+
 import aiofiles
 from fastapi import Depends, FastAPI
 from models.core import (
@@ -17,7 +18,7 @@ from models.core import (
 from models.enums import ResourceType, PluginType
 from utils.settings import settings
 from utils.spaces import get_spaces
-from importlib import import_module
+from importlib import import_module, util
 from importlib.util import find_spec, module_from_spec
 import sys
 from fastapi.logger import logger
@@ -55,14 +56,20 @@ class PluginManager:
 
             if plugin_wrapper.type == PluginType.api:
                 try:
-                    body_path = settings.spaces_folder / settings.management_space / f"plugins/{plugin_wrapper.payload.body}"
-                    spec = importlib.util.spec_from_file_location("router", body_path)
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-                    app.include_router(
-                        module.router, prefix=f"/{plugin_wrapper.shortname}", tags=[plugin_wrapper.shortname],
-                        dependencies=[Depends(capture_body)]
-                    )
+                    body_name: str | dict[str, Any] | Path = plugin_wrapper.payload.body if plugin_wrapper.payload else ''
+                    body_path = settings.spaces_folder / settings.management_space / f"plugins/{body_name}"
+                    spec = util.spec_from_file_location("router", body_path)
+                    module = None
+                    if spec:
+                        module = util.module_from_spec(spec)
+                    if spec and spec.loader and module:
+                        spec.loader.exec_module(module)
+                        app.include_router(
+                            module.router, prefix=f"/{plugin_wrapper.shortname}", tags=[plugin_wrapper.shortname],
+                            dependencies=[Depends(capture_body)]
+                        )
+                    else:
+                        raise Exception('Failed to load')
                 except Exception as e:
                     logger.error(
                         f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"
