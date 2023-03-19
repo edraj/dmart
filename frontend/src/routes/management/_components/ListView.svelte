@@ -250,6 +250,7 @@
     if (response.status === "success") {
       toastPushSuccess();
       records[currentItem - 1] = response.records[0];
+      metaContentAttachement = records[currentItem - 1].attachments;
     } else {
       toastPushFail();
     }
@@ -462,7 +463,6 @@
           shortname = record.shortname;
           const json = { ...record };
           metaContentAttachement = json.attachments;
-          console.log({ metaContentAttachement });
 
           delete json.attachments;
           metaContent = {
