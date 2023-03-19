@@ -13,7 +13,7 @@
     dmartListSchemas,
     dmartContent,
     dmartPostMedia,
-  } from "../dmart";
+  } from "../../../dmart.js";
   // import sha1 from "../sha1";
   import { entries } from "../_stores/entries.js";
   import { getNotificationsContext } from "svelte-notifications";
