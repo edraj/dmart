@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     redis_port: int = 6379
     management_space: str = "management"
     spaces_folder: Path = Path("../sample/spaces/")
+    contracts_folder: Path = Path("../contracts/")
     lock_period: int = 300
     servername: str = ""  # This is for print purposes only.
     auto_uuid_rule = "auto"  # Used to generate a shortname from UUID
