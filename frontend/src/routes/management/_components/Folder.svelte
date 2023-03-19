@@ -39,7 +39,8 @@
       );
       if (_entries.length === 0) {
         contents.set({
-          type: "subpath",
+          type: "search",
+          search: "",
           space_name: data.space_name,
           subpath: data.subpath,
         });
