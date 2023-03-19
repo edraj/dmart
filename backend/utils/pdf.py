@@ -49,7 +49,7 @@ async def generate_pdf_file(
     if not output_path:
         raise Exception('output_path is not provided')
 
-    html_path = Path(f'pdf_templates/{template_name}.html')
+    html_path = Path(f'{settings.spaces_folder}/{settings.management_space}/templates/pdf/{template_name}.html')
     async with aiofiles.open(html_path, "r") as file:
         template_content = await file.read()
 
