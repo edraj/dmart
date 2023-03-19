@@ -323,6 +323,10 @@
   }
 
   async function handleDelete() {
+    if (confirm(`Are you sure want to delete ${shortname} entry`) === false) {
+      return;
+    }
+
     const { resource_type, branch_name, subpath, shortname } = {
       ...records[currentItem - 1],
     };
