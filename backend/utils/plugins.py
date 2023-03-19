@@ -2,7 +2,10 @@ import asyncio
 from inspect import iscoroutine
 import os
 from pathlib import Path
+from typing import Any
+
 import aiofiles
+from fastapi import Depends, FastAPI
 from models.core import (
     ActionType,
     PluginWrapper,
@@ -12,10 +15,10 @@ from models.core import (
     EventListenTime,
     Space,
 )
-from models.enums import ResourceType
+from models.enums import ResourceType, PluginType
 from utils.settings import settings
 from utils.spaces import get_spaces
-from importlib import import_module
+from importlib import import_module, util
 from importlib.util import find_spec, module_from_spec
 import sys
 from fastapi.logger import logger
@@ -37,7 +40,7 @@ class PluginManager:
         ActionType, list[PluginWrapper]
     ] = {}  # {action_type: list_of_plugins_wrappers]}
 
-    async def load_plugins(self):
+    async def load_plugins(self, app: FastAPI, capture_body):
         path = settings.spaces_folder / settings.management_space / "plugins/.dm"
         if not path.is_dir():
             return
@@ -49,36 +52,58 @@ class PluginManager:
                 continue
 
             async with aiofiles.open(meta_file_path, "r") as meta_file:
-                plugin_wrapper = PluginWrapper.parse_raw(await meta_file.read())
+                plugin_wrapper: PluginWrapper = PluginWrapper.parse_raw(await meta_file.read())
 
-            try:
-                module_name = f"plugins.{plugin_wrapper.shortname}"
-                core_plugin_specs = find_spec(module_name)
+            if plugin_wrapper.type == PluginType.api:
+                try:
+                    body_name: str | dict[str, Any] | Path = plugin_wrapper.payload.body if plugin_wrapper.payload else ''
+                    body_path = settings.spaces_folder / settings.management_space / f"plugins/{body_name}"
+                    spec = util.spec_from_file_location("router", body_path)
+                    module = None
+                    if spec:
+                        module = util.module_from_spec(spec)
+                    if spec and spec.loader and module:
+                        spec.loader.exec_module(module)
+                        app.include_router(
+                            module.router, prefix=f"/{plugin_wrapper.shortname}", tags=[plugin_wrapper.shortname],
+                            dependencies=[Depends(capture_body)]
+                        )
+                    else:
+                        raise Exception(f'Failed to load API {plugin_wrapper.shortname}')
+                except Exception as e:
+                    logger.error(
+                        f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"
+                    )
+            elif plugin_wrapper.type == PluginType.hook:
+                try:
+                    module_name = f"plugins.{plugin_wrapper.shortname}"
+                    core_plugin_specs = find_spec(module_name)
 
-                if core_plugin_specs and core_plugin_specs.loader:
-                    module = module_from_spec(core_plugin_specs)
-                    sys.modules[module_name] = module
-                    core_plugin_specs.loader.exec_module(module)
-                    plugin_wrapper.object = module.Plugin()
-                else:
-                    plugin_wrapper.object = import_module(
-                        f"{settings.management_space}.plugins.{plugin_wrapper.shortname}"
-                    ).Plugin()  # intialize the class in memory load_plugins
+                    if core_plugin_specs and core_plugin_specs.loader:
+                        module = module_from_spec(core_plugin_specs)
+                        sys.modules[module_name] = module
+                        core_plugin_specs.loader.exec_module(module)
+                        plugin_wrapper.object = module.Plugin()
+                    else:
+                        plugin_wrapper.object = import_module(
+                            f"{settings.management_space}.plugins.{plugin_wrapper.shortname}"
+                        ).Plugin()  # intialize the class in memory load_plugins
 
-                if plugin_wrapper.is_active:
-                    self.store_plugin_in_its_action_dict(plugin_wrapper)
+                    if plugin_wrapper.is_active:
+                        self.store_plugin_in_its_action_dict(plugin_wrapper)
 
-            except Exception as e:
-                logger.error(
-                    f"PLUGIN_ERROR, Plugin {plugin_wrapper.shortname} Failed to load, error: {e.args}"
-                )
+                except Exception as e:
+                    logger.error(
+                        f"PLUGIN_ERROR, Plugin {plugin_wrapper.shortname} Failed to load, error: {e.args}"
+                    )
 
         self.sort_plugins()
         plugins_iterator.close()
 
     def store_plugin_in_its_action_dict(self, plugin_wrapper: PluginWrapper):
-        for action in plugin_wrapper.filters.actions:
-            self.plugins_wrappers.setdefault(action, []).append(plugin_wrapper)
+        if plugin_wrapper.filters:
+            for action in plugin_wrapper.filters.actions:
+                self.plugins_wrappers.setdefault(action, []).append(plugin_wrapper)
 
     def sort_plugins(self):
         """Sort plugins based on plugin_wrapper.ordinal"""
@@ -130,6 +155,7 @@ class PluginManager:
             if (
                 plugin_model.shortname in space_plugins
                 and plugin_model.listen_time == EventListenTime.before
+                and plugin_model.filters
                 and self.matched_filters(plugin_model.filters, event)
             ):
                 try:
@@ -155,6 +181,7 @@ class PluginManager:
             if (
                 plugin_model.shortname in space_plugins
                 and plugin_model.listen_time == EventListenTime.after
+                and plugin_model.filters
                 and self.matched_filters(plugin_model.filters, event)
             ):
                 try:
@@ -168,4 +195,3 @@ class PluginManager:
 
 
 plugin_manager = PluginManager()
-asyncio.run(plugin_manager.load_plugins())
