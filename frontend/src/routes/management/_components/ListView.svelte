@@ -234,6 +234,27 @@
     infiniteId = Symbol();
   }
 
+  async function updateSingleEntry() {
+    const { subpath, branch_name, shortname } = records[currentItem - 1];
+    const request = {
+      type: "subpath",
+      space_name: query.space_name,
+      subpath,
+      branch_name,
+      filter_schema_names: ["meta"],
+      filter_shortnames: [shortname],
+      retrieve_json_payload: true,
+      retrieve_attachments: true,
+    };
+    const response = await dmartRequest("managed/query", request);
+    if (response.status === "success") {
+      toastPushSuccess();
+      records[currentItem - 1] = response.records[0];
+    } else {
+      toastPushFail();
+    }
+  }
+
   let delay;
   function handleSearchInput(event) {
     clearTimeout(delay);
@@ -552,12 +573,15 @@
       <ContentJsonEditor bind:content={metaContent} {handleSave} />
     </TabPanel>
     <TabPanel>
-      <AttachmentsManagment
-        bind:attachments={metaContentAttachement}
-        bind:space_name={query.space_name}
-        bind:subpath={query.subpath}
-        bind:entryShortname={records[currentItem - 1].shortname}
-      />
+      {#key records}
+        <AttachmentsManagment
+          bind:attachments={metaContentAttachement}
+          bind:space_name={query.space_name}
+          bind:subpath={query.subpath}
+          bind:entryShortname={records[currentItem - 1].shortname}
+          forceRefresh={async () => await updateSingleEntry()}
+        />
+      {/key}
     </TabPanel>
 
     <TabPanel>
