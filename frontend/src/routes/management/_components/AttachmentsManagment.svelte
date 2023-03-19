@@ -94,15 +94,15 @@
               _attachments.push({
                 type,
                 title: element.shortname,
-                content: await dmartEntry(
-                  element.resource_type,
-                  space_name,
-                  element.subpath,
-                  element.shortname,
-                  "",
-                  getFileExtension(element.attributes.payload.body),
-                  type
-                ),
+                // content: await dmartEntry(
+                //   element.resource_type,
+                //   space_name,
+                //   element.subpath,
+                //   element.shortname,
+                //   "",
+                //   getFileExtension(element.attributes.payload.body),
+                //   type
+                // ),
                 link: ctorULRForAttachment(
                   element.resource_type,
                   space_name,
@@ -240,7 +240,7 @@
         </div>
 
         {#if attachment.type === "image"}
-          <img class="border" src={attachment.content} alt={attachment.title} />
+          <img class="border" src={attachment.link} alt={attachment.title} />
         {/if}
         {#if attachment.type === "pdf"}
           <object
@@ -248,7 +248,7 @@
             class="w-100 embed-responsive-item"
             style="height: 100vh;"
             type="application/pdf"
-            data={attachment.content}
+            data={attachment.link}
           >
             <p>For some reason PDF is not rendered here properly.</p>
           </object>
