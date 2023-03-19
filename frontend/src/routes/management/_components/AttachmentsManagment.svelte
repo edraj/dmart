@@ -51,6 +51,12 @@
   }
 
   async function handleDelete(item) {
+    if (
+      confirm(`Are you sure want to delete ${item.title} attachment`) === false
+    ) {
+      return;
+    }
+
     const arr = subpath.split("/");
     arr[0] = "";
     const _subpath = arr.join("/");
