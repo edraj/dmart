@@ -50,24 +50,27 @@
   }
 
   async function handleDelete(item) {
-    console.log({ item });
+    const arr = subpath.split("/");
+    arr[0] = "";
+    const _subpath = arr.join("/");
+
     const request = {
       space_name,
       request_type: "delete",
       records: [
         {
-          resource_type: "content",
+          resource_type: "media",
           shortname: item.title,
-          subpath: `${subpath}/.dm/${entryShortname}/attachments.media`,
+          subpath: `${_subpath}/${entryShortname}`,
           branch_name: "master",
           attributes: {},
         },
       ],
     };
-    const response = await dmartRequest("managed/requst", request);
+    const response = await dmartRequest("managed/request", request);
     if (response.status === "success") {
       toastPushSuccess();
-      _attachments = _attachments.filter((e) => e.title === item.title);
+      _attachments = _attachments.filter((e) => e.title !== item.title);
     } else {
       toastPushFail();
     }
@@ -213,46 +216,48 @@
     <Circle2 size="200" color="#FF3E00" unit="px" duration="1s" />
   {:then _}
     <div class="d-flex justify-content-center" />
-    {#each _attachments as attachment}
-      <hr />
-      <div class="row mb-2">
-        <a class="col-11" style="font-size: 1.25em;" href={attachment.link}
-          >{attachment.title}</a
-        >
-        <div class="col-1 d-flex justify-content-between">
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <div
-            class="mx-1"
-            on:click={async () => await handleDelete(attachment)}
+    {#key _attachments}
+      {#each _attachments as attachment}
+        <hr />
+        <div class="row mb-2">
+          <a class="col-11" style="font-size: 1.25em;" href={attachment.link}
+            >{attachment.title}</a
           >
-            <Fa icon={faTrashCan} size="2x" color="red" />
-          </div>
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <div class="mx-1" on:click={() => handleView(attachment.title)}>
-            <Fa icon={faEye} size="2x" color="grey" />
+          <div class="col-1 d-flex justify-content-between">
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <div
+              class="mx-1"
+              on:click={async () => await handleDelete(attachment)}
+            >
+              <Fa icon={faTrashCan} size="2x" color="red" />
+            </div>
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <div class="mx-1" on:click={() => handleView(attachment.title)}>
+              <Fa icon={faEye} size="2x" color="grey" />
+            </div>
           </div>
         </div>
-      </div>
 
-      {#if attachment.type === "image"}
-        <img class="border" src={attachment.content} alt={attachment.title} />
-      {/if}
-      {#if attachment.type === "pdf"}
-        <object
-          title={attachment.title}
-          class="w-100 embed-responsive-item"
-          style="height: 100vh;"
-          type="application/pdf"
-          data={attachment.content}
-        >
-          <p>For some reason PDF is not rendered here properly.</p>
-        </object>
-      {/if}
-      {#if attachment.type === "audio"}
-        <AudioPlayer src={attachment.link} />
-      {/if}
-      <hr />
-    {/each}
+        {#if attachment.type === "image"}
+          <img class="border" src={attachment.content} alt={attachment.title} />
+        {/if}
+        {#if attachment.type === "pdf"}
+          <object
+            title={attachment.title}
+            class="w-100 embed-responsive-item"
+            style="height: 100vh;"
+            type="application/pdf"
+            data={attachment.content}
+          >
+            <p>For some reason PDF is not rendered here properly.</p>
+          </object>
+        {/if}
+        {#if attachment.type === "audio"}
+          <AudioPlayer src={attachment.link} />
+        {/if}
+        <hr />
+      {/each}
+    {/key}
   {:catch error}
     <p style="color: red">{error.message}</p>
   {/await}
