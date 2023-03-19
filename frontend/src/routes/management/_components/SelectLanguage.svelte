@@ -1,6 +1,6 @@
 <script>
-  import { _, switchLocale, locale, available_locales } from "../i18n";
-  import { website } from "../config.js";
+  import { _, switchLocale, locale, available_locales } from "../../../i18n/index.js";
+  import { website } from "../../../config.js";
   import { ButtonGroup, Button } from "sveltestrap";
   let locales = available_locales.filter((x) => x in website.languages);
 

@@ -8,9 +8,9 @@
     Nav,
     NavLink,
   } from "sveltestrap";
-  import { _, locale } from "../i18n";
-  import { website } from "../config.js";
-  import signedin_user from "../stores/signedin_user.js";
+  import { _, locale } from "../../../i18n/index.js";
+  import { website } from "../../../config.js";
+  import signedin_user from "../_stores/signedin_user.js";
   // import { redirect } from "@roxi/routify";
   import LocalizedValue from "./LocalizedValue.svelte";
 

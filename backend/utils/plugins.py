@@ -32,7 +32,9 @@ for part in settings.spaces_folder.parts:
         back_num += 1
 
 sys.path.append(
-    "/".join(__file__.split("/")[:-(spaces_ups+back_num)]) + "/" + "/".join(settings.spaces_folder.parts[back_num:])
+    "/".join(__file__.split("/")[: -(spaces_ups + back_num)])
+    + "/"
+    + "/".join(settings.spaces_folder.parts[back_num:])
 )
 
 
@@ -54,12 +56,20 @@ class PluginManager:
                 continue
 
             async with aiofiles.open(meta_file_path, "r") as meta_file:
-                plugin_wrapper: PluginWrapper = PluginWrapper.parse_raw(await meta_file.read())
+                plugin_wrapper: PluginWrapper = PluginWrapper.parse_raw(
+                    await meta_file.read()
+                )
 
             if plugin_wrapper.type == PluginType.api:
                 try:
-                    body_name: str | dict[str, Any] | Path = plugin_wrapper.payload.body if plugin_wrapper.payload else ''
-                    body_path = settings.spaces_folder / settings.management_space / f"plugins/{body_name}"
+                    body_name: str | dict[str, Any] | Path = (
+                        plugin_wrapper.payload.body if plugin_wrapper.payload else ""
+                    )
+                    body_path = (
+                        settings.spaces_folder
+                        / settings.management_space
+                        / f"plugins/{body_name}"
+                    )
                     spec = util.spec_from_file_location("router", body_path)
                     module = None
                     if spec:
@@ -67,11 +77,15 @@ class PluginManager:
                     if spec and spec.loader and module:
                         spec.loader.exec_module(module)
                         app.include_router(
-                            module.router, prefix=f"/{plugin_wrapper.shortname}", tags=[plugin_wrapper.shortname],
-                            dependencies=[Depends(capture_body)]
+                            module.router,
+                            prefix=f"/{plugin_wrapper.shortname}",
+                            tags=[plugin_wrapper.shortname],
+                            dependencies=[Depends(capture_body)],
                         )
                     else:
-                        raise Exception(f'Failed to load API {plugin_wrapper.shortname}')
+                        raise Exception(
+                            f"Failed to load API {plugin_wrapper.shortname}"
+                        )
                 except Exception as e:
                     logger.error(
                         f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"

@@ -11,7 +11,7 @@
     dmartEntry,
     dmarRresourceWithPayload,
     dmartRequest,
-  } from "../dmart";
+  } from "../../../dmart.js";
   import {
     Button,
     Input,
@@ -22,7 +22,7 @@
     ModalHeader,
   } from "sveltestrap";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
-  import { toastPushFail, toastPushSuccess } from "../utils";
+  import { toastPushFail, toastPushSuccess } from "../../../utils.js";
   import AudioPlayer from "./AudioPlayer.svelte";
 
   export let attachments;

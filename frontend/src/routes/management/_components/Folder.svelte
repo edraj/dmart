@@ -1,20 +1,20 @@
 <script>
-  import selectedSubpath from "./../stores/selected_subpath.js";
-  import { contents } from "./../stores/contents.js";
-  import { dmartEntries, dmartFolder, dmartRequest } from "../dmart.js";
-  import { entries } from "../stores/entries.js";
+  import { dmartEntries, dmartFolder, dmartRequest } from "../../../dmart.js";
+  import selectedSubpath from "../_stores/selected_subpath.js";
+  import { entries } from "../_stores/entries.js";
+  import { contents } from "../_stores/contents.js";
+  import spaces, { getSpaces } from "../_stores/spaces.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
-  import { _ } from "../i18n";
+  import { _ } from "../../../i18n/index.js";
   import { slide } from "svelte/transition";
   import Folder from "./Folder.svelte";
-  import spaces, { getSpaces } from "../stores/spaces.js";
   import Fa from "sveltejs-fontawesome";
   import {
     faPlusSquare,
     faTrashCan,
     faEdit,
   } from "@fortawesome/free-regular-svg-icons";
-  import { toastPushFail, toastPushSuccess } from "../utils.js";
+  import { toastPushFail, toastPushSuccess } from "../../../utils.js";
   import JsonEditorModal from "./JsonEditorModal.svelte";
 
   let expanded = false;
