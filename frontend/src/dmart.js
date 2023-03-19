@@ -1,7 +1,7 @@
 import dmartFetch from "./fetch.js";
-import { website } from "./config.js";
 import { get } from "svelte/store";
-import signedin_user from "./stores/signedin_user";
+import signedin_user from "./routes/management/_stores/signedin_user.js";
+import { website } from "./config.js";
 // import sha1 from "./sha1.js";
 
 export async function dmartListSchemas() {

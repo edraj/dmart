@@ -1,5 +1,5 @@
+import { dmartRequest } from "../../../dmart.js";
 import { writable } from "svelte/store";
-import { dmartRequest } from "../dmart";
 
 const local = JSON.parse(localStorage.getItem("spaces"));
 const { subscribe, set } = writable(local);

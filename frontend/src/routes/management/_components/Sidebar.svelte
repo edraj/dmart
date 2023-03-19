@@ -1,17 +1,15 @@
 <script>
-  import spaces, { getSpaces } from "../stores/spaces.js";
-  import { active_entry } from "../stores/active_entry.js";
-  import { _ } from "../i18n";
-  import { status_line } from "../stores/status_line.js";
-  import { ListGroup, ListGroupItem } from "sveltestrap";
+  import spaces, { getSpaces } from "../_stores/spaces.js";
+  import { active_entry } from "../_stores/active_entry.js";
+  import { _ } from "../../../i18n/index.js";
+  import { status_line } from "../_stores/status_line.js";
+  import { ListGroup } from "sveltestrap";
   import { slide } from "svelte/transition";
-  import SidebarSpaces from "./SidebarSpaces.svelte";
-  import Fa from "sveltejs-fontawesome";
-  import { faPlusSquare } from "@fortawesome/free-regular-svg-icons";
+  import { dmartSpaces } from "../../../dmart.js";
+  import { toastPushSuccess } from "../../../utils.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
-  import { dmartSpaces } from "../dmart.js";
   import SchemaFormModal from "./SchemaFormModal.svelte";
-  import { toastPushSuccess } from "../utils.js";
+  import SidebarSpaces from "./SidebarSpaces.svelte";
 
   let headHeight;
   let footHeight;

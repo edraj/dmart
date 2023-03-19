@@ -1,5 +1,5 @@
 <script>
-  import { locale } from "../i18n";
+  import { locale } from "../../../i18n/index.js";
 
   export let field;
   let value;

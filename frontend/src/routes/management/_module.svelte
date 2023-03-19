@@ -1,13 +1,13 @@
 <!-- routify:meta reset -->
 <script lang="ts">
   import { Col, Container, Row } from "sveltestrap";
-  import Header from "../../components/management/Header.svelte";
-  import Sidebar from "../../components/Sidebar.svelte";
-  // import Footer from "../../components/Footer.svelte";
-  import signedin_user from "../../stores/signedin_user.js";
-  import Login from "../../components/Login.svelte";
+  // import Footer from "../../_components/Footer.svelte";
+  import signedin_user from "./_stores/signedin_user.js";
+  import Login from "../_components/Login.svelte";
   import Notifications from "svelte-notifications";
-  import { getSpaces } from "./../../stores/spaces";
+  import { getSpaces } from "./_stores/spaces";
+  import Header from "./_components/Header.svelte";
+  import Sidebar from "./_components/Sidebar.svelte";
 
   getSpaces();
 </script>

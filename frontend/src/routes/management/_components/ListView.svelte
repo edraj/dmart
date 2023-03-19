@@ -1,13 +1,17 @@
 <script>
   import { Tabs, Tab, TabList, TabPanel } from "svelte-tabs";
-  import { status_line } from "./../stores/status_line.js";
+  import { status_line } from "../_stores/status_line.js";
   import VirtualList from "svelte-tiny-virtual-list";
   import InfiniteLoading from "svelte-infinite-loading";
-  import { dmartCreateContent, dmartGetSchemas, dmartRequest } from "../dmart";
+  import {
+    dmartCreateContent,
+    dmartGetSchemas,
+    dmartRequest,
+  } from "../../../dmart.js";
   import { onDestroy } from "svelte";
-  import { dmartEntry, dmartQuery } from "../dmart";
+  import { dmartEntry, dmartQuery } from "../../../dmart.js";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
-  import { toastPushSuccess, toastPushFail } from "../utils";
+  import { toastPushSuccess, toastPushFail } from "../../../utils.js";
   import AttachmentsManagment from "./AttachmentsManagment.svelte";
   import "bootstrap";
   import Fa from "sveltejs-fontawesome";
@@ -25,7 +29,6 @@
   } from "sveltestrap";
   import { Form, FormGroup, Label, Input } from "sveltestrap";
   import { createAjvValidator, Mode } from "svelte-jsoneditor";
-  import { json } from "svelte-i18n";
 
   let showContentEditSection = false;
   let shortname = "";

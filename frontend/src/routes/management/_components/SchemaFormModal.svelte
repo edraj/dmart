@@ -9,9 +9,9 @@
   import { Form, FormGroup, Label, Input } from "sveltestrap";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
   import { createAjvValidator } from "svelte-jsoneditor";
-  import * as schema from "./../utils/SchemaValidator.json";
-  import { dmartCreateSchemas } from "../dmart";
-  import { toastPushSuccess, toastPushFail } from "../utils";
+  import * as schema from "../../../utils/SchemaValidator.json";
+  import { dmartCreateSchemas } from "../../../dmart.js";
+  import { toastPushSuccess, toastPushFail } from "../../../utils.js";
 
   const validator = createAjvValidator({ schema });
 

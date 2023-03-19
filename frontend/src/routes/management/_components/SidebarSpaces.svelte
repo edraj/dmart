@@ -8,11 +8,11 @@
   } from "@fortawesome/free-regular-svg-icons";
   import SidebarSubpaths from "./SidebarSubpaths.svelte";
   import { slide } from "svelte/transition";
-  import spaces, { getSpaces } from "../stores/spaces.js";
-  import { dmartFolder, dmartSpaces } from "../dmart.js";
+  import spaces, { getSpaces } from "../_stores/spaces.js";
+  import { dmartFolder, dmartSpaces } from "../../../dmart.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
   import JsonEditorModal from "./JsonEditorModal.svelte";
-  import { toastPushSuccess } from "../utils";
+  import { toastPushSuccess } from "../../../utils.js";
 
   export let child;
   export let displayActionMenu = false;

@@ -9,9 +9,9 @@
     Input,
     Button,
   } from "sveltestrap";
-  import signedin_user from "../stores/signedin_user.js";
-  import { dmartLogin } from "../dmart.js";
-  import { _ } from "../i18n";
+  import signedin_user from "../management/_stores/signedin_user.js";
+  import { dmartLogin } from "../../dmart.js";
+  import { _ } from "../../i18n/index.js";
 
   let username;
   let password;

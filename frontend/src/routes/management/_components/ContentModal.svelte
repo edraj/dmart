@@ -7,7 +7,7 @@
     ModalHeader,
   } from "sveltestrap";
   import Input from "./Input.svelte";
-  import { _ } from "../i18n";
+  import { _ } from "../../../i18n/index.js";
   import {
     dmartQuery,
     dmartListSchemas,
@@ -15,7 +15,7 @@
     dmartPostMedia,
   } from "../dmart";
   // import sha1 from "../sha1";
-  import { entries } from "../stores/entries.js";
+  import { entries } from "../_stores/entries.js";
   import { getNotificationsContext } from "svelte-notifications";
   import { createEventDispatcher } from "svelte";
   const dispatch = createEventDispatcher();
