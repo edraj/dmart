@@ -1352,6 +1352,8 @@ async def create_or_update_resource_with_payload(
     payload_filename = payload_file.filename or ""
     if payload_filename.endswith(".json"):
         resource_content_type = ContentType.json
+    elif payload_file.content_type == "text/plain":
+        resource_content_type = ContentType.image
     elif payload_file.content_type == "application/pdf":
         resource_content_type = ContentType.pdf
     elif payload_file.content_type == "text/markdown":
