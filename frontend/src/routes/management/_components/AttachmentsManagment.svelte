@@ -163,7 +163,7 @@
   </ModalHeader>
   <ModalBody>
     <div class="d-flex flex-column">
-      <Label>Request Record</Label>
+      <Label>Attachment shortname</Label>
       <Input accept="image/png, image/jpeg" bind:value={shortname} />
       <hr />
       <Label>Payload File</Label>
