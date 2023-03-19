@@ -26,11 +26,13 @@ from fastapi.logger import logger
 
 # Allow python to search for modules inside "spaces" folder
 spaces_ups = 2
+back_num = 0
 for part in settings.spaces_folder.parts:
     if part == "..":
-        spaces_ups += 1
+        back_num += 1
+
 sys.path.append(
-    "/".join(__file__.split("/")[:-spaces_ups]) + f"/{settings.spaces_folder.name}"
+    "/".join(__file__.split("/")[:-(spaces_ups+back_num)]) + "/" + "/".join(settings.spaces_folder.parts[back_num:])
 )
 
 
