@@ -29,6 +29,7 @@
   export let space_name;
   export let subpath;
   export let entryShortname;
+  export let forceRefresh;
   let content;
   let shortname;
 
@@ -129,7 +130,7 @@
     return new Blob([JSON.stringify(obj)], { type: "application/json" });
   }
 
-  let requestRecord, payloadFile;
+  let payloadFile;
   async function upload() {
     const response = await dmarRresourceWithPayload(
       space_name,
@@ -144,7 +145,7 @@
       payloadFile[0]
     );
     if (response.status === "success") {
-      toastPushSuccess();
+      await forceRefresh();
       openCreateAttachemntModal = false;
     } else {
       toastPushFail();
