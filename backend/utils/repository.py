@@ -530,6 +530,12 @@ async def serve_query(
                 )
                 for line in result:
                     action_obj = json.loads(line)
+                    
+                    if query.from_date and action_obj.get("timestamp") < query.from_date:
+                        continue
+
+                    if query.to_date and action_obj.get("timestamp") > query.to_date:
+                        break
 
                     if not await access_control.check_access(
                         user_shortname=logged_in_user,
