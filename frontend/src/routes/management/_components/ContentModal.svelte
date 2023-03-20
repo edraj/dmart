@@ -33,7 +33,6 @@
   const { addNotification } = getNotificationsContext();
 
   export let open = false;
-  export let size = undefined;
   export let subpath = null;
   export let data = null;
   export let parent_shortname = undefined;
