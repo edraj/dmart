@@ -1,7 +1,8 @@
 <script>
   import Icon from "./Icon.svelte";
   import ContentModal from "./ContentModal.svelte";
-  import { entries, active_entry } from "../_stores/entries.js";
+  import { entries } from "../_stores/entries.js";
+  import { active_entry } from "../_stores/active_entry.js"
   import { dmartDeleteContent } from "../../../dmart.js";
   import { getNotificationsContext } from "svelte-notifications";
   import { _ } from "../../../i18n/index.js";
