@@ -2083,17 +2083,19 @@ async def apply_alteration(
 @router.get("/in-loop-tasks")
 async def get_in_loop_tasks(logged_in_user=Depends(JWTBearer())):
     tasks = asyncio.all_tasks()
-    formatted_tasks: list[dict[str, str]] = []
+    
+    tasks_data: list[dict[str, str]] = []
     for task in tasks:
-        formatted_tasks.append({
+        tasks_data.append({
             "name": task.get_name(),
-            "coroutine": task.get_coro().__name__,
+            "coroutine": str(task.get_coro()),
+            "stack": str(task.get_stack())
         })
 
     return api.Response(
         status=api.Status.success,
         attributes={
-            "tasks_count": len(formatted_tasks),
-            "tasks": formatted_tasks
+            "tasks_count": len(tasks_data),
+            "tasks": tasks_data
         },
     )
