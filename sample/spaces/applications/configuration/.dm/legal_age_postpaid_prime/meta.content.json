@@ -1,0 +1,1 @@
+{"uuid": "23e9c1e3-eb78-428c-8c19-288a5a105096", "shortname": "legal_age_postpaid_prime", "is_active": true, "tags": [], "created_at": "2023-03-01T10:10:27.004449", "updated_at": "2023-03-01T10:10:36.713677", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "configuration", "body": "legal_age_postpaid_prime.json"}}

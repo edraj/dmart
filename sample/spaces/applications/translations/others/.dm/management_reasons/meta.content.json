@@ -1,0 +1,1 @@
+{"uuid": "cfdc568b-da6f-4287-bcde-fa7772886d8f", "shortname": "management_reasons", "is_active": true, "tags": [], "created_at": "2023-03-12T16:03:50.698509", "updated_at": "2023-03-12T16:03:50.698525", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "management_reasons.json"}}

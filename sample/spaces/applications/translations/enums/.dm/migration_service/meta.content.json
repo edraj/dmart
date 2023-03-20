@@ -1,0 +1,1 @@
+{"uuid": "ab5c67e2-2726-4ed2-b665-f075ba7ae6af", "shortname": "migration_service", "is_active": true, "tags": [], "created_at": "2023-03-14T10:51:58.178067", "updated_at": "2023-03-14T10:51:58.178083", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "migration_service.json"}}

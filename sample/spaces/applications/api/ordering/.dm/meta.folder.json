@@ -1,0 +1,1 @@
+{"uuid": "c6377b3a-0260-4986-9f10-5daa1f6aaecf", "shortname": "ordering", "is_active": true, "tags": [], "created_at": "2023-03-15T15:45:08.047293", "updated_at": "2023-03-15T15:45:08.047308", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "folder_rendering", "body": "ordering.json"}}

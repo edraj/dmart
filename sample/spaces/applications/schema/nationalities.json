@@ -1,0 +1,40 @@
+{
+  "title": "Nationalities Schema",
+  "description": "Nationalities description",
+  "additionalProperties": false,
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "title": "nationality",
+        "type": "object",
+        "properties": {
+          "code": {
+            "title": "Nationality 2-letter code",
+            "type": "string"
+          },
+          "ar": {
+            "title": "Nationality in ar",
+            "type": "string"
+          },
+          "en": {
+            "title": "Nationality in en",
+            "type": "string"
+          },
+          "kd": {
+            "title": "Nationality in kd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "ar",
+          "en",
+          "kd"
+        ]
+      }
+    }
+  }
+}

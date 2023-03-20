@@ -1,0 +1,17 @@
+{
+    "uuid": "761a2218-62aa-449e-8693-8844514d122c",
+    "shortname": "distributor",
+    "is_active": true,
+    "tags": [],
+    "created_at": "2022-10-20T10:18:05.863882",
+    "updated_at": "2022-10-20T10:18:05.863887",
+    "owner_shortname": "dmart",
+    "payload": {
+        "content_type": "json",
+        "schema_shortname": "meta_schema",
+        "checksum": "4394d9aff0d4f28791667c5a50e32b738097d5ce",
+        "body": "distributor.json",
+        "last_validated": "2022-12-30T11:55:39.717752",
+        "validation_status": "valid"
+    }
+}

@@ -1,0 +1,640 @@
+{
+    "items": [
+        {
+            "key": "evd_not_rc",
+            "en": "It is EVD not RC",
+            "ar": "It is EVD not RC",
+            "kd": "It is EVD not RC"
+        },
+        {
+            "key": "active_line",
+            "en": "Line is Already Active",
+            "ar": "Line is Already Active",
+            "kd": "Line is Already Active"
+        },
+        {
+            "key": "stopped_line",
+            "en": "Line Stopped Already",
+            "ar": "Line Stopped Already",
+            "kd": "Line Stopped Already"
+        },
+        {
+            "key": "line_is_not_registered",
+            "en": "Line Is Not Registered ",
+            "ar": "الخط غير مسجل",
+            "kd": " هێڵەکە تۆمار نەکراوە"
+        },
+        {
+            "key": "line_is_not_subscribed_in_this_service",
+            "en": "Line is not subscribed in this service",
+            "ar": "الخط غير مشترك في هذه الخدمة",
+            "kd": "هێڵەکە لەم خزمەتگوزارییەدا بەشدار نییە"
+        },
+        {
+            "key": "line_is_related_to_gov",
+            "en": "Line is related to Gov",
+            "ar": "الخط مسجل باسم دائرة حكومية ",
+            "kd": " هێڵەکە بەناوی فەرمانگەیەکی حکومییەوە تۆمارکراوە"
+        },
+        {
+            "key": "please_send_0_to_service_number_to_unsubscribe",
+            "en": "Please send 0 to service number to unsubscribe",
+            "ar": "الرجاء ارسال 0 الى رقم الخدمة للإلغاء",
+            "kd": " بۆ هەڵوەشاندنەوە 0 بنێرە بۆ ژمارەی خزمەتگوزاری"
+        },
+        {
+            "key": "recharge_card_is_already_stopped",
+            "en": "Recharge Card is already stopped",
+            "ar": "بطاقة التعبئة متوقفة مسبقا",
+            "kd": "کارتی پڕکردنەوە پێشتر وەستێنراوە"
+        },
+        {
+            "key": "recharge_card_is_used",
+            "en": "Recharge Card is used",
+            "ar": "بطاقة التعبئة مستخدمة",
+            "kd": " كارتى بركردنةوه بةكارهاتووه"
+        },
+        {
+            "key": "recharge_card_is_wrong",
+            "en": "Recharge Card is wrong",
+            "ar": "رقم بطاقة التعبئة غير صحيح",
+            "kd": " ژمارەی کارتی  پڕکردنەوە راست نییە"
+        },
+        {
+            "key": "request_approved",
+            "en": "Request Approved",
+            "ar": "تمت العملية بنجاح",
+            "kd": "پرۆسەکە سەرکەوتوو بوو"
+        },
+        {
+            "key": "request_rejected",
+            "en": "Request rejected",
+            "ar": "تم رفض الطلب ",
+            "kd": "داواکارییەکە رەتکرایەوە"
+        },
+        {
+            "key": "request_sent_successfully",
+            "en": "Request sent successfully",
+            "ar": "تم ارسال الطلب بنجاح",
+            "kd": "داواکارییەکە بەسەرکەوتوویی نێردرا"
+        },
+        {
+            "key": "send_your_request__after_15_mint",
+            "en": "Send Your request  After 15 Mint",
+            "ar": "يرجى ارسال طلبك بعد 15 دقيقة من الان لوجود اعمال صيانه",
+            "kd": " تکایە داواکارییەکەت دوای15 خوولەك بنێرە بەهۆی سەرقاڵبوون بە چاککردنەوە"
+        },
+        {
+            "key": "send_your_request_after_10_mint",
+            "en": "Send Your request After 10 Mint",
+            "ar": "يرجى ارسال طلبك بعد 10 دقائق لوجود اعمال صيانه",
+            "kd": " تکایە داواکارییەکەت دوای10 خوولەك بنێرە بەهۆی سەرقاڵبوون بە چاککردنەوە"
+        },
+        {
+            "key": "service_already_removed",
+            "en": "Service Already removed",
+            "ar": "الخدمة ملغاة مسبقا",
+            "kd": " خزمەتگوزارییەکە پێشتر رەتکراوەتەوە"
+        },
+        {
+            "key": "wrong_id_number",
+            "en": "Wrong ID Number",
+            "ar": "رقم الهوية غير مطابق",
+            "kd": " ژمارەی ناسنامە هاوتا نییە"
+        },
+        {
+            "key": "wrong_msisdn",
+            "en": "Wrong MSISDN ",
+            "ar": "رقم الخط غير صحيح",
+            "kd": " ژمارەی هێڵ راست نییە"
+        },
+        {
+            "key": "wrong_recharge_card",
+            "en": "Wrong Recharge Card",
+            "ar": "فئة بطاقة التعبئة غير صحيحة",
+            "kd": " جۆری کارتی پڕکردنەوە راست نییە"
+        },
+        {
+            "key": "wrong_service_number",
+            "en": "Wrong service number",
+            "ar": "رقم الخدمة غير صحيح",
+            "kd": " ژمارەی خزمەتگوزارییەکە راست نییە"
+        },
+        {
+            "key": "recharge_card_is_expired",
+            "en": "Recharge Card is expired",
+            "ar": "بطاقة التعبئة منتهية الصلاحية",
+            "kd": " کارتی پڕکردنەوە بەسەرچووە"
+        },
+        {
+            "key": "go_to_ros",
+            "en": "Go to ROS",
+            "ar": "Go to ROS and Please add callback number",
+            "kd": "Go to ROS and Please add callback number"
+        },
+        {
+            "key": "incoming_calls_only",
+            "en": "SIM Status-Incoming calls only",
+            "ar": "SIM Status-Incoming calls only",
+            "kd": "SIM Status-Incoming calls only"
+        },
+        {
+            "key": "credit_loan",
+            "en": "MSISDN has a Credit Loan (Negative Credit)",
+            "ar": "MSISDN has a Credit Loan (Negative Credit)",
+            "kd": "MSISDN has a Credit Loan (Negative Credit)"
+        },
+        {
+            "key": "non_migratable_profile",
+            "en": "Profile not eligible to be Migrated",
+            "ar": "Profile not eligible to be Migrated",
+            "kd": "Profile not eligible to be Migrated"
+        },
+        {
+            "key": "wrong_wh",
+            "en": "Wrong WH",
+            "ar": "Wrong WH",
+            "kd": "Wrong WH"
+        },
+        {
+            "key": "oodi_line",
+            "en": "Oodi line",
+            "ar": "Oodi line",
+            "kd": "Oodi line"
+        },
+        {
+            "key": "1_st_call_less_than_90_days",
+            "en": "1st call less than 90 days",
+            "ar": "1st call less than 90 days",
+            "kd": "1st call less than 90 days"
+        },
+        {
+            "key": "not_belong_to_the_owner",
+            "en": "Documents not belong to the owner",
+            "ar": "Documents not belong to the owner",
+            "kd": "Documents not belong to the owner"
+        },
+        {
+            "key": "uncompatible_photo",
+            "en": "Customer photo not compatible with documents",
+            "ar": "Customer photo not compatible with documents",
+            "kd": "Customer photo not compatible with documents"
+        },
+        {
+            "key": "fake_document",
+            "en": "Fake Document",
+            "ar": "Fake Document",
+            "kd": "Fake Document"
+        },
+        {
+            "key": "photo_quality",
+            "en": "Customer photo quality",
+            "ar": "Customer photo quality",
+            "kd": "Customer photo quality"
+        },
+        {
+            "key": "missing_photo",
+            "en": "Missing customer photo",
+            "ar": "Missing customer photo",
+            "kd": "Missing customer photo"
+        },
+        {
+            "key": "send_after_10_mint",
+            "en": "Send Your request After 10 Mint",
+            "ar": "Send Your request After 10 Mint",
+            "kd": "Send Your request After 10 Mint"
+        },
+        {
+            "key": "send_after_15_mint",
+            "en": "Send Your request After 15 Mint",
+            "ar": "Send Your request After 15 Mint",
+            "kd": "Send Your request After 15 Mint"
+        },
+        {
+            "key": "send_after_1_hr",
+            "en": "Send Your request After 1 Hr",
+            "ar": "Send Your request After 1 Hr",
+            "kd": "Send Your request After 1 Hr"
+        },
+        {
+            "key": "go_to_ros",
+            "en": "Go To ROS",
+            "ar": "Go To ROS",
+            "kd": "Go To ROS"
+        },
+        {
+            "key": "send_again",
+            "en": "Send Your request Again",
+            "ar": "Send Your request Again",
+            "kd": "Send Your request Again"
+        },
+        {
+            "key": "call_to_escalate",
+            "en": "Call 207 to escalate complain",
+            "ar": "Call 207 to escalate complain",
+            "kd": "Call 207 to escalate complain   "
+        },
+        {
+            "key": "duplicate_request",
+            "en": "Duplicate Request",
+            "ar": "Duplicate Request",
+            "kd": "Duplicate Request"
+        },
+        {
+            "key": "wrong_iccid",
+            "en": "Wrong ICCID",
+            "ar": "Wrong ICCID",
+            "kd": "Wrong ICCID"
+        },
+        {
+            "key": "line_is_related_to_gov",
+            "en": "Line is related to Gov",
+            "ar": "Line is related to Gov",
+            "kd": "Line is related to Gov"
+        },
+        {
+            "key": "line_is_terminated",
+            "en": "Line is terminated",
+            "ar": "Line is terminated",
+            "kd": "Line is terminated"
+        },
+        {
+            "key": "line_is_not_registered",
+            "en": "Line Is Not Registered",
+            "ar": "Line Is Not Registered",
+            "kd": "Line Is Not Registered"
+        },
+        {
+            "key": "not_clear",
+            "en": "Documents are not clear",
+            "ar": "Documents are not clear",
+            "kd": "Documents are not clear "
+        },
+        {
+            "key": "third_is_wrong",
+            "en": "Third Name is wrong",
+            "ar": "Third Name is wrong",
+            "kd": "Third Name is wrong"
+        },
+        {
+            "key": "second_is_wrong",
+            "en": "Second Name is wrong",
+            "ar": "Second Name is wrong",
+            "kd": "Second Name is wrong"
+        },
+        {
+            "key": "first_is_wrong",
+            "en": "First Name is wrong",
+            "ar": "First Name is wrong",
+            "kd": "First Name is wrong"
+        },
+        {
+            "key": "incoming_calls_only",
+            "en": "SIM Status-Incoming calls only",
+            "ar": "SIM Status-Incoming calls only",
+            "kd": "SIM Status-Incoming calls only"
+        },
+        {
+            "key": "credit_loan",
+            "en": "MSISDN has a Credit Loan (Negative Credit)",
+            "ar": "MSISDN has a Credit Loan (Negative Credit)",
+            "kd": "MSISDN has a Credit Loan (Negative Credit)"
+        },
+        {
+            "key": "non_migratable_profile",
+            "en": "Profile not eligible to be Migrated",
+            "ar": "Profile not eligible to be Migrated",
+            "kd": "Profile not eligible to be Migrated"
+        },
+        {
+            "key": "wrong_wh",
+            "en": "Wrong WH",
+            "ar": "Wrong WH",
+            "kd": "Wrong WH"
+        },
+        {
+            "key": "oodi_line",
+            "en": "Oodi line",
+            "ar": "Oodi line",
+            "kd": "Oodi line"
+        },
+        {
+            "key": "1_st_call_less_than_90_days",
+            "en": "1st call less than 90 days",
+            "ar": "1st call less than 90 days",
+            "kd": "1st call less than 90 days"
+        },
+        {
+            "key": "not_belong_to_the_owner",
+            "en": "Documents not belong to the owner",
+            "ar": "Documents not belong to the owner",
+            "kd": "Documents not belong to the owner"
+        },
+        {
+            "key": "uncompatible_photo",
+            "en": "Customer photo not compatible with documents",
+            "ar": "Customer photo not compatible with documents",
+            "kd": "Customer photo not compatible with documents"
+        },
+        {
+            "key": "fake_document",
+            "en": "Fake Document",
+            "ar": "Fake Document",
+            "kd": "Fake Document"
+        },
+        {
+            "key": "photo_quality",
+            "en": "Customer photo quality",
+            "ar": "Customer photo quality",
+            "kd": "Customer photo quality"
+        },
+        {
+            "key": "missing_photo",
+            "en": "Missing customer photo",
+            "ar": "Missing customer photo",
+            "kd": "Missing customer photo"
+        },
+        {
+            "key": "send_after_10_mint",
+            "en": "Send Your request After 10 Mint",
+            "ar": "Send Your request After 10 Mint",
+            "kd": "Send Your request After 10 Mint"
+        },
+        {
+            "key": "send_after_15_mint",
+            "en": "Send Your request After 15 Mint",
+            "ar": "Send Your request After 15 Mint",
+            "kd": "Send Your request After 15 Mint"
+        },
+        {
+            "key": "send_after_1_hr",
+            "en": "Send Your request After 1 Hr",
+            "ar": "Send Your request After 1 Hr",
+            "kd": "Send Your request After 1 Hr"
+        },
+        {
+            "key": "go_to_ros",
+            "en": "Go To ROS",
+            "ar": "Go To ROS",
+            "kd": "Go To ROS"
+        },
+        {
+            "key": "send_again",
+            "en": "Send Your request Again",
+            "ar": "Send Your request Again",
+            "kd": "Send Your request Again"
+        },
+        {
+            "key": "call_to_escalate",
+            "en": "Call 207 to escalate complain",
+            "ar": "Call 207 to escalate complain",
+            "kd": "Call 207 to escalate complain   "
+        },
+        {
+            "key": "duplicate_request",
+            "en": "Duplicate Request",
+            "ar": "Duplicate Request",
+            "kd": "Duplicate Request"
+        },
+        {
+            "key": "wrong_iccid",
+            "en": "Wrong ICCID",
+            "ar": "Wrong ICCID",
+            "kd": "Wrong ICCID"
+        },
+        {
+            "key": "line_is_related_to_gov",
+            "en": "Line is related to Gov",
+            "ar": "Line is related to Gov",
+            "kd": "Line is related to Gov"
+        },
+        {
+            "key": "line_is_terminated",
+            "en": "Line is terminated",
+            "ar": "Line is terminated",
+            "kd": "Line is terminated"
+        },
+        {
+            "key": "line_is_not_registered",
+            "en": "Line Is Not Registered",
+            "ar": "Line Is Not Registered",
+            "kd": "Line Is Not Registered"
+        },
+        {
+            "key": "not_clear",
+            "en": "Documents are not clear",
+            "ar": "Documents are not clear",
+            "kd": "Documents are not clear "
+        },
+        {
+            "key": "third_is_wrong",
+            "en": "Third Name is wrong",
+            "ar": "Third Name is wrong",
+            "kd": "Third Name is wrong"
+        },
+        {
+            "key": "second_is_wrong",
+            "en": "Second Name is wrong",
+            "ar": "Second Name is wrong",
+            "kd": "Second Name is wrong"
+        },
+        {
+            "key": "first_is_wrong",
+            "en": "First Name is wrong",
+            "ar": "First Name is wrong",
+            "kd": "First Name is wrong"
+        },
+        {
+            "key": "third_name_is_wrong",
+            "en": "Third Name is wrong",
+            "ar": "اسم الجد غير صحيح",
+            "kd": "ناوي باپێر راست نيه‌"
+        },
+        {
+            "key": "msisdn_wrong_in_the_attached",
+            "en": "MSISDN wrong in the attached ",
+            "ar": "رقم الخط غير صحيح",
+            "kd": "ژماره‌ى هيَلَه‌كه‌ راست نيه‌"
+        },
+        {
+            "key": "wrong_iccid",
+            "en": "Wrong ICCID ",
+            "ar": "الرقم التسلسلي للشريحة الجديدة غير صحيح",
+            "kd": "ژماره‌ي ريزبه‌ندي سيمكارته‌ نويَ يه‌كه‌ راست نيه‌"
+        },
+        {
+            "key": "first_name_is_wrong",
+            "en": "First Name is wrong",
+            "ar": "الاسم الاول غير صحيح",
+            "kd": "ناوي يه‌كه‌م راست نيه‌"
+        },
+        {
+            "key": "second_name_is_wrong",
+            "en": "Second Name is wrong",
+            "ar": "اسم الاب غير صحيح",
+            "kd": "ناوي باوك راست نيه‌"
+        },
+        {
+            "key": "attachment_are_wrong",
+            "en": "Attachment Are Wrong ",
+            "ar": "جميع المرفقات لاتطابق المعلومات المرسلة",
+            "kd": "سه‌رجه‌م هاوپێچه‌كان هاوتا نين له‌گه‌لَ زانياري نيَردراو"
+        },
+        {
+            "key": "call_207_to_escalate_complain",
+            "en": "Call 207 to escalate complain",
+            "ar": " الرجاء الاتصال على 207 لتقديم طلب ",
+            "kd": "ثه‌يوه‌ندي بكه‌ به‌ 207 بۆ ناردنى داواكارى"
+        },
+        {
+            "key": "customer_photo_not_compatible_with_documents",
+            "en": "Customer photo not compatible with documents",
+            "ar": "صورة المشترك غير مطابقة للمستمسكات",
+            "kd": "ويننةى بةشداربوو لةكةل بةلكةنامةكاندا كونجاو نييه"
+        },
+        {
+            "key": "customer_photo_quality",
+            "en": "Customer photo quality",
+            "ar": "صورة المشترك غير واضحة",
+            "kd": "ويَنه‌ى به‌شداربوو روون نيه‌"
+        },
+        {
+            "key": "disconnected_line",
+            "en": "Disconnected Line",
+            "ar": " الخط مصادر من الشركة لمعلومات اكثر يرجى الاتصال على الرقم 107",
+            "kd": "هيَلَه‌كه‌ له‌لايه‌ن كۆمپانياوه‌ راكيَشراوه‌ته‌وه‌ په‌يوه‌ندى بكه‌ به‌ 107"
+        },
+        {
+            "key": "document_is_expired",
+            "en": "Document is expired",
+            "ar": "المستمسك منتهي الصلاحية",
+            "kd": "بةلكةنامةكه ماوةكةى بةسةرجووه"
+        },
+        {
+            "key": "documents_are_not_clear",
+            "en": "Documents are not clear",
+            "ar": "المستمسكات غير واضحة",
+            "kd": "بةلكةنامةكان روون نيين "
+        },
+        {
+            "key": "not_original",
+            "en": "Documents are not original",
+            "ar": "المستمسكات غير اصلية",
+            "kd": "بةلكةنامةكان ئةسلى نين"
+        },
+        {
+            "key": "documents_not_belong_to_the_owner",
+            "en": "Documents not belong to the owner",
+            "ar": "المستمسكات غير تابعة لصاحب الخط",
+            "kd": "بةلكةنامةكانى هي خاوةنى هيل نين"
+        },
+        {
+            "key": "duplicate_request",
+            "en": "Duplicate Request ",
+            "ar": "الطلب مكرر",
+            "kd": "داواكارييه‌كه‌ دووباره‌يه‌"
+        },
+        {
+            "key": "fake_document",
+            "en": "Fake Document",
+            "ar": "المستمسك مزور",
+            "kd": "دۆکیومێنتی ساختە"
+        },
+        {
+            "key": "go_to_ros",
+            "en": "Go To ROS",
+            "ar": " يرجى توجيه المشترك لزيارة مقر الشركة",
+            "kd": "به‌شداربوو بنيَره‌ بۆ بنكه‌ى سه‌ره‌كى"
+        },
+        {
+            "key": "line_is_not_registered",
+            "en": "Line Is Not Registered ",
+            "ar": "الخط غير مسجل",
+            "kd": "هيَلَه‌كه‌ تۆمارنه‌كراوه‌"
+        },
+        {
+            "key": "line_is_related_to_gov.",
+            "en": "Line is related to Gov.",
+            "ar": " الخط مسجل باسم دائرة حكومية ",
+            "kd": "هيَلَه‌كه‌ به‌ناوى فه‌رمانگه‌ى حكومي كراوه‌"
+        },
+        {
+            "key": "line_is_terminated",
+            "en": "Line is terminated",
+            "ar": "الخط مصادر",
+            "kd": "هيلةكه دةستى بةسةرداكيراوه"
+        },
+        {
+            "key": "missing_info",
+            "en": "Missing Info ",
+            "ar": "نقص في المستمسكات",
+            "kd": "به‌لَگه‌نامه‌ى تر پێويسته‌"
+        },
+        {
+            "key": "missing_customer_photo",
+            "en": "Missing customer photo",
+            "ar": "لا توجد صورة للمشترك",
+            "kd": "ويَنه‌ى به‌شداربوو نيه‌"
+        },
+        {
+            "key": "no_fingerprint",
+            "en": "No Fingerprint",
+            "ar": "لا توجد بصمة",
+            "kd": "پەنجەمۆر نییە"
+        },
+        {
+            "key": "not_zain_line",
+            "en": "Not Zain Line",
+            "ar": " الرقم غير تابع لشركة زين",
+            "kd": "ژماره‌كه‌ هي كۆمپانياى زين نيه‌"
+        },
+        {
+            "key": "request_not_contain_documents",
+            "en": "Request not contain documents",
+            "ar": "الطلب لا يحتوي على مستمسكات",
+            "kd": "داواكارييةكه بةلكةنامةكانى تيدا نييه"
+        },
+        {
+            "key": "send_your_request_after_1_hr.",
+            "en": "Send Your request After 1 Hr.",
+            "ar": "يرجى ارسال طلبك بعد ساعة من الان لوجود اعمال صيانه",
+            "kd": "داواكارييه‌كه‌ دواي كاتژميَريَك بنيَره‌وه‌ به‌هۆي بوونى كارى چاككردنه‌وه‌"
+        },
+        {
+            "key": "send_your_request_again",
+            "en": "Send Your request Again",
+            "ar": "أرسل طلبك مرة أخرى",
+            "kd": "داواكارييه‌كه‌ دوباره‌ بنيَره‌وه‌"
+        },
+        {
+            "key": "stopped_line_from_legal",
+            "en": "Stopped Line from Legal ",
+            "ar": " الخط مغلق لسبب قانوني يرجى مراجعه مركز رئيسي",
+            "kd": "هيَلَه‌كه‌ راگيراوه‌ به‌هۆي كيَشه‌ي ياسايي سه‌ردانى بنكه‌ى سه‌ره‌كى بكه‌"
+        },
+        {
+            "key": "unclear_fingerprint",
+            "en": "Unclear Fingerprint",
+            "ar": "بصمة غير واضحة",
+            "kd": "پەنجەمۆر روون نییە"
+        },
+        {
+            "key": "unclear_signature",
+            "en": "Unclear Signature",
+            "ar": "توقيع غير واضح",
+            "kd": "ئیمزا روون نییە"
+        },
+        {
+            "key": "used_blank_sim",
+            "en": "Used Blank SIM",
+            "ar": "الشريحة مستخدمة",
+            "kd": "سيمه‌كه‌ پێشتر به‌كارهاتووه‌"
+        },
+        {
+            "key": "wrong_customer_name",
+            "en": "Wrong Customer Name ",
+            "ar": "الاسم غير مطابق",
+            "kd": "ناوى به‌شداربوو هه‌لَه‌يه‌"
+        }
+    ]
+}

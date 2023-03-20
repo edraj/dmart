@@ -1,0 +1,1 @@
+{"uuid": "08ab08ac-0b89-4ea0-99a6-ac46a1cf7426", "shortname": "sim_swap", "is_active": true, "tags": [], "created_at": "2023-03-16T17:37:30.429438", "updated_at": "2023-03-16T17:37:30.429454", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "api", "body": "sim_swap.json"}}

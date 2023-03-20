@@ -1,0 +1,726 @@
+{
+    "sectors": [
+        {
+            "key": "altun_kupri",
+            "ar": "altun_kupri",
+            "en": "altun_kupri",
+            "kd": "altun_kupri",
+            "districts": [
+                {
+                    "key": "azadi",
+                    "ar": "Azadi",
+                    "en": "Azadi",
+                    "kd": "Azadi"
+                },
+                {
+                    "key": "azadi_rabreen",
+                    "ar": "Azadi Rabreen",
+                    "en": "Azadi Rabreen",
+                    "kd": "Azadi Rabreen"
+                },
+                {
+                    "key": "brayati",
+                    "ar": "Brayati",
+                    "en": "Brayati",
+                    "kd": "Brayati"
+                },
+                {
+                    "key": "buyuk_kupri",
+                    "ar": "Buyuk Kupri",
+                    "en": "Buyuk Kupri",
+                    "kd": "Buyuk Kupri"
+                },
+                {
+                    "key": "dour_alsharka",
+                    "ar": "Dour Alsharka",
+                    "en": "Dour Alsharka",
+                    "kd": "Dour Alsharka"
+                },
+                {
+                    "key": "dour_kahrabaa",
+                    "ar": "Dour Kahrabaa",
+                    "en": "Dour Kahrabaa",
+                    "kd": "Dour Kahrabaa"
+                },
+                {
+                    "key": "gulan",
+                    "ar": "Gulan",
+                    "en": "Gulan",
+                    "kd": "Gulan"
+                },
+                {
+                    "key": "hawarbarza",
+                    "ar": "Hawarbarza",
+                    "en": "Hawarbarza",
+                    "kd": "Hawarbarza"
+                },
+                {
+                    "key": "hay_altaakhi",
+                    "ar": "Hay Altaakhi",
+                    "en": "Hay Altaakhi",
+                    "kd": "Hay Altaakhi"
+                },
+                {
+                    "key": "hay_diyar_bakir",
+                    "ar": "Hay Diyar Bakir",
+                    "en": "Hay Diyar Bakir",
+                    "kd": "Hay Diyar Bakir"
+                },
+                {
+                    "key": "kara_beg",
+                    "ar": "Kara Beg",
+                    "en": "Kara Beg",
+                    "kd": "Kara Beg"
+                },
+                {
+                    "key": "kurdistan",
+                    "ar": "Kurdistan",
+                    "en": "Kurdistan",
+                    "kd": "Kurdistan"
+                },
+                {
+                    "key": "mshkhallan",
+                    "ar": "Mshkhallan",
+                    "en": "Mshkhallan",
+                    "kd": "Mshkhallan"
+                },
+                {
+                    "key": "old_village",
+                    "ar": "Old Village",
+                    "en": "Old Village",
+                    "kd": "Old Village"
+                },
+                {
+                    "key": "orta_yaka",
+                    "ar": "Orta Yaka",
+                    "en": "Orta Yaka",
+                    "kd": "Orta Yaka"
+                },
+                {
+                    "key": "rabreen",
+                    "ar": "Rabreen",
+                    "en": "Rabreen",
+                    "kd": "Rabreen"
+                },
+                {
+                    "key": "rizgari",
+                    "ar": "Rizgari",
+                    "en": "Rizgari",
+                    "kd": "Rizgari"
+                },
+                {
+                    "key": "salam",
+                    "ar": "Salam",
+                    "en": "Salam",
+                    "kd": "Salam"
+                }
+            ]
+        },
+        {
+            "key": "daquq",
+            "ar": "daquq",
+            "en": "daquq",
+            "kd": "daquq",
+            "districts": [
+                {
+                    "key": "ali_village",
+                    "ar": "Ali Village",
+                    "en": "Ali Village",
+                    "kd": "Ali Village"
+                },
+                {
+                    "key": "almansor_village",
+                    "ar": "Almansor Village",
+                    "en": "Almansor Village",
+                    "kd": "Almansor Village"
+                },
+                {
+                    "key": "dara_village",
+                    "ar": "Dara Village",
+                    "en": "Dara Village",
+                    "kd": "Dara Village"
+                },
+                {
+                    "key": "emam_zainalabdin",
+                    "ar": "Emam Zainalabdin",
+                    "en": "Emam Zainalabdin",
+                    "kd": "Emam Zainalabdin"
+                },
+                {
+                    "key": "horiz",
+                    "ar": "Horiz",
+                    "en": "Horiz",
+                    "kd": "Horiz"
+                }
+            ]
+        },
+        {
+            "key": "haweeja",
+            "ar": "haweeja",
+            "en": "haweeja",
+            "kd": "haweeja",
+            "districts": [
+                {
+                    "key": "abu_sakhra",
+                    "ar": "Abu Sakhra",
+                    "en": "Abu Sakhra",
+                    "kd": "Abu Sakhra"
+                },
+                {
+                    "key": "aisalana",
+                    "ar": "Aisalana",
+                    "en": "Aisalana",
+                    "kd": "Aisalana"
+                },
+                {
+                    "key": "al_ahnaf",
+                    "ar": "Al Ahnaf",
+                    "en": "Al Ahnaf",
+                    "kd": "Al Ahnaf"
+                },
+                {
+                    "key": "al_aminiyaa",
+                    "ar": "Al Aminiyaa",
+                    "en": "Al Aminiyaa",
+                    "kd": "Al Aminiyaa"
+                },
+                {
+                    "key": "a_l_askari",
+                    "ar": "AL Askari",
+                    "en": "AL Askari",
+                    "kd": "AL Askari"
+                },
+                {
+                    "key": "al_kifah_village",
+                    "ar": "Al -Kifah Village",
+                    "en": "Al -Kifah Village",
+                    "kd": "Al -Kifah Village"
+                },
+                {
+                    "key": "al_muhuzah",
+                    "ar": "Al -Muhuzah",
+                    "en": "Al -Muhuzah",
+                    "kd": "Al -Muhuzah"
+                },
+                {
+                    "key": "al_oyoon",
+                    "ar": "Al Oyoon",
+                    "en": "Al Oyoon",
+                    "kd": "Al Oyoon"
+                },
+                {
+                    "key": "al_waridya",
+                    "ar": "Al Waridya",
+                    "en": "Al Waridya",
+                    "kd": "Al Waridya"
+                },
+                {
+                    "key": "al_ways",
+                    "ar": "Al Ways",
+                    "en": "Al Ways",
+                    "kd": "Al Ways"
+                },
+                {
+                    "key": "alakoola",
+                    "ar": "Alakoola",
+                    "en": "Alakoola",
+                    "kd": "Alakoola"
+                },
+                {
+                    "key": "alatibaa",
+                    "ar": "Alatibaa",
+                    "en": "Alatibaa",
+                    "kd": "Alatibaa"
+                },
+                {
+                    "key": "alazezeeah",
+                    "ar": "Alazezeeah",
+                    "en": "Alazezeeah",
+                    "kd": "Alazezeeah"
+                },
+                {
+                    "key": "albo_isheq",
+                    "ar": "Albo Isheq",
+                    "en": "Albo Isheq",
+                    "kd": "Albo Isheq"
+                },
+                {
+                    "key": "albthor",
+                    "ar": "Albthor",
+                    "en": "Albthor",
+                    "kd": "Albthor"
+                },
+                {
+                    "key": "alhalaw",
+                    "ar": "Alhalaw",
+                    "en": "Alhalaw",
+                    "kd": "Alhalaw"
+                },
+                {
+                    "key": "alhwaij",
+                    "ar": "Alhwaij",
+                    "en": "Alhwaij",
+                    "kd": "Alhwaij"
+                },
+                {
+                    "key": "alkhaldiya",
+                    "ar": "Alkhaldiya",
+                    "en": "Alkhaldiya",
+                    "kd": "Alkhaldiya"
+                },
+                {
+                    "key": "alkuds",
+                    "ar": "Alkuds",
+                    "en": "Alkuds",
+                    "kd": "Alkuds"
+                },
+                {
+                    "key": "almanzala",
+                    "ar": "Almanzala",
+                    "en": "Almanzala",
+                    "kd": "Almanzala"
+                },
+                {
+                    "key": "almathihria",
+                    "ar": "Almathihria",
+                    "en": "Almathihria",
+                    "kd": "Almathihria"
+                },
+                {
+                    "key": "almstaah",
+                    "ar": "Almstaah",
+                    "en": "Almstaah",
+                    "kd": "Almstaah"
+                },
+                {
+                    "key": "almuradia",
+                    "ar": "Almuradia",
+                    "en": "Almuradia",
+                    "kd": "Almuradia"
+                },
+                {
+                    "key": "alrsulia",
+                    "ar": "Alrsulia",
+                    "en": "Alrsulia",
+                    "kd": "Alrsulia"
+                },
+                {
+                    "key": "alseha",
+                    "ar": "Alseha",
+                    "en": "Alseha",
+                    "kd": "Alseha"
+                },
+                {
+                    "key": "alsfraa",
+                    "ar": "Alsfraa",
+                    "en": "Alsfraa",
+                    "kd": "Alsfraa"
+                },
+                {
+                    "key": "alshajra",
+                    "ar": "Alshajra",
+                    "en": "Alshajra",
+                    "kd": "Alshajra"
+                },
+                {
+                    "key": "alshalala",
+                    "ar": "Alshalala",
+                    "en": "Alshalala",
+                    "kd": "Alshalala"
+                },
+                {
+                    "key": "arasa_village",
+                    "ar": "Arasa Village",
+                    "en": "Arasa Village",
+                    "kd": "Arasa Village"
+                },
+                {
+                    "key": "atera_village",
+                    "ar": "Atera village",
+                    "en": "Atera village",
+                    "kd": "Atera village"
+                },
+                {
+                    "key": "atibaa_street",
+                    "ar": "Atibaa Street",
+                    "en": "Atibaa Street",
+                    "kd": "Atibaa Street"
+                },
+                {
+                    "key": "atshana_alulya",
+                    "ar": "Atshana AL ulya",
+                    "en": "Atshana AL ulya",
+                    "kd": "Atshana AL ulya"
+                },
+                {
+                    "key": "atshana_al_westa",
+                    "ar": "Atshana AL westa",
+                    "en": "Atshana AL westa",
+                    "kd": "Atshana AL westa"
+                },
+                {
+                    "key": "atshana_alsufla",
+                    "ar": "Atshana Alsufla",
+                    "en": "Atshana Alsufla",
+                    "kd": "Atshana Alsufla"
+                },
+                {
+                    "key": "azizi_aulya",
+                    "ar": "Azizi Aulya",
+                    "en": "Azizi Aulya",
+                    "kd": "Azizi Aulya"
+                },
+                {
+                    "key": "azizi_sufla",
+                    "ar": "Azizi Sufla",
+                    "en": "Azizi Sufla",
+                    "kd": "Azizi Sufla"
+                }
+            ]
+        },
+        {
+            "key": "kirkuk",
+            "ar": "kirkuk",
+            "en": "kirkuk",
+            "kd": "kirkuk",
+            "districts": [
+                {
+                    "key": "1_haziran",
+                    "ar": "1 Haziran",
+                    "en": "1 Haziran",
+                    "kd": "1 Haziran"
+                },
+                {
+                    "key": "ahmed_aga",
+                    "ar": "Ahmed Aga",
+                    "en": "Ahmed Aga",
+                    "kd": "Ahmed Aga"
+                },
+                {
+                    "key": "al_aoruba",
+                    "ar": "Al Aoruba",
+                    "en": "Al Aoruba",
+                    "kd": "Al Aoruba"
+                },
+                {
+                    "key": "al_huriya",
+                    "ar": "AL Huriya",
+                    "en": "AL Huriya",
+                    "kd": "AL Huriya"
+                },
+                {
+                    "key": "al_inthbatiya",
+                    "ar": "Al Inthbatiya",
+                    "en": "Al Inthbatiya",
+                    "kd": "Al Inthbatiya"
+                },
+                {
+                    "key": "al_muhafatha",
+                    "ar": "Al Muhafatha",
+                    "en": "Al Muhafatha",
+                    "kd": "Al Muhafatha"
+                },
+                {
+                    "key": "al_quds_street",
+                    "ar": "Al Quds street",
+                    "en": "Al Quds street",
+                    "kd": "Al Quds street"
+                },
+                {
+                    "key": "aljumhoriya_street",
+                    "ar": "Aljumhoriya street",
+                    "en": "Aljumhoriya street",
+                    "kd": "Aljumhoriya street"
+                },
+                {
+                    "key": "almas",
+                    "ar": "Almas",
+                    "en": "Almas",
+                    "kd": "Almas"
+                },
+                {
+                    "key": "alqadsia_1",
+                    "ar": "Alqadsia 1",
+                    "en": "Alqadsia 1",
+                    "kd": "Alqadsia 1"
+                },
+                {
+                    "key": "alqadsia_2",
+                    "ar": "Alqadsia 2",
+                    "en": "Alqadsia 2",
+                    "kd": "Alqadsia 2"
+                },
+                {
+                    "key": "amal_alshabi",
+                    "ar": "Amal Alshabi",
+                    "en": "Amal Alshabi",
+                    "kd": "Amal Alshabi"
+                },
+                {
+                    "key": "arfa",
+                    "ar": "Arfa",
+                    "en": "Arfa",
+                    "kd": "Arfa"
+                },
+                {
+                    "key": "atlas_street",
+                    "ar": "Atlas Street",
+                    "en": "Atlas Street",
+                    "kd": "Atlas Street"
+                },
+                {
+                    "key": "azadi",
+                    "ar": "Azadi",
+                    "en": "Azadi",
+                    "kd": "Azadi"
+                },
+                {
+                    "key": "baghdad_road",
+                    "ar": "Baghdad Road",
+                    "en": "Baghdad Road",
+                    "kd": "Baghdad Road"
+                },
+                {
+                    "key": "bajwan",
+                    "ar": "Bajwan",
+                    "en": "Bajwan",
+                    "kd": "Bajwan"
+                },
+                {
+                    "key": "banja_ali",
+                    "ar": "Banja Ali",
+                    "en": "Banja Ali",
+                    "kd": "Banja Ali"
+                },
+                {
+                    "key": "barud_khana",
+                    "ar": "Barud Khana",
+                    "en": "Barud Khana",
+                    "kd": "Barud Khana"
+                },
+                {
+                    "key": "bashir",
+                    "ar": "Bashir",
+                    "en": "Bashir",
+                    "kd": "Bashir"
+                },
+                {
+                    "key": "begler",
+                    "ar": "Begler",
+                    "en": "Begler",
+                    "kd": "Begler"
+                },
+                {
+                    "key": "domiz",
+                    "ar": "Domiz",
+                    "en": "Domiz",
+                    "kd": "Domiz"
+                },
+                {
+                    "key": "drwaza",
+                    "ar": "Drwaza",
+                    "en": "Drwaza",
+                    "kd": "Drwaza"
+                },
+                {
+                    "key": "emam_qasim",
+                    "ar": "Emam Qasim",
+                    "en": "Emam Qasim",
+                    "kd": "Emam Qasim"
+                },
+                {
+                    "key": "faylaq",
+                    "ar": "Faylaq",
+                    "en": "Faylaq",
+                    "kd": "Faylaq"
+                },
+                {
+                    "key": "garnata",
+                    "ar": "Garnata",
+                    "en": "Garnata",
+                    "kd": "Garnata"
+                },
+                {
+                    "key": "hasir_bazar",
+                    "ar": "Hasir Bazar",
+                    "en": "Hasir Bazar",
+                    "kd": "Hasir Bazar"
+                },
+                {
+                    "key": "hay_adan",
+                    "ar": "Hay Adan",
+                    "en": "Hay Adan",
+                    "kd": "Hay Adan"
+                },
+                {
+                    "key": "hay_al_nour",
+                    "ar": "Hay AL nour",
+                    "en": "Hay AL nour",
+                    "kd": "Hay AL nour"
+                },
+                {
+                    "key": "hay_alhujaj",
+                    "ar": "Hay Alhujaj",
+                    "en": "Hay Alhujaj",
+                    "kd": "Hay Alhujaj"
+                },
+                {
+                    "key": "hay_alirtikaa",
+                    "ar": "Hay Alirtikaa",
+                    "en": "Hay Alirtikaa",
+                    "kd": "Hay Alirtikaa"
+                },
+                {
+                    "key": "hay_askari",
+                    "ar": "Hay Askari",
+                    "en": "Hay Askari",
+                    "kd": "Hay Askari"
+                },
+                {
+                    "key": "hay_asraa",
+                    "ar": "Hay Asraa",
+                    "en": "Hay Asraa",
+                    "kd": "Hay Asraa"
+                },
+                {
+                    "key": "hay_khathra",
+                    "ar": "Hay Khathra",
+                    "en": "Hay Khathra",
+                    "kd": "Hay Khathra"
+                },
+                {
+                    "key": "hay_nasir",
+                    "ar": "Hay Nasir",
+                    "en": "Hay Nasir",
+                    "kd": "Hay Nasir"
+                },
+                {
+                    "key": "hay_nidaa",
+                    "ar": "Hay Nidaa",
+                    "en": "Hay Nidaa",
+                    "kd": "Hay Nidaa"
+                }
+            ]
+        },
+        {
+            "key": "touz_hourmato",
+            "ar": "touz_hourmato",
+            "en": "touz_hourmato",
+            "kd": "touz_hourmato",
+            "districts": [
+                {
+                    "key": "asriya",
+                    "ar": "Asriya",
+                    "en": "Asriya",
+                    "kd": "Asriya"
+                },
+                {
+                    "key": "hasan_qawan",
+                    "ar": "Hasan Qawan",
+                    "en": "Hasan Qawan",
+                    "kd": "Hasan Qawan"
+                },
+                {
+                    "key": "hay_al_ahrar",
+                    "ar": "Hay Al Ahrar",
+                    "en": "Hay AL Ahrar",
+                    "kd": "Hay AL Ahrar"
+                },
+                {
+                    "key": "hay_al_makrma",
+                    "ar": "Hay Al Makrma",
+                    "en": "Hay Al Makrma",
+                    "kd": "Hay Al Makrma"
+                },
+                {
+                    "key": "hay_al_nasir",
+                    "ar": "Hay Al Nasir",
+                    "en": "Hay Al Nasir",
+                    "kd": "Hay Al Nasir"
+                },
+                {
+                    "key": "hay_alshuhdaa",
+                    "ar": "Hay Alshuhdaa",
+                    "en": "Hay Alshuhdaa",
+                    "kd": "Hay Alshuhdaa"
+                },
+                {
+                    "key": "hay_alskari",
+                    "ar": "Hay Alskari",
+                    "en": "Hay Alskari",
+                    "kd": "Hay Alskari"
+                },
+                {
+                    "key": "hay_alskary",
+                    "ar": "Hay Alskary",
+                    "en": "Hay Alskary",
+                    "kd": "Hay Alskary"
+                },
+                {
+                    "key": "hay_alteen",
+                    "ar": "Hay Alteen",
+                    "en": "Hay Alteen",
+                    "kd": "Hay Alteen"
+                },
+                {
+                    "key": "hay_askari",
+                    "ar": "Hay Askari",
+                    "en": "Hay Askari",
+                    "kd": "Hay Askari"
+                },
+                {
+                    "key": "hay_dalalwa",
+                    "ar": "Hay Dalalwa",
+                    "en": "Hay Dalalwa",
+                    "kd": "Hay Dalalwa"
+                },
+                {
+                    "key": "hay_jamila",
+                    "ar": "Hay Jamila",
+                    "en": "Hay Jamila",
+                    "kd": "Hay Jamila"
+                },
+                {
+                    "key": "hay_muradly",
+                    "ar": "Hay Muradly",
+                    "en": "Hay Muradly",
+                    "kd": "Hay Muradly"
+                },
+                {
+                    "key": "hay_taakhi",
+                    "ar": "Hay Taakhi",
+                    "en": "Hay Taakhi",
+                    "kd": "Hay Taakhi"
+                },
+                {
+                    "key": "komari",
+                    "ar": "Komari",
+                    "en": "Komari",
+                    "kd": "Komari"
+                }
+            ]
+        }
+    ],
+    "distributor_shortname": "next_generation",
+    "salesrep_shortnames": [
+        "muhammad_rasul",
+        "dana_kawazain",
+        "ali_mohammed",
+        "abdalsamd_abdullah",
+        "rebaz_abdulkareem",
+        "adel_alubaide",
+        "ahmed_rasul",
+        "kawez_hawez",
+        "firas_tahsin",
+        "muneer_jomaa",
+        "wessam_hassan",
+        "emad_asad",
+        "m_alqaysee"
+    ],
+    "region": {
+        "key": "arabic_north",
+        "ar": "arabic_north",
+        "en": "arabic_north",
+        "kd": "arabic_north"
+    }
+}

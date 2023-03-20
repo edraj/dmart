@@ -1,0 +1,1 @@
+{"uuid": "16197f2f-5de4-49ca-8b8a-1992451326eb", "shortname": "departments", "is_active": true, "tags": [], "created_at": "2023-03-14T10:50:13.570463", "updated_at": "2023-03-14T10:50:13.570479", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "departments.json"}}

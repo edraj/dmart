@@ -1,0 +1,1 @@
+{"uuid": "cc01df2c-2aeb-4916-9cce-a17cb14d0cd4", "shortname": "postpaid_prime_services", "is_active": true, "tags": [], "created_at": "2023-03-14T10:52:14.377328", "updated_at": "2023-03-14T10:52:14.377344", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "postpaid_prime_services.json"}}

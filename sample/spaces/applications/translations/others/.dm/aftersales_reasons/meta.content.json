@@ -1,0 +1,14 @@
+{
+    "uuid": "d7f935ed-b3bb-44f0-bdd9-562b44680cf7",
+    "shortname": "aftersales_reasons",
+    "is_active": true,
+    "tags": [],
+    "created_at": "2023-03-12T10:55:25.806927",
+    "updated_at": "2023-03-12T10:55:25.806941",
+    "owner_shortname": "dmart",
+    "payload": {
+        "content_type": "json",
+        "schema_shortname": "translation",
+        "body": "aftersales_reasons.json"
+    }
+}

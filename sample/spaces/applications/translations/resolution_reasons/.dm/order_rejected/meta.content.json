@@ -1,0 +1,1 @@
+{"uuid": "342b61da-9500-4439-bb54-180ff4fd438b", "shortname": "order_rejected", "is_active": true, "tags": [], "created_at": "2023-03-16T14:45:23.772141", "updated_at": "2023-03-16T14:45:23.772156", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "order_rejected.json"}}

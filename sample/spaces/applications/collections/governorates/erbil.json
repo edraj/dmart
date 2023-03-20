@@ -1,0 +1,596 @@
+{
+    "sectors": [
+        {
+            "key": "ainkawa",
+            "ar": "ainkawa",
+            "en": "ainkawa",
+            "kd": "ainkawa",
+            "districts": [
+                {
+                    "key": "bahrka",
+                    "ar": "bahrka",
+                    "en": "bahrka",
+                    "kd": "bahrka"
+                },
+                {
+                    "key": "ainkawa",
+                    "ar": "ainkawa",
+                    "en": "ainkawa",
+                    "kd": "ainkawa"
+                },
+                {
+                    "key": "zerin",
+                    "ar": "zerin",
+                    "en": "zerin",
+                    "kd": "zerin"
+                },
+                {
+                    "key": "ganjan",
+                    "ar": "ganjan",
+                    "en": "ganjan",
+                    "kd": "ganjan"
+                },
+                {
+                    "key": "kark",
+                    "ar": "kark",
+                    "en": "kark",
+                    "kd": "kark"
+                },
+                {
+                    "key": "pirzin",
+                    "ar": "pirzin",
+                    "en": "pirzin",
+                    "kd": "pirzin"
+                },
+                {
+                    "key": "kurani_new",
+                    "ar": "kurani_new",
+                    "en": "kurani_new",
+                    "kd": "kurani_new"
+                },
+                {
+                    "key": "kuran",
+                    "ar": "kuran",
+                    "en": "kuran",
+                    "kd": "kuran"
+                },
+                {
+                    "key": "harsham",
+                    "ar": "harsham",
+                    "en": "harsham",
+                    "kd": "harsham"
+                },
+                {
+                    "key": "kurdistan_city",
+                    "ar": "kurdistan_city",
+                    "en": "kurdistan_city",
+                    "kd": "kurdistan_city"
+                }
+            ]
+        },
+        {
+            "key": "choman",
+            "ar": "choman",
+            "en": "choman",
+            "kd": "choman",
+            "districts": [
+                {
+                    "key": "haji_omaran",
+                    "ar": "haji_omaran",
+                    "en": "haji_omaran",
+                    "kd": "haji_omaran"
+                },
+                {
+                    "key": "galala",
+                    "ar": "galala",
+                    "en": "galala",
+                    "kd": "galala"
+                },
+                {
+                    "key": "choman_center",
+                    "ar": "choman_center",
+                    "en": "choman_center",
+                    "kd": "choman_center"
+                },
+                {
+                    "key": "qasre",
+                    "ar": "qasre",
+                    "en": "qasre",
+                    "kd": "qasre"
+                }
+            ]
+        },
+        {
+            "key": "dashti_hawler",
+            "ar": "dashti_hawler",
+            "en": "dashti_hawler",
+            "kd": "dashti_hawler",
+            "districts": [
+                {
+                    "key": "daratoo",
+                    "ar": "daratoo",
+                    "en": "daratoo",
+                    "kd": "daratoo"
+                },
+                {
+                    "key": "qushtapa",
+                    "ar": "qushtapa",
+                    "en": "qushtapa",
+                    "kd": "qushtapa"
+                },
+                {
+                    "key": "bnaslawa",
+                    "ar": "bnaslawa",
+                    "en": "bnaslawa",
+                    "kd": "bnaslawa"
+                },
+                {
+                    "key": "kasnazan",
+                    "ar": "kasnazan",
+                    "en": "kasnazan",
+                    "kd": "kasnazan"
+                },
+                {
+                    "key": "hawleri_new",
+                    "ar": "hawleri_new",
+                    "en": "hawleri_new",
+                    "kd": "hawleri_new"
+                },
+                {
+                    "key": "shawes",
+                    "ar": "shawes",
+                    "en": "shawes",
+                    "kd": "shawes"
+                },
+                {
+                    "key": "mala_omar",
+                    "ar": "mala_omar",
+                    "en": "mala_omar",
+                    "kd": "mala_omar"
+                },
+                {
+                    "key": "ashti_2",
+                    "ar": "ashti_2",
+                    "en": "ashti_2",
+                    "kd": "ashti_2"
+                },
+                {
+                    "key": "lawan",
+                    "ar": "lawan",
+                    "en": "lawan",
+                    "kd": "lawan"
+                },
+                {
+                    "key": "qarabu",
+                    "ar": "qarabu",
+                    "en": "qarabu",
+                    "kd": "qarabu"
+                },
+                {
+                    "key": "altun",
+                    "ar": "altun",
+                    "en": "altun",
+                    "kd": "altun"
+                },
+                {
+                    "key": "zaytun",
+                    "ar": "zaytun",
+                    "en": "zaytun",
+                    "kd": "zaytun"
+                },
+                {
+                    "key": "qushtapa_camp",
+                    "ar": "qushtapa_camp",
+                    "en": "qushtapa_camp",
+                    "kd": "qushtapa_camp"
+                },
+                {
+                    "key": "kawa_camp",
+                    "ar": "kawa_camp",
+                    "en": "kawa_camp",
+                    "kd": "kawa_camp"
+                }
+            ]
+        },
+        {
+            "key": "erbil_center",
+            "ar": "erbil_center",
+            "en": "erbil_center",
+            "kd": "erbil_center",
+            "districts": [
+                {
+                    "key": "kurdistan",
+                    "ar": "kurdistan",
+                    "en": "kurdistan",
+                    "kd": "kurdistan"
+                },
+                {
+                    "key": "shadi",
+                    "ar": "shadi",
+                    "en": "shadi",
+                    "kd": "shadi"
+                },
+                {
+                    "key": "bahari_new",
+                    "ar": "bahari_new",
+                    "en": "bahari_new",
+                    "kd": "bahari_new"
+                },
+                {
+                    "key": "turaq",
+                    "ar": "turaq",
+                    "en": "turaq",
+                    "kd": "turaq"
+                },
+                {
+                    "key": "newroz",
+                    "ar": "newroz",
+                    "en": "newroz",
+                    "kd": "newroz"
+                },
+                {
+                    "key": "32_park",
+                    "ar": "32_park",
+                    "en": "32_park",
+                    "kd": "32_park"
+                },
+                {
+                    "key": "baxtyari",
+                    "ar": "baxtyari",
+                    "en": "baxtyari",
+                    "kd": "baxtyari"
+                },
+                {
+                    "key": "alban",
+                    "ar": "alban",
+                    "en": "alban",
+                    "kd": "alban"
+                },
+                {
+                    "key": "ari",
+                    "ar": "ari",
+                    "en": "ari",
+                    "kd": "ari"
+                },
+                {
+                    "key": "shorsh",
+                    "ar": "shorsh",
+                    "en": "shorsh",
+                    "kd": "shorsh"
+                },
+                {
+                    "key": "tayrawa",
+                    "ar": "tayrawa",
+                    "en": "tayrawa",
+                    "kd": "tayrawa"
+                },
+                {
+                    "key": "hadid_u_khashab",
+                    "ar": "hadid_u_khashab",
+                    "en": "hadid_u_khashab",
+                    "kd": "hadid_u_khashab"
+                },
+                {
+                    "key": "nusarsan",
+                    "ar": "nusarsan",
+                    "en": "nusarsan",
+                    "kd": "nusarsan"
+                },
+                {
+                    "key": "brayati",
+                    "ar": "brayati",
+                    "en": "brayati",
+                    "kd": "brayati"
+                },
+                {
+                    "key": "langa",
+                    "ar": "langa",
+                    "en": "langa",
+                    "kd": "langa"
+                },
+                {
+                    "key": "setaqan",
+                    "ar": "setaqan",
+                    "en": "setaqan",
+                    "kd": "setaqan"
+                },
+                {
+                    "key": "saidawa",
+                    "ar": "saidawa",
+                    "en": "saidawa",
+                    "kd": "saidawa"
+                },
+                {
+                    "key": "havalan",
+                    "ar": "havalan",
+                    "en": "havalan",
+                    "kd": "havalan"
+                },
+                {
+                    "key": "mnara",
+                    "ar": "mnara",
+                    "en": "mnara",
+                    "kd": "mnara"
+                },
+                {
+                    "key": "sarwaran",
+                    "ar": "sarwaran",
+                    "en": "sarwaran",
+                    "kd": "sarwaran"
+                },
+                {
+                    "key": "gulan_151",
+                    "ar": "gulan_151",
+                    "en": "gulan_151",
+                    "kd": "gulan_151"
+                },
+                {
+                    "key": "gulan_121",
+                    "ar": "gulan_121",
+                    "en": "gulan_121",
+                    "kd": "gulan_121"
+                },
+                {
+                    "key": "kotry_salam",
+                    "ar": "kotry_salam",
+                    "en": "kotry_salam",
+                    "kd": "kotry_salam"
+                },
+                {
+                    "key": "iskan",
+                    "ar": "iskan",
+                    "en": "iskan",
+                    "kd": "iskan"
+                },
+                {
+                    "key": "runaki",
+                    "ar": "runaki",
+                    "en": "runaki",
+                    "kd": "runaki"
+                },
+                {
+                    "key": "zanko_99",
+                    "ar": "zanko_99",
+                    "en": "zanko_99",
+                    "kd": "zanko_99"
+                },
+                {
+                    "key": "badawa_94",
+                    "ar": "badawa_94",
+                    "en": "badawa_94",
+                    "kd": "badawa_94"
+                },
+                {
+                    "key": "farmanbaran",
+                    "ar": "farmanbaran",
+                    "en": "farmanbaran",
+                    "kd": "farmanbaran"
+                },
+                {
+                    "key": "mamzawa",
+                    "ar": "mamzawa",
+                    "en": "mamzawa",
+                    "kd": "mamzawa"
+                },
+                {
+                    "key": "qatawi",
+                    "ar": "qatawi",
+                    "en": "qatawi",
+                    "kd": "qatawi"
+                },
+                {
+                    "key": "shamamk",
+                    "ar": "shamamk",
+                    "en": "shamamk",
+                    "kd": "shamamk"
+                },
+                {
+                    "key": "sarkarez",
+                    "ar": "sarkarez",
+                    "en": "sarkarez",
+                    "kd": "sarkarez"
+                },
+                {
+                    "key": "qoritan",
+                    "ar": "qoritan",
+                    "en": "qoritan",
+                    "kd": "qoritan"
+                },
+                {
+                    "key": "rasti",
+                    "ar": "rasti",
+                    "en": "rasti",
+                    "kd": "rasti"
+                },
+                {
+                    "key": "rasti_new",
+                    "ar": "rasti_new",
+                    "en": "rasti_new",
+                    "kd": "rasti_new"
+                },
+                {
+                    "key": "mntkawa",
+                    "ar": "mntkawa",
+                    "en": "mntkawa",
+                    "kd": "mntkawa"
+                }
+            ]
+        },
+        {
+            "key": "khabat",
+            "ar": "khabat",
+            "en": "khabat",
+            "kd": "khabat",
+            "districts": [
+                {
+                    "key": "rzgary",
+                    "ar": "rzgary",
+                    "en": "rzgary",
+                    "kd": "rzgary"
+                },
+                {
+                    "key": "khabat",
+                    "ar": "khabat",
+                    "en": "khabat",
+                    "kd": "khabat"
+                },
+                {
+                    "key": "kawrgosk",
+                    "ar": "kawrgosk",
+                    "en": "kawrgosk",
+                    "kd": "kawrgosk"
+                },
+                {
+                    "key": "darshakran",
+                    "ar": "darshakran",
+                    "en": "darshakran",
+                    "kd": "darshakran"
+                }
+            ]
+        },
+        {
+            "key": "koisnjaq",
+            "ar": "koisnjaq",
+            "en": "koisnjaq",
+            "kd": "koisnjaq",
+            "districts": [
+                {
+                    "key": "koya",
+                    "ar": "koya",
+                    "en": "koya",
+                    "kd": "koya"
+                },
+                {
+                    "key": "taq_taq",
+                    "ar": "taq_taq",
+                    "en": "taq_taq",
+                    "kd": "taq_taq"
+                },
+                {
+                    "key": "ashti",
+                    "ar": "ashti",
+                    "en": "ashti",
+                    "kd": "ashti"
+                },
+                {
+                    "key": "smaqulli",
+                    "ar": "smaqulli",
+                    "en": "smaqulli",
+                    "kd": "smaqulli"
+                },
+                {
+                    "key": "degala",
+                    "ar": "degala",
+                    "en": "degala",
+                    "kd": "degala"
+                }
+            ]
+        },
+        {
+            "key": "shaqlawa",
+            "ar": "shaqlawa",
+            "en": "shaqlawa",
+            "kd": "shaqlawa",
+            "districts": [
+                {
+                    "key": "shaqlawa",
+                    "ar": "shaqlawa",
+                    "en": "shaqlawa",
+                    "kd": "shaqlawa"
+                },
+                {
+                    "key": "harir",
+                    "ar": "harir",
+                    "en": "harir",
+                    "kd": "harir"
+                },
+                {
+                    "key": "basirma",
+                    "ar": "basirma",
+                    "en": "basirma",
+                    "kd": "basirma"
+                },
+                {
+                    "key": "salahadin",
+                    "ar": "salahadin",
+                    "en": "salahadin",
+                    "kd": "salahadin"
+                },
+                {
+                    "key": "bastora",
+                    "ar": "bastora",
+                    "en": "bastora",
+                    "kd": "bastora"
+                },
+                {
+                    "key": "kore",
+                    "ar": "kore",
+                    "en": "kore",
+                    "kd": "kore"
+                },
+                {
+                    "key": "hiran",
+                    "ar": "hiran",
+                    "en": "hiran",
+                    "kd": "hiran"
+                }
+            ]
+        },
+        {
+            "key": "soran",
+            "ar": "soran",
+            "en": "soran",
+            "kd": "soran",
+            "districts": [
+                {
+                    "key": "khalifan",
+                    "ar": "khalifan",
+                    "en": "khalifan",
+                    "kd": "khalifan"
+                },
+                {
+                    "key": "soran",
+                    "ar": "soran",
+                    "en": "soran",
+                    "kd": "soran"
+                },
+                {
+                    "key": "rwandiz",
+                    "ar": "rwandiz",
+                    "en": "rwandiz",
+                    "kd": "rwandiz"
+                },
+                {
+                    "key": "srishma",
+                    "ar": "srishma",
+                    "en": "srishma",
+                    "kd": "srishma"
+                },
+                {
+                    "key": "majidawa",
+                    "ar": "majidawa",
+                    "en": "majidawa",
+                    "kd": "majidawa"
+                }
+            ]
+        }
+    ],
+    "distributor_shortname": "next_generation",
+    "salesrep_shortnames": [
+        "aliibrahim",
+        "ayenfared",
+        "hawre_saeid",
+        "mohammad_hamodi",
+        "mohd_jamal",
+        "mohd_bakhatyr",
+        "rabar_asad",
+        "snagar_hamed",
+        "sarwat_next"
+    ],
+    "region": {
+        "ar": "kurdistan",
+        "en": "kurdistan",
+        "kd": "kurdistan",
+        "key": "kurdistan"
+    }
+}

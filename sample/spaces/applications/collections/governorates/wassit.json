@@ -1,0 +1,141 @@
+{
+    "sectors": [
+        {
+            "key": "al_hay",
+            "ar": "al_hay",
+            "en": "al_hay",
+            "kd": "al_hay",
+            "districts": [
+                {
+                    "key": "al_hay",
+                    "ar": "Al-Hay",
+                    "en": "Al-Hay",
+                    "kd": "Al-Hay"
+                },
+                {
+                    "key": "al_moufaqiya",
+                    "ar": "Al-Moufaqiya",
+                    "en": "Al-Moufaqiya",
+                    "kd": "Al-Moufaqiya"
+                }
+            ]
+        },
+        {
+            "key": "badrah",
+            "ar": "badrah",
+            "en": "badrah",
+            "kd": "badrah",
+            "districts": [
+                {
+                    "key": "badrah",
+                    "ar": "Badrah",
+                    "en": "Badrah",
+                    "kd": "Badrah"
+                },
+                {
+                    "key": "jasaan",
+                    "ar": "Jasaan",
+                    "en": "Jasaan",
+                    "kd": "Jasaan"
+                }
+            ]
+        },
+        {
+            "key": "kut",
+            "ar": "kut",
+            "en": "kut",
+            "kd": "kut",
+            "districts": [
+                {
+                    "key": "al_dujaily",
+                    "ar": "Al-Dujaily",
+                    "en": "Al-Dujaily",
+                    "kd": "Al-Dujaily"
+                },
+                {
+                    "key": "kut",
+                    "ar": "Kut",
+                    "en": "Kut",
+                    "kd": "Kut"
+                },
+                {
+                    "key": "sheakh_saad",
+                    "ar": "Sheakh saad",
+                    "en": "Sheakh saad",
+                    "kd": "Sheakh saad"
+                }
+            ]
+        },
+        {
+            "key": "noamania",
+            "ar": "noamania",
+            "en": "noamania",
+            "kd": "noamania",
+            "districts": [
+                {
+                    "key": "al_ahraar",
+                    "ar": "Al-Ahraar",
+                    "en": "Al-Ahraar",
+                    "kd": "Al-Ahraar"
+                },
+                {
+                    "key": "a_l-_noamania",
+                    "ar": "AL-Noamania",
+                    "en": "AL-Noamania",
+                    "kd": "AL-Noamania"
+                }
+            ]
+        },
+        {
+            "key": "suwayrah",
+            "ar": "suwayrah",
+            "en": "suwayrah",
+            "kd": "suwayrah",
+            "districts": [
+                {
+                    "key": "al_azizyia",
+                    "ar": "Al-Azizyia",
+                    "en": "Al-Azizyia",
+                    "kd": "Al-Azizyia"
+                },
+                {
+                    "key": "al_dopuony",
+                    "ar": "Al-Dopuony",
+                    "en": "Al-Dopuony",
+                    "kd": "Al-Dopuony"
+                },
+                {
+                    "key": "al_hafuryia",
+                    "ar": "Al-Hafuryia",
+                    "en": "Al-Hafuryia",
+                    "kd": "Al-Hafuryia"
+                },
+                {
+                    "key": "al_shauhamiya",
+                    "ar": "Al-Shauhamiya",
+                    "en": "Al-Shauhamiya",
+                    "kd": "Al-Shauhamiya"
+                },
+                {
+                    "key": "al_suwayrah",
+                    "ar": "Al-Suwayrah",
+                    "en": "Al-Suwayrah",
+                    "kd": "Al-Suwayrah"
+                },
+                {
+                    "key": "al_zubaidya",
+                    "ar": "Al-Zubaidya",
+                    "en": "Al-Zubaidya",
+                    "kd": "Al-Zubaidya"
+                }
+            ]
+        }
+    ],
+    "distributor_shortname": "next_generation",
+    "region": {
+        "key": "south_west",
+        "ar": "south_west",
+        "en": "south_west",
+        "kd": "south_west"
+    }
+}

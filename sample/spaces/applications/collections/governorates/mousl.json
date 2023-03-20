@@ -1,0 +1,990 @@
+{
+    "sectors": [
+        {
+            "key": "baaj",
+            "ar": "baaj",
+            "en": "baaj",
+            "kd": "baaj",
+            "districts": [
+                {
+                    "key": "adnaniya",
+                    "ar": "adnaniya",
+                    "en": "adnaniya",
+                    "kd": "adnaniya"
+                },
+                {
+                    "key": "al_jughifi",
+                    "ar": "al_jughifi",
+                    "en": "al_jughifi",
+                    "kd": "al_jughifi"
+                },
+                {
+                    "key": "al_qayrwan",
+                    "ar": "al_qayrwan",
+                    "en": "al_qayrwan",
+                    "kd": "al_qayrwan"
+                },
+                {
+                    "key": "al_risala",
+                    "ar": "al_risala",
+                    "en": "al_risala",
+                    "kd": "al_risala"
+                },
+                {
+                    "key": "al_saggar",
+                    "ar": "al_saggar",
+                    "en": "al_saggar",
+                    "kd": "al_saggar"
+                },
+                {
+                    "key": "aljazeera",
+                    "ar": "aljazeera",
+                    "en": "aljazeera",
+                    "kd": "aljazeera"
+                },
+                {
+                    "key": "alqhtanya",
+                    "ar": "alqhtanya",
+                    "en": "alqhtanya",
+                    "kd": "alqhtanya"
+                },
+                {
+                    "key": "andalus",
+                    "ar": "andalus",
+                    "en": "andalus",
+                    "kd": "andalus"
+                },
+                {
+                    "key": "baaj_center",
+                    "ar": "baaj_center",
+                    "en": "baaj_center",
+                    "kd": "baaj_center"
+                },
+                {
+                    "key": "hamdaniyah",
+                    "ar": "hamdaniyah",
+                    "en": "hamdaniyah",
+                    "kd": "hamdaniyah"
+                },
+                {
+                    "key": "hitteen",
+                    "ar": "hitteen",
+                    "en": "hitteen",
+                    "kd": "hitteen"
+                },
+                {
+                    "key": "qadisia",
+                    "ar": "qadisia",
+                    "en": "qadisia",
+                    "kd": "qadisia"
+                },
+                {
+                    "key": "senone",
+                    "ar": "senone",
+                    "en": "senone",
+                    "kd": "senone"
+                },
+                {
+                    "key": "solakh",
+                    "ar": "solakh",
+                    "en": "solakh",
+                    "kd": "solakh"
+                },
+                {
+                    "key": "tal_banat",
+                    "ar": "tal_banat",
+                    "en": "tal_banat",
+                    "kd": "tal_banat"
+                },
+                {
+                    "key": "tal_qasab",
+                    "ar": "tal_qasab",
+                    "en": "tal_qasab",
+                    "kd": "tal_qasab"
+                },
+                {
+                    "key": "tamim",
+                    "ar": "tamim",
+                    "en": "tamim",
+                    "kd": "tamim"
+                },
+                {
+                    "key": "urouba",
+                    "ar": "urouba",
+                    "en": "urouba",
+                    "kd": "urouba"
+                },
+                {
+                    "key": "yarmouk",
+                    "ar": "yarmouk",
+                    "en": "yarmouk",
+                    "kd": "yarmouk"
+                }
+            ]
+        },
+        {
+            "key": "bartalah",
+            "ar": "bartalah",
+            "en": "bartalah",
+            "kd": "bartalah",
+            "districts": [
+                {
+                    "key": "abo_jarboa",
+                    "ar": "abo_jarboa",
+                    "en": "abo_jarboa",
+                    "kd": "abo_jarboa"
+                },
+                {
+                    "key": "bartalah_center",
+                    "ar": "bartalah_center",
+                    "en": "bartalah_center",
+                    "kd": "bartalah_center"
+                },
+                {
+                    "key": "baybokhet",
+                    "ar": "baybokhet",
+                    "en": "baybokhet",
+                    "kd": "baybokhet"
+                },
+                {
+                    "key": "bazwaia",
+                    "ar": "bazwaia",
+                    "en": "bazwaia",
+                    "kd": "bazwaia"
+                },
+                {
+                    "key": "fadhliya",
+                    "ar": "fadhliya",
+                    "en": "fadhliya",
+                    "kd": "fadhliya"
+                },
+                {
+                    "key": "khazna",
+                    "ar": "khazna",
+                    "en": "khazna",
+                    "kd": "khazna"
+                },
+                {
+                    "key": "khorsabat",
+                    "ar": "khorsabat",
+                    "en": "khorsabat",
+                    "kd": "khorsabat"
+                }
+            ]
+        },
+        {
+            "key": "gayarra",
+            "ar": "gayarra",
+            "en": "gayarra",
+            "kd": "gayarra",
+            "districts": [
+                {
+                    "key": "al_bu_saif",
+                    "ar": "al_bu_saif",
+                    "en": "al_bu_saif",
+                    "kd": "al_bu_saif"
+                },
+                {
+                    "key": "al_hadhar",
+                    "ar": "al_hadhar",
+                    "en": "al_hadhar",
+                    "kd": "al_hadhar"
+                },
+                {
+                    "key": "al_haj_ali",
+                    "ar": "al_haj_ali",
+                    "en": "al_haj_ali",
+                    "kd": "al_haj_ali"
+                },
+                {
+                    "key": "al_hood",
+                    "ar": "al_hood",
+                    "en": "al_hood",
+                    "kd": "al_hood"
+                },
+                {
+                    "key": "al_jadaa",
+                    "ar": "al_jadaa",
+                    "en": "al_jadaa",
+                    "kd": "al_jadaa"
+                },
+                {
+                    "key": "al_sabaween_villages",
+                    "ar": "al_sabaween_villages",
+                    "en": "al_sabaween_villages",
+                    "kd": "al_sabaween_villages"
+                },
+                {
+                    "key": "al_shibaly",
+                    "ar": "al_shibaly",
+                    "en": "al_shibaly",
+                    "kd": "al_shibaly"
+                },
+                {
+                    "key": "al_shorah",
+                    "ar": "al_shorah",
+                    "en": "al_shorah",
+                    "kd": "al_shorah"
+                },
+                {
+                    "key": "center_of_gayarra",
+                    "ar": "center_of_gayarra",
+                    "en": "center_of_gayarra",
+                    "kd": "center_of_gayarra"
+                },
+                {
+                    "key": "tal_abtah",
+                    "ar": "tal_abtah",
+                    "en": "tal_abtah",
+                    "kd": "tal_abtah"
+                },
+                {
+                    "key": "tal_waee",
+                    "ar": "tal_waee",
+                    "en": "tal_waee",
+                    "kd": "tal_waee"
+                }
+            ]
+        },
+        {
+            "key": "hamdaniyah",
+            "ar": "hamdaniyah",
+            "en": "hamdaniyah",
+            "kd": "hamdaniyah",
+            "districts": [
+                {
+                    "key": "al_abaas",
+                    "ar": "al_abaas",
+                    "en": "al_abaas",
+                    "kd": "al_abaas"
+                },
+                {
+                    "key": "center_of_hamdaniyah",
+                    "ar": "center_of_hamdaniyah",
+                    "en": "center_of_hamdaniyah",
+                    "kd": "center_of_hamdaniyah"
+                },
+                {
+                    "key": "kanhash",
+                    "ar": "kanhash",
+                    "en": "kanhash",
+                    "kd": "kanhash"
+                },
+                {
+                    "key": "karam_less",
+                    "ar": "karam_less",
+                    "en": "karam_less",
+                    "kd": "karam_less"
+                },
+                {
+                    "key": "al_kheder",
+                    "ar": "al_kheder",
+                    "en": "al_kheder",
+                    "kd": "al_kheder"
+                }
+            ]
+        },
+        {
+            "key": "makhmur",
+            "ar": "makhmur",
+            "en": "makhmur",
+            "kd": "makhmur",
+            "districts": [
+                {
+                    "key": "abo_jarda",
+                    "ar": "abo_jarda",
+                    "en": "abo_jarda",
+                    "kd": "abo_jarda"
+                },
+                {
+                    "key": "al_gueer",
+                    "ar": "al_gueer",
+                    "en": "al_gueer",
+                    "kd": "al_gueer"
+                },
+                {
+                    "key": "al_huwayra",
+                    "ar": "al_huwayra",
+                    "en": "al_huwayra",
+                    "kd": "al_huwayra"
+                },
+                {
+                    "key": "al_sharayih",
+                    "ar": "al_sharayih",
+                    "en": "al_sharayih",
+                    "kd": "al_sharayih"
+                },
+                {
+                    "key": "debaga_h",
+                    "ar": "debaga_h",
+                    "en": "debaga_h",
+                    "kd": "debaga_h"
+                },
+                {
+                    "key": "kudila",
+                    "ar": "kudila",
+                    "en": "kudila",
+                    "kd": "kudila"
+                },
+                {
+                    "key": "qarraj",
+                    "ar": "qarraj",
+                    "en": "qarraj",
+                    "kd": "qarraj"
+                }
+            ]
+        },
+        {
+            "key": "mousl_l",
+            "ar": "mousl_l",
+            "en": "mousl_l",
+            "kd": "mousl_l",
+            "districts": [
+                {
+                    "key": "al_darkazlia",
+                    "ar": "al_darkazlia",
+                    "en": "al_darkazlia",
+                    "kd": "al_darkazlia"
+                },
+                {
+                    "key": "al_entisar",
+                    "ar": "al_entisar",
+                    "en": "al_entisar",
+                    "kd": "al_entisar"
+                },
+                {
+                    "key": "al_karamah",
+                    "ar": "al_karamah",
+                    "en": "al_karamah",
+                    "kd": "al_karamah"
+                },
+                {
+                    "key": "al_majmoaa_al_thaqafia",
+                    "ar": "al_majmoaa_al_thaqafia",
+                    "en": "al_majmoaa_al_thaqafia",
+                    "kd": "al_majmoaa_al_thaqafia"
+                },
+                {
+                    "key": "al_muthanna",
+                    "ar": "al_muthanna",
+                    "en": "al_muthanna",
+                    "kd": "al_muthanna"
+                },
+                {
+                    "key": "al_qadisiyah_1",
+                    "ar": "al_qadisiyah_1",
+                    "en": "al_qadisiyah_1",
+                    "kd": "al_qadisiyah_1"
+                },
+                {
+                    "key": "al_qadisiyah_2",
+                    "ar": "al_qadisiyah_2",
+                    "en": "al_qadisiyah_2",
+                    "kd": "al_qadisiyah_2"
+                },
+                {
+                    "key": "al_qawseya",
+                    "ar": "al_qawseya",
+                    "en": "al_qawseya",
+                    "kd": "al_qawseya"
+                },
+                {
+                    "key": "al_rashedia",
+                    "ar": "al_rashedia",
+                    "en": "al_rashedia",
+                    "kd": "al_rashedia"
+                },
+                {
+                    "key": "aleashidea",
+                    "ar": "aleashidea",
+                    "en": "aleashidea",
+                    "kd": "aleashidea"
+                },
+                {
+                    "key": "almithaq",
+                    "ar": "almithaq",
+                    "en": "almithaq",
+                    "kd": "almithaq"
+                },
+                {
+                    "key": "alqauseat",
+                    "ar": "alqauseat",
+                    "en": "alqauseat",
+                    "kd": "alqauseat"
+                },
+                {
+                    "key": "domiz",
+                    "ar": "domiz",
+                    "en": "domiz",
+                    "kd": "domiz"
+                },
+                {
+                    "key": "garaj_al_shamal",
+                    "ar": "garaj_al_shamal",
+                    "en": "garaj_al_shamal",
+                    "kd": "garaj_al_shamal"
+                },
+                {
+                    "key": "hai_al_bakir",
+                    "ar": "hai_al_bakir",
+                    "en": "hai_al_bakir",
+                    "kd": "hai_al_bakir"
+                },
+                {
+                    "key": "hai_al_noor",
+                    "ar": "hai_al_noor",
+                    "en": "hai_al_noor",
+                    "kd": "hai_al_noor"
+                },
+                {
+                    "key": "hai_al_qadsia",
+                    "ar": "hai_al_qadsia",
+                    "en": "hai_al_qadsia",
+                    "kd": "hai_al_qadsia"
+                },
+                {
+                    "key": "hay_adan",
+                    "ar": "hay_adan",
+                    "en": "hay_adan",
+                    "kd": "hay_adan"
+                },
+                {
+                    "key": "hay_al_akhaa",
+                    "ar": "hay_al_akhaa",
+                    "en": "hay_al_akhaa",
+                    "kd": "hay_al_akhaa"
+                },
+                {
+                    "key": "hay_al_arabi",
+                    "ar": "hay_al_arabi",
+                    "en": "hay_al_arabi",
+                    "kd": "hay_al_arabi"
+                },
+                {
+                    "key": "hay_al_baladiat",
+                    "ar": "hay_al_baladiat",
+                    "en": "hay_al_baladiat",
+                    "kd": "hay_al_baladiat"
+                },
+                {
+                    "key": "hay_al_dhubbat",
+                    "ar": "hay_al_dhubbat",
+                    "en": "hay_al_dhubbat",
+                    "kd": "hay_al_dhubbat"
+                },
+                {
+                    "key": "hay_al_hadbaa",
+                    "ar": "hay_al_hadbaa",
+                    "en": "hay_al_hadbaa",
+                    "kd": "hay_al_hadbaa"
+                },
+                {
+                    "key": "hay_al_jameaa",
+                    "ar": "hay_al_jameaa",
+                    "en": "hay_al_jameaa",
+                    "kd": "hay_al_jameaa"
+                },
+                {
+                    "key": "hay_al_kindi",
+                    "ar": "hay_al_kindi",
+                    "en": "hay_al_kindi",
+                    "kd": "hay_al_kindi"
+                },
+                {
+                    "key": "hay_al_kudus",
+                    "ar": "hay_al_kudus",
+                    "en": "hay_al_kudus",
+                    "kd": "hay_al_kudus"
+                },
+                {
+                    "key": "hay_al_meethaq",
+                    "ar": "hay_al_meethaq",
+                    "en": "hay_al_meethaq",
+                    "kd": "hay_al_meethaq"
+                },
+                {
+                    "key": "hay_al_mithaq",
+                    "ar": "hay_al_mithaq",
+                    "en": "hay_al_mithaq",
+                    "kd": "hay_al_mithaq"
+                },
+                {
+                    "key": "hay_al_muharibeen",
+                    "ar": "hay_al_muharibeen",
+                    "en": "hay_al_muharibeen",
+                    "kd": "hay_al_muharibeen"
+                },
+                {
+                    "key": "hay_al_noor",
+                    "ar": "hay_al_noor",
+                    "en": "hay_al_noor",
+                    "kd": "hay_al_noor"
+                },
+                {
+                    "key": "hay_al_qahera",
+                    "ar": "hay_al_qahera",
+                    "en": "hay_al_qahera",
+                    "kd": "hay_al_qahera"
+                },
+                {
+                    "key": "hay_al_qahira",
+                    "ar": "hay_al_qahira",
+                    "en": "hay_al_qahira",
+                    "kd": "hay_al_qahira"
+                },
+                {
+                    "key": "hay_al_rifaq",
+                    "ar": "hay_al_rifaq",
+                    "en": "hay_al_rifaq",
+                    "kd": "hay_al_rifaq"
+                },
+                {
+                    "key": "hay_al_sahirun",
+                    "ar": "hay_al_sahirun",
+                    "en": "hay_al_sahirun",
+                    "kd": "hay_al_sahirun"
+                },
+                {
+                    "key": "hay_al_salam",
+                    "ar": "hay_al_salam",
+                    "en": "hay_al_salam",
+                    "kd": "hay_al_salam"
+                },
+                {
+                    "key": "hay_al_samah",
+                    "ar": "hay_al_samah",
+                    "en": "hay_al_samah",
+                    "kd": "hay_al_samah"
+                }
+            ]
+        },
+        {
+            "key": "mousl_r",
+            "ar": "mousl_r",
+            "en": "mousl_r",
+            "kd": "mousl_r",
+            "districts": [
+                {
+                    "key": "17_tamuz",
+                    "ar": "17_tamuz",
+                    "en": "17_tamuz",
+                    "kd": "17_tamuz"
+                },
+                {
+                    "key": "al_borsa",
+                    "ar": "al_borsa",
+                    "en": "al_borsa",
+                    "kd": "al_borsa"
+                },
+                {
+                    "key": "al_dawasa",
+                    "ar": "al_dawasa",
+                    "en": "al_dawasa",
+                    "kd": "al_dawasa"
+                },
+                {
+                    "key": "al_eslah_al_ziraee",
+                    "ar": "al_eslah_al_ziraee",
+                    "en": "al_eslah_al_ziraee",
+                    "kd": "al_eslah_al_ziraee"
+                },
+                {
+                    "key": "al_farooq",
+                    "ar": "al_farooq",
+                    "en": "al_farooq",
+                    "kd": "al_farooq"
+                },
+                {
+                    "key": "al_harmat",
+                    "ar": "al_harmat",
+                    "en": "al_harmat",
+                    "kd": "al_harmat"
+                },
+                {
+                    "key": "al_jawsaq",
+                    "ar": "al_jawsaq",
+                    "en": "al_jawsaq",
+                    "kd": "al_jawsaq"
+                },
+                {
+                    "key": "al_khazraj",
+                    "ar": "al_khazraj",
+                    "en": "al_khazraj",
+                    "kd": "al_khazraj"
+                },
+                {
+                    "key": "al_resala",
+                    "ar": "al_resala",
+                    "en": "al_resala",
+                    "kd": "al_resala"
+                },
+                {
+                    "key": "al_yarmuk",
+                    "ar": "al_yarmuk",
+                    "en": "al_yarmuk",
+                    "kd": "al_yarmuk"
+                },
+                {
+                    "key": "bab_jadeed",
+                    "ar": "bab_jadeed",
+                    "en": "bab_jadeed",
+                    "kd": "bab_jadeed"
+                },
+                {
+                    "key": "badush",
+                    "ar": "badush",
+                    "en": "badush",
+                    "kd": "badush"
+                },
+                {
+                    "key": "door_al_sukar",
+                    "ar": "door_al_sukar",
+                    "en": "door_al_sukar",
+                    "kd": "door_al_sukar"
+                },
+                {
+                    "key": "hamidat",
+                    "ar": "hamidat",
+                    "en": "hamidat",
+                    "kd": "hamidat"
+                },
+                {
+                    "key": "hay_30_tamouz",
+                    "ar": "hay_30_tamouz",
+                    "en": "hay_30_tamouz",
+                    "kd": "hay_30_tamouz"
+                },
+                {
+                    "key": "hay_al_amel",
+                    "ar": "hay_al_amel",
+                    "en": "hay_al_amel",
+                    "kd": "hay_al_amel"
+                },
+                {
+                    "key": "hay_al_danadan",
+                    "ar": "hay_al_danadan",
+                    "en": "hay_al_danadan",
+                    "kd": "hay_al_danadan"
+                },
+                {
+                    "key": "hay_al_mamoon",
+                    "ar": "hay_al_mamoon",
+                    "en": "hay_al_mamoon",
+                    "kd": "hay_al_mamoon"
+                },
+                {
+                    "key": "hay_al_mansoor",
+                    "ar": "hay_al_mansoor",
+                    "en": "hay_al_mansoor",
+                    "kd": "hay_al_mansoor"
+                },
+                {
+                    "key": "hay_al_nafit",
+                    "ar": "hay_al_nafit",
+                    "en": "hay_al_nafit",
+                    "kd": "hay_al_nafit"
+                },
+                {
+                    "key": "hay_al_nahrawan",
+                    "ar": "hay_al_nahrawan",
+                    "en": "hay_al_nahrawan",
+                    "kd": "hay_al_nahrawan"
+                },
+                {
+                    "key": "hay_al_najjar",
+                    "ar": "hay_al_najjar",
+                    "en": "hay_al_najjar",
+                    "kd": "hay_al_najjar"
+                },
+                {
+                    "key": "hay_al_rafiden",
+                    "ar": "hay_al_rafiden",
+                    "en": "hay_al_rafiden",
+                    "kd": "hay_al_rafiden"
+                },
+                {
+                    "key": "hay_al_refaae",
+                    "ar": "hay_al_refaae",
+                    "en": "hay_al_refaae",
+                    "kd": "hay_al_refaae"
+                },
+                {
+                    "key": "hay_al_tanak",
+                    "ar": "hay_al_tanak",
+                    "en": "hay_al_tanak",
+                    "kd": "hay_al_tanak"
+                },
+                {
+                    "key": "hay_al_thawra",
+                    "ar": "hay_al_thawra",
+                    "en": "hay_al_thawra",
+                    "kd": "hay_al_thawra"
+                },
+                {
+                    "key": "hay_al_uboor",
+                    "ar": "hay_al_uboor",
+                    "en": "hay_al_uboor",
+                    "kd": "hay_al_uboor"
+                },
+                {
+                    "key": "hay_al_zanjili",
+                    "ar": "hay_al_zanjili",
+                    "en": "hay_al_zanjili",
+                    "kd": "hay_al_zanjili"
+                },
+                {
+                    "key": "hay_nablis",
+                    "ar": "hay_nablis",
+                    "en": "hay_nablis",
+                    "kd": "hay_nablis"
+                },
+                {
+                    "key": "hay_nablus",
+                    "ar": "hay_nablus",
+                    "en": "hay_nablus",
+                    "kd": "hay_nablus"
+                },
+                {
+                    "key": "mosul_al_jadida",
+                    "ar": "mosul_al_jadida",
+                    "en": "mosul_al_jadida",
+                    "kd": "mosul_al_jadida"
+                },
+                {
+                    "key": "msherfah_1",
+                    "ar": "msherfah_1",
+                    "en": "msherfah_1",
+                    "kd": "msherfah_1"
+                },
+                {
+                    "key": "msherfah_2",
+                    "ar": "msherfah_2",
+                    "en": "msherfah_2",
+                    "kd": "msherfah_2"
+                },
+                {
+                    "key": "msherfah_3",
+                    "ar": "msherfah_3",
+                    "en": "msherfah_3",
+                    "kd": "msherfah_3"
+                },
+                {
+                    "key": "rajm_hadeed",
+                    "ar": "rajm_hadeed",
+                    "en": "rajm_hadeed",
+                    "kd": "rajm_hadeed"
+                },
+                {
+                    "key": "ras_al_jadah",
+                    "ar": "ras_al_jadah",
+                    "en": "ras_al_jadah",
+                    "kd": "ras_al_jadah"
+                }
+            ]
+        },
+        {
+            "key": "rabeea",
+            "ar": "rabeea",
+            "en": "rabeea",
+            "kd": "rabeea",
+            "districts": [
+                {
+                    "key": "al_mothalatha",
+                    "ar": "al_mothalatha",
+                    "en": "al_mothalatha",
+                    "kd": "al_mothalatha"
+                },
+                {
+                    "key": "awenat",
+                    "ar": "awenat",
+                    "en": "awenat",
+                    "kd": "awenat"
+                },
+                {
+                    "key": "domiz_ain_zalah",
+                    "ar": "domiz_ain_zalah",
+                    "en": "domiz_ain_zalah",
+                    "kd": "domiz_ain_zalah"
+                },
+                {
+                    "key": "khermar",
+                    "ar": "khermar",
+                    "en": "khermar",
+                    "kd": "khermar"
+                },
+                {
+                    "key": "suhelah",
+                    "ar": "suhelah",
+                    "en": "suhelah",
+                    "kd": "suhelah"
+                },
+                {
+                    "key": "tal_mous",
+                    "ar": "tal_mous",
+                    "en": "tal_mous",
+                    "kd": "tal_mous"
+                },
+                {
+                    "key": "tmarat",
+                    "ar": "tmarat",
+                    "en": "tmarat",
+                    "kd": "tmarat"
+                },
+                {
+                    "key": "zumaar_center",
+                    "ar": "zumaar_center",
+                    "en": "zumaar_center",
+                    "kd": "zumaar_center"
+                }
+            ]
+        },
+        {
+            "key": "shikhan",
+            "ar": "shikhan",
+            "en": "shikhan",
+            "kd": "shikhan",
+            "districts": [
+                {
+                    "key": "essian",
+                    "ar": "essian",
+                    "en": "essian",
+                    "kd": "essian"
+                },
+                {
+                    "key": "mahd",
+                    "ar": "mahd",
+                    "en": "mahd",
+                    "kd": "mahd"
+                },
+                {
+                    "key": "mam_rashan",
+                    "ar": "mam_rashan",
+                    "en": "mam_rashan",
+                    "kd": "mam_rashan"
+                },
+                {
+                    "key": "shikhan_center",
+                    "ar": "shikhan_center",
+                    "en": "shikhan_center",
+                    "kd": "shikhan_center"
+                }
+            ]
+        },
+        {
+            "key": "talafar",
+            "ar": "talafar",
+            "en": "talafar",
+            "kd": "talafar",
+            "districts": [
+                {
+                    "key": "abu_maria",
+                    "ar": "abu_maria",
+                    "en": "abu_maria",
+                    "kd": "abu_maria"
+                },
+                {
+                    "key": "al_ayadheyah",
+                    "ar": "al_ayadheyah",
+                    "en": "al_ayadheyah",
+                    "kd": "al_ayadheyah"
+                },
+                {
+                    "key": "al_kask",
+                    "ar": "al_kask",
+                    "en": "al_kask",
+                    "kd": "al_kask"
+                },
+                {
+                    "key": "al_mowale",
+                    "ar": "al_mowale",
+                    "en": "al_mowale",
+                    "kd": "al_mowale"
+                },
+                {
+                    "key": "al_muhalabia_center",
+                    "ar": "al_muhalabia_center",
+                    "en": "al_muhalabia_center",
+                    "kd": "al_muhalabia_center"
+                },
+                {
+                    "key": "talafar_center",
+                    "ar": "talafar_center",
+                    "en": "talafar_center",
+                    "kd": "talafar_center"
+                }
+            ]
+        },
+        {
+            "key": "tilkef",
+            "ar": "tilkef",
+            "en": "tilkef",
+            "kd": "tilkef",
+            "districts": [
+                {
+                    "key": "al_manara",
+                    "ar": "al_manara",
+                    "en": "al_manara",
+                    "kd": "al_manara"
+                },
+                {
+                    "key": "batnaya",
+                    "ar": "batnaya",
+                    "en": "batnaya",
+                    "kd": "batnaya"
+                },
+                {
+                    "key": "jambor",
+                    "ar": "jambor",
+                    "en": "jambor",
+                    "kd": "jambor"
+                },
+                {
+                    "key": "mosul_dam",
+                    "ar": "mosul_dam",
+                    "en": "mosul_dam",
+                    "kd": "mosul_dam"
+                },
+                {
+                    "key": "tal_adas",
+                    "ar": "tal_adas",
+                    "en": "tal_adas",
+                    "kd": "tal_adas"
+                },
+                {
+                    "key": "tal_esqaf",
+                    "ar": "tal_esqaf",
+                    "en": "tal_esqaf",
+                    "kd": "tal_esqaf"
+                },
+                {
+                    "key": "tilkef_center",
+                    "ar": "tilkef_center",
+                    "en": "tilkef_center",
+                    "kd": "tilkef_center"
+                },
+                {
+                    "key": "wana",
+                    "ar": "wana",
+                    "en": "wana",
+                    "kd": "wana"
+                }
+            ]
+        }
+    ],
+    "distributor_shortname": "next_generation",
+    "salesrep_shortnames": [
+        "alla_amer",
+        "ali_khalil",
+        "ali_saleh",
+        "omar_ibrahim",
+        "mustfa_momtaz",
+        "haitham_ezalden",
+        "ahmed_hussain"
+    ],
+    "region": {
+        "ar": "arabic_north",
+        "en": "arabic_north",
+        "kd": "arabic_north",
+        "key": "arabic_north"
+    }
+}

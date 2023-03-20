@@ -1,0 +1,1 @@
+{"uuid": "ec672a6c-6f2b-4553-89cc-b238e853e0d7", "shortname": "segmentation", "is_active": true, "tags": [], "created_at": "2023-03-14T10:56:02.303098", "updated_at": "2023-03-14T10:56:02.303114", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "segmentation.json"}}

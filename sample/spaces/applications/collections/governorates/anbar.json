@@ -1,0 +1,175 @@
+{
+    "sectors": [
+        {
+            "key": "alqaim",
+            "ar": "alqaim",
+            "en": "alqaim",
+            "kd": "alqaim",
+            "districts": [
+                {
+                    "key": "center",
+                    "ar": "center",
+                    "en": "center",
+                    "kd": "center"
+                }
+            ]
+        },
+        {
+            "key": "anah",
+            "ar": "anah",
+            "en": "anah",
+            "kd": "anah",
+            "districts": [
+                {
+                    "key": "center",
+                    "ar": "center",
+                    "en": "center",
+                    "kd": "center"
+                }
+            ]
+        },
+        {
+            "key": "fulljuah",
+            "ar": "fulljuah",
+            "en": "fulljuah",
+            "kd": "fulljuah",
+            "districts": [
+                {
+                    "key": "center",
+                    "ar": "center",
+                    "en": "center",
+                    "kd": "center"
+                },
+                {
+                    "key": "saqlawea",
+                    "ar": "saqlawea",
+                    "en": "saqlawea",
+                    "kd": "saqlawea"
+                },
+                {
+                    "key": "amrya",
+                    "ar": "amrya",
+                    "en": "amrya",
+                    "kd": "amrya"
+                },
+                {
+                    "key": "kamara",
+                    "ar": "kamara",
+                    "en": "kamara",
+                    "kd": "kamara"
+                }
+            ]
+        },
+        {
+            "key": "haditha",
+            "ar": "haditha",
+            "en": "haditha",
+            "kd": "haditha",
+            "districts": [
+                {
+                    "key": "center",
+                    "ar": "center",
+                    "en": "center",
+                    "kd": "center"
+                }
+            ]
+        },
+        {
+            "key": "hit",
+            "ar": "hit",
+            "en": "hit",
+            "kd": "hit",
+            "districts": [
+                {
+                    "key": "center",
+                    "ar": "center",
+                    "en": "center",
+                    "kd": "center"
+                },
+                {
+                    "key": "kubissa",
+                    "ar": "kubissa",
+                    "en": "kubissa",
+                    "kd": "kubissa"
+                },
+                {
+                    "key": "al_baghdadi",
+                    "ar": "Al-Baghdadi",
+                    "en": "Al-Baghdadi",
+                    "kd": "Al-Baghdadi"
+                },
+                {
+                    "key": "al_mohammedi",
+                    "ar": "al_mohammedi",
+                    "en": "al_mohammedi",
+                    "kd": "al_mohammedi"
+                }
+        
+            ]
+        },
+        {
+            "key": "ramadi",
+            "ar": "ramadi",
+            "en": "ramadi",
+            "kd": "ramadi",
+            "districts": [
+                {
+                    "key": "center",
+                    "ar": "center",
+                    "en": "center",
+                    "kd": "center"
+                },
+                {
+                    "key": "khaldeya",
+                    "ar": "khaldeya",
+                    "en": "khaldeya",
+                    "kd": "khaldeya"
+                },               {
+                    "key": "Habinea",
+                    "ar": "Habinea",
+                    "en": "Habinea",
+                    "kd": "Habinea"
+                },               {
+                    "key": "Jazeerah",
+                    "ar": "Jazeerah",
+                    "en": "Jazeerah",
+                    "kd": "Jazeerah"
+                },               {
+                    "key": "abu_teban_&_zangora",
+                    "ar": "abu_teban_&_zangora",
+                    "en": "abu_teban_&_zangora",
+                    "kd": "abu_teban_&_zangora"
+                }
+            ]
+        },
+        {
+            "key": "rutbah",
+            "ar": "rutbah",
+            "en": "rutbah",
+            "kd": "rutbah",
+            "districts": [
+                {
+                    "key": "center",
+                    "ar": "center",
+                    "en": "center",
+                    "kd": "center"
+                },
+                {
+                    "key": "trebil_border",
+                    "ar": "trebil_border",
+                    "en": "trebil_border",
+                    "kd": "trebil_border"
+                }
+            
+            ]
+        }
+    ],
+    "distributor_shortname": "next_generation",
+    "salesrep_shortnames": [],
+    "region": {
+        "ar": "south_west",
+        "en": "south_west",
+        "kd": "south_west",
+        "key": "south_west"
+    }
+}

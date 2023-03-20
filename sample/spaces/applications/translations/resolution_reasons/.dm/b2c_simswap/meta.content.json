@@ -1,0 +1,1 @@
+{"uuid": "be04e24d-e207-4777-850d-836930eef9a6", "shortname": "b2c_simswap", "is_active": true, "tags": [], "created_at": "2023-03-16T10:52:45.051986", "updated_at": "2023-03-16T10:52:45.052006", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "b2c_simswap.json"}}

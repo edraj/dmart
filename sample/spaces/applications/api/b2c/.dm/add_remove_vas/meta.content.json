@@ -1,0 +1,1 @@
+{"uuid": "8f73c342-c2ff-4877-b185-8b57fa579b85", "shortname": "add_remove_vas", "is_active": true, "tags": [], "created_at": "2023-03-16T13:06:49.689566", "updated_at": "2023-03-16T13:06:49.689586", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "api", "body": "add_remove_vas.json"}}

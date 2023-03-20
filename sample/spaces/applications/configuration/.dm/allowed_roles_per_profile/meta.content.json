@@ -1,0 +1,1 @@
+{"uuid": "c4e44c4f-3ff1-498f-8855-33a5a6b2b2a6", "shortname": "allowed_roles_per_profile", "is_active": true, "tags": [], "created_at": "2023-03-14T12:48:25.826370", "updated_at": "2023-03-14T12:57:21.711776", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "configuration", "body": "allowed_roles_per_profile.json"}}

@@ -1,0 +1,1 @@
+{"uuid": "e2922934-491b-4cbf-9bdf-422769cae222", "shortname": "contacts", "is_active": true, "tags": [], "created_at": "2022-10-31T10:40:16.253427", "updated_at": "2023-01-11T23:20:33.259195", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "folder_rendering", "body": "contacts.json"}}

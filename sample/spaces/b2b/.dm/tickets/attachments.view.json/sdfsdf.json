@@ -1,0 +1,1 @@
+{"shortname": "sdfsdf", "displayname": {"en": "sdfsdf"}, "columns": [], "append_subpath": "", "query": {"type": "subpath", "filter_schema_names": ["tickets"], "filter_types": [], "search": "", "sort_by": "created_at", "sort_type": "descending", "branch_name": "master"}}

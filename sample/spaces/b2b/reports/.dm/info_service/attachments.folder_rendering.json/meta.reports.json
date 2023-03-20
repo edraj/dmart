@@ -1,0 +1,1 @@
+{"uuid": "74b29440-f22a-4d4e-af9a-496855d2319a", "shortname": "reports", "is_active": false, "tags": [], "created_at": "2023-01-12T13:26:09.515957", "updated_at": "2023-01-12T13:26:09.515977", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "folder_rendering", "body": "reports.json"}}

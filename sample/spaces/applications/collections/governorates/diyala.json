@@ -1,0 +1,142 @@
+{
+    "sectors": [
+        {
+            "key": "baladruz",
+            "ar": "baladruz",
+            "en": "baladruz",
+            "kd": "baladruz",
+            "districts": [
+                {
+                    "key": "Center",
+                    "ar": "Center",
+                    "en": "Center",
+                    "kd": "Center"
+                },
+                {
+                    "key": "Mandale",
+                    "ar": "Mandale",
+                    "en": "Mandale",
+                    "kd": "Mandale"
+                }
+            ]
+        },
+        {
+            "key": "baquba_new",
+            "ar": "baquba_new",
+            "en": "baquba_new",
+            "kd": "baquba_new",
+            "districts": [
+                {
+                    "key": "Center",
+                    "ar": "Center",
+                    "en": "Center",
+                    "kd": "Center"
+                },
+                {
+                    "key": "Khan Bani-Saad",
+                    "ar": "Khan Bani-Saad",
+                    "en": "Khan Bani-Saad",
+                    "kd": "Khan Bani-Saad"
+                },
+                {
+                    "key": "Al-Katon",
+                    "ar": "Al-Katon",
+                    "en": "Al-Katon",
+                    "kd": "Al-Katon"
+                },
+                {
+                    "key": "Kanian",
+                    "ar": "Kanian",
+                    "en": "Kanian",
+                    "kd": "Kanian"
+                }
+            ]
+        },
+        {
+            "key": "khalis",
+            "ar": "khalis",
+            "en": "khalis",
+            "kd": "khalis",
+            "districts": [
+                {
+                    "key": "Center",
+                    "ar": "Center",
+                    "en": "Center",
+                    "kd": "Center"
+                },
+                {
+                    "key": "Saadiah Shat",
+                    "ar": "Saadiah Shat",
+                    "en": "Saadiah Shat",
+                    "kd": "Saadiah Shat"
+                },
+                {
+                    "key": "Hubhub",
+                    "ar": "Hubhub",
+                    "en": "Hubhub",
+                    "kd": "Hubhub"
+                }
+            ]
+        },
+        {
+            "key": "khanaqin",
+            "ar": "khanaqin",
+            "en": "khanaqin",
+            "kd": "khanaqin",
+            "districts": [
+                {
+                    "key": "Center",
+                    "ar": "Center",
+                    "en": "Center",
+                    "kd": "Center"
+                },
+                {
+                    "key": "Jalwla",
+                    "ar": "Jalwla",
+                    "en": "Jalwla",
+                    "kd": "Jalwla"
+                }
+            ]
+        },
+        {
+            "key": "miqdadiyah",
+            "ar": "miqdadiyah",
+            "en": "miqdadiyah",
+            "kd": "miqdadiyah",
+            "districts": [
+                {
+                    "key": "Center",
+                    "ar": "Center",
+                    "en": "Center",
+                    "kd": "Center"
+                },
+                {
+                    "key": "Wajeheah",
+                    "ar": "Wajeheah",
+                    "en": "Wajeheah",
+                    "kd": "Wajeheah"
+                }
+            ]
+        }
+    ],
+    "distributor_shortname": "next_generation",
+    "salesrep_shortnames": [
+        "ahmed_mohd",
+        "ameer_hulal",
+        "haeder_abaas",
+        "khalid_mohammed",
+        "saleh_ismaail",
+        "faisal_jwad",
+        "abdulrahmadn_khalaf",
+        "qadorry_hasan",
+        "mohammad_natek",
+        "mustafa_mohammed",
+        "mohammed_falih"
+    ],
+    "region": {
+        "key": "central_east",
+        "ar": "central_east",
+        "en": "central_east",
+        "kd": "central_east"
+    }
+}

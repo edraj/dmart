@@ -1,0 +1,1 @@
+{"uuid": "80990020-1506-43cb-b492-60552068282a", "shortname": "div_Test", "is_active": false, "tags": [], "created_at": "2022-10-31T09:28:27.741663", "updated_at": "2022-10-31T09:28:27.741686", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "view", "body": "div_Test.json"}}

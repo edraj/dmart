@@ -1,0 +1,105 @@
+{
+  "type": "object",
+  "title": "Governorate schema",
+  "additionalProperties": false,
+  "properties": {
+    "sectors": {
+      "type": "array",
+      "minItems": 0,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "ar": {
+            "type": "string"
+          },
+          "en": {
+            "type": "string"
+          },
+          "kd": {
+            "type": "string"
+          },
+          "districts": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "ar": {
+                  "type": "string"
+                },
+                "en": {
+                  "type": "string"
+                },
+                "kd": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "ar",
+                "en",
+                "kd"
+              ]
+            }
+          }
+        },
+        "required": [
+          "key",
+          "ar",
+          "en",
+          "kd"
+        ]
+      }
+    },
+    "salesrep_shortnames": {
+      "type": "array",
+      "minItems": 0,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "distributor_shortname": {
+      "type": "string"
+    },
+    "region": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "enum": [
+            "arabic_north",
+            "central_east",
+            "kurdistan",
+            "south_west"
+          ]
+        },
+        "ar": {
+          "type": "string"
+        },
+        "en": {
+          "type": "string"
+        },
+        "kd": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "ar",
+        "en",
+        "kd"
+      ]
+    }
+  },
+  "required": [
+    "sectors"
+  ]
+}

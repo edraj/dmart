@@ -1,0 +1,1 @@
+{"uuid": "85116c7f-a1d0-4ffd-9050-13b75193a437", "shortname": "time_out", "is_active": true, "tags": [], "created_at": "2023-03-01T10:12:24.654255", "updated_at": "2023-03-01T10:12:24.654270", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "configuration", "body": "time_out.json"}}

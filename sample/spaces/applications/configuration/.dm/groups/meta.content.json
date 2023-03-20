@@ -1,0 +1,1 @@
+{"uuid": "725b51c8-fb74-4711-815f-9c41565ccc6a", "shortname": "groups", "is_active": true, "tags": [], "created_at": "2023-03-02T14:32:14.355240", "updated_at": "2023-03-02T14:32:14.355267", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "configuration", "body": "groups.json"}}

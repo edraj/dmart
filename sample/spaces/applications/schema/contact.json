@@ -1,0 +1,56 @@
+{
+  "type": "object",
+  "title": "title",
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "distributor",
+        "salesrep"
+      ]
+    },
+    "email": {
+      "type": "string"
+    },
+    "msisdn": {
+      "type": "string",
+      "pattern": "^7[89]\\d{8}$"
+    },
+    "alternative_msisdns": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^7[5789]\\d{8}$"
+      }
+    },
+    "distributor_shortname": {
+      "type": "string"
+    },
+    "governorate": {
+      "type": "object",
+      "properties": {
+        "shortname": {
+          "type": "string"
+        },
+        "sector": {
+          "type": "string"
+        },
+        "districts": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "shortname"
+      ]
+    }
+  },
+  "required": [
+    "type",
+    "email",
+    "msisdn",
+    "governorate",
+    "distributor_shortname"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "title": "deposits",
+  "additionalProperties": false,
+  "properties": {
+    "list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "usage_limit": {
+            "type": "number"
+          }
+        },
+        "title": "list"
+      },
+      "title": "List"
+    }
+  },
+  "required": [
+    "list"
+  ]
+}

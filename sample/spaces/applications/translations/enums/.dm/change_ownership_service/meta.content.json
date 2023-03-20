@@ -1,0 +1,1 @@
+{"uuid": "df466408-a9e2-484d-b62b-80ab59bfa4ee", "shortname": "change_ownership_service", "is_active": true, "tags": [], "created_at": "2023-03-14T10:55:15.180192", "updated_at": "2023-03-14T10:55:15.180207", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "change_ownership_service.json"}}

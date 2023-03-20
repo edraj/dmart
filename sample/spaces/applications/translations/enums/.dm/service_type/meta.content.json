@@ -1,0 +1,1 @@
+{"uuid": "ff398b4b-49d1-4a35-ac56-64c596cf7039", "shortname": "service_type", "is_active": true, "tags": [], "created_at": "2023-03-14T10:52:59.313804", "updated_at": "2023-03-14T10:52:59.313819", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "service_type.json"}}

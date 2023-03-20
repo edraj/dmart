@@ -1,0 +1,1 @@
+{"uuid": "ad6336b1-a51c-442d-a38f-6d0b82c5cd1c", "shortname": "order_cancelled", "is_active": true, "tags": [], "created_at": "2023-03-16T14:44:53.746065", "updated_at": "2023-03-16T14:44:53.746081", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "order_cancelled.json"}}

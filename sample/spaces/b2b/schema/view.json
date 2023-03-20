@@ -1,0 +1,23 @@
+{
+  "title": "View Schema",
+  "description": "Saved filter (query) schema",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "name": {
+      "title": "name",
+      "description": "name description",
+      "type": "string"
+    },
+    "query": {
+      "title": "query",
+      "description": "The Query data (same as general api query object)",
+      "type": "object"
+    },
+    "columns": {
+      "title": "Columns displayed in the list",
+      "description": "description description",
+      "type": "array"
+    }
+  }
+}

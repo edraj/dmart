@@ -1,0 +1,1 @@
+{"uuid": "28aae489-b28b-44d2-ac56-98a8d2bc5686", "shortname": "governorates", "is_active": true, "tags": [], "created_at": "2022-10-31T10:40:09.419054", "updated_at": "2023-02-19T09:36:02.174585", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "folder_rendering", "body": "governorates.json"}}

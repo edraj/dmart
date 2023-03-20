@@ -1,0 +1,239 @@
+{
+  "type": "object",
+  "title": "b2b",
+  "properties": {
+    "company_data": {
+      "type": "object",
+      "properties": {
+        "contract_type": {
+          "type": "string",
+          "enum": [
+            "postpaid",
+            "prepaid"
+          ],
+          "default": "prepaid"
+        },
+        "company_type": {
+          "type": "string",
+          "enum": [
+            "government",
+            "multinational",
+            "local_company",
+            "individual",
+            "refugee",
+            "others"
+          ]
+        },
+        "callback_number": {
+          "type": "string",
+          "pattern": "^7[5789]\\d{8}$"
+        },
+        "segmentation": {
+          "type": "string",
+          "enum": [
+            "strategic",
+            "government",
+            "large",
+            "medium",
+            "small",
+            "soho",
+            "individual_under_corporate"
+          ]
+        },
+        "number_of_lines_in_request": {
+          "type": "string",
+          "pattern": "^\\d{1,8}$"
+        },
+        "counter_of_activated_lines": {
+          "type": "string",
+          "pattern": "^\\d{1,8}$"
+        }
+      }
+    },
+    "authorized_details": {
+      "type": "object",
+      "properties": {
+        "date_of_birth": {
+          "type": "string",
+          "format": "date"
+        },
+        "place_of_birth": {
+          "type": "string"
+        },
+        "nationality": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "male",
+            "female"
+          ]
+        },
+        "mother_name": {
+          "type": "string",
+          "pattern": "^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-zA-Z]+((\\s[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-zA-Z]+)*)$"
+        },
+        "subscriber_email": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "civil_id",
+            "passport"
+          ]
+        },
+        "id_number": {
+          "type": "string",
+          "description": "ID of end customer [Filled at submission]"
+        },
+        "id_page_number": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9]+$"
+        },
+        "id_record_number": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9\u0600-\u06FF]{1,20}$"
+        },
+        "residence_card_type": {
+          "type": "string",
+          "enum": [
+            "residence_card",
+            "ration_card"
+          ]
+        },
+        "residence_card_number": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9\u0600-\u06FF]{1,20}$"
+        },
+        "street": {
+          "type": "string"
+        },
+        "district": {
+          "type": "string"
+        },
+        "district_number": {
+          "type": "string",
+          "pattern": "^\\d{1,20}$"
+        },
+        "governorate_shortname": {
+          "type": "string"
+        },
+        "sector": {
+          "type": "string"
+        },
+        "building_number": {
+          "type": "string"
+        },
+        "authorize_number": {
+          "type": "string",
+          "pattern": "^\\d{1,20}$"
+        },
+        "other_phone_number": {
+          "type": "string",
+          "pattern": "^7[5789]\\d{8}$"
+        },
+        "nearest_known_place": {
+          "type": "string"
+        }
+      }
+    },
+    "company_details": {
+      "type": "object",
+      "properties": {
+        "company_name": {
+          "type": "string"
+        },
+        "company_building_number": {
+          "type": "string"
+        },
+        "company_street_name": {
+          "type": "string"
+        },
+        "company_district": {
+          "type": "string"
+        },
+        "company_district_number": {
+          "type": "string"
+        },
+        "company_sector": {
+          "type": "string"
+        },
+        "company_governorate_shortname": {
+          "type": "string"
+        },
+        "license_number": {
+          "type": "string"
+        },
+        "company_issue_date": {
+          "type": "string"
+        },
+        "company_website": {
+          "type": "string"
+        },
+        "company_email": {
+          "type": "string"
+        },
+        "company_fax": {
+          "type": "string",
+          "pattern": "^\\d{1,13}$"
+        },
+        "company_phone": {
+          "type": "string",
+          "pattern": "^7[5789]\\d{8}$"
+        },
+        "payment_type": {
+          "type": "string"
+        },
+        "bank_name": {
+          "type": "string",
+          "pattern": "[a-zA-Z0-9\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0020]+$"
+        },
+        "bank_branch": {
+          "type": "string",
+          "pattern": "[a-zA-Z0-9\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0020]+$"
+        },
+        "bank_address": {
+          "type": "string",
+          "pattern": "[a-zA-Z0-9\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0020]+$"
+        },
+        "account_number": {
+          "type": "string"
+        },
+        "company_record": {
+          "type": "string"
+        },
+        "tax_card": {
+          "type": "string",
+          "pattern": "^.{1,250}$"
+        },
+        "official_authority": {
+          "type": "string",
+          "pattern": "^.{1,250}$"
+        },
+        "identity": {
+          "type": "string",
+          "pattern": "^.{1,250}$"
+        }
+      }
+    },
+    "customer_details": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "msisdn": {
+            "type": "string",
+            "pattern": "^7[89]\\d{8}$"
+
+          },
+          "iccid": {
+            "type": "string",
+            "pattern": "^89964\\d{12,14}$"
+          }
+        }
+      }
+    }
+  }
+}

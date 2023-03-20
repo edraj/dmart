@@ -1,0 +1,85 @@
+{
+    "name": "B2B",
+    "illustration": "B2B Description",
+    "initial_state": [
+        {
+            "name": "new",
+            "roles": [
+                "default"
+            ]
+        }
+    ],
+    "states": [
+        {
+            "name": "New",
+            "state": "new",
+            "next": [
+                {
+                    "roles": [
+                        "account_manager"
+                    ],
+                    "state": "pending",
+                    "action": "submit"
+                }
+            ]
+        },
+        {
+            "name": "Pending",
+            "state": "pending",
+            "next": [
+                {
+                    "roles": [
+                        "b2b"
+                    ],
+                    "state": "rejected",
+                    "action": "reject"
+                },
+                {
+                    "roles": [
+                        "b2b"
+                    ],
+                    "state": "approved",
+                    "action": "approve"
+                }
+            ]
+        },
+        {
+            "name": "Rejected",
+            "state": "rejected",
+            "resolutions": [
+                "evd_not_rc",
+                "active_line",
+                "stopped_line",
+                "call_207_to_escalate_complain",
+                "disconnected_line",
+                "line_is_not_registered",
+                "line_is_not_subscribed_in_this_service",
+                "line_is_related_to_gov",
+                "not_zain_line",
+                "please_send_0_to_service_number_to_unsubscribe",
+                "recharge_card_is_already_stopped",
+                "recharge_card_is_used",
+                "recharge_card_is_wrong",
+                "request_approved",
+                "request_rejected",
+                "request_sent_successfully",
+                "send_your_request__after_15_mint",
+                "send_your_request_after_1_hr",
+                "send_your_request_after_10_mint",
+                "service_already_removed",
+                "stopped_line_from_legal",
+                "wrong_customer_name",
+                "wrong_id_number",
+                "wrong_msisdn",
+                "wrong_recharge_card",
+                "wrong_service_number",
+                "recharge_card_is_expired",
+                "go_to_ros"
+            ]
+        },
+        {
+            "name": "Approved",
+            "state": "approved"
+        }
+    ]
+}

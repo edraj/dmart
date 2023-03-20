@@ -1,0 +1,246 @@
+{
+    "sectors": [
+        {
+            "key": "basra",
+            "ar": "basra",
+            "en": "basra",
+            "kd": "basra",
+            "districts": [
+                {
+                    "key": "basra_center",
+                    "ar": "Basra Center",
+                    "en": "Basra Center",
+                    "kd": "Basra Center"
+                },
+                {
+                    "key": "al_tanoma",
+                    "ar": "Al-Tanoma",
+                    "en": "Al-Tanoma",
+                    "kd": "Al-Tanoma"
+                },
+                {
+                    "key": "hay_al_hussain",
+                    "ar": "Hay Al-Hussain",
+                    "en": "Hay Al-Hussain",
+                    "kd": "Hay Al-Hussain"
+                }
+            ]
+        },
+        {
+            "key": "garmat_ali",
+            "ar": "garmat_ali",
+            "en": "garmat_ali",
+            "kd": "garmat_ali",
+            "districts": [
+                {
+                    "key": "garmat_ali",
+                    "ar": "Garmat Ali",
+                    "en": "Garmat Ali",
+                    "kd": "Garmat Ali"
+                }
+            ]
+        },
+        {
+            "key": "qurna",
+            "ar": "qurna",
+            "en": "qurna",
+            "kd": "qurna",
+            "districts": [
+                {
+                    "key": "qurna_center",
+                    "ar": "Qurna Center",
+                    "en": "Qurna Center",
+                    "kd": "Qurna Center"
+                },
+                {
+                    "key": "al_deer",
+                    "ar": " Al-Deer",
+                    "en": " Al-Deer",
+                    "kd": " Al-Deer"
+                }
+            ]
+        },
+        {
+            "key": "faw",
+            "ar": "faw",
+            "en": "faw",
+            "kd": "faw",
+            "districts": [
+                {
+                    "key": "faw",
+                    "ar": "Faw",
+                    "en": "Faw",
+                    "kd": "Faw"
+                }
+            ]
+        },
+        {
+            "key": "jamhuraiya",
+            "ar": "jamhuraiya",
+            "en": "jamhuraiya",
+            "kd": "jamhuraiya",
+            "districts": [
+                {
+                    "key": "jamhuraiya",
+                    "ar": "Jamhuraiya",
+                    "en": "Jamhuraiya",
+                    "kd": "Jamhuraiya"
+                }
+            ]
+        },
+        {
+            "key": "muhandesin",
+            "ar": "muhandesin",
+            "en": "muhandesin",
+            "kd": "muhandesin",
+            "districts": [
+                {
+                    "key": "muhandesin_center",
+                    "ar": "Muhandesin Center",
+                    "en": "Muhandesin Center",
+                    "kd": "Muhandesin Center"
+                },
+                {
+                    "key": "al-qbla",
+                    "ar": "Al-qbla",
+                    "en": "Al-qbla",
+                    "kd": "Al-qbla"
+                }
+            ]
+        },
+        {
+            "key": "zubair",
+            "ar": "zubair",
+            "en": "zubair",
+            "kd": "zubair",
+            "districts": [
+                {
+                    "key": "zubair_center",
+                    "ar": "Zubair Center",
+                    "en": "Zubair Center",
+                    "kd": "Zubair Center"
+                },
+                {
+                    "key": "kor_al-zubair",
+                    "ar": "Kor al-zubair",
+                    "en": "Kor al-zubair",
+                    "kd": "Kor al-zubair"
+                },
+                {
+                    "key": "a_m-_qasar",
+                    "ar": "AM-Qasar",
+                    "en": "AM-Qasar",
+                    "kd": "AM-Qasar"
+                },
+                {
+                    "key": "safwan_",
+                    "ar": "Safwan ",
+                    "en": "Safwan ",
+                    "kd": "Safwan "
+                }
+            ]
+        },
+        {
+            "key": "abo_al_khaseeb",
+            "ar": "abo_al_khaseeb",
+            "en": "abo_al_khaseeb",
+            "kd": "abo_al_khaseeb",
+            "districts": [
+                {
+                    "key": "abo_al_khaseeb_center",
+                    "ar": "Abo Al Khaseeb Center",
+                    "en": "Abo Al Khaseeb Center",
+                    "kd": "Abo Al Khaseeb Center"
+                },
+                {
+                    "key": "al-seeba",
+                    "ar": "Al-seeba",
+                    "en": "Al-seeba",
+                    "kd": "Al-seeba"
+                }
+            ]
+        },
+        {
+            "key": "bradhaiyia",
+            "ar": "bradhaiyia",
+            "en": "bradhaiyia",
+            "kd": "bradhaiyia",
+            "districts": [
+                {
+                    "key": "bradhaiyia",
+                    "ar": "Bradhaiyia",
+                    "en": "Bradhaiyia",
+                    "kd": "Bradhaiyia"
+                }
+            ]
+        },
+        {
+            "key": "maaqel",
+            "ar": "maaqel",
+            "en": "maaqel",
+            "kd": "maaqel",
+            "districts": [
+                {
+                    "key": "maaqel_center",
+                    "ar": "Maaqel Center",
+                    "en": "Maaqel Center",
+                    "kd": "Maaqel Center"
+                },
+                {
+                    "key": "5__mile",
+                    "ar": "5 Mile",
+                    "en": "5 Mile",
+                    "kd": "5 Mile"
+                }
+            ]
+        },
+        {
+            "key": "shat_al_arab",
+            "ar": "shat_al_arab",
+            "en": "shat_al_arab",
+            "kd": "shat_al_arab",
+            "districts": [
+                {
+                    "key": "shat_al_arab",
+                    "ar": "Shat Al Arab",
+                    "en": "Shat Al Arab",
+                    "kd": "Shat Al Arab"
+                }
+            ]
+        },
+        {
+            "key": "midainia",
+            "ar": "midainia",
+            "en": "midainia",
+            "kd": "midainia",
+            "districts": [
+                {
+                    "key": "midainia_center",
+                    "ar": "Midainia Center",
+                    "en": "Midainia Center",
+                    "kd": "Midainia Center"
+                },
+                {
+                    "key": "a_lhweer",
+                    "ar": "AL-hweer",
+                    "en": "AL-hweer",
+                    "kd": "AL-hweer"
+                },
+                {
+                    "key": "bany_mansor",
+                    "ar": "Bany Mansor",
+                    "en": "Bany Mansor",
+                    "kd": "Bany Mansor"
+                }
+            ]
+        }
+    ],
+    "distributor_shortname": "next_generation",
+    "salesrep_shortnames": [],
+    "region": {
+        "ar": "south_west",
+        "en": "central_east",
+        "kd": "central_east",
+        "key": "central_east"
+    }
+}

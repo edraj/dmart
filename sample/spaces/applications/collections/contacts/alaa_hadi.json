@@ -1,0 +1,9 @@
+{
+    "type": "salesrep",
+    "email": "karbala.alaa.hadi@gmail.com",
+    "msisdn": "7845088850",
+    "distributor_shortname": "tareeq_almeera",
+    "governorate": {
+        "shortname": "karbala"
+    }
+}

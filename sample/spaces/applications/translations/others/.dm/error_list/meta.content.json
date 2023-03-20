@@ -1,0 +1,14 @@
+{
+    "uuid": "c6419e53-6812-4b51-922a-7b0880c5748d",
+    "shortname": "error_list",
+    "is_active": true,
+    "tags": [],
+    "created_at": "2023-02-27T16:02:46.556668",
+    "updated_at": "2023-02-27T16:02:46.556684",
+    "owner_shortname": "dmart",
+    "payload": {
+        "content_type": "json",
+        "schema_shortname": "error",
+        "body": "error_list.json"
+    }
+}

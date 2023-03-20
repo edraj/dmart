@@ -1,0 +1,1 @@
+{"uuid": "2695839c-5154-4467-8f86-ba6b17ea7ca2", "shortname": "transaction_id222", "is_active": true, "tags": [], "created_at": "2022-11-17T14:04:10.266448", "updated_at": "2022-11-17T14:04:50.318394", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "sim_swap", "body": "transaction_id222.json"}}

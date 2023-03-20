@@ -1,0 +1,190 @@
+{
+    "sectors": [
+        {
+            "key": "nasriya",
+            "ar": "nasriya",
+            "en": "nasriya",
+            "kd": "nasriya",
+            "districts": [
+                {
+                    "key": "nasriya_center",
+                    "ar": "Nasriya Center",
+                    "en": "Nasriya Center",
+                    "kd": "Nasriya Center"
+                },
+                {
+                    "key": "uor",
+                    "ar": "uor",
+                    "en": "uor",
+                    "kd": "uor"
+                },
+                {
+                    "key": "albatha",
+                    "ar": "Albatha",
+                    "en": "Albatha",
+                    "kd": "Albatha"
+                },
+                {
+                    "key": "saed_dakel",
+                    "ar": "Saed dakel",
+                    "en": "Saed dakel",
+                    "kd": "Saed dakel"
+                }
+            ]
+        },
+        {
+            "key": "suq_alshuyukh",
+            "ar": "suq_alshuyukh",
+            "en": "suq_alshuyukh",
+            "kd": "suq_alshuyukh",
+            "districts": [
+                {
+                    "key": "suq_al_shuyukh_center",
+                    "ar": "Suq Al Shuyukh Center",
+                    "en": "Suq Al Shuyukh Center",
+                    "kd": "Suq Al Shuyukh Center"
+                },
+                {
+                    "key": "alfudelal",
+                    "ar": "Alfudelal",
+                    "en": "Alfudelal",
+                    "kd": "Alfudelal"
+                },
+                {
+                    "key": "garmat_saeed",
+                    "ar": "Garmat saeed",
+                    "en": "Garmat saeed",
+                    "kd": "Garmat saeed"
+                },
+                {
+                    "key": "alakelea",
+                    "ar": "Alakelea",
+                    "en": "Alakelea",
+                    "kd": "Alakelea"
+                }
+            ]
+        },
+        {
+            "key": "chibayish",
+            "ar": "chibayish",
+            "en": "chibayish",
+            "kd": "chibayish",
+            "districts": [
+                {
+                    "key": "chibayish_center",
+                    "ar": "Chibayish Center",
+                    "en": "Chibayish Center",
+                    "kd": "Chibayish Center"
+                },
+                {
+                    "key": "alfhod",
+                    "ar": "Alfhod",
+                    "en": "Alfhod",
+                    "kd": "Alfhod"
+                },
+                {
+                    "key": "almanar",
+                    "ar": "Almanar",
+                    "en": "Almanar",
+                    "kd": "Almanar"
+                },
+                {
+                    "key": "alaslah",
+                    "ar": "alaslah",
+                    "en": "alaslah",
+                    "kd": "alaslah"
+                }
+            ]
+        },
+        {
+            "key": "shatrah",
+            "ar": "shatrah",
+            "en": "shatrah",
+            "kd": "shatrah",
+            "districts": [
+                {
+                    "key": "shatrah_center",
+                    "ar": "Shatrah Center",
+                    "en": "Shatrah Center",
+                    "kd": "Shatrah Center"
+                },
+                {
+                    "key": "bany_zaid",
+                    "ar": "Bany zaid",
+                    "en": "Bany zaid",
+                    "kd": "Bany zaid"
+                },
+                {
+                    "key": "algaraf",
+                    "ar": "Algaraf",
+                    "en": "Algaraf",
+                    "kd": "Algaraf"
+                },
+                {
+                    "key": "aldawaya",
+                    "ar": "Aldawaya",
+                    "en": "Aldawaya",
+                    "kd": "Aldawaya"
+                }
+            ]
+        },
+        {
+            "key": "refai",
+            "ar": "refai",
+            "en": "refai",
+            "kd": "refai",
+            "districts": [
+                {
+                    "key": "refai__center",
+                    "ar": "Refai Center",
+                    "en": "Refai Center",
+                    "kd": "Refai Center"
+                },
+                {
+                    "key": "alfajer",
+                    "ar": "Alfajer",
+                    "en": "Alfajer",
+                    "kd": "Alfajer"
+                },
+                {
+                    "key": "qalat_socr",
+                    "ar": "Qalat socr",
+                    "en": "Qalat socr",
+                    "kd": "Qalat socr"
+                },
+                {
+                    "key": "alnaser",
+                    "ar": "Alnaser",
+                    "en": "Alnaser",
+                    "kd": "Alnaser"
+                }
+            ]
+        }
+    ],
+    "distributor_shortname": "tareeq_almeerah",
+    "salesrep_shortnames": [
+        "ali_nadhem",
+        "ali_shannan",
+        "hassan_ajram",
+        "mohand_kamel",
+        "abbas_sharee",
+        "majed_salim",
+        "naser_obaid",
+        "hassan_taleb",
+        "amjad_abdulhussain",
+        "sayf_qasim",
+        "hasan_hadi",
+        "muhammad_khalil",
+        "ahmed_naeem",
+        "muhammad_salim",
+        "mohammed_bager",
+        "ali_abdulhussain",
+        "mustafa_nadhem"
+    ],
+    "region": {
+        "ar": "south_west",
+        "en": "south_west",
+        "kd": "south_west",
+        "key": "south_west"
+    }
+}

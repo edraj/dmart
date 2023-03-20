@@ -1,0 +1,1 @@
+{"uuid": "c23ba9d2-ae6a-4050-9f76-006ce63b0cdc", "shortname": "collections", "is_active": true, "tags": [], "created_at": "2022-10-31T10:39:12.459572", "updated_at": "2023-01-13T17:52:05.831635", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "folder_rendering", "body": "collections.json"}}

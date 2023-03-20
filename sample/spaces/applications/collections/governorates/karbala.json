@@ -1,0 +1,91 @@
+{
+    "sectors": [
+        {
+            "key": "karbala",
+            "ar": "karbala",
+            "en": "karbala",
+            "kd": "karbala",
+            "districts": [
+                {
+                    "key": "alhur",
+                    "ar": "alhur",
+                    "en": "alhur",
+                    "kd": "alhur"
+                },
+                {
+                    "key": "alhusainia",
+                    "ar": "alhusainia",
+                    "en": "alhusainia",
+                    "kd": "alhusainia"
+                },
+                {
+                    "key": "center",
+                    "ar": "center",
+                    "en": "center",
+                    "kd": "center"
+                },
+                {
+                    "key": "oun",
+                    "ar": "oun",
+                    "en": "oun",
+                    "kd": "oun"
+                },
+                {
+                    "key": "saif_saad",
+                    "ar": "saif_saad",
+                    "en": "saif_saad",
+                    "kd": "saif_saad"
+                }
+            ]
+        },
+        {
+            "key": "ain_altamur",
+            "ar": "ain_altamur",
+            "en": "ain_altamur",
+            "kd": "ain_altamur",
+            "districts": [
+                {
+                    "key": "ain_tamor",
+                    "ar": "ain_tamor",
+                    "en": "ain_tamor",
+                    "kd": "ain_tamor"
+                }
+            ]
+        },
+        {
+            "key": "jadwal_al_gharbi",
+            "ar": "jadwal_al_gharbi",
+            "en": "jadwal_al_gharbi",
+            "kd": "jadwal_al_gharbi",
+            "districts": [
+                {
+                    "key": "aljadwal_alqarbi",
+                    "ar": "aljadwal_alqarbi",
+                    "en": "aljadwal_alqarbi",
+                    "kd": "aljadwal_alqarbi"
+                }
+            ]
+        }
+    ],
+    "distributor_shortname": "tareeq_almeerah",
+    "salesrep_shortnames": [
+        "ghazwan_abd",
+        "alaa_hadi",
+        "ali_naser",
+        "ali_shaker",
+        "hydar_salah",
+        "karak_talib",
+        "mohd_khathem",
+        "mohannad_ali",
+        "nabeel_ali",
+        "qusai_hadi",
+        "saif_abbas",
+        "ali_najem"
+    ],
+    "region": {
+        "ar": "south_west",
+        "en": "south_west",
+        "kd": "south_west",
+        "key": "south_west"
+    }
+}

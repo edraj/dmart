@@ -1,0 +1,126 @@
+{
+    "sectors": [
+        {
+            "key": "Khithir",
+            "ar": "Khithir",
+            "en": "Khithir",
+            "kd": "Khithir",
+            "districts": [
+                {
+                    "key": "khithir",
+                    "ar": "khithir",
+                    "en": "khithir",
+                    "kd": "khithir"
+                },
+                {
+                    "key": "darajy",
+                    "ar": "darajy",
+                    "en": "darajy",
+                    "kd": "darajy"
+                }
+            ]
+        },
+        {
+            "key": "rrmaitha",
+            "ar": "rrmaitha",
+            "en": "rrmaitha",
+            "kd": "rrmaitha",
+            "districts": [
+                {
+                    "key": "rumaitha",
+                    "ar": "rumaitha",
+                    "en": "rumaitha",
+                    "kd": "rumaitha"
+                },
+                {
+                    "key": "warkaa",
+                    "ar": "warkaa",
+                    "en": "warkaa",
+                    "kd": "warkaa"
+                },
+                {
+                    "key": "majid",
+                    "ar": "majid",
+                    "en": "majid",
+                    "kd": "majid"
+                }
+            ]
+        },
+        {
+            "key": "salman",
+            "ar": "salman",
+            "en": "salman",
+            "kd": "salman",
+            "districts": [
+                {
+                    "key": "salman",
+                    "ar": "salman",
+                    "en": "salman",
+                    "kd": "salman"
+                }
+            ]
+        },
+        {
+            "key": "samawa",
+            "ar": "samawa",
+            "en": "samawa",
+            "kd": "samawa",
+            "districts": [
+                {
+                    "key": "eskan",
+                    "ar": "eskan",
+                    "en": "eskan",
+                    "kd": "eskan"
+                },
+                {
+                    "key": "mamlaha",
+                    "ar": "mamlaha",
+                    "en": "mamlaha",
+                    "kd": "mamlaha"
+                },
+                {
+                    "key": "um_al_assafeer",
+                    "ar": "um_al_assafeer",
+                    "en": "um_al_assafeer",
+                    "kd": "um_al_assafeer"
+                },
+                {
+                    "key": "samawa",
+                    "ar": "samawa",
+                    "en": "samawa",
+                    "kd": "samawa"
+                },
+                {
+                    "key": "swair",
+                    "ar": "swair",
+                    "en": "swair",
+                    "kd": "swair"
+                },
+                {
+                    "key": "jarboi_ya",
+                    "ar": "jarboi_ya",
+                    "en": "jarboi_ya",
+                    "kd": "jarboi_ya"
+                }
+            ]
+        }
+    ],
+    "distributor_shortname": "tareeq_almeerah",
+    "salesrep_shortnames": [
+        "thamr_alsmawy",
+        "hydr_mashi",
+        "mohamed_khalaf",
+        "ali_hasan",
+        "hussain_yassin",
+        "mostafa_nameh",
+        "alaa_hamza",
+        "maher_tawfiq",
+        "mahmood_ahmad"
+    ],
+    "region": {
+        "ar": "south_west",
+        "en": "south_west",
+        "kd": "south_west",
+        "key": "south_west"
+    }
+}

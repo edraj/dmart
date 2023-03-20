@@ -1,0 +1,532 @@
+{
+    "sectors": [
+        {
+            "key": "zako",
+            "ar": "zako",
+            "en": "zako",
+            "kd": "zako",
+            "districts": [
+                {
+                    "key": "dollar_bazar",
+                    "ar": "dollar_bazar",
+                    "en": "dollar_bazar",
+                    "kd": "dollar_bazar"
+                },
+                {
+                    "key": "berseve",
+                    "ar": "berseve",
+                    "en": "berseve",
+                    "kd": "berseve"
+                },
+                {
+                    "key": "batifa",
+                    "ar": "batifa",
+                    "en": "batifa",
+                    "kd": "batifa"
+                },
+                {
+                    "key": "chamshko",
+                    "ar": "chamshko",
+                    "en": "chamshko",
+                    "kd": "chamshko"
+                },
+                {
+                    "key": "new_zakho",
+                    "ar": "new_zakho",
+                    "en": "new_zakho",
+                    "kd": "new_zakho"
+                },
+                {
+                    "key": "derabon",
+                    "ar": "derabon",
+                    "en": "derabon",
+                    "kd": "derabon"
+                },
+                {
+                    "key": "ibrahem_khalil",
+                    "ar": "ibrahem_khalil",
+                    "en": "ibrahem_khalil",
+                    "kd": "ibrahem_khalil"
+                },
+                {
+                    "key": "tel_kabar",
+                    "ar": "tel_kabar",
+                    "en": "tel_kabar",
+                    "kd": "tel_kabar"
+                },
+                {
+                    "key": "frqa",
+                    "ar": "frqa",
+                    "en": "frqa",
+                    "kd": "frqa"
+                },
+                {
+                    "key": "abaseke",
+                    "ar": "abaseke",
+                    "en": "abaseke",
+                    "kd": "abaseke"
+                },
+                {
+                    "key": "kochka_honare",
+                    "ar": "kochka_honare",
+                    "en": "kochka_honare",
+                    "kd": "kochka_honare"
+                },
+                {
+                    "key": "jamaee",
+                    "ar": "jamaee",
+                    "en": "jamaee",
+                    "kd": "jamaee"
+                },
+                {
+                    "key": "simalka",
+                    "ar": "simalka",
+                    "en": "simalka",
+                    "kd": "simalka"
+                },
+                {
+                    "key": "mhndeke",
+                    "ar": "mhndeke",
+                    "en": "mhndeke",
+                    "kd": "mhndeke"
+                },
+                {
+                    "key": "shiqa",
+                    "ar": "shiqa",
+                    "en": "shiqa",
+                    "kd": "shiqa"
+                },
+                {
+                    "key": "bedare",
+                    "ar": "bedare",
+                    "en": "bedare",
+                    "kd": "bedare"
+                },
+                {
+                    "key": "ashe_chame",
+                    "ar": "ashe_chame",
+                    "en": "ashe_chame",
+                    "kd": "ashe_chame"
+                }
+            ]
+        },
+        {
+            "key": "simele",
+            "ar": "simele",
+            "en": "simele",
+            "kd": "simele",
+            "districts": [
+                {
+                    "key": "tanahi",
+                    "ar": "tanahi",
+                    "en": "tanahi",
+                    "kd": "tanahi"
+                },
+                {
+                    "key": "sumell",
+                    "ar": "sumell",
+                    "en": "sumell",
+                    "kd": "sumell"
+                },
+                {
+                    "key": "khanki",
+                    "ar": "khanki",
+                    "en": "khanki",
+                    "kd": "khanki"
+                },
+                {
+                    "key": "meserek",
+                    "ar": "meserek",
+                    "en": "meserek",
+                    "kd": "meserek"
+                }
+            ]
+        },
+        {
+            "key": "duhok_center",
+            "ar": "duhok_center",
+            "en": "duhok_center",
+            "kd": "duhok_center",
+            "districts": [
+                {
+                    "key": "city_center",
+                    "ar": "city_center",
+                    "en": "city_center",
+                    "kd": "city_center"
+                },
+                {
+                    "key": "baroshky",
+                    "ar": "baroshky",
+                    "en": "baroshky",
+                    "kd": "baroshky"
+                },
+                {
+                    "key": "bra_street",
+                    "ar": "bra_street",
+                    "en": "bra_street",
+                    "kd": "bra_street"
+                },
+                {
+                    "key": "gre_base",
+                    "ar": "gre_base",
+                    "en": "gre_base",
+                    "kd": "gre_base"
+                },
+                {
+                    "key": "hay_al_askari",
+                    "ar": "hay_al_askari",
+                    "en": "hay_al_askari",
+                    "kd": "hay_al_askari"
+                },
+                {
+                    "key": "malta",
+                    "ar": "malta",
+                    "en": "malta",
+                    "kd": "malta"
+                },
+                {
+                    "key": "masiki",
+                    "ar": "masiki",
+                    "en": "masiki",
+                    "kd": "masiki"
+                },
+                {
+                    "key": "zari_land",
+                    "ar": "zari_land",
+                    "en": "zari_land",
+                    "kd": "zari_land"
+                },
+                {
+                    "key": "nazarki",
+                    "ar": "nazarki",
+                    "en": "nazarki",
+                    "kd": "nazarki"
+                },
+                {
+                    "key": "kro_street",
+                    "ar": "kro_street",
+                    "en": "kro_street",
+                    "kd": "kro_street"
+                },
+                {
+                    "key": "gre_sor",
+                    "ar": "gre_sor",
+                    "en": "gre_sor",
+                    "kd": "gre_sor"
+                },
+                {
+                    "key": "hay_al_shorta",
+                    "ar": "hay_al_shorta",
+                    "en": "hay_al_shorta",
+                    "kd": "hay_al_shorta"
+                },
+                {
+                    "key": "shakhke",
+                    "ar": "shakhke",
+                    "en": "shakhke",
+                    "kd": "shakhke"
+                },
+                {
+                    "key": "hay_al_malayeen",
+                    "ar": "hay_al_malayeen",
+                    "en": "hay_al_malayeen",
+                    "kd": "hay_al_malayeen"
+                }
+            ]
+        },
+        {
+            "key": "doemez",
+            "ar": "doemez",
+            "en": "doemez",
+            "kd": "doemez",
+            "districts": [
+                {
+                    "key": "aloka",
+                    "ar": "aloka",
+                    "en": "aloka",
+                    "kd": "aloka"
+                },
+                {
+                    "key": "kapar_2_camp",
+                    "ar": "kapar_2_camp",
+                    "en": "kapar_2_camp",
+                    "kd": "kapar_2_camp"
+                },
+                {
+                    "key": "domez",
+                    "ar": "domez",
+                    "en": "domez",
+                    "kd": "domez"
+                },
+                {
+                    "key": "domez_camp",
+                    "ar": "domez_camp",
+                    "en": "domez_camp",
+                    "kd": "domez_camp"
+                },
+                {
+                    "key": "faida_camp",
+                    "ar": "faida_camp",
+                    "en": "faida_camp",
+                    "kd": "faida_camp"
+                },
+                {
+                    "key": "faida",
+                    "ar": "faida",
+                    "en": "faida",
+                    "kd": "faida"
+                },
+                {
+                    "key": "sharya",
+                    "ar": "sharya",
+                    "en": "sharya",
+                    "kd": "sharya"
+                },
+                {
+                    "key": "zawa_mounatin",
+                    "ar": "zawa_mounatin",
+                    "en": "zawa_mounatin",
+                    "kd": "zawa_mounatin"
+                }
+            ]
+        },
+        {
+            "key": "bardarash",
+            "ar": "bardarash",
+            "en": "bardarash",
+            "kd": "bardarash",
+            "districts": [
+                {
+                    "key": "kalakji",
+                    "ar": "kalakji",
+                    "en": "kalakji",
+                    "kd": "kalakji"
+                },
+                {
+                    "key": "chra",
+                    "ar": "chra",
+                    "en": "chra",
+                    "kd": "chra"
+                },
+                {
+                    "key": "qasrok",
+                    "ar": "qasrok",
+                    "en": "qasrok",
+                    "kd": "qasrok"
+                },
+                {
+                    "key": "darato",
+                    "ar": "darato",
+                    "en": "darato",
+                    "kd": "darato"
+                },
+                {
+                    "key": "bardarash_camp",
+                    "ar": "bardarash_camp",
+                    "en": "bardarash_camp",
+                    "kd": "bardarash_camp"
+                },
+                {
+                    "key": "bardarash",
+                    "ar": "bardarash",
+                    "en": "bardarash",
+                    "kd": "bardarash"
+                },
+                {
+                    "key": "kurdistan",
+                    "ar": "kurdistan",
+                    "en": "kurdistan",
+                    "kd": "kurdistan"
+                },
+                {
+                    "key": "hay_al_malayeen",
+                    "ar": "hay_al_malayeen",
+                    "en": "hay_al_malayeen",
+                    "kd": "hay_al_malayeen"
+                },
+                {
+                    "key": "ronaky",
+                    "ar": "ronaky",
+                    "en": "ronaky",
+                    "kd": "ronaky"
+                },
+                {
+                    "key": "shahidan",
+                    "ar": "shahidan",
+                    "en": "shahidan",
+                    "kd": "shahidan"
+                }
+            ]
+        },
+        {
+            "key": "amedi",
+            "ar": "amedi",
+            "en": "amedi",
+            "kd": "amedi",
+            "districts": [
+                {
+                    "key": "zewa",
+                    "ar": "zewa",
+                    "en": "zewa",
+                    "kd": "zewa"
+                },
+                {
+                    "key": "barware",
+                    "ar": "barware",
+                    "en": "barware",
+                    "kd": "barware"
+                },
+                {
+                    "key": "mangesh",
+                    "ar": "mangesh",
+                    "en": "mangesh",
+                    "kd": "mangesh"
+                },
+                {
+                    "key": "qadash",
+                    "ar": "qadash",
+                    "en": "qadash",
+                    "kd": "qadash"
+                },
+                {
+                    "key": "dawode_camp",
+                    "ar": "dawode_camp",
+                    "en": "dawode_camp",
+                    "kd": "dawode_camp"
+                },
+                {
+                    "key": "shrte",
+                    "ar": "shrte",
+                    "en": "shrte",
+                    "kd": "shrte"
+                },
+                {
+                    "key": "solaf",
+                    "ar": "solaf",
+                    "en": "solaf",
+                    "kd": "solaf"
+                },
+                {
+                    "key": "zaweta",
+                    "ar": "zaweta",
+                    "en": "zaweta",
+                    "kd": "zaweta"
+                },
+                {
+                    "key": "amedi",
+                    "ar": "amedi",
+                    "en": "amedi",
+                    "kd": "amedi"
+                },
+                {
+                    "key": "bagera",
+                    "ar": "bagera",
+                    "en": "bagera",
+                    "kd": "bagera"
+                },
+                {
+                    "key": "kora",
+                    "ar": "kora",
+                    "en": "kora",
+                    "kd": "kora"
+                },
+                {
+                    "key": "sarsank",
+                    "ar": "sarsank",
+                    "en": "sarsank",
+                    "kd": "sarsank"
+                },
+                {
+                    "key": "bamarne",
+                    "ar": "bamarne",
+                    "en": "bamarne",
+                    "kd": "bamarne"
+                },
+                {
+                    "key": "deralok",
+                    "ar": "deralok",
+                    "en": "deralok",
+                    "kd": "deralok"
+                },
+                {
+                    "key": "sheladize",
+                    "ar": "sheladize",
+                    "en": "sheladize",
+                    "kd": "sheladize"
+                }
+            ]
+        },
+        {
+            "key": "akre",
+            "ar": "akre",
+            "en": "akre",
+            "kd": "akre",
+            "districts": [
+                {
+                    "key": "kochina",
+                    "ar": "kochina",
+                    "en": "kochina",
+                    "kd": "kochina"
+                },
+                {
+                    "key": "kani_mamkrok",
+                    "ar": "kani_mamkrok",
+                    "en": "kani_mamkrok",
+                    "kd": "kani_mamkrok"
+                },
+                {
+                    "key": "azadi",
+                    "ar": "azadi",
+                    "en": "azadi",
+                    "kd": "azadi"
+                },
+                {
+                    "key": "alay",
+                    "ar": "alay",
+                    "en": "alay",
+                    "kd": "alay"
+                },
+                {
+                    "key": "rovia",
+                    "ar": "rovia",
+                    "en": "rovia",
+                    "kd": "rovia"
+                },
+                {
+                    "key": "krdaseen",
+                    "ar": "krdaseen",
+                    "en": "krdaseen",
+                    "kd": "krdaseen"
+                },
+                {
+                    "key": "khalilkan",
+                    "ar": "khalilkan",
+                    "en": "khalilkan",
+                    "kd": "khalilkan"
+                },
+                {
+                    "key": "kalati",
+                    "ar": "kalati",
+                    "en": "kalati",
+                    "kd": "kalati"
+                }
+            ]
+        }
+    ],
+    "distributor_shortname": "next_generation",
+    "salesrep_shortnames": [
+        "kamaran_shukur",
+        "nijirwan_miro",
+        "hisham_rashed",
+        "ibrahim_sami",
+        "jalal_sadiq",
+        "ishyar_saeid",
+        "qusay_saleh"
+    ],
+    "region": {
+        "ar": "kurdistan",
+        "en": "kurdistan",
+        "kd": "kurdistan",
+        "key": "kurdistan"
+    }
+}

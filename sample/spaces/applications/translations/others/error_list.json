@@ -1,0 +1,326 @@
+{
+    "errors": [
+        {
+            "code": 220,
+            "type": "media",
+            "key": "object_not_found",
+            "ar": "Requested object not found",
+            "en": "Requested object not found",
+            "kd": "Requested object not found"
+        },
+        {
+            "code": 0,
+            "type": "records",
+            "key": "empty_record",
+            "ar": "سجلات فارغة",
+            "en": "The records are empty",
+            "kd": "The records are empty"
+        },
+        {
+            "code": 203,
+            "type": "request",
+            "key": "space_existed",
+            "ar": "تم توفير اسم الفضاء بالفعل [1]",
+            "en": "Space name provided already existed [1]",
+            "kd": "Space name provided already existed [1]"
+        },
+        {
+            "code": 401,
+            "type": "request",
+            "key": "permission_denied",
+            "ar": "ليس لديك إذن بهذا الإجراء [1]",
+            "en": "You don't have permission to this action [1]",
+            "kd": "You don't have permission to this action [1]"
+        },
+        {
+            "code": 203,
+            "type": "request",
+            "key": "invalid_spacename",
+            "ar": "اسم الفضاء المقدم فارغ أو غير صالح[6]",
+            "en": "Space name provided is empty or invalid [6]",
+            "kd": "Space name provided is empty or invalid [6]"
+        },
+        {
+            "code": 202,
+            "type": "request",
+            "key": "records_cant_be_empty",
+            "ar": "مكن أن تكون سجلات الطلب فارغة",
+            "en": "Request records cannot be empty",
+            "kd": "Request records cannot be empty"
+        },
+        {
+            "code": 400,
+            "type": "request",
+            "key": "shortname_already_exists",
+            "ar": "هذا الاسم المختصر موجود بالفعل",
+            "en": "This shortname  already exists",
+            "kd": "This shortname  already exists"
+        },
+        {
+            "code": 202,
+            "type": "move",
+            "key": "provide_new_shortname",
+            "ar": "يرجى تقديم مسار وجهة أو اسم قصير جديد",
+            "en": "Please provide a destination path or a new shortname",
+            "kd": "Please provide a destination path or a new shortname"
+        },
+        {
+            "code": 222,
+            "type": "move",
+            "key": "provide_source path_and_shortname",
+            "ar": "يرجى تقديم مسار مصدر واسم مختصر لـ ",
+            "en": "Please provide a source path and a src shortname",
+            "kd": "Please provide a source path and a src shortname"
+        },
+        {
+            "code": 400,
+            "type": "request",
+            "key": "something_wrong",
+            "ar": "هناك خطأ ما",
+            "en": "Something went wrong",
+            "kd": "Something went wrong"
+        },
+        {
+            "code": 217,
+            "type": "attachment",
+            "key": "not_supported_type",
+            "ar": "نوع الملف غير مدعوم",
+            "en": "The file type is not supported",
+            "kd": "The file type is not supported"
+        },
+        {
+            "code": 218,
+            "type": "attachment",
+            "key": "only_attachment_or_content",
+            "ar": "يسمح فقط بالموارد من نوع المرفقات",
+            "en": "Only resources of type 'attachment' or 'content' are allowed",
+            "kd": "Only resources of type 'attachment' or 'content' are allowed"
+        },
+        {
+            "code": 12,
+            "type": "db",
+            "key": "requested_object_is_not_found",
+            "ar": "لم يتم العثور على المطلوب",
+            "en": "requested object is not found",
+            "kd": "requested object is not found"
+        },
+        {
+            "code": 30,
+            "type": "lockq",
+            "key": "not_exist",
+            "ar": "القفل غير موجود أو ليس لديك وصول",
+            "en": "Lock does not exist or you have no access",
+            "kd": "Lock does not exist or you have no access"
+        },
+        {
+            "code": 203,
+            "type": "request",
+            "key": "invalid_entry",
+            "ar": "دخول غير صالح",
+            "en": "Invalid entry",
+            "kd": "Invalid entry"
+        },
+        {
+            "code": 401,
+            "type": "request",
+            "key": "not_allowed_schema_shortname",
+            "ar": "غير مسموح به schema_shortname",
+            "en": "Not allowed schema_shortname",
+            "kd": "Not allowed schema_shortname"
+        },
+        {
+            "code": 220,
+            "type": "media",
+            "key": "object_not_available",
+            "ar": "الطلب غير متوفر",
+            "en": "Request object is not available",
+            "kd": "Request object is not available"
+        },
+        {
+            "code": 50,
+            "type": "create",
+            "key": "empty_password",
+            "ar": "كلمة مرور فارغة",
+            "en": "empty password",
+            "kd": "empty password"
+        },
+        {
+            "code": 14,
+            "type": "jwauth",
+            "key": "password_not_match_rules",
+            "ar": "كلمة المرور لا تتطابق مع القواعد المطلوبة",
+            "en": "password dose not match required rules",
+            "kd": "password dose not match required rules"
+        },
+        {
+            "code": 10,
+            "type": "auth",
+            "key": "bad_creds",
+            "ar": "بيانات الاعتماد خاطئة [1]",
+            "en": "Wrong credential [1]",
+            "kd": "Wrong credential [1]"
+        },
+        {
+            "code": 14,
+            "type": "auth",
+            "key": "user_not_found",
+            "ar": "لم يتم العثور على المستخدم",
+            "en": "user not found",
+            "kd": "user not found"
+        },
+        {
+            "code": 401,
+            "type": "request",
+            "key": "mismatch_with_information",
+            "ar": "عدم تطابق المعلومات المقدمة",
+            "en": "mismatch with the information provided",
+            "kd": "mismatch with the information provided"
+        },
+        {
+            "code": 104,
+            "type": "otp",
+            "key": "internal_error",
+            "ar": "خطأ داخلي",
+            "en": "Internal error",
+            "kd": "Internal error"
+        },
+        {
+            "code": 308,
+            "type": "otp",
+            "key": "expired_otp",
+            "ar": "منتهي الصلاحية OTP",
+            "en": "Expired OTP",
+            "kd": "Expired OTP"
+        },
+        {
+            "code": 100,
+            "type": "otp",
+            "key": "email_msisdn_should_be_set!",
+            "ar": "يجب تعيين أحد [البريد الإلكتروني ، msisdn]!",
+            "en": "One of these [email, msisdn] should be set!",
+            "kd": "One of these [email, msisdn] should be set!"
+        },
+        {
+            "code": 101,
+            "type": "otp",
+            "key": "too_many_input",
+            "ar": "تم تمرير الكثير من المدخلات",
+            "en": "too many input has been passed",
+            "kd": "too many input has been passed"
+        },
+        {
+            "code": 102,
+            "type": "otp",
+            "key": "something_wrong",
+            "ar": "هناك خطأ ما",
+            "en": "Something went wrong",
+            "kd": "Something went wrong"
+        },
+
+
+        {
+            "code": 400,
+            "type": "request",
+            "key": "invalid_payload_body",
+            "ar": "غير صحيحة",
+            "en": "Invalid payload.body",
+            "kd": "Invalid payload.body"
+        },
+        {
+            "code": 415,
+            "type": "request",
+            "key": "should_have_unique_values",
+            "ar": "يجب أن يحتوي الإدخال على قيم فريدة في الحقول التالية",
+            "en": "Entry should have unique values on the following fields",
+            "kd": "Entry should have unique values on the following fields"
+        },
+        {
+            "code": 30,
+            "type": "lock",
+            "key": "locked_by",
+            "ar": "الدخول مقفل بالفعل بواسطة",
+            "en": "Entry is already locked by",
+            "kd": "Entry is already locked by"
+        },
+        {
+            "code": 400,
+            "type": "request",
+            "key": "filter_shortnames_is_missing",
+            "ar": "filter_shortnames مفقود",
+            "en": "filter_shortnames is missing",
+            "kd": "filter_shortnames is missing"
+        },
+        {
+            "code": 10,
+            "type": "jwauth",
+            "key": "not_authenticated",
+            "ar": "غير مصدق",
+            "en": "Not authenticated",
+            "kd": "Not authenticated"
+        },
+        {
+            "code": 103,
+            "type": "auth",
+            "key": "invalid_token",
+            "ar": "رمز غير صالح",
+            "en": "Invalid token",
+            "kd": "Invalid token"
+        },
+        {
+            "code": 101,
+            "type": "auth",
+            "key": "token_is_not_valid",
+            "ar": "رمز الوصول غير صالح",
+            "en": "The Access-Token is not valid",
+            "kd": "The Access-Token is not valid"
+        },
+        {
+            "code": 115,
+            "type": "eligibility",
+            "ar": "غير مؤهلة",
+            "key": "not_eligible",
+            "en": "not eligible",
+            "kd": "not eligible"
+        },
+        {
+            "code": 105,
+            "type": "validation",
+            "key": "renew_access_token",
+            "ar": "تحتاج إلى تجديد رمز الوصول باستخدام رمز التحديث",
+            "en": "You need to renew the Access token using the refresh token",
+            "kd": "You need to renew the Access token using the refresh token"
+        },
+        {
+            "code": 501,
+            "type": "catchall",
+            "key": "invalid_path",
+            "ar": "الطريقة أو المسار المطلوب غير صالح \"",
+            "en": "Requested method or path is invalid\"",
+            "kd": "Requested method or path is invalid\""
+        },
+        {
+            "code": 555,
+            "type": "git",
+            "key": "invalid_api",
+            "ar": "مفتاح Api غير صالح",
+            "en": "Api key is invalid",
+            "kd": "Api key is invalid"
+        },
+        {
+            "code": 112,
+            "type": "invalid_request",
+            "key": "Invalid request",
+            "ar": "طلب غير صالح",
+            "en": "Invalid request",
+            "kd": "Invalid request"
+        },
+        {
+            "code": 99,
+            "type": "error",
+            "key": "internal_error",
+            "ar": "خطأ داخلي",
+            "en": "internal error",
+            "kd": "internal error"
+        }
+    ]
+}

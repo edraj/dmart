@@ -1,0 +1,1 @@
+{"shortname": "div_Test", "displayname": "Test (Delete it)", "columns": [], "query": {"type": "search", "filter_schema_names": ["sim_swap"], "filter_types": [], "search": "", "sort_by": "created_at", "sort_type": "descending", "branch_name": "master"}}

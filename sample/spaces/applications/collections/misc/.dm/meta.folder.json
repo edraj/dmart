@@ -1,0 +1,21 @@
+{
+    "uuid": "c192b9e4-82e1-45af-a47e-256ffcf26813",
+    "shortname": "misc",
+    "is_active": true,
+    "displayname": {
+        "en": "miscellaneous",
+        "ar": "miscellaneous",
+        "kd": "miscellaneous"
+    },
+    "tags": [],
+    "created_at": "2022-11-02T11:28:42.452188",
+    "updated_at": "2022-12-26T10:55:34.676131",
+    "owner_shortname": "dmart",
+    "payload": {
+        "content_type": "json",
+        "schema_shortname": "folder_rendering",
+        "body": "misc.json",
+        "last_validated": "2022-12-30T12:44:57.965188",
+        "validation_status": "valid"
+    }
+}

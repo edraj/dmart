@@ -1,0 +1,11 @@
+{"uuid": "7242a260-5d07-481e-b951-90ba132635d4", "shortname": "b2b", "is_active": true, "displayname": {"en": "Corporate Sales", "ar": "Corporate Sales", "kd": "Corporate Sales"}, "tags": [], "created_at": "2023-03-14T14:43:49.629887", "updated_at": "2023-03-14T14:43:49.629890", "owner_shortname": "dmart", "root_registration_signature": "", "primary_website": "", "indexing_enabled": true, "capture_misses": false, "check_health": true, "languages": ["english"], "icon": "", "mirrors": [], "hide_folders": [], "active_plugins": [
+	"action_log",
+	"redis_db_update",
+	"reports_stats",
+	"aftersales_api_integration",
+	"system_notification_sender",
+	"delivery_partner_api_call",
+	"save_contract_for_job",
+	"realtime_updates_notifier"
+
+], "branches": []}

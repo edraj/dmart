@@ -1,0 +1,1 @@
+{"uuid": "907f4699-7ea0-43a2-9158-d52d7737b75b", "shortname": "order_failed", "is_active": true, "tags": [], "created_at": "2023-03-16T14:45:11.422919", "updated_at": "2023-03-16T14:45:11.422935", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "order_failed.json"}}

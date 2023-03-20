@@ -1,0 +1,1 @@
+{"uuid": "c006c6a3-4267-4430-9e99-0dad11a209a3", "shortname": "ticket_statuses", "is_active": true, "tags": [], "created_at": "2023-02-28T07:48:18.394213", "updated_at": "2023-03-01T09:57:19.998953", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "ticket_statuses.json"}}

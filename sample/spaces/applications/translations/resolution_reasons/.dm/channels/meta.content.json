@@ -1,0 +1,1 @@
+{"uuid": "41e0627e-43e6-43b3-b942-74e3a3b3fffc", "shortname": "channels", "is_active": true, "tags": [], "created_at": "2023-03-16T12:43:47.521094", "updated_at": "2023-03-16T12:43:47.521110", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "translation", "body": "channels.json"}}

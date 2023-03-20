@@ -1,0 +1,126 @@
+{
+    "sectors": [
+        {
+            "key": "amara",
+            "ar": "amara",
+            "en": "amara",
+            "kd": "amara",
+            "districts": [
+                {
+                    "key": "amara",
+                    "ar": "amara",
+                    "en": "amara",
+                    "kd": "amara"
+                },
+                {
+                    "key": "amara",
+                    "ar": "amara",
+                    "en": "amara",
+                    "kd": "amara"
+                }
+            ]
+        },
+        {
+            "key": "miamona",
+            "ar": "miamona",
+            "en": "miamona",
+            "kd": "miamona",
+            "districts": [
+                {
+                    "key": "maimona_center",
+                    "ar": "maimona_center",
+                    "en": "maimona_center",
+                    "kd": "maimona_center"
+                },
+                {
+                    "key": "al_salam",
+                    "ar": "al_salam",
+                    "en": "al_salam",
+                    "kd": "al_salam"
+                },
+                {
+                    "key": "said_ahmed_al_refay",
+                    "ar": "said_ahmed_al_refay",
+                    "en": "said_ahmed_al_refay",
+                    "kd": "said_ahmed_al_refay"
+                }
+            ]
+        },
+        {
+            "key": "majar_al_kabir",
+            "ar": "majar_al_kabir",
+            "en": "majar_al_kabir",
+            "kd": "majar_al_kabir",
+            "districts": [
+                {
+                    "key": "al_majar_center",
+                    "ar": "al_majar_center",
+                    "en": "al_majar_center",
+                    "kd": "al_majar_center"
+                },
+                {
+                    "key": "al_adil",
+                    "ar": "al_adil",
+                    "en": "al_adil",
+                    "kd": "al_adil"
+                }
+            ]
+        },
+        {
+            "key": "qalat_salih",
+            "ar": "qalat_salih",
+            "en": "qalat_salih",
+            "kd": "qalat_salih",
+            "districts": [
+                {
+                    "key": "qalat_salih_center",
+                    "ar": "qalat_salih_center",
+                    "en": "qalat_salih_center",
+                    "kd": "qalat_salih_center"
+                },
+                {
+                    "key": "al_auzair",
+                    "ar": "al_auzair",
+                    "en": "al_auzair",
+                    "kd": "al_auzair"
+                }
+            ]
+        },
+        {
+            "key": "ali_gharbi",
+            "ar": "ali_gharbi",
+            "en": "ali_gharbi",
+            "kd": "ali_gharbi",
+            "districts": [
+                {
+                    "key": "al_gharbi_center",
+                    "ar": "al_gharbi_center",
+                    "en": "al_gharbi_center",
+                    "kd": "al_gharbi_center"
+                },
+                {
+                    "key": "ali_al_sharji",
+                    "ar": "ali_al_sharji",
+                    "en": "ali_al_sharji",
+                    "kd": "ali_al_sharji"
+                }
+            ]
+        }
+    ],
+    "distributor_shortname": "next_generation",
+    "salesrep_shortnames": [
+        "haidhar_abd",
+        "thirgham_shaker",
+        "ghaith_kathrm",
+        "sajad_qassim",
+        "muhtady_kareem",
+        "ali_fadel",
+        "mohd_karem"
+    ],
+    "region": {
+        "ar": "central_east",
+        "en": "central_east",
+        "kd": "central_east",
+        "key": "central_east"
+    }
+}
