@@ -10,7 +10,7 @@ from utils.settings import settings
 from fastapi.logger import logger
 
 
-send_otp_api = urllib.parse.urljoin(settings.comms_api, "sms/otp/send-sms")
+send_otp_api = urllib.parse.urljoin(settings.comms_api, "sms/otp/send")
 send_sms_api = urllib.parse.urljoin(settings.comms_api, "sms/send")
 send_email_api = urllib.parse.urljoin(settings.comms_api, "smtp/send")
 
@@ -96,9 +96,7 @@ async def send_sms(msisdn: str, message: str):
     return json.get("data")
 
 
-async def send_email(
-    from_address: str, to_address: str, message: str, subject: str
-):
+async def send_email(from_address: str, to_address: str, message: str, subject: str):
     json = {}
     status: int
     start_time = time.time()
