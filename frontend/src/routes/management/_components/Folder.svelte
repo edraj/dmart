@@ -41,6 +41,7 @@
         contents.set({
           type: "search",
           search: "",
+          retrieve_attachments: true,
           space_name: data.space_name,
           subpath: data.subpath,
         });
