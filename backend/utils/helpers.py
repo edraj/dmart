@@ -1,4 +1,5 @@
 from copy import deepcopy
+from datetime import datetime
 from re import sub as re_sub
 from jsonschema import RefResolver
 from collections.abc import MutableMapping
@@ -194,3 +195,19 @@ def lang_code(lang: Language):
             return "fr"
         case Language.tr:
             return "tr"
+
+
+def replace_message_vars(message: str, dest_data: dict, locale: str):
+    dest_data_dict = flatten_dict(dest_data)
+    for field, value in dest_data_dict.items():
+        if type(value) == dict and locale in value:
+            value = value[locale]
+        if field in ["created_at", "updated_at"]:
+            message = message.replace(
+                f"{{{field}}}", datetime.strptime(str(value), "%Y-%m-%d %H:%M:%S.%f").strftime("%Y-%m-%d %H:%M:%S")
+            )
+        else:
+            message = message.replace(f"{{{field}}}", str(value))
+
+    return re_sub(r"\{\w*.*\}", "", message)
+    

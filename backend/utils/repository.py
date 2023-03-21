@@ -531,6 +531,12 @@ async def serve_query(
                 for line in result:
                     action_obj = json.loads(line)
 
+                    if query.from_date and action_obj.get("timestamp") < query.from_date:
+                        continue
+
+                    if query.to_date and action_obj.get("timestamp") > query.to_date:
+                        break
+
                     if not await access_control.check_access(
                         user_shortname=logged_in_user,
                         space_name=query.space_name,
@@ -1104,3 +1110,26 @@ async def _sys_update_model(
                 await redis_services.save_payload_doc(space_name, branch_name, subpath, meta, payload_dict, ResourceType(snake_case(type(meta).__name__)))
 
     return True 
+
+
+async def _save_model(
+    space_name: str,
+    subpath: str,
+    meta: core.Meta,
+    branch_name: str | None = settings.default_branch
+):
+    await db.save(
+        space_name=space_name,
+        subpath=subpath,
+        meta=meta,
+        branch_name=branch_name,
+    )
+
+    async with RedisServices() as redis:
+        await redis.save_meta_doc(
+            space_name,
+            branch_name,
+            subpath,
+            meta,
+        )
+
