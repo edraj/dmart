@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Install dependencies
+    - name: Install python dependencies
       run: |
         pip install --user pyright
         pip install --user -r backend/requirements.txt
@@ -29,3 +29,13 @@ jobs:
     - name: Test with pytest
       run: |
         cd backend; pytest
+    - name: Install frontend js depdenencies
+      run: |
+        cd frontend; yarn install
+    - name: Build frontend
+      run: |
+        cd frontend; yarn build
+    - name: Check svelte
+      run: |
+        cd frontend; ./node_modules/.bin/svelte-check 
+
