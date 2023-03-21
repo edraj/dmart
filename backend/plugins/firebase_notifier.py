@@ -1,10 +1,10 @@
 from firebase_admin import credentials, messaging, initialize_app
-from utils.notification import NotifierInterface
+from utils.notification import Notifier
 from utils.helpers import lang_code
 from utils.settings import settings
 from models.core import Translation
 
-class FirebaseNotifier(NotifierInterface):
+class FirebaseNotifier(Notifier):
     
     def _init_connection(self) -> None:
         if not self._firebase_app:

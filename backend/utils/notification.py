@@ -10,7 +10,7 @@ from utils.db import load
 from fastapi.logger import logger
 
 
-class NotifierInterface(ABC):
+class Notifier(ABC):
     async def send(
         self, 
         receiver: str, 
@@ -36,7 +36,7 @@ class NotifierInterface(ABC):
 
 class NotificationManager():
     
-    notifiers: dict[str, NotifierInterface] = {}
+    notifiers: dict[str, Notifier] = {}
     
     def __init__(self) -> None:
         # Load the notifiers depending on config/notification.json file
