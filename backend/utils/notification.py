@@ -50,6 +50,8 @@ class NotificationManager():
 
                 module_name = data["module"]
                 module_specs = find_spec(module_name)
+                if not module_specs or not module_specs.loader:
+                    continue
                 module = module_from_spec(module_specs)
                 sys.modules[module_name] = module
                 module_specs.loader.exec_module(module)
@@ -67,7 +69,8 @@ class NotificationManager():
         if platform not in self.notifiers:
             return False
         try:
-            return await self.notifiers[platform].send(receiver, title, body, image_urls)
+            await self.notifiers[platform].send(receiver, title, body, image_urls)
+            return True
         except Exception as e:
             logger.info(
                 "Notification",
@@ -75,3 +78,4 @@ class NotificationManager():
                     "props": {"title": f"FAIL at {self.notifiers[platform]}.send", "message": e}
                 },
             )
+            return False
