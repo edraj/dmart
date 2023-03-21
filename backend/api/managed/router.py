@@ -60,7 +60,6 @@ from api.user.service import (
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
 
-from utils.pdf import generate_pdf_byte
 
 router = APIRouter()
 
