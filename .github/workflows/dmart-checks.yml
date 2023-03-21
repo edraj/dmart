@@ -31,7 +31,7 @@ jobs:
         cd backend; pytest
     - name: Install frontend js depdenencies
       run: |
-        cd frontent; yarn install
+        cd frontend; yarn install
     - name: Build frontend
       run: |
         cd frontend; yarn build
