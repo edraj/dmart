@@ -30,6 +30,8 @@
       <NavLink href="/managed/folder/posts"
         >{$signedin_user.displayname}</NavLink
       >
+      <NavLink href="/management/dashboard">Dashbaord</NavLink>
+      <NavLink href="/management/qatool">QA Tool</NavLink>
     {/if}
     <NavLink href="/about">{$_("about")}</NavLink>
     <NavLink href="/contact">{$_("contact_us")}</NavLink>
