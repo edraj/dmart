@@ -1,6 +1,6 @@
 <script>
   import { Circle2 } from "svelte-loading-spinners";
-  import { dmartRequest } from "../../dmart";
+  import { dmartEntry, dmartRequest } from "../../dmart";
   import { toastPushFail, toastPushSuccess } from "../../utils";
   import ContentEditSection from "./_components/ContentEditSection.svelte";
 
@@ -88,7 +88,6 @@
               ),
               text: undefined,
             };
-            console.log({ bodyContent });
           }
 
           historyQuery = {
