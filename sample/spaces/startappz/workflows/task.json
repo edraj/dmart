@@ -1,0 +1,56 @@
+{
+    "name": "Task",
+    "illustration": "Task Description",
+    "initial_state": [
+        {
+            "name": "new",
+            "roles": [
+                "default"
+            ]
+        }
+    ],
+    "states": [
+        {
+            "name": "new",
+            "state": "new",
+            "next": [
+                {
+                    "roles": [
+                        "super_admin"
+                    ],
+                    "state": "pending",
+                    "action": "submit"
+                }
+            ]
+        },
+        {
+            "name": "Pending",
+            "state": "pending",
+            "next": [
+                {
+                    "roles": [
+                        "super_admin"
+                    ],
+                    "state": "approved",
+                    "action": "approve"
+                },
+                {
+                    "roles": [
+                        "super_admin"
+                    ],
+                    "state": "rejected",
+                    "action": "reject"
+                }
+            ]
+        },
+        {
+            "name": "approved",
+            "state": "approved"
+        },
+        {
+            "name": "rejected",
+            "state": "rejected"
+        }
+    
+    ]
+}
