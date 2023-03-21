@@ -1,0 +1,17 @@
+{
+    "uuid": "f05e1d2b-b890-4b23-a663-d8d3e748ee68",
+    "shortname": "task",
+    "is_active": true,
+    "tags": [],
+    "created_at": "2022-12-30T10:41:18.953637",
+    "updated_at": "2022-12-30T10:41:18.953642",
+    "owner_shortname": "dmart",
+    "payload": {
+        "content_type": "json",
+        "schema_shortname": "meta_schema",
+        "checksum": "99b8d42c95bc891f69e8e42c821a826075186adc",
+        "body": "task.json",
+        "last_validated": "2022-12-30T13:33:03.113553",
+        "validation_status": "valid"
+    }
+}

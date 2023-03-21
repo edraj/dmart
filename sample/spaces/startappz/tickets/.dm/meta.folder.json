@@ -1,0 +1,14 @@
+{
+    "uuid": "3d4bf50e-1b64-4d1e-a74f-c135ec8a0c0a",
+    "shortname": "tickets",
+    "is_active": true,
+    "tags": [],
+    "created_at": "2023-03-20T13:35:52.537017",
+    "updated_at": "2023-03-21T10:47:03.335798",
+    "owner_shortname": "dmart",
+    "payload": {
+        "content_type": "json",
+        "schema_shortname": "folder_rendering",
+        "body": "tickets.json"
+    }
+}
