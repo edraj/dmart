@@ -1,14 +1,14 @@
 import json
 import requests
 from models.core import Translation
-from utils.notification import NotifierInterface
+from utils.notification import Notifier
 from utils.helpers import lang_code
 from utils.settings import settings
 
 
 
 
-class WebNotifier(NotifierInterface):
+class WebNotifier(Notifier):
     
     async def send(
         self, 

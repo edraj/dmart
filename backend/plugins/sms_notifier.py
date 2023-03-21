@@ -1,10 +1,10 @@
 from api.user.service import send_sms
 from models.core import Translation
 from utils.helpers import lang_code
-from utils.notification import NotifierInterface
+from utils.notification import Notifier
 
 
-class SMSNotifier(NotifierInterface):
+class SMSNotifier(Notifier):
     
     async def send(
         self, 
