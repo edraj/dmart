@@ -365,3 +365,39 @@ class Notification(Meta):
     is_read: bool = False
     priority: NotificationPriority
     entry: Locator | None = None
+
+    @staticmethod
+    async def from_request(
+        notification_req: dict, entry: dict = {}
+    ):
+        if notification_req["payload"]["schema_shortname"] == "admin_notification_request":
+            notification_type = NotificationType.admin
+        else:
+            notification_type = NotificationType.system
+
+        entry_locator = None
+        if entry:
+            entry_locator = Locator(
+                space_name=entry["space_name"],
+                branch_name=entry["branch_name"],
+                type=entry["resource_type"],
+                schema_shortname=entry["payload"]["schema_shortname"],
+                subpath=entry["subpath"],
+                shortname=entry["shortname"],
+            )
+
+        uuid = uuid4()
+        return Notification(
+            uuid=uuid,
+            shortname=str(uuid)[:8],
+            is_active=True,
+            displayname=notification_req["displayname"],
+            description=notification_req["description"],
+            owner_shortname=notification_req["owner_shortname"],
+            type=notification_type,
+            is_read=False,
+            priority=notification_req["priority"],
+            entry=entry_locator,
+        )
+
+
