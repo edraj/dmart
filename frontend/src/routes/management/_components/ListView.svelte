@@ -473,6 +473,7 @@
 {/if}
 
 <style>
+/*
   .back-icon {
     margin-top: 8px;
     margin-left: 8px;
@@ -480,7 +481,7 @@
   h5 {
     margin-top: 8px;
     margin-left: 8px;
-  }
+  }*/
   hr {
     color: green;
     background-color: blue;
