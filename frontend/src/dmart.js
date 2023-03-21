@@ -518,6 +518,22 @@ export async function dmartUpdateEmbedded(
   return resp.results[0];
 }
 
+export async function dmartHealthCheck(space_name) {
+  const browse_url = `${website.backend}/managed/health/${space_name}`;
+  const browse_headers = {
+    Accept: "application/json",
+    Connection: "close",
+  };
+  const browse_request = {
+    method: "GET",
+    headers: browse_headers,
+    credentials: "include",
+    cache: "no-cache",
+    mode: "cors",
+  };
+  return await dmartFetch(browse_url, browse_request);
+}
+
 /*
 export async function dmart_rename(oldshortname, newshortname) { }
 export async function dmart_copy(subpath, shortname, newsubpath) { }
