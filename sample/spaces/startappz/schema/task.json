@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "title": "Task schema",
+  "properties": {
+    "type": {
+      "type": "string"
+    },
+    "starting_time": {
+      "type": "string"
+    },
+    "ending_time": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "comments": {
+      "type": "string"
+    }
+  },
+  "description": "task schema"
+}
