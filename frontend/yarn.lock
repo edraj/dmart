@@ -52,9 +52,9 @@
     crelt "^1.0.5"
 
 "@codemirror/search@^6.0.0", "@codemirror/search@^6.2.3":
-  version "6.2.3"
-  resolved "https://registry.yarnpkg.com/@codemirror/search/-/search-6.2.3.tgz#fab933fef1b1de8ef40cda275c73d9ac7a1ff40f"
-  integrity sha512-V9n9233lopQhB1dyjsBK2Wc1i+8hcCqxl1wQ46c5HWWLePoe4FluV3TGHoZ04rBRlGjNyz9DTmpJErig8UE4jw==
+  version "6.3.0"
+  resolved "https://registry.yarnpkg.com/@codemirror/search/-/search-6.3.0.tgz#d48b2d636fc7474613e240ba8e56c4c5e6e51822"
+  integrity sha512-rBhZxzT34CarfhgCZGhaLBScABDN3iqJxixzNuINp9lrb3lzm0nTpR77G1VrxGO3HOGK7j62jcJftQM7eCOIuw==
   dependencies:
     "@codemirror/state" "^6.0.0"
     "@codemirror/view" "^6.0.0"
@@ -66,9 +66,9 @@
   integrity sha512-69QXtcrsc3RYtOtd+GsvczJ319udtBf1PTrr2KbLWM/e2CXUPnh0Nz9AUo8WfhSQ7GeL8dPVNUmhQVgpmuaNGA==
 
 "@codemirror/view@^6.0.0", "@codemirror/view@^6.6.0", "@codemirror/view@^6.8.1":
-  version "6.9.2"
-  resolved "https://registry.yarnpkg.com/@codemirror/view/-/view-6.9.2.tgz#c8ceb4ea36f17bb20fdecbe7534162d4b83185e9"
-  integrity sha512-ci0r/v6aKOSlzOs7/STMTYP3jX/+YMq2dAfAJcLIB6uom4ThtrUlzeuS7GTRGNqJJ+qAJR1vGWfXgu4CO/0myQ==
+  version "6.9.3"
+  resolved "https://registry.yarnpkg.com/@codemirror/view/-/view-6.9.3.tgz#4475dc0ff5d9a55f8144ad7484e7e17416861cce"
+  integrity sha512-BJ5mvEIhFM+SrNwc5X8pLIvMM9ffjkviVbxpg84Xk2OE8ZyKaEbId8kX+nAYEEso7+qnbwsXe1bkAHsasebMow==
   dependencies:
     "@codemirror/state" "^6.1.4"
     style-mod "^4.0.0"
@@ -216,17 +216,17 @@
   resolved "https://registry.yarnpkg.com/@eslint/js/-/js-8.36.0.tgz#9837f768c03a1e4a30bd304a64fb8844f0e72efe"
   integrity sha512-lxJ9R5ygVm8ZWgYdUweoq5ownDlJ4upvoWmO4eLxBYHdMo+vZ/Rx0EN6MbKWDJOSUGrqJy2Gt+Dyv/VKml0fjg==
 
-"@floating-ui/core@^1.1.0", "@floating-ui/core@^1.2.3":
+"@floating-ui/core@^1.1.0", "@floating-ui/core@^1.2.4":
   version "1.2.4"
   resolved "https://registry.yarnpkg.com/@floating-ui/core/-/core-1.2.4.tgz#89e6311b021190c9e121fcf20306e76ac66e4066"
   integrity sha512-SQOeVbMwb1di+mVWWJLpsUTToKfqVNioXys011beCAhyOIFtS+GQoW4EQSneuxzmQKddExDwQ+X0hLl4lJJaSQ==
 
 "@floating-ui/dom@^1.1.0", "@floating-ui/dom@^1.2.1":
-  version "1.2.4"
-  resolved "https://registry.yarnpkg.com/@floating-ui/dom/-/dom-1.2.4.tgz#e2eb2674f57fc182c425587e48ea43e336f4b8f8"
-  integrity sha512-4+k+BLhtWj+peCU60gp0+rHeR8+Ohqx6kjJf/lHMnJ8JD5Qj6jytcq1+SZzRwD7rvHKRhR7TDiWWddrNrfwQLg==
+  version "1.2.5"
+  resolved "https://registry.yarnpkg.com/@floating-ui/dom/-/dom-1.2.5.tgz#c9ec259a24ce0958b1ea29674df4eee4455361a9"
+  integrity sha512-+sAUfpQ3Frz+VCbPCqj+cZzvEESy3fjSeT/pDWkYCWOBXYNNKZfuVsHuv8/JO2zze8+Eb/Q7a6hZVgzS81fLbQ==
   dependencies:
-    "@floating-ui/core" "^1.2.3"
+    "@floating-ui/core" "^1.2.4"
 
 "@fontsource/fira-mono@^4.5.10":
   version "4.5.10"
@@ -374,9 +374,9 @@
   integrity sha512-taY9K4Piqgwk9CxFQo5XCZgotuVCNkU/O/NqdF125zmsY6wA4U71dZ7Bug4S4CFRTSq+4yBfb/8H7/dnYP4u5Q==
 
 "@roxi/routify@^3.0.0-next.1":
-  version "3.0.0-next.147"
-  resolved "https://registry.yarnpkg.com/@roxi/routify/-/routify-3.0.0-next.147.tgz#659fa85ee7ca2c5413378f33fb6102987f232502"
-  integrity sha512-i/yWNo9taBwJk/IYClrLZyx1RY+AKEvGWGm8vOfXeehEiXrdTCz8tZ4XJIjmTLSlHV/Ets2GbAWNH++xe0V2pw==
+  version "3.0.0-next.148"
+  resolved "https://registry.yarnpkg.com/@roxi/routify/-/routify-3.0.0-next.148.tgz#705c05575061a6e0e0d2472cb8e43d8b8800ae1a"
+  integrity sha512-nbbL6LhDql/PlWNuO+tX+fq2kl9ZtUD/6XVRlg+F3i+DTNwNkZ9QUb95cJOUnCG8In+YUiQKh5JBKUHzPwPCtw==
   dependencies:
     cachewrap "^0.0.1"
     cheap-watch "^1.0.4"
@@ -1740,10 +1740,10 @@ marked@^4.2.12:
   resolved "https://registry.yarnpkg.com/marked/-/marked-4.2.12.tgz#d69a64e21d71b06250da995dcd065c11083bebb5"
   integrity sha512-yr8hSKa3Fv4D3jdZmtMMPghgVt6TWbk86WQaWhDloQjRSQhMMYCAro7jP7VDJrjjdV8pxVxMssXS8B8Y5DZ5aw==
 
-mdsvex@^0.9.3:
-  version "0.9.8"
-  resolved "https://registry.yarnpkg.com/mdsvex/-/mdsvex-0.9.8.tgz#f430988b86c4d9080381de2fbe54326c046487bc"
-  integrity sha512-5QvThjRKoKkGH00qdHxLZ5ROd80RgGiJvM2B9opeFreaiGFTLoKKFUgEBCslLrwM24cVGJLmIM3rR83OFDf3tQ==
+mdsvex@^0.10.1:
+  version "0.10.6"
+  resolved "https://registry.yarnpkg.com/mdsvex/-/mdsvex-0.10.6.tgz#5ba975f4616e5255ca31cd93d33e2c2a22845631"
+  integrity sha512-aGRDY0r5jx9+OOgFdyB9Xm3EBr9OUmcrTDPWLB7a7g8VPRxzPy4MOBmcVYgz7ErhAJ7bZ/coUoj6aHio3x/2mA==
   dependencies:
     "@types/unist" "^2.0.3"
     prism-svelte "^0.4.7"
@@ -2149,9 +2149,9 @@ rimraf@^3.0.2:
     glob "^7.1.3"
 
 rollup@^3.18.0:
-  version "3.19.1"
-  resolved "https://registry.yarnpkg.com/rollup/-/rollup-3.19.1.tgz#2b3a31ac1ff9f3afab2e523fa687fef5b0ee20fc"
-  integrity sha512-lAbrdN7neYCg/8WaoWn/ckzCtz+jr70GFfYdlf50OF7387HTg+wiuiqJRFYawwSPpqfqDNYqK7smY/ks2iAudg==
+  version "3.20.0"
+  resolved "https://registry.yarnpkg.com/rollup/-/rollup-3.20.0.tgz#ce7bd88449a776b9f75bf4e35959e25fbd3f51b1"
+  integrity sha512-YsIfrk80NqUDrxrjWPXUa7PWvAfegZEXHuPsEZg58fGCdjL1I9C1i/NaG+L+27kxxwkrG/QEDEQc8s/ynXWWGQ==
   optionalDependencies:
     fsevents "~2.3.2"
 
@@ -2622,9 +2622,9 @@ vite-plugin-rewrite-all@^1.0.1:
     connect-history-api-fallback "^1.6.0"
 
 vite@^4.0.4:
-  version "4.2.0"
-  resolved "https://registry.yarnpkg.com/vite/-/vite-4.2.0.tgz#d4e6eafbc034f3faf0ab376bd5b76ac15775eb99"
-  integrity sha512-AbDTyzzwuKoRtMIRLGNxhLRuv1FpRgdIw+1y6AQG73Q5+vtecmvzKo/yk8X/vrHDpETRTx01ABijqUHIzBXi0g==
+  version "4.2.1"
+  resolved "https://registry.yarnpkg.com/vite/-/vite-4.2.1.tgz#6c2eb337b0dfd80a9ded5922163b94949d7fc254"
+  integrity sha512-7MKhqdy0ISo4wnvwtqZkjke6XN4taqQ2TBaTccLIpOKv7Vp2h4Y+NpmWCnGDeSvvn45KxvWgGyb0MkHvY1vgbg==
   dependencies:
     esbuild "^0.17.5"
     postcss "^8.4.21"
