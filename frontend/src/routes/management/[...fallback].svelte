@@ -83,7 +83,7 @@
                 space_name,
                 record.subpath,
                 shortname,
-                schema_shortname,
+                "meta",
                 "json"
               ),
               text: undefined,
