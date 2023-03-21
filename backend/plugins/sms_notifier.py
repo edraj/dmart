@@ -16,6 +16,8 @@ class SMSNotifier(NotifierInterface):
         if not hasattr(self, "user"):
             await self._load_user(receiver)
         user_lang = lang_code(self.user.language)
+        if not self.user.msisdn:
+            return False
         await send_sms(
             self.user.msisdn, 
             title.__getattribute__(user_lang)
