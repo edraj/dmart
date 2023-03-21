@@ -1,0 +1,87 @@
+{
+  "title": "Ticket Workflow Schema",
+  "description": "Ticket Workflow Schema description",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "initial_state": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": []
+      },
+      "description": "state description"
+    },
+    "name": {
+      "title": "name",
+      "description": "name description",
+      "type": "string"
+    },
+    "illustration": {
+      "title": "description",
+      "description": "description description",
+      "type": "string"
+    },
+    "states": {
+      "type": "array",
+      "items": {
+        "title": "transition",
+        "description": "name description",
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "name",
+            "description": "name description",
+            "type": "string"
+          },
+          "state": {
+            "title": "state",
+            "description": "current description",
+            "type": "string"
+          },
+          "next": {
+            "title": "next",
+            "description": "List of next possible sstate stransitions",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "title": "role",
+                  "description": "user role",
+                  "type": "string"
+                },
+                "action": {
+                  "title": "action",
+                  "description": "The action required to apply this change",
+                  "type": "string"
+                },
+                "state": {
+                  "title": "Next state",
+                  "description": "The next state of the ticket once the action is applied",
+                  "type": "string"
+                },
+                "resolutions": {
+                  "title": "Next state",
+                  "description": "The next state of the ticket once the action is applied",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
