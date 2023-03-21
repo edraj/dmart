@@ -5,10 +5,10 @@
     "type": {
       "type": "string"
     },
-    "starting time": {
+    "starting_time": {
       "type": "string"
     },
-    "ending time": {
+    "ending_time": {
       "type": "string"
     },
     "status": {

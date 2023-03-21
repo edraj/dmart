@@ -9,9 +9,6 @@
     "payload": {
         "content_type": "json",
         "schema_shortname": "meta_schema",
-        "checksum": "99b8d42c95bc891f69e8e42c821a826075186adc",
-        "body": "task.json",
-        "last_validated": "2022-12-30T13:33:03.113553",
-        "validation_status": "valid"
+        "body": "task.json"
     }
 }
