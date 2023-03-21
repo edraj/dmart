@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     redis_password: str = ""
     redis_port: int = 6379
     management_space: str = "management"
+    users_subpath: str = "users"
     spaces_folder: Path = Path("../sample/spaces/")
     contracts_folder: Path = Path("../contracts/")
     lock_period: int = 300
