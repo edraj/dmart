@@ -13,7 +13,8 @@ class Settings(BaseSettings):
     app_url: str = ""
     public_app_url: str = ""
     app_name: str = "dmart"
-    websocket_url: str = ""
+    websocket_url: str = "127.0.0.1:8484"
+    websocket_port: int = 8484
     base_path: str = ""
     debug_enabled: bool = True
     log_path: Path = Path("../../logs/")
@@ -23,7 +24,6 @@ class Settings(BaseSettings):
     jwt_access_expires: int = 30 * 86400  # 30 days
     listening_host: str = "0.0.0.0"
     listening_port: int = 8282
-    websocket_port: int = 8484
     redis_host: str = "127.0.0.1"
     redis_password: str = ""
     redis_port: int = 6379
