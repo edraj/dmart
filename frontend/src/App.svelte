@@ -7,7 +7,7 @@
   const options = {};
 </script>
 
-<script>
+<script lang="ts">
   import { setupI18n, dir } from "./i18n";
 
   setupI18n();
