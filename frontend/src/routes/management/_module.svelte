@@ -9,7 +9,7 @@
   import Header from "./_components/Header.svelte";
   import Sidebar from "./_components/Sidebar.svelte";
 
-  getSpaces();
+  let init = getSpaces();
 </script>
 
 <Notifications>
@@ -21,20 +21,29 @@
       <Login />
     </div>
   {:else}
-    <Container
-      fluid={true}
-      class="d-flex flex-column position-relative p-0 my-0 w-100 h-100"
-    >
-      <Row class="align-items-start w-100 ms-0 border border-primary" noGutters>
-        <Col sm="12"><Header /></Col>
-      </Row>
-      <Row class="w-100 ms-0 my-0 border border-success h-100" noGutters>
-        <Col sm="2" class=" border border-warning"><Sidebar /></Col>
-        <Col sm="10" class="border border-info"><slot /></Col>
-      </Row>
-      <!--Row class="align-items-end w-100 ms-0 my-0 border border-dark" noGutters>
+    {#await init}
+      <div />
+    {:then _}
+      <Container
+        fluid={true}
+        class="d-flex flex-column position-relative p-0 my-0 w-100 h-100"
+      >
+        <Row
+          class="align-items-start w-100 ms-0 border border-primary"
+          noGutters
+        >
+          <Col sm="12"><Header /></Col>
+        </Row>
+        <Row class="w-100 ms-0 my-0 border border-success h-100" noGutters>
+          <Col sm="2" class=" border border-warning"><Sidebar /></Col>
+          <Col sm="10" class="border border-info"><slot /></Col>
+        </Row>
+        <!--Row class="align-items-end w-100 ms-0 my-0 border border-dark" noGutters>
         <Col sm="12" class=""><Footer /></Col>
       </Row-->
-    </Container>
+      </Container>
+    {:catch error}
+      <p style="color: red">{error.message}</p>
+    {/await}
   {/if}
 </Notifications>
