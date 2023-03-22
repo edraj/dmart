@@ -18,7 +18,7 @@ from utils.redis_services import RedisServices
 import aiofiles
 from fastapi import status
 from fastapi.logger import logger
-from utils.helpers import branch_path, camel_case, snake_case
+from utils.helpers import branch_path, camel_case, snake_case, str_to_datetime
 from utils.custom_validations import validate_payload_with_schema
 import subprocess
 from redis.commands.search.document import Document as RedisDocument
@@ -531,16 +531,16 @@ async def serve_query(
                 for line in result:
                     action_obj = json.loads(line)
                     
-                    if query.from_date and action_obj.get("timestamp") < query.from_date:
+                    if(
+                        query.from_date and 
+                        str_to_datetime(action_obj["timestamp"]) < query.from_date
+                    ):
                         continue
 
-                    if query.to_date and action_obj.get("timestamp") > query.to_date:
-                        break
-
-                    if query.from_date and action_obj.get("timestamp") < query.from_date:
-                        continue
-
-                    if query.to_date and action_obj.get("timestamp") > query.to_date:
+                    if(
+                        query.to_date and 
+                        str_to_datetime(action_obj["timestamp"]) > query.to_date
+                    ):
                         break
 
                     if not await access_control.check_access(
