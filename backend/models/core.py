@@ -352,6 +352,7 @@ class PluginWrapper(Meta):
     type: PluginType | None = None
     ordinal: int = 9999
     object: PluginBase | None = None
+    dependencies: list = []
 
 
 
