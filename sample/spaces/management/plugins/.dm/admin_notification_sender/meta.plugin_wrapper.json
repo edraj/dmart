@@ -1,0 +1,18 @@
+{
+	"uuid": "4ba3fc40-aee3-4ed1-9937-12a526b72ca0",
+	"shortname": "admin_notification_sender",
+	"is_active": true,
+	"filters": {
+		"subpaths": ["notifications/admin"],
+		"resource_types": ["content"],
+		"schema_shortnames": ["admin_notification_request"],
+		"actions": ["create"]
+	},
+	"type": "hook",
+	"ordinal": 1,
+	"listen_time": "after",
+	"created_at": "2022-08-11T11:27:28.866048",
+	"updated_at": "2022-08-11T11:27:28.866052",
+	"owner_shortname": "dmart",
+	"payload": { "content_type": "python", "body": "admin_notification_sender.py" }
+}
