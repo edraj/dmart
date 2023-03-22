@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     app_url: str = ""
     public_app_url: str = ""
     app_name: str = "dmart"
-    websocket_url: str = "127.0.0.1:8484"
+    websocket_url: str = "http://127.0.0.1:8484"
     websocket_port: int = 8484
     base_path: str = ""
     debug_enabled: bool = True
