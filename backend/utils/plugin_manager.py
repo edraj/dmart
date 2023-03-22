@@ -16,26 +16,13 @@ from models.core import (
     Space,
 )
 from models.enums import ResourceType, PluginType
+from utils.helpers import pp
 from utils.settings import settings
 from utils.spaces import get_spaces
 from importlib import import_module, util
 from importlib.util import find_spec, module_from_spec
 import sys
 from fastapi.logger import logger
-
-
-# Allow python to search for modules inside "spaces" folder
-spaces_ups = 2
-back_num = 0
-for part in settings.spaces_folder.parts:
-    if part == "..":
-        back_num += 1
-
-sys.path.append(
-    "/".join(__file__.split("/")[: -(spaces_ups + back_num)])
-    + "/"
-    + "/".join(settings.spaces_folder.parts[back_num:])
-)
 
 
 class PluginManager:
@@ -45,73 +32,56 @@ class PluginManager:
     ] = {}  # {action_type: list_of_plugins_wrappers]}
 
     async def load_plugins(self, app: FastAPI, capture_body):
-        path = settings.spaces_folder / settings.management_space / "plugins/.dm"
+        path = Path("plugins")
         if not path.is_dir():
             return
 
         plugins_iterator = os.scandir(path)
         for plugin_path in plugins_iterator:
-            meta_file_path = Path(f"{plugin_path.path}/meta.plugin_wrapper.json")
-            if not meta_file_path.is_file():
+            config_file_path = Path(f"{plugin_path.path}/config.json")
+            plugin_file_path = Path(f"{plugin_path.path}/plugin.py")
+            if(
+                not config_file_path.is_file() or
+                not plugin_file_path.is_file()
+            ):
                 continue
 
-            async with aiofiles.open(meta_file_path, "r") as meta_file:
+            # Load plugin config gile
+            async with aiofiles.open(config_file_path, "r") as config_file:
                 plugin_wrapper: PluginWrapper = PluginWrapper.parse_raw(
-                    await meta_file.read()
+                    await config_file.read()
                 )
+            plugin_wrapper.shortname = plugin_path.name
+            if not plugin_wrapper.is_active:
+                continue
 
-            if plugin_wrapper.type == PluginType.api:
-                try:
-                    body_name: str | dict[str, Any] | Path = (
-                        plugin_wrapper.payload.body if plugin_wrapper.payload else ""
-                    )
-                    body_path = (
-                        settings.spaces_folder
-                        / settings.management_space
-                        / f"plugins/{body_name}"
-                    )
-                    spec = util.spec_from_file_location("router", body_path)
-                    module = None
-                    if spec:
-                        module = util.module_from_spec(spec)
-                    if spec and spec.loader and module:
-                        spec.loader.exec_module(module)
-                        app.include_router(
-                            module.router,
-                            prefix=f"/{plugin_wrapper.shortname}",
-                            tags=[plugin_wrapper.shortname],
-                            dependencies=[Depends(capture_body)],
-                        )
-                    else:
-                        raise Exception(
-                            f"Failed to load API {plugin_wrapper.shortname}"
-                        )
-                except Exception as e:
-                    logger.error(
-                        f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"
-                    )
-            elif plugin_wrapper.type == PluginType.hook:
-                try:
-                    module_name = f"plugins.{plugin_wrapper.shortname}"
-                    core_plugin_specs = find_spec(module_name)
+            # Load the plugin module
+            module_name = f"plugins.{plugin_wrapper.shortname}.plugin"
+            spec = find_spec(module_name)
+            module = module_from_spec(spec)
+            sys.modules[module_name] = module
+            pp(module=module, spec=spec)
+            spec.loader.exec_module(module)
 
-                    if core_plugin_specs and core_plugin_specs.loader:
-                        module = module_from_spec(core_plugin_specs)
-                        sys.modules[module_name] = module
-                        core_plugin_specs.loader.exec_module(module)
-                        plugin_wrapper.object = module.Plugin()
-                    else:
-                        plugin_wrapper.object = import_module(
-                            f"{settings.management_space}.plugins.{plugin_wrapper.shortname}"
-                        ).Plugin()  # intialize the class in memory load_plugins
-
-                    if plugin_wrapper.is_active:
-                        self.store_plugin_in_its_action_dict(plugin_wrapper)
-
-                except Exception as e:
-                    logger.error(
-                        f"PLUGIN_ERROR, Plugin {plugin_wrapper.shortname} Failed to load, error: {e.args}"
+            try:
+                # Register the API plugin routes
+                if plugin_wrapper.type == PluginType.api:
+                    app.include_router(
+                        module.router,
+                        prefix=f"/{plugin_wrapper.shortname}",
+                        tags=[plugin_wrapper.shortname],
+                        dependencies=[Depends(capture_body)],
                     )
+
+                # Add the Hook Plugin to the loaded plugins
+                elif plugin_wrapper.type == PluginType.hook:
+                    plugin_wrapper.object = getattr(module, "Plugin")()
+
+                    self.store_plugin_in_its_action_dict(plugin_wrapper)
+            except Exception as e:
+                logger.error(
+                    f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"
+                )
 
         self.sort_plugins()
         plugins_iterator.close()
@@ -200,14 +170,14 @@ class PluginManager:
                 and plugin_model.filters
                 and self.matched_filters(plugin_model.filters, event)
             ):
-                try:
-                    object = plugin_model.object
-                    if isinstance(object, PluginBase):
-                        plugin_execution = object.hook(event)
-                        if iscoroutine(plugin_execution):
-                            loop.create_task(plugin_execution)
-                except Exception as e:
-                    logger.error(f"Plugin:{plugin_model}:{str(e)}")
+                # try:
+                object = plugin_model.object
+                if isinstance(object, PluginBase):
+                    plugin_execution = object.hook(event)
+                    if iscoroutine(plugin_execution):
+                        await plugin_execution
+                # except Exception as e:
+                #     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
 
 plugin_manager = PluginManager()

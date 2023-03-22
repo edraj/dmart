@@ -39,6 +39,7 @@ import utils.password_hashing as password_hashing
 class Resource(BaseModel):
     class Config:
         use_enum_values = True
+        arbitrary_types_allowed = True
 
 
 class Payload(Resource):
@@ -88,7 +89,6 @@ class Meta(Resource):
     payload: Payload | None = None
 
     class Config:
-        arbitrary_types_allowed = True
         validate_assignment = True
 
     @staticmethod
@@ -346,7 +346,9 @@ class EventFilter(BaseModel):
     actions: list[ActionType]
 
 
-class PluginWrapper(Meta):
+class PluginWrapper(Resource):
+    shortname: str = Field(default=None, regex=regex.SHORTNAME)
+    is_active: bool = False
     filters: EventFilter | None = None
     listen_time: EventListenTime | None = None
     type: PluginType | None = None

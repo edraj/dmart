@@ -15,7 +15,7 @@ from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
-from utils.plugins import plugin_manager
+from utils.plugin_manager import plugin_manager
 from utils.spaces import initialize_spaces
 # import json_logging
 from fastapi import Depends, FastAPI, Request, Response, status

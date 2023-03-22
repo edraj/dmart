@@ -2,9 +2,9 @@
 	"is_active": true,
 	"filters": {
 		"subpaths": ["__ALL__"],
-		"resource_types": ["__ALL__"],
+		"resource_types": ["branch"],
 		"schema_shortnames": ["__ALL__"],
-		"actions": ["create", "update", "delete", "progress_ticket", "attach", "move"]
+		"actions": ["create", "update", "delete"]
 	},
 	"type": "hook",
 	"listen_time": "after"
