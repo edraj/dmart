@@ -1,0 +1,13 @@
+{
+    "is_active": true,
+	"filters": {
+		"subpaths": ["__ALL__"],
+		"resource_types": ["branch"],
+		"schema_shortnames": ["__ALL__"],
+		"actions": ["create", "update", "delete"]
+	},
+	"type": "hook",
+    "dependencies": [
+        "firebase-admin"
+    ]
+}
