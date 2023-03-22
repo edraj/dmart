@@ -1,0 +1,1 @@
+{"uuid": "ba5aeca3-d69d-4d16-a522-76876c4816f1", "shortname": "ba5aeca3", "is_active": true, "tags": [], "created_at": "2023-03-21T11:28:50.926874", "updated_at": "2023-03-21T11:28:50.926888", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "task", "body": "ba5aeca3.json"}, "state": "new", "is_open": true, "workflow_shortname": "task"}
