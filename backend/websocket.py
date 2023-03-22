@@ -182,8 +182,8 @@ async def service_info():
         content={
             "status": ResponseStatus.success, 
             "data": {
-                "connected_clients": websocket_manager.active_connections,
-                "channels": websocket_manager.channels
+                "connected_clients": str(websocket_manager.active_connections),
+                "channels": str(websocket_manager.channels)
             } 
         }
     )
