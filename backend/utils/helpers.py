@@ -210,4 +210,7 @@ def replace_message_vars(message: str, dest_data: dict, locale: str):
             message = message.replace(f"{{{field}}}", str(value))
 
     return re_sub(r"\{\w*.*\}", "", message)
+
+def str_to_datetime(str: str, format: str = "%Y-%m-%dT%H:%M:%S.%f"):
+    return datetime.strptime(str, format)
     
