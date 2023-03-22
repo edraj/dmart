@@ -51,7 +51,7 @@ from utils.custom_validations import validate_payload_with_schema
 from utils.redis_services import RedisServices
 from create_index import load_all_spaces_data_to_redis
 from utils.settings import settings
-from utils.plugins import plugin_manager
+from utils.plugin_manager import plugin_manager
 from io import StringIO
 from api.user.service import (
     send_email,

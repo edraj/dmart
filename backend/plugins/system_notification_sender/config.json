@@ -1,0 +1,12 @@
+{
+	"is_active": true,
+	"filters": {
+		"subpaths": ["__ALL__"],
+		"resource_types": ["__ALL__"],
+		"schema_shortnames": ["__ALL__"],
+		"actions": ["progress_ticket", "view", "create", "update", "delete", "attach", "move"]
+	},
+	"type": "hook",
+	"ordinal": 1,
+	"listen_time": "after"
+}

@@ -1,0 +1,19 @@
+{
+  "is_active": true,
+  "filters": {
+    "subpaths": [
+      "tickets"
+    ],
+    "resource_types": [
+      "ticket"
+    ],
+    "schema_shortnames": [
+      "contract"
+    ],
+    "actions": [
+      "progress_ticket"
+    ]
+  },
+  "listen_time": "after",
+  "type": "hook"
+}
