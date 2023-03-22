@@ -175,6 +175,20 @@ async def broadcast(data: dict = Body(...)):
     )
 
 
+@app.api_route(path="/info", methods=["get"])
+async def service_info():
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "status": ResponseStatus.success, 
+            "data": {
+                "connected_clients": websocket_manager.active_connections,
+                "channels": websocket_manager.channels
+            } 
+        }
+    )
+
+
 if __name__ == "__main__":
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.websocket_port}"]
