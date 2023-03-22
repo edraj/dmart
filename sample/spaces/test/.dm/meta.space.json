@@ -14,7 +14,7 @@
   "mirrors": [],
   "check_health": true,
   "branches": [],
-  "hide_space": true,
+  "hide_space": false,
   "active_plugins": [
     "action_log",
     "redis_db_update"

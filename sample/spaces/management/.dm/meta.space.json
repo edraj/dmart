@@ -12,6 +12,7 @@
   "primary_website": "https://dmart.cc",
   "mirrors": [],
   "check_health": true,
+  "hide_space": false,
   "branches": [],
   "active_plugins": [
     "action_log",
