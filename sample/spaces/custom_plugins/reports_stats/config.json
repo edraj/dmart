@@ -1,0 +1,13 @@
+{
+  "is_active": true,
+  "filters": {
+    "subpaths": [
+      "reports"
+    ],
+    "resource_types": ["__ALL__"],
+    "schema_shortnames": ["__ALL__"],
+    "actions": ["query"]
+  },
+  "listen_time": "after",
+  "type": "hook"
+}
