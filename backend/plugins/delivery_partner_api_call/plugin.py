@@ -11,6 +11,11 @@ class Plugin(PluginBase):
 
 
     async def hook(self, data: Event):
+        # Type narrowing for PyRight
+        if not isinstance(data.shortname, str):
+            logger.error(f"invalid data at delivery_partner_api_call")
+            return
+
         ticket_obj = await db.load(data.space_name, data.subpath, data.shortname, core.Ticket, data.user_shortname)
         if ticket_obj.owner_shortname in settings.talabatey_users_list.split(',') and ticket_obj.state=='approved' and data.action_type=='update':
             async with AsyncRequest() as client:

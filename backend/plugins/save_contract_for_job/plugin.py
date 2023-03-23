@@ -12,7 +12,7 @@ from utils.helpers import branch_path
 from fastapi.logger import logger
 from utils.settings import settings
 from dicttoxml import dicttoxml
-from pdf2image import convert_from_path
+from pdf2image.pdf2image import convert_from_path
 from datetime import datetime
 from pathlib import Path
 from weasyprint import HTML
@@ -24,6 +24,11 @@ class Plugin(PluginBase):
     folder_dist: Path
 
     async def hook(self, data: Event):
+
+        # Type narrowing for PyRight
+        if not isinstance(data.shortname, str) or not isinstance(data.attributes, dict):
+            logger.error(f"invalid data at save_contract_for_job")
+            return
 
         contract_meta: core.Ticket = await db.load(
             space_name=data.space_name,
@@ -40,42 +45,39 @@ class Plugin(PluginBase):
             class_type=core.Ticket,
             branch_name=data.branch_name
         )
-        ticket_locator: dict = contract_payload.get("ticket_locator")
+        ticket_locator: dict = contract_payload.get("ticket_locator", {})
         if not ticket_locator or not ticket_locator.get("subpath") or not ticket_locator.get('shortname'):
             return
-        ticket_name = ticket_locator.get('subpath').split('/')[1]
+        ticket_name = ticket_locator.get('subpath', '/').split('/')[1]
 
         if contract_meta.state != 'pending' or ticket_name not in self.available_tickets:
             return
 
         ticket_meta: core.Ticket = await db.load(
             space_name="b2c",
-            subpath=ticket_locator.get('subpath'),
-            shortname=ticket_locator.get('shortname'),
+            subpath=ticket_locator.get('subpath', '/'),
+            shortname=ticket_locator.get('shortname', ''),
             class_type=core.Ticket,
             user_shortname=data.user_shortname,
             branch_name=settings.management_space_branch,
         )
         ticket_payload = load_resource_payload(
             space_name="b2c",
-            subpath=ticket_locator.get('subpath'),
+            subpath=ticket_locator.get('subpath', '/'),
             filename=ticket_meta.payload.body,  # type: ignore
             class_type=core.Ticket,
             branch_name=data.branch_name
         )
 
-        contract_owner: core.User = None
-        try:
-            contract_owner: core.User = await db.load(
-                space_name=settings.management_space,
-                subpath="users",
-                shortname=contract_meta.owner_shortname,
-                class_type=core.User,
-                user_shortname=contract_meta.owner_shortname,
-                branch_name=settings.management_space_branch,
-            )
-        except Exception as e:
-            logger.error(f"Plugin:save_contract_for_job:{str(e)}")
+        contract_owner: core.User
+        contract_owner: core.User = await db.load(
+            space_name=settings.management_space,
+            subpath="users",
+            shortname=contract_meta.owner_shortname,
+            class_type=core.User,
+            user_shortname=contract_meta.owner_shortname,
+            branch_name=settings.management_space_branch,
+        )
 
         contract_meta_path = (
                 settings.spaces_folder
@@ -102,9 +104,10 @@ class Plugin(PluginBase):
         media: Record
         attach_number = 0
         for media in self.attachments.get('media', {}):
-            file_name: str = media.attributes.get('payload', {}).body
-            if not file_name:
+            payload = media.attributes.get('payload')
+            if not payload or not hasattr(payload, "body"):
                 continue
+            file_name: str = payload.body
             ext = file_name.split(".")[-1]
             mefs_file_name = self.fix_attachment_name(file_name)
             if mefs_file_name:
@@ -168,7 +171,7 @@ class Plugin(PluginBase):
                 logger.error(f"Plugin:save_contract_for_job:{str(e)}")
 
         # generate zip file
-        shutil.make_archive((settings.contracts_folder / f'C{folder_name}'), 'zip', self.folder_dist)
+        shutil.make_archive(str(settings.contracts_folder / f'C{folder_name}'), 'zip', self.folder_dist)
 
     def resize_image(self, image):
         base_width = 700
@@ -194,9 +197,11 @@ class Plugin(PluginBase):
         else:
             return None
 
-    def select_contract_type(self, schema_shortname: str, ticket_body: dict):
+    def select_contract_type(self, schema_shortname: str | None, ticket_body: dict):
+        if not schema_shortname:
+            return ''
         if 'b2b' in schema_shortname.lower():
-            contract_type: str = ticket_body.get('company_data', {}).get('contract_type')
+            contract_type: str = ticket_body.get('company_data', {}).get('contract_type', "")
             if contract_type.lower() == 'postpaid':
                 return 'POST-PAID'
             elif contract_type.lower() == 'prepaid':
@@ -259,12 +264,13 @@ class Plugin(PluginBase):
 
         if contract_payload.get('birth_date'):
             try:
-                birth_date = datetime.strptime(contract_payload.get('birth_date'), '%Y-%m-%d')
+                birth_date = datetime.strptime(contract_payload.get('birth_date', ''), '%Y-%m-%d')
                 birth_date = birth_date.strftime("%d/%m/%Y")
             except Exception as e:
                 pass
 
-        contract_type = self.select_contract_type(ticket_meta.payload.schema_shortname, ticket_payload)
+        if ticket_meta.payload:
+            contract_type = self.select_contract_type(ticket_meta.payload.schema_shortname, ticket_payload)
 
         self.XML_DATA = {
             'CONT_TYPE': contract_type,
