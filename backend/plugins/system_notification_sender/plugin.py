@@ -115,12 +115,12 @@ class Plugin(PluginBase):
                     await notification_manager.send(
                         platform=platform,
                         data=NotificationData(
-                            receiver= receiver, 
-                            title= formatted_req["title"],
-                            body= formatted_req["body"],
-                            images_urls= formatted_req["images_urls"],
-                            deep_link= notification_dict.get("deep_link", {}),
-                            entry_id= entry["shortname"]
+                            receiver=receiver, 
+                            title=formatted_req["title"],
+                            body=formatted_req["body"],
+                            image_urls=formatted_req["images_urls"],
+                            deep_link=notification_dict.get("deep_link", {}),
+                            entry_id=entry["shortname"]
                         )
                     )
 

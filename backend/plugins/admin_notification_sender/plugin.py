@@ -89,12 +89,12 @@ class Plugin(PluginBase):
             for platform in formatted_req["platforms"]:
                 await notification_manager.send(
                     platform=platform,
-                    data=NotificationData({
-                        "receiver": receiver, 
-                        "title": formatted_req["title"],
-                        "body": formatted_req["body"],
-                        "images_urls": formatted_req["images_urls"]
-                    })
+                    data=NotificationData(
+                        receiver=receiver, 
+                        title=formatted_req["title"],
+                        body=formatted_req["body"],
+                        image_urls=formatted_req["images_urls"],
+                    )
                 )
 
         
