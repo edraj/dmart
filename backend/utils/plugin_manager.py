@@ -23,6 +23,21 @@ import sys
 from fastapi.logger import logger
 
 
+CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
+# Allow python to search for modules inside the custom plugins
+# be including the path to the parent folder of the custom plugins to sys.path
+back_out_of_project = 2
+back_to_spaces = 0
+for part in CUSTOM_PLUGINS_PATH.parts:
+    if part == "..":
+        back_to_spaces += 1
+
+sys.path.append(
+    "/".join(__file__.split("/")[:-(back_out_of_project+back_to_spaces)]) + 
+    "/" + 
+    "/".join(CUSTOM_PLUGINS_PATH.parts[back_to_spaces:-1])
+)
+
 class PluginManager:
 
     plugins_wrappers: dict[
@@ -30,9 +45,19 @@ class PluginManager:
     ] = {}  # {action_type: list_of_plugins_wrappers]}
 
     async def load_plugins(self, app: FastAPI, capture_body):
+        # Load core plugins
         path = Path("plugins")
-        if not path.is_dir():
-            return
+        if path.is_dir():
+            await self.load_path_plugins(path, app, capture_body)
+
+        # Load custom plugins
+        path = CUSTOM_PLUGINS_PATH
+        if path.is_dir():
+            await self.load_path_plugins(path, app, capture_body)
+        self.sort_plugins()
+
+
+    async def load_path_plugins(self, path: Path, app: FastAPI, capture_body):
 
         plugins_iterator = os.scandir(path)
         for plugin_path in plugins_iterator:
@@ -44,7 +69,7 @@ class PluginManager:
             ):
                 continue
 
-            # Load plugin config gile
+            # Load plugin config file
             async with aiofiles.open(config_file_path, "r") as config_file:
                 plugin_wrapper: PluginWrapper = PluginWrapper.parse_raw(
                     await config_file.read()
@@ -52,9 +77,8 @@ class PluginManager:
             plugin_wrapper.shortname = plugin_path.name
             if not plugin_wrapper.is_active:
                 continue
-
             # Load the plugin module
-            module_name = f"plugins.{plugin_wrapper.shortname}.plugin"
+            module_name = f"{path.parts[-1]}.{plugin_wrapper.shortname}.plugin"
             spec = find_spec(module_name)
             if not spec:
                 continue
@@ -63,7 +87,6 @@ class PluginManager:
             if not spec.loader:
                 continue
             spec.loader.exec_module(module)
-
             try:
                 # Register the API plugin routes
                 if plugin_wrapper.type == PluginType.api:
@@ -84,7 +107,6 @@ class PluginManager:
                     f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"
                 )
 
-        self.sort_plugins()
         plugins_iterator.close()
 
     def store_plugin_in_its_action_dict(self, plugin_wrapper: PluginWrapper):
