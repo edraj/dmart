@@ -1,6 +1,6 @@
 import json
 from sys import modules as sys_modules
-from models.core import Notification, PluginBase, Event, Translation
+from models.core import Notification, NotificationData, PluginBase, Event, Translation
 from utils.helpers import branch_path, camel_case
 from utils.notification import NotificationManager
 from utils.redis_services import RedisServices
@@ -88,11 +88,13 @@ class Plugin(PluginBase):
 
             for platform in formatted_req["platforms"]:
                 await notification_manager.send(
-                    platform,
-                    receiver, 
-                    formatted_req["title"],
-                    formatted_req["body"],
-                    formatted_req["images_urls"]
+                    platform=platform,
+                    data=NotificationData({
+                        "receiver": receiver, 
+                        "title": formatted_req["title"],
+                        "body": formatted_req["body"],
+                        "images_urls": formatted_req["images_urls"]
+                    })
                 )
 
         

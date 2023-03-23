@@ -357,6 +357,14 @@ class PluginWrapper(Resource):
     dependencies: list = []
 
 
+class NotificationData(Resource):
+    receiver: str
+    title: Translation
+    body: Translation
+    image_urls: Translation | None = None
+    deep_link: dict = {}
+    entry_id: str | None = None
+
 
 class Notification(Meta):
     """
