@@ -23,18 +23,19 @@ import sys
 from fastapi.logger import logger
 
 
+CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
 # Allow python to search for modules inside the custom plugins
 # be including the path to the parent folder of the custom plugins to sys.path
 back_out_of_project = 2
 back_to_spaces = 0
-for part in settings.custom_plugins_path.parts:
+for part in CUSTOM_PLUGINS_PATH.parts:
     if part == "..":
         back_to_spaces += 1
 
 sys.path.append(
     "/".join(__file__.split("/")[:-(back_out_of_project+back_to_spaces)]) + 
     "/" + 
-    "/".join(settings.custom_plugins_path.parts[back_to_spaces:-1])
+    "/".join(CUSTOM_PLUGINS_PATH.parts[back_to_spaces:-1])
 )
 
 class PluginManager:
@@ -50,7 +51,7 @@ class PluginManager:
             await self.load_path_plugins(path, app, capture_body)
 
         # Load custom plugins
-        path = settings.custom_plugins_path
+        path = CUSTOM_PLUGINS_PATH
         if path.is_dir():
             await self.load_path_plugins(path, app, capture_body)
         self.sort_plugins()
