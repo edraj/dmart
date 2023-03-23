@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     invitation_link: str = ""
     talabatey_users_list: str = ""
     middleware_api: str = ""
+    custom_plugins_path:  Path = Path("../../pos-spaces/custom_plugins")
 
     class Config:
         """Load config"""
