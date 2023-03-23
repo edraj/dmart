@@ -3,7 +3,7 @@ from abc import ABC
 from importlib.util import find_spec, module_from_spec
 import json
 import sys
-from models.core import Translation
+from models.core import NotificationData
 from utils.settings import settings
 from models.core import User
 from utils.db import load
@@ -13,10 +13,7 @@ from fastapi.logger import logger
 class Notifier(ABC):
     async def send(
         self, 
-        receiver: str, 
-        title: Translation, 
-        body: Translation, 
-        image_urls: Translation | None = None
+        data: NotificationData
     ):
         pass
 
@@ -61,15 +58,12 @@ class NotificationManager():
     async def send(
         self, 
         platform, 
-        receiver: str, 
-        title: Translation, 
-        body: Translation,
-        image_urls: Translation
+        data: NotificationData
     ) -> bool:
         if platform not in self.notifiers:
             return False
         try:
-            await self.notifiers[platform].send(receiver, title, body, image_urls)
+            await self.notifiers[platform].send(data)
             return True
         except Exception as e:
             logger.info(
