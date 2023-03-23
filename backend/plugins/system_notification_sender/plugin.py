@@ -1,7 +1,7 @@
 import json
 from sys import modules as sys_modules
 from models.enums import ContentType
-from models.core import ActionType, Notification, PluginBase, Event, Translation
+from models.core import ActionType, Notification, NotificationData, PluginBase, Event, Translation
 from utils.notification import NotificationManager
 # from plugins.web_notification import WebNotifier, websocket_push
 from utils.helpers import branch_path, camel_case, replace_message_vars
@@ -113,11 +113,15 @@ class Plugin(PluginBase):
 
                 for platform in formatted_req["platforms"]:
                     await notification_manager.send(
-                        platform,
-                        receiver, 
-                        formatted_req["title"],
-                        formatted_req["body"],
-                        formatted_req["images_urls"]
+                        platform=platform,
+                        data=NotificationData(
+                            receiver= receiver, 
+                            title= formatted_req["title"],
+                            body= formatted_req["body"],
+                            images_urls= formatted_req["images_urls"],
+                            deep_link= notification_dict.get("deep_link", {}),
+                            entry_id= entry["shortname"]
+                        )
                     )
 
 
