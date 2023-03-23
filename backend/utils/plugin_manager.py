@@ -16,10 +16,8 @@ from models.core import (
     Space,
 )
 from models.enums import ResourceType, PluginType
-from utils.helpers import pp
 from utils.settings import settings
 from utils.spaces import get_spaces
-from importlib import import_module, util
 from importlib.util import find_spec, module_from_spec
 import sys
 from fastapi.logger import logger
@@ -58,9 +56,12 @@ class PluginManager:
             # Load the plugin module
             module_name = f"plugins.{plugin_wrapper.shortname}.plugin"
             spec = find_spec(module_name)
+            if not spec:
+                continue
             module = module_from_spec(spec)
             sys.modules[module_name] = module
-            pp(module=module, spec=spec)
+            if not spec.loader:
+                continue
             spec.loader.exec_module(module)
 
             try:

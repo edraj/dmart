@@ -12,7 +12,6 @@ from datetime import datetime
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
-        print(f"{data=}")
         if data.subpath[0] == "/":
             data.subpath = data.subpath[1:]
         reports_path = (
@@ -63,7 +62,7 @@ class Plugin(PluginBase):
         )
         report_last_updated_entry = await get_last_updated_entry(
             data.space_name,
-            data.branch_name,
+            data.branch_name or settings.default_branch,
             report_payload["query"]["filter_schema_names"],
             False,
             data.user_shortname,
@@ -99,7 +98,7 @@ class Plugin(PluginBase):
             data.branch_name,
         )
 
-        data.resource_type = "content"
-        data.shortname = data.attributes.get("shortname")
-        data.subpath = "reports"
+        # data.resource_type = "content"
+        # data.shortname = data.attributes.get("shortname")
+        # data.subpath = "reports"
         # await RedisDBUpdatePlugin().hook(data)

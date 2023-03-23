@@ -1,8 +1,6 @@
-import api.managed.router
 from models import core
-from models.api import Request
 from models.core import PluginBase, Event
-from models.enums import RequestType, ContentType
+from models.enums import ContentType, ResourceType
 from utils import db
 from utils.async_request import AsyncRequest
 from utils.db import load, load_resource_payload, save_payload_from_json
@@ -14,6 +12,11 @@ from utils.settings import settings
 class Plugin(PluginBase):
 
     async def hook(self, data: Event):
+
+        # Type narrowing for PyRight
+        if not isinstance(data.resource_type, ResourceType) or not isinstance(data.shortname, str):
+            logger.error(f"invalid data at aftersales_api_integration")
+            return
 
         primary_roles = [
             'account_manager',
@@ -57,78 +60,72 @@ class Plugin(PluginBase):
             branch_name=data.branch_name
         )
         # inject reporter details
-        try:
-            user: core.User = await db.load(
+        user: core.User = await db.load(
+            space_name=settings.management_space,
+            subpath="users",
+            shortname=data.user_shortname,
+            class_type=core.User,
+            user_shortname=data.user_shortname,
+            branch_name=settings.management_space_branch,
+        )
+        if not user.payload or type(user.payload.body) != str:
+            raise Exception("Invalid User data at aftersales_api_integration")
+        payload_body = db.load_resource_payload(
+            space_name=settings.management_space,
+            subpath="users",
+            filename=user.payload.body,
+            class_type=core.User,
+            branch_name=settings.management_space_branch,
+        )
+        channel_location = {}
+        if payload_body.get('channel_shortname'):
+            channel: core.User = await db.load(
                 space_name=settings.management_space,
                 subpath="users",
-                shortname=data.user_shortname,
+                shortname=payload_body.get('channel_shortname', ''),
                 class_type=core.User,
                 user_shortname=data.user_shortname,
                 branch_name=settings.management_space_branch,
             )
-            payload_body = {}
-            try:
-                payload_body = db.load_resource_payload(
-                    space_name=settings.management_space,
-                    subpath="users",
-                    filename=user.payload.body,
-                    class_type=core.User,
-                    branch_name=settings.management_space_branch,
-                )
-            except Exception as e:
-                logger.error(f"Plugin:aftersales_api_integration:{str(e)}")
-            channel_location = {}
-            if payload_body.get('channel_shortname'):
-                try:
-                    channel: core.User = await db.load(
-                        space_name=settings.management_space,
-                        subpath="users",
-                        shortname=payload_body.get('channel_shortname'),
-                        class_type=core.User,
-                        user_shortname=data.user_shortname,
-                        branch_name=settings.management_space_branch,
-                    )
-                    channel_body = db.load_resource_payload(
-                        space_name=settings.management_space,
-                        subpath="users",
-                        filename=channel.payload.body,
-                        class_type=core.User,
-                        branch_name=settings.management_space_branch,
-                    )
-                    channel_location = channel_body.get('location')
-                except Exception as e:
-                    logger.error(f"Plugin:aftersales_api_integration:{str(e)}")
-            role = ''
-            for user_role in user.roles:
-                if user_role in primary_roles:
-                    role = user_role
-                    break
-
-            governorate_shortname = ''
-            if payload_body.get('address', {}).get('governorate', {}).get('name'):
-                governorate_shortname = payload_body['address']['governorate']['name']
-
-            distributor_shortname = ''
-            if payload_body.get('address', {}).get('governorate', {}).get('distributor_shortname'):
-                distributor_shortname = payload_body['address']['governorate']['distributor_shortname']
-
-            display_name = ''
-            if user.displayname and user.displayname.en:
-                display_name = user.displayname.en
-
-            reporter = core.Reporter(
-                type=role,
-                name=display_name,
-                channel=user.owner_shortname,
-                distributor=governorate_shortname,
-                governorate=distributor_shortname,
-                msisdn=user.msisdn,
-                channel_address=channel_location
+            if not channel.payload or type(channel.payload.body) != str:
+                raise Exception("Invalid channel")
+            channel_body = db.load_resource_payload(
+                space_name=settings.management_space,
+                subpath="users",
+                filename=channel.payload.body,
+                class_type=core.User,
+                branch_name=settings.management_space_branch,
             )
-            required_update = True
-            meta.reporter = reporter
-        except Exception as e:
-            logger.error(f"Plugin:aftersales_api_integration:{str(e)}")
+            channel_location = channel_body.get('location')
+        role = ''
+        for user_role in user.roles:
+            if user_role in primary_roles:
+                role = user_role
+                break
+
+        governorate_shortname = ''
+        if payload_body.get('address', {}).get('governorate', {}).get('name'):
+            governorate_shortname = payload_body['address']['governorate']['name']
+
+        distributor_shortname = ''
+        if payload_body.get('address', {}).get('governorate', {}).get('distributor_shortname'):
+            distributor_shortname = payload_body['address']['governorate']['distributor_shortname']
+
+        display_name = ''
+        if user.displayname and user.displayname.en:
+            display_name = user.displayname.en
+
+        reporter = core.Reporter(
+            type=role,
+            name=display_name,
+            channel=user.owner_shortname,
+            distributor=governorate_shortname,
+            governorate=distributor_shortname,
+            msisdn=user.msisdn,
+            channel_address=channel_location
+        )
+        required_update = True
+        meta.reporter = reporter
 
         # inject check_usim_irm_status [registration_name, sim_status]
         try:
@@ -179,7 +176,11 @@ class Plugin(PluginBase):
         )
         redis = await RedisServices()
         meta_doc_id, meta_json = await redis.save_meta_doc(data.space_name, data.branch_name, data.subpath, meta)
-        if meta.payload and meta.payload.content_type == ContentType.json:
+        if(
+            meta.payload and 
+            meta.payload.content_type == ContentType.json and
+            type(meta.payload.body) == str
+        ):
             payload = db.load_resource_payload(
                 space_name=data.space_name,
                 subpath=data.subpath,
