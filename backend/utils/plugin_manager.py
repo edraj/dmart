@@ -170,14 +170,14 @@ class PluginManager:
                 and plugin_model.filters
                 and self.matched_filters(plugin_model.filters, event)
             ):
-                # try:
-                object = plugin_model.object
-                if isinstance(object, PluginBase):
-                    plugin_execution = object.hook(event)
-                    if iscoroutine(plugin_execution):
-                        await plugin_execution
-                # except Exception as e:
-                #     logger.error(f"Plugin:{plugin_model}:{str(e)}")
+                try:
+                    object = plugin_model.object
+                    if isinstance(object, PluginBase):
+                        plugin_execution = object.hook(event)
+                        if iscoroutine(plugin_execution):
+                            loop.create_task(plugin_execution)
+                except Exception as e:
+                    logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
 
 plugin_manager = PluginManager()
