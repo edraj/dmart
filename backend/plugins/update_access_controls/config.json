@@ -1,0 +1,11 @@
+{
+	"is_active": true,
+	"filters": {
+		"subpaths": ["roles", "groups", "permissions", "users"],
+		"resource_types": ["group", "role", "permission", "user"],
+		"schema_shortnames": ["__ALL__"],
+		"actions": ["create", "update", "delete"]
+	},
+	"type": "hook",
+	"listen_time": "after"
+}

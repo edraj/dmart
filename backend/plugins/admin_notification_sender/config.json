@@ -1,0 +1,12 @@
+{
+    "is_active": true,
+	"filters": {
+		"subpaths": ["notifications/admin"],
+		"resource_types": ["content"],
+		"schema_shortnames": ["admin_notification_request"],
+		"actions": ["create"]
+	},
+	"type": "hook",
+	"ordinal": 1,
+	"listen_time": "after"
+}

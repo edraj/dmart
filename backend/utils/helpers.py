@@ -213,4 +213,22 @@ def replace_message_vars(message: str, dest_data: dict, locale: str):
 
 def str_to_datetime(str: str, format: str = "%Y-%m-%dT%H:%M:%S.%f"):
     return datetime.strptime(str, format)
+
+
+def pp(*args, **kwargs):
+    """
+    Pretty Print
+    """
+    print_str = "\n\n================== DUMP DATA ==================\n"
+    if args:
+        for arg in args:
+            print_str += f"\narg: {arg}"
+
+    if kwargs:
+        for k, v in kwargs.items():
+            print_str += f"\n{k}: {v}"
+
+    print_str += "\n\n_____________________END________________________\n\n"
+    print(print_str)
+        
     
