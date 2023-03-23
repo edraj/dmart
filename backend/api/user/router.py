@@ -16,7 +16,7 @@ from utils.jwt import JWTBearer, sign_jwt, decode_jwt
 from typing import Any
 from utils.settings import settings
 import utils.repository as repository
-from utils.plugins import plugin_manager
+from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
 from utils.redis_services import RedisServices
 from models.api import Error, Exception, Status

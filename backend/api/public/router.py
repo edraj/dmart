@@ -14,7 +14,7 @@ from typing import Any
 import sys
 from utils.access_control import access_control
 import utils.repository as repository
-from utils.plugins import plugin_manager
+from utils.plugin_manager import plugin_manager
 from utils.settings import settings
 
 

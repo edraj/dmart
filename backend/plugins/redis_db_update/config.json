@@ -1,6 +1,4 @@
 {
-	"uuid": "e998a790-35e3-46a4-82fc-5505d9a470af",
-	"shortname": "redis_db_update",
 	"is_active": true,
 	"filters": {
 		"subpaths": ["__ALL__"],
@@ -10,9 +8,5 @@
 	},
 	"type": "hook",
 	"ordinal": 2,
-	"listen_time": "after",
-	"created_at": "2022-08-11T11:27:28.866048",
-	"updated_at": "2022-08-11T11:27:28.866052",
-	"owner_shortname": "dmart",
-	"payload": { "content_type": "python", "body": "redis_db_update.py" }
+	"listen_time": "after"
 }

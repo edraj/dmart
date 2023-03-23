@@ -1,4 +1,4 @@
-from firebase_admin import credentials, messaging, initialize_app
+from firebase_admin import credentials, messaging, initialize_app # type: ignore
 from utils.notification import Notifier
 from utils.helpers import lang_code
 from utils.settings import settings

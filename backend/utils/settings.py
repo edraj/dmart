@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     files_query: str = "scandir"
     mock_smpp_api: bool = False
     invitation_link: str = ""
+    talabatey_users_list: str = ""
+    middleware_api: str = ""
 
     class Config:
         """Load config"""
