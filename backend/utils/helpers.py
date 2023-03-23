@@ -222,11 +222,11 @@ def pp(*args, **kwargs):
     print_str = "\n\n================== DUMP DATA ==================\n"
     if args:
         for arg in args:
-            print_str += f"\narg: {arg}"
+            print_str += f"\n\narg: {arg}"
 
     if kwargs:
         for k, v in kwargs.items():
-            print_str += f"\n{k}: {v}"
+            print_str += f"\n\n{k}: {v}"
 
     print_str += "\n\n_____________________END________________________\n\n"
     print(print_str)
