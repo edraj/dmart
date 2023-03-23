@@ -2,7 +2,7 @@ from firebase_admin import credentials, messaging, initialize_app # type: ignore
 from utils.notification import Notifier
 from utils.helpers import lang_code
 from utils.settings import settings
-from models.core import Translation
+from models.core import NotificationData
 
 class FirebaseNotifier(Notifier):
     
@@ -15,20 +15,17 @@ class FirebaseNotifier(Notifier):
 
     async def send(
         self, 
-        receiver: str, 
-        title: Translation, 
-        body: Translation, 
-        image_urls: Translation | None = None
+        data: NotificationData
     ):
         self._init_connection()
         # Receiver should be user.firebase_token
         if not hasattr(self, "user"):
-            await self._load_user(receiver)
+            await self._load_user(data.receiver)
         token = self.user.firebase_token
         user_lang = lang_code(self.user.language)
-        title = title.__getattribute__(user_lang)
-        body = body.__getattribute__(user_lang)
-        image_url = image_urls.__getattribute__(user_lang)
+        title = data.title.__getattribute__(user_lang)
+        body = data.body.__getattribute__(user_lang)
+        image_url = data.image_urls.__getattribute__(user_lang)
 
         alert = messaging.ApsAlert(title = title, body = body)
         aps = messaging.Aps( alert = alert, sound = "default", content_available = True )
@@ -51,6 +48,7 @@ class FirebaseNotifier(Notifier):
             apns=apns, 
             android=android_config,
             webpush=web_push,
+            data={**data.deep_link, "id": data.entry_id}
         )
         return messaging.send(message, app=self._firebase_app)
 
