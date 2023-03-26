@@ -21,8 +21,8 @@
     //event.preventDefault();
     //$redirect(`/search/posts?q=${encodeURI(search)}`);
   }
-  function handleLogout() {
-    signedin_user.logout();
+  async function handleLogout() {
+    await signedin_user.logout();
   }
 </script>
 
@@ -65,7 +65,10 @@
     </Button>
   </Form>
   <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div style="margin-left: 8px;cursor: pointer;" on:click={handleLogout}>
+  <div
+    style="margin-left: 8px;cursor: pointer;"
+    on:click={async () => await handleLogout()}
+  >
     <Fa icon={faRightFromBracket} size={"lg"} color={"grey"} />
   </div>
 </Navbar>
