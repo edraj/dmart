@@ -307,6 +307,10 @@ async def middle(request: Request, call_next):
     return response
 
 
+@app.get("/", include_in_schema=False)
+async def root():
+    """Dummy api end point """
+    return { "status": "success", "message": "DMART API" }
 
 
 #@app.get("/s", include_in_schema=False)
@@ -337,6 +341,7 @@ async def space_backup(key: str):
 
 
 from api.managed.router import router as managed
+from api.qr.router import router as qr
 from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info
@@ -346,6 +351,12 @@ app.include_router(
 )
 app.include_router(
     managed, prefix="/managed", tags=["managed"], dependencies=[Depends(capture_body)]
+)
+app.include_router(
+    qr,
+    prefix="/qr",
+    tags=["QR"],
+    dependencies=[Depends(capture_body)],
 )
 
 app.include_router(
