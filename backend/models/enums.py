@@ -111,6 +111,7 @@ class ConditionType(StrEnum):
 
 class PluginType(StrEnum):
     hook = "hook"
+    api = "api"
 
 
 class EventListenTime(StrEnum):

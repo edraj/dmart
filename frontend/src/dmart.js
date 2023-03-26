@@ -1,23 +1,23 @@
-import dmart_fetch from "./fetch.js";
-import { website } from "./config.js";
+import dmartFetch from "./fetch.js";
 import { get } from "svelte/store";
-import signedin_user from "./stores/signedin_user";
+import signedin_user from "./routes/management/_stores/signedin_user.js";
+import { website } from "./config.js";
 // import sha1 from "./sha1.js";
 
-export async function dmart_list_schemas() {
-  return await dmart_query({ type: "subpath", subpath: "schema" });
+export async function dmartListSchemas() {
+  return await dmartQuery({ type: "subpath", subpath: "schema" });
 }
 
-export async function dmart_login(username, password) {
+export async function dmartLogin(username, password) {
   const browse_query = {
     shortname: username,
     password: password,
   };
-  return await dmart_request("user/login", browse_query);
+  return await dmartRequest("user/login", browse_query);
   //return { "records": [{ "displayname": "ali", "shortname": "hisense" }] };//resp;
 }
 
-export async function dmart_create_folder(space_name, subpath, shortname) {
+export async function dmartCreateFolder(space_name, subpath, shortname) {
   const request = {
     space_name,
     request_type: "create",
@@ -30,10 +30,10 @@ export async function dmart_create_folder(space_name, subpath, shortname) {
       },
     ],
   };
-  return dmart_request("managed/request", request);
+  return dmartRequest("managed/request", request);
 }
 
-export async function dmart_get_schemas(space_name, shortname) {
+export async function dmartGetSchemas(space_name, shortname) {
   const query = {
     space_name,
     type: "subpath",
@@ -41,10 +41,10 @@ export async function dmart_get_schemas(space_name, shortname) {
     retrieve_json_payload: true,
     filter_shortnames: [shortname],
   };
-  return dmart_query(query);
+  return dmartQuery(query);
 }
 
-export async function dmart_create_schemas(space_name, shortname, body) {
+export async function dmartCreateSchemas(space_name, shortname, body) {
   const request = {
     space_name,
     request_type: "create",
@@ -64,10 +64,35 @@ export async function dmart_create_schemas(space_name, shortname, body) {
       },
     ],
   };
-  return dmart_request("managed/request", request);
+  return dmartRequest("managed/request", request);
 }
 
-export async function dmart_request(api_suburl, browse_query) {
+export async function dmarRresourceWithPayload(
+  space_name,
+  request_record,
+  payload_file
+) {
+  const formData = new FormData();
+  formData.append("space_name", space_name);
+  formData.append("request_record", request_record);
+  formData.append("payload_file", payload_file);
+
+  const browse_request = {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+    },
+    credentials: "include",
+    cache: "no-cache",
+    mode: "cors",
+    body: formData,
+  };
+  return await dmartFetch(
+    `${website.backend}/managed/resource_with_payload`,
+    browse_request
+  );
+}
+export async function dmartRequest(api_suburl, browse_query) {
   const browse_url = `${website.backend}/${api_suburl}`;
   const browse_headers = {
     "Content-Type": "application/json",
@@ -82,30 +107,30 @@ export async function dmart_request(api_suburl, browse_query) {
     mode: "cors",
     body: JSON.stringify(browse_query),
   };
-  return await dmart_fetch(browse_url, browse_request);
+  return await dmartFetch(browse_url, browse_request);
 }
 
-export async function dmart_query(query) {
+export async function dmartQuery(query) {
   const browse_query = {
     request_type: "query",
     space_name: website.space_name,
     ...query,
   };
   //console.log("IMX query", browse_query);
-  return dmart_request("managed/query", browse_query);
+  return dmartRequest("managed/query", browse_query);
 }
 
-export async function dmart_spaces(query) {
-  return dmart_request("managed/space", query);
+export async function dmartSpaces(query) {
+  return dmartRequest("managed/space", query);
 }
 
-export async function dmart_tags() {
+export async function dmartTags() {
   const query = {
     subpath: "/posts",
     resource_types: ["post"],
     query_type: "tags",
   };
-  const json = await dmart_query(query);
+  const json = await dmartQuery(query);
   let tags = [];
   if (json.results[0].status == "success") {
     json.records[0].attributes.tags.forEach(function (record) {
@@ -119,7 +144,7 @@ export async function dmart_tags() {
   return tags;
 }
 
-export async function dmart_pub_query(
+export async function dmartPubQuery(
   subpath,
   resource_types,
   resource_shortnames = [],
@@ -145,7 +170,7 @@ export async function dmart_pub_query(
     cache: "no-cache",
     mode: "cors",
   };
-  const json = await dmart_fetch(browse_url, browse_request);
+  const json = await dmartFetch(browse_url, browse_request);
   if (json.records) {
     json.records.forEach((record) => {
       if (record.attachments.media) {
@@ -163,11 +188,11 @@ export async function dmart_pub_query(
   return json;
 }
 
-export async function dmart_pub_tags(
+export async function dmartPubTags(
   subpath = "/posts",
   resource_types = ["post"]
 ) {
-  const json = await dmart_pub_query(subpath, resource_types, [], "tags");
+  const json = await dmartPubQuery(subpath, resource_types, [], "tags");
   let tags = [];
   if (json.results[0].status == "success") {
     json.records[0].attributes.tags.forEach(function (record) {
@@ -180,19 +205,35 @@ export async function dmart_pub_tags(
   }
   return tags;
 }
-export function dmart_entry_displayname(record) {
+export function dmartEntryDisplayname(record) {
   return record?.attributes?.displayname?.en
     ? record.attributes.displayname.en
     : record.shortname;
 }
 
-export function dmart_attachment_url(attachment) {
+export function dmartAttachmentURL(attachment) {
   if (attachment.attributes.payload && attachment.attributes.payload.filepath) {
     return `${website.backend}/media/${website.space_name}/${attachment.subpath}/${attachment.shortname}/${attachment.attributes.payload.filepath}`;
   }
 }
 
-export async function dmart_entry(
+export function ctorULRForAttachment(
+  resource_type,
+  space_name,
+  subpath,
+  shortname,
+  schema_shortname,
+  ext
+) {
+  return `${
+    website.backend
+  }/managed/payload/${resource_type}/${space_name}/${subpath.replace(
+    /\/+$/,
+    ""
+  )}/${shortname}.${schema_shortname}.${ext}`.replaceAll("..", ".");
+}
+
+export async function dmartEntry(
   resource_type,
   space_name,
   subpath,
@@ -208,17 +249,22 @@ export async function dmart_entry(
     mode: "cors",
     headers: { "Content-Type": `application/${content_type}` },
   };
-  return await dmart_fetch(
-    `${website.backend}/managed/payload/${resource_type}/${space_name}/${subpath}/${shortname}.${schema_shortname}.${ext}`.replaceAll(
-      "..",
-      "."
-    ),
+
+  const url = `${
+    website.backend
+  }/managed/payload/${resource_type}/${space_name}/${subpath.replace(
+    /\/+$/,
+    ""
+  )}/${shortname}.${schema_shortname}.${ext}`.replaceAll("..", ".");
+
+  return await dmartFetch(
+    url,
     browse_request,
     content_type === "json" ? "json" : "blob"
   );
 }
 
-export async function dmart_entries(
+export async function dmartEntries(
   space,
   subpath,
   filter_types = [],
@@ -240,7 +286,7 @@ export async function dmart_entries(
   if (limit) {
     query.limit = limit;
   }
-  const json = await dmart_query(query);
+  const json = await dmartQuery(query);
   // console.log("JSON: ", json);
   let records = [];
   if (json.status == "success") {
@@ -265,7 +311,7 @@ export async function dmart_entries(
   return records;
 }
 
-export async function dmart_pub_submit(
+export async function dmartPubSubmit(
   interaction_type,
   subpath,
   parent_shortname = null,
@@ -302,10 +348,10 @@ export async function dmart_pub_submit(
     mode: "cors",
     body: formdata,
   };
-  return dmart_fetch(browse_url, browse_request);
+  return dmartFetch(browse_url, browse_request);
 }
 
-export async function dmart_postmedia(record, upload) {
+export async function dmartPostMedia(record, upload) {
   const request = {
     actor_shortname: get(signedin_user).shortname,
     space_name: website.space_name,
@@ -326,20 +372,20 @@ export async function dmart_postmedia(record, upload) {
     mode: "cors",
     body: formdata,
   };
-  return dmart_fetch(browse_url, browse_request);
+  return dmartFetch(browse_url, browse_request);
 }
 
-export async function dmart_content(action, record) {
+export async function dmartContent(action, record) {
   const request = {
     actor_shortname: get(signedin_user).shortname,
     space_name: website.space_name,
     request_type: action,
     records: [record],
   };
-  return dmart_request(request);
+  return dmartRequest(request);
 }
 
-export async function dmart_create_content(
+export async function dmartCreateContent(
   space_name,
   subpath,
   shortname,
@@ -364,14 +410,10 @@ export async function dmart_create_content(
       },
     ],
   };
-  return await dmart_request("managed/request", request);
+  return await dmartRequest("managed/request", request);
 }
 
-export async function dmart_update_content(content) {
-  content;
-}
-
-export async function dmart_delete_content(
+export async function dmartDeleteContent(
   resource_type,
   subpath,
   shortname,
@@ -393,11 +435,11 @@ export async function dmart_delete_content(
   if (parent_shortname) request.records[0].parent_shortname = parent_shortname;
 
   console.log("Delete request: ", request);
-  let resp = await dmart_request(request);
+  let resp = await dmartRequest(request);
   return resp.results[0];
 }
 
-export async function dmart_folder(
+export async function dmartFolder(
   space_name,
   subpath,
   schema_shortname,
@@ -448,10 +490,10 @@ export async function dmart_folder(
       },
     ],
   };
-  return await dmart_request("managed/request", request);
+  return await dmartRequest("managed/request", request);
 }
 
-export async function dmart_update_embedded(
+export async function dmartUpdateEmbedded(
   content_type,
   embedded,
   subpath,
@@ -472,8 +514,34 @@ export async function dmart_update_embedded(
     },
   };
 
-  let resp = await dmart_content("update", record);
+  let resp = await dmartContent("update", record);
   return resp.results[0];
+}
+
+export async function dmartHealthCheck(space_name) {
+  const browse_url = `${website.backend}/managed/health/${space_name}`;
+  const browse_headers = {
+    Accept: "application/json",
+    Connection: "close",
+  };
+  const browse_request = {
+    method: "GET",
+    headers: browse_headers,
+    credentials: "include",
+    cache: "no-cache",
+    mode: "cors",
+  };
+  return await dmartFetch(browse_url, browse_request);
+}
+
+export async function dmartLogout() {
+  const browse_url = `${website.backend}/user/logout`;
+  const browse_request = {
+    method: "POST",
+    mode: "cors",
+  };
+
+  return await dmartFetch(browse_url, browse_request, "all");
 }
 
 /*

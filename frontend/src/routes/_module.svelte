@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Col, Container, Row } from "sveltestrap";
-  import Header from "../components/Header.svelte";
-  // import Footer from "../components/Footer.svelte";
+  import Header from "./management/_components/Header.svelte";
+  // import Footer from "../_components/Footer.svelte";
 </script>
 
 <Container

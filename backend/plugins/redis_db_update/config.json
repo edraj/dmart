@@ -1,0 +1,12 @@
+{
+	"is_active": true,
+	"filters": {
+		"subpaths": ["__ALL__"],
+		"resource_types": ["content", "ticket", "permission", "role", "group", "user", "schema", "notification", "folder"],
+		"schema_shortnames": ["__ALL__"],
+		"actions": ["create", "update", "delete", "move","progress_ticket"]
+	},
+	"type": "hook",
+	"ordinal": 2,
+	"listen_time": "after"
+}

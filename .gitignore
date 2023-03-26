@@ -27,6 +27,6 @@ src/tmp/
 .python-version
 *-workspace
 sample/spaces/eser
-sample/spaces/test
 history.jsonl
 events.jsonl
+/spaces/

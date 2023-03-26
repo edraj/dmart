@@ -21,7 +21,10 @@
         ],
         "applications": [
             "/"
-          ]
+        ],
+        "startappz": [
+            "/"
+        ]
     },
     "resource_types": [
         "user",

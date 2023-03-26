@@ -1,8 +1,11 @@
+import os
 from jinja2 import Environment, FileSystemLoader
 
 
 def generate_email_from_template(template, data):
-    environment = Environment(loader=FileSystemLoader("templates/"))
+    environment = Environment(
+        loader=FileSystemLoader(os.path.dirname(__file__) + "/templates/")
+    )
     match template:
         case "activation":
             template = environment.get_template("activation.html.j2")
@@ -31,3 +34,11 @@ def generate_subject(template):
             return "[Reminder] Activate Your Account"
         case _:
             return ""
+
+
+print(
+    generate_email_from_template(
+        "activation",
+        {"name": "name", "msisdn": "msisdn", "shortname": "shortname", "link": None},
+    )
+)

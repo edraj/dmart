@@ -1,3 +1,4 @@
+import asyncio
 import csv
 from datetime import datetime
 import hashlib
@@ -50,7 +51,7 @@ from utils.custom_validations import validate_payload_with_schema
 from utils.redis_services import RedisServices
 from create_index import load_all_spaces_data_to_redis
 from utils.settings import settings
-from utils.plugins import plugin_manager
+from utils.plugin_manager import plugin_manager
 from io import StringIO
 from api.user.service import (
     send_email,
@@ -58,6 +59,7 @@ from api.user.service import (
 )
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
+
 
 router = APIRouter()
 
@@ -266,7 +268,12 @@ async def serve_space(
             )
 
         case api.RequestType.update:
-            if request.space_name not in spaces:
+            record = request.records[0]
+            try:
+                space = core.Space.from_record(record, owner_shortname)
+                if request.space_name not in spaces:
+                    raise Exception
+            except :
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
@@ -275,7 +282,6 @@ async def serve_space(
                         message="Space name provided is empty or invalid [6]",
                     ),
                 )
-            record = request.records[0]
             if not await access_control.check_access(
                 user_shortname=owner_shortname,
                 space_name=settings.all_spaces_mw,
@@ -293,18 +299,56 @@ async def serve_space(
                     ),
                 )
 
-            os.system(
-                f"mv {settings.spaces_folder}/{request.space_name} {settings.spaces_folder}/{record.shortname}"
+
+            await plugin_manager.before_action(
+                core.Event(
+                    space_name=space.shortname,
+                    branch_name=record.branch_name,
+                    subpath=record.subpath,
+                    shortname=space.shortname,
+                    action_type=core.ActionType.update,
+                    resource_type=record.resource_type,
+                    user_shortname=owner_shortname,
+                )
             )
-            with open(
-                f"{settings.spaces_folder}/{record.shortname}/.dm/meta.space.json",
-                "r+",
-            ) as meta:
-                data = json.load(meta)
-                data["shortname"] = record.shortname
-                meta.seek(0)
-                json.dump(data, meta)
-                meta.truncate()
+
+            if request.space_name != space.shortname:
+                os.system(
+                    f"mv {settings.spaces_folder}/{request.space_name} {settings.spaces_folder}/{space.shortname}"
+                )
+
+            old_space = await db.load(
+                space_name=space.shortname,
+                subpath=record.subpath,
+                shortname=space.shortname,
+                class_type=core.Space,
+                user_shortname=owner_shortname,
+                branch_name=record.branch_name
+            )
+            history_diff = await db.update(
+                space_name=space.shortname,
+                subpath=record.subpath,
+                meta=space,
+                old_version_flattend=flatten_dict(old_space.dict()),
+                new_version_flattend=flatten_dict(space.dict()),
+                updated_attributes_flattend=list(
+                    flatten_dict(record.attributes).keys()
+                ),
+                branch_name=record.branch_name,
+                user_shortname=owner_shortname
+            )
+            await plugin_manager.after_action(
+                core.Event(
+                    space_name=space.shortname,
+                    branch_name=record.branch_name,
+                    subpath=record.subpath,
+                    shortname=space.shortname,
+                    action_type=core.ActionType.update,
+                    resource_type=record.resource_type,
+                    user_shortname=owner_shortname,
+                    attributes={"history_diff": history_diff},
+                )
+            )
 
         case api.RequestType.delete:
             if request.space_name not in spaces:
@@ -1305,15 +1349,16 @@ async def create_or_update_resource_with_payload(
                 message="Space name provided is empty or invalid [5]",
             ),
         )
-    if payload_file.filename.endswith(".json"):
+    payload_filename = payload_file.filename or ""
+    if payload_filename.endswith(".json"):
         resource_content_type = ContentType.json
     elif payload_file.content_type == "application/pdf":
         resource_content_type = ContentType.pdf
     elif payload_file.content_type == "text/markdown":
         resource_content_type = ContentType.markdown
-    elif "image/" in payload_file.content_type:
+    elif payload_file.content_type and "image/" in payload_file.content_type:
         resource_content_type = ContentType.image
-    elif "audio/" in payload_file.content_type:
+    elif payload_file.content_type and "audio/" in payload_file.content_type:
         resource_content_type = ContentType.audio
     else:
         raise api.Exception(
@@ -1382,7 +1427,7 @@ async def create_or_update_resource_with_payload(
             if "schema_shortname" not in record.attributes
             else record.attributes["schema_shortname"]
         ),
-        body=f"{record.shortname}." + payload_file.filename.split(".")[1],
+        body=f"{record.shortname}." + payload_filename.split(".")[1],
     )
     if (
         not isinstance(resource_obj, core.Attachment)
@@ -1981,7 +2026,6 @@ async def execute(
         query=api.Query(**query_dict), user_shortname=logged_in_user
     )
 
-
 @router.get(
     "/s/{token}",
     response_model_exclude_none=True,
@@ -2033,3 +2077,5 @@ async def apply_alteration(
         user_shortname=logged_in_user
     )
     return response
+
+

@@ -146,7 +146,7 @@ def metapath(
         path = path / subpath / shortname / ".dm"
         filename = f"meta.{class_type.__name__.lower()}.json"
     elif issubclass(class_type, core.Space):
-        path = settings.spaces_folder / space_name / ".dm" / shortname
+        path = settings.spaces_folder / space_name / ".dm"
         filename = "meta.space.json"
     elif issubclass(class_type, core.Attachment):
         [parent_subpath, parent_name] = subpath.rsplit("/", 1)
@@ -242,7 +242,7 @@ def load_resource_payload(
     return json.loads(path.read_bytes())
 
 
-async def save(space_name: str, subpath: str, meta: core.Meta, branch_name: str | None):
+async def save(space_name: str, subpath: str, meta: core.Meta, branch_name: str | None = None):
     """Save Meta Json to respectiv file"""
     path, filename = metapath(
         space_name,
@@ -253,8 +253,6 @@ async def save(space_name: str, subpath: str, meta: core.Meta, branch_name: str 
         meta.payload.schema_shortname if meta.payload else None,
     )
 
-    if isinstance(meta, core.Space):
-        path = path.parent
 
     if not path.is_dir():
         os.makedirs(path)

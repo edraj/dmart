@@ -1,0 +1,22 @@
+{
+  "shortname": "test",
+  "owner_shortname": "dmart",
+  "displayname": {"en":"test"},
+  "description": {"en":"test space"},
+  "uuid": "e6d4dd9f-7dac-4b8c-b399-f822351759f1",
+  "resource_type": "Space",
+  "languages": [
+    "english"
+  ],
+  "primary_website": "https://dmart.cc",
+  "indexing_enabled": true,
+  "capture_misses": false,
+  "mirrors": [],
+  "check_health": true,
+  "branches": [],
+  "hide_space": false,
+  "active_plugins": [
+    "action_log",
+    "redis_db_update"
+  ]
+}

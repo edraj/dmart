@@ -13,7 +13,8 @@ class Settings(BaseSettings):
     app_url: str = ""
     public_app_url: str = ""
     app_name: str = "dmart"
-    websocket_url: str = ""
+    websocket_url: str = "http://127.0.0.1:8484"
+    websocket_port: int = 8484
     base_path: str = ""
     debug_enabled: bool = True
     log_path: Path = Path("../../logs/")
@@ -23,12 +24,13 @@ class Settings(BaseSettings):
     jwt_access_expires: int = 30 * 86400  # 30 days
     listening_host: str = "0.0.0.0"
     listening_port: int = 8282
-    websocket_port: int = 8484
     redis_host: str = "127.0.0.1"
     redis_password: str = ""
     redis_port: int = 6379
     management_space: str = "management"
+    users_subpath: str = "users"
     spaces_folder: Path = Path("../sample/spaces/")
+    contracts_folder: Path = Path("../contracts/")
     lock_period: int = 300
     servername: str = ""  # This is for print purposes only.
     auto_uuid_rule = "auto"  # Used to generate a shortname from UUID
@@ -52,6 +54,8 @@ class Settings(BaseSettings):
     files_query: str = "scandir"
     mock_smpp_api: bool = False
     invitation_link: str = ""
+    talabatey_users_list: str = ""
+    middleware_api: str = ""
 
     class Config:
         """Load config"""

@@ -3,7 +3,7 @@ import json
 import re
 import uuid
 import aiofiles
-from fastapi import APIRouter, Body, status, Depends, Response, Header
+from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
 from models.enums import RequestType, ResourceType, ContentType
@@ -16,7 +16,7 @@ from utils.jwt import JWTBearer, sign_jwt, decode_jwt
 from typing import Any
 from utils.settings import settings
 import utils.repository as repository
-from utils.plugins import plugin_manager
+from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
 from utils.redis_services import RedisServices
 from models.api import Error, Exception, Status
@@ -42,6 +42,42 @@ router = APIRouter()
 MANAGEMENT_SPACE: str = settings.management_space
 MANAGEMENT_BRANCH: str = settings.management_space_branch
 USERS_SUBPATH: str = "users"
+
+@router.get("/check-existing", response_model=api.Response, response_model_exclude_none=True)
+async def check_existing_user_fields(
+    _=Depends(JWTBearer()),
+    shortname: str | None = Query(default=None, regex=rgx.SHORTNAME), 
+    msisdn: str | None = Query(default=None, regex=rgx.EXTENDED_MSISDN), 
+    email: str | None = Query(default=None, regex=rgx.EMAIL),
+):
+    unique_fields = {
+        "shortname": shortname,
+        "msisdn": msisdn,
+        "email": email
+    }
+        
+    search_str = f"@subpath:{USERS_SUBPATH}"
+    redis_escape_chars = str.maketrans(
+        {"@": r"@\\", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
+    )
+    async with RedisServices() as redis_man:
+        for key, value in unique_fields.items():
+            if not value:
+                continue
+            value = value.translate(redis_escape_chars).replace("\\\\", "\\")
+            redis_search_res = await redis_man.search(
+                space_name=MANAGEMENT_SPACE,
+                branch_name=MANAGEMENT_BRANCH,
+                search=search_str + f" @{key}:{value}",
+                limit=1,
+                offset=0,
+                filters={}
+            )
+
+            if redis_search_res and redis_search_res["total"] > 0:
+                return api.Response(status=api.Status.success, attributes={"unique": False, "field": key})
+
+    return api.Response(status=api.Status.success, attributes={"unique": True})
 
 
 # @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
