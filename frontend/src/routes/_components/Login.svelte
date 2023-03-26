@@ -26,7 +26,7 @@
     } else {
       user.displayname = user.shortname;
     }
-    console.log(user);
+
     signedin_user.login(user);
   }
 </script>

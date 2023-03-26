@@ -13,11 +13,16 @@
   import signedin_user from "../_stores/signedin_user.js";
   // import { redirect } from "@roxi/routify";
   import LocalizedValue from "./LocalizedValue.svelte";
+  import Fa from "sveltejs-fontawesome";
+  import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 
   let search;
   function handleClick() {
     //event.preventDefault();
     //$redirect(`/search/posts?q=${encodeURI(search)}`);
+  }
+  function handleLogout() {
+    signedin_user.logout();
   }
 </script>
 
@@ -59,4 +64,8 @@
       {$_("search")}
     </Button>
   </Form>
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <div style="margin-left: 8px;" on:click={handleLogout}>
+    <Fa icon={faRightFromBracket} size={"lg"} color={"grey"} />
+  </div>
 </Navbar>
