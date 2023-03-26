@@ -110,7 +110,7 @@
 <svelte:window bind:innerHeight={height} />
 
 {#await init}
-  <Circle2 size="200" color="#FF3E00" unit="px" duration="1s" />
+  <Circle2 size="200" unit="px" duration="1s" />
 {:then _}
   {#if showContentEditSection}
     <ContentEditSection

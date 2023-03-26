@@ -220,7 +220,7 @@
 
 <div class="row mx-auto w-75">
   {#await init}
-    <Circle2 size="200" color="#FF3E00" unit="px" duration="1s" />
+    <Circle2 size="200" unit="px" duration="1s" />
   {:then _}
     <div class="d-flex justify-content-center" />
     {#key _attachments}

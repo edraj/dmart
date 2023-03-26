@@ -473,7 +473,7 @@
 {/if}
 
 <style>
-/*
+  /*
   .back-icon {
     margin-top: 8px;
     margin-left: 8px;
