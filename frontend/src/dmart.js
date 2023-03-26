@@ -534,6 +534,16 @@ export async function dmartHealthCheck(space_name) {
   return await dmartFetch(browse_url, browse_request);
 }
 
+export async function dmartLogout() {
+  const browse_url = `${website.backend}/user/logout`;
+  const browse_request = {
+    method: "POST",
+    mode: "cors",
+  };
+
+  return await dmartFetch(browse_url, browse_request, "all");
+}
+
 /*
 export async function dmart_rename(oldshortname, newshortname) { }
 export async function dmart_copy(subpath, shortname, newsubpath) { }
