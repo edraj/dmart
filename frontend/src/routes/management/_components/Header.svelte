@@ -65,7 +65,7 @@
     </Button>
   </Form>
   <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div style="margin-left: 8px;" on:click={handleLogout}>
+  <div style="margin-left: 8px;cursor: pointer;" on:click={handleLogout}>
     <Fa icon={faRightFromBracket} size={"lg"} color={"grey"} />
   </div>
 </Navbar>
