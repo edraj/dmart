@@ -40,7 +40,7 @@
 </div>
 {#if isLoading}
   <div class="d-flex justify-content-center mt-3">
-    <Circle2 size="200" color="#FF3E00" unit="px" duration="1s" />
+    <Circle2 size="200" unit="px" duration="1s" />
   </div>
 {/if}
 {#if !isLoading}

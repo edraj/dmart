@@ -1,4 +1,5 @@
 <script>
+  import { goto, isActive } from "@roxi/routify";
   import { dmartEntries, dmartFolder, dmartRequest } from "../../../dmart.js";
   import selectedSubpath from "../_stores/selected_subpath.js";
   import { entries } from "../_stores/entries.js";
@@ -18,15 +19,16 @@
   import JsonEditorModal from "./JsonEditorModal.svelte";
 
   let expanded = false;
-
   export let data;
-
   let children_subpath;
 
   $: {
     children_subpath = data.subpath + "/" + data.shortname;
   }
   async function toggle() {
+    if (!$isActive("/management/dashboard")) {
+      $goto("/management/dashboard");
+    }
     selectedSubpath.set(data.subpath);
     expanded = !expanded;
     if (!$entries[children_subpath]) {
