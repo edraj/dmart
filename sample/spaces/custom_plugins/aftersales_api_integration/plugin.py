@@ -1,3 +1,4 @@
+import json
 from models import core
 from models.core import PluginBase, Event
 from models.enums import ContentType, ResourceType
@@ -7,9 +8,17 @@ from utils.db import load, load_resource_payload, save_payload_from_json
 from fastapi.logger import logger
 from utils.redis_services import RedisServices
 from utils.settings import settings
+from pathlib import Path
 
 
 class Plugin(PluginBase):
+
+    def __init__(self) -> None:
+        super().__init__()
+        with open(Path(__file__).parent / "config.json") as file:
+            config_data = json.load(file)
+
+        self.config_data: dict = config_data
 
     async def hook(self, data: Event):
 
@@ -134,7 +143,7 @@ class Plugin(PluginBase):
                 if msisdn:
                     async with AsyncRequest() as client:
                         response = await client.get(
-                            url=f"{settings.middleware_api}/api/sim/check_subscriber_irm_status/{msisdn}",
+                            url=f"{self.config_data['middleware_api']}/api/sim/check_subscriber_irm_status/{msisdn}",
                             headers={'Cookie': f'auth_token={data.attributes.get("logged_in_user_token")}'}
                         )
                         response_json: dict = await response.json()

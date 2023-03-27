@@ -30,7 +30,6 @@ class Settings(BaseSettings):
     management_space: str = "management"
     users_subpath: str = "users"
     spaces_folder: Path = Path("../sample/spaces/")
-    contracts_folder: Path = Path("../contracts/")
     lock_period: int = 300
     servername: str = ""  # This is for print purposes only.
     auto_uuid_rule = "auto"  # Used to generate a shortname from UUID
@@ -54,8 +53,6 @@ class Settings(BaseSettings):
     files_query: str = "scandir"
     mock_smpp_api: bool = False
     invitation_link: str = ""
-    talabatey_users_list: str = ""
-    middleware_api: str = ""
 
     class Config:
         """Load config"""
