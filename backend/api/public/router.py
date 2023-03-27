@@ -396,7 +396,7 @@ async def create_entry(
 
 
 @router.post("/excute/{task_type}/{space_name}")
-async def excute(space_name: str, _: TaskType, record: core.Record):
+async def excute(space_name: str, task_type: TaskType, record: core.Record):
     meta = await db.load(
         space_name=space_name,
         subpath=record.subpath,
