@@ -1,13 +1,14 @@
 <script>
   import { JSONEditor, Mode } from "svelte-jsoneditor";
   import { faSave } from "@fortawesome/free-regular-svg-icons";
+  import { onMount } from "svelte";
 
   export let content;
   export let self;
   export let readOnly = false;
   export let validator;
   export let handleSave = null;
-  export let mode = Mode.text;
+  export let mode = Mode.tree;
 
   function handleRenderMenu(items, context) {
     const separator = {
@@ -38,6 +39,12 @@
       isSchemaValidated = true;
     } else {
       isSchemaValidated = false;
+    }
+  }
+
+  $: {
+    if (content.json) {
+      self?.expand(() => true);
     }
   }
 </script>
