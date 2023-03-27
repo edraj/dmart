@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from models.core import PluginBase, Event
 # from utils.spaces import initialize_spaces
 import utils.db as db
@@ -5,10 +7,20 @@ import models.core as core
 from utils.async_request import AsyncRequest
 from utils.settings import settings
 import logging
+from utils.helpers import pp
+import json
+
 
 logger = logging.getLogger(__name__)
 class Plugin(PluginBase):
 
+    def __init__(self) -> None:
+        super().__init__()
+        with open(Path(__file__).parent / "config.json") as file:
+            config_data = json.load(file)
+
+        self.config_data: dict = config_data
+        
 
     async def hook(self, data: Event):
         # Type narrowing for PyRight
@@ -17,7 +29,7 @@ class Plugin(PluginBase):
             return
 
         ticket_obj = await db.load(data.space_name, data.subpath, data.shortname, core.Ticket, data.user_shortname)
-        if ticket_obj.owner_shortname in settings.talabatey_users_list.split(',') and ticket_obj.state=='approved' and data.action_type=='update':
+        if ticket_obj.owner_shortname in self.config_data["talabatey_users_list"].split(',') and ticket_obj.state=='approved' and data.action_type=='update':
             async with AsyncRequest() as client:
                 response = await client.post(
                     f'http://zain-sim-swap.talabatey.com/auth/login',

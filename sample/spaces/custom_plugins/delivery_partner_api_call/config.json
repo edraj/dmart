@@ -7,5 +7,6 @@
 		"actions": ["progress_ticket"]
 	},
 	"type": "hook",
-	"listen_time": "after"
+	"listen_time": "after",
+	"talabatey_users_list": ""
 }
