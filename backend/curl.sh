@@ -126,6 +126,11 @@ curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"' -F 'reques
 echo -n -e "Create ticket: \t\t\t"
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="test"'  'request_type: "create"' -F 'request_record=@"../sample/test/ticketcontent.json"' -F 'payload_file=@"../sample/test/ticketbody.json"' ${API_URL}/managed/resource_with_payload  | jq .status
 
+
+echo -n -e "Create QR Code: \t\t\t"
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT"  ${API_URL}/qr/generate/ticket/test/myfolder/an_example | jq .status
+#curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F  ${API_URL}/qr/generate/ticket/test/myfolder/an_example  | jq .status
+
 # echo -n -e "Move / rename ticket: \t"
 # curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "test","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder/an_example","shortname": "'${SHORTNAME}'","attributes": {"src_subpath": "/tickets/postpaid_prime","src_shortname": "'${SHORTNAME}'","dest_subpath": "/tickets/postpaid_prime","dest_shortname": "'${UPDATE_SHORTNAME}'","is_active": true}}]}' ${API_URL}/managed/request | jq .status
 
