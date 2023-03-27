@@ -29,5 +29,6 @@
     ]
   },
   "listen_time": "after",
-  "type": "hook"
+  "type": "hook",
+  "middleware_api": ""
 }
