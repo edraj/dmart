@@ -37,7 +37,7 @@
         data.subpath,
         [data.resource_type],
         [],
-        "subpath"
+        "search"
       );
       if (_entries.length === 0) {
         contents.set({
@@ -191,6 +191,7 @@
 
     <div
       class="col-1"
+      style="cursor: pointer;"
       hidden={!displayActionMenu}
       on:click={() => handleSubpathCreate()}
     >
@@ -198,6 +199,7 @@
     </div>
     <div
       class="col-1"
+      style="cursor: pointer;"
       hidden={!displayActionMenu}
       on:click={() => (isSubpathUpdateModalOpen = true)}
     >
@@ -205,6 +207,7 @@
     </div>
     <div
       class="col-1"
+      style="cursor: pointer;"
       hidden={!displayActionMenu}
       on:click={async () => await handleSubpathDelete()}
     >
