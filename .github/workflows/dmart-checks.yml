@@ -25,7 +25,7 @@ jobs:
         cp ~/config.env backend/
     - name: Lint with pyright
       run: |
-        pyright backend/
+        PYRIGHT_PYTHON_FORCE_VERSION=latest pyright backend/
     - name: Test with pytest
       run: |
         cd backend; pytest

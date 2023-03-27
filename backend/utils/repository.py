@@ -184,7 +184,7 @@ async def serve_query(
                     if query.highlight_fields:
                         for key, value in query.highlight_fields.items():
                             resource_base_record.attributes[value] = getattr(
-                                redis_document, key, None
+                                redis_doc_dict, key, None
                             )
                             
                     # Don't repeat the same entry comming from different indices
