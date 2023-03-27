@@ -68,6 +68,9 @@ class Record(BaseModel):
     def to_dict(self):
         return json.loads(self.json())
 
+    def __eq__(self, other):
+        return self.shortname == other.shortname
+
 
 class Translation(Resource):
     en: str | None = None

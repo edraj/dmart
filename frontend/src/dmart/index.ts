@@ -257,6 +257,7 @@ export async function getProfile() {
   return data;
 
 };
+
 export async function query(query: QueryRequest) : Promise<ApiResponse> {
   const { data } = await axios.post<ApiResponse & {attributes: {total: number, returned: number}}>( api_url + "/managed/query", query, {headers});
   return data;

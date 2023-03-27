@@ -15,5 +15,7 @@
     ]
   },
   "listen_time": "after",
-  "type": "hook"
+  "type": "hook",
+  "available_tickets": ["change_ownership", "dummy", "migration", "correct_info", "b2b"],
+  "contracts_folder": "../contracts/"
 }

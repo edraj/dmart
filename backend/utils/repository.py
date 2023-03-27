@@ -64,10 +64,21 @@ async def serve_query(
 
             query.include_fields = [] # Don't support include fields for now, will be supported after abandon meta doc enhancement
             search_res, total = await redis_query_search(query, redis_query_policies)
+            res_data: list = []
+            for redis_document in search_res:
+                res_data.append(json.loads(redis_document.json))
+            if len(query.filter_schema_names) > 1 and query.sort_by:
+                res_data = sorted(
+                    res_data,
+                    key=lambda d: d[query.sort_by]
+                    if query.sort_by in d
+                    else "",
+                    reverse=(query.sort_type == api.SortType.descending),
+                )
+                res_data = res_data[query.offset : (query.limit + query.offset)]
 
             async with RedisServices() as redis_services:
-                for redis_document in search_res:
-                    redis_doc_dict = json.loads(redis_document.json)
+                for redis_doc_dict in res_data:
                     meta_doc_content = {}
                     payload_doc_content = {}
                     resource_class = getattr(
@@ -173,7 +184,7 @@ async def serve_query(
                     if query.highlight_fields:
                         for key, value in query.highlight_fields.items():
                             resource_base_record.attributes[value] = getattr(
-                                redis_document, key, None
+                                redis_doc_dict, key, None
                             )
                             
                     # Don't repeat the same entry comming from different indices
@@ -182,20 +193,6 @@ async def serve_query(
                         continue
 
                     records.append(resource_base_record)
-
-            # Sort all entries from all schemas
-            if (
-                query.sort_by in core.Meta.__fields__
-                and len(query.filter_schema_names) > 1
-            ):
-                records = sorted(
-                    records,
-                    key=lambda d: d.attributes[query.sort_by]
-                    if query.sort_by in d.attributes
-                    else "",
-                    reverse=(query.sort_type == api.SortType.descending),
-                )
-            records = records[query.offset : (query.limit + query.offset)]
 
         case api.QueryType.subpath:
             subpath = query.subpath
@@ -690,6 +687,12 @@ async def redis_query_search(query: api.Query, redis_query_policies: list = []) 
             + "]"
         )
 
+    limit = query.limit
+    offset = query.offset
+    if len(query.filter_schema_names) > 1 and query.sort_by:
+        limit += offset
+        offset = 0
+
     async with RedisServices() as redis_services:
         for schema_name in query.filter_schema_names:
             redis_res = await redis_services.search(
@@ -706,8 +709,8 @@ async def redis_query_search(query: api.Query, redis_query_policies: list = []) 
                     "created_at": created_at_search,
                 },
 
-                limit=(query.limit + query.offset),
-                offset=0,
+                limit=limit,
+                offset=offset,
                 highlight_fields=list(query.highlight_fields.keys()),
                 sort_by=query.sort_by,
                 sort_type=query.sort_type or api.SortType.ascending,

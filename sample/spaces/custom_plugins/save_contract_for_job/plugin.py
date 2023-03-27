@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import shutil
@@ -18,10 +19,16 @@ from pathlib import Path
 from weasyprint import HTML
 
 class Plugin(PluginBase):
-    available_tickets = ["change_ownership", "dummy", "migration", "correct_info", "b2b"]
     XML_DATA: dict = {}
     attachments: dict = {}
     folder_dist: Path
+
+    def __init__(self) -> None:
+        super().__init__()
+        with open(Path(__file__).parent / "config.json") as file:
+            config_data = json.load(file)
+
+        self.config_data: dict = config_data
 
     async def hook(self, data: Event):
 
@@ -50,7 +57,7 @@ class Plugin(PluginBase):
             return
         ticket_name = ticket_locator.get('subpath', '/').split('/')[1]
 
-        if contract_meta.state != 'pending' or ticket_name not in self.available_tickets:
+        if contract_meta.state != 'pending' or ticket_name not in self.config_data["available_tickets"]:
             return
 
         ticket_meta: core.Ticket = await db.load(
@@ -97,7 +104,7 @@ class Plugin(PluginBase):
         date = contract_meta.created_at.strftime("%y%m%d")
         time = contract_meta.created_at.strftime("%H%M%S")
         folder_name = f'{str(contract_owner.uuid)[:8]}{contract_number}{str(date)}_{str(time)}'
-        self.folder_dist = (settings.contracts_folder / folder_name)
+        self.folder_dist = (Path(self.config_data["contracts_folder"]) / folder_name)
         if not self.folder_dist.is_dir():
             os.makedirs(self.folder_dist)
 
@@ -171,7 +178,7 @@ class Plugin(PluginBase):
                 logger.error(f"Plugin:save_contract_for_job:{str(e)}")
 
         # generate zip file
-        shutil.make_archive(str(settings.contracts_folder / f'C{folder_name}'), 'zip', self.folder_dist)
+        shutil.make_archive((f"{self.config_data['contracts_folder']}/C{folder_name}"), 'zip', self.folder_dist)
 
     def resize_image(self, image):
         base_width = 700
