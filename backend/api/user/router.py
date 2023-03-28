@@ -43,19 +43,18 @@ MANAGEMENT_SPACE: str = settings.management_space
 MANAGEMENT_BRANCH: str = settings.management_space_branch
 USERS_SUBPATH: str = "users"
 
-@router.get("/check-existing", response_model=api.Response, response_model_exclude_none=True)
+
+@router.get(
+    "/check-existing", response_model=api.Response, response_model_exclude_none=True
+)
 async def check_existing_user_fields(
     _=Depends(JWTBearer()),
-    shortname: str | None = Query(default=None, regex=rgx.SHORTNAME), 
-    msisdn: str | None = Query(default=None, regex=rgx.EXTENDED_MSISDN), 
+    shortname: str | None = Query(default=None, regex=rgx.SHORTNAME),
+    msisdn: str | None = Query(default=None, regex=rgx.EXTENDED_MSISDN),
     email: str | None = Query(default=None, regex=rgx.EMAIL),
 ):
-    unique_fields = {
-        "shortname": shortname,
-        "msisdn": msisdn,
-        "email": email
-    }
-        
+    unique_fields = {"shortname": shortname, "msisdn": msisdn, "email": email}
+
     search_str = f"@subpath:{USERS_SUBPATH}"
     redis_escape_chars = str.maketrans(
         {"@": r"@\\", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
@@ -71,11 +70,14 @@ async def check_existing_user_fields(
                 search=search_str + f" @{key}:{value}",
                 limit=1,
                 offset=0,
-                filters={}
+                filters={},
             )
 
             if redis_search_res and redis_search_res["total"] > 0:
-                return api.Response(status=api.Status.success, attributes={"unique": False, "field": key})
+                return api.Response(
+                    status=api.Status.success,
+                    attributes={"unique": False, "field": key},
+                )
 
     return api.Response(status=api.Status.success, attributes={"unique": True})
 
@@ -299,10 +301,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     branch_name=MANAGEMENT_BRANCH,
                 )
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
-        if user and user.is_active and (
-            request.invitation
-            or password_hashing.verify_password(
-                request.password or "", user.password or ""
+        if (
+            user
+            and user.is_active
+            and (
+                request.invitation
+                or password_hashing.verify_password(
+                    request.password or "", user.password or ""
+                )
             )
         ):
             access_token = sign_jwt(
@@ -359,7 +365,12 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
         if e.error.type == "db":
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="auth", code=14, message="Invalid username or password [3]", info=[{"details":str(e)}]),
+                api.Error(
+                    type="auth",
+                    code=14,
+                    message="Invalid username or password [3]",
+                    info=[{"details": str(e)}],
+                ),
             )
         else:
             raise e
@@ -405,7 +416,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
             and (path / str(user.payload.body)).is_file()
         ):
             async with aiofiles.open(
-                path / str(user.payload.body), "r"  
+                path / str(user.payload.body), "r"
             ) as payload_file_content:
                 attributes["payload"].body = json.loads(
                     await payload_file_content.read()
@@ -568,7 +579,7 @@ async def update_profile(
                         payload_data=separate_payload_data,
                         space_name=MANAGEMENT_SPACE,
                         branch_name=MANAGEMENT_BRANCH,
-                        schema_shortname=str(user.payload.schema_shortname),  
+                        schema_shortname=str(user.payload.schema_shortname),
                     )
 
             if separate_payload_data:
@@ -576,7 +587,7 @@ async def update_profile(
                     MANAGEMENT_SPACE,
                     USERS_SUBPATH,
                     user,
-                    separate_payload_data, 
+                    separate_payload_data,
                     MANAGEMENT_BRANCH,
                 )
 
@@ -705,7 +716,7 @@ async def otp_request(
     if "msisdn" in result:
         if user.msisdn != result["msisdn"]:
             raise exception
-        else: 
+        else:
             await send_otp(result["msisdn"], skel_accept_language or "")
     else:
         if user.email != result["email"]:
@@ -900,7 +911,6 @@ async def confirm_otp(
                 ),
             )
 
-    
 
 @router.post("/reset", response_model=api.Response, response_model_exclude_none=True)
 async def user_reset(
