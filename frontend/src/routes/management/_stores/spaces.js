@@ -1,4 +1,5 @@
 import { dmartRequest } from "../../../dmart.js";
+import signedin_user from "./signedin_user.js";
 import { writable } from "svelte/store";
 
 const local = JSON.parse(localStorage.getItem("spaces"));
@@ -74,6 +75,9 @@ export const getSpaces = async () => {
     });
     return true;
   } else {
+    if (response.error.type === "jwtauth") {
+      await signedin_user.logout();
+    }
     return false;
   }
 };

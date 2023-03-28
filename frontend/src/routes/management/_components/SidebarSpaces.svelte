@@ -108,13 +108,14 @@
   {/if}
 {/key}
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
-<div
-  on:mouseover={(e) => (displayActionMenu = true)}
-  on:mouseleave={(e) => (displayActionMenu = false)}
->
+<div>
   <ListGroupItem class="px-0">
     <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div class="mb-2">
+    <div
+      class="mb-2"
+      on:mouseover={(e) => (displayActionMenu = true)}
+      on:mouseleave={(e) => (displayActionMenu = false)}
+    >
       <div class="d-flex row">
         <div class="col-7" on:click={() => (expanded = !expanded)}>
           <b style="cursor: pointer;"
@@ -124,6 +125,7 @@
 
         <div
           class="col-1"
+          style="cursor: pointer;"
           hidden={!displayActionMenu}
           on:click={() => {
             props = [
@@ -142,6 +144,7 @@
         </div>
         <div
           class="col-1"
+          style="cursor: pointer;"
           hidden={!displayActionMenu}
           on:click={() => {
             props = [
@@ -165,6 +168,7 @@
         </div>
         <div
           class="col-1"
+          style="cursor: pointer;"
           hidden={!displayActionMenu}
           on:click={async () => await handleSpaceDelete()}
         >

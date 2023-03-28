@@ -213,6 +213,7 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <div
   class="d-flex justify-content-end mx-2 flex-row"
+  style="cursor: pointer;"
   on:click={toggleCreateAttachemntModal}
 >
   <Fa icon={faPlusSquare} size={"3x"} color={"grey"} />
@@ -234,12 +235,17 @@
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <div
               class="mx-1"
+              style="cursor: pointer;"
               on:click={async () => await handleDelete(attachment)}
             >
               <Fa icon={faTrashCan} size="2x" color="red" />
             </div>
             <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <div class="mx-1" on:click={() => handleView(attachment.title)}>
+            <div
+              class="mx-1"
+              style="cursor: pointer;"
+              on:click={() => handleView(attachment.title)}
+            >
               <Fa icon={faEye} size="2x" color="grey" />
             </div>
           </div>
