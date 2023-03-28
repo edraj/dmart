@@ -1,10 +1,19 @@
 import json
 from sys import modules as sys_modules
 from models.enums import ContentType
-from models.core import ActionType, Notification, NotificationData, PluginBase, Event, Translation
+from models.core import (
+    ActionType,
+    Notification,
+    NotificationData,
+    PluginBase,
+    Event,
+    Translation,
+)
 from utils.notification import NotificationManager
+
 # from plugins.web_notification import WebNotifier, websocket_push
 from utils.helpers import branch_path, camel_case, replace_message_vars
+
 # from utils.notification import NotificationContext, send_notification
 from utils.redis_services import RedisServices
 from utils.repository import _save_model, get_entry_attachments, get_group_users
@@ -14,7 +23,6 @@ from utils.db import load, load_resource_payload, save
 
 
 class Plugin(PluginBase):
-
     async def hook(self, data: Event):
         """
         after any action
@@ -25,7 +33,7 @@ class Plugin(PluginBase):
         """
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
-            logger.error(
+            logger.warn(
                 f"data.shortname is None and str is required at system_notification_sender"
             )
             return
@@ -43,7 +51,10 @@ class Plugin(PluginBase):
                     data.branch_name,
                 )
             ).dict()
-            if entry["payload"] and entry["payload"]["content_type"] == ContentType.json:
+            if (
+                entry["payload"]
+                and entry["payload"]["content_type"] == ContentType.json
+            ):
                 entry["payload"]["body"] = load_resource_payload(
                     space_name=data.space_name,
                     subpath=data.subpath,
@@ -99,7 +110,7 @@ class Plugin(PluginBase):
 
             formatted_req = await self.prepare_request(notification_dict, entry)
             for receiver in set(notification_subscribers):
-                
+
                 if not formatted_req["push_only"]:
                     notification_obj = await Notification.from_request(
                         notification_dict, entry
@@ -108,22 +119,21 @@ class Plugin(PluginBase):
                         "personal",
                         f"people/{receiver}/notifications",
                         notification_obj,
-                        notification_dict["branch_name"]
+                        notification_dict["branch_name"],
                     )
 
                 for platform in formatted_req["platforms"]:
                     await notification_manager.send(
                         platform=platform,
                         data=NotificationData(
-                            receiver=receiver, 
+                            receiver=receiver,
                             title=formatted_req["title"],
                             body=formatted_req["body"],
                             image_urls=formatted_req["images_urls"],
                             deep_link=notification_dict.get("deep_link", {}),
-                            entry_id=entry["shortname"]
-                        )
+                            entry_id=entry["shortname"],
+                        ),
                     )
-
 
     async def prepare_request(self, notification_dict: dict, entry: dict) -> dict:
         for locale in ["ar", "en", "kd"]:
@@ -141,7 +151,7 @@ class Plugin(PluginBase):
         notification_attachments = await get_entry_attachments(
             subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
             branch_name=notification_dict["branch_name"],
-            attachments_path=attachments_path
+            attachments_path=attachments_path,
         )
         notification_images = {
             "en": notification_attachments.get("media", {}).get("en"),
@@ -150,15 +160,9 @@ class Plugin(PluginBase):
         }
 
         return {
-            "platforms":notification_dict["types"],
-            "title":Translation(**notification_dict["displayname"]),
-            "body":Translation(**notification_dict["description"]),
-            "images_urls":Translation(**notification_images),
-            "push_only":notification_dict.get("push_only", False)
+            "platforms": notification_dict["types"],
+            "title": Translation(**notification_dict["displayname"]),
+            "body": Translation(**notification_dict["description"]),
+            "images_urls": Translation(**notification_images),
+            "push_only": notification_dict.get("push_only", False),
         }
-            
-                    
-
-
-                
-            

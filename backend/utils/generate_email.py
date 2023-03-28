@@ -34,11 +34,3 @@ def generate_subject(template):
             return "[Reminder] Activate Your Account"
         case _:
             return ""
-
-
-print(
-    generate_email_from_template(
-        "activation",
-        {"name": "name", "msisdn": "msisdn", "shortname": "shortname", "link": None},
-    )
-)
