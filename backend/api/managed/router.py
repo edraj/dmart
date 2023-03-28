@@ -1,3 +1,4 @@
+import asyncio
 import csv
 from datetime import datetime
 import hashlib
@@ -50,7 +51,7 @@ from utils.custom_validations import validate_payload_with_schema
 from utils.redis_services import RedisServices
 from create_index import load_all_spaces_data_to_redis
 from utils.settings import settings
-from utils.plugins import plugin_manager
+from utils.plugin_manager import plugin_manager
 from io import StringIO
 from api.user.service import (
     send_email,
@@ -58,6 +59,7 @@ from api.user.service import (
 )
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
+
 
 router = APIRouter()
 
@@ -266,7 +268,12 @@ async def serve_space(
             )
 
         case api.RequestType.update:
-            if request.space_name not in spaces:
+            record = request.records[0]
+            try:
+                space = core.Space.from_record(record, owner_shortname)
+                if request.space_name not in spaces:
+                    raise Exception
+            except :
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
@@ -275,7 +282,6 @@ async def serve_space(
                         message="Space name provided is empty or invalid [6]",
                     ),
                 )
-            record = request.records[0]
             if not await access_control.check_access(
                 user_shortname=owner_shortname,
                 space_name=settings.all_spaces_mw,
@@ -293,18 +299,56 @@ async def serve_space(
                     ),
                 )
 
-            os.system(
-                f"mv {settings.spaces_folder}/{request.space_name} {settings.spaces_folder}/{record.shortname}"
+
+            await plugin_manager.before_action(
+                core.Event(
+                    space_name=space.shortname,
+                    branch_name=record.branch_name,
+                    subpath=record.subpath,
+                    shortname=space.shortname,
+                    action_type=core.ActionType.update,
+                    resource_type=record.resource_type,
+                    user_shortname=owner_shortname,
+                )
             )
-            with open(
-                f"{settings.spaces_folder}/{record.shortname}/.dm/meta.space.json",
-                "r+",
-            ) as meta:
-                data = json.load(meta)
-                data["shortname"] = record.shortname
-                meta.seek(0)
-                json.dump(data, meta)
-                meta.truncate()
+
+            if request.space_name != space.shortname:
+                os.system(
+                    f"mv {settings.spaces_folder}/{request.space_name} {settings.spaces_folder}/{space.shortname}"
+                )
+
+            old_space = await db.load(
+                space_name=space.shortname,
+                subpath=record.subpath,
+                shortname=space.shortname,
+                class_type=core.Space,
+                user_shortname=owner_shortname,
+                branch_name=record.branch_name
+            )
+            history_diff = await db.update(
+                space_name=space.shortname,
+                subpath=record.subpath,
+                meta=space,
+                old_version_flattend=flatten_dict(old_space.dict()),
+                new_version_flattend=flatten_dict(space.dict()),
+                updated_attributes_flattend=list(
+                    flatten_dict(record.attributes).keys()
+                ),
+                branch_name=record.branch_name,
+                user_shortname=owner_shortname
+            )
+            await plugin_manager.after_action(
+                core.Event(
+                    space_name=space.shortname,
+                    branch_name=record.branch_name,
+                    subpath=record.subpath,
+                    shortname=space.shortname,
+                    action_type=core.ActionType.update,
+                    resource_type=record.resource_type,
+                    user_shortname=owner_shortname,
+                    attributes={"history_diff": history_diff},
+                )
+            )
 
         case api.RequestType.delete:
             if request.space_name not in spaces:
@@ -542,7 +586,7 @@ async def serve_request(
                                 channel += f"SMS:{record.attributes.get('msisdn')},"
                                 try:
                                     await send_sms(
-                                        msisdn=record.attributes.get("msisdn"),  # type: ignore
+                                        msisdn=record.attributes.get("msisdn", ""),
                                         message=invitation_message,
                                     )
                                 except Exception as e:
@@ -576,7 +620,7 @@ async def serve_request(
                                 try:
                                     await send_email(
                                         from_address=settings.email_sender,
-                                        to_address=record.attributes.get("email"),  # type: ignore
+                                        to_address=record.attributes.get("email", ""),
                                         # message=f"Welcome, this is your invitation link: {invitation_link}",
                                         message=generate_email_from_template(
                                             "activation",
@@ -606,12 +650,12 @@ async def serve_request(
                                 f"users:login:invitation:{invitation_token}", channel
                             )
 
-                    if separate_payload_data != None:
+                    if separate_payload_data != None and isinstance(separate_payload_data, dict):
                         await db.save_payload_from_json(
                             request.space_name,
                             record.subpath,
                             resource_obj,
-                            separate_payload_data,  # type: ignore
+                            separate_payload_data,
                             record.branch_name,
                         )
 
@@ -1305,15 +1349,16 @@ async def create_or_update_resource_with_payload(
                 message="Space name provided is empty or invalid [5]",
             ),
         )
-    if payload_file.filename.endswith(".json"):
+    payload_filename = payload_file.filename or ""
+    if payload_filename.endswith(".json"):
         resource_content_type = ContentType.json
     elif payload_file.content_type == "application/pdf":
         resource_content_type = ContentType.pdf
     elif payload_file.content_type == "text/markdown":
         resource_content_type = ContentType.markdown
-    elif "image/" in payload_file.content_type:
+    elif payload_file.content_type and "image/" in payload_file.content_type:
         resource_content_type = ContentType.image
-    elif "audio/" in payload_file.content_type:
+    elif payload_file.content_type and "audio/" in payload_file.content_type:
         resource_content_type = ContentType.audio
     else:
         raise api.Exception(
@@ -1382,7 +1427,7 @@ async def create_or_update_resource_with_payload(
             if "schema_shortname" not in record.attributes
             else record.attributes["schema_shortname"]
         ),
-        body=f"{record.shortname}." + payload_file.filename.split(".")[1],
+        body=f"{record.shortname}." + payload_filename.split(".")[1],
     )
     if (
         not isinstance(resource_obj, core.Attachment)
@@ -1400,9 +1445,9 @@ async def create_or_update_resource_with_payload(
         )
 
     if resource_obj.shortname == settings.auto_uuid_rule:
-        resource_obj.uuid = str(uuid4())  # type: ignore
-        resource_obj.shortname = resource_obj.uuid[:8]
-        resource_obj.payload.body = f"{resource_obj.uuid[:8]}.json"
+        resource_obj.uuid = uuid4()
+        resource_obj.shortname = str(resource_obj.uuid)[:8]
+        resource_obj.payload.body = f"{str(resource_obj.uuid)[:8]}.json"
 
     if (
         resource_content_type == ContentType.json
@@ -1457,7 +1502,7 @@ async def import_resources_from_csv(
 ):
 
     contents = await resources_file.read()
-    decoded = contents.decode()  # type: ignore
+    decoded = contents.decode()
     buffer = StringIO(decoded)
     csv_reader = csv.DictReader(buffer)
 
@@ -1690,47 +1735,47 @@ async def retrieve_entry_meta(
     return meta.dict(exclude_none=True)
 
 
-@router.post("/reload-redis-data", response_model_exclude_none=True)
-async def recreate_redis_indices(
-    for_space: str | None = None,
-    for_schemas: list | None = None,
-    for_subpaths: list | None = None,
-    logged_in_user=Depends(JWTBearer()),
-):
+# @router.post("/reload-redis-data", response_model_exclude_none=True)
+# async def recreate_redis_indices(
+#     for_space: str | None = None,
+#     for_schemas: list | None = None,
+#     for_subpaths: list | None = None,
+#     logged_in_user=Depends(JWTBearer()),
+# ):
 
-    spaces = await get_spaces()
-    for space_name, space_json in spaces.items():
-        space_obj = core.Space.parse_raw(space_json)
-        if space_obj.indexing_enabled and not await access_control.check_access(
-            user_shortname=logged_in_user,
-            space_name=space_name,
-            subpath="/",
-            resource_type=ResourceType.content,
-            action_type=core.ActionType.create,
-        ):
-            raise api.Exception(
-                status.HTTP_401_UNAUTHORIZED,
-                api.Error(
-                    type="request",
-                    code=401,
-                    message="You don't have permission to this action [12]",
-                ),
-            )
+#     spaces = await get_spaces()
+#     for space_name, space_json in spaces.items():
+#         space_obj = core.Space.parse_raw(space_json)
+#         if space_obj.indexing_enabled and not await access_control.check_access(
+#             user_shortname=logged_in_user,
+#             space_name=space_name,
+#             subpath="/",
+#             resource_type=ResourceType.content,
+#             action_type=core.ActionType.create,
+#         ):
+#             raise api.Exception(
+#                 status.HTTP_401_UNAUTHORIZED,
+#                 api.Error(
+#                     type="request",
+#                     code=401,
+#                     message="You don't have permission to this action [12]",
+#                 ),
+#             )
 
-    async with RedisServices() as redis_services:
-        await redis_services.create_indices_for_all_spaces_meta_and_schemas(
-            for_space, for_schemas
-        )
-    loaded_data = await load_all_spaces_data_to_redis(for_space, for_subpaths)
-    await initialize_spaces()
-    await access_control.load_permissions_and_roles()
+#     async with RedisServices() as redis_services:
+#         await redis_services.create_indices_for_all_spaces_meta_and_schemas(
+#             for_space, for_schemas
+#         )
+#     loaded_data = await load_all_spaces_data_to_redis(for_space, for_subpaths)
+#     await initialize_spaces()
+#     await access_control.load_permissions_and_roles()
 
-    report = [
-        {"space_name": space_name, "index_data": index_data}
-        for space_name, index_data in loaded_data.items()
-    ]
+#     report = [
+#         {"space_name": space_name, "index_data": index_data}
+#         for space_name, index_data in loaded_data.items()
+#     ]
 
-    return api.Response(status=api.Status.success, attributes={"report": report})
+#     return api.Response(status=api.Status.success, attributes={"report": report})
 
 
 @router.get("/health/{space_name}", response_model_exclude_none=True)
@@ -1941,7 +1986,7 @@ async def execute(
     if (
         meta.payload is None
         or type(meta.payload.body) != str
-        or not meta.payload.body.endswith(".json")  # type: ignore
+        or not str(meta.payload.body).endswith(".json")
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -1953,7 +1998,7 @@ async def execute(
     query_dict = db.load_resource_payload(
         space_name=space_name,
         subpath=record.subpath,
-        filename=meta.payload.body,  # type: ignore
+        filename=str(meta.payload.body),
         class_type=core.Content,
         branch_name=branch_name,
     )
@@ -1980,7 +2025,6 @@ async def execute(
     return await query_entries(
         query=api.Query(**query_dict), user_shortname=logged_in_user
     )
-
 
 @router.get(
     "/s/{token}",
@@ -2033,3 +2077,5 @@ async def apply_alteration(
         user_shortname=logged_in_user
     )
     return response
+
+

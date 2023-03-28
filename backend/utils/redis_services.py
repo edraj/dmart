@@ -869,7 +869,7 @@ class RedisServices(object):
         search_query.paging(offset, limit)
 
         try:
-            search_res = await ft_index.search(query=search_query)  # type: ignore
+            search_res = await ft_index.search(query=search_query)
             return {"data": search_res.docs, "total": search_res.total}
         except:
             return {}

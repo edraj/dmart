@@ -1,0 +1,21 @@
+{
+  "is_active": true,
+  "filters": {
+    "subpaths": [
+      "tickets"
+    ],
+    "resource_types": [
+      "ticket"
+    ],
+    "schema_shortnames": [
+      "contract"
+    ],
+    "actions": [
+      "progress_ticket"
+    ]
+  },
+  "listen_time": "after",
+  "type": "hook",
+  "available_tickets": ["change_ownership", "dummy", "migration", "correct_info", "b2b"],
+  "contracts_folder": "../contracts/"
+}

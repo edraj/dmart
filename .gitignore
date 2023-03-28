@@ -1,4 +1,5 @@
 __pycache__
+logs
 .vscode
 .coverage
 **/*.log
@@ -26,3 +27,6 @@ src/tmp/
 .python-version
 *-workspace
 sample/spaces/eser
+history.jsonl
+events.jsonl
+/spaces/

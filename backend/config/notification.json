@@ -1,0 +1,17 @@
+{
+    "web": {
+        "active": true,
+        "module": "utils.web_notifier",
+        "class": "WebNotifier"
+    },
+    "sms": {
+        "active": false,
+        "module": "utils.sms_notifier",
+        "class": "SMSNotifier"
+    },
+    "mobile": {
+        "active": false,
+        "module": "utils.firebase_notifier",
+        "class": "FirebaseNotifier"
+    }
+}

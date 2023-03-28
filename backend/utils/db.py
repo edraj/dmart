@@ -9,7 +9,7 @@ from utils.middleware import get_request_data
 from utils.redis_services import RedisServices
 from utils.settings import settings
 import models.core as core
-from typing import TypeVar, Type
+from typing import TypeVar, Type, Any
 import models.api as api
 import os
 import json
@@ -146,7 +146,7 @@ def metapath(
         path = path / subpath / shortname / ".dm"
         filename = f"meta.{class_type.__name__.lower()}.json"
     elif issubclass(class_type, core.Space):
-        path = settings.spaces_folder / space_name / ".dm" / shortname
+        path = settings.spaces_folder / space_name / ".dm"
         filename = "meta.space.json"
     elif issubclass(class_type, core.Attachment):
         [parent_subpath, parent_name] = subpath.rsplit("/", 1)
@@ -242,7 +242,7 @@ def load_resource_payload(
     return json.loads(path.read_bytes())
 
 
-async def save(space_name: str, subpath: str, meta: core.Meta, branch_name: str | None):
+async def save(space_name: str, subpath: str, meta: core.Meta, branch_name: str | None = None):
     """Save Meta Json to respectiv file"""
     path, filename = metapath(
         space_name,
@@ -253,8 +253,6 @@ async def save(space_name: str, subpath: str, meta: core.Meta, branch_name: str 
         meta.payload.schema_shortname if meta.payload else None,
     )
 
-    if isinstance(meta, core.Space):
-        path = path.parent
 
     if not path.is_dir():
         os.makedirs(path)
@@ -307,7 +305,7 @@ async def save_payload_from_json(
     space_name: str,
     subpath: str,
     meta: core.Meta,
-    payload_data: dict,
+    payload_data: dict[str, Any],
     branch_name: str | None = settings.default_branch,
 ):
     path, filename = metapath(
@@ -316,10 +314,10 @@ async def save_payload_from_json(
         meta.shortname,
         meta.__class__,
         branch_name,
-        meta.payload.schema_shortname,  # type: ignore
+        meta.payload.schema_shortname if meta.payload else None,
     )
     payload_file_path = payload_path(
-        space_name, subpath, meta.__class__, branch_name, meta.payload.schema_shortname  # type: ignore
+        space_name, subpath, meta.__class__, branch_name, meta.payload.schema_shortname if meta.payload else None
     )
 
     payload_filename = f"{meta.shortname}.json"

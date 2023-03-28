@@ -1,8 +1,12 @@
 # Data Mart (D-MART)
 
-General-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS).
+<img src="https://github.com/edraj/dmart/actions/workflows/dmart-checks.yml/badge.svg" >
 
-DMART is a low-code information inventory platform (aka content registry/repository) that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and extend. Thus, valuable data assets can be maintained as the mastered version and act as the single source of truth. 
+DMART is a data service layer that offers a streamlined / simplified way to develop certain class of solutions with small to medium data footprint (<=300 million primary entries). DMART is not a one-solution fit-all kind of technology, but it tries to address a wide variety of needs. Specifically, DMART is not suited for systems that have large data (> 400 million primary entries) nor systems that require heavily/complex related data modeling.
+
+As such, DMART serves as general-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS). 
+
+It represents a low-code information inventory platform (aka content registry/repository) that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and extend. Thus, valuable data assets can be maintained as the mastered version and act as the single source of truth. 
 
 ## The problem DMART attempts to solve
 
@@ -24,6 +28,8 @@ Valuable information (organizational and individual) is getting out of control!
 - **Microservice friendly** : Leveraging JWT shared secret, additional microservices can automatically leverage the user's session with dmart. There is also a compatible FastApi skeleton git repository to facilitate the development of additional microservices.
 - **Extensible via plugins** : Specialized logic (plugins) can be added to react to certain types of activities and content.
 - **Entry-oriented** : As opposed to document-oriented NoSQL, entry-orientation revolves around consolidating the coherent information unit alongside its belongings (known as "attachments" that can involve textual and/or binary) as one entry. 
+- **Activities and workflows** : Configurable activity (ticket) and workflow management. 
+- **Messaging and notifications** : Ability to trigger different types of notifications and ability to store user messages.
 
 <img src="./docs/data-mart.jpg" width="500">
 
@@ -40,6 +46,8 @@ Valuable information (organizational and individual) is getting out of control!
   - Arbitrary attachments: An entity could have attachments (binary or otherwise)
 - Entries are stord and orgazined arbitrary hierarchical folder structure (aka categories) on the file-system. Facilitating folder-based routes.
 
+DMART is a "Data-first" platform to management your valuable data/information; allowing you to transform your perciption of data from liability into assets.
+
 <img src="./docs/tree.png" width="500">
 
 ## API layer (REST-like, JSON-API)
@@ -55,8 +63,10 @@ Full OpenApi 3 compliant documentation can be found [here](https://dmart.cc/docs
 <img src="./docs/backend.png" width="650"> 
 
   - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files. 
-  - Python 3.11 with emphasis on asyncio and type hinting
-  - FastAPI as the api micro-framework (based on our _curated_ fastapi skeleton). 
+  - Python 3.11 with emphasis on 
+    - asyncio : maximizing scalability and leverage of server resources and enabling background jobs (post api service time).
+    - type hinting and strengent linting (pyright).
+  - FastAPI as the api micro-framework (based on our _curated_ fastapi skeleton) and full leverage of Pydantic and OpenApi version 3. 
   - Hypercorn (runner server)
   - Redis as the operational data store. With sepecific leverage of RediSearch RedisJSON modules.
   - Intensive json-based logging for easier insights.  
@@ -125,15 +135,78 @@ With this scheme, only proper entry main payload files appear to the user. All m
 
 ```bash
 git clone https://github.com/edraj/dmart.git
-cd dmart/backend
+
+cd dmart 
+
+# Make logs folder
+mkdir logs
 
 # Copy sample spaces structure
-cp ../sample/spaces ../../
+cp sample/spaces ../
+
+
+cd backend
 
 # Install python modules
 pip install --user -r requirements.txt
 
+# Optionally, fine-tune your configuration
+cp config.env.sample config.env
+
 # Start DMART microservice
 ./main.py
 
+
+# Optionally: check admin folder for systemd scripts
+
 ```
+
+### Automated testing
+
+#### Installing python dependencies
+
+```bash
+pip install --user -r test-requirements.txt
+```
+
+#### Running
+
+```bash
+cd backend
+./curl.sh
+pytest
+```
+
+<img src="./docs/curl-test.png" width="300">
+<img src="./docs/pytest.png" width="450">
+
+
+
+### Using the command line tool
+
+DMART comes with a command line tool that can run from anywhere. It communicates with DMART over the api.
+
+```bash
+cd cli
+
+# Create config.ini with proper access details (url, credentials ...etc)
+cp config.ini.sample config.ini
+
+# Install additional packages
+pip install --user  -r requirements.txt
+
+# Start the cli tool
+./cli.py
+```
+
+<img src="./docs/cli.png" width="450">
+
+
+
+## Coming soon ...
+
+
+### Mobile app skeleton (based on SvelteNative and NativeScript)
+
+### Web app skeleton (based on Svelte)
+

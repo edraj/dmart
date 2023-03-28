@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, status
 from utils.settings import settings
 import models.api as api
@@ -50,3 +51,24 @@ async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
             }
     return api.Response(status=api.Status.success,
                         attributes=manifest)
+
+
+@router.get("/in-loop-tasks")
+async def get_in_loop_tasks(logged_in_user=Depends(JWTBearer())):
+    tasks = asyncio.all_tasks()
+    
+    tasks_data: list[dict[str, str]] = []
+    for task in tasks:
+        tasks_data.append({
+            "name": task.get_name(),
+            "coroutine": str(task.get_coro()),
+            "stack": str(task.get_stack())
+        })
+
+    return api.Response(
+        status=api.Status.success,
+        attributes={
+            "tasks_count": len(tasks_data),
+            "tasks": tasks_data
+        },
+    )

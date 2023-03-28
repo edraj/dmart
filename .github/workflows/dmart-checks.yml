@@ -1,0 +1,41 @@
+name: DMART App checks
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install python dependencies
+      run: |
+        pip install --user pyright
+        pip install --user -r backend/requirements.txt
+        mkdir logs/
+        cp ~/login_creds.sh backend/
+        cp ~/config.env backend/
+    - name: Lint with pyright
+      run: |
+        PYRIGHT_PYTHON_FORCE_VERSION=latest pyright backend/
+    - name: Test with pytest
+      run: |
+        cd backend; pytest
+    - name: Install frontend js depdenencies
+      run: |
+        cd frontend; yarn install
+    - name: Build frontend
+      run: |
+        cd frontend; yarn build
+    - name: Check svelte
+      run: |
+        cd frontend; ./node_modules/.bin/svelte-check 
+

@@ -1,0 +1,27 @@
+{
+    "uuid": "3eddc08b-23d7-45c4-8eea-082262384a76",
+    "shortname": "startappz",
+    "is_active": true,
+    "tags": [],
+    "created_at": "2023-03-21T14:55:17.821089",
+    "updated_at": "2023-03-21T14:55:17.821092",
+    "owner_shortname": "dmart",
+    "root_registration_signature": "",
+    "primary_website": "",
+    "indexing_enabled": true,
+    "capture_misses": false,
+    "check_health": true,
+    "languages": [
+        "english"
+    ],
+    "icon": "",
+    "mirrors": [],
+    "hide_folders": [],
+    "hide_space": false,
+    "active_plugins": [
+        "action_log",
+	"realtime_updates_notifier",
+        "redis_db_update"
+    ],
+    "branches": []
+}

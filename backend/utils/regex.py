@@ -3,9 +3,9 @@ import re
 
 SUBPATH = r"^[\w\/]{1,64}$"
 SHORTNAME = r"^\w{1,32}$"
-FILENAME = re.compile(r"^\w{1,32}\.(gif|png|jpeg|jpg|pdf|wsq)$")
+FILENAME = re.compile(r"^\w{1,32}\.(gif|png|jpeg|jpg|pdf|wsq|mp3)$")
 SPACENAME = r"^\w{1,32}$"
-EXT = r"^(gif|png|jpeg|jpg|json|md|pdf|wsq)$"
+EXT = r"^(gif|png|jpeg|jpg|json|md|pdf|wsq|mp3)$"
 IMG_EXT = r"^(gif|png|jpeg|jpg|wsq)$"
 USERNAME = r"^\w{3,10}$"
 # PASSWORD = r"^[\w._]{4,}$"
