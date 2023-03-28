@@ -39,6 +39,7 @@ import utils.password_hashing as password_hashing
 class Resource(BaseModel):
     class Config:
         use_enum_values = True
+        arbitrary_types_allowed = True
 
 
 class Payload(Resource):
@@ -67,6 +68,9 @@ class Record(BaseModel):
     def to_dict(self):
         return json.loads(self.json())
 
+    def __eq__(self, other):
+        return self.shortname == other.shortname
+
 
 class Translation(Resource):
     en: str | None = None
@@ -88,7 +92,6 @@ class Meta(Resource):
     payload: Payload | None = None
 
     class Config:
-        arbitrary_types_allowed = True
         validate_assignment = True
 
     @staticmethod
@@ -319,28 +322,6 @@ class Ticket(Meta):
     collaborators: dict[str, str] | None = None  # list[Collabolator] | None = None
     resolution_reason: str | None = None
 
-
-class PluginBase(ABC):
-    @abstractmethod
-    def hook(self):
-        pass
-
-
-class EventFilter(BaseModel):
-    subpaths: list
-    resource_types: list
-    schema_shortnames: list
-    actions: list[ActionType]
-
-
-class PluginWrapper(Meta):
-    filters: EventFilter
-    listen_time: EventListenTime
-    type: PluginType
-    ordinal: int = 9999
-    object: PluginBase | None = None
-
-
 class Event(BaseModel):
     space_name: str
     branch_name: str | None = Field(
@@ -355,6 +336,39 @@ class Event(BaseModel):
     user_shortname: str
 
 
+class PluginBase(ABC):
+    @abstractmethod
+    def hook(self, data: Event):
+        pass
+
+
+class EventFilter(BaseModel):
+    subpaths: list
+    resource_types: list
+    schema_shortnames: list
+    actions: list[ActionType]
+
+
+class PluginWrapper(Resource):
+    shortname: str = Field(default=None, regex=regex.SHORTNAME)
+    is_active: bool = False
+    filters: EventFilter | None = None
+    listen_time: EventListenTime | None = None
+    type: PluginType | None = None
+    ordinal: int = 9999
+    object: PluginBase | None = None
+    dependencies: list = []
+
+
+class NotificationData(Resource):
+    receiver: str
+    title: Translation
+    body: Translation
+    image_urls: Translation | None = None
+    deep_link: dict = {}
+    entry_id: str | None = None
+
+
 class Notification(Meta):
     """
     title: use the displayname attribute inside Meta
@@ -365,3 +379,39 @@ class Notification(Meta):
     is_read: bool = False
     priority: NotificationPriority
     entry: Locator | None = None
+
+    @staticmethod
+    async def from_request(
+        notification_req: dict, entry: dict = {}
+    ):
+        if notification_req["payload"]["schema_shortname"] == "admin_notification_request":
+            notification_type = NotificationType.admin
+        else:
+            notification_type = NotificationType.system
+
+        entry_locator = None
+        if entry:
+            entry_locator = Locator(
+                space_name=entry["space_name"],
+                branch_name=entry["branch_name"],
+                type=entry["resource_type"],
+                schema_shortname=entry["payload"]["schema_shortname"],
+                subpath=entry["subpath"],
+                shortname=entry["shortname"],
+            )
+
+        uuid = uuid4()
+        return Notification(
+            uuid=uuid,
+            shortname=str(uuid)[:8],
+            is_active=True,
+            displayname=notification_req["displayname"],
+            description=notification_req["description"],
+            owner_shortname=notification_req["owner_shortname"],
+            type=notification_type,
+            is_read=False,
+            priority=notification_req["priority"],
+            entry=entry_locator,
+        )
+
+

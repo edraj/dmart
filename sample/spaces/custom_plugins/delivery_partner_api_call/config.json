@@ -1,0 +1,12 @@
+{
+	"is_active": true,
+	"filters": {
+		"subpaths": ["/tickets"],
+		"resource_types": ["ticket"],
+		"schema_shortnames": ["check_info"],
+		"actions": ["progress_ticket"]
+	},
+	"type": "hook",
+	"listen_time": "after",
+	"talabatey_users_list": ""
+}

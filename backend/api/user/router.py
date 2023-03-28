@@ -3,7 +3,7 @@ import json
 import re
 import uuid
 import aiofiles
-from fastapi import APIRouter, Body, status, Depends, Response, Header
+from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
 from models.enums import RequestType, ResourceType, ContentType
@@ -16,7 +16,7 @@ from utils.jwt import JWTBearer, sign_jwt, decode_jwt
 from typing import Any
 from utils.settings import settings
 import utils.repository as repository
-from utils.plugins import plugin_manager
+from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
 from utils.redis_services import RedisServices
 from models.api import Error, Exception, Status
@@ -43,379 +43,149 @@ MANAGEMENT_SPACE: str = settings.management_space
 MANAGEMENT_BRANCH: str = settings.management_space_branch
 USERS_SUBPATH: str = "users"
 
-
-@router.post("/create", response_model=api.Response, response_model_exclude_none=True)
-async def create_user(record: core.Record) -> api.Response:
-    """Register a new user by invitation"""
-    if not record.attributes:
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50, message="Empty attributes"),
-        )
-
-    if "invitation" not in record.attributes:
-        # TBD validate invitation (simply it is a jwt signed token )
-        # jwt-signed shortname, email and expiration time
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="create", code=50, message="bad or missign invitation token"
-            ),
-        )
-
-    # TBD : Raise error if user already eists.
-
-    if "password" not in record.attributes:
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50, message="empty password"),
-        )
-    if not re.match(rgx.PASSWORD, record.attributes["password"]):
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="jwtauth",
-                code=14,
-                message="password dose not match required rules",
-            ),
-        )
-
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=record.shortname,
-            action_type=core.ActionType.create,
-            resource_type=ResourceType.user,
-            user_shortname=record.shortname,
-        )
+@router.get("/check-existing", response_model=api.Response, response_model_exclude_none=True)
+async def check_existing_user_fields(
+    _=Depends(JWTBearer()),
+    shortname: str | None = Query(default=None, regex=rgx.SHORTNAME), 
+    msisdn: str | None = Query(default=None, regex=rgx.EXTENDED_MSISDN), 
+    email: str | None = Query(default=None, regex=rgx.EMAIL),
+):
+    unique_fields = {
+        "shortname": shortname,
+        "msisdn": msisdn,
+        "email": email
+    }
+        
+    search_str = f"@subpath:{USERS_SUBPATH}"
+    redis_escape_chars = str.maketrans(
+        {"@": r"@\\", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
-
-    user = core.User.from_record(record=record, owner_shortname=record.shortname)
-    await validate_uniqueness(MANAGEMENT_SPACE, record)
-
-    separate_payload_data = {}
-    if "payload" in record.attributes and "body" in record.attributes["payload"]:
-        schema_shortname = getattr(user.payload, "schema_shortname", None)
-        user.payload = core.Payload(
-            content_type=ContentType.json,
-            schema_shortname=schema_shortname,
-            body="",
-        )
-        if user.payload:
-            separate_payload_data = user.payload.body
-            user.payload.body = record.shortname + ".json"
-
-        if user.payload and separate_payload_data:
-            if not isinstance(separate_payload_data, str) and not isinstance(
-                separate_payload_data, Path
-            ):
-                if user.payload.schema_shortname:
-                    await validate_payload_with_schema(
-                        payload_data=separate_payload_data,
-                        space_name=MANAGEMENT_SPACE,
-                        branch_name=MANAGEMENT_BRANCH,
-                        schema_shortname=user.payload.schema_shortname,
-                    )
-
-    await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user, MANAGEMENT_BRANCH)
-
-    if separate_payload_data:
-        await db.save_payload_from_json(
-            MANAGEMENT_SPACE,
-            USERS_SUBPATH,
-            user,
-            separate_payload_data,  # type: ignore
-            MANAGEMENT_BRANCH,
-        )
-    async with RedisServices() as redis_services:
-        await redis_services.save_meta_doc(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            meta=user,
-        )
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=record.shortname,
-            action_type=core.ActionType.create,
-            resource_type=ResourceType.user,
-            user_shortname=record.shortname,
-        )
-    )
-
-    return api.Response(status=api.Status.success)
-
-
-@router.get("/profile", response_model=api.Response, response_model_exclude_none=True)
-async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
-
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.view,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
-
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
-    )
-    attributes: dict[str, Any] = {}
-    if user.email:
-        attributes["email"] = user.email
-    if user.displayname:
-        attributes["displayname"] = user.displayname
-    if user.msisdn:
-        attributes["msisdn"] = user.msisdn
-    if user.payload:
-        attributes["payload"] = user.payload
-        path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
-        if (
-            user.payload
-            and user.payload.content_type
-            and user.payload.content_type == ContentType.json
-            and (path / user.payload.body).is_file()  # type: ignore
-        ):
-            async with aiofiles.open(
-                path / user.payload.body, "r"  # type: ignore
-            ) as payload_file_content:
-                attributes["payload"].body = json.loads(
-                    await payload_file_content.read()
-                )
-
-    attributes["type"] = user.type
-    attributes["language"] = user.language
-    attributes["is_email_verified"] = user.is_email_verified
-    attributes["is_msisdn_verified"] = user.is_msisdn_verified
-    attributes["force_password_change"] = user.force_password_change
-
-    attributes["permissions"] = await access_control.get_user_premissions(shortname)
-    attributes["roles"] = user.roles
-    attributes["groups"] = user.groups
-
-    attachments_path = (
-        settings.spaces_folder
-        / MANAGEMENT_SPACE
-        / USERS_SUBPATH
-        / ".dm"
-        / user.shortname
-    )
-    user_avatar = await repository.get_entry_attachments(
-        subpath=f"{USERS_SUBPATH}/{user.shortname}",
-        attachments_path=attachments_path,
-        branch_name=MANAGEMENT_BRANCH,
-        filter_shortnames=["avatar"],
-    )
-
-    record = core.Record(
-        subpath=USERS_SUBPATH,
-        shortname=user.shortname,
-        resource_type=core.ResourceType.user,
-        attributes=attributes,
-        attachments=user_avatar,
-    )
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.view,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
-
-    return api.Response(status=api.Status.success, records=[record])
-
-
-@router.post("/profile", response_model=api.Response, response_model_exclude_none=True)
-async def update_profile(
-    profile: core.Record, shortname=Depends(JWTBearer())
-) -> api.Response:
-    """Update user profile"""
-
-    profile_user = core.Meta.check_record(
-        record=profile, owner_shortname=profile.shortname
-    )
-    if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="jwtauth",
-                code=14,
-                message="password dose not match required rules",
-            ),
-        )
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
-
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
-    )
-
-    old_version_flattend = flatten_dict(user.dict())
-
-    if profile_user.password and "old_password" in profile.attributes:
-        if not password_hashing.verify_password(
-            profile.attributes["old_password"], user.password or ""
-        ):
-            raise api.Exception(
-                status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="request", code=19, message="Credential does not match"),
+    async with RedisServices() as redis_man:
+        for key, value in unique_fields.items():
+            if not value:
+                continue
+            value = value.translate(redis_escape_chars).replace("\\\\", "\\")
+            redis_search_res = await redis_man.search(
+                space_name=MANAGEMENT_SPACE,
+                branch_name=MANAGEMENT_BRANCH,
+                search=search_str + f" @{key}:{value}",
+                limit=1,
+                offset=0,
+                filters={}
             )
 
-    # if "force_password_change" in profile.attributes:
-    #     user.force_password_change = profile.attributes["force_password_change"]
+            if redis_search_res and redis_search_res["total"] > 0:
+                return api.Response(status=api.Status.success, attributes={"unique": False, "field": key})
 
-    if profile_user.password:
-        user.password = password_hashing.hash_password(profile_user.password)
-        user.force_password_change = False
-    if "displayname" in profile.attributes:
-        user.displayname = profile_user.displayname
-    if "language" in profile.attributes:
-        user.language = profile_user.language
-
-    if "confirmation" in profile.attributes:
-        result = None
-        async with RedisServices() as redis_services:
-            if profile_user.email:
-                result = await redis_services.get_content_by_id(
-                    f"users:otp:confirmation/email/{profile_user.email}"
-                )
-            elif profile_user.msisdn:
-                result = await redis_services.get_content_by_id(
-                    f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
-                )
-
-        if result is None or result != profile.attributes["confirmation"]:
-            raise Exception(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                api.Error(type="request", code=422, message="Something went wrong [1]"),
-            )
-
-        if profile_user.email:
-            user.is_email_verified = True
-        elif profile_user.msisdn:
-            user.is_msisdn_verified = True
-    else:
-        await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update)
-        if "email" in profile.attributes and user.email != profile_user.email:
-            user.email = profile_user.email
-            user.is_email_verified = False
-
-        if profile_user.msisdn and user.msisdn != profile_user.msisdn:
-            user.msisdn = profile_user.msisdn
-            user.is_msisdn_verified = False
-
-        if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
-            separate_payload_data = {}
-            user.payload = core.Payload(
-                content_type=ContentType.json,
-                schema_shortname=profile_user.payload.schema_shortname,
-                body="",
-            )
-            if profile.attributes["payload"]["body"]:
-                separate_payload_data = profile.attributes["payload"]["body"]
-                user.payload.body = shortname + ".json"
-
-            if user.payload and separate_payload_data:
-                if profile_user.payload.schema_shortname:
-                    await validate_payload_with_schema(
-                        payload_data=separate_payload_data,
-                        space_name=MANAGEMENT_SPACE,
-                        branch_name=MANAGEMENT_BRANCH,
-                        schema_shortname=user.payload.schema_shortname,  # type: ignore
-                    )
-
-            if separate_payload_data:
-                await db.save_payload_from_json(
-                    MANAGEMENT_SPACE,
-                    USERS_SUBPATH,
-                    user,
-                    separate_payload_data,  # type: ignore,
-                    MANAGEMENT_BRANCH,
-                )
-
-    history_diff = await db.update(
-        MANAGEMENT_SPACE,
-        USERS_SUBPATH,
-        user,
-        old_version_flattend,
-        flatten_dict(user.dict()),
-        list(profile.attributes.keys()),
-        MANAGEMENT_BRANCH,
-        shortname,
-    )
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-            attributes={"history_diff": history_diff},
-        )
-    )
-
-    return api.Response(status=api.Status.success)
+    return api.Response(status=api.Status.success, attributes={"unique": True})
 
 
-cookie_options = {
-    "key": "auth_token",
-    "httponly": True,
-    "secure": True,
-    "samesite": "none",
-}
-# "samesite": "lax" }
-# samesite="none",
-# secure=True,
+# @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
+# async def create_user(record: core.Record) -> api.Response:
+#     """Register a new user by invitation"""
+#     if not record.attributes:
+#         raise api.Exception(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             error=api.Error(type="create", code=50, message="Empty attributes"),
+#         )
 
+#     if "invitation" not in record.attributes:
+#         # TBD validate invitation (simply it is a jwt signed token )
+#         # jwt-signed shortname, email and expiration time
+#         raise api.Exception(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             error=api.Error(
+#                 type="create", code=50, message="bad or missign invitation token"
+#             ),
+#         )
 
-@router.post(
-    "/logout",
-    response_model=api.Response,
-    response_model_exclude_none=True,
-)
-async def logout(
-    response: Response,
-) -> api.Response:
-    response.set_cookie(value="", max_age=0, **cookie_options)
+#     # TBD : Raise error if user already eists.
 
-    return api.Response(status=api.Status.success, records=[])
+#     if "password" not in record.attributes:
+#         raise api.Exception(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             error=api.Error(type="create", code=50, message="empty password"),
+#         )
+#     if not re.match(rgx.PASSWORD, record.attributes["password"]):
+#         raise api.Exception(
+#             status.HTTP_401_UNAUTHORIZED,
+#             api.Error(
+#                 type="jwtauth",
+#                 code=14,
+#                 message="password dose not match required rules",
+#             ),
+#         )
+
+#     await plugin_manager.before_action(
+#         core.Event(
+#             space_name=MANAGEMENT_SPACE,
+#             branch_name=MANAGEMENT_BRANCH,
+#             subpath=USERS_SUBPATH,
+#             shortname=record.shortname,
+#             action_type=core.ActionType.create,
+#             resource_type=ResourceType.user,
+#             user_shortname=record.shortname,
+#         )
+#     )
+
+#     user = core.User.from_record(record=record, owner_shortname=record.shortname)
+#     await validate_uniqueness(MANAGEMENT_SPACE, record)
+
+#     separate_payload_data = {}
+#     if "payload" in record.attributes and "body" in record.attributes["payload"]:
+#         schema_shortname = getattr(user.payload, "schema_shortname", None)
+#         user.payload = core.Payload(
+#             content_type=ContentType.json,
+#             schema_shortname=schema_shortname,
+#             body="",
+#         )
+#         if user.payload:
+#             separate_payload_data = user.payload.body
+#             user.payload.body = record.shortname + ".json"
+
+#         if user.payload and separate_payload_data:
+#             if not isinstance(separate_payload_data, str) and not isinstance(
+#                 separate_payload_data, Path
+#             ):
+#                 if user.payload.schema_shortname:
+#                     await validate_payload_with_schema(
+#                         payload_data=separate_payload_data,
+#                         space_name=MANAGEMENT_SPACE,
+#                         branch_name=MANAGEMENT_BRANCH,
+#                         schema_shortname=user.payload.schema_shortname,
+#                     )
+
+#     await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user, MANAGEMENT_BRANCH)
+
+#     if separate_payload_data and isinstance(separate_payload_data, dict):
+#         await db.save_payload_from_json(
+#             MANAGEMENT_SPACE,
+#             USERS_SUBPATH,
+#             user,
+#             separate_payload_data,
+#             MANAGEMENT_BRANCH,
+#         )
+#     async with RedisServices() as redis_services:
+#         await redis_services.save_meta_doc(
+#             space_name=MANAGEMENT_SPACE,
+#             branch_name=MANAGEMENT_BRANCH,
+#             subpath=USERS_SUBPATH,
+#             meta=user,
+#         )
+
+#     await plugin_manager.after_action(
+#         core.Event(
+#             space_name=MANAGEMENT_SPACE,
+#             branch_name=MANAGEMENT_BRANCH,
+#             subpath=USERS_SUBPATH,
+#             shortname=record.shortname,
+#             action_type=core.ActionType.create,
+#             resource_type=ResourceType.user,
+#             user_shortname=record.shortname,
+#         )
+#     )
+
+#     return api.Response(status=api.Status.success)
 
 
 @router.post(
@@ -586,14 +356,279 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             api.Error(type="auth", code=14, message="Invalid username or password [2]"),
         )
     except api.Exception as e:
-        raise e
         if e.error.type == "db":
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="auth", code=14, message="Invalid username or password [3]"),
+                api.Error(type="auth", code=14, message="Invalid username or password [3]", info=[{"details":str(e)}]),
             )
         else:
             raise e
+
+
+@router.get("/profile", response_model=api.Response, response_model_exclude_none=True)
+async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
+
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=MANAGEMENT_SPACE,
+            branch_name=MANAGEMENT_BRANCH,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            action_type=core.ActionType.view,
+            resource_type=ResourceType.user,
+            user_shortname=shortname,
+        )
+    )
+
+    user = await db.load(
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        shortname=shortname,
+        class_type=core.User,
+        user_shortname=shortname,
+        branch_name=MANAGEMENT_BRANCH,
+    )
+    attributes: dict[str, Any] = {}
+    if user.email:
+        attributes["email"] = user.email
+    if user.displayname:
+        attributes["displayname"] = user.displayname
+    if user.msisdn:
+        attributes["msisdn"] = user.msisdn
+    if user.payload:
+        attributes["payload"] = user.payload
+        path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
+        if (
+            user.payload
+            and user.payload.content_type
+            and user.payload.content_type == ContentType.json
+            and (path / str(user.payload.body)).is_file()
+        ):
+            async with aiofiles.open(
+                path / str(user.payload.body), "r"  
+            ) as payload_file_content:
+                attributes["payload"].body = json.loads(
+                    await payload_file_content.read()
+                )
+
+    attributes["type"] = user.type
+    attributes["language"] = user.language
+    attributes["is_email_verified"] = user.is_email_verified
+    attributes["is_msisdn_verified"] = user.is_msisdn_verified
+    attributes["force_password_change"] = user.force_password_change
+
+    attributes["permissions"] = await access_control.get_user_premissions(shortname)
+    attributes["roles"] = user.roles
+    attributes["groups"] = user.groups
+
+    attachments_path = (
+        settings.spaces_folder
+        / MANAGEMENT_SPACE
+        / USERS_SUBPATH
+        / ".dm"
+        / user.shortname
+    )
+    user_avatar = await repository.get_entry_attachments(
+        subpath=f"{USERS_SUBPATH}/{user.shortname}",
+        attachments_path=attachments_path,
+        branch_name=MANAGEMENT_BRANCH,
+        filter_shortnames=["avatar"],
+    )
+
+    record = core.Record(
+        subpath=USERS_SUBPATH,
+        shortname=user.shortname,
+        resource_type=core.ResourceType.user,
+        attributes=attributes,
+        attachments=user_avatar,
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=MANAGEMENT_SPACE,
+            branch_name=MANAGEMENT_BRANCH,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            action_type=core.ActionType.view,
+            resource_type=ResourceType.user,
+            user_shortname=shortname,
+        )
+    )
+
+    return api.Response(status=api.Status.success, records=[record])
+
+
+@router.post("/profile", response_model=api.Response, response_model_exclude_none=True)
+async def update_profile(
+    profile: core.Record, shortname=Depends(JWTBearer())
+) -> api.Response:
+    """Update user profile"""
+
+    profile_user = core.Meta.check_record(
+        record=profile, owner_shortname=profile.shortname
+    )
+    if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="jwtauth",
+                code=14,
+                message="password dose not match required rules",
+            ),
+        )
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=MANAGEMENT_SPACE,
+            branch_name=MANAGEMENT_BRANCH,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            action_type=core.ActionType.update,
+            resource_type=ResourceType.user,
+            user_shortname=shortname,
+        )
+    )
+
+    user = await db.load(
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        shortname=shortname,
+        class_type=core.User,
+        user_shortname=shortname,
+        branch_name=MANAGEMENT_BRANCH,
+    )
+
+    old_version_flattend = flatten_dict(user.dict())
+
+    if profile_user.password and "old_password" in profile.attributes:
+        if not password_hashing.verify_password(
+            profile.attributes["old_password"], user.password or ""
+        ):
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(type="request", code=19, message="Credential does not match"),
+            )
+
+    # if "force_password_change" in profile.attributes:
+    #     user.force_password_change = profile.attributes["force_password_change"]
+
+    if profile_user.password:
+        user.password = password_hashing.hash_password(profile_user.password)
+        user.force_password_change = False
+    if "displayname" in profile.attributes:
+        user.displayname = profile_user.displayname
+    if "language" in profile.attributes:
+        user.language = profile_user.language
+
+    if "confirmation" in profile.attributes:
+        result = None
+        async with RedisServices() as redis_services:
+            if profile_user.email:
+                result = await redis_services.get_content_by_id(
+                    f"users:otp:confirmation/email/{profile_user.email}"
+                )
+            elif profile_user.msisdn:
+                result = await redis_services.get_content_by_id(
+                    f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
+                )
+
+        if result is None or result != profile.attributes["confirmation"]:
+            raise Exception(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                api.Error(type="request", code=422, message="Something went wrong [1]"),
+            )
+
+        if profile_user.email:
+            user.is_email_verified = True
+        elif profile_user.msisdn:
+            user.is_msisdn_verified = True
+    else:
+        await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update)
+        if "email" in profile.attributes and user.email != profile_user.email:
+            user.email = profile_user.email
+            user.is_email_verified = False
+
+        if profile_user.msisdn and user.msisdn != profile_user.msisdn:
+            user.msisdn = profile_user.msisdn
+            user.is_msisdn_verified = False
+
+        if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
+            separate_payload_data = {}
+            user.payload = core.Payload(
+                content_type=ContentType.json,
+                schema_shortname=profile_user.payload.schema_shortname,
+                body="",
+            )
+            if profile.attributes["payload"]["body"]:
+                separate_payload_data = profile.attributes["payload"]["body"]
+                user.payload.body = shortname + ".json"
+
+            if user.payload and separate_payload_data:
+                if profile_user.payload.schema_shortname:
+                    await validate_payload_with_schema(
+                        payload_data=separate_payload_data,
+                        space_name=MANAGEMENT_SPACE,
+                        branch_name=MANAGEMENT_BRANCH,
+                        schema_shortname=str(user.payload.schema_shortname),  
+                    )
+
+            if separate_payload_data:
+                await db.save_payload_from_json(
+                    MANAGEMENT_SPACE,
+                    USERS_SUBPATH,
+                    user,
+                    separate_payload_data, 
+                    MANAGEMENT_BRANCH,
+                )
+
+    history_diff = await db.update(
+        MANAGEMENT_SPACE,
+        USERS_SUBPATH,
+        user,
+        old_version_flattend,
+        flatten_dict(user.dict()),
+        list(profile.attributes.keys()),
+        MANAGEMENT_BRANCH,
+        shortname,
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=MANAGEMENT_SPACE,
+            branch_name=MANAGEMENT_BRANCH,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            action_type=core.ActionType.update,
+            resource_type=ResourceType.user,
+            user_shortname=shortname,
+            attributes={"history_diff": history_diff},
+        )
+    )
+
+    return api.Response(status=api.Status.success)
+
+
+cookie_options = {
+    "key": "auth_token",
+    "httponly": True,
+    "secure": True,
+    "samesite": "none",
+}
+# "samesite": "lax" }
+# samesite="none",
+# secure=True,
+
+
+@router.post(
+    "/logout",
+    response_model=api.Response,
+    response_model_exclude_none=True,
+)
+async def logout(
+    response: Response,
+) -> api.Response:
+    response.set_cookie(value="", max_age=0, **cookie_options)
+
+    return api.Response(status=api.Status.success, records=[])
 
 
 @router.post("/delete", response_model=api.Response, response_model_exclude_none=True)

@@ -15,3 +15,4 @@ email-validator
 passlib[bcrypt]
 jq
 segno
+jinja2

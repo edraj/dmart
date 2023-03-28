@@ -18,10 +18,10 @@ from utils.redis_services import RedisServices
 import aiofiles
 from fastapi import status
 from fastapi.logger import logger
-from utils.helpers import branch_path, camel_case, snake_case
+from utils.helpers import branch_path, camel_case, snake_case, str_to_datetime
 from utils.custom_validations import validate_payload_with_schema
 import subprocess
-from redis.commands.search.document import Document as RedisDocument #type: ignore
+from redis.commands.search.document import Document as RedisDocument
 
 
 async def serve_query(
@@ -64,10 +64,21 @@ async def serve_query(
 
             query.include_fields = [] # Don't support include fields for now, will be supported after abandon meta doc enhancement
             search_res, total = await redis_query_search(query, redis_query_policies)
+            res_data: list = []
+            for redis_document in search_res:
+                res_data.append(json.loads(redis_document.json))
+            if len(query.filter_schema_names) > 1 and query.sort_by:
+                res_data = sorted(
+                    res_data,
+                    key=lambda d: d[query.sort_by]
+                    if query.sort_by in d
+                    else "",
+                    reverse=(query.sort_type == api.SortType.descending),
+                )
+                res_data = res_data[query.offset : (query.limit + query.offset)]
 
             async with RedisServices() as redis_services:
-                for redis_document in search_res:
-                    redis_doc_dict = json.loads(redis_document.json)
+                for redis_doc_dict in res_data:
                     meta_doc_content = {}
                     payload_doc_content = {}
                     resource_class = getattr(
@@ -173,7 +184,7 @@ async def serve_query(
                     if query.highlight_fields:
                         for key, value in query.highlight_fields.items():
                             resource_base_record.attributes[value] = getattr(
-                                redis_document, key, None
+                                redis_doc_dict, key, None
                             )
                             
                     # Don't repeat the same entry comming from different indices
@@ -182,20 +193,6 @@ async def serve_query(
                         continue
 
                     records.append(resource_base_record)
-
-            # Sort all entries from all schemas
-            if (
-                query.sort_by in core.Meta.__fields__
-                and len(query.filter_schema_names) > 1
-            ):
-                records = sorted(
-                    records,
-                    key=lambda d: d.attributes[query.sort_by]
-                    if query.sort_by in d.attributes
-                    else "",
-                    reverse=(query.sort_type == api.SortType.descending),
-                )
-            records = records[query.offset : (query.limit + query.offset)]
 
         case api.QueryType.subpath:
             subpath = query.subpath
@@ -410,9 +407,9 @@ async def serve_query(
                     and query.sort_type == api.SortType.descending
                 )
                 if query.sort_by in core.Record.__fields__:
-                    records = sorted(records, key=lambda record: record.__getattribute__(query.sort_by), reverse=sort_reverse)  # type: ignore
+                    records = sorted(records, key=lambda record: record.__getattribute__(str(query.sort_by)), reverse=sort_reverse)
                 else:
-                    records = sorted(records, key=lambda record: record.attributes[query.sort_by], reverse=sort_reverse)  # type: ignore
+                    records = sorted(records, key=lambda record: record.attributes[str(query.sort_by)], reverse=sort_reverse)
 
         case api.QueryType.counters:
             if not await access_control.check_access(
@@ -530,6 +527,18 @@ async def serve_query(
                 )
                 for line in result:
                     action_obj = json.loads(line)
+                    
+                    if(
+                        query.from_date and 
+                        str_to_datetime(action_obj["timestamp"]) < query.from_date
+                    ):
+                        continue
+
+                    if(
+                        query.to_date and 
+                        str_to_datetime(action_obj["timestamp"]) > query.to_date
+                    ):
+                        break
 
                     if not await access_control.check_access(
                         user_shortname=logged_in_user,
@@ -678,6 +687,12 @@ async def redis_query_search(query: api.Query, redis_query_policies: list = []) 
             + "]"
         )
 
+    limit = query.limit
+    offset = query.offset
+    if len(query.filter_schema_names) > 1 and query.sort_by:
+        limit += offset
+        offset = 0
+
     async with RedisServices() as redis_services:
         for schema_name in query.filter_schema_names:
             redis_res = await redis_services.search(
@@ -694,8 +709,8 @@ async def redis_query_search(query: api.Query, redis_query_policies: list = []) 
                     "created_at": created_at_search,
                 },
 
-                limit=(query.limit + query.offset),
-                offset=0,
+                limit=limit,
+                offset=offset,
                 highlight_fields=list(query.highlight_fields.keys()),
                 sort_by=query.sort_by,
                 sort_type=query.sort_type or api.SortType.ascending,
@@ -871,12 +886,13 @@ async def validate_subpath_data(
                     core.Folder,
                     branch_name,
                 )
-                await validate_payload_with_schema(
-                    payload_data=folder_meta_payload,
-                    space_name=space_name,
-                    branch_name=branch_name or settings.default_branch,
-                    schema_shortname=folder_meta_content.payload.schema_shortname, #type: ignore
-                )
+                if folder_meta_content.payload.schema_shortname:
+                    await validate_payload_with_schema(
+                        payload_data=folder_meta_payload,
+                        space_name=space_name,
+                        branch_name=branch_name or settings.default_branch,
+                        schema_shortname=folder_meta_content.payload.schema_shortname, 
+                    )
         except:
             invalid_folders.append(folder_name)
             validation_status = ValidationEnum.invalid
@@ -1103,3 +1119,26 @@ async def _sys_update_model(
                 await redis_services.save_payload_doc(space_name, branch_name, subpath, meta, payload_dict, ResourceType(snake_case(type(meta).__name__)))
 
     return True 
+
+
+async def _save_model(
+    space_name: str,
+    subpath: str,
+    meta: core.Meta,
+    branch_name: str | None = settings.default_branch
+):
+    await db.save(
+        space_name=space_name,
+        subpath=subpath,
+        meta=meta,
+        branch_name=branch_name,
+    )
+
+    async with RedisServices() as redis:
+        await redis.save_meta_doc(
+            space_name,
+            branch_name,
+            subpath,
+            meta,
+        )
+

@@ -102,10 +102,10 @@ def transite(states, current_state: str, action: str, user_roles):
                     for role in next_state["roles"]:
                         if role in user_roles:
                             return {"status": True, "message": next_state["state"]}
-            return {
-                "status": False,
-                "message": f"You don't have the permission to progress this ticket with action {action}",
-            }
+                    return {
+                        "status": False,
+                        "message": f"You don't have the permission to progress this ticket with action {action}",
+                    }
 
     return {
         "status": False,
@@ -137,4 +137,3 @@ def check_open_state(states, current_state: str):
             return "next" in state
 
     return True
-

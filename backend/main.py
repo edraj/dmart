@@ -15,6 +15,7 @@ from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
+from utils.plugin_manager import plugin_manager
 from utils.spaces import initialize_spaces
 # import json_logging
 from fastapi import Depends, FastAPI, Request, Response, status
@@ -306,6 +307,10 @@ async def middle(request: Request, call_next):
     return response
 
 
+@app.get("/", include_in_schema=False)
+async def root():
+    """Dummy api end point """
+    return { "status": "success", "message": "DMART API" }
 
 
 #@app.get("/s", include_in_schema=False)
@@ -336,6 +341,7 @@ async def space_backup(key: str):
 
 
 from api.managed.router import router as managed
+from api.qr.router import router as qr
 from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info
@@ -346,6 +352,12 @@ app.include_router(
 app.include_router(
     managed, prefix="/managed", tags=["managed"], dependencies=[Depends(capture_body)]
 )
+app.include_router(
+    qr,
+    prefix="/qr",
+    tags=["QR"],
+    dependencies=[Depends(capture_body)],
+)
 
 app.include_router(
     public, prefix="/public", tags=["public"], dependencies=[Depends(capture_body)]
@@ -354,6 +366,8 @@ app.include_router(
 app.include_router(
     info, prefix="/info", tags=["info"], dependencies=[Depends(capture_body)]
 )
+# load plugins
+asyncio.run(plugin_manager.load_plugins(app, capture_body))
 
 @app.options("/{x:path}", include_in_schema=False)
 async def myoptions():

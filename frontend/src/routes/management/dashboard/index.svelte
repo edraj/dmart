@@ -1,6 +1,6 @@
 <script>
-  import { contents } from "./../../../stores/contents.js";
-  import ListView from "../../../components/ListView.svelte";
+  import ListView from "../_components/ListView.svelte";
+  import { contents } from "../_stores/contents";
 
   let cols = {};
 
