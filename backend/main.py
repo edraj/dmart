@@ -17,7 +17,6 @@ from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
 from utils.spaces import initialize_spaces
-# import json_logging
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
@@ -104,13 +103,16 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
     # print(exc)
     raise api.Exception(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        error=api.Error(code=422, type="validation", message="Validation error [1]", info=err),
+        error=api.Error(
+            code=422, type="validation", message="Validation error [1]", info=err
+        ),
     )
 
 
 @app.on_event("startup")
 async def app_startup():
     logger.info("Starting")
+    print("Starting")
     # , extra={"props":{
     #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
     #    "redis_port": settings.redis_port
@@ -189,7 +191,11 @@ async def middle(request: Request, call_next):
             status_code=422,
             content={
                 "status": "failed",
-                "error": {"code": 422, "message": "Validation error [2]", "info": e.errors()},
+                "error": {
+                    "code": 422,
+                    "message": "Validation error [2]",
+                    "info": e.errors(),
+                },
             },
         )
         response_body = json.loads(response.body.decode())
@@ -208,7 +214,11 @@ async def middle(request: Request, call_next):
             status_code=400,
             content={
                 "status": "failed",
-                "error": {"code": 400, "message": "Validation error [3]", "info": str(e)},
+                "error": {
+                    "code": 400,
+                    "message": "Validation error [3]",
+                    "info": str(e),
+                },
             },
         )
         response_body = json.loads(response.body.decode())
@@ -270,7 +280,7 @@ async def middle(request: Request, call_next):
         user_shortname = await JWTBearer().__call__(request)
     except:
         pass
-        
+
     extra = {
         "props": {
             "timestamp": start_time,
@@ -309,12 +319,12 @@ async def middle(request: Request, call_next):
 
 @app.get("/", include_in_schema=False)
 async def root():
-    """Dummy api end point """
-    return { "status": "success", "message": "DMART API" }
+    """Dummy api end point"""
+    return {"status": "success", "message": "DMART API"}
 
 
-#@app.get("/s", include_in_schema=False)
-#async def secrets(key):
+# @app.get("/s", include_in_schema=False)
+# async def secrets(key):
 #    if key == "alpha":
 #        return settings.dict()
 
@@ -368,6 +378,7 @@ app.include_router(
 )
 # load plugins
 asyncio.run(plugin_manager.load_plugins(app, capture_body))
+
 
 @app.options("/{x:path}", include_in_schema=False)
 async def myoptions():
