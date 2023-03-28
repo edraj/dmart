@@ -1,15 +1,13 @@
-import asyncio
 import csv
 from datetime import datetime
 import hashlib
-from io import StringIO
 import os
 import uuid
 from fastapi.logger import logger
 from uuid import uuid4
 from re import sub as res_sub
 from fastapi import APIRouter, Body, Depends, UploadFile, Path, Form, status
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse
 from starlette.responses import StreamingResponse
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.custom_validations import validate_uniqueness
@@ -48,8 +46,6 @@ from utils.helpers import (
 )
 from pydantic.utils import deep_update
 from utils.custom_validations import validate_payload_with_schema
-from utils.redis_services import RedisServices
-from create_index import load_all_spaces_data_to_redis
 from utils.settings import settings
 from utils.plugin_manager import plugin_manager
 from io import StringIO
@@ -59,7 +55,6 @@ from api.user.service import (
 )
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
-
 
 router = APIRouter()
 
@@ -153,14 +148,14 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     redis_query_policies = await access_control.get_user_query_policies(user_shortname)
     restricted_fields = [
-        "id", 
-        "query_policies", 
-        "subpath", 
-        "branch_name", 
-        "resource_type", 
-        "meta_doc_id", 
-        "owner_shortname", 
-        "workflow_shortname"
+        "id",
+        "query_policies",
+        "subpath",
+        "branch_name",
+        "resource_type",
+        "meta_doc_id",
+        "owner_shortname",
+        "workflow_shortname",
     ]
 
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
@@ -169,13 +164,12 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         redis_doc_dict = redis_document.__dict__
         if "json" in redis_doc_dict:
             redis_doc_dict = json.loads(redis_doc_dict["json"])
-        json_data.append({k: v for k, v in redis_doc_dict.items() if k not in restricted_fields})
+        json_data.append(
+            {k: v for k, v in redis_doc_dict.items() if k not in restricted_fields}
+        )
 
     # Sort all entries from all schemas
-    if (
-        query.sort_by in core.Meta.__fields__
-        and len(query.filter_schema_names) > 1
-    ):
+    if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
         json_data = sorted(
             json_data,
             key=lambda d: d.attributes[query.sort_by]
@@ -273,7 +267,7 @@ async def serve_space(
                 space = core.Space.from_record(record, owner_shortname)
                 if request.space_name not in spaces:
                     raise Exception
-            except :
+            except:
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
@@ -299,7 +293,6 @@ async def serve_space(
                     ),
                 )
 
-
             await plugin_manager.before_action(
                 core.Event(
                     space_name=space.shortname,
@@ -323,7 +316,7 @@ async def serve_space(
                 shortname=space.shortname,
                 class_type=core.Space,
                 user_shortname=owner_shortname,
-                branch_name=record.branch_name
+                branch_name=record.branch_name,
             )
             history_diff = await db.update(
                 space_name=space.shortname,
@@ -335,7 +328,7 @@ async def serve_space(
                     flatten_dict(record.attributes).keys()
                 ),
                 branch_name=record.branch_name,
-                user_shortname=owner_shortname
+                user_shortname=owner_shortname,
             )
             await plugin_manager.after_action(
                 core.Event(
@@ -581,7 +574,9 @@ async def serve_request(
                                     ex=60 * 60 * 48,
                                     nx=False,
                                 )
-                                link = f"{settings.public_app_url}/managed/s/{token_uuid}"
+                                link = (
+                                    f"{settings.public_app_url}/managed/s/{token_uuid}"
+                                )
                                 invitation_message = f"Confirm your account via this link: {link}, This link can be used once and within the next 48 hours."
                                 channel += f"SMS:{record.attributes.get('msisdn')},"
                                 try:
@@ -590,7 +585,7 @@ async def serve_request(
                                         message=invitation_message,
                                     )
                                 except Exception as e:
-                                    logger.error(
+                                    logger.warn(
                                         "Exception",
                                         extra={
                                             "props": {
@@ -615,7 +610,9 @@ async def serve_request(
                                     ex=60 * 60 * 48,
                                     nx=True,
                                 )
-                                link = f"{settings.public_app_url}/managed/s/{token_uuid}"
+                                link = (
+                                    f"{settings.public_app_url}/managed/s/{token_uuid}"
+                                )
                                 channel += f"EMAIL:{record.attributes.get('email')}"
                                 try:
                                     await send_email(
@@ -630,13 +627,15 @@ async def serve_request(
                                                     "displayname", {}
                                                 ).get("en", ""),
                                                 "shortname": record.shortname,
-                                                "msisdn": record.attributes.get("msisdn"),
+                                                "msisdn": record.attributes.get(
+                                                    "msisdn"
+                                                ),
                                             },
                                         ),
                                         subject=generate_subject("activation"),
                                     )
                                 except Exception as e:
-                                    logger.error(
+                                    logger.warn(
                                         "Exception",
                                         extra={
                                             "props": {
@@ -650,7 +649,9 @@ async def serve_request(
                                 f"users:login:invitation:{invitation_token}", channel
                             )
 
-                    if separate_payload_data != None and isinstance(separate_payload_data, dict):
+                    if separate_payload_data != None and isinstance(
+                        separate_payload_data, dict
+                    ):
                         await db.save_payload_from_json(
                             request.space_name,
                             record.subpath,
@@ -783,7 +784,9 @@ async def serve_request(
                             old_resource_payload_body,
                             record.attributes["payload"]["body"],
                         )
-                        new_resource_payload_data = dict(remove_none(new_resource_payload_data))
+                        new_resource_payload_data = dict(
+                            remove_none(new_resource_payload_data)
+                        )
 
                     resource_obj.payload = core.Payload(**record.attributes["payload"])
                     resource_obj.payload.body = record.shortname + ".json"
@@ -1940,7 +1943,9 @@ async def cancel_lock(
         )
 
     async with RedisServices() as redis_services:
-        await redis_services.delete_lock_doc(space_name, branch_name, subpath, shortname)
+        await redis_services.delete_lock_doc(
+            space_name, branch_name, subpath, shortname
+        )
 
     await db.store_entry_diff(
         space_name,
@@ -2026,6 +2031,7 @@ async def execute(
         query=api.Query(**query_dict), user_shortname=logged_in_user
     )
 
+
 @router.get(
     "/s/{token}",
     response_model_exclude_none=True,
@@ -2041,14 +2047,13 @@ async def shoting_url(
 
 
 @router.post(
-    "/apply-alteration/{space_name}/{alteration_name}",
-    response_model_exclude_none=True
+    "/apply-alteration/{space_name}/{alteration_name}", response_model_exclude_none=True
 )
 async def apply_alteration(
-    space_name : str,
-    alteration_name : str,
+    space_name: str,
+    alteration_name: str,
     on_entry: core.Record,
-    logged_in_user=Depends(JWTBearer())
+    logged_in_user=Depends(JWTBearer()),
 ):
     alteration_meta = await db.load(
         space_name=space_name,
@@ -2056,26 +2061,22 @@ async def apply_alteration(
         shortname=alteration_name,
         class_type=core.Alteration,
         user_shortname=logged_in_user,
-        branch_name=on_entry.branch_name
+        branch_name=on_entry.branch_name,
     )
 
     on_entry.attributes = alteration_meta.requested_update
     response = await serve_request(
         request=api.Request(
-            space_name=space_name,
-            request_type=RequestType.update,
-            records=[on_entry]
+            space_name=space_name, request_type=RequestType.update, records=[on_entry]
         ),
-        owner_shortname=logged_in_user
+        owner_shortname=logged_in_user,
     )
 
     await db.delete(
-        space_name=space_name, 
-        subpath=f"{on_entry.subpath}/{on_entry.shortname}", 
-        meta=alteration_meta, 
-        branch_name=on_entry.branch_name, 
-        user_shortname=logged_in_user
+        space_name=space_name,
+        subpath=f"{on_entry.subpath}/{on_entry.shortname}",
+        meta=alteration_meta,
+        branch_name=on_entry.branch_name,
+        user_shortname=logged_in_user,
     )
     return response
-
-
