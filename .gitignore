@@ -29,4 +29,5 @@ src/tmp/
 sample/spaces/eser
 history.jsonl
 events.jsonl
-/spaces/
+spaces/
+startappz/**
