@@ -349,7 +349,10 @@
         aria-label="Text input with dropdown button"
       />
       <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <div on:click={async () => await handleCreateContent()}>
+      <div
+        style="cursor: pointer;"
+        on:click={async () => await handleCreateContent()}
+      >
         <Fa icon={faPlusSquare} size={"3x"} color={"grey"} />
       </div>
     </div>

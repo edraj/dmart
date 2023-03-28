@@ -107,6 +107,7 @@
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div
     class="back-icon"
+    style="cursor: pointer;"
     on:click={() => {
       showContentEditSection = false;
     }}
@@ -117,6 +118,7 @@
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div
     class="back-icon"
+    style="cursor: pointer;"
     on:click={async () => {
       await handleDelete();
     }}
