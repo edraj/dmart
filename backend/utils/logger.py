@@ -10,7 +10,7 @@ class CustomFormatter(logging.Formatter):
             'time': self.formatTime(record),
             'level': record.levelname,
             'message': record.getMessage(),
-            'props': record.props if hasattr(record, "props") else "",
+            'props': getattr(record, "props", ""),
             "thread": record.threadName,
             "pathname": record.pathname,
             "lineno": record.lineno,
