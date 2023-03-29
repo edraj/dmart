@@ -12,9 +12,7 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
-from pydantic import BaseModel, ValidationError
-from utils.helpers import pp
-from utils.logger import CustomLogger
+from pydantic import  ValidationError
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
