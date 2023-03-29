@@ -12,14 +12,17 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
+from utils.helpers import pp
+from utils.logger import CustomLogger
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
 from utils.spaces import initialize_spaces
 # import json_logging
 from fastapi import Depends, FastAPI, Request, Response, status
-from utils.logger import getLogger
+from utils.logger import logging_schema
+from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from utils.access_control import access_control
@@ -31,7 +34,6 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import models.api as api
 from utils.settings import settings
 
-logger = getLogger()
 app = FastAPI(
     title="Datamart API",
     description="Structured Content Management System",
@@ -390,8 +392,9 @@ async def catchall():
 if __name__ == "__main__":
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
-    config.errorlog = logger
     config.backlog = 200
-    config.logconfig = "./json_log.ini"
+
+    config.logconfig_dict = logging_schema
+    config.errorlog = logger
 
     asyncio.run(serve(app, config))  # type: ignore
