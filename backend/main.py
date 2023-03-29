@@ -19,7 +19,7 @@ from utils.plugin_manager import plugin_manager
 from utils.spaces import initialize_spaces
 # import json_logging
 from fastapi import Depends, FastAPI, Request, Response, status
-from fastapi.logger import logger
+from utils.logger import getLogger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from utils.access_control import access_control
@@ -31,6 +31,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import models.api as api
 from utils.settings import settings
 
+logger = getLogger()
 app = FastAPI(
     title="Datamart API",
     description="Structured Content Management System",
@@ -132,6 +133,9 @@ async def app_startup():
 @app.on_event("shutdown")
 async def app_shutdown():
     logger.info("Application shutdown")
+    logger.info("INFO LOGGG")
+    logger.warning("warning LOGGG")
+    logger.error("error LOGGG")
 
 
 app.add_middleware(CustomRequestMiddleware)
@@ -386,10 +390,12 @@ async def catchall():
             type="catchall", code=230, message="Requested method or path is invalid"
         ),
     )
-
-
+from pythonjsonlogger.jsonlogger import JsonFormatter
+from concurrent_log_handler import ConcurrentRotatingFileHandler
 if __name__ == "__main__":
     config = Config()
+    # logger.level = 9999
+    pp(logconfig=config.logconfig, is_enabmanagerled=logger.__dict__)
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
     config.errorlog = logger
     config.backlog = 200
