@@ -133,9 +133,6 @@ async def app_startup():
 @app.on_event("shutdown")
 async def app_shutdown():
     logger.info("Application shutdown")
-    logger.info("INFO LOGGG")
-    logger.warning("warning LOGGG")
-    logger.error("error LOGGG")
 
 
 app.add_middleware(CustomRequestMiddleware)
@@ -390,12 +387,8 @@ async def catchall():
             type="catchall", code=230, message="Requested method or path is invalid"
         ),
     )
-from pythonjsonlogger.jsonlogger import JsonFormatter
-from concurrent_log_handler import ConcurrentRotatingFileHandler
 if __name__ == "__main__":
     config = Config()
-    # logger.level = 9999
-    pp(logconfig=config.logconfig, is_enabmanagerled=logger.__dict__)
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
     config.errorlog = logger
     config.backlog = 200
