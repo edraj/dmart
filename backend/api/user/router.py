@@ -636,8 +636,30 @@ cookie_options = {
 )
 async def logout(
     response: Response,
+    shortname=Depends(JWTBearer()),
 ) -> api.Response:
     response.set_cookie(value="", max_age=0, **cookie_options)
+
+    user = await db.load(
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        shortname=shortname,
+        class_type=core.User,
+        user_shortname=shortname,
+        branch_name=MANAGEMENT_BRANCH,
+    )
+    if user.firebase_token:
+        user.firebase_token = None
+        await db.update(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            meta=user,
+            old_version_flattend=flatten_dict({"firebase_token": user.firebase_token}),
+            new_version_flattend=flatten_dict({"firebase_token": None}),
+            updated_attributes_flattend=["firebase_token"],
+            branch_name=MANAGEMENT_BRANCH,
+            user_shortname=shortname,
+        )
 
     return api.Response(status=api.Status.success, records=[])
 
