@@ -655,7 +655,7 @@ async def logout(
             subpath=USERS_SUBPATH,
             meta=user,
             old_version_flattend=flatten_dict({"firebase_token": user.firebase_token}),
-            new_version_flattend=flatten_dict({"firebase_token": ""}),
+            new_version_flattend=flatten_dict({"firebase_token": None}),
             updated_attributes_flattend=["firebase_token"],
             branch_name=MANAGEMENT_BRANCH,
             user_shortname=shortname,
