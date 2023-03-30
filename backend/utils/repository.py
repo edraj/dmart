@@ -18,7 +18,7 @@ from utils.redis_services import RedisServices
 import aiofiles
 from fastapi import status
 from fastapi.logger import logger
-from utils.helpers import branch_path, camel_case, pp, snake_case, str_to_datetime
+from utils.helpers import branch_path, camel_case, snake_case, str_to_datetime
 from utils.custom_validations import validate_payload_with_schema
 import subprocess
 from redis.commands.search.document import Document as RedisDocument
@@ -1105,7 +1105,7 @@ async def _sys_update_model(
     meta.updated_at = datetime.now()
     meta_updated = False
     payload_updated = False
-    payload_dict = None
+    payload_dict = {}
 
     try:
         body = str(meta.payload.body) if meta and meta.payload else ""
