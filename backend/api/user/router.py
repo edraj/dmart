@@ -198,6 +198,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
     shortname = ""
     user = None
+    user_updates = {}
     identifier = request.check_fields()
     try:
         if request.invitation:
@@ -227,29 +228,18 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 branch_name=MANAGEMENT_BRANCH,
             )
 
-            old_version_flattend = flatten_dict(user.dict())
             if (
                 data.get("channel") == "EMAIL"
                 and user.email
                 and f"EMAIL:{user.email}" in invitation_token
             ):
-                user.is_email_verified = True
+                user_updates["is_email_verified"] = True
             elif (
                 data.get("channel") == "SMS"
                 and user.msisdn
                 and f"SMS:{user.msisdn}" in invitation_token
             ):
-                user.is_msisdn_verified = True
-            await db.update(
-                MANAGEMENT_SPACE,
-                USERS_SUBPATH,
-                user,
-                old_version_flattend,
-                flatten_dict(user.dict()),
-                ["is_email_verified", "is_msisdn_verified"],
-                MANAGEMENT_BRANCH,
-                shortname,
-            )
+                user_updates["is_msisdn_verified"] = True
         else:
             if request.password and not re.match(rgx.PASSWORD, request.password):
                 raise api.Exception(
@@ -270,14 +260,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
             if "shortname" in identifier:
                 shortname = identifier["shortname"]
-                user = await db.load(
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    shortname=identifier["shortname"],
-                    class_type=core.User,
-                    user_shortname=identifier["shortname"],
-                    branch_name=MANAGEMENT_BRANCH,
-                )
             else:
                 key, value = list(identifier.items())[0]
                 shortname = await access_control.get_user_by_criteria(key, value)
@@ -290,14 +272,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                             message=f"Invalid username or password [1] {key=} {value=}",
                         ),
                     )
-                user = await db.load(
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    shortname=shortname,
-                    class_type=core.User,
-                    user_shortname=shortname,
-                    branch_name=MANAGEMENT_BRANCH,
-                )
+            user = await db.load(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                class_type=core.User,
+                user_shortname=shortname,
+                branch_name=MANAGEMENT_BRANCH,
+            )
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
         if user and user.is_active and (
             request.invitation
@@ -326,30 +308,27 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 record.attributes["displayname"] = user.displayname
 
             if request.firebase_token:
-                user.firebase_token = request.firebase_token
-                await db.update(
+                user_updates["firebase_token"] = request.firebase_token
+
+            await repository._sys_update_model(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                branch_name=MANAGEMENT_BRANCH,
+                meta=user,
+                updates=user_updates,
+                sync_redis=False
+            )
+            await plugin_manager.after_action(
+                core.Event(
                     space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    meta=user,
-                    old_version_flattend=flatten_dict(user.dict()),
-                    new_version_flattend=flatten_dict(
-                        {"firebase_token": request.firebase_token}
-                    ),
-                    updated_attributes_flattend=["firebase_token"],
                     branch_name=MANAGEMENT_BRANCH,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    action_type=core.ActionType.update,
+                    resource_type=ResourceType.user,
                     user_shortname=shortname,
                 )
-                await plugin_manager.after_action(
-                    core.Event(
-                        space_name=MANAGEMENT_SPACE,
-                        branch_name=MANAGEMENT_BRANCH,
-                        subpath=USERS_SUBPATH,
-                        shortname=shortname,
-                        action_type=core.ActionType.update,
-                        resource_type=ResourceType.user,
-                        user_shortname=shortname,
-                    )
-                )
+            )
             return api.Response(status=api.Status.success, records=[record])
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
