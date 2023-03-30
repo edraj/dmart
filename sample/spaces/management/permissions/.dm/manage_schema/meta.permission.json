@@ -12,6 +12,8 @@
     ],
     "applications": [
       "schema"
+    ],    "dummy": [
+      "schema"
     ]
   },
   "resource_types": [

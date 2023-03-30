@@ -2,7 +2,7 @@
 
 <img src="https://github.com/edraj/dmart/actions/workflows/dmart-checks.yml/badge.svg" >
 
-DMART is a data service layer that offers a streamlined / simplified way to develop certain class of solutions with small to medium data footprint (<=300 million primary entries). DMART is not a one-solution fit-all kind of technology, but it tries to address a wide variety of needs. Specifically, DMART is not suited for systems that have large data (> 400 million primary entries) nor systems that require heavily/complex related data modeling.
+DMART is a data service layer that offers a streamlined / simplified way to develop certain class of solutions with small to medium data footprint (<=300 million primary entries). DMART is not a one-solution fit-all kind of technology, but it tries to address a wide variety of needs. Specifically, DMART is not suited for systems that have large data (> 400 million primary entries) nor systems that require heavily/complex related data modeling or requiring atomic operations (transactions).
 
 As such, DMART serves as general-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS). 
 
