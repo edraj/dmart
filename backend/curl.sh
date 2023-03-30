@@ -173,13 +173,13 @@ echo -n -e "Create content: \t\t"
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createcontent.json"' -F 'payload_file=@"../sample/test/data.json"' ${API_URL}/managed/resource_with_payload  | jq  .status
 
 echo -n -e "Update content: \t\t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --data-binary "@../sample/test/updatecontent.json" ${API_URL}/managed/request  | jq  
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --data-binary "@../sample/test/updatecontent.json" ${API_URL}/managed/request  | jq  .status
 
 echo -n -e "Delete content: \t\t"
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --data-binary "@../sample/test/deletecontent.json" ${API_URL}/managed/request  | jq  .status
 
 echo -n -e "Upload attachment: \t\t"
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createmedia.json"' -F 'payload_file=@"../sample/test/logo.jpeg"' ${API_URL}/managed/resource_with_payload  | jq 
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createmedia.json"' -F 'payload_file=@"../sample/test/logo.jpeg"' ${API_URL}/managed/resource_with_payload  | jq .status
 
 echo -n -e "Query content: \t\t\t"
 RECORD=$(jq -c -n --arg subpath "$SUBPATH" '{space_name: "dummy", type: "subpath", subpath: $subpath}')
