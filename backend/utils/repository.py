@@ -18,7 +18,7 @@ from utils.redis_services import RedisServices
 import aiofiles
 from fastapi import status
 from fastapi.logger import logger
-from utils.helpers import branch_path, camel_case, snake_case, str_to_datetime
+from utils.helpers import branch_path, camel_case, pp, snake_case, str_to_datetime
 from utils.custom_validations import validate_payload_with_schema
 import subprocess
 from redis.commands.search.document import Document as RedisDocument
@@ -1061,7 +1061,8 @@ async def _sys_update_model(
     subpath: str,
     meta: core.Meta,
     branch_name: str | None,
-    updates: dict
+    updates: dict,
+    sync_redis: bool = True
 ) -> bool:
     """
     Update @meta entry and its payload by @updates dict of attributes in the
@@ -1100,23 +1101,24 @@ async def _sys_update_model(
             payload_dict[key] = value
             payload_updated = True
         
+    if meta_updated:
+        await db.save(space_name, subpath, meta, branch_name)
+    if(
+        payload_updated and
+        meta.payload and 
+        meta.payload.schema_shortname
+    ):
+        await validate_payload_with_schema(payload_dict, space_name, meta.payload.schema_shortname, branch_name)
+        await db.save_payload_from_json(space_name, subpath, meta, payload_dict, branch_name)
+
+    if not sync_redis:
+        return True
+
     async with RedisServices() as redis_services:
-        if meta_updated:
-            await db.save(space_name, subpath, meta, branch_name)
-
-            await redis_services.save_meta_doc(space_name, branch_name, subpath, meta)
-
+        await redis_services.save_meta_doc(space_name, branch_name, subpath, meta)
         if payload_updated:
-            if meta and meta.payload and meta.payload.schema_shortname and payload_dict:
-                await validate_payload_with_schema(payload_dict, space_name, meta.payload.schema_shortname, branch_name)
-            
-            if payload_dict:
-                await db.save_payload_from_json(space_name, subpath, meta, payload_dict, branch_name)
-
-            if payload_dict:
-                payload_dict.update(json.loads(meta.json()))
-            if payload_dict:
-                await redis_services.save_payload_doc(space_name, branch_name, subpath, meta, payload_dict, ResourceType(snake_case(type(meta).__name__)))
+            payload_dict.update(json.loads(meta.json()))
+            await redis_services.save_payload_doc(space_name, branch_name, subpath, meta, payload_dict, ResourceType(snake_case(type(meta).__name__)))
 
     return True 
 
