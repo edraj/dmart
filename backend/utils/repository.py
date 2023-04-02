@@ -486,7 +486,7 @@ async def serve_query(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=400,
+                        code=408,
                         message="filter_shortnames is missing",
                     ),
                 )
