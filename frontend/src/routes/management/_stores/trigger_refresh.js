@@ -1,11 +1,9 @@
 import { writable } from "svelte/store";
 
-const { subscribe, set } = writable({});
+const { subscribe, set } = writable(false);
 
-const selectedSubpath = {
+export const triggerRefreshList = {
   set: (value) => set(value),
   subscribe,
   reset: () => customSet([]),
 };
-
-export default selectedSubpath;
