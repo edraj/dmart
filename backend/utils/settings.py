@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     management_space: str = "management"
     users_subpath: str = "users"
     spaces_folder: Path = Path("../sample/spaces/")
+    contracts_folder: Path = Path("../contracts_folder/")
     lock_period: int = 300
     servername: str = ""  # This is for print purposes only.
     auto_uuid_rule = "auto"  # Used to generate a shortname from UUID
