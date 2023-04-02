@@ -35,8 +35,6 @@
   } from "sveltestrap";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
 
-  console.log("Render Folder");
-
   let expanded = false;
   export let data;
   let children_subpath;
@@ -68,16 +66,24 @@
       });
 
       _entries.forEach((entry) => {
-        entry.subpath = `${entry.subpath}/${entry.shortname}`;
+        if (entry.subpath.startsWith("/")) {
+          entry.subpath = `${entry.subpath}/${entry.shortname}`;
+        } else {
+          entry.subpath = `/${entry.subpath}/${entry.shortname}`;
+        }
       });
 
-      const idxSpace = $spaces.children.findIndex(
-        (child) => child.shortname === data.space_name
-      );
-      const idxSubpath = $spaces.children[idxSpace].subpaths.findIndex(
-        (child) => child.shortname === data.shortname
-      );
-      data["subpaths"] = _entries;
+      data["subpaths"] = _entries
+        .map((e) => {
+          if (
+            e.subpath.split("/").length ==
+            data.subpath.split("/").length + 1
+          ) {
+            return e;
+          }
+          return null;
+        })
+        .filter((e) => e != null);
     }
   }
 
@@ -96,14 +102,12 @@
     modalFlag = "create";
     entryCreateModal = true;
     const r = await dmartGetSchemas(data.space_name);
-    console.log({ r: r.records });
     schemas = r.records.map((e) => e.shortname);
   }
 
   let subpathUpdateContent = { json: data, text: undefined };
   let isSubpathUpdateModalOpen = false;
   async function handleSubpathUpdate(content) {
-    console.log("handleSubpathUpdate");
     const record = content.json ?? JSON.parse(content.text);
     delete record.space_name;
     delete record.type;
@@ -128,8 +132,6 @@
     }
   }
   async function handleSubpathDelete() {
-    console.log("handleSubpathDelete");
-    console.log({ data });
     // const space_name = child.shortname;
     if (
       confirm(`Are you sure want to delete ${data.shortname} subpath`) === false
