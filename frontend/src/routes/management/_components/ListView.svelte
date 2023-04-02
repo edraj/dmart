@@ -11,7 +11,6 @@
   import { dmartEntry, dmartQuery } from "../../../dmart.js";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
   import { toastPushSuccess, toastPushFail } from "../../../utils.js";
-  import "bootstrap";
   import Fa from "sveltejs-fontawesome";
   import { faPlusSquare } from "@fortawesome/free-regular-svg-icons";
   import {
@@ -24,6 +23,7 @@
   import { Form, FormGroup, Label, Input } from "sveltestrap";
   import { createAjvValidator, Mode } from "svelte-jsoneditor";
   import ContentEditSection from "./ContentEditSection.svelte";
+  import { triggerRefreshList } from "../_stores/trigger_refresh.js";
 
   let showContentEditSection = false;
   let shortname = "";
@@ -31,6 +31,11 @@
     json: {},
     text: undefined,
   };
+  let errorContent = {
+    json: {},
+    text: undefined,
+  };
+  let isError = false;
   let metaContentAttachement = {};
   let bodyContent = {
     json: {},
@@ -170,6 +175,8 @@
   }
 
   const handleSave = async () => {
+    isError = false;
+
     const metaData = metaContent.json
       ? { ...metaContent.json }
       : JSON.parse(metaContent.text);
@@ -188,6 +195,8 @@
       records[currentItem - 1] = metaData;
     } else {
       toastPushFail();
+      errorContent.json = response.error;
+      isError = true;
     }
   };
 
@@ -268,47 +277,14 @@
   $: {
     refJsonEditor?.expand(() => false);
   }
+  $: {
+    if ($triggerRefreshList) {
+      refreshList();
+    }
+  }
 </script>
 
 <svelte:window bind:innerHeight={height} />
-
-<Modal isOpen={open} {toggle} size={"lg"}>
-  <ModalHeader />
-  <Form on:submit={async (e) => await handleCreateContentSubmit(e)}>
-    <ModalBody>
-      <FormGroup>
-        <Label>Shorname</Label>
-        <Input placeholder="Shortname..." bind:value={contentShortname} />
-        <hr />
-
-        <Label>Content</Label>
-        <ContentJsonEditor
-          bind:content
-          {validator}
-          bind:isSchemaValidated
-          handleSave={null}
-          onChange={handleChange}
-        />
-
-        <hr />
-
-        <Label>Schema</Label>
-        <ContentJsonEditor
-          bind:self={refJsonEditor}
-          content={contentSchema}
-          readOnly={true}
-          mode={Mode.tree}
-        />
-      </FormGroup>
-    </ModalBody>
-    <ModalFooter>
-      <Button type="button" color="secondary" on:click={() => (open = false)}
-        >cancel</Button
-      >
-      <Button type="submit" color="primary">Submit</Button>
-    </ModalFooter>
-  </Form>
-</Modal>
 
 {#if !showContentEditSection}
   {#if filterable}
@@ -348,13 +324,6 @@
         class="form-control"
         aria-label="Text input with dropdown button"
       />
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <div
-        style="cursor: pointer;"
-        on:click={async () => await handleCreateContent()}
-      >
-        <Fa icon={faPlusSquare} size={"3x"} color={"grey"} />
-      </div>
     </div>
   {/if}
 
@@ -425,7 +394,10 @@
           {/each}
         {:else}
           {#each Object.keys(cols) as col}
-            <div class="my-cell" style=" width: {cols[col].width};">
+            <div
+              class="my-cell hide-scroll"
+              style=" width: {cols[col].width};overflow: auto;"
+            >
               {value(cols[col].path.split("."), items[index], cols[col].type)}
             </div>
           {/each}
@@ -465,6 +437,8 @@
     bind:records
     bind:bodyContent
     bind:metaContent
+    bind:errorContent
+    bind:isError
     bind:metaContentAttachement
     bind:historyQuery
     bind:showContentEditSection
@@ -510,7 +484,7 @@
     padding: 0 15px;
     border-bottom: 1px solid #eee;
     box-sizing: border-box;
-    line-height: 25px;
+    height: 30px;
     font-weight: 500;
     background: #fff;
     display: flex;
@@ -529,5 +503,16 @@
   .my-cell {
     display: inline;
     /*border: 1px solid orange;*/
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .hide-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .hide-scroll {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
   }
 </style>

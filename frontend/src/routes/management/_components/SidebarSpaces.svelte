@@ -24,6 +24,7 @@
   };
 
   async function handleSpaceDelete() {
+    console.log("handleSpaceDelete");
     const spacename = child.shortname;
     if (confirm(`Are you sure want to delete ${spacename} space`) === false) {
       return;
@@ -50,6 +51,7 @@
 
   let modalFlag = "create";
   async function handleModelCreate(data) {
+    console.log("handleModelCreate");
     const response = dmartFolder(
       child.shortname,
       "/",
@@ -67,6 +69,7 @@
   }
 
   async function handleModelUpdate(content) {
+    console.log("handleModelUpdate");
     const record = content.json ?? JSON.parse(content.text);
     delete record.type;
     const query = {
@@ -86,9 +89,6 @@
 
   let props = [];
   let entryCreateModal = false;
-
-  $: {
-  }
 </script>
 
 {#key props}
@@ -108,11 +108,10 @@
   {/if}
 {/key}
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
-<div>
+<div class="mb-3" style="padding-left: 8px;">
   <ListGroupItem class="px-0">
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
-      class="mb-2"
       on:mouseover={(e) => (displayActionMenu = true)}
       on:mouseleave={(e) => (displayActionMenu = false)}
     >

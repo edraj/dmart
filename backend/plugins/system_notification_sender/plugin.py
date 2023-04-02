@@ -37,6 +37,7 @@ class Plugin(PluginBase):
                 f"data.shortname is None and str is required at system_notification_sender"
             )
             return
+
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"].dict()
         else:
