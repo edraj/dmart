@@ -37,7 +37,7 @@ class Plugin(PluginBase):
                 f"data.shortname is None and str is required at system_notification_sender"
             )
             return
-        redis = await RedisServices()
+
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"].dict()
         else:
@@ -71,15 +71,16 @@ class Plugin(PluginBase):
 
         # 1- get the matching SystemNotificationRequests
         search_subpaths = list(filter(None, data.subpath.split("/")))
-        matching_notification_requests = await redis.search(
-            space_name=settings.management_space,
-            branch_name=data.branch_name,
-            schema_name="system_notification_request",
-            filters={"subpath": ["notifications/system"]},
-            limit=30,
-            offset=0,
-            search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
-        )
+        async with await RedisServices() as redis:
+            matching_notification_requests = await redis.search(
+                space_name=settings.management_space,
+                branch_name=data.branch_name,
+                schema_name="system_notification_request",
+                filters={"subpath": ["notifications/system"]},
+                limit=30,
+                offset=0,
+                search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
+            )
         if not matching_notification_requests.get("data", {}):
             return True
 
