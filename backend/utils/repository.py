@@ -486,7 +486,7 @@ async def serve_query(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=400,
+                        code=408,
                         message="filter_shortnames is missing",
                     ),
                 )
@@ -741,6 +741,7 @@ async def redis_query_search(
                     "query_policies": redis_query_policies,
                     "created_at": created_at_search,
                 },
+                exact_subpath=query.exact_subpath,
                 limit=limit,
                 offset=offset,
                 highlight_fields=list(query.highlight_fields.keys()),

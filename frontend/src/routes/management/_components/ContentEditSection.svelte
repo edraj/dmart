@@ -14,6 +14,8 @@
   export let records;
   export let bodyContent;
   export let metaContent;
+  export let errorContent;
+  export let isError;
   export let metaContentAttachement;
   export let historyQuery;
   export let showContentEditSection;
@@ -45,7 +47,7 @@
       path: "attributes.diff",
       title: "Diff",
       type: "json",
-      width: "50%",
+      width: "55%",
     },
   };
 
@@ -163,3 +165,10 @@
     </div>
   </TabPanel>
 </Tabs>
+
+{#if isError}
+  <div class="mt-3">
+    <h3>Error details</h3>
+    <ContentJsonEditor bind:content={errorContent} readOnly={true} />
+  </div>
+{/if}

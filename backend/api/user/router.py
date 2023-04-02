@@ -248,7 +248,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="jwtauth",
-                        code=14,
+                        code=15,
                         message="password dose not match required rules",
                     ),
                 )
@@ -750,7 +750,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="auth",
-                code=10,
+                code=19,
                 message=f"Invalid username or password [4] {key=} {value=}",
             ),
         )

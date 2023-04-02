@@ -172,9 +172,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
         json_data = sorted(
             json_data,
-            key=lambda d: d.attributes[query.sort_by]
-            if query.sort_by in d.attributes
-            else "",
+            key=lambda d: d[query.sort_by] if query.sort_by in d else "",
             reverse=(query.sort_type == api.SortType.descending),
         )
 
@@ -382,9 +380,6 @@ async def serve_space(
 async def query_entries(
     query: api.Query, user_shortname=Depends(JWTBearer())
 ) -> api.Response:
-
-    if query.subpath[0] != "/":
-        query.subpath = f"/{query.subpath}"
 
     await plugin_manager.before_action(
         core.Event(
