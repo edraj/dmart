@@ -350,6 +350,9 @@ class RedisServices(object):
                     TextField(
                         "$.subpath", sortable=True, no_stem=True, as_name="subpath"
                     ),
+                    TagField(
+                        "$.subpath", as_name="exact_subpath"
+                    ),
                     TextField(
                         "$.resource_type",
                         sortable=True,
@@ -819,6 +822,7 @@ class RedisServices(object):
         filters: dict[str, str | list],
         limit: int,
         offset: int,
+        exact_subpath: bool = False,
         sort_type: SortType = SortType.ascending,
         sort_by: str | None = None,
         highlight_fields: list[str] | None = None,
@@ -851,6 +855,8 @@ class RedisServices(object):
                 )
             elif item[0] == "created_at" and item[1]:
                 query_string += f" @{item[0]}:{item[1]}"
+            elif item[0] == "subpath" and exact_subpath:
+                query_string += f" @exact_subpath:{{{'|'.join(item[1]).translate(redis_escape_chars)}}}"
 
             elif item[1]:
                 query_string += " @" + item[0] + ":(" + "|".join(item[1]) + ")"

@@ -12,12 +12,13 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
-from pydantic import ValidationError
+from pydantic import  ValidationError
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
 from utils.spaces import initialize_spaces
 from fastapi import Depends, FastAPI, Request, Response, status
+from utils.logger import logging_schema
 from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -397,13 +398,12 @@ async def catchall():
             type="catchall", code=230, message="Requested method or path is invalid"
         ),
     )
-
-
 if __name__ == "__main__":
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
-    config.errorlog = logger
     config.backlog = 200
-    config.logconfig = "./json_log.ini"
+
+    config.logconfig_dict = logging_schema
+    config.errorlog = logger
 
     asyncio.run(serve(app, config))  # type: ignore

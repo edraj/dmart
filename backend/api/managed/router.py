@@ -48,7 +48,7 @@ from pydantic.utils import deep_update
 from utils.custom_validations import validate_payload_with_schema
 from utils.settings import settings
 from utils.plugin_manager import plugin_manager
-from io import StringIO
+from io import BytesIO, StringIO
 from api.user.service import (
     send_email,
     send_sms,
@@ -172,9 +172,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
         json_data = sorted(
             json_data,
-            key=lambda d: d.attributes[query.sort_by]
-            if query.sort_by in d.attributes
-            else "",
+            key=lambda d: d[query.sort_by] if query.sort_by in d else "",
             reverse=(query.sort_type == api.SortType.descending),
         )
 
@@ -382,9 +380,6 @@ async def serve_space(
 async def query_entries(
     query: api.Query, user_shortname=Depends(JWTBearer())
 ) -> api.Response:
-
-    if query.subpath[0] != "/":
-        query.subpath = f"/{query.subpath}"
 
     await plugin_manager.before_action(
         core.Event(
@@ -1200,7 +1195,33 @@ async def update_state(
             new_version_flattend.update(flatten_dict({"payload.body": ticket_obj}))
 
             if comment:
+                time = datetime.now().strftime("%Y%m%d%H%M%S")
                 new_version_flattend["comment"] = comment
+                payload = {
+                    "body": comment,
+                    "state": ticket_obj.state,
+                }
+                record_file = json.dumps(
+                    {
+                        "shortname": f"c_{time}",
+                        "resource_type": "comment",
+                        "subpath": f"{subpath}/{shortname}",
+                        "attributes": {"is_active": True, **payload},
+                    }
+                ).encode()
+                payload_file = json.dumps(payload).encode()
+                await create_or_update_resource_with_payload(
+                    UploadFile(
+                        filename=f"{time}.json",
+                        file=BytesIO(payload_file),
+                    ),
+                    UploadFile(
+                        filename="record.json",
+                        file=BytesIO(record_file),
+                    ),
+                    space_name,
+                    owner_shortname=logged_in_user,
+                )
 
             history_diff = await db.update(
                 space_name,
@@ -1341,7 +1362,8 @@ async def create_or_update_resource_with_payload(
     space_name: str = Form(...),
     owner_shortname=Depends(JWTBearer()),
 ):
-    # NOTE We currently make no distinction between create and update. in such case update should contain all the data every time.
+    # NOTE We currently make no distinction between create and update.
+    # in such case update should contain all the data every time.
     spaces = await get_spaces()
     if space_name not in spaces:
         raise api.Exception(
@@ -1374,7 +1396,6 @@ async def create_or_update_resource_with_payload(
         )
 
     record = core.Record.parse_raw(request_record.file.read())
-
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
