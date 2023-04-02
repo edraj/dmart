@@ -383,9 +383,6 @@ async def query_entries(
     query: api.Query, user_shortname=Depends(JWTBearer())
 ) -> api.Response:
 
-    if query.subpath[0] != "/":
-        query.subpath = f"/{query.subpath}"
-
     await plugin_manager.before_action(
         core.Event(
             space_name=query.space_name,
