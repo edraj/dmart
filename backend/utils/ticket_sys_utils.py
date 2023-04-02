@@ -49,7 +49,7 @@ async def set_init_state_from_request(ticket: api.Request, branch_name, logged_i
         status.HTTP_400_BAD_REQUEST,
         api.Error(
             type="request",
-            code=400,
+            code=409,
             message="This shortname already exists",
         ),
     )
@@ -117,7 +117,7 @@ def post_transite(states, next_state: str, resolution: str):
     for state in states:
         if state["state"] == next_state:
             if "resolutions" in state:
-                available_resolutions = [one["key"] for one in state["resolutions"]]
+                available_resolutions = [one for one in state["resolutions"]]
                 if resolution in available_resolutions:
                     return {"status": True, "message": resolution}
                 else:
