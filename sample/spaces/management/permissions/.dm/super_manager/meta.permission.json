@@ -18,6 +18,8 @@
         ],
         "test": [
             "/"
+        ],        "dummy": [
+            "/"
         ],
         "applications": [
             "/"
