@@ -24,7 +24,6 @@ async def trigger_admin_notifications():
             limit=10000,
             offset=0
         )
-
     if admin_notifications["total"] == 0:
         return
 
@@ -52,20 +51,21 @@ async def trigger_admin_notifications():
         formatted_req = await prepare_request(notification_dict)
         try:
             for receiver in receivers['data']:
+                receiver_data = json.loads(receiver.json)
                 if not formatted_req["push_only"]:
                     notification_obj = await Notification.from_request(notification_dict)
                     await _save_model(
-                        "personal",
-                        f"people/{receiver}/notifications",
-                        notification_obj,
-                        notification_dict["branch_name"],
+                        space_name="personal",
+                        subpath=f"people/{receiver_data['shortname']}/notifications",
+                        meta=notification_obj,
+                        branch_name=notification_dict["branch_name"],
                     )
 
                 for platform in formatted_req["platforms"]:
                     await notification_manager.send(
                         platform=platform,
                         data=NotificationData(
-                            receiver=receiver,
+                            receiver=receiver_data['shortname'],
                             title=formatted_req["title"],
                             body=formatted_req["body"],
                             image_urls=formatted_req["images_urls"],
