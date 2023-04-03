@@ -622,7 +622,7 @@ async def get_last_updated_entry(
 async def get_entry_attachments(
     subpath: str,
     attachments_path: Path,
-    branch_name: str,
+    branch_name: str | None = None,
     filter_types: list | None = None,
     include_fields: list | None = None,
     filter_shortnames: list | None = None,
