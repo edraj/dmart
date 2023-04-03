@@ -176,6 +176,10 @@
   }
 
   const handleSave = async () => {
+    if (!isSchemaValidated) {
+      alert("The content does is not validated agains the schema");
+      return;
+    }
     isError = false;
 
     const metaData = metaContent.json
@@ -334,6 +338,20 @@
             text: undefined,
           };
 
+          await dmartGetSchemas(
+            query.space_name,
+            json.attributes.payload.schema_shortname
+          )
+            .then((json) => {
+              const schema = json.records[0].attributes["payload"].body;
+              search.options = Object.keys(schema["properties"]);
+              cleanUpSchema(schema.properties);
+              validator = createAjvValidator({ schema });
+            })
+            .catch((e) => {
+              console.log(e);
+            });
+
           if (record?.attributes?.payload?.body) {
             bodyContent = {
               json: await dmartEntry(
@@ -410,6 +428,8 @@
     bind:bodyContent
     bind:metaContent
     bind:errorContent
+    bind:validator
+    bind:isSchemaValidated
     bind:isError
     bind:metaContentAttachement
     bind:historyQuery

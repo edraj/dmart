@@ -257,8 +257,10 @@
       </FormGroup>
     </ModalBody>
     <ModalFooter>
-      <Button type="button" color="secondary" on:click={() => (open = false)}
-        >cancel</Button
+      <Button
+        type="button"
+        color="secondary"
+        on:click={() => (entryCreateModal = false)}>cancel</Button
       >
       <Button type="submit" color="primary">Submit</Button>
     </ModalFooter>
