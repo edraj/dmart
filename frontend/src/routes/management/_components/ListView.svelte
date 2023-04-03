@@ -9,7 +9,12 @@
   } from "../../../dmart.js";
   import { onDestroy } from "svelte";
   import { dmartEntry, dmartQuery } from "../../../dmart.js";
-  import { toastPushSuccess, toastPushFail } from "../../../utils.js";
+  import {
+    toastPushSuccess,
+    toastPushFail,
+    toastPushLoding,
+    toastPop,
+  } from "../../../utils.js";
   import { Breadcrumb, BreadcrumbItem } from "sveltestrap";
   import { createAjvValidator, Mode } from "svelte-jsoneditor";
   import ContentEditSection from "./ContentEditSection.svelte";
@@ -327,12 +332,13 @@
         style={style.replaceAll("left:0;", "")}
         class="my-row"
         on:click={async () => {
+          const toastID = toastPushLoding();
           if (!clickable || index === 0) {
             return;
           }
 
           currentItem = index;
-          showContentEditSection = true;
+
           const record = { ...records[index - 1] };
 
           shortname = record.shortname;
@@ -380,6 +386,9 @@
             subpath: record.subpath,
             retrieve_json_payload: true,
           };
+
+          toastPop(toastID);
+          showContentEditSection = true;
         }}
         class:current={currentItem == index}
       >

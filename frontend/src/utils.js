@@ -19,3 +19,15 @@ export function toastPushFail(message = "Failed!") {
     },
   });
 }
+
+export function toastPushLoding() {
+  return toast.push("Loding...", {
+    // Toast can only be dismissed programatically
+    initial: 0,
+    dismissable: false,
+  });
+}
+
+export function toastPop(id) {
+  toast.pop(id);
+}
