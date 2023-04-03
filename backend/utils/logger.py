@@ -29,8 +29,11 @@ logging_schema = {
     },
     'handlers': {
         'file': {
-            'class': 'logging.FileHandler',
+            'class': 'concurrent_log_handler.ConcurrentRotatingFileHandler',
             'filename': settings.log_file,
+            'backupCount': 5,
+            'maxBytes': 1048576,
+            'use_gzip': True,
             'formatter': 'json'
         }
     },
