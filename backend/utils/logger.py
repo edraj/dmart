@@ -12,6 +12,7 @@ class CustomFormatter(logging.Formatter):
             'message': record.getMessage(),
             'props': getattr(record, "props", ""),
             "thread": record.threadName,
+            "process": record.process,
             "pathname": record.pathname,
             "lineno": record.lineno,
             "funcName": record.funcName,
