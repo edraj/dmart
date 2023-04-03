@@ -285,24 +285,31 @@
     }
   }
   $: triggerSearchList && handleSearchInput($triggerSearchList);
+  $: {
+    if (!showContentEditSection) {
+      shortname = "";
+    }
+  }
 </script>
 
 <svelte:window bind:innerHeight={height} />
 
+{#if filterable}
+  <div class="input-group">
+    <Breadcrumb class="mt-3 px-3">
+      <BreadcrumbItem>{query.space_name}</BreadcrumbItem>
+      {#each query.subpath.split("/") as s}
+        {#if s !== ""}
+          <BreadcrumbItem>{s}</BreadcrumbItem>
+        {/if}
+      {/each}
+      {#if shortname}
+        <BreadcrumbItem>{shortname}</BreadcrumbItem>
+      {/if}
+    </Breadcrumb>
+  </div>
+{/if}
 {#if !showContentEditSection}
-  {#if filterable}
-    <div class="input-group">
-      <Breadcrumb class="mt-3 px-3">
-        <BreadcrumbItem>{query.space_name}</BreadcrumbItem>
-        {#each query.subpath.split("/") as s}
-          {#if s !== ""}
-            <BreadcrumbItem>{s}</BreadcrumbItem>
-          {/if}
-        {/each}
-      </Breadcrumb>
-    </div>
-  {/if}
-
   <div class="list">
     <VirtualList
       height={height - 105}
