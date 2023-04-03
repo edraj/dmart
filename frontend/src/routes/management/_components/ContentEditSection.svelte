@@ -15,6 +15,8 @@
   export let bodyContent;
   export let metaContent;
   export let errorContent;
+  export let validator;
+  export let isSchemaValidated;
   export let isError;
   export let metaContentAttachement;
   export let historyQuery;
@@ -138,7 +140,12 @@
   </TabList>
 
   <TabPanel>
-    <ContentJsonEditor bind:content={bodyContent} {handleSave} />
+    <ContentJsonEditor
+      bind:content={bodyContent}
+      {handleSave}
+      {validator}
+      bind:isSchemaValidated
+    />
   </TabPanel>
   <TabPanel>
     <ContentJsonEditor bind:content={metaContent} {handleSave} />
