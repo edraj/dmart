@@ -1,4 +1,4 @@
-
+#!/usr/bin/env -S BACKEND_ENV=config.env python3
 from datetime import datetime, timedelta
 import json
 from models.core import Content, Notification, NotificationData, Translation
