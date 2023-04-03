@@ -12,6 +12,7 @@ class CustomFormatter(logging.Formatter):
             'message': record.getMessage(),
             'props': getattr(record, "props", ""),
             "thread": record.threadName,
+            "process": record.process,
             "pathname": record.pathname,
             "lineno": record.lineno,
             "funcName": record.funcName,
@@ -29,8 +30,11 @@ logging_schema = {
     },
     'handlers': {
         'file': {
-            'class': 'logging.FileHandler',
+            'class': 'concurrent_log_handler.ConcurrentRotatingFileHandler',
             'filename': settings.log_file,
+            'backupCount': 5,
+            'maxBytes': 1048576,
+            'use_gzip': True,
             'formatter': 'json'
         }
     },
