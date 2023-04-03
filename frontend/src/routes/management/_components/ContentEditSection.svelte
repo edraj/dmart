@@ -1,5 +1,5 @@
 <script>
-  import { Tabs, Tab, TabList, TabPanel } from "svelte-tabs";
+  import { Tabs, TabList, TabPanel, Tab } from "./tabs";
   import Fa from "sveltejs-fontawesome";
   import {
     faCaretSquareLeft,
@@ -107,36 +107,34 @@
   }
 </script>
 
-<div class="d-flex justify-content-between">
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div
-    class="back-icon"
-    style="cursor: pointer;"
-    on:click={() => {
-      showContentEditSection = false;
-    }}
-  >
-    <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
-  </div>
-  <h5 class="mx-2">{shortname}</h5>
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div
-    class="back-icon"
-    style="cursor: pointer;"
-    on:click={async () => {
-      await handleDelete();
-    }}
-  >
-    <Fa icon={faTrashCan} size="lg" color="dimgrey" />
-  </div>
-</div>
-<hr />
 <Tabs>
   <TabList>
-    <Tab>Content</Tab>
-    <Tab>Meta</Tab>
-    <Tab>Attachments</Tab>
-    <Tab>History</Tab>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div
+      class="tab-list back-icon"
+      style="cursor: pointer;"
+      on:click={() => {
+        showContentEditSection = false;
+      }}
+    >
+      <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
+    </div>
+    <div class="tab-list">
+      <Tab>Content</Tab>
+      <Tab>Meta</Tab>
+      <Tab>Attachments</Tab>
+      <Tab>History</Tab>
+    </div>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div
+      class="tab-list back-icon"
+      style="cursor: pointer;"
+      on:click={async () => {
+        await handleDelete();
+      }}
+    >
+      <Fa icon={faTrashCan} size="lg" color="dimgrey" />
+    </div>
   </TabList>
 
   <TabPanel>
