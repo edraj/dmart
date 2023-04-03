@@ -35,7 +35,9 @@
           <Col sm="12"><Header /></Col>
         </Row>
         <Row class="w-100 ms-0 my-0 border border-success h-100" noGutters>
-          <Col sm="2" class="fixed-size border border-warning"><Sidebar /></Col>
+          <Col sm="2" class="fixed-size border border-warning bg-light"
+            ><Sidebar /></Col
+          >
 
           <Col sm="10" class="fixed-size border border-info"><slot /></Col>
         </Row>
