@@ -160,7 +160,7 @@ def remove_none(target: dict | list):
             
         
 
-def branch_path(branch_name: str | None = settings.default_branch):
+def branch_path(branch_name: str | None = settings.default_branch) -> str:
     return (
         (f"branches/{branch_name}") if branch_name != settings.default_branch else "./"
     )
