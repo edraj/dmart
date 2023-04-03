@@ -49,7 +49,7 @@ async def set_init_state_from_request(ticket: api.Request, branch_name, logged_i
         status.HTTP_400_BAD_REQUEST,
         api.Error(
             type="request",
-            code=400,
+            code=409,
             message="This shortname already exists",
         ),
     )

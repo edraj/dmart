@@ -486,7 +486,7 @@ async def serve_query(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=400,
+                        code=408,
                         message="filter_shortnames is missing",
                     ),
                 )
@@ -622,7 +622,7 @@ async def get_last_updated_entry(
 async def get_entry_attachments(
     subpath: str,
     attachments_path: Path,
-    branch_name: str,
+    branch_name: str | None = None,
     filter_types: list | None = None,
     include_fields: list | None = None,
     filter_shortnames: list | None = None,
@@ -1096,6 +1096,7 @@ async def _sys_update_model(
     meta: core.Meta,
     branch_name: str | None,
     updates: dict,
+    sync_redis: bool = True
 ) -> bool:
     """
     Update @meta entry and its payload by @updates dict of attributes in the
@@ -1105,7 +1106,7 @@ async def _sys_update_model(
     meta.updated_at = datetime.now()
     meta_updated = False
     payload_updated = False
-    payload_dict = None
+    payload_dict = {}
 
     try:
         body = str(meta.payload.body) if meta and meta.payload else ""
@@ -1133,35 +1134,25 @@ async def _sys_update_model(
         elif payload_dict:
             payload_dict[key] = value
             payload_updated = True
+        
+    if meta_updated:
+        await db.save(space_name, subpath, meta, branch_name)
+    if(
+        payload_updated and
+        meta.payload and 
+        meta.payload.schema_shortname
+    ):
+        await validate_payload_with_schema(payload_dict, space_name, meta.payload.schema_shortname, branch_name)
+        await db.save_payload_from_json(space_name, subpath, meta, payload_dict, branch_name)
+
+    if not sync_redis:
+        return True
 
     async with RedisServices() as redis_services:
-        if meta_updated:
-            await db.save(space_name, subpath, meta, branch_name)
-
-            await redis_services.save_meta_doc(space_name, branch_name, subpath, meta)
-
+        await redis_services.save_meta_doc(space_name, branch_name, subpath, meta)
         if payload_updated:
-            if meta and meta.payload and meta.payload.schema_shortname and payload_dict:
-                await validate_payload_with_schema(
-                    payload_dict, space_name, meta.payload.schema_shortname, branch_name
-                )
-
-            if payload_dict:
-                await db.save_payload_from_json(
-                    space_name, subpath, meta, payload_dict, branch_name
-                )
-
-            if payload_dict:
-                payload_dict.update(json.loads(meta.json()))
-            if payload_dict:
-                await redis_services.save_payload_doc(
-                    space_name,
-                    branch_name,
-                    subpath,
-                    meta,
-                    payload_dict,
-                    ResourceType(snake_case(type(meta).__name__)),
-                )
+            payload_dict.update(json.loads(meta.json()))
+            await redis_services.save_payload_doc(space_name, branch_name, subpath, meta, payload_dict, ResourceType(snake_case(type(meta).__name__)))
 
     return True
 

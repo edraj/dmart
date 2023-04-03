@@ -59,7 +59,7 @@ class JWTBearer(HTTPBearer):
 
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="jwtauth", code=10, message="Not authenticated [1]"),
+                api.Error(type="jwtauth", code=13, message="Not authenticated [1]"),
             )
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
