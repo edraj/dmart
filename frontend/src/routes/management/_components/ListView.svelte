@@ -9,21 +9,15 @@
   } from "../../../dmart.js";
   import { onDestroy } from "svelte";
   import { dmartEntry, dmartQuery } from "../../../dmart.js";
-  import ContentJsonEditor from "./ContentJsonEditor.svelte";
   import { toastPushSuccess, toastPushFail } from "../../../utils.js";
-  import Fa from "sveltejs-fontawesome";
-  import { faPlusSquare } from "@fortawesome/free-regular-svg-icons";
-  import {
-    Button,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    ModalHeader,
-  } from "sveltestrap";
-  import { Form, FormGroup, Label, Input } from "sveltestrap";
+  import { Breadcrumb, BreadcrumbItem } from "sveltestrap";
   import { createAjvValidator, Mode } from "svelte-jsoneditor";
   import ContentEditSection from "./ContentEditSection.svelte";
-  import { triggerRefreshList } from "../_stores/trigger_refresh.js";
+  import {
+    triggerRefreshList,
+    triggerSearchList,
+  } from "../_stores/trigger_refresh.js";
+  import { goto } from "@roxi/routify";
 
   let showContentEditSection = false;
   let shortname = "";
@@ -57,6 +51,12 @@
 
   onDestroy(() => status_line.set(""));
   export let query;
+  // $goto(`/management/dashboard/${query.space_name}${query.subpath}`, {
+  //   replaceState: true,
+  // });
+  // window.history.pushState(
+  //   `/management/dashboard/${query.space_name}${query.subpath}`
+  // );
   const base_query = { ...query };
   export let cols;
   export let details_split = 0;
@@ -116,6 +116,7 @@
   }
 
   async function infiniteHandler({ detail: { loaded, complete, error } }) {
+    console.log({ query });
     if (Object.keys(query).length <= 2) {
       complete();
     } else {
@@ -212,33 +213,30 @@
     infiniteId = Symbol();
   }
 
-  let delay;
-  function handleSearchInput(event) {
-    clearTimeout(delay);
-    delay = setTimeout(async () => {
-      const target = event.target.value;
-      query =
-        target === ""
-          ? base_query
-          : {
-              request_type: "query",
-              space_name: query.space_name,
-              type: "search",
-              subpath: query.subpath,
-              retrieve_json_payload: true,
-              filter_schema_names: [
-                search.selected === "" ? "meta" : schema_shortname,
-              ],
-              search:
-                search.selected === ""
-                  ? `${target}*`
-                  : `@${search.selected}:${target}*`,
-              limit: 50,
-              offset: 50,
-            };
-      // await fetchRecords(q);
-      refreshList();
-    }, 500);
+  function handleSearchInput(target) {
+    console.log({ target });
+    query =
+      target === ""
+        ? base_query
+        : {
+            request_type: "query",
+            space_name: query.space_name,
+            type: "search",
+            subpath: query.subpath,
+            retrieve_json_payload: true,
+            filter_schema_names: [
+              search.selected === "" ? "meta" : schema_shortname,
+            ],
+            search: target ? `${target}*` : "",
+            // search:
+            //   search.selected === ""
+            //     ? `${target}*`
+            //     : `@${search.selected}:${target}*`,
+            limit: 50,
+            offset: 50,
+          };
+    // await fetchRecords(q);
+    refreshList();
   }
 
   let height;
@@ -282,48 +280,22 @@
       refreshList();
     }
   }
+  $: triggerSearchList && handleSearchInput($triggerSearchList);
 </script>
 
 <svelte:window bind:innerHeight={height} />
 
 {#if !showContentEditSection}
   {#if filterable}
-    <div class="input-group mb-3">
-      <!-- <button
-        class="btn btn-outline-secondary dropdown-toggle"
-        type="button"
-        data-bs-toggle="dropdown"
-        aria-expanded="false">Filter</button
-      > -->
-      <!-- <ul class="dropdown-menu">
-        <li>
-          <p
-            class="dropdown-item"
-            style="cursor: pointer;"
-            on:click={() => handleSearchSelection("")}
-          >
-            Anything
-          </p>
-        </li>
-        {#each search.options as option (option)}
-          <li>
-            <p
-              class="dropdown-item"
-              style="cursor: pointer;"
-              on:click={() => handleSearchSelection(option)}
-            >
-              {option}
-            </p>
-          </li>
+    <div class="input-group">
+      <Breadcrumb class="mt-3 px-3">
+        <BreadcrumbItem>{query.space_name}</BreadcrumbItem>
+        {#each query.subpath.split("/") as s}
+          {#if s !== ""}
+            <BreadcrumbItem>{s}</BreadcrumbItem>
+          {/if}
         {/each}
-      </ul> -->
-      <input
-        on:input={handleSearchInput}
-        placeholder="{search.selected}..."
-        type="text"
-        class="form-control"
-        aria-label="Text input with dropdown button"
-      />
+      </Breadcrumb>
     </div>
   {/if}
 
