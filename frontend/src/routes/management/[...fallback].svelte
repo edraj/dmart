@@ -4,6 +4,8 @@
   import { toastPushFail, toastPushSuccess } from "../../utils";
   import ContentEditSection from "./_components/ContentEditSection.svelte";
 
+  console.log("main fallback");
+
   let space_name;
   let shortname;
   let subpath;
