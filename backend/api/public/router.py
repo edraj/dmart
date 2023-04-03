@@ -5,7 +5,7 @@ from fastapi import APIRouter, Path, Depends, status
 from models.enums import ContentType, ResourceType, TaskType
 import utils.db as db
 import models.api as api
-from utils.helpers import camel_case
+from utils.helpers import branch_path, camel_case
 from utils.custom_validations import validate_payload_with_schema
 import utils.regex as regex
 import models.core as core
@@ -71,6 +71,7 @@ async def retrieve_entry_meta(
     subpath: str = Path(..., regex=regex.SUBPATH),
     shortname: str = Path(..., regex=regex.SHORTNAME),
     retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
     branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
 
@@ -122,12 +123,29 @@ async def retrieve_entry_meta(
             ),
         )
 
+    attachments = {}
+    entry_path = (
+        settings.spaces_folder
+        / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
+    )
+    if retrieve_attachments:
+        attachments = await repository.get_entry_attachments(
+            subpath=subpath,
+            attachments_path=entry_path,
+            branch_name=branch_name,
+            retrieve_json_payload=retrieve_json_payload
+        )
+
+
     if not retrieve_json_payload or (
         not meta.payload or meta.payload.content_type != ContentType.json
     ):
         # TODO
         # include locked before returning the dictionary
-        return meta.dict(exclude_none=True)
+        return {
+            **meta.dict(exclude_none=True),
+            "attachments": attachments
+        }
 
     payload_body = db.load_resource_payload(
         space_name=space_name,
@@ -158,7 +176,10 @@ async def retrieve_entry_meta(
         )
     )
 
-    return meta.dict(exclude_none=True)
+    return {
+        **meta.dict(exclude_none=True),
+        "attachments": attachments
+    }
 
 
 # Public payload retrieval; can be used in "src=" in html pages
