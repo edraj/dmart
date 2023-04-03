@@ -12,4 +12,5 @@ LISTENING_HOST=$(grep -i '^LISTENING_HOST' $BACKEND_ENV | sed 's/^[^=]* *= *//g'
 cd $BASEDIR
 PROCS=$(nproc --all)
 # PROCS=1
-hypercorn --log-config json_log.ini -w ${PROCS}  --backlog 200 -b $LISTENING_HOST':'$LISTENING_PORT -k 'asyncio' main:app
+#hypercorn -w ${PROCS}  --backlog 200 -b $LISTENING_HOST':'$LISTENING_PORT -k 'asyncio' main:app
+python3.11 -m hypercorn main:app --config file:utils/hypercorn_config.py
