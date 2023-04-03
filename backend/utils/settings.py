@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     current_user_mw = (
         "__current_user__"  # used in access control refers to current logged-in user
     )
+    root_subpath_mw = "__root__"
     email_sender = "dmart@dmart.com"
 
     otp_token_ttl: int = 60 * 2
