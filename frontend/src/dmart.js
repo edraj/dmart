@@ -33,14 +33,16 @@ export async function dmartCreateFolder(space_name, subpath, shortname) {
   return dmartRequest("managed/request", request);
 }
 
-export async function dmartGetSchemas(space_name, shortname) {
+export async function dmartGetSchemas(space_name, shortname = null) {
   const query = {
     space_name,
     type: "subpath",
     subpath: "/schema",
     retrieve_json_payload: true,
-    filter_shortnames: [shortname],
   };
+  if (shortname) {
+    query.filter_shortnames = [shortname];
+  }
   return dmartQuery(query);
 }
 

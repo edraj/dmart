@@ -8,6 +8,7 @@
 
   contents.subscribe((value) => {
     if (Object.keys(value).length) {
+      console.log({ value });
       query = value;
       cols = {
         shortname: {

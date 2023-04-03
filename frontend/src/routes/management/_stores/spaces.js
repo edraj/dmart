@@ -2,16 +2,10 @@ import { dmartRequest } from "../../../dmart.js";
 import signedin_user from "./signedin_user.js";
 import { writable } from "svelte/store";
 
-const local = JSON.parse(localStorage.getItem("spaces"));
-const { subscribe, set } = writable(local);
-
-function customSet(spaces) {
-  set(spaces);
-  localStorage.setItem("spaces", JSON.stringify(spaces));
-}
+const { subscribe, set } = writable({});
 
 const spaces = {
-  set: (value) => customSet(value),
+  set: (value) => set(value),
   subscribe,
   reset: () => customSet([]),
 };
@@ -46,6 +40,7 @@ const getSpaceSubpaths = async (spaceName) => {
  * set 'space_managment.spaces' as array (str) of spaces
  */
 export const getSpaces = async () => {
+  console.log("getSpaces");
   const response = await dmartRequest("managed/query", {
     type: "spaces",
     space_name: "demo",
