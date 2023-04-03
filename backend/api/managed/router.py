@@ -1672,6 +1672,9 @@ async def retrieve_entry_meta(
     branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
 
+    if subpath == settings.root_subpath_mw:
+        subpath = "/"
+
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
