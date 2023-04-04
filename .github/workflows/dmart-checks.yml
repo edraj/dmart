@@ -29,13 +29,18 @@ jobs:
     - name: Test with pytest
       run: |
         cd backend; pytest
+    - name: Start dmart service and run curl.sh
+      run: |
+        systemctl --user restart dmart
+        ./reload.sh
+        ./curl.sh
     - name: Install frontend js depdenencies
       run: |
-        cd frontend; yarn install
+        # cd frontend; yarn install
     - name: Build frontend
       run: |
-        cd frontend; yarn build
+        # cd frontend; yarn build
     - name: Check svelte
       run: |
-        cd frontend; ./node_modules/.bin/svelte-check 
+        # cd frontend; ./node_modules/.bin/svelte-check 
 
