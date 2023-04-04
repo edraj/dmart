@@ -184,7 +184,16 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         redis_doc_dict = redis_document.__dict__
         if "json" in redis_doc_dict:
             redis_doc_dict = json.loads(redis_doc_dict["json"])
-        json_data.append({k: v for k, v in redis_doc_dict.items() if k in folder_views})
+        for k, v in redis_doc_dict.items():
+            if k in folder_views:
+                if k.count(".") == 0:
+                    json_data.append({k: v})
+                else:
+                    result = {**v}
+                    for key in k.split("."):
+                        result = result.get(key, {})
+                    json_data.append({k: result})
+        # json_data.append({k: v for k, v in redis_doc_dict.items() if k in folder_views})
 
     # Sort all entries from all schemas
     if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
