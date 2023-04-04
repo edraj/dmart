@@ -129,9 +129,10 @@ curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"'  'request
 
 
 echo -n -e "Create QR Code: \t\t"
-rm -f /tmp/myfile.png
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --output /tmp/myfile.png  ${API_URL}/qr/generate/ticket/dummy/myfolder/an_example # | jq .status
-file -ib /tmp/myfile.png
+TEMP_FILE=$(mktemp)
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --output $TEMP_FILE  ${API_URL}/qr/generate/ticket/dummy/myfolder/an_example # | jq .status
+file -ib $TEMP_FILE 
+rm -f $TEMP_FILE 
 #curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F  ${API_URL}/qr/generate/ticket/dummy/myfolder/an_example  | jq .status
 
 # echo -n -e "Move / rename ticket: \t"
