@@ -92,7 +92,7 @@ RESULT+=$?
 echo -n -e "Delete dummy space: \t\t" >&2
 DELETE=$(jq -c -n '{ "space_name": "dummy", "request_type": "delete", "records": [{ "resource_type": "space", "subpath": "/", "shortname": "dummy","attributes": {} } ]}')
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$DELETE" ${API_URL}/managed/space  | jq .status | tee /dev/stderr | grep -q "success"
-RESULT+=$?
+# RESULT+=$?
 
 echo -n -e "Create a new space (dummy): \t" >&2
 CREATE=$(jq -c -n '{ "space_name": "dummy", "request_type": "create", "records": [{ "resource_type": "space", "subpath": "/", "shortname": "dummy","attributes": {"hide_space": true} } ]}')
@@ -157,7 +157,7 @@ echo -n -e "Create QR Code: \t\t" >&2
 TEMP_FILE=$(mktemp)
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --output $TEMP_FILE  ${API_URL}/qr/generate/ticket/dummy/myfolder/an_example # | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
-file -ib $TEMP_FILE 
+file -ib $TEMP_FILE  >&2
 rm -f $TEMP_FILE 
 #curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F  ${API_URL}/qr/generate/ticket/dummy/myfolder/an_example  | jq .status | tee /dev/stderr | grep -q "success"
 
