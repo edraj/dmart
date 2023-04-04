@@ -5,8 +5,9 @@ source ./login_creds.sh
 REDIS_HOST="$(./get_settings.py | jq -r .redis_host)"
 REDIS_PORT="$(./get_settings.py | jq -r .redis_port)"
 REDIS_PASSWORD="-a $(./get_settings.py | jq -r .redis_password)"
+PORT="$(./get_settings.py | jq -r .listening_port)"
 # APP_URL="$(./get_settings.py | jq -r .app_url)"
-APP_URL="http://localhost:8282"
+APP_URL="http://localhost:$PORT"
 
 time ./create_index.py --flushall
 
