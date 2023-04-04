@@ -258,6 +258,7 @@ class RedisServices(object):
 
         redis_schema = [
             TextField("$.subpath", no_stem=True, as_name="subpath"),
+            TagField("$.subpath", as_name="exact_subpath"),
             TextField(
                 "$.resource_type", sortable=True, no_stem=True, as_name="resource_type"
             ),
@@ -532,7 +533,10 @@ class RedisServices(object):
         for field in new_index:
             registered_field = False
             for base_field in base_index:
-                if field.redis_args()[0] == base_field.redis_args()[0]:
+                if(
+                    field.redis_args()[0] == base_field.redis_args()[0] and # Compare field name
+                    field.redis_args()[2] == base_field.redis_args()[2] # Compare AS name
+                ):
                     registered_field = True
                     break
             if not registered_field:
@@ -856,8 +860,11 @@ class RedisServices(object):
             elif item[0] == "created_at" and item[1]:
                 query_string += f" @{item[0]}:{item[1]}"
             elif item[0] == "subpath" and exact_subpath:
-                query_string += f" @exact_subpath:{{{'|'.join(item[1]).translate(redis_escape_chars)}}}"
-
+                # remove forward slash from the begging
+                formatted_item = [i[1:] if (len(i) > 1 and i[0] == "/") else i for i in item[1]]
+                query_string += f" @exact_subpath:{{{'|'.join(formatted_item).translate(redis_escape_chars)}}}"
+            elif item[0] == "subpath" and item[1][0] == "/":
+                pass
             elif item[1]:
                 query_string += " @" + item[0] + ":(" + "|".join(item[1]) + ")"
 
