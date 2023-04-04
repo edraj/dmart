@@ -158,15 +158,33 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         "workflow_shortname",
     ]
 
+    folder = await db.load(
+        query.space_name,
+        query.subpath,
+        "",
+        core.Folder,
+        user_shortname,
+        query.branch_name,
+    )
+
+    folder_payload = db.load_resource_payload(
+        query.space_name,
+        "/",
+        f"{folder.shortname}.json",
+        core.Folder,
+        query.branch_name,
+    )
+    folder_views = [
+        f.get("key", "") for f in folder_payload.get("index_attributes", [])
+    ]
+
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
     json_data = []
     for redis_document in search_res:
         redis_doc_dict = redis_document.__dict__
         if "json" in redis_doc_dict:
             redis_doc_dict = json.loads(redis_doc_dict["json"])
-        json_data.append(
-            {k: v for k, v in redis_doc_dict.items() if k not in restricted_fields}
-        )
+        json_data.append({k: v for k, v in redis_doc_dict.items() if k in folder_views})
 
     # Sort all entries from all schemas
     if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
@@ -1733,7 +1751,7 @@ async def retrieve_entry_meta(
             subpath=subpath,
             attachments_path=entry_path,
             branch_name=branch_name,
-            retrieve_json_payload=retrieve_json_payload
+            retrieve_json_payload=retrieve_json_payload,
         )
 
     if not retrieve_json_payload or (
@@ -1741,10 +1759,7 @@ async def retrieve_entry_meta(
     ):
         # TODO
         # include locked before returning the dictionary
-        return {
-            **meta.dict(exclude_none=True),
-            "attachments": attachments
-        }
+        return {**meta.dict(exclude_none=True), "attachments": attachments}
 
     payload_body = db.load_resource_payload(
         space_name=space_name,
@@ -1776,10 +1791,7 @@ async def retrieve_entry_meta(
     )
     # TODO
     # include locked before returning the dictionary
-    return {
-        **meta.dict(exclude_none=True),
-        "attachments": attachments
-    }
+    return {**meta.dict(exclude_none=True), "attachments": attachments}
 
 
 # @router.post("/reload-redis-data", response_model_exclude_none=True)
