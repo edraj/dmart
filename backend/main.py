@@ -311,7 +311,7 @@ async def middle(request: Request, call_next):
     #     extra["props"]["response"]["body"] = response_body
 
     if response.status_code >= 400 and response.status_code < 500:
-        logger.warn("Served request", extra=extra)
+        logger.warning("Served request", extra=extra)
     elif response.status_code >= 500 or exception_data is not None:
         logger.error("Served request", extra=extra)
     elif request.method != "OPTIONS":  # Do not log OPTIONS request, to reduce excessive logging
