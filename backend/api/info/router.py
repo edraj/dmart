@@ -22,6 +22,10 @@ version_cmd = "git rev-parse --short HEAD"
 result = subprocess.run([version_cmd], capture_output=True, text=True, shell=True)
 version = result.stdout.split("\n")[0]
 
+tag_cmd = "git name-rev --tags --name-only $(git rev-parse HEAD)"
+result = subprocess.run([tag_cmd], capture_output=True, text=True, shell=True)
+tag = result.stdout.split("\n")[0]
+
 server = socket.gethostname()
 
 @router.get("/me", include_in_schema=False, response_model=api.Response, response_model_exclude_none=True)
@@ -46,6 +50,7 @@ async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
             "running_for": str(now - service_start_time),
             "versoin": version,
             "branch": branch,
+            "tag": tag,
             "server": server,
             "process": getpid()
             }
@@ -53,8 +58,8 @@ async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
                         attributes=manifest)
 
 
-@router.get("/in-loop-tasks")
-async def get_in_loop_tasks(logged_in_user=Depends(JWTBearer())):
+@router.get("/in-loop-tasks", include_in_schema=False)
+async def get_in_loop_tasks(_=Depends(JWTBearer())):
     tasks = asyncio.all_tasks()
     
     tasks_data: list[dict[str, str]] = []
