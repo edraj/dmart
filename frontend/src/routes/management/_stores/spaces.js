@@ -40,7 +40,6 @@ const getSpaceSubpaths = async (spaceName) => {
  * set 'space_managment.spaces' as array (str) of spaces
  */
 export const getSpaces = async () => {
-  console.log("getSpaces");
   const response = await dmartRequest("managed/query", {
     type: "spaces",
     space_name: "demo",

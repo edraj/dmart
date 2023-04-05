@@ -240,9 +240,10 @@ export async function dmartEntry(
   space_name,
   subpath,
   shortname,
-  schema_shortname,
-  ext,
-  content_type = "json"
+  schema_shortname = null,
+  ext = "json",
+  content_type = "json",
+  request_type = "payload"
 ) {
   const browse_request = {
     method: "GET",
@@ -252,12 +253,18 @@ export async function dmartEntry(
     headers: { "Content-Type": `application/${content_type}` },
   };
 
-  const url = `${
+  let url = `${
     website.backend
-  }/managed/payload/${resource_type}/${space_name}/${subpath.replace(
+  }/managed/${request_type}/${resource_type}/${space_name}/${subpath.replace(
     /\/+$/,
     ""
-  )}/${shortname}.${schema_shortname}.${ext}`.replaceAll("..", ".");
+  )}/${shortname}`;
+
+  if (request_type === "payload") {
+    url = `${url}.${schema_shortname}.${ext}`;
+  }
+
+  url = url.replaceAll("..", ".");
 
   return await dmartFetch(
     url,
