@@ -20,7 +20,6 @@
     "hide_space": false,
     "active_plugins": [
         "action_log",
-	"realtime_updates_notifier",
         "redis_db_update"
     ],
     "branches": []
