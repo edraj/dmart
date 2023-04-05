@@ -12,6 +12,9 @@
 
 - Extend shortname regex to include arabic alpha numerals + kasheeda
 
+- Enable (again) sha1 on payload body
+- Enable sha1 hash on history changes to guarantee change order
+- Ability to export one or group of entries in a zip file (simply collecting all relevent files under the zip file)
 
 
 ### Future improvements
