@@ -38,7 +38,7 @@ class Plugin(PluginBase):
                 await redis_services.delete_doc(
                     data.space_name,
                     data.branch_name,
-                    meta_doc["payload"]["schema_shortname"],
+                    meta_doc.get("payload", {}).get("schema_shortname", "meta"),
                     data.shortname,
                     data.subpath,
                 )
