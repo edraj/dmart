@@ -927,7 +927,7 @@ async def user_reset(
         user_shortname=shortname,
         branch_name=MANAGEMENT_BRANCH,
     )
-    if not access_control.check_access(
+    if not await access_control.check_access(
         user_shortname=logged_user,
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
