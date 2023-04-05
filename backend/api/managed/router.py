@@ -601,7 +601,7 @@ async def serve_request(
                                         message=invitation_message,
                                     )
                                 except Exception as e:
-                                    logger.warn(
+                                    logger.warning(
                                         "Exception",
                                         extra={
                                             "props": {
@@ -651,7 +651,7 @@ async def serve_request(
                                         subject=generate_subject("activation"),
                                     )
                                 except Exception as e:
-                                    logger.warn(
+                                    logger.warning(
                                         "Exception",
                                         extra={
                                             "props": {
