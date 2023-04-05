@@ -8,7 +8,8 @@ REDIS_HOST="$(./get_settings.py | jq -r .redis_host)"
 RESULT+=$?
 REDIS_PORT="$(./get_settings.py | jq -r .redis_port)"
 RESULT+=$?
-REDIS_PASSWORD="-a $(./get_settings.py | jq -r .redis_password)"
+REDIS_PASSWORD="$(./get_settings.py | jq -r .redis_password)"
+[ -z $REDIS_PASSWORD ] || REDIS_PASSWORD="--no-auth-warning -a $REDIS_PASSWORD" 
 RESULT+=$?
 PORT="$(./get_settings.py | jq -r .listening_port)"
 RESULT+=$?
@@ -24,7 +25,6 @@ sleep 4
 
 TOKEN=$(curl -s "${APP_URL}/user/login" -H 'Content-Type: application/json' -d "${SUPERMAN}" | jq -r '.records[0].attributes.access_token')
 RESULT+=$?
-echo $TOKEN
 
 curl -s -H "Authorization: Bearer ${TOKEN}" "${APP_URL}/user/profile" | jq '.records[0].attributes.roles'
 RESULT+=$?
