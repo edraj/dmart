@@ -737,7 +737,7 @@ async def redis_query_search(
                     "resource_type": query.filter_types or [],
                     "shortname": query.filter_shortnames or [],
                     "tags": query.filter_tags or [],
-                    "subpath": [query.subpath] if query.subpath != "/" else [],
+                    "subpath": [query.subpath],
                     "query_policies": redis_query_policies,
                     "created_at": created_at_search,
                 },
