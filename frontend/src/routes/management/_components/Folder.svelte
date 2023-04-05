@@ -43,9 +43,6 @@
     children_subpath = data.subpath + "/" + data.shortname;
   }
   async function toggle() {
-    if (!$isActive("/management/dashboard")) {
-      $goto("/management/dashboard");
-    }
     selectedSubpath.set(data.uuid);
     expanded = !expanded;
     if (!$entries[children_subpath]) {
@@ -56,14 +53,6 @@
         [],
         "search"
       );
-
-      contents.set({
-        type: "search",
-        search: "",
-        retrieve_attachments: true,
-        space_name: data.space_name,
-        subpath: data.subpath,
-      });
 
       _entries.forEach((entry) => {
         if (entry.subpath.startsWith("/")) {
@@ -85,6 +74,15 @@
         })
         .filter((e) => e != null);
     }
+
+    window.history.replaceState(
+      history.state,
+      "",
+      `/management/dashboard/${data.space_name}/${data.subpath.replaceAll(
+        "/",
+        "-"
+      )}`
+    );
   }
 
   let entryCreateModal = false;
@@ -344,6 +342,10 @@
   </ul>
 {/if} -->
 <style>
+  .no-hype {
+    color: inherit; /* blue colors for links too */
+    text-decoration: inherit; /* no underline */
+  }
   ul {
     /*padding: 0.2em 0 0 0.5em;
     margin: 0 0 0 0.5em;*/

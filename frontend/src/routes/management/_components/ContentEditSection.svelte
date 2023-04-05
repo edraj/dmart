@@ -1,5 +1,5 @@
 <script>
-  import { Tabs, TabList, TabPanel, Tab } from "./tabs";
+  import { Tabs, TabList, TabPanel, Tab } from "./tabs/tabs";
   import Fa from "sveltejs-fontawesome";
   import {
     faCaretSquareLeft,
@@ -20,9 +20,9 @@
   export let isError;
   export let metaContentAttachement;
   export let historyQuery;
-  export let showContentEditSection;
+  let showContentEditSection;
   export let handleSave;
-  export let currentItem;
+  let currentItem;
   export let shortname;
   export let height;
 
@@ -99,7 +99,6 @@
     const response = await dmartRequest("managed/query", request);
     if (response.status === "success") {
       toastPushSuccess();
-      records[currentItem - 1] = response.records[0];
       metaContentAttachement = records[currentItem - 1].attachments;
     } else {
       toastPushFail();
@@ -114,7 +113,11 @@
       class="tab-list back-icon"
       style="cursor: pointer;"
       on:click={() => {
-        showContentEditSection = false;
+        window.history.replaceState(
+          history.state,
+          "",
+          `/management/dashboard/${space_name}/${subpath.replaceAll("/", "-")}`
+        );
       }}
     >
       <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
@@ -154,7 +157,7 @@
         bind:attachments={metaContentAttachement}
         bind:space_name
         bind:subpath
-        bind:entryShortname={records[currentItem - 1].shortname}
+        bind:entryShortname={shortname}
         forceRefresh={async () => await updateSingleEntry()}
       />
     {/key}
