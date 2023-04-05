@@ -441,6 +441,53 @@ async def query_entries(
     )
 
 
+
+@router.post("/queryWhiteList", response_model=api.Response, response_model_exclude_none=True)
+async def query_entries(
+    query: api.Query,
+    filterMS: str,
+    user_shortname=Depends(JWTBearer())
+) -> api.Response:
+    await plugin_manager.before_action(
+        core.Event(
+            space_name="applications",
+            branch_name=query.branch_name,
+            subpath="/configuration",
+            action_type=core.ActionType.query,
+            user_shortname=user_shortname,
+            attributes={"filter_shortnames": "whitelist"}
+        )
+    )
+
+    redis_query_policies = await access_control.get_user_query_policies(user_shortname)
+
+    total, records = await repository.serve_query(
+        query, user_shortname, redis_query_policies
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name="applications",
+            branch_name=query.branch_name,
+            subpath="/configuration",
+            action_type=core.ActionType.query,
+            user_shortname=user_shortname,
+        )
+    )
+ 
+    whitelist = records[0].attributes['payload'].body['items'][0]['value']
+    if filterMS in whitelist:
+        return {"status": "success", "message": f"{filterMS} is in the whitelist"}
+    else:
+        return {"status": "failed", "message": f"{filterMS} is not in the whitelist"}
+
+
+
+
+
+
+
+
 @router.post("/request", response_model=api.Response, response_model_exclude_none=True)
 async def serve_request(
     request: api.Request,
