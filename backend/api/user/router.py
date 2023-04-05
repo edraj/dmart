@@ -6,7 +6,7 @@ import aiofiles
 from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
-from models.enums import RequestType, ResourceType, ContentType
+from models.enums import ActionType, RequestType, ResourceType, ContentType
 from utils.custom_validations import validate_uniqueness
 import utils.db as db
 from utils.access_control import access_control
@@ -919,8 +919,24 @@ async def user_reset(
     logged_user=Depends(JWTBearer()),
 ) -> api.Response:
 
-    roles = await access_control.get_user_roles(logged_user)
-    if "super_admin" not in roles:
+    user = await db.load(
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        shortname=shortname,
+        class_type=core.User,
+        user_shortname=shortname,
+        branch_name=MANAGEMENT_BRANCH,
+    )
+    if not access_control.check_access(
+        user_shortname=logged_user,
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        resource_type=ResourceType.user,
+        action_type=ActionType.update,
+        resource_is_active=user.is_active,
+        resource_owner_shortname=user.owner_shortname,
+        resource_owner_group=user.owner_group_shortname
+    ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
@@ -929,15 +945,6 @@ async def user_reset(
                 message="You don't have permission to this action",
             ),
         )
-
-    await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
-    )
 
     invitation_token = sign_jwt({"shortname": shortname}, settings.jwt_access_expires)
 
