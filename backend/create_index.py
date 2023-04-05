@@ -42,7 +42,22 @@ async def load_data_to_redis(space_name, branch_name, subpath, allowed_resource_
             filter_types=allowed_resource_types,
         )
     )
-    #print(f"Ended loading {locators_len} files, starting parsing data in each file {int(time()) - start_time}")
+
+    # Add Folder locator to the loaded locators
+    meta_folder = settings.spaces_folder / subpath / ".dm/meta.folder.json"
+    if ResourceType.folder in allowed_resource_types and  meta_folder.is_dir():
+        folder_parts = subpath.split("/")
+        folder_locator = core.Locator(
+            type=ResourceType.folder,
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath="/".join(folder_parts[:-1]) or "/",
+            shortname=folder_parts[-1]
+        )
+        locators.append(folder_locator)
+        locators_len += 1
+
+    # print(f"\nEnded loading {locators_len} files, starting parsing data in each file {int(time()) - start_time}")
 
     if locators_len <= 5000:
         redis_docs_chunks = [await generate_redis_docs(locators)]
@@ -199,6 +214,7 @@ async def traverse_subpaths_entries(
                         ResourceType.ticket,
                         ResourceType.schema,
                         ResourceType.notification,
+                        ResourceType.folder
                     ],
                 )
             )

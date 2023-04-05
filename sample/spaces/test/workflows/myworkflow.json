@@ -1,0 +1,85 @@
+{
+  "name": "Sample ticket workflow",
+  "description": "Just an example",
+  "states": [
+    {
+      "name": "Initial ticket status",
+      "state": "backlog",
+      "next": [
+        {
+          "role": "team_member",
+          "state": "to_do",
+          "action": "planned"
+        }
+      ]
+    },
+    {
+      "name": "Assigned",
+      "state": "to_do",
+      "next": [
+        {
+          "state": "bulding",
+          "role": "team_member",
+          "action": "started"
+        }
+      ]
+    },
+    {
+      "name": "Beinng implemented",
+      "state": "building",
+      "next": [
+        {
+          "state": "on_hold",
+          "role": "team_member",
+          "action": "blocked"
+        },
+        {
+          "state": "testing",
+          "role": "team_member",
+          "action": "test"
+        }
+      ]
+    },
+    {
+      "name": "Blocked",
+      "state": "on_hold",
+      "next": [
+        {
+          "state": "to_do",
+          "role": "team_member",
+          "action": "resolved"
+        }
+      ]
+    },
+    {
+      "name": "Bug/s while testing",
+      "state": "testing",
+      "next": [
+        {
+          "state": "building",
+          "role": "team_member",
+          "action": "buggy"
+        },
+        {
+          "state": "done",
+          "role": "team_member",
+          "action": "verified"
+        },
+        {
+          "state": "deprecated",
+          "role": "team_member",
+          "action": "deprecate"
+        }
+      ]
+    },
+    {
+      "name": "Task Completed",
+      "state": "done"
+    },
+    {
+      "name": "Task depricated",
+      "state": "deprecated"
+    }
+  ],
+  "initial_state": "backlog"
+}
