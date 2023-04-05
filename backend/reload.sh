@@ -29,7 +29,7 @@ RESULT+=$?
 curl -s -H "Authorization: Bearer ${TOKEN}" "${APP_URL}/user/profile" | jq '.records[0].attributes.roles'
 RESULT+=$?
 
-redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} --no-auth-warning ${REDIS_PASSWORD} JSON.GET users_permissions_dmart | jq -R '.|fromjson|keys|length'
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} ${REDIS_PASSWORD} JSON.GET users_permissions_dmart | jq -R '.|fromjson|keys|length'
 RESULT+=$?
 
 
