@@ -2,9 +2,10 @@
   import { triggerRefreshList } from "./../_stores/trigger_refresh.js";
   import { goto, isActive } from "@roxi/routify";
   import {
-    dmartCreateContent,
+    dmartManContent,
     dmartEntries,
-    dmartFolder,
+    dmartCreateFolder,
+    dmartMoveFolder,
     dmartGetSchemas,
     dmartRequest,
   } from "../../../dmart.js";
@@ -61,7 +62,7 @@
           entry.subpath = `/${entry.subpath}/${entry.shortname}`;
         }
       });
-
+      console.log({ data });
       data["subpaths"] = _entries
         .map((e) => {
           if (
@@ -87,7 +88,7 @@
 
   let entryCreateModal = false;
   let modalFlag = "create";
-  let createMode = "folder";
+  let entryType = "folder";
   let contentShortname = "";
   let content = {
     json: {},
@@ -96,39 +97,44 @@
   let isSchemaValidated = false;
   let schemas = [];
   let selectedSchema;
-  async function handleSubpathCreate() {
-    modalFlag = "create";
+
+  async function handleSubpathMan(flag) {
+    modalFlag = flag;
     entryCreateModal = true;
     const r = await dmartGetSchemas(data.space_name);
     schemas = r.records.map((e) => e.shortname);
-  }
-
-  let subpathUpdateContent = { json: data, text: undefined };
-  let isSubpathUpdateModalOpen = false;
-  async function handleSubpathUpdate(content) {
-    const record = content.json ?? JSON.parse(content.text);
-    delete record.space_name;
-    delete record.type;
-    delete record.uuid;
-
-    const arr = record.subpath.split("/");
-    arr[arr.length - 1] = "";
-    const parentSubpath = arr.join("/");
-
-    const request = {
-      space_name: data.space_name,
-      request_type: "update",
-      records: [{ ...record, subpath: parentSubpath }],
-    };
-    const response = await dmartRequest("managed/request", request);
-    if (response.error) {
-      alert(response.error.message);
-    } else {
-      toastPushSuccess();
-      await getSpaces();
-      isSubpathUpdateModalOpen = false;
+    if (flag === "update") {
+      contentShortname = data.shortname;
+      selectedSchema = data.a;
     }
   }
+
+  // let subpathUpdateContent = { json: data, text: undefined };
+  // let isSubpathUpdateModalOpen = false;
+  // async function handleSubpathUpdate(content) {
+  //   const record = content.json ?? JSON.parse(content.text);
+  //   delete record.space_name;
+  //   delete record.type;
+  //   delete record.uuid;
+
+  //   const arr = record.subpath.split("/");
+  //   arr[arr.length - 1] = "";
+  //   const parentSubpath = arr.join("/");
+
+  //   const request = {
+  //     space_name: data.space_name,
+  //     request_type: "update",
+  //     records: [{ ...record, subpath: parentSubpath }],
+  //   };
+  //   const response = await dmartRequest("managed/request", request);
+  //   if (response.error) {
+  //     alert(response.error.message);
+  //   } else {
+  //     toastPushSuccess();
+  //     await getSpaces();
+  //     isSubpathUpdateModalOpen = false;
+  //   }
+  // }
   async function handleSubpathDelete() {
     // const space_name = child.shortname;
     if (
@@ -165,30 +171,44 @@
 
   let displayActionMenu = false;
 
-  async function handleCreation(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (createMode === "folder") {
-      const response = await dmartFolder(
-        data.space_name,
-        data.subpath,
-        selectedSchema,
-        contentShortname
-      );
+    if (entryType === "folder") {
+      let response;
+      if (modalFlag === "create") {
+        response = await dmartCreateFolder(
+          data.space_name,
+          data.subpath,
+          selectedSchema,
+          contentShortname
+        );
+      } else if (modalFlag === "update") {
+        const i = data.subpath.lastIndexOf("/");
+        const _subpath = data.subpath.substring(0, i);
+        response = await dmartCreateFolder(
+          data.space_name,
+          _subpath,
+          data.shortname,
+          contentShortname
+        );
+      }
       if (response.error) {
         alert(response.error.message);
       } else {
         toastPushSuccess();
         await getSpaces();
+        triggerRefreshList.set(true);
         entryCreateModal = false;
       }
-    } else if (createMode === "content") {
+    } else if (entryType === "content") {
       // if (isSchemaValidated) {
-      const response = await dmartCreateContent(
+      const response = await dmartManContent(
         data.space_name,
         data.subpath,
         contentShortname === "" ? "auto" : contentShortname,
         selectedSchema,
-        JSON.parse(content.text)
+        JSON.parse(content.text),
+        modalFlag
       );
       if (response.status === "success") {
         toastPushSuccess();
@@ -210,21 +230,23 @@
   size={"lg"}
 >
   <ModalHeader />
-  <Form on:submit={async (e) => await handleCreation(e)}>
+  <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
       <FormGroup>
-        <Label>Type</Label>
-        <Input bind:value={createMode} type="select">
-          <option value="folder">Folder</option>
-          <option value="content">Content</option>
-        </Input>
-        <Label class="mt-3">Schema</Label>
-        <Input bind:value={selectedSchema} type="select">
-          {#each schemas as schema}
-            <option value={schema}>{schema}</option>
-          {/each}
-        </Input>
-        {#if createMode === "content"}
+        {#if modalFlag === "create"}
+          <Label>Type</Label>
+          <Input bind:value={entryType} type="select">
+            <option value="folder">Folder</option>
+            <option value="content">Content</option>
+          </Input>
+          <Label class="mt-3">Schema</Label>
+          <Input bind:value={selectedSchema} type="select">
+            {#each schemas as schema}
+              <option value={schema}>{schema}</option>
+            {/each}
+          </Input>
+        {/if}
+        {#if entryType === "content" && modalFlag === "create"}
           <Label class="mt-3">Shorname</Label>
           <Input placeholder="Shortname..." bind:value={contentShortname} />
           <hr />
@@ -248,7 +270,7 @@
               mode={Mode.tree}
             /> -->
         {/if}
-        {#if createMode === "folder"}
+        {#if entryType === "folder"}
           <Label class="mt-3">Shorname</Label>
           <Input placeholder="Shortname..." bind:value={contentShortname} />
         {/if}
@@ -292,7 +314,7 @@
     class="col-1"
     style="cursor: pointer;"
     hidden={!displayActionMenu}
-    on:click={() => handleSubpathCreate()}
+    on:click={() => handleSubpathMan("create")}
   >
     <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
   </div>
@@ -300,7 +322,7 @@
     class="col-1"
     style="cursor: pointer;"
     hidden={!displayActionMenu}
-    on:click={() => (isSubpathUpdateModalOpen = true)}
+    on:click={() => handleSubpathMan("update")}
   >
     <Fa icon={faEdit} size="sm" color="dimgrey" />
   </div>

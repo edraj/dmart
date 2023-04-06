@@ -3,7 +3,7 @@
   import VirtualList from "svelte-tiny-virtual-list";
   import InfiniteLoading from "svelte-infinite-loading";
   import {
-    dmartCreateContent,
+    dmartManContent,
     dmartGetSchemas,
     dmartRequest,
   } from "../../../dmart.js";
@@ -134,6 +134,7 @@
   }
 
   function value(path, data, type) {
+    console.log(path, data, type);
     if (path.length == 1 && path[0].length > 0 && path[0] in data) {
       if (type == "json") return JSON.stringify(data[path[0]], undefined, 1);
       else return data[path[0]];
@@ -225,7 +226,7 @@
     e.preventDefault();
 
     if (isSchemaValidated) {
-      const response = await dmartCreateContent(
+      const response = await dmartManContent(
         base_query.space_name,
         base_query.subpath,
         contentShortname === "" ? "auto" : contentShortname,
@@ -306,9 +307,9 @@
             "",
             `/management/dashboard/${
               query.space_name
-            }/${record.subpath.replaceAll("/", "-")}/${
+            }/${record.subpath.replaceAll("/", "-")}/${shortname}/${
               record.resource_type
-            }/${schema_shortname}/${shortname}`
+            }/${schema_shortname}`
           );
         }}
         class:current={currentItem == index}

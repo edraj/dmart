@@ -9,7 +9,7 @@
   import SidebarSubpaths from "./SidebarSubpaths.svelte";
   import { slide } from "svelte/transition";
   import spaces, { getSpaces } from "../_stores/spaces.js";
-  import { dmartFolder, dmartSpaces } from "../../../dmart.js";
+  import { dmartCreateFolder, dmartSpaces } from "../../../dmart.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
   import JsonEditorModal from "./JsonEditorModal.svelte";
   import { toastPushSuccess } from "../../../utils.js";
@@ -52,7 +52,7 @@
   let modalFlag = "create";
   async function handleModelCreate(data) {
     console.log("handleModelCreate");
-    const response = dmartFolder(
+    const response = dmartCreateFolder(
       child.shortname,
       "/",
       data[0].value,
