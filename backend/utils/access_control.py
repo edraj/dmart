@@ -1,6 +1,9 @@
 import asyncio
 import json
 import re
+from redis.commands.search.field import TextField
+from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.query import Query
 from models.core import ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
 from utils.helpers import flatten_dict
@@ -51,8 +54,25 @@ class AccessControl:
                     print(f"Error processing @{settings.management_space}/{module_value['subpath']}/{shortname} ... ", ex)
                     raise ex
 
+        await self.create_user_premission_index()
         await self.store_modules_to_redis()
         await self.delete_user_permissions_map_in_redis()
+
+
+    async def create_user_premission_index(self):
+        async with RedisServices() as redis_services:
+            try:
+                # Check if index already exist
+                await redis_services.client.ft("user_permission").info()
+            except:
+                await redis_services.client.ft("user_permission").create_index(
+                    fields=(TextField("name")),
+                    definition=IndexDefinition(
+                        prefix=[f"users_permissions"],
+                        index_type=IndexType.JSON,
+                    )
+                )
+
 
     async def store_modules_to_redis(self):
         modules = [
@@ -73,7 +93,9 @@ class AccessControl:
 
     async def delete_user_permissions_map_in_redis(self):
         async with RedisServices() as redis_services:
-            keys = await redis_services.get_keys(pattern="users_permissions*")
+            search_query = Query("*").no_content()
+            docs = await redis_services.client.ft("user_permission").search(search_query)
+            keys = [doc.id for doc in docs.docs]
             await redis_services.del_keys(keys)
 
     def generate_user_permission_doc_id(self, user_shortname: str):
