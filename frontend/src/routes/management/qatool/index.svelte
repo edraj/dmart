@@ -25,6 +25,7 @@
       toastPushFail();
     }
   }
+  console.log({ subpaths });
 </script>
 
 <div class="mx-2 mt-3 mb-3">
@@ -58,7 +59,10 @@
       {#if subpaths[subpath].invalid_entries}
         {#each subpaths[subpath].invalid_entries as entry}
           <ListGroupItem
-            href={`/management/${selectedSpaceName}/${subpath}/${entry}`}
+            href={`/management/dashboard/${selectedSpaceName}/${subpath.replaceAll(
+              "/",
+              "-"
+            )}/${entry}`}
             action>{entry}</ListGroupItem
           >
         {/each}

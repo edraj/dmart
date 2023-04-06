@@ -104,6 +104,7 @@
       toastPushFail();
     }
   }
+  console.log({ x: bodyContent.json });
 </script>
 
 <Tabs>
@@ -123,7 +124,9 @@
       <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
     </div>
     <div class="tab-list">
-      <Tab>Content</Tab>
+      {#if Object.keys(bodyContent.json).length}
+        <Tab>Content</Tab>
+      {/if}
       <Tab>Meta</Tab>
       <Tab>Attachments</Tab>
       <Tab>History</Tab>
@@ -140,14 +143,16 @@
     </div>
   </TabList>
 
-  <TabPanel>
-    <ContentJsonEditor
-      bind:content={bodyContent}
-      {handleSave}
-      {validator}
-      bind:isSchemaValidated
-    />
-  </TabPanel>
+  {#if Object.keys(bodyContent.json).length}
+    <TabPanel>
+      <ContentJsonEditor
+        bind:content={bodyContent}
+        {handleSave}
+        {validator}
+        bind:isSchemaValidated
+      />
+    </TabPanel>
+  {/if}
   <TabPanel>
     <ContentJsonEditor bind:content={metaContent} {handleSave} />
   </TabPanel>

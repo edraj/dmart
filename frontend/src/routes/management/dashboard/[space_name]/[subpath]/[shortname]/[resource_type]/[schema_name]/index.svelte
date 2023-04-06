@@ -62,15 +62,7 @@
       "json",
       "entry"
     );
-    const body = await dmartEntry(
-      resource_type,
-      space_name,
-      subpath,
-      shortname,
-      schema_name
-    );
     metaContent.json = meta;
-    bodyContent.json = body;
 
     historyQuery = {
       type: "history",
@@ -80,15 +72,26 @@
       retrieve_json_payload: true,
     };
     metaContentAttachement = meta.attachments;
-    await dmartGetSchemas(space_name, meta.payload.schema_shortname)
-      .then((json) => {
-        const schema = json.records[0].attributes["payload"].body;
-        cleanUpSchema(schema.properties);
-        validator = createAjvValidator({ schema });
-      })
-      .catch((e) => {
-        console.log(e);
-      });
+    if (meta.payload?.schema_shortname) {
+      await dmartGetSchemas(space_name, meta.payload.schema_shortname)
+        .then((json) => {
+          const schema = json.records[0].attributes["payload"].body;
+          cleanUpSchema(schema.properties);
+          validator = createAjvValidator({ schema });
+        })
+        .catch((e) => {
+          console.log(e);
+        });
+
+      const body = await dmartEntry(
+        resource_type,
+        space_name,
+        subpath,
+        shortname,
+        schema_name
+      );
+      bodyContent.json = body;
+    }
   }
   let init = initPage();
 
@@ -103,8 +106,12 @@
       ? { ...metaContent.json }
       : JSON.parse(metaContent.text);
     const data = { ...metaData };
-    data.payload.body =
-      bodyContent.json ?? JSON.parse(bodyContent.text) ?? data.payload.body;
+
+    if (Object.keys(bodyContent.json).length) {
+      data.payload.body =
+        bodyContent.json ?? JSON.parse(bodyContent.text) ?? data.payload.body;
+    }
+
     const response = await dmartRequest("managed/request", {
       space_name: space_name,
       request_type: "update",

@@ -3,7 +3,10 @@
   import ListView from "../../../_components/ListView.svelte";
 
   let query = {};
+  console.log({ $params });
   $: $params &&
+    $params.space_name &&
+    $params.subpath &&
     (query = {
       type: "search",
       search: "",
