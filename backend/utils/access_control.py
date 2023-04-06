@@ -375,7 +375,6 @@ class AccessControl:
 
         all_user_roles_from_redis = []
         for redis_document in roles_search["data"]:
-            pp(redis_document=redis_document)
             all_user_roles_from_redis.append(json.loads(redis_document.json))
 
         all_user_roles_from_redis.extend(user_roles_from_groups)
