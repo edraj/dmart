@@ -1,7 +1,8 @@
+from copy import copy
 import shutil
 import sys
 from models.enums import LockAction
-from utils.helpers import branch_path, camel_case, snake_case
+from utils.helpers import arr_remove_common, branch_path, snake_case
 from datetime import datetime
 import sys
 from models.enums import ContentType, ResourceType
@@ -430,10 +431,12 @@ async def store_entry_diff(
     history_diff = {}
     for key in set(diff_keys):
         if key in updated_attributes_flattend:
-            old = old_version_flattend[key] if key in old_version_flattend else "null"
-            new = new_version_flattend[key] if key in new_version_flattend else "null"
-
+            old = copy(old_version_flattend[key]) if key in old_version_flattend else "null"
+            new = copy(new_version_flattend[key]) if key in new_version_flattend else "null"
+            
             if old != new:
+                if type(old) == list and type(new) == list:
+                    old, new = arr_remove_common(old, new)
                 history_diff[key] = {
                     "old": old,
                     "new": new,
