@@ -131,6 +131,20 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
     return total, locators
 
 
+def folder_path(
+    space_name: str,
+    subpath: str,
+    shortname: str,
+    branch_name: str | None = settings.default_branch,
+):
+    if branch_name:
+        return (
+            f"{settings.spaces_folder}/{space_name}/{branch_name}/{subpath}/{shortname}"
+        )
+    else:
+        return f"{settings.spaces_folder}/{space_name}{subpath}/{shortname}"
+
+
 def metapath(
     space_name: str,
     subpath: str,
@@ -431,9 +445,17 @@ async def store_entry_diff(
     history_diff = {}
     for key in set(diff_keys):
         if key in updated_attributes_flattend:
-            old = copy(old_version_flattend[key]) if key in old_version_flattend else "null"
-            new = copy(new_version_flattend[key]) if key in new_version_flattend else "null"
-            
+            old = (
+                copy(old_version_flattend[key])
+                if key in old_version_flattend
+                else "null"
+            )
+            new = (
+                copy(new_version_flattend[key])
+                if key in new_version_flattend
+                else "null"
+            )
+
             if old != new:
                 if type(old) == list and type(new) == list:
                     old, new = arr_remove_common(old, new)
@@ -611,6 +633,7 @@ async def delete(
             if payload_file_path.is_file():
                 os.remove(payload_file_path)
 
-    # Remove entry folder
-    if not isinstance(meta, core.Attachment) or len(os.listdir(path)) == 0:
-        shutil.rmtree(path)
+    if isinstance(meta, core.Folder):
+        p = folder_path(space_name, subpath, meta.shortname, None)
+        if Path(p).is_dir():
+            shutil.rmtree(p)
