@@ -1,6 +1,6 @@
 # Data Mart (D-MART)
 
-<img src="https://github.com/edraj/dmart/actions/workflows/dmart-checks.yml/badge.svg" >
+<img src="https://img.shields.io/github/v/release/edraj/dmart.svg" > <img src="https://github.com/edraj/dmart/actions/workflows/dmart-checks.yml/badge.svg" >
 
 DMART is a data service layer that offers a streamlined / simplified way to develop certain class of solutions with small to medium data footprint (<=300 million primary entries). DMART is not a one-solution fit-all kind of technology, but it tries to address a wide variety of needs. Specifically, DMART is not suited for systems that have large data (> 400 million primary entries) nor systems that require heavily/complex related data modeling or requiring atomic operations (transactions).
 
