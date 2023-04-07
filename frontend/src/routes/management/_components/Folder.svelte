@@ -9,7 +9,7 @@
   } from "../../../dmart.js";
   import selectedSubpath from "../_stores/selected_subpath.js";
   import { entries } from "../_stores/entries.js";
-  import { getSpaces } from "../_stores/spaces.js";
+  import spaces from "../_stores/spaces.js";
   import { _ } from "../../../i18n/index.js";
   import { slide } from "svelte/transition";
   import Folder from "./Folder.svelte";
@@ -35,15 +35,18 @@
 
   let expanded = false;
   export let data;
-  let children_subpath;
+  export let parent_data;
 
-  $: {
-    children_subpath = data.subpath + "/" + data.shortname;
-  }
-  async function toggle() {
-    selectedSubpath.set(data.uuid);
-    expanded = !expanded;
-    if (!$entries[children_subpath]) {
+  async function updateList(event = "create") {
+    const idxSpace = $spaces.children.findIndex(
+      (child) => child.shortname === data.space_name
+    );
+
+    if (event === "create") {
+      const idxSubpath = $spaces.children[idxSpace].subpaths.findIndex(
+        (child) => child.shortname === data.shortname
+      );
+
       const _entries = await dmartEntries(
         data.space_name,
         data.subpath,
@@ -59,7 +62,7 @@
           entry.subpath = `/${entry.subpath}/${entry.shortname}`;
         }
       });
-      console.log({ data });
+
       data["subpaths"] = _entries
         .map((e) => {
           if (
@@ -71,6 +74,33 @@
           return null;
         })
         .filter((e) => e != null);
+      $spaces.children[idxSpace].subpaths[idxSubpath]["subpaths"] = _entries;
+      $spaces.children[idxSpace].subpaths[idxSubpath][
+        "subpath"
+      ] += `/${data.shortname}`;
+    } else if (event === "delete") {
+      let r = $spaces.children[idxSpace].subpaths;
+      const s = data.subpath.replace("/", "").split("/");
+      s.pop();
+      s.forEach((subpath) => {
+        const idx = r.findIndex((child) => child.shortname === subpath);
+        r = r[idx].subpaths;
+      });
+      const idx = r.findIndex((child) => child.shortname === data.shortname);
+      r.splice(idx, 1);
+      parent_data.subpaths = r;
+    }
+    spaces.set({
+      ...$spaces,
+      children: $spaces.children,
+    });
+  }
+
+  async function toggle() {
+    selectedSubpath.set(data.uuid);
+    expanded = !expanded;
+    if (!$entries[data.shortname]) {
+      await updateList();
     }
 
     window.history.replaceState(
@@ -102,7 +132,7 @@
     schemas = r.records.map((e) => e.shortname);
     if (flag === "update") {
       contentShortname = data.shortname;
-      selectedSchema = data.a;
+      selectedSchema = data.attributes.payload.schema_name;
     }
   }
 
@@ -160,7 +190,7 @@
     const response = await dmartRequest("managed/request", request);
     if (response.status === "success") {
       toastPushSuccess();
-      await getSpaces();
+      updateList("delete");
     } else {
       toastPushFail();
     }
@@ -170,8 +200,8 @@
 
   async function handleSubmit(e) {
     e.preventDefault();
+    let response;
     if (entryType === "folder") {
-      let response;
       if (modalFlag === "create") {
         response = await dmartCreateFolder(
           data.space_name,
@@ -189,17 +219,8 @@
           contentShortname
         );
       }
-      if (response.error) {
-        alert(response.error.message);
-      } else {
-        toastPushSuccess();
-        await getSpaces();
-        triggerRefreshList.set(true);
-        entryCreateModal = false;
-      }
     } else if (entryType === "content") {
-      // if (isSchemaValidated) {
-      const response = await dmartManContent(
+      response = await dmartManContent(
         data.space_name,
         data.subpath,
         contentShortname === "" ? "auto" : contentShortname,
@@ -207,16 +228,18 @@
         JSON.parse(content.text),
         modalFlag
       );
-      if (response.status === "success") {
-        toastPushSuccess();
-        triggerRefreshList.set(true);
-        entryCreateModal = false;
-      } else {
-        toastPushFail();
-      }
-      // }
+    }
+    if (response.status === "success") {
+      toastPushSuccess();
+      triggerRefreshList.set(true);
+      entryCreateModal = false;
+      await updateList();
+    } else {
+      toastPushFail();
     }
   }
+
+  $: entryCreateModal && (contentShortname = "");
 </script>
 
 <Modal
@@ -337,13 +360,16 @@
 </div>
 
 {#if data.subpaths}
-  {#each data.subpaths as subapth (subapth.shortname + subapth.uuid)}
+  {#each data.subpaths as subpath (subpath.shortname + subpath.uuid)}
     <div
       hidden={!expanded}
       style="padding-left: 5px;"
       transition:slide={{ duration: 400 }}
     >
-      <Folder data={{ space_name: data.space_name, ...subapth }} />
+      <Folder
+        data={{ space_name: data.space_name, ...subpath }}
+        bind:parent_data={data}
+      />
     </div>
   {/each}
 {/if}
