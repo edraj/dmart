@@ -1,18 +1,15 @@
 <script>
   import { triggerRefreshList } from "./../_stores/trigger_refresh.js";
-  import { goto, isActive } from "@roxi/routify";
   import {
     dmartManContent,
     dmartEntries,
     dmartCreateFolder,
-    dmartMoveFolder,
     dmartGetSchemas,
     dmartRequest,
   } from "../../../dmart.js";
   import selectedSubpath from "../_stores/selected_subpath.js";
   import { entries } from "../_stores/entries.js";
-  import { contents } from "../_stores/contents.js";
-  import spaces, { getSpaces } from "../_stores/spaces.js";
+  import { getSpaces } from "../_stores/spaces.js";
   import { _ } from "../../../i18n/index.js";
   import { slide } from "svelte/transition";
   import Folder from "./Folder.svelte";
@@ -241,6 +238,7 @@
           </Input>
           <Label class="mt-3">Schema</Label>
           <Input bind:value={selectedSchema} type="select">
+            <option value={""}>{"None"}</option>
             {#each schemas as schema}
               <option value={schema}>{schema}</option>
             {/each}
