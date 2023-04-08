@@ -1,10 +1,8 @@
 from copy import copy
 import shutil
-import sys
 from models.enums import LockAction
 from utils.helpers import arr_remove_common, branch_path, snake_case
 from datetime import datetime
-import sys
 from models.enums import ContentType, ResourceType
 from utils.middleware import get_request_data
 from utils.redis_services import RedisServices
@@ -15,7 +13,6 @@ import models.api as api
 import os
 import json
 from pathlib import Path
-from fastapi.logger import logger
 from fastapi import status
 from datetime import datetime
 import aiofiles
