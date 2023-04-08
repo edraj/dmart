@@ -22,6 +22,9 @@ from fastapi.logger import logger
 from utils.db import load, load_resource_payload, save
 
 
+
+
+
 class Plugin(PluginBase):
     async def hook(self, data: Event):
         """
@@ -33,9 +36,9 @@ class Plugin(PluginBase):
         """
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
-            logger.warn(
-                f"data.shortname is None and str is required at system_notification_sender"
-            )
+        #    logger.warn(
+        #        f"data.shortname is None and str is required at system_notification_sender"
+        #    )
             return
             
         if data.action_type == ActionType.delete:
