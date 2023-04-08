@@ -87,7 +87,6 @@
   }
 
   async function infiniteHandler({ detail: { loaded, complete, error } }) {
-    console.log({ query });
     if (Object.keys(query).length <= 2) {
       complete();
     } else {
@@ -134,7 +133,6 @@
   }
 
   function value(path, data, type) {
-    console.log(path, data, type);
     if (path.length == 1 && path[0].length > 0 && path[0] in data) {
       if (type == "json") return JSON.stringify(data[path[0]], undefined, 1);
       else return data[path[0]];
@@ -190,7 +188,6 @@
   }
 
   function handleSearchInput(target) {
-    console.log({ target });
     query =
       target === ""
         ? base_query
