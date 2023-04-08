@@ -138,7 +138,13 @@
     schemas = r.records.map((e) => e.shortname);
     if (flag === "update") {
       contentShortname = data.shortname;
-      folderContent.json = data;
+      const d = { ...data };
+      delete d.subpath;
+      delete d.subpaths;
+      delete d.attachments;
+      delete d.attributes.created_at;
+      delete d.attributes.updated_at;
+      folderContent.json = d;
     }
     entryCreateModal = true;
   }
@@ -251,16 +257,18 @@
     const payload = folderContent.json
       ? { ...folderContent.json }
       : JSON.parse(folderContent.text);
+
+    const arr = data.subpath.split("/");
+    arr[arr.length - 1] = "";
+    const parentSubpath = arr.join("/");
+
     const request = {
       space_name: data.space_name,
       request_type: "update",
       records: [
         {
           ...payload,
-          subpath: payload.subpath.substring(
-            0,
-            payload.subpath.lastIndexOf("/")
-          ),
+          subpath: parentSubpath,
         },
       ],
     };
@@ -365,43 +373,41 @@
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
 <div
   transition:slide={{ duration: 400 }}
-  class="d-flex row folder position-relative mt-1 ps-2 {$selectedSubpath ===
+  class="d-flex row justify-content-between folder position-relative mt-1 ps-2 {$selectedSubpath ===
   data.uuid
     ? 'expanded'
     : ''}"
   on:mouseover={(e) => (displayActionMenu = true)}
   on:mouseleave={(e) => (displayActionMenu = false)}
 >
-  <div class="col-7" on:click={toggle}>
+  <div class="col-8" on:click={toggle}>
     {data?.attributes?.displayname?.en ?? data.shortname}
   </div>
 
-  <div
-    class="col-1"
-    style="cursor: pointer;"
-    hidden={!displayActionMenu}
-    on:click={() => handleSubpathMan("create")}
-  >
-    <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
+  <div class="d-flex col-4">
+    <div
+      style="cursor: pointer;"
+      hidden={!displayActionMenu}
+      on:click={() => handleSubpathMan("create")}
+    >
+      <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
+    </div>
+    <div
+      class="px-1"
+      style="cursor: pointer;"
+      hidden={!displayActionMenu}
+      on:click={() => handleSubpathMan("update")}
+    >
+      <Fa icon={faEdit} size="sm" color="dimgrey" />
+    </div>
+    <div
+      style="cursor: pointer;"
+      hidden={!displayActionMenu}
+      on:click={async () => await handleSubpathDelete()}
+    >
+      <Fa icon={faTrashCan} size="sm" color="dimgrey" />
+    </div>
   </div>
-  <div
-    class="col-1"
-    style="cursor: pointer;"
-    hidden={!displayActionMenu}
-    on:click={() => handleSubpathMan("update")}
-  >
-    <Fa icon={faEdit} size="sm" color="dimgrey" />
-  </div>
-  <div
-    class="col-1"
-    style="cursor: pointer;"
-    hidden={!displayActionMenu}
-    on:click={async () => await handleSubpathDelete()}
-  >
-    <Fa icon={faTrashCan} size="sm" color="dimgrey" />
-  </div>
-
-  <span class="toolbar top-0 end-0 position-absolute px-0" />
 </div>
 
 {#if data.subpaths}
