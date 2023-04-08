@@ -560,10 +560,11 @@ class RedisServices(object):
         shortname: str,
         subpath: str,
     ):
-        if subpath[0] == "/":
-            subpath = subpath[1:]
-        if subpath[-1] == "/":
-            subpath = subpath[:-1]
+        # if subpath[0] == "/":
+        #     subpath = subpath[1:]
+        # if subpath[-1] == "/":
+        #     subpath = subpath[:-1]
+        subpath = subpath.strip("/")
         return f"{space_name}:{branch_name}:{schema_shortname}:{subpath}/{shortname}"
 
     def generate_query_policies(
