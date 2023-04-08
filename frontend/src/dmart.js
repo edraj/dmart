@@ -433,7 +433,7 @@ export async function dmartDeleteContent(
   return resp.results[0];
 }
 
-export async function dmartMoveFolder(
+export async function dmartCreateFolder(
   space_name,
   subpath,
   schema_shortname,
@@ -486,7 +486,7 @@ export async function dmartMoveFolder(
   };
   return await dmartRequest("managed/request", request);
 }
-export async function dmartCreateFolder(
+export async function dmartMoveFolder(
   space_name,
   subpath,
   old_shortname,
@@ -494,7 +494,7 @@ export async function dmartCreateFolder(
 ) {
   const request = {
     space_name,
-    request_type: "move",
+    request_type: "create",
     records: [
       {
         resource_type: "folder",

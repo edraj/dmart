@@ -6,6 +6,7 @@
     dmartCreateFolder,
     dmartGetSchemas,
     dmartRequest,
+    dmartMoveFolder,
   } from "../../../dmart.js";
   import selectedSubpath from "../_stores/selected_subpath.js";
   import { entries } from "../_stores/entries.js";
@@ -32,10 +33,12 @@
     Input,
   } from "sveltestrap";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
+  import { Mode } from "svelte-jsoneditor";
 
   let expanded = false;
   export let data;
   export let parent_data;
+  let folderContent = { json: {}, text: undefined };
 
   async function updateList(event = "create") {
     const idxSpace = $spaces.children.findIndex(
@@ -127,13 +130,13 @@
 
   async function handleSubpathMan(flag) {
     modalFlag = flag;
-    entryCreateModal = true;
     const r = await dmartGetSchemas(data.space_name);
     schemas = r.records.map((e) => e.shortname);
     if (flag === "update") {
       contentShortname = data.shortname;
-      selectedSchema = data.attributes.payload.schema_name;
+      folderContent.json = data;
     }
+    entryCreateModal = true;
   }
 
   // let subpathUpdateContent = { json: data, text: undefined };
@@ -212,12 +215,13 @@
       } else if (modalFlag === "update") {
         const i = data.subpath.lastIndexOf("/");
         const _subpath = data.subpath.substring(0, i);
-        response = await dmartCreateFolder(
-          data.space_name,
-          _subpath,
-          data.shortname,
-          contentShortname
-        );
+        if (data.shortname !== contentShortname)
+          response = await dmartMoveFolder(
+            data.space_name,
+            _subpath,
+            data.shortname,
+            contentShortname
+          );
       }
     } else if (entryType === "content") {
       response = await dmartManContent(
@@ -234,6 +238,31 @@
       triggerRefreshList.set(true);
       entryCreateModal = false;
       await updateList();
+    } else {
+      toastPushFail();
+    }
+  }
+
+  async function handleFolderUpdate() {
+    const payload = folderContent.json
+      ? { ...folderContent.json }
+      : JSON.parse(folderContent.text);
+    const request = {
+      space_name: data.space_name,
+      request_type: "update",
+      records: [
+        {
+          ...payload,
+          subpath: payload.subpath.substring(
+            0,
+            payload.subpath.lastIndexOf("/")
+          ),
+        },
+      ],
+    };
+    const response = await dmartRequest("managed/request", request);
+    if (response.status === "success") {
+      toastPushSuccess();
     } else {
       toastPushFail();
     }
@@ -293,7 +322,19 @@
         {/if}
         {#if entryType === "folder"}
           <Label class="mt-3">Shorname</Label>
-          <Input placeholder="Shortname..." bind:value={contentShortname} />
+          <Input
+            placeholder="Shortname..."
+            bind:value={contentShortname}
+            required
+          />
+          {#if modalFlag === "update"}
+            <Label class="mt-3">Content</Label>
+            <ContentJsonEditor
+              bind:content={folderContent}
+              handleSave={async () => handleFolderUpdate()}
+              mode={Mode.tree}
+            />
+          {/if}
         {/if}
       </FormGroup>
     </ModalBody>

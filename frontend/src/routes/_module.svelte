@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { goto } from "@roxi/routify";
   import { Col, Container, Row } from "sveltestrap";
   import Header from "./management/_components/Header.svelte";
   // import Footer from "../_components/Footer.svelte";
+  $goto("/management/dashboard");
 </script>
 
 <Container fluid={false} class="d-flex flex-column position-relative p-0 my-1">
