@@ -6,7 +6,7 @@ DMART is a data service layer that offers a streamlined / simplified way to deve
 
 As such, DMART serves as general-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS). 
 
-It represents a low-code information inventory platform (aka content registry/repository) that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and extend. Thus, valuable data assets can be maintained as the mastered version and act as the single source of truth. 
+It represents a low-code information inventory platform (aka content registry/repository/vault) that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and extend. Thus, valuable data assets can be maintained as the mastered version and act as the single source of truth. 
 
 ## The problem DMART attempts to solve
 
