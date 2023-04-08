@@ -203,7 +203,7 @@
             filter_schema_names: [
               search.selected === "" ? "meta" : schema_shortname,
             ],
-            search: target ? `*${target}*` : "",
+            search: target ? `${target}` : "",
             // search:
             //   search.selected === ""
             //     ? `${target}*`
