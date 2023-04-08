@@ -44,12 +44,10 @@
     const idxSpace = $spaces.children.findIndex(
       (child) => child.shortname === data.space_name
     );
+    let r = $spaces.children[idxSpace];
+    const s = data.subpath.replace("/", "").split("/");
 
     if (event === "create") {
-      const idxSubpath = $spaces.children[idxSpace].subpaths.findIndex(
-        (child) => child.shortname === data.shortname
-      );
-
       const _entries = await dmartEntries(
         data.space_name,
         data.subpath,
@@ -60,9 +58,9 @@
 
       _entries.forEach((entry) => {
         if (entry.subpath.startsWith("/")) {
-          entry.subpath = `${entry.subpath}/${entry.shortname}`;
+          entry.subpath = `${data.subpath}/${entry.shortname}`;
         } else {
-          entry.subpath = `/${entry.subpath}/${entry.shortname}`;
+          entry.subpath = `/${data.subpath}/${entry.shortname}`;
         }
       });
 
@@ -77,13 +75,18 @@
           return null;
         })
         .filter((e) => e != null);
-      $spaces.children[idxSpace].subpaths[idxSubpath]["subpaths"] = _entries;
-      $spaces.children[idxSpace].subpaths[idxSubpath][
-        "subpath"
-      ] += `/${data.shortname}`;
+
+      s.forEach((subpath) => {
+        const idx = r.subpaths.findIndex(
+          (child) => child.shortname === subpath
+        );
+        r = r.subpaths[idx];
+      });
+
+      r["subpaths"] = _entries;
+      r["subpath"] = data.subpath;
     } else if (event === "delete") {
-      let r = $spaces.children[idxSpace].subpaths;
-      const s = data.subpath.replace("/", "").split("/");
+      r = r.subpaths;
       s.pop();
       s.forEach((subpath) => {
         const idx = r.findIndex((child) => child.shortname === subpath);
@@ -105,14 +108,15 @@
     if (!$entries[data.shortname]) {
       await updateList();
     }
-
+    let subpath = data.subpath;
+    if (subpath.startsWith("/")) {
+      subpath = subpath.substring(1);
+    }
+    subpath = subpath.replaceAll("/", "-");
     window.history.replaceState(
       history.state,
       "",
-      `/management/dashboard/${data.space_name}/${data.subpath.replaceAll(
-        "/",
-        "-"
-      )}`
+      `/management/dashboard/${data.space_name}/${subpath}`
     );
   }
 
