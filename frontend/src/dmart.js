@@ -17,22 +17,6 @@ export async function dmartLogin(username, password) {
   //return { "records": [{ "displayname": "ali", "shortname": "hisense" }] };//resp;
 }
 
-export async function dmartCreateFolder(space_name, subpath, shortname) {
-  const request = {
-    space_name,
-    request_type: "create",
-    records: [
-      {
-        resource_type: "folder",
-        subpath,
-        shortname,
-        attributes: { is_active: true },
-      },
-    ],
-  };
-  return dmartRequest("managed/request", request);
-}
-
 export async function dmartGetSchemas(space_name, shortname = null) {
   const query = {
     space_name,
@@ -240,9 +224,10 @@ export async function dmartEntry(
   space_name,
   subpath,
   shortname,
-  schema_shortname,
-  ext,
-  content_type = "json"
+  schema_shortname = null,
+  ext = "json",
+  content_type = "json",
+  request_type = "payload"
 ) {
   const browse_request = {
     method: "GET",
@@ -252,12 +237,18 @@ export async function dmartEntry(
     headers: { "Content-Type": `application/${content_type}` },
   };
 
-  const url = `${
+  let url = `${
     website.backend
-  }/managed/payload/${resource_type}/${space_name}/${subpath.replace(
+  }/managed/${request_type}/${resource_type}/${space_name}/${subpath.replace(
     /\/+$/,
     ""
-  )}/${shortname}.${schema_shortname}.${ext}`.replaceAll("..", ".");
+  )}/${shortname}`;
+
+  if (request_type === "payload") {
+    url = `${url}.${schema_shortname}.${ext}`;
+  }
+
+  url = url.replaceAll("..", ".");
 
   return await dmartFetch(
     url,
@@ -387,16 +378,17 @@ export async function dmartContent(action, record) {
   return dmartRequest(request);
 }
 
-export async function dmartCreateContent(
+export async function dmartManContent(
   space_name,
   subpath,
   shortname,
   schema_shortname,
-  body
+  body,
+  request_type = "create"
 ) {
   const request = {
     space_name,
-    request_type: "create",
+    request_type: request_type,
     records: [
       {
         resource_type: "content",
@@ -441,7 +433,7 @@ export async function dmartDeleteContent(
   return resp.results[0];
 }
 
-export async function dmartFolder(
+export async function dmartCreateFolder(
   space_name,
   subpath,
   schema_shortname,
@@ -488,6 +480,31 @@ export async function dmartFolder(
               filter: [],
             },
           },
+        },
+      },
+    ],
+  };
+  return await dmartRequest("managed/request", request);
+}
+export async function dmartMoveFolder(
+  space_name,
+  subpath,
+  old_shortname,
+  shortname
+) {
+  const request = {
+    space_name,
+    request_type: "create",
+    records: [
+      {
+        resource_type: "folder",
+        subpath,
+        shortname,
+        attributes: {
+          src_subpath: subpath,
+          src_shortname: old_shortname,
+          dest_subpath: subpath,
+          dest_shortname: shortname,
         },
       },
     ],

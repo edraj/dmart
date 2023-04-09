@@ -46,6 +46,8 @@
   function handleUpdate(event) {
     isOpen = event.detail.isOpen;
   }
+
+  const subpaths = [...$spaces.children];
 </script>
 
 {#key props}
@@ -73,7 +75,7 @@
     on:update={handleUpdate}
   >
     <ul class="px-0 w-100 px-1">
-      {#each $spaces.children as child (child.uuid + Math.round(Math.random() * 10000).toString())}
+      {#each subpaths as child (child.uuid + Math.round(Math.random() * 10000).toString())}
         <li transition:slide={{ duration: 400 }}>
           <SidebarSpaces {child} />
         </li>

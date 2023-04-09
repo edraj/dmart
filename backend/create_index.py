@@ -19,8 +19,8 @@ import utils.regex as regex
 import asyncio
 from utils.spaces import get_spaces, initialize_spaces
 from utils.access_control import access_control
-from time import time
-from multiprocessing import Pool, current_process
+# from time import time
+from multiprocessing import Pool
 
 
 async def load_data_to_redis(space_name, branch_name, subpath, allowed_resource_types):
@@ -28,7 +28,7 @@ async def load_data_to_redis(space_name, branch_name, subpath, allowed_resource_
     Load meta files inside subpath then store them to redis as :space_name:meta prefixed doc,
     and if the meta file has a separate payload file follwing a schema we loads the payload content and store it to redis as :space_name:schema_name prefixed doc
     """
-    start_time: int = int(time())
+    # start_time: int = int(time())
 
     #print(f"\n\nSTART EXAMINING SUBPATH: {subpath}  {int(time()) - start_time} ")
 
@@ -42,7 +42,22 @@ async def load_data_to_redis(space_name, branch_name, subpath, allowed_resource_
             filter_types=allowed_resource_types,
         )
     )
-    #print(f"Ended loading {locators_len} files, starting parsing data in each file {int(time()) - start_time}")
+
+    # Add Folder locator to the loaded locators
+    meta_folder = settings.spaces_folder / subpath / ".dm/meta.folder.json"
+    if ResourceType.folder in allowed_resource_types and  meta_folder.is_dir():
+        folder_parts = subpath.split("/")
+        folder_locator = core.Locator(
+            type=ResourceType.folder,
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath="/".join(folder_parts[:-1]) or "/",
+            shortname=folder_parts[-1]
+        )
+        locators.append(folder_locator)
+        locators_len += 1
+
+    # print(f"\nEnded loading {locators_len} files, starting parsing data in each file {int(time()) - start_time}")
 
     if locators_len <= 5000:
         redis_docs_chunks = [await generate_redis_docs(locators)]
@@ -119,7 +134,7 @@ async def generate_redis_docs(locators: list) -> list:
                     )
                     payload.update(meta_data)
                     redis_docs.append({"doc_id": doc_id, "payload": payload})
-                except SchemaValidationError as e:
+                except SchemaValidationError as _:
                     print(
                         f"Error: @{one.space_name}/{one.subpath}/{meta.shortname} does not match the schema {meta.payload.schema_shortname}"
                     )
@@ -201,6 +216,7 @@ async def traverse_subpaths_entries(
                         ResourceType.notification,
                         ResourceType.media,
                         ResourceType.lock,
+                        ResourceType.folder
                     ],
                 )
             )

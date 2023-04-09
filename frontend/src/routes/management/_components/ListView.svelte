@@ -3,7 +3,7 @@
   import VirtualList from "svelte-tiny-virtual-list";
   import InfiniteLoading from "svelte-infinite-loading";
   import {
-    dmartCreateContent,
+    dmartManContent,
     dmartGetSchemas,
     dmartRequest,
   } from "../../../dmart.js";
@@ -56,12 +56,7 @@
 
   onDestroy(() => status_line.set(""));
   export let query;
-  // $goto(`/management/dashboard/${query.space_name}${query.subpath}`, {
-  //   replaceState: true,
-  // });
-  // window.history.pushState(
-  //   `/management/dashboard/${query.space_name}${query.subpath}`
-  // );
+
   const base_query = { ...query };
   export let cols;
   export let details_split = 0;
@@ -82,13 +77,6 @@
   };
   let infiniteId = Symbol();
 
-  function cleanUpSchema(obj) {
-    for (let prop in obj) {
-      if (prop === "comment") delete obj[prop];
-      else if (typeof obj[prop] === "object") cleanUpSchema(obj[prop]);
-    }
-  }
-
   function handleChange(updatedContent, previousContent, patchResult) {
     const v = patchResult.contentErrors.validationErrors;
     if (v === undefined || v.length === 0) {
@@ -98,30 +86,7 @@
     }
   }
 
-  // TODO TBRemoved
-  async function fetchSearchKeys() {
-    if (records.length === 0) {
-      search.options = [];
-    }
-
-    await dmartGetSchemas(query.space_name, schema_shortname)
-      .then((json) => {
-        const schema = json.records[0].attributes["payload"].body;
-        search.options = Object.keys(schema["properties"]);
-        cleanUpSchema(schema.properties);
-        validator = createAjvValidator({ schema });
-        contentSchema = {
-          json: schema,
-          text: undefined,
-        };
-      })
-      .catch((e) => {
-        console.log(e);
-      });
-  }
-
   async function infiniteHandler({ detail: { loaded, complete, error } }) {
-    console.log({ query });
     if (Object.keys(query).length <= 2) {
       complete();
     } else {
@@ -223,7 +188,6 @@
   }
 
   function handleSearchInput(target) {
-    console.log({ target });
     query =
       target === ""
         ? base_query
@@ -236,7 +200,7 @@
             filter_schema_names: [
               search.selected === "" ? "meta" : schema_shortname,
             ],
-            search: target ? `*${target}*` : "",
+            search: target ? `${target}` : "",
             // search:
             //   search.selected === ""
             //     ? `${target}*`
@@ -259,7 +223,7 @@
     e.preventDefault();
 
     if (isSchemaValidated) {
-      const response = await dmartCreateContent(
+      const response = await dmartManContent(
         base_query.space_name,
         base_query.subpath,
         contentShortname === "" ? "auto" : contentShortname,
@@ -332,63 +296,18 @@
         style={style.replaceAll("left:0;", "")}
         class="my-row"
         on:click={async () => {
-          const toastID = toastPushLoding();
-          if (!clickable || index === 0) {
-            return;
-          }
-
-          currentItem = index;
-
           const record = { ...records[index - 1] };
-
           shortname = record.shortname;
-          const json = { ...record };
-          metaContentAttachement = json.attachments;
 
-          delete json.attachments;
-          metaContent = {
-            json,
-            text: undefined,
-          };
-
-          await dmartGetSchemas(
-            query.space_name,
-            json.attributes.payload.schema_shortname
-          )
-            .then((json) => {
-              const schema = json.records[0].attributes["payload"].body;
-              search.options = Object.keys(schema["properties"]);
-              cleanUpSchema(schema.properties);
-              validator = createAjvValidator({ schema });
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-
-          if (record?.attributes?.payload?.body) {
-            bodyContent = {
-              json: await dmartEntry(
-                record.resource_type,
-                query.space_name,
-                record.subpath,
-                shortname,
-                schema_shortname,
-                "json"
-              ),
-              text: undefined,
-            };
-          }
-
-          historyQuery = {
-            type: "history",
-            space_name: query.space_name,
-            filter_shortnames: [shortname],
-            subpath: record.subpath,
-            retrieve_json_payload: true,
-          };
-
-          toastPop(toastID);
-          showContentEditSection = true;
+          window.history.replaceState(
+            history.state,
+            "",
+            `/management/dashboard/${
+              query.space_name
+            }/${record.subpath.replaceAll("/", "-")}/${shortname}/${
+              record.resource_type
+            }/${schema_shortname}`
+          );
         }}
         class:current={currentItem == index}
       >

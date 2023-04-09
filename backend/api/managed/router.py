@@ -147,16 +147,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     )
 
     redis_query_policies = await access_control.get_user_query_policies(user_shortname)
-    restricted_fields = [
-        "id",
-        "query_policies",
-        "subpath",
-        "branch_name",
-        "resource_type",
-        "meta_doc_id",
-        "owner_shortname",
-        "workflow_shortname",
-    ]
 
     folder = await db.load(
         query.space_name,
@@ -184,16 +174,20 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         redis_doc_dict = redis_document.__dict__
         if "json" in redis_doc_dict:
             redis_doc_dict = json.loads(redis_doc_dict["json"])
-        for k, v in redis_doc_dict.items():
-            if k in folder_views:
-                if k.count(".") == 0:
-                    json_data.append({k: v})
-                else:
-                    result = {**v}
-                    for key in k.split("."):
-                        result = result.get(key, {})
-                    json_data.append({k: result})
-        # json_data.append({k: v for k, v in redis_doc_dict.items() if k in folder_views})
+
+        _json_data = {}
+        for folder_view in folder_views:
+            if folder_view.count(".") == 0:
+                _json_data[folder_view] = redis_doc_dict.get(folder_view)
+            elif folder_view.count(".") != 0:
+                result = {**redis_doc_dict}
+                for f in folder_view.split("."):
+                    if result is None:
+                        break
+                    result = result.get(f, None)
+                _json_data[folder_view] = result
+
+        json_data.append(_json_data)
 
     # Sort all entries from all schemas
     if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
@@ -223,7 +217,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     keys: set = set({})
     for row in json_data:
         keys.update(set(row.keys()))
-
+    print(f"{keys=}")
     writer = csv.DictWriter(v_path, fieldnames=list(keys))
     writer.writeheader()
     writer.writerows(json_data)
@@ -607,7 +601,7 @@ async def serve_request(
                                         message=invitation_message,
                                     )
                                 except Exception as e:
-                                    logger.warn(
+                                    logger.warning(
                                         "Exception",
                                         extra={
                                             "props": {
@@ -657,7 +651,7 @@ async def serve_request(
                                         subject=generate_subject("activation"),
                                     )
                                 except Exception as e:
-                                    logger.warn(
+                                    logger.warning(
                                         "Exception",
                                         extra={
                                             "props": {

@@ -1,17 +1,16 @@
 <script>
   import { triggerRefreshList } from "./../_stores/trigger_refresh.js";
-  import { goto, isActive } from "@roxi/routify";
   import {
-    dmartCreateContent,
+    dmartManContent,
     dmartEntries,
-    dmartFolder,
+    dmartCreateFolder,
     dmartGetSchemas,
     dmartRequest,
+    dmartMoveFolder,
   } from "../../../dmart.js";
   import selectedSubpath from "../_stores/selected_subpath.js";
   import { entries } from "../_stores/entries.js";
-  import { contents } from "../_stores/contents.js";
-  import spaces, { getSpaces } from "../_stores/spaces.js";
+  import spaces from "../_stores/spaces.js";
   import { _ } from "../../../i18n/index.js";
   import { slide } from "svelte/transition";
   import Folder from "./Folder.svelte";
@@ -34,21 +33,21 @@
     Input,
   } from "sveltestrap";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
+  import { Mode } from "svelte-jsoneditor";
 
   let expanded = false;
   export let data;
-  let children_subpath;
+  export let parent_data;
+  let folderContent = { json: {}, text: undefined };
 
-  $: {
-    children_subpath = data.subpath + "/" + data.shortname;
-  }
-  async function toggle() {
-    if (!$isActive("/management/dashboard")) {
-      $goto("/management/dashboard");
-    }
-    selectedSubpath.set(data.uuid);
-    expanded = !expanded;
-    if (!$entries[children_subpath]) {
+  async function updateList(event = "create") {
+    const idxSpace = $spaces.children.findIndex(
+      (child) => child.shortname === data.space_name
+    );
+    let r = $spaces.children[idxSpace];
+    const s = data.subpath.replace("/", "").split("/");
+
+    if (event === "create") {
       const _entries = await dmartEntries(
         data.space_name,
         data.subpath,
@@ -57,19 +56,11 @@
         "search"
       );
 
-      contents.set({
-        type: "search",
-        search: "",
-        retrieve_attachments: true,
-        space_name: data.space_name,
-        subpath: data.subpath,
-      });
-
       _entries.forEach((entry) => {
         if (entry.subpath.startsWith("/")) {
-          entry.subpath = `${entry.subpath}/${entry.shortname}`;
+          entry.subpath = `${data.subpath}/${entry.shortname}`;
         } else {
-          entry.subpath = `/${entry.subpath}/${entry.shortname}`;
+          entry.subpath = `/${data.subpath}/${entry.shortname}`;
         }
       });
 
@@ -84,12 +75,54 @@
           return null;
         })
         .filter((e) => e != null);
+
+      s.forEach((subpath) => {
+        const idx = r.subpaths.findIndex(
+          (child) => child.shortname === subpath
+        );
+        r = r.subpaths[idx];
+      });
+
+      r["subpaths"] = _entries;
+      r["subpath"] = data.subpath;
+    } else if (event === "delete") {
+      r = r.subpaths;
+      s.pop();
+      s.forEach((subpath) => {
+        const idx = r.findIndex((child) => child.shortname === subpath);
+        r = r[idx].subpaths;
+      });
+      const idx = r.findIndex((child) => child.shortname === data.shortname);
+      r.splice(idx, 1);
+      parent_data.subpaths = r;
     }
+    spaces.set({
+      ...$spaces,
+      children: $spaces.children,
+    });
+  }
+
+  async function toggle() {
+    selectedSubpath.set(data.uuid);
+    expanded = !expanded;
+    if (!$entries[data.shortname]) {
+      await updateList();
+    }
+    let subpath = data.subpath;
+    if (subpath.startsWith("/")) {
+      subpath = subpath.substring(1);
+    }
+    subpath = subpath.replaceAll("/", "-");
+    window.history.replaceState(
+      history.state,
+      "",
+      `/management/dashboard/${data.space_name}/${subpath}`
+    );
   }
 
   let entryCreateModal = false;
   let modalFlag = "create";
-  let createMode = "folder";
+  let entryType = "folder";
   let contentShortname = "";
   let content = {
     json: {},
@@ -98,39 +131,50 @@
   let isSchemaValidated = false;
   let schemas = [];
   let selectedSchema;
-  async function handleSubpathCreate() {
-    modalFlag = "create";
-    entryCreateModal = true;
+
+  async function handleSubpathMan(flag) {
+    modalFlag = flag;
     const r = await dmartGetSchemas(data.space_name);
     schemas = r.records.map((e) => e.shortname);
-  }
-
-  let subpathUpdateContent = { json: data, text: undefined };
-  let isSubpathUpdateModalOpen = false;
-  async function handleSubpathUpdate(content) {
-    const record = content.json ?? JSON.parse(content.text);
-    delete record.space_name;
-    delete record.type;
-    delete record.uuid;
-
-    const arr = record.subpath.split("/");
-    arr[arr.length - 1] = "";
-    const parentSubpath = arr.join("/");
-
-    const request = {
-      space_name: data.space_name,
-      request_type: "update",
-      records: [{ ...record, subpath: parentSubpath }],
-    };
-    const response = await dmartRequest("managed/request", request);
-    if (response.error) {
-      alert(response.error.message);
-    } else {
-      toastPushSuccess();
-      await getSpaces();
-      isSubpathUpdateModalOpen = false;
+    if (flag === "update") {
+      contentShortname = data.shortname;
+      const d = { ...data };
+      delete d.subpath;
+      delete d.subpaths;
+      delete d.attachments;
+      delete d.attributes.created_at;
+      delete d.attributes.updated_at;
+      folderContent.json = d;
     }
+    entryCreateModal = true;
   }
+
+  // let subpathUpdateContent = { json: data, text: undefined };
+  // let isSubpathUpdateModalOpen = false;
+  // async function handleSubpathUpdate(content) {
+  //   const record = content.json ?? JSON.parse(content.text);
+  //   delete record.space_name;
+  //   delete record.type;
+  //   delete record.uuid;
+
+  //   const arr = record.subpath.split("/");
+  //   arr[arr.length - 1] = "";
+  //   const parentSubpath = arr.join("/");
+
+  //   const request = {
+  //     space_name: data.space_name,
+  //     request_type: "update",
+  //     records: [{ ...record, subpath: parentSubpath }],
+  //   };
+  //   const response = await dmartRequest("managed/request", request);
+  //   if (response.error) {
+  //     alert(response.error.message);
+  //   } else {
+  //     toastPushSuccess();
+  //     await getSpaces();
+  //     isSubpathUpdateModalOpen = false;
+  //   }
+  // }
   async function handleSubpathDelete() {
     // const space_name = child.shortname;
     if (
@@ -159,7 +203,7 @@
     const response = await dmartRequest("managed/request", request);
     if (response.status === "success") {
       toastPushSuccess();
-      await getSpaces();
+      updateList("delete");
     } else {
       toastPushFail();
     }
@@ -167,41 +211,76 @@
 
   let displayActionMenu = false;
 
-  async function handleCreation(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (createMode === "folder") {
-      const response = await dmartFolder(
-        data.space_name,
-        data.subpath,
-        selectedSchema,
-        contentShortname
-      );
-      if (response.error) {
-        alert(response.error.message);
-      } else {
-        toastPushSuccess();
-        await getSpaces();
-        entryCreateModal = false;
+    let response;
+    if (entryType === "folder") {
+      if (modalFlag === "create") {
+        response = await dmartCreateFolder(
+          data.space_name,
+          data.subpath,
+          selectedSchema,
+          contentShortname
+        );
+      } else if (modalFlag === "update") {
+        const i = data.subpath.lastIndexOf("/");
+        const _subpath = data.subpath.substring(0, i);
+        if (data.shortname !== contentShortname)
+          response = await dmartMoveFolder(
+            data.space_name,
+            _subpath,
+            data.shortname,
+            contentShortname
+          );
       }
-    } else if (createMode === "content") {
-      // if (isSchemaValidated) {
-      const response = await dmartCreateContent(
+    } else if (entryType === "content") {
+      response = await dmartManContent(
         data.space_name,
         data.subpath,
         contentShortname === "" ? "auto" : contentShortname,
         selectedSchema,
-        JSON.parse(content.text)
+        JSON.parse(content.text),
+        modalFlag
       );
-      if (response.status === "success") {
-        toastPushSuccess();
-        triggerRefreshList.set(true);
-        entryCreateModal = false;
-      } else {
-        toastPushFail();
-      }
-      // }
+    }
+    if (response.status === "success") {
+      toastPushSuccess();
+      triggerRefreshList.set(true);
+      entryCreateModal = false;
+      await updateList();
+    } else {
+      toastPushFail();
     }
   }
+
+  async function handleFolderUpdate() {
+    const payload = folderContent.json
+      ? { ...folderContent.json }
+      : JSON.parse(folderContent.text);
+
+    const arr = data.subpath.split("/");
+    arr[arr.length - 1] = "";
+    const parentSubpath = arr.join("/");
+
+    const request = {
+      space_name: data.space_name,
+      request_type: "update",
+      records: [
+        {
+          ...payload,
+          subpath: parentSubpath,
+        },
+      ],
+    };
+    const response = await dmartRequest("managed/request", request);
+    if (response.status === "success") {
+      toastPushSuccess();
+    } else {
+      toastPushFail();
+    }
+  }
+
+  $: entryCreateModal && (contentShortname = "");
 </script>
 
 <Modal
@@ -212,21 +291,24 @@
   size={"lg"}
 >
   <ModalHeader />
-  <Form on:submit={async (e) => await handleCreation(e)}>
+  <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
       <FormGroup>
-        <Label>Type</Label>
-        <Input bind:value={createMode} type="select">
-          <option value="folder">Folder</option>
-          <option value="content">Content</option>
-        </Input>
-        <Label class="mt-3">Schema</Label>
-        <Input bind:value={selectedSchema} type="select">
-          {#each schemas as schema}
-            <option value={schema}>{schema}</option>
-          {/each}
-        </Input>
-        {#if createMode === "content"}
+        {#if modalFlag === "create"}
+          <Label>Type</Label>
+          <Input bind:value={entryType} type="select">
+            <option value="folder">Folder</option>
+            <option value="content">Content</option>
+          </Input>
+          <Label class="mt-3">Schema</Label>
+          <Input bind:value={selectedSchema} type="select">
+            <option value={""}>{"None"}</option>
+            {#each schemas as schema}
+              <option value={schema}>{schema}</option>
+            {/each}
+          </Input>
+        {/if}
+        {#if entryType === "content" && modalFlag === "create"}
           <Label class="mt-3">Shorname</Label>
           <Input placeholder="Shortname..." bind:value={contentShortname} />
           <hr />
@@ -250,9 +332,21 @@
               mode={Mode.tree}
             /> -->
         {/if}
-        {#if createMode === "folder"}
+        {#if entryType === "folder"}
           <Label class="mt-3">Shorname</Label>
-          <Input placeholder="Shortname..." bind:value={contentShortname} />
+          <Input
+            placeholder="Shortname..."
+            bind:value={contentShortname}
+            required
+          />
+          {#if modalFlag === "update"}
+            <Label class="mt-3">Content</Label>
+            <ContentJsonEditor
+              bind:content={folderContent}
+              handleSave={async () => handleFolderUpdate()}
+              mode={Mode.tree}
+            />
+          {/if}
         {/if}
       </FormGroup>
     </ModalBody>
@@ -279,53 +373,54 @@
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
 <div
   transition:slide={{ duration: 400 }}
-  class="d-flex row folder position-relative mt-1 ps-2 {$selectedSubpath ===
+  class="d-flex row justify-content-between folder position-relative mt-1 ps-2 {$selectedSubpath ===
   data.uuid
     ? 'expanded'
     : ''}"
   on:mouseover={(e) => (displayActionMenu = true)}
   on:mouseleave={(e) => (displayActionMenu = false)}
 >
-  <div class="col-7" on:click={toggle}>
+  <div class="col-8" on:click={toggle}>
     {data?.attributes?.displayname?.en ?? data.shortname}
   </div>
 
-  <div
-    class="col-1"
-    style="cursor: pointer;"
-    hidden={!displayActionMenu}
-    on:click={() => handleSubpathCreate()}
-  >
-    <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
+  <div class="d-flex col-4">
+    <div
+      style="cursor: pointer;"
+      hidden={!displayActionMenu}
+      on:click={() => handleSubpathMan("create")}
+    >
+      <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
+    </div>
+    <div
+      class="px-1"
+      style="cursor: pointer;"
+      hidden={!displayActionMenu}
+      on:click={() => handleSubpathMan("update")}
+    >
+      <Fa icon={faEdit} size="sm" color="dimgrey" />
+    </div>
+    <div
+      style="cursor: pointer;"
+      hidden={!displayActionMenu}
+      on:click={async () => await handleSubpathDelete()}
+    >
+      <Fa icon={faTrashCan} size="sm" color="dimgrey" />
+    </div>
   </div>
-  <div
-    class="col-1"
-    style="cursor: pointer;"
-    hidden={!displayActionMenu}
-    on:click={() => (isSubpathUpdateModalOpen = true)}
-  >
-    <Fa icon={faEdit} size="sm" color="dimgrey" />
-  </div>
-  <div
-    class="col-1"
-    style="cursor: pointer;"
-    hidden={!displayActionMenu}
-    on:click={async () => await handleSubpathDelete()}
-  >
-    <Fa icon={faTrashCan} size="sm" color="dimgrey" />
-  </div>
-
-  <span class="toolbar top-0 end-0 position-absolute px-0" />
 </div>
 
 {#if data.subpaths}
-  {#each data.subpaths as subapth (subapth.shortname + subapth.uuid)}
+  {#each data.subpaths as subpath (subpath.shortname + subpath.uuid)}
     <div
       hidden={!expanded}
       style="padding-left: 5px;"
       transition:slide={{ duration: 400 }}
     >
-      <Folder data={{ space_name: data.space_name, ...subapth }} />
+      <Folder
+        data={{ space_name: data.space_name, ...subpath }}
+        bind:parent_data={data}
+      />
     </div>
   {/each}
 {/if}
@@ -344,6 +439,10 @@
   </ul>
 {/if} -->
 <style>
+  .no-hype {
+    color: inherit; /* blue colors for links too */
+    text-decoration: inherit; /* no underline */
+  }
   ul {
     /*padding: 0.2em 0 0 0.5em;
     margin: 0 0 0 0.5em;*/
