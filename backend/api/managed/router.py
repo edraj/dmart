@@ -55,7 +55,6 @@ from api.user.service import (
 )
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
-from copy import copy
 
 
 router = APIRouter()
