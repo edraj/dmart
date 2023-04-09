@@ -208,7 +208,7 @@ export function ctorULRForAttachment(
   space_name,
   subpath,
   shortname,
-  schema_shortname,
+  entryShortname,
   ext
 ) {
   return `${
@@ -216,7 +216,7 @@ export function ctorULRForAttachment(
   }/managed/payload/${resource_type}/${space_name}/${subpath.replace(
     /\/+$/,
     ""
-  )}/${shortname}.${schema_shortname}.${ext}`.replaceAll("..", ".");
+  )}/${entryShortname}/${shortname}.${ext}`.replaceAll("..", ".");
 }
 
 export async function dmartEntry(
