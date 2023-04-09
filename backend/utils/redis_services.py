@@ -8,8 +8,8 @@ from models.api import SortType
 import models.core as core
 from models.enums import ResourceType, LockAction
 from redis.commands.json.path import Path
-from redis.commands.search.field import TextField, NumericField, TagField  
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType  
+from redis.commands.search.field import TextField, NumericField, TagField
+from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from datetime import datetime
 
 # from redis.commands.search.aggregation import AggregateRequest
@@ -128,7 +128,6 @@ class RedisServices(object):
     async def __aexit__(self, exc_type, exc, tb):
         await self.client.close()
 
-
     async def create_index(
         self, space_branch_name: str, schema_name: str, redis_schema: tuple
     ):
@@ -144,7 +143,10 @@ class RedisServices(object):
 
         # in case it's a management space schema:
         # create Redis index with this schema in all other spaces
-        if space_branch_name == f"{settings.management_space}:{settings.management_space_branch}":
+        if (
+            space_branch_name
+            == f"{settings.management_space}:{settings.management_space_branch}"
+        ):
             spaces = await self.get_doc_by_id("spaces")
             for space_name, space_str in spaces.items():
                 if space_name == settings.management_space:
@@ -156,10 +158,15 @@ class RedisServices(object):
                         self.redis_indices[f"{space_name}:{branch_name}"][
                             schema_name
                         ] = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
-                        await self.redis_indices[f"{space_name}:{branch_name}"][schema_name].create_index(
+                        await self.redis_indices[f"{space_name}:{branch_name}"][
+                            schema_name
+                        ].create_index(
                             redis_schema,
                             definition=IndexDefinition(
-                                prefix=[f"{space_name}:{branch_name}:{schema_name}:", f"{space_name}:{branch_name}:{schema_name}/"],
+                                prefix=[
+                                    f"{space_name}:{branch_name}:{schema_name}:",
+                                    f"{space_name}:{branch_name}:{schema_name}/",
+                                ],
                                 index_type=IndexType.JSON,
                             ),
                         )
@@ -170,7 +177,10 @@ class RedisServices(object):
         await self.redis_indices[space_branch_name][schema_name].create_index(
             redis_schema,
             definition=IndexDefinition(
-                prefix=[f"{space_branch_name}:{schema_name}:", f"{space_branch_name}:{schema_name}/"],
+                prefix=[
+                    f"{space_branch_name}:{schema_name}:",
+                    f"{space_branch_name}:{schema_name}/",
+                ],
                 index_type=IndexType.JSON,
             ),
         )
@@ -196,7 +206,6 @@ class RedisServices(object):
 
             property_name = key_chain.replace(".", "_")
             sortable = True
-
 
             if (
                 property["type"] == "array"
@@ -258,6 +267,7 @@ class RedisServices(object):
 
         redis_schema = [
             TextField("$.subpath", no_stem=True, as_name="subpath"),
+            TagField("$.subpath", as_name="exact_subpath"),
             TextField(
                 "$.resource_type", sortable=True, no_stem=True, as_name="resource_type"
             ),
@@ -267,7 +277,7 @@ class RedisServices(object):
             TagField("$.query_policies.*", as_name="query_policies"),
         ]
         for field_name, model_field in class_ref.__fields__.items():
-            
+
             if field_name in exclude_from_index:
                 continue
 
@@ -350,6 +360,7 @@ class RedisServices(object):
                     TextField(
                         "$.subpath", sortable=True, no_stem=True, as_name="subpath"
                     ),
+                    TagField("$.subpath", as_name="exact_subpath"),
                     TextField(
                         "$.resource_type",
                         sortable=True,
@@ -529,7 +540,11 @@ class RedisServices(object):
         for field in new_index:
             registered_field = False
             for base_field in base_index:
-                if field.redis_args()[0] == base_field.redis_args()[0]:
+                if (
+                    field.redis_args()[0] == base_field.redis_args()[0]
+                    and field.redis_args()[2]  # Compare field name
+                    == base_field.redis_args()[2]  # Compare AS name
+                ):
                     registered_field = True
                     break
             if not registered_field:
@@ -545,8 +560,11 @@ class RedisServices(object):
         shortname: str,
         subpath: str,
     ):
-        if subpath[0] == "/":
-            subpath = subpath[1:]
+        # if subpath[0] == "/":
+        #     subpath = subpath[1:]
+        # if subpath[-1] == "/":
+        #     subpath = subpath[:-1]
+        subpath = subpath.strip("/")
         return f"{space_name}:{branch_name}:{schema_shortname}:{subpath}/{shortname}"
 
     def generate_query_policies(
@@ -582,7 +600,9 @@ class RedisServices(object):
 
             full_subpath_parts = full_subpath.split("/")
             if len(full_subpath_parts) > 1:
-                subpath_with_magic_keyword = "/".join(full_subpath_parts[:1]) + "/" + settings.all_subpaths_mw
+                subpath_with_magic_keyword = (
+                    "/".join(full_subpath_parts[:1]) + "/" + settings.all_subpaths_mw
+                )
                 if len(full_subpath_parts) > 2:
                     subpath_with_magic_keyword += "/" + "/".join(full_subpath_parts[2:])
                 query_policies.append(
@@ -819,21 +839,21 @@ class RedisServices(object):
         filters: dict[str, str | list],
         limit: int,
         offset: int,
+        exact_subpath: bool = False,
         sort_type: SortType = SortType.ascending,
         sort_by: str | None = None,
         highlight_fields: list[str] | None = None,
         schema_name: str = "meta",
-        return_fields: list = []
+        return_fields: list = [],
     ):
         # index_info = None
         # Tries to get the index from the provided space
         try:
             ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
-            # index_info = 
+            # index_info =
             await ft_index.info()
         except:
             return {"data": [], "total": 0}
-
 
         query_string = search
 
@@ -851,7 +871,14 @@ class RedisServices(object):
                 )
             elif item[0] == "created_at" and item[1]:
                 query_string += f" @{item[0]}:{item[1]}"
-
+            elif item[0] == "subpath" and exact_subpath:
+                # remove forward slash from the beggining
+                formatted_item = [
+                    i[1:] if (len(i) > 1 and i[0] == "/") else i for i in item[1]
+                ]
+                query_string += f" @exact_subpath:{{{'|'.join(formatted_item).translate(redis_escape_chars)}}}"
+            elif item[0] == "subpath" and item[1][0] == "/":
+                pass
             elif item[1]:
                 query_string += " @" + item[0] + ":(" + "|".join(item[1]) + ")"
 

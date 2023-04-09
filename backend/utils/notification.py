@@ -1,4 +1,3 @@
-
 from abc import ABC
 from importlib.util import find_spec, module_from_spec
 import json
@@ -11,15 +10,12 @@ from fastapi.logger import logger
 
 
 class Notifier(ABC):
-    async def send(
-        self, 
-        data: NotificationData
-    ):
+    async def send(self, data: NotificationData):
         pass
 
     async def _load_user(self, shortname: str) -> User:
         if not hasattr(self, "user"):
-    
+
             self.user = await load(
                 space_name=settings.management_space,
                 subpath=settings.users_subpath,
@@ -31,10 +27,10 @@ class Notifier(ABC):
         return self.user
 
 
-class NotificationManager():
-    
+class NotificationManager:
+
     notifiers: dict[str, Notifier] = {}
-    
+
     def __init__(self) -> None:
         # Load the notifiers depending on config/notification.json file
         if not self.notifiers:
@@ -54,22 +50,20 @@ class NotificationManager():
                 module_specs.loader.exec_module(module)
                 self.notifiers[platform] = getattr(module, data["class"])()
 
-
-    async def send(
-        self, 
-        platform, 
-        data: NotificationData
-    ) -> bool:
+    async def send(self, platform, data: NotificationData) -> bool:
         if platform not in self.notifiers:
             return False
         try:
             await self.notifiers[platform].send(data)
             return True
         except Exception as e:
-            logger.info(
+            logger.warn(
                 "Notification",
                 extra={
-                    "props": {"title": f"FAIL at {self.notifiers[platform]}.send", "message": e}
+                    "props": {
+                        "title": f"FAIL at {self.notifiers[platform]}.send",
+                        "message": e,
+                    }
                 },
             )
             return False

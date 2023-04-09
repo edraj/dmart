@@ -10,6 +10,7 @@
   import DynamicFormModal from "./DynamicFormModal.svelte";
   import SchemaFormModal from "./SchemaFormModal.svelte";
   import SidebarSpaces from "./SidebarSpaces.svelte";
+  import { Collapse, Navbar, NavbarToggler } from "sveltestrap";
 
   let headHeight;
   let footHeight;
@@ -40,6 +41,13 @@
       popCreateSpaceModal = false;
     }
   }
+
+  let isOpen = false;
+  function handleUpdate(event) {
+    isOpen = event.detail.isOpen;
+  }
+
+  const subpaths = [...$spaces.children];
 </script>
 
 {#key props}
@@ -51,39 +59,41 @@
   <SchemaFormModal {props} bind:open={popCreateSchemaModal} />
 {/key}
 
-<div
-  class="no-bullets scroller pe-0 w-100"
-  style="height: calc(100% - {headHeight +
-    footHeight}px); overflow: hidden auto;"
+<Navbar
+  container="fuild"
+  color="light"
+  light
+  expand="md"
+  class="w-100 rounded-3"
 >
-  <ListGroup flush class="w-100">
-    {#each $spaces.children as child (child.uuid)}
-      <div transition:slide={{ duration: 400 }}>
-        <SidebarSpaces {child} />
-      </div>
-    {/each}
-  </ListGroup>
-</div>
-<div class="w-100" bind:clientHeight={footHeight}>
-  {#if $active_entry.data}
-    <hr class="my-0" />
-    <p class="lh-1 my-0">
-      <small>
-        <span class="text-muted">{$_("path")}:</span>
-        {$active_entry.data.subpath}/{$active_entry.data.shortname} <br />
-        <span class="text-muted">{$_("displayname")}:</span>
-        {$active_entry.data.displayname} <br />
-        <span class="text-muted">{$_("content_type")}:</span>
-        {$active_entry?.data?.attributes?.payload?.content_type?.split(
-          ";"
-        )[0] || "uknown"}<br />
-        <span class="text-muted">{$_("schema_shortname")}:</span>
-        {$active_entry?.data?.attributes?.payload?.schema_shortname || "uknown"}
-      </small>
-    </p>
-  {/if}
-  {#if $status_line}
-    <hr class="my-1" />
-    {@html $status_line}
-  {/if}
-</div>
+  <NavbarToggler on:click={() => (isOpen = !isOpen)} />
+  <Collapse
+    class="px-0 py-0"
+    {isOpen}
+    navbar
+    expand="md"
+    on:update={handleUpdate}
+  >
+    <ul class="px-0 w-100 px-1">
+      {#each subpaths as child (child.uuid + Math.round(Math.random() * 10000).toString())}
+        <li transition:slide={{ duration: 400 }}>
+          <SidebarSpaces {child} />
+        </li>
+        <hr />
+      {/each}
+    </ul>
+  </Collapse>
+</Navbar>
+
+<style>
+  ul {
+    list-style: none;
+  }
+
+  li:hover {
+    z-index: 1;
+    color: #495057;
+    text-decoration: none;
+    background-color: #f8f9fa;
+  }
+</style>

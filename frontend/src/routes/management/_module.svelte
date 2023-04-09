@@ -35,13 +35,31 @@
           <Col sm="12"><Header /></Col>
         </Row>
         <Row class="w-100 ms-0 my-0 border border-success h-100" noGutters>
-          <Col sm="2" class=" border border-warning"><Sidebar /></Col>
-          <Col sm="10" class="border border-info"><slot /></Col>
+          <Col sm="2" class="fixed-size border border-warning bg-light"
+            ><Sidebar /></Col
+          >
+
+          <Col sm="10" class="fixed-size border border-info"><slot /></Col>
         </Row>
         <!--Row class="align-items-end w-100 ms-0 my-0 border border-dark" noGutters>
         <Col sm="12" class=""><Footer /></Col>
       </Row-->
       </Container>
+      <style>
+        .fixed-size {
+          height: 95vh;
+          overflow-y: scroll;
+          top: 0;
+          bottom: 0;
+          -ms-overflow-style: none; /* IE and Edge */
+          scrollbar-width: none; /* Firefox */
+        }
+
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .fixed-size::-webkit-scrollbar {
+          display: none;
+        }
+      </style>
     {:catch error}
       <p style="color: red">{error.message}</p>
     {/await}

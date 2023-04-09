@@ -26,7 +26,7 @@ async def validate_payload_with_schema(
             status.HTTP_400_BAD_REQUEST,
             API_Error(
                 type="request",
-                code=400,
+                code=406,
                 message="Invalid payload.body",
             ),
         )

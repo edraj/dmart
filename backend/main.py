@@ -12,13 +12,13 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
-from pydantic import ValidationError
+from pydantic import  ValidationError
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
 from utils.spaces import initialize_spaces
-# import json_logging
 from fastapi import Depends, FastAPI, Request, Response, status
+from utils.logger import logging_schema
 from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -104,13 +104,16 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
     # print(exc)
     raise api.Exception(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        error=api.Error(code=422, type="validation", message="Validation error [1]", info=err),
+        error=api.Error(
+            code=422, type="validation", message="Validation error [1]", info=err
+        ),
     )
 
 
 @app.on_event("startup")
 async def app_startup():
     logger.info("Starting")
+    print("Starting")
     # , extra={"props":{
     #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
     #    "redis_port": settings.redis_port
@@ -144,18 +147,18 @@ async def middle(request: Request, call_next):
         return await call_next(request)
 
     start_time = time.time()
-    response_body: str | dict = ""
+    # response_body: str | dict = ""
     exception_data: dict[str, Any] | None = None
     try:
         response = await call_next(request)
-        raw_response = [section async for section in response.body_iterator]
-        response.body_iterator = iterate_in_threadpool(iter(raw_response))
-        raw_data = b"".join(raw_response)
-        if raw_data:
-            try:
-                response_body = json.loads(raw_data)
-            except:
-                response_body = ""
+        # raw_response = [section async for section in response.body_iterator]
+        # response.body_iterator = iterate_in_threadpool(iter(raw_response))
+        # raw_data = b"".join(raw_response)
+        # if raw_data:
+        #     try:
+        #         response_body = json.loads(raw_data)
+        #     except:
+        #         response_body = ""
     except api.Exception as e:
         response = JSONResponse(
             status_code=e.status_code,
@@ -173,7 +176,7 @@ async def middle(request: Request, call_next):
             if "site-packages" not in frame.f_code.co_filename
         ]
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response_body = json.loads(response.body.decode())
+        # response_body = json.loads(response.body.decode())
     except ValidationError as e:
         stack = [
             {
@@ -189,10 +192,14 @@ async def middle(request: Request, call_next):
             status_code=422,
             content={
                 "status": "failed",
-                "error": {"code": 422, "message": "Validation error [2]", "info": e.errors()},
+                "error": {
+                    "code": 422,
+                    "message": "Validation error [2]",
+                    "info": e.errors(),
+                },
             },
         )
-        response_body = json.loads(response.body.decode())
+        # response_body = json.loads(response.body.decode())
     except SchemaValidationError as e:
         stack = [
             {
@@ -208,10 +215,14 @@ async def middle(request: Request, call_next):
             status_code=400,
             content={
                 "status": "failed",
-                "error": {"code": 400, "message": "Validation error [3]", "info": str(e)},
+                "error": {
+                    "code": 400,
+                    "message": "Validation error [3]",
+                    "info": str(e),
+                },
             },
         )
-        response_body = json.loads(response.body.decode())
+        # response_body = json.loads(response.body.decode())
     except Exception as e:
         exception_message = ""
         stack = None
@@ -238,7 +249,7 @@ async def middle(request: Request, call_next):
                 "error": error_log,
             },
         )
-        response_body = json.loads(response.body.decode())
+        # response_body = json.loads(response.body.decode())
 
     referer = request.headers.get(
         "referer",
@@ -270,7 +281,7 @@ async def middle(request: Request, call_next):
         user_shortname = await JWTBearer().__call__(request)
     except:
         pass
-        
+
     extra = {
         "props": {
             "timestamp": start_time,
@@ -296,12 +307,14 @@ async def middle(request: Request, call_next):
         extra["props"]["exception"] = exception_data
     if hasattr(request.state, "request_body"):
         extra["props"]["request"]["body"] = request.state.request_body
-    if response_body:
-        extra["props"]["response"]["body"] = response_body
+    # if response_body:
+    #     extra["props"]["response"]["body"] = response_body
 
-    if exception_data is not None:
+    if response.status_code >= 400 and response.status_code < 500:
+        logger.warning("Served request", extra=extra)
+    elif response.status_code >= 500 or exception_data is not None:
         logger.error("Served request", extra=extra)
-    else:
+    elif request.method != "OPTIONS":  # Do not log OPTIONS request, to reduce excessive logging
         logger.info("Served request", extra=extra)
 
     return response
@@ -309,12 +322,12 @@ async def middle(request: Request, call_next):
 
 @app.get("/", include_in_schema=False)
 async def root():
-    """Dummy api end point """
-    return { "status": "success", "message": "DMART API" }
+    """Dummy api end point"""
+    return {"status": "success", "message": "DMART API"}
 
 
-#@app.get("/s", include_in_schema=False)
-#async def secrets(key):
+# @app.get("/s", include_in_schema=False)
+# async def secrets(key):
 #    if key == "alpha":
 #        return settings.dict()
 
@@ -369,6 +382,7 @@ app.include_router(
 # load plugins
 asyncio.run(plugin_manager.load_plugins(app, capture_body))
 
+
 @app.options("/{x:path}", include_in_schema=False)
 async def myoptions():
     return Response(status_code=status.HTTP_200_OK)
@@ -386,13 +400,12 @@ async def catchall():
             type="catchall", code=230, message="Requested method or path is invalid"
         ),
     )
-
-
 if __name__ == "__main__":
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
-    config.errorlog = logger
     config.backlog = 200
-    config.logconfig = "./json_log.ini"
+
+    config.logconfig_dict = logging_schema
+    config.errorlog = logger
 
     asyncio.run(serve(app, config))  # type: ignore

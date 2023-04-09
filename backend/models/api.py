@@ -20,6 +20,7 @@ class Query(BaseModel):
     type: QueryType
     space_name: str = Field(..., regex=regex.SPACENAME)
     subpath: str = Field(..., regex=regex.SUBPATH)
+    exact_subpath: bool = False
     branch_name: str = Field(default=settings.default_branch, regex=regex.SHORTNAME)
     filter_types: list[ResourceType] | None = None
     filter_schema_names: list[str] = ["meta"]

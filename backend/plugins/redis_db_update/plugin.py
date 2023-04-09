@@ -27,18 +27,28 @@ class Plugin(PluginBase):
         async with RedisServices() as redis_services:
             if data.action_type in ActionType.delete:
                 doc_id = redis_services.generate_doc_id(
-                    data.space_name, data.branch_name, "meta", data.shortname, data.subpath
+                    data.space_name,
+                    data.branch_name,
+                    "meta",
+                    data.shortname,
+                    data.subpath,
                 )
                 meta_doc = await redis_services.get_doc_by_id(doc_id)
                 # Delete meta doc
                 await redis_services.delete_doc(
-                    data.space_name, data.branch_name, "meta", data.shortname, data.subpath
+                    data.space_name,
+                    data.branch_name,
+                    "meta",
+                    data.shortname,
+                    data.subpath,
                 )
                 # Delete payload doc
                 await redis_services.delete_doc(
                     data.space_name,
                     data.branch_name,
-                    meta_doc["payload"]["schema_shortname"],
+                    meta_doc.get("payload", {}).get("schema_shortname", "meta")
+                    if meta_doc
+                    else "meta",
                     data.shortname,
                     data.subpath,
                 )

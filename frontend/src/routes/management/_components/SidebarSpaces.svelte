@@ -9,7 +9,7 @@
   import SidebarSubpaths from "./SidebarSubpaths.svelte";
   import { slide } from "svelte/transition";
   import spaces, { getSpaces } from "../_stores/spaces.js";
-  import { dmartFolder, dmartSpaces } from "../../../dmart.js";
+  import { dmartCreateFolder, dmartSpaces } from "../../../dmart.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
   import JsonEditorModal from "./JsonEditorModal.svelte";
   import { toastPushSuccess } from "../../../utils.js";
@@ -24,6 +24,7 @@
   };
 
   async function handleSpaceDelete() {
+    console.log("handleSpaceDelete");
     const spacename = child.shortname;
     if (confirm(`Are you sure want to delete ${spacename} space`) === false) {
       return;
@@ -50,7 +51,8 @@
 
   let modalFlag = "create";
   async function handleModelCreate(data) {
-    const response = dmartFolder(
+    console.log("handleModelCreate");
+    const response = dmartCreateFolder(
       child.shortname,
       "/",
       data[0].value,
@@ -67,6 +69,7 @@
   }
 
   async function handleModelUpdate(content) {
+    console.log("handleModelUpdate");
     const record = content.json ?? JSON.parse(content.text);
     delete record.type;
     const query = {
@@ -86,9 +89,6 @@
 
   let props = [];
   let entryCreateModal = false;
-
-  $: {
-  }
 </script>
 
 {#key props}
@@ -108,13 +108,13 @@
   {/if}
 {/key}
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
-<div
-  on:mouseover={(e) => (displayActionMenu = true)}
-  on:mouseleave={(e) => (displayActionMenu = false)}
->
+<div class="mb-3" style="padding-left: 8px;">
   <ListGroupItem class="px-0">
     <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div class="mb-2">
+    <div
+      on:mouseover={(e) => (displayActionMenu = true)}
+      on:mouseleave={(e) => (displayActionMenu = false)}
+    >
       <div class="d-flex row">
         <div class="col-7" on:click={() => (expanded = !expanded)}>
           <b style="cursor: pointer;"
@@ -124,6 +124,7 @@
 
         <div
           class="col-1"
+          style="cursor: pointer;"
           hidden={!displayActionMenu}
           on:click={() => {
             props = [
@@ -142,6 +143,7 @@
         </div>
         <div
           class="col-1"
+          style="cursor: pointer;"
           hidden={!displayActionMenu}
           on:click={() => {
             props = [
@@ -165,6 +167,7 @@
         </div>
         <div
           class="col-1"
+          style="cursor: pointer;"
           hidden={!displayActionMenu}
           on:click={async () => await handleSpaceDelete()}
         >

@@ -6,7 +6,7 @@ import aiofiles
 from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
-from models.enums import RequestType, ResourceType, ContentType
+from models.enums import ActionType, RequestType, ResourceType, ContentType
 from utils.custom_validations import validate_uniqueness
 import utils.db as db
 from utils.access_control import access_control
@@ -43,19 +43,18 @@ MANAGEMENT_SPACE: str = settings.management_space
 MANAGEMENT_BRANCH: str = settings.management_space_branch
 USERS_SUBPATH: str = "users"
 
-@router.get("/check-existing", response_model=api.Response, response_model_exclude_none=True)
+
+@router.get(
+    "/check-existing", response_model=api.Response, response_model_exclude_none=True
+)
 async def check_existing_user_fields(
     _=Depends(JWTBearer()),
-    shortname: str | None = Query(default=None, regex=rgx.SHORTNAME), 
-    msisdn: str | None = Query(default=None, regex=rgx.EXTENDED_MSISDN), 
+    shortname: str | None = Query(default=None, regex=rgx.SHORTNAME),
+    msisdn: str | None = Query(default=None, regex=rgx.EXTENDED_MSISDN),
     email: str | None = Query(default=None, regex=rgx.EMAIL),
 ):
-    unique_fields = {
-        "shortname": shortname,
-        "msisdn": msisdn,
-        "email": email
-    }
-        
+    unique_fields = {"shortname": shortname, "msisdn": msisdn, "email": email}
+
     search_str = f"@subpath:{USERS_SUBPATH}"
     redis_escape_chars = str.maketrans(
         {"@": r"@\\", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
@@ -71,11 +70,14 @@ async def check_existing_user_fields(
                 search=search_str + f" @{key}:{value}",
                 limit=1,
                 offset=0,
-                filters={}
+                filters={},
             )
 
             if redis_search_res and redis_search_res["total"] > 0:
-                return api.Response(status=api.Status.success, attributes={"unique": False, "field": key})
+                return api.Response(
+                    status=api.Status.success,
+                    attributes={"unique": False, "field": key},
+                )
 
     return api.Response(status=api.Status.success, attributes={"unique": True})
 
@@ -198,6 +200,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
     shortname = ""
     user = None
+    user_updates = {}
     identifier = request.check_fields()
     try:
         if request.invitation:
@@ -227,36 +230,25 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 branch_name=MANAGEMENT_BRANCH,
             )
 
-            old_version_flattend = flatten_dict(user.dict())
             if (
                 data.get("channel") == "EMAIL"
                 and user.email
                 and f"EMAIL:{user.email}" in invitation_token
             ):
-                user.is_email_verified = True
+                user_updates["is_email_verified"] = True
             elif (
                 data.get("channel") == "SMS"
                 and user.msisdn
                 and f"SMS:{user.msisdn}" in invitation_token
             ):
-                user.is_msisdn_verified = True
-            await db.update(
-                MANAGEMENT_SPACE,
-                USERS_SUBPATH,
-                user,
-                old_version_flattend,
-                flatten_dict(user.dict()),
-                ["is_email_verified", "is_msisdn_verified"],
-                MANAGEMENT_BRANCH,
-                shortname,
-            )
+                user_updates["is_msisdn_verified"] = True
         else:
             if request.password and not re.match(rgx.PASSWORD, request.password):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="jwtauth",
-                        code=14,
+                        code=15,
                         message="password dose not match required rules",
                     ),
                 )
@@ -270,14 +262,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
             if "shortname" in identifier:
                 shortname = identifier["shortname"]
-                user = await db.load(
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    shortname=identifier["shortname"],
-                    class_type=core.User,
-                    user_shortname=identifier["shortname"],
-                    branch_name=MANAGEMENT_BRANCH,
-                )
             else:
                 key, value = list(identifier.items())[0]
                 shortname = await access_control.get_user_by_criteria(key, value)
@@ -290,19 +274,23 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                             message=f"Invalid username or password [1] {key=} {value=}",
                         ),
                     )
-                user = await db.load(
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    shortname=shortname,
-                    class_type=core.User,
-                    user_shortname=shortname,
-                    branch_name=MANAGEMENT_BRANCH,
-                )
+            user = await db.load(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                class_type=core.User,
+                user_shortname=shortname,
+                branch_name=MANAGEMENT_BRANCH,
+            )
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
-        if user and user.is_active and (
-            request.invitation
-            or password_hashing.verify_password(
-                request.password or "", user.password or ""
+        if (
+            user
+            and user.is_active
+            and (
+                request.invitation
+                or password_hashing.verify_password(
+                    request.password or "", user.password or ""
+                )
             )
         ):
             access_token = sign_jwt(
@@ -326,30 +314,27 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 record.attributes["displayname"] = user.displayname
 
             if request.firebase_token:
-                user.firebase_token = request.firebase_token
-                await db.update(
+                user_updates["firebase_token"] = request.firebase_token
+
+            await repository._sys_update_model(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                branch_name=MANAGEMENT_BRANCH,
+                meta=user,
+                updates=user_updates,
+                sync_redis=False
+            )
+            await plugin_manager.after_action(
+                core.Event(
                     space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    meta=user,
-                    old_version_flattend=flatten_dict(user.dict()),
-                    new_version_flattend=flatten_dict(
-                        {"firebase_token": request.firebase_token}
-                    ),
-                    updated_attributes_flattend=["firebase_token"],
                     branch_name=MANAGEMENT_BRANCH,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    action_type=core.ActionType.update,
+                    resource_type=ResourceType.user,
                     user_shortname=shortname,
                 )
-                await plugin_manager.after_action(
-                    core.Event(
-                        space_name=MANAGEMENT_SPACE,
-                        branch_name=MANAGEMENT_BRANCH,
-                        subpath=USERS_SUBPATH,
-                        shortname=shortname,
-                        action_type=core.ActionType.update,
-                        resource_type=ResourceType.user,
-                        user_shortname=shortname,
-                    )
-                )
+            )
             return api.Response(status=api.Status.success, records=[record])
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -359,7 +344,12 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
         if e.error.type == "db":
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="auth", code=14, message="Invalid username or password [3]", info=[{"details":str(e)}]),
+                api.Error(
+                    type="auth",
+                    code=14,
+                    message="Invalid username or password [3]",
+                    info=[{"details": str(e)}],
+                ),
             )
         else:
             raise e
@@ -405,7 +395,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
             and (path / str(user.payload.body)).is_file()
         ):
             async with aiofiles.open(
-                path / str(user.payload.body), "r"  
+                path / str(user.payload.body), "r"
             ) as payload_file_content:
                 attributes["payload"].body = json.loads(
                     await payload_file_content.read()
@@ -568,7 +558,7 @@ async def update_profile(
                         payload_data=separate_payload_data,
                         space_name=MANAGEMENT_SPACE,
                         branch_name=MANAGEMENT_BRANCH,
-                        schema_shortname=str(user.payload.schema_shortname),  
+                        schema_shortname=str(user.payload.schema_shortname),
                     )
 
             if separate_payload_data:
@@ -576,7 +566,7 @@ async def update_profile(
                     MANAGEMENT_SPACE,
                     USERS_SUBPATH,
                     user,
-                    separate_payload_data, 
+                    separate_payload_data,
                     MANAGEMENT_BRANCH,
                 )
 
@@ -625,8 +615,30 @@ cookie_options = {
 )
 async def logout(
     response: Response,
+    shortname=Depends(JWTBearer()),
 ) -> api.Response:
     response.set_cookie(value="", max_age=0, **cookie_options)
+
+    user = await db.load(
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        shortname=shortname,
+        class_type=core.User,
+        user_shortname=shortname,
+        branch_name=MANAGEMENT_BRANCH,
+    )
+    if user.firebase_token:
+        user.firebase_token = None
+        await db.update(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            meta=user,
+            old_version_flattend=flatten_dict({"firebase_token": user.firebase_token}),
+            new_version_flattend=flatten_dict({"firebase_token": None}),
+            updated_attributes_flattend=["firebase_token"],
+            branch_name=MANAGEMENT_BRANCH,
+            user_shortname=shortname,
+        )
 
     return api.Response(status=api.Status.success, records=[])
 
@@ -705,7 +717,7 @@ async def otp_request(
     if "msisdn" in result:
         if user.msisdn != result["msisdn"]:
             raise exception
-        else: 
+        else:
             await send_otp(result["msisdn"], skel_accept_language or "")
     else:
         if user.email != result["email"]:
@@ -738,7 +750,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="auth",
-                code=10,
+                code=19,
                 message=f"Invalid username or password [4] {key=} {value=}",
             ),
         )
@@ -900,7 +912,6 @@ async def confirm_otp(
                 ),
             )
 
-    
 
 @router.post("/reset", response_model=api.Response, response_model_exclude_none=True)
 async def user_reset(
@@ -908,8 +919,24 @@ async def user_reset(
     logged_user=Depends(JWTBearer()),
 ) -> api.Response:
 
-    roles = await access_control.get_user_roles(logged_user)
-    if "super_admin" not in roles:
+    user = await db.load(
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        shortname=shortname,
+        class_type=core.User,
+        user_shortname=shortname,
+        branch_name=MANAGEMENT_BRANCH,
+    )
+    if not await access_control.check_access(
+        user_shortname=logged_user,
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        resource_type=ResourceType.user,
+        action_type=ActionType.update,
+        resource_is_active=user.is_active,
+        resource_owner_shortname=user.owner_shortname,
+        resource_owner_group=user.owner_group_shortname
+    ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
@@ -918,15 +945,6 @@ async def user_reset(
                 message="You don't have permission to this action",
             ),
         )
-
-    await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
-    )
 
     invitation_token = sign_jwt({"shortname": shortname}, settings.jwt_access_expires)
 

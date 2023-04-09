@@ -1,5 +1,5 @@
 <script>
-  import { Tabs, Tab, TabList, TabPanel } from "svelte-tabs";
+  import { Tabs, TabList, TabPanel, Tab } from "./tabs/tabs";
   import Fa from "sveltejs-fontawesome";
   import {
     faCaretSquareLeft,
@@ -14,11 +14,15 @@
   export let records;
   export let bodyContent;
   export let metaContent;
+  export let errorContent;
+  export let validator;
+  export let isSchemaValidated;
+  export let isError;
   export let metaContentAttachement;
   export let historyQuery;
-  export let showContentEditSection;
+  let showContentEditSection;
   export let handleSave;
-  export let currentItem;
+  let currentItem;
   export let shortname;
   export let height;
 
@@ -45,7 +49,7 @@
       path: "attributes.diff",
       title: "Diff",
       type: "json",
-      width: "50%",
+      width: "55%",
     },
   };
 
@@ -95,47 +99,60 @@
     const response = await dmartRequest("managed/query", request);
     if (response.status === "success") {
       toastPushSuccess();
-      records[currentItem - 1] = response.records[0];
       metaContentAttachement = records[currentItem - 1].attachments;
     } else {
       toastPushFail();
     }
   }
+  console.log({ x: bodyContent.json });
 </script>
 
-<div class="d-flex justify-content-between">
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div
-    class="back-icon"
-    on:click={() => {
-      showContentEditSection = false;
-    }}
-  >
-    <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
-  </div>
-  <h5 class="mx-2">{shortname}</h5>
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div
-    class="back-icon"
-    on:click={async () => {
-      await handleDelete();
-    }}
-  >
-    <Fa icon={faTrashCan} size="lg" color="dimgrey" />
-  </div>
-</div>
-<hr />
 <Tabs>
   <TabList>
-    <Tab>Content</Tab>
-    <Tab>Meta</Tab>
-    <Tab>Attachments</Tab>
-    <Tab>History</Tab>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div
+      class="tab-list back-icon"
+      style="cursor: pointer;"
+      on:click={() => {
+        window.history.replaceState(
+          history.state,
+          "",
+          `/management/dashboard/${space_name}/${subpath.replaceAll("/", "-")}`
+        );
+      }}
+    >
+      <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
+    </div>
+    <div class="tab-list">
+      {#if Object.keys(bodyContent.json).length}
+        <Tab>Content</Tab>
+      {/if}
+      <Tab>Meta</Tab>
+      <Tab>Attachments</Tab>
+      <Tab>History</Tab>
+    </div>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div
+      class="tab-list back-icon"
+      style="cursor: pointer;"
+      on:click={async () => {
+        await handleDelete();
+      }}
+    >
+      <Fa icon={faTrashCan} size="lg" color="dimgrey" />
+    </div>
   </TabList>
 
-  <TabPanel>
-    <ContentJsonEditor bind:content={bodyContent} {handleSave} />
-  </TabPanel>
+  {#if Object.keys(bodyContent.json).length}
+    <TabPanel>
+      <ContentJsonEditor
+        bind:content={bodyContent}
+        {handleSave}
+        {validator}
+        bind:isSchemaValidated
+      />
+    </TabPanel>
+  {/if}
   <TabPanel>
     <ContentJsonEditor bind:content={metaContent} {handleSave} />
   </TabPanel>
@@ -145,7 +162,7 @@
         bind:attachments={metaContentAttachement}
         bind:space_name
         bind:subpath
-        bind:entryShortname={records[currentItem - 1].shortname}
+        bind:entryShortname={shortname}
         forceRefresh={async () => await updateSingleEntry()}
       />
     {/key}
@@ -161,3 +178,10 @@
     </div>
   </TabPanel>
 </Tabs>
+
+{#if isError}
+  <div class="mt-3">
+    <h3>Error details</h3>
+    <ContentJsonEditor bind:content={errorContent} readOnly={true} />
+  </div>
+{/if}

@@ -18,6 +18,21 @@ def flatten_dict(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dic
             items.append((new_key, v))
     return dict(items)
 
+def flatten_list(l: list, key: str):
+    flattened = {}
+    for idx, item in enumerate(l):
+        flattened[f"{key}.{idx}"] = item
+    return flattened
+
+
+def arr_remove_common(arr1: list, arr2: list):
+    for i1 in arr1[:]:
+        if i1 in arr2:
+            arr1.remove(i1)
+            arr2.remove(i1)
+
+    return arr1, arr2        
+    
 
 def flatten_list_of_dicts_in_dict(d: dict) -> dict:
     """
@@ -160,7 +175,7 @@ def remove_none(target: dict | list):
             
         
 
-def branch_path(branch_name: str | None = settings.default_branch):
+def branch_path(branch_name: str | None = settings.default_branch) -> str:
     return (
         (f"branches/{branch_name}") if branch_name != settings.default_branch else "./"
     )

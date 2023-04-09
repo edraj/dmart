@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     websocket_port: int = 8484
     base_path: str = ""
     debug_enabled: bool = True
-    log_path: Path = Path("../../logs/")
-    log_filename: str = "x-ljson.log"
+    log_file: str = "../logs/dmart.ljson.log"
+    ws_log_file: str = "../logs/websocket.ljson.log"
     jwt_secret: str = "".join(random.sample(string.ascii_letters + string.digits,12))
     jwt_algorithm: str = "HS256"
     jwt_access_expires: int = 30 * 86400  # 30 days
@@ -30,7 +30,6 @@ class Settings(BaseSettings):
     management_space: str = "management"
     users_subpath: str = "users"
     spaces_folder: Path = Path("../sample/spaces/")
-    contracts_folder: Path = Path("../contracts/")
     lock_period: int = 300
     servername: str = ""  # This is for print purposes only.
     auto_uuid_rule = "auto"  # Used to generate a shortname from UUID
@@ -46,6 +45,7 @@ class Settings(BaseSettings):
     current_user_mw = (
         "__current_user__"  # used in access control refers to current logged-in user
     )
+    root_subpath_mw = "__root__"
     email_sender = "dmart@dmart.com"
 
     otp_token_ttl: int = 60 * 2
@@ -54,8 +54,6 @@ class Settings(BaseSettings):
     files_query: str = "scandir"
     mock_smpp_api: bool = False
     invitation_link: str = ""
-    talabatey_users_list: str = ""
-    middleware_api: str = ""
 
     class Config:
         """Load config"""

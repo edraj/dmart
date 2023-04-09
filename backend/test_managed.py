@@ -3,7 +3,11 @@ import shutil
 from fastapi.testclient import TestClient
 from fastapi import status
 from models.enums import ResourceType
-from test_utils import check_repeated_shortname, assert_code_and_status_success, check_unauthorized
+from test_utils import (
+    check_repeated_shortname,
+    assert_code_and_status_success,
+    check_unauthorized,
+)
 from utils.settings import settings
 import os
 from models.api import Query, QueryType
@@ -16,14 +20,14 @@ client = TestClient(app)
 
 creds_file = open("login_creds.sh", "r")
 Lines = creds_file.readlines()
-superman={}
-alibaba={}
+superman = {}
+alibaba = {}
 for line in Lines:
     if line.strip().startswith("export SUPERMAN"):
-        data = line.strip().split('\'')[1]
+        data = line.strip().split("'")[1]
         superman = json.loads(str(data))
     if line.strip().startswith("export ALIBABA"):
-        data = line.strip().split('\'')[1]
+        data = line.strip().split("'")[1]
         alibaba = json.loads(str(data))
 
 
@@ -176,9 +180,7 @@ def test_create_text_content_resource(mocker):
         res_attributes=attributes,
     )
 
-    check_repeated_shortname(
-        client.post(endpoint, json=request_data, headers=headers)
-    )
+    check_repeated_shortname(client.post(endpoint, json=request_data, headers=headers))
     num_of_created_entries += 1
 
     response = client.post(
@@ -312,7 +314,6 @@ def test_update_json_content_resource():
     )
 
 
-
 def test_create_comment_attachment():
     headers = {"Content-Type": "application/json"}
     endpoint = "/managed/request"
@@ -324,7 +325,7 @@ def test_create_comment_attachment():
                 "resource_type": "comment",
                 "subpath": f"{subpath}/{json_entry_shortname}",
                 "shortname": attachment_shortname,
-                "attributes": {"body": "A very speed car"},
+                "attributes": {"body": "A very speed car", "state": "on_road"},
             }
         ],
     }
@@ -391,9 +392,9 @@ def test_entry(mocker):
 #     response = client.post(endpoint)
 #     assert response.status_code == status.HTTP_200_OK
 
-    # mocker.patch("utils.access_control.access_control.check_access", return_value=None)
-    # response = client.get(endpoint)
-    # assert response.status_code == status.HTTP_401_UNAUTHORIZED
+# mocker.patch("utils.access_control.access_control.check_access", return_value=None)
+# response = client.get(endpoint)
+# assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 def test_reload_security_data(mocker):
@@ -697,7 +698,10 @@ def assert_resource_created(
 
         json_response["records"][0]["attributes"].pop("created_at", None)
         json_response["records"][0]["attributes"].pop("updated_at", None)
-        assert json_response["records"][0]["attributes"]["payload"]["body"] == res_attributes["payload"]["body"]
+        assert (
+            json_response["records"][0]["attributes"]["payload"]["body"]
+            == res_attributes["payload"]["body"]
+        )
 
     # Assert correct attachments number for each attachment type returned
     if res_attachments:

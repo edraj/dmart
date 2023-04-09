@@ -68,6 +68,9 @@ class Record(BaseModel):
     def to_dict(self):
         return json.loads(self.json())
 
+    def __eq__(self, other):
+        return isinstance(other, Record) and self.shortname == other.shortname
+
 
 class Translation(Resource):
     en: str | None = None
@@ -234,6 +237,7 @@ class Json(Attachment):
 
 class Comment(Attachment):
     body: str
+    state: str
 
 
 class Media(Attachment):
@@ -247,6 +251,7 @@ class Relationship(Attachment):
 
 class Alteration(Attachment):
     requested_update: dict
+
 
 class Action(Resource):
     resource: Locator
@@ -319,6 +324,7 @@ class Ticket(Meta):
     collaborators: dict[str, str] | None = None  # list[Collabolator] | None = None
     resolution_reason: str | None = None
 
+
 class Event(BaseModel):
     space_name: str
     branch_name: str | None = Field(
@@ -378,10 +384,11 @@ class Notification(Meta):
     entry: Locator | None = None
 
     @staticmethod
-    async def from_request(
-        notification_req: dict, entry: dict = {}
-    ):
-        if notification_req["payload"]["schema_shortname"] == "admin_notification_request":
+    async def from_request(notification_req: dict, entry: dict = {}):
+        if (
+            notification_req["payload"]["schema_shortname"]
+            == "admin_notification_request"
+        ):
             notification_type = NotificationType.admin
         else:
             notification_type = NotificationType.system
@@ -410,5 +417,3 @@ class Notification(Meta):
             priority=notification_req["priority"],
             entry=entry_locator,
         )
-
-

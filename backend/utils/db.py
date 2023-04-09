@@ -1,9 +1,8 @@
+from copy import copy
 import shutil
-import sys
 from models.enums import LockAction
-from utils.helpers import branch_path, camel_case, snake_case
+from utils.helpers import arr_remove_common, branch_path, snake_case
 from datetime import datetime
-import sys
 from models.enums import ContentType, ResourceType
 from utils.middleware import get_request_data
 from utils.redis_services import RedisServices
@@ -14,7 +13,6 @@ import models.api as api
 import os
 import json
 from pathlib import Path
-from fastapi.logger import logger
 from fastapi import status
 from datetime import datetime
 import aiofiles
@@ -55,7 +53,7 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
             meta_path = path / ".dm"
             if not meta_path.is_dir():
                 return total, locators
-                
+
             path_iterator = os.scandir(meta_path)
             for entry in path_iterator:
                 if not entry.is_dir():
@@ -80,7 +78,10 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
                     ):
                         continue
 
-                    if query.filter_shortnames and shortname not in query.filter_shortnames:
+                    if (
+                        query.filter_shortnames
+                        and shortname not in query.filter_shortnames
+                    ):
                         continue
 
                     locators.append(
@@ -124,8 +125,21 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
                     )
                 )
 
-
     return total, locators
+
+
+def folder_path(
+    space_name: str,
+    subpath: str,
+    shortname: str,
+    branch_name: str | None = settings.default_branch,
+):
+    if branch_name:
+        return (
+            f"{settings.spaces_folder}/{space_name}/{branch_name}/{subpath}/{shortname}"
+        )
+    else:
+        return f"{settings.spaces_folder}/{space_name}{subpath}/{shortname}"
 
 
 def metapath(
@@ -213,7 +227,11 @@ async def load(
 
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
-            error=api.Error(type="db", code=12, message=f"Requested object not found @{space_name}/{subpath}/{shortname} {class_type=} {schema_shortname=}"),
+            error=api.Error(
+                type="db",
+                code=12,
+                message=f"Requested object not found @{space_name}/{subpath}/{shortname} {class_type=} {schema_shortname=}",
+            ),
         )
 
     path /= filename
@@ -242,7 +260,9 @@ def load_resource_payload(
     return json.loads(path.read_bytes())
 
 
-async def save(space_name: str, subpath: str, meta: core.Meta, branch_name: str | None = None):
+async def save(
+    space_name: str, subpath: str, meta: core.Meta, branch_name: str | None = None
+):
     """Save Meta Json to respectiv file"""
     path, filename = metapath(
         space_name,
@@ -252,7 +272,6 @@ async def save(space_name: str, subpath: str, meta: core.Meta, branch_name: str 
         branch_name,
         meta.payload.schema_shortname if meta.payload else None,
     )
-
 
     if not path.is_dir():
         os.makedirs(path)
@@ -317,7 +336,11 @@ async def save_payload_from_json(
         meta.payload.schema_shortname if meta.payload else None,
     )
     payload_file_path = payload_path(
-        space_name, subpath, meta.__class__, branch_name, meta.payload.schema_shortname if meta.payload else None
+        space_name,
+        subpath,
+        meta.__class__,
+        branch_name,
+        meta.payload.schema_shortname if meta.payload else None,
     )
 
     payload_filename = f"{meta.shortname}.json"
@@ -365,9 +388,13 @@ async def update(
                 status_code=status.HTTP_403_FORBIDDEN,
                 error=api.Error(type="update", code=30, message="This entry is locked"),
             )
-        elif await redis_services.get_lock_doc(space_name, branch_name, subpath, meta.shortname):
+        elif await redis_services.get_lock_doc(
+            space_name, branch_name, subpath, meta.shortname
+        ):
             # if the current can release the lock that means he is the right user
-            await redis_services.delete_lock_doc(space_name, branch_name, subpath, meta.shortname)
+            await redis_services.delete_lock_doc(
+                space_name, branch_name, subpath, meta.shortname
+            )
             await store_entry_diff(
                 space_name,
                 branch_name,
@@ -415,10 +442,20 @@ async def store_entry_diff(
     history_diff = {}
     for key in set(diff_keys):
         if key in updated_attributes_flattend:
-            old = old_version_flattend[key] if key in old_version_flattend else "null"
-            new = new_version_flattend[key] if key in new_version_flattend else "null"
+            old = (
+                copy(old_version_flattend[key])
+                if key in old_version_flattend
+                else "null"
+            )
+            new = (
+                copy(new_version_flattend[key])
+                if key in new_version_flattend
+                else "null"
+            )
 
             if old != new:
+                if type(old) == list and type(new) == list:
+                    old, new = arr_remove_common(old, new)
                 history_diff[key] = {
                     "old": old,
                     "new": new,
@@ -577,7 +614,9 @@ async def delete(
             )
         else:
             # if the current can release the lock that means he is the right user
-            await redis_services.delete_lock_doc(space_name, branch_name, subpath, meta.shortname)
+            await redis_services.delete_lock_doc(
+                space_name, branch_name, subpath, meta.shortname
+            )
 
     pathname = path / filename
     if pathname.is_file():
@@ -591,11 +630,7 @@ async def delete(
             if payload_file_path.is_file():
                 os.remove(payload_file_path)
 
-    # Remove entry folder
-    if(
-        not isinstance(meta, core.Attachment)
-        or len(os.listdir(path)) == 0
-    ):
-        shutil.rmtree(path)
-
-
+    if isinstance(meta, core.Folder):
+        p = folder_path(space_name, subpath, meta.shortname, None)
+        if Path(p).is_dir():
+            shutil.rmtree(p)

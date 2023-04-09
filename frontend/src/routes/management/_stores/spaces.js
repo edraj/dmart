@@ -1,16 +1,11 @@
 import { dmartRequest } from "../../../dmart.js";
+import signedin_user from "./signedin_user.js";
 import { writable } from "svelte/store";
 
-const local = JSON.parse(localStorage.getItem("spaces"));
-const { subscribe, set } = writable(local);
-
-function customSet(spaces) {
-  set(spaces);
-  localStorage.setItem("spaces", JSON.stringify(spaces));
-}
+const { subscribe, set } = writable({});
 
 const spaces = {
-  set: (value) => customSet(value),
+  set: (value) => set(value),
   subscribe,
   reset: () => customSet([]),
 };
@@ -74,6 +69,9 @@ export const getSpaces = async () => {
     });
     return true;
   } else {
+    if (response.error.type === "jwtauth") {
+      await signedin_user.logout();
+    }
     return false;
   }
 };
