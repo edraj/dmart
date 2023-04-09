@@ -135,7 +135,7 @@
   {/if}
 {/key}
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
-<div class="mb-3" style="padding-left: 8px;">
+<div style="padding-left: 8px;">
   <ListGroupItem class="px-0">
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
