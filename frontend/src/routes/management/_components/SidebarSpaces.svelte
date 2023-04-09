@@ -81,12 +81,37 @@
     } else {
       toastPushSuccess();
       entryCreateModal = false;
-      const space = [...$spaces.children].filter(
-        (e) => e.shortname === child.shortname
-      )[0];
-      console.log({ child }, { space });
       child = { ...child, ...record };
+      const idx = $spaces.children.findIndex(
+        (e) => e.shortname === child.shortname
+      );
+      $spaces.children[idx] = child;
     }
+  }
+
+  function handleEdit(e) {
+    e.stopPropagation();
+    props = [
+      {
+        label: "Space Name",
+        name: "space_name",
+        value: child.shortname,
+      },
+    ];
+    const space = {
+      ...$spaces.children.filter((e) => e.shortname === child.shortname)[0],
+    };
+    delete space?.subpaths;
+    delete space?.subpath;
+    delete space?.type;
+    delete space?.attachments;
+    delete space?.attributes?.created_at;
+    delete space?.attributes?.updated_at;
+    delete space?.attributes?.owner_shortname;
+
+    content.json = space;
+    entryCreateModal = true;
+    modalFlag = "update";
   }
 
   let props = [];
@@ -152,31 +177,7 @@
             class="px-1"
             style="cursor: pointer;background-color: #e8e9ea;"
             hidden={!displayActionMenu}
-            on:click={() => {
-              props = [
-                {
-                  label: "Space Name",
-                  name: "space_name",
-                  value: child.shortname,
-                },
-              ];
-              const space = {
-                ...$spaces.children.filter(
-                  (e) => e.shortname === child.shortname
-                )[0],
-              };
-              delete space?.subpaths;
-              delete space?.subpath;
-              delete space?.type;
-              delete space?.attachments;
-              delete space?.attributes?.created_at;
-              delete space?.attributes?.updated_at;
-              delete space?.attributes?.owner_shortname;
-
-              content.json = space;
-              entryCreateModal = true;
-              modalFlag = "update";
-            }}
+            on:click={(event) => handleEdit(event)}
           >
             <Fa icon={faEdit} size="sm" color="dimgrey" />
           </div>

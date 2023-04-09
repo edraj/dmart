@@ -354,8 +354,9 @@
   {$selectedSubpath === data.uuid ? 'expanded' : ''}"
   on:mouseover={(e) => (displayActionMenu = true)}
   on:mouseleave={(e) => (displayActionMenu = false)}
+  on:click={toggle}
 >
-  <div class="col-12" style="overflow-wrap: anywhere;" on:click={toggle}>
+  <div class="col-12" style="overflow-wrap: anywhere;">
     {data?.attributes?.displayname?.en ?? data.shortname}
   </div>
 
@@ -366,7 +367,10 @@
     <div
       style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
-      on:click={() => handleSubpathMan("create")}
+      on:click={(event) => {
+        event.stopPropagation();
+        handleSubpathMan("create");
+      }}
     >
       <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
     </div>
@@ -374,14 +378,20 @@
       class="px-1"
       style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
-      on:click={() => handleSubpathMan("update")}
+      on:click={(event) => {
+        event.stopPropagation();
+        handleSubpathMan("update");
+      }}
     >
       <Fa icon={faEdit} size="sm" color="dimgrey" />
     </div>
     <div
       style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
-      on:click={async () => await handleSubpathDelete()}
+      on:click={async (event) => {
+        event.stopPropagation();
+        await handleSubpathDelete();
+      }}
     >
       <Fa icon={faTrashCan} size="sm" color="dimgrey" />
     </div>
