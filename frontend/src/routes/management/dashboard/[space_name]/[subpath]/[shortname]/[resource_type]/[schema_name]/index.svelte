@@ -61,7 +61,8 @@
       "",
       "json",
       "json",
-      "entry"
+      "entry",
+      true
     );
     metaContent.json = meta;
 
