@@ -53,7 +53,7 @@
         cache: "no-cache",
         mode: "cors",
       };
-      generateGetCURL(endpoint);
+      curl = generateGetCURL(endpoint);
       outputContent.json = await dmartFetch(
         `${website.backend}/${endpoint}`,
         request

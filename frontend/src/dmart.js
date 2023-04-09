@@ -227,7 +227,8 @@ export async function dmartEntry(
   schema_shortname = null,
   ext = "json",
   content_type = "json",
-  request_type = "payload"
+  request_type = "payload",
+  withAttachements = false
 ) {
   const browse_request = {
     method: "GET",
@@ -246,6 +247,9 @@ export async function dmartEntry(
 
   if (request_type === "payload") {
     url = `${url}.${schema_shortname}.${ext}`;
+  }
+  if (withAttachements) {
+    url = `${url}.&retrieve_attachments=true`;
   }
 
   url = url.replaceAll("..", ".");
