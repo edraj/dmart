@@ -218,7 +218,10 @@ async def middle(request: Request, call_next):
                 "error": {
                     "code": 400,
                     "message": "Validation error [3]",
-                    "info": str(e),
+                    "info": [{
+                        "loc": list(e.path),
+                        "msg": e.message
+                    }],
                 },
             },
         )
