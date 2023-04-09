@@ -2,6 +2,7 @@
   import { Col, Container, Row, Button } from "sveltestrap";
   import { website } from "../../../config";
   import { dmartRequest } from "../../../dmart.js";
+  import dmartFetch from "../../../fetch";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
 
   export let input;
@@ -27,22 +28,41 @@
   }
 
   async function handleSave() {
-    const body = inputContent.json
-      ? { ...inputContent.json }
-      : JSON.parse(inputContent.text);
     const endpoint = request.end_point.startsWith("/")
       ? request.end_point.slice(1, request.end_point.length)
       : request.end_point;
-    curl = generateCURL(endpoint, body);
-    outputContent.json = await dmartRequest(endpoint, body);
+
+    if (request.verb === "post") {
+      const body = inputContent.json
+        ? { ...inputContent.json }
+        : JSON.parse(inputContent.text);
+
+      curl = generateCURL(endpoint, body);
+      outputContent.json = await dmartRequest(endpoint, body);
+    } else if (request.verb === "get") {
+      const request = {
+        method: "GET",
+        credentials: "include",
+        cache: "no-cache",
+        mode: "cors",
+      };
+      outputContent.json = await dmartFetch(
+        `${website.backend}/${endpoint}`,
+        request
+      );
+    }
   }
 </script>
 
 <Container>
   <Row class="my-3">
-    <Col class="d-flex justify-content-end"
-      ><Button on:click={handleSave}>Execute</Button></Col
-    >
+    <Col class="d-flex justify-content-between">
+      <Col>
+        <p style="margin: 0px">Endpoint: <code>{request.end_point}</code></p>
+        <p style="margin: 0px">Verb: <code>{request.verb}</code></p>
+      </Col>
+      <Button on:click={handleSave}>Execute</Button>
+    </Col>
   </Row>
   <Row>
     <Col><ContentJsonEditor bind:content={inputContent} /></Col>
@@ -58,13 +78,6 @@
 </Container>
 
 <style>
-  .result-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 20px;
-  }
-
   .result-text {
     /* width: 100%; */
     /* max-width: 600px; */
