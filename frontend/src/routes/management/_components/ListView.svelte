@@ -299,7 +299,7 @@
           const record = { ...records[index - 1] };
 
           shortname = record.shortname;
-          schema_shortname = record.attributes.payload.schema_shortname;
+          schema_shortname = record.attributes?.payload?.schema_shortname;
           window.history.replaceState(
             history.state,
             "",
