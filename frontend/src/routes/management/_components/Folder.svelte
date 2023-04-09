@@ -142,6 +142,7 @@
       contentShortname = data.shortname;
       const d = { ...data };
       delete d.subpath;
+      delete d.type;
       delete d.subpaths;
       delete d.attachments;
       delete d.attributes.created_at;
@@ -354,13 +355,16 @@
   on:mouseover={(e) => (displayActionMenu = true)}
   on:mouseleave={(e) => (displayActionMenu = false)}
 >
-  <div class="col-8" on:click={toggle}>
+  <div class="col-12" style="overflow-wrap: anywhere;" on:click={toggle}>
     {data?.attributes?.displayname?.en ?? data.shortname}
   </div>
 
-  <div class="d-flex col-4">
+  <div
+    class="d-flex col justify-content-end"
+    style="position: absolute;z-index: 1;"
+  >
     <div
-      style="cursor: pointer;"
+      style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
       on:click={() => handleSubpathMan("create")}
     >
@@ -368,14 +372,14 @@
     </div>
     <div
       class="px-1"
-      style="cursor: pointer;"
+      style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
       on:click={() => handleSubpathMan("update")}
     >
       <Fa icon={faEdit} size="sm" color="dimgrey" />
     </div>
     <div
-      style="cursor: pointer;"
+      style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
       on:click={async () => await handleSubpathDelete()}
     >
