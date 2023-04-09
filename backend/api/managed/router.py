@@ -55,6 +55,8 @@ from api.user.service import (
 )
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
+from copy import copy
+
 
 router = APIRouter()
 
@@ -809,9 +811,15 @@ async def serve_request(
                         new_resource_payload_data = dict(
                             remove_none(new_resource_payload_data)
                         )
-
-                    resource_obj.payload = core.Payload(**record.attributes["payload"])
-                    resource_obj.payload.body = record.shortname + ".json"
+                    resource_obj.payload = core.Payload(
+                        content_type=record.attributes["payload"].get("content_type"),
+                        schema_shortname=record.attributes["payload"].get(
+                            "schema_shortname",
+                            old_resource_obj.payload.schema_shortname or
+                            None
+                        ),
+                        body=record.shortname + ".json"
+                    )
                     new_version_flattend.pop("payload.body", None)
                     new_version_flattend.update(
                         flatten_dict({"payload.body": new_resource_payload_data})
