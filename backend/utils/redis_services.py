@@ -859,6 +859,10 @@ class RedisServices(object):
 
         query_string = search
 
+        if ('resource_type' not in filters and 'shortname' not in filters) or \
+                (len(filters.get('resource_type')) == 0 and len(filters.get('shortname')) == 0):
+            query_string += ' (-@resource_type:(lock|comment|media))'
+
         redis_escape_chars = str.maketrans(
             {":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
         )
