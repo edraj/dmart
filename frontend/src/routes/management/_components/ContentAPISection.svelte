@@ -17,12 +17,19 @@
     text: undefined,
   };
   let curl = "";
-  function generateCURL(endpoint, body) {
+  function generatePostCURL(endpoint, body) {
     let curl = "curl\n";
     curl += `-X ${request.verb}\n`;
     curl += "-H 'Accept: */*'\n";
     curl += "-H 'Content-Type: application/json'\n";
     curl += `-d '${JSON.stringify(body, undefined, 4)}'\n`;
+    curl += `"${website.backend}/${endpoint}"`;
+    return curl;
+  }
+  function generateGetCURL(endpoint) {
+    let curl = "curl\n";
+    curl += `-X ${request.verb}\n`;
+    curl += "-H 'Accept: */*'\n";
     curl += `"${website.backend}/${endpoint}"`;
     return curl;
   }
@@ -37,7 +44,7 @@
         ? { ...inputContent.json }
         : JSON.parse(inputContent.text);
 
-      curl = generateCURL(endpoint, body);
+      curl = generatePostCURL(endpoint, body);
       outputContent.json = await dmartRequest(endpoint, body);
     } else if (request.verb === "get") {
       const request = {
@@ -46,6 +53,7 @@
         cache: "no-cache",
         mode: "cors",
       };
+      generateGetCURL(endpoint);
       outputContent.json = await dmartFetch(
         `${website.backend}/${endpoint}`,
         request
