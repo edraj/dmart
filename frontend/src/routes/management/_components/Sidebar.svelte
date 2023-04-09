@@ -93,6 +93,12 @@
     </ul>
   </Collapse>
 </Navbar>
+<div class="w-100">
+  {#if $status_line}
+    <hr class="my-1" />
+    {@html $status_line}
+  {/if}
+</div>
 
 <style>
   ul {

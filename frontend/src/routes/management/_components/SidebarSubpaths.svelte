@@ -2,7 +2,6 @@
   import Folder from "./Folder.svelte";
   import { slide } from "svelte/transition";
   export let parent;
-  $: console.log({ parent });
 </script>
 
 <div transition:slide={{ duration: 400 }}>
