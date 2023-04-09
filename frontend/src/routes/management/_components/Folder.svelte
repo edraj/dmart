@@ -143,7 +143,6 @@
     const r = await dmartGetSchemas(data.space_name);
     schemas = r.records.map((e) => e.shortname);
     if (flag === "update") {
-      contentShortname = data.shortname;
       const d = { ...data };
       delete d.shortname;
       delete d.subpath;
@@ -155,6 +154,7 @@
       folderContent.json = d;
     }
     entryCreateModal = true;
+    contentShortname = data.shortname;
   }
 
   async function handleSubpathDelete() {
@@ -216,12 +216,15 @@
           );
       }
     } else if (entryType === "content") {
+      const body = content.json
+        ? { ...content.json }
+        : JSON.parse(content.text);
       response = await dmartManContent(
         data.space_name,
         data.subpath,
         contentShortname === "" ? "auto" : contentShortname,
         selectedSchema,
-        JSON.parse(content.text),
+        body,
         modalFlag
       );
     }
@@ -317,7 +320,7 @@
             /> -->
         {/if}
         {#if entryType === "folder"}
-          <Label class="mt-3">Shorname</Label>
+          <Label class="mt-3">Shortname</Label>
           <Input
             placeholder="Shortname..."
             bind:value={contentShortname}
@@ -420,31 +423,7 @@
   {/each}
 {/if}
 
-<!-- {#if expanded && $entries[children_subpath]}
-  <ul class="py-1 ps-1 ms-2 border-start">
-    {#each $entries[children_subpath] as child (children_subpath + child.data.shortname)}
-      <li>
-        {#if child.data.resource_type === "folder"}
-          <svelte:self data={child.data} />
-        {:else}
-          <File data={child.data} />
-        {/if}
-      </li>
-    {/each}
-  </ul>
-{/if} -->
 <style>
-  .no-hype {
-    color: inherit; /* blue colors for links too */
-    text-decoration: inherit; /* no underline */
-  }
-  ul {
-    /*padding: 0.2em 0 0 0.5em;
-    margin: 0 0 0 0.5em;*/
-    list-style: none;
-    /*border-left: 1px solid #eee;*/
-  }
-
   .folder {
     /*font-weight: bold;*/
     cursor: pointer;
@@ -462,14 +441,5 @@
   .expanded {
     background-color: #e8e9ea;
     border-bottom: thin dotted green;
-  }
-
-  .toolbar {
-    display: none;
-    color: brown;
-  }
-
-  .folder:hover .toolbar {
-    display: flex;
   }
 </style>
