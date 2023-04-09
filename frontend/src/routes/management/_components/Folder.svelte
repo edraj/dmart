@@ -1,5 +1,8 @@
 <script>
-  import { triggerRefreshList } from "./../_stores/trigger_refresh.js";
+  import {
+    triggerRefreshList,
+    triggerSearchList,
+  } from "./../_stores/trigger_refresh.js";
   import {
     dmartManContent,
     dmartEntries,
@@ -105,6 +108,7 @@
   }
 
   async function toggle() {
+    triggerSearchList.set("");
     selectedSubpath.set(data.uuid);
     expanded = !expanded;
     if (!$entries[data.shortname]) {
@@ -141,6 +145,7 @@
     if (flag === "update") {
       contentShortname = data.shortname;
       const d = { ...data };
+      delete d.shortname;
       delete d.subpath;
       delete d.type;
       delete d.subpaths;
@@ -245,12 +250,14 @@
       records: [
         {
           ...payload,
+          shortname: data.shortname,
           subpath: parentSubpath,
         },
       ],
     };
     const response = await dmartRequest("managed/request", request);
     if (response.status === "success") {
+      data = { ...data, ...payload };
       toastPushSuccess();
     } else {
       toastPushFail();
