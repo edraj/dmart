@@ -199,6 +199,8 @@ async def traverse_subpaths_entries(
                         ResourceType.ticket,
                         ResourceType.schema,
                         ResourceType.notification,
+                        ResourceType.media,
+                        ResourceType.lock,
                     ],
                 )
             )

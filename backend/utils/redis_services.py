@@ -715,6 +715,7 @@ class RedisServices(object):
         subpath: str,
         payload_shortname: str,
         owner_shortname: str,
+        attachment_shortname: str | None,
         ttl: int,
     ):
 
@@ -727,6 +728,7 @@ class RedisServices(object):
         if not lock_data:
             payload = {
                 "owner_shortname": owner_shortname,
+                "attachment_shortname": attachment_shortname,
                 "lock_time": str(datetime.now().isoformat()),
             }
             result = await self.save_doc(lock_doc_id, payload, nx=True)

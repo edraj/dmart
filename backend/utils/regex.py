@@ -17,6 +17,7 @@ EXTENDED_MSISDN = r"^[1-9]\d{9,14}$"  # Between 10 and 14 digits, not starting w
 OTP_CODE = r"^\d{6}$"  # Exactly 6 digits
 INVITATION = r"^([a-zA-Z0-9_=]+)\.([a-zA-Z0-9_=]+)\.([a-zA-Z0-9_\-\+\/=]*)$"
 
+ATTACHMENT_FULL_PATTERN = re.compile("\.dm\/([a-zA-Z0-9_]*)\/attachments\.(\w+)\.*\w*\/meta\.(\w*)\.json$")
 FILE_PATTERN = re.compile("\\.dm\\/([a-zA-Z0-9_]*)\\/meta\\.([a-zA-z]*)\\.json$")
 PAYLOAD_FILE_PATTERN = re.compile("([a-zA-Z0-9_]*)\\.json$")
 HISTORY_PATTERN = re.compile("([0-9]*)\\.json$")

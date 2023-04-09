@@ -235,6 +235,10 @@ class Json(Attachment):
     pass
 
 
+class Lock(Attachment):
+    finished_at: datetime | None = Field(default=None)
+
+
 class Comment(Attachment):
     body: str
     state: str

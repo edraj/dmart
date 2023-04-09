@@ -18,8 +18,7 @@ from fastapi.logger import logger
 from fastapi import status
 from datetime import datetime
 import aiofiles
-from utils.regex import FILE_PATTERN, FOLDER_PATTERN
-
+from utils.regex import FILE_PATTERN, FOLDER_PATTERN, ATTACHMENT_FULL_PATTERN
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
 
@@ -61,40 +60,51 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
                 if not entry.is_dir():
                     continue
 
-                subpath_iterator = os.scandir(entry)
+                subpath_iterator: list = list(os.scandir(entry))
                 for one in subpath_iterator:
                     # for one in path.glob(entries_glob):
                     match = FILE_PATTERN.search(str(one.path))
-                    if not match or not one.is_file():
-                        continue
+                    attach_match = ATTACHMENT_FULL_PATTERN.search(str(one.path))
+                    shortname = None
+                    resource_name = None
+                    subpath = query.subpath
+                    if one.name.startswith('attachments') and os.path.isdir(one.path):
+                        subpath_iterator.extend(list(os.scandir(one.path)))
+                    if (match or attach_match) and one.is_file():
+                        total += 1
+                        if len(locators) >= query.limit or total < query.offset:
+                            continue
 
-                    total += 1
-                    if len(locators) >= query.limit or total < query.offset:
-                        continue
+                        if attach_match:
+                            entry_shortname = attach_match.group(1)
+                            resource_name = attach_match.group(2)
+                            shortname = attach_match.group(3)
+                            subpath = subpath + "/" + entry_shortname
+                        else:
+                            resource_name = match.group(2).lower()
+                            shortname = match.group(1)
 
-                    shortname = match.group(1)
-                    resource_name = match.group(2).lower()
-                    if (
-                        query.filter_types
-                        and not ResourceType(resource_name) in query.filter_types
-                    ):
-                        continue
+                        if (
+                            query.filter_types
+                            and not resource_name in query.filter_types
+                        ):
+                            continue
 
-                    if (
-                        query.filter_shortnames
-                        and shortname not in query.filter_shortnames
-                    ):
-                        continue
-
-                    locators.append(
-                        core.Locator(
-                            space_name=query.space_name,
-                            branch_name=query.branch_name,
-                            subpath=query.subpath,
-                            shortname=shortname,
-                            type=ResourceType(resource_name),
+                        if (
+                            query.filter_shortnames
+                            and shortname not in query.filter_shortnames
+                        ):
+                            continue
+                    if resource_name and shortname:
+                        locators.append(
+                            core.Locator(
+                                space_name=query.space_name,
+                                branch_name=query.branch_name,
+                                subpath=subpath,
+                                shortname=shortname,
+                                type=ResourceType(resource_name),
+                            )
                         )
-                    )
 
             # Get all matching sub folders
             subfolders_iterator = os.scandir(path)

@@ -1951,6 +1951,21 @@ async def lock_entry(
             )
             await serve_request(request=request, owner_shortname=logged_in_user)
 
+    uuid = uuid4()
+    attach_shortname = str(uuid)[:8]
+    meta: core.Lock = core.Lock(
+        uuid=uuid,
+        owner_shortname=logged_in_user,
+        shortname=attach_shortname,
+        is_active=True
+    )
+    await db.save(
+        space_name=space_name,
+        subpath=f'{subpath}/{shortname}',
+        branch_name=settings.default_branch,
+        meta=meta
+    )
+
     # if lock file is doesn't exist
     # elif lock file exit but lock_period expired
     # elif lock file exist and lock_period isn't expired but the owner want to extend the lock
@@ -1961,6 +1976,7 @@ async def lock_entry(
             subpath,
             shortname,
             logged_in_user,
+            attach_shortname,
             settings.lock_period,
         )
 
@@ -1975,6 +1991,19 @@ async def lock_entry(
         ["lock_type"],
         core.Content,
     )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=f'{subpath}/{shortname}',
+            shortname=attach_shortname,
+            action_type=core.ActionType.create,
+            resource_type=ResourceType.lock,
+            user_shortname=logged_in_user,
+        )
+    )
+
     return api.Response(
         status=api.Status.success,
         attributes={
@@ -2022,6 +2051,34 @@ async def cancel_lock(
         {"lock_type": LockAction.cancel},
         ["lock_type"],
         core.Content,
+    )
+    attachment_shortname = lock_payload.get('attachment_shortname')
+    if attachment_shortname:
+        meta: core.Lock = await db.load(
+            space_name=space_name,
+            subpath=f'{subpath}/{shortname}',
+            shortname=attachment_shortname,
+            class_type=core.Lock,
+            user_shortname=logged_in_user,
+        )
+        meta.finished_at = datetime.now()
+        await db.save(
+            space_name=space_name,
+            subpath=f'{subpath}/{shortname}',
+            branch_name=settings.default_branch,
+            meta=meta
+        )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath + f'/{shortname}',
+            shortname=attachment_shortname,
+            action_type=core.ActionType.update,
+            resource_type=ResourceType.lock,
+            user_shortname=logged_in_user,
+        )
     )
     return api.Response(
         status=api.Status.success,

@@ -43,6 +43,7 @@ class ResourceType(StrEnum):
     json = "json"
     plugin_wrapper = "plugin_wrapper"
     notification = "notification"
+    lock = "lock"
 
 
 class ContentType(StrEnum):
