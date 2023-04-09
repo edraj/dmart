@@ -114,7 +114,7 @@
                   space_name,
                   element.subpath,
                   element.shortname,
-                  "",
+                  entryShortname,
                   getFileExtension(element.attributes.payload.body)
                 ),
               });
