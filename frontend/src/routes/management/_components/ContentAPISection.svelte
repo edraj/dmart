@@ -5,7 +5,7 @@
   import dmartFetch from "../../../fetch";
   import ContentJsonEditor from "./ContentJsonEditor.svelte";
 
-  export let input;
+  export let input = {};
   export let request;
 
   let inputContent = {
