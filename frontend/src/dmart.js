@@ -245,10 +245,10 @@ export async function dmartEntry(
     ""
   )}/${shortname}`;
 
-  url += "?";
   if (request_type === "payload") {
     url = `${url}.${schema_shortname}.${ext}`;
   }
+  url += "?";
   if (withAttachements) {
     url = `${url}&retrieve_attachments=true`;
   }
