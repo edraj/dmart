@@ -32,7 +32,9 @@
           <Col sm="12"><Header /></Col>
         </Row>
         <Row class="w-100 ms-0 my-0 border border-success h-100" noGutters>
-          <Col sm="2" class="fixed-size border border-warning bg-light"
+          <Col
+            sm="2"
+            class="d-flex flex-column justify-content-between fixed-size border border-warning bg-light"
             ><Sidebar /></Col
           >
 
