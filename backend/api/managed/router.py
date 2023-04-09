@@ -1947,7 +1947,7 @@ async def lock_entry(
 
     uuid = uuid4()
     attach_shortname = str(uuid)[:8]
-    meta: core.Lock = core.Lock(
+    meta_lock: core.Lock = core.Lock(
         uuid=uuid,
         owner_shortname=logged_in_user,
         shortname=attach_shortname,
@@ -1957,7 +1957,7 @@ async def lock_entry(
         space_name=space_name,
         subpath=f'{subpath}/{shortname}',
         branch_name=settings.default_branch,
-        meta=meta
+        meta=meta_lock
     )
 
     # if lock file is doesn't exist
