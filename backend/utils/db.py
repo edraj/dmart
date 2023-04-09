@@ -84,7 +84,7 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
                         else:
                             continue
 
-                        if not subpath or not shortname or not resource_name:
+                        if not shortname or not resource_name:
                             continue
 
                         if (
