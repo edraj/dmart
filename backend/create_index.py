@@ -216,6 +216,7 @@ async def traverse_subpaths_entries(
                         ResourceType.notification,
                         ResourceType.media,
                         ResourceType.lock,
+                        ResourceType.comment,
                         ResourceType.folder
                     ],
                 )
