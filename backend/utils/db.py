@@ -73,15 +73,18 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
                         if len(locators) >= query.limit or total < query.offset:
                             continue
 
-                        if attach_match and attach_match.group(1) and shortname:
+                        if attach_match:
                             entry_shortname = attach_match.group(1)
                             resource_name = attach_match.group(2).lower()
                             shortname = attach_match.group(3)
                             subpath = subpath + "/" + entry_shortname
-                        elif match and match.group(2) and match.group(1):
+                        elif match:
                             resource_name = match.group(2).lower()
                             shortname = match.group(1)
                         else:
+                            continue
+
+                        if not subpath or not shortname or not resource_name:
                             continue
 
                         if (
