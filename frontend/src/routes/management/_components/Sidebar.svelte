@@ -74,6 +74,7 @@
   light
   expand="md"
   class="w-100 rounded-3"
+  style="overflow-y: auto;overflow-x: hidden;"
 >
   <NavbarToggler on:click={() => (isOpen = !isOpen)} />
   <Collapse

@@ -443,7 +443,6 @@
     cursor: pointer;
     display: list-item;
     list-style: none;
-    border-top: thin dotted grey;
   }
 
   .folder:hover {
