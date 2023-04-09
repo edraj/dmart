@@ -176,10 +176,7 @@
       </div>
     </div>
     <div hidden={!expanded} transition:slide={{ duration: 400 }}>
-      <SidebarSubpaths
-        bind:space_name={child.shortname}
-        bind:subpaths={child.subpaths}
-      />
+      <SidebarSubpaths bind:parent={child} />
     </div>
   </ListGroupItem>
 </div>

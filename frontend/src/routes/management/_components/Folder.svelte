@@ -55,19 +55,22 @@
         [],
         "search"
       );
+      if (_entries.length === 0) {
+        return;
+      }
 
       _entries.forEach((entry) => {
         if (entry.subpath.startsWith("/")) {
-          entry.subpath = `${data.subpath}/${entry.shortname}`;
+          entry.subpath = `${entry.subpath}/${entry.shortname}`;
         } else {
-          entry.subpath = `/${data.subpath}/${entry.shortname}`;
+          entry.subpath = `/${entry.subpath}/${entry.shortname}`;
         }
       });
 
       data["subpaths"] = _entries
         .map((e) => {
           if (
-            e.subpath.split("/").length ==
+            e.subpath.split("/").length ===
             data.subpath.split("/").length + 1
           ) {
             return e;
@@ -75,7 +78,6 @@
           return null;
         })
         .filter((e) => e != null);
-
       s.forEach((subpath) => {
         const idx = r.subpaths.findIndex(
           (child) => child.shortname === subpath
@@ -149,32 +151,6 @@
     entryCreateModal = true;
   }
 
-  // let subpathUpdateContent = { json: data, text: undefined };
-  // let isSubpathUpdateModalOpen = false;
-  // async function handleSubpathUpdate(content) {
-  //   const record = content.json ?? JSON.parse(content.text);
-  //   delete record.space_name;
-  //   delete record.type;
-  //   delete record.uuid;
-
-  //   const arr = record.subpath.split("/");
-  //   arr[arr.length - 1] = "";
-  //   const parentSubpath = arr.join("/");
-
-  //   const request = {
-  //     space_name: data.space_name,
-  //     request_type: "update",
-  //     records: [{ ...record, subpath: parentSubpath }],
-  //   };
-  //   const response = await dmartRequest("managed/request", request);
-  //   if (response.error) {
-  //     alert(response.error.message);
-  //   } else {
-  //     toastPushSuccess();
-  //     await getSpaces();
-  //     isSubpathUpdateModalOpen = false;
-  //   }
-  // }
   async function handleSubpathDelete() {
     // const space_name = child.shortname;
     if (
@@ -373,10 +349,8 @@
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
 <div
   transition:slide={{ duration: 400 }}
-  class="d-flex row justify-content-between folder position-relative mt-1 ps-2 {$selectedSubpath ===
-  data.uuid
-    ? 'expanded'
-    : ''}"
+  class="d-flex row justify-content-between folder position-relative mt-1 ps-2 
+  {$selectedSubpath === data.uuid ? 'expanded' : ''}"
   on:mouseover={(e) => (displayActionMenu = true)}
   on:mouseleave={(e) => (displayActionMenu = false)}
 >

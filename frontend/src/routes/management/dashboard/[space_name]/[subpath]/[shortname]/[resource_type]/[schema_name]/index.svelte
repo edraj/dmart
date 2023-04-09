@@ -11,6 +11,7 @@
     toastPushFail,
     toastPushSuccess,
   } from "../../../../../../../../utils";
+  import ContentApiSection from "../../../../../../_components/ContentAPISection.svelte";
 
   let height;
 
@@ -139,21 +140,32 @@
 {#await init}
   ...
 {:then _}
-  <ContentEditSection
-    bind:space_name={$params.space_name}
-    bind:subpath={$params.subpath}
-    bind:bodyContent
-    bind:metaContent
-    bind:errorContent
-    bind:validator
-    bind:isSchemaValidated
-    bind:isError
-    bind:metaContentAttachement
-    bind:historyQuery
-    {handleSave}
-    bind:shortname
-    bind:height
-  />
+  {#if schema_name === "api"}
+    <ContentApiSection
+      request={{
+        end_point: bodyContent.json.end_point,
+        verb: bodyContent.json.verb,
+      }}
+      input={bodyContent.json.request_body}
+    />
+  {/if}
+  {#if schema_name !== "api"}
+    <ContentEditSection
+      bind:space_name={$params.space_name}
+      bind:subpath={$params.subpath}
+      bind:bodyContent
+      bind:metaContent
+      bind:errorContent
+      bind:validator
+      bind:isSchemaValidated
+      bind:isError
+      bind:metaContentAttachement
+      bind:historyQuery
+      {handleSave}
+      bind:shortname
+      bind:height
+    />
+  {/if}
 {:catch error}
   <p style="color: red">{error.message}</p>
 {/await}
