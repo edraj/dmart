@@ -14,10 +14,7 @@
 
 <Notifications>
   {#if !$signedin_user}
-    <div
-      class="container-fluid d-flex align-items-start py-3"
-      id="login-container"
-    >
+    <div id="login-container">
       <Login />
     </div>
   {:else}
@@ -65,3 +62,10 @@
     {/await}
   {/if}
 </Notifications>
+
+<style>
+  #login-container {
+    display: flex;
+    height: 100vh;
+  }
+</style>

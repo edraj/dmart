@@ -46,8 +46,17 @@
   function handleUpdate(event) {
     isOpen = event.detail.isOpen;
   }
+  let subpaths = $spaces.children ? [...$spaces.children] : [];
+  $: {
+    async function refreshSidebar() {
+      await getSpaces();
+      subpaths = $spaces.children ? [...$spaces.children] : [];
+    }
 
-  const subpaths = [...$spaces.children];
+    if ($spaces.children === undefined) {
+      refreshSidebar();
+    }
+  }
 </script>
 
 {#key props}
