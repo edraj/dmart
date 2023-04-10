@@ -117,7 +117,7 @@
 
     const response = await dmartRequest("managed/request", {
       space_name: space_name,
-      request_type: "update",
+      request_type: "replace",
       records: [
         {
           resource_type,
