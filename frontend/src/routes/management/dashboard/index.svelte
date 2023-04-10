@@ -15,13 +15,7 @@
           path: "shortname",
           title: "shortname",
           type: "string",
-          width: "10%",
-        },
-        owner_shortname: {
-          path: "attributes.owner_shortname",
-          title: "Owner shorname",
-          type: "string",
-          width: "15%",
+          width: "25%",
         },
         resource_type: {
           path: "resource_type",

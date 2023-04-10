@@ -1,9 +1,7 @@
 <script>
   import spaces, { getSpaces } from "../_stores/spaces.js";
-  import { active_entry } from "../_stores/active_entry.js";
   import { _ } from "../../../i18n/index.js";
   import { status_line } from "../_stores/status_line.js";
-  import { ListGroup } from "sveltestrap";
   import { slide } from "svelte/transition";
   import { dmartSpaces } from "../../../dmart.js";
   import { toastPushSuccess } from "../../../utils.js";
@@ -12,8 +10,6 @@
   import SidebarSpaces from "./SidebarSpaces.svelte";
   import { Collapse, Navbar, NavbarToggler } from "sveltestrap";
 
-  let headHeight;
-  let footHeight;
   let props = [];
   let popCreateSpaceModal = false;
   let popCreateSchemaModal = false;
@@ -46,8 +42,17 @@
   function handleUpdate(event) {
     isOpen = event.detail.isOpen;
   }
+  let subpaths = $spaces.children ? [...$spaces.children] : [];
+  $: {
+    async function refreshSidebar() {
+      await getSpaces();
+      subpaths = $spaces.children ? [...$spaces.children] : [];
+    }
 
-  const subpaths = [...$spaces.children];
+    if ($spaces.children === undefined) {
+      refreshSidebar();
+    }
+  }
 </script>
 
 {#key props}
@@ -65,6 +70,7 @@
   light
   expand="md"
   class="w-100 rounded-3"
+  style="overflow-y: auto;overflow-x: hidden;"
 >
   <NavbarToggler on:click={() => (isOpen = !isOpen)} />
   <Collapse
@@ -79,11 +85,17 @@
         <li transition:slide={{ duration: 400 }}>
           <SidebarSpaces {child} />
         </li>
-        <hr />
+        <hr style="margin-top: 4px;margin-bottom: 4px;" />
       {/each}
     </ul>
   </Collapse>
 </Navbar>
+<div class="w-100">
+  {#if $status_line}
+    <hr class="my-1" />
+    {@html $status_line}
+  {/if}
+</div>
 
 <style>
   ul {

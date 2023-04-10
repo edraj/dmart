@@ -9,9 +9,10 @@
   import { toastPushSuccess, toastPushFail } from "../../../utils.js";
   import AttachmentsManagment from "./AttachmentsManagment.svelte";
   import ListView from "./ListView.svelte";
+  import { dmartRequest } from "../../../dmart";
+  import { Breadcrumb, BreadcrumbItem } from "sveltestrap";
 
-  export let space_name, subpath;
-  export let records;
+  export let space_name, subpath, resource_type;
   export let bodyContent;
   export let metaContent;
   export let errorContent;
@@ -22,7 +23,6 @@
   export let historyQuery;
   let showContentEditSection;
   export let handleSave;
-  let currentItem;
   export let shortname;
   export let height;
 
@@ -53,14 +53,19 @@
     },
   };
 
+  function back() {
+    window.history.replaceState(
+      history.state,
+      "",
+      `/management/dashboard/${space_name}/${subpath.replaceAll("/", "-")}`
+    );
+  }
+
   async function handleDelete() {
     if (confirm(`Are you sure want to delete ${shortname} entry`) === false) {
       return;
     }
-
-    const { resource_type, branch_name, subpath, shortname } = {
-      ...records[currentItem - 1],
-    };
+    showContentEditSection = false;
     const request = {
       space_name,
       request_type: "delete",
@@ -69,7 +74,7 @@
           resource_type,
           shortname,
           subpath,
-          branch_name,
+          branch_name: "master",
           attributes: {},
         },
       ],
@@ -77,20 +82,18 @@
     const response = await dmartRequest("managed/request", request);
     if (response.status === "success") {
       toastPushSuccess();
-      refreshList();
-      showContentEditSection = false;
+      back();
     } else {
       toastPushFail();
     }
   }
 
   async function updateSingleEntry() {
-    const { subpath, branch_name, shortname } = records[currentItem - 1];
     const request = {
       type: "subpath",
       space_name: space_name,
       subpath,
-      branch_name,
+      branch_name: "master",
       filter_schema_names: ["meta"],
       filter_shortnames: [shortname],
       retrieve_json_payload: true,
@@ -99,32 +102,32 @@
     const response = await dmartRequest("managed/query", request);
     if (response.status === "success") {
       toastPushSuccess();
-      metaContentAttachement = records[currentItem - 1].attachments;
     } else {
       toastPushFail();
     }
   }
-  console.log({ x: bodyContent.json });
 </script>
+
+<Breadcrumb class="mt-3 px-3">
+  <BreadcrumbItem>{space_name}</BreadcrumbItem>
+  {#each subpath.split("/") as s}
+    {#if s !== ""}
+      <BreadcrumbItem>{s}</BreadcrumbItem>
+    {/if}
+  {/each}
+  {#if shortname}
+    <BreadcrumbItem>{shortname}</BreadcrumbItem>
+  {/if}
+</Breadcrumb>
 
 <Tabs>
   <TabList>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div
-      class="tab-list back-icon"
-      style="cursor: pointer;"
-      on:click={() => {
-        window.history.replaceState(
-          history.state,
-          "",
-          `/management/dashboard/${space_name}/${subpath.replaceAll("/", "-")}`
-        );
-      }}
-    >
+    <div class="tab-list back-icon" style="cursor: pointer;" on:click={back}>
       <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
     </div>
     <div class="tab-list">
-      {#if Object.keys(bodyContent.json).length}
+      {#if bodyContent.json !== null}
         <Tab>Content</Tab>
       {/if}
       <Tab>Meta</Tab>
@@ -143,7 +146,7 @@
     </div>
   </TabList>
 
-  {#if Object.keys(bodyContent.json).length}
+  {#if bodyContent.json !== null}
     <TabPanel>
       <ContentJsonEditor
         bind:content={bodyContent}
@@ -157,15 +160,13 @@
     <ContentJsonEditor bind:content={metaContent} {handleSave} />
   </TabPanel>
   <TabPanel>
-    {#key records}
-      <AttachmentsManagment
-        bind:attachments={metaContentAttachement}
-        bind:space_name
-        bind:subpath
-        bind:entryShortname={shortname}
-        forceRefresh={async () => await updateSingleEntry()}
-      />
-    {/key}
+    <AttachmentsManagment
+      bind:attachments={metaContentAttachement}
+      bind:space_name
+      bind:subpath
+      bind:entryShortname={shortname}
+      forceRefresh={async () => await updateSingleEntry()}
+    />
   </TabPanel>
 
   <TabPanel>

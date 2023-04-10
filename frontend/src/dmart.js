@@ -23,6 +23,7 @@ export async function dmartGetSchemas(space_name, shortname = null) {
     type: "subpath",
     subpath: "/schema",
     retrieve_json_payload: true,
+    limit: 99,
   };
   if (shortname) {
     query.filter_shortnames = [shortname];
@@ -208,7 +209,7 @@ export function ctorULRForAttachment(
   space_name,
   subpath,
   shortname,
-  schema_shortname,
+  entryShortname,
   ext
 ) {
   return `${
@@ -216,7 +217,7 @@ export function ctorULRForAttachment(
   }/managed/payload/${resource_type}/${space_name}/${subpath.replace(
     /\/+$/,
     ""
-  )}/${shortname}.${schema_shortname}.${ext}`.replaceAll("..", ".");
+  )}/${entryShortname}/${shortname}.${ext}`.replaceAll("..", ".");
 }
 
 export async function dmartEntry(
@@ -227,7 +228,8 @@ export async function dmartEntry(
   schema_shortname = null,
   ext = "json",
   content_type = "json",
-  request_type = "payload"
+  request_type = "payload",
+  withAttachements = false
 ) {
   const browse_request = {
     method: "GET",
@@ -246,6 +248,10 @@ export async function dmartEntry(
 
   if (request_type === "payload") {
     url = `${url}.${schema_shortname}.${ext}`;
+  }
+  url += "?";
+  if (withAttachements) {
+    url = `${url}&retrieve_attachments=true`;
   }
 
   url = url.replaceAll("..", ".");

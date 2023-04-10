@@ -14,10 +14,7 @@
 
 <Notifications>
   {#if !$signedin_user}
-    <div
-      class="container-fluid d-flex align-items-start py-3"
-      id="login-container"
-    >
+    <div id="login-container">
       <Login />
     </div>
   {:else}
@@ -35,7 +32,9 @@
           <Col sm="12"><Header /></Col>
         </Row>
         <Row class="w-100 ms-0 my-0 border border-success h-100" noGutters>
-          <Col sm="2" class="fixed-size border border-warning bg-light"
+          <Col
+            sm="2"
+            class="d-flex flex-column justify-content-between fixed-size border border-warning bg-light"
             ><Sidebar /></Col
           >
 
@@ -65,3 +64,10 @@
     {/await}
   {/if}
 </Notifications>
+
+<style>
+  #login-container {
+    display: flex;
+    height: 100vh;
+  }
+</style>

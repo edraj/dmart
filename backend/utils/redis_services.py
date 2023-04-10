@@ -98,14 +98,15 @@ class RedisServices(object):
             port=settings.redis_port,
             password=settings.redis_password,
             decode_responses=True,
+            max_connections=200
         )
 
     def __await__(self):
         return self.init().__await__()
 
     async def init(self):
-        # if not hasattr(self, "client"):
-        self.client = await Redis(connection_pool=self.__pool)
+        if not hasattr(self, "client"):
+            self.client = await Redis(connection_pool=self.__pool)
         self.redis_indices: dict[str, dict[str, Search]] = {}
         return self
 
@@ -121,12 +122,14 @@ class RedisServices(object):
             pass
 
     async def __aenter__(self):
-        self.client = await Redis(connection_pool=self.__pool)
+        if not hasattr(self, "client"):
+            self.client = await Redis(connection_pool=self.__pool)
         self.redis_indices: dict[str, dict[str, Search]] = {}
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        await self.client.close()
+        pass
+        # await self.client.close()
 
     async def create_index(
         self, space_branch_name: str, schema_name: str, redis_schema: tuple
