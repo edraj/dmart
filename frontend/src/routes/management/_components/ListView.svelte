@@ -105,7 +105,7 @@
               }
               if (lastbatch) {
                 page += 1;
-                items = [...items, ...records];
+                items = [...items, ...json.records];
                 loaded();
               } else {
                 complete();
@@ -297,7 +297,6 @@
         class="my-row"
         on:click={async () => {
           const record = { ...records[index - 1] };
-
           shortname = record.shortname;
           schema_shortname = record.attributes?.payload?.schema_shortname;
           window.history.replaceState(

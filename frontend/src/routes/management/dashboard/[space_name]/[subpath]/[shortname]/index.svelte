@@ -137,8 +137,9 @@
   ...
 {:then _}
   <ContentEditSection
-    bind:space_name={$params.space_name}
-    bind:subpath={$params.subpath}
+    bind:space_name
+    bind:subpath
+    bind:resource_type
     bind:bodyContent
     bind:metaContent
     bind:errorContent
