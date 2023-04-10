@@ -26,7 +26,7 @@
     text: undefined,
   };
   let bodyContent = {
-    json: {},
+    json: null,
     text: undefined,
   };
   let metaContentAttachement = [];
@@ -85,14 +85,16 @@
           console.log(e);
         });
 
-      const body = await dmartEntry(
-        resource_type,
-        space_name,
-        subpath,
-        shortname,
-        schema_name
-      );
-      bodyContent.json = body;
+      if (meta?.payload?.content_type === "json") {
+        const body = await dmartEntry(
+          resource_type,
+          space_name,
+          subpath,
+          shortname,
+          schema_name
+        );
+        bodyContent.json = body;
+      }
     }
   }
   let init = initPage();
@@ -108,8 +110,7 @@
       ? { ...metaContent.json }
       : JSON.parse(metaContent.text);
     const data = { ...metaData };
-
-    if (Object.keys(bodyContent.json).length) {
+    if (bodyContent.json !== null) {
       data.payload.body =
         bodyContent.json ?? JSON.parse(bodyContent.text) ?? data.payload.body;
     }
