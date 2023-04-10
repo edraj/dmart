@@ -1,7 +1,6 @@
 <script>
   import { JSONEditor, Mode } from "svelte-jsoneditor";
   import { faSave } from "@fortawesome/free-regular-svg-icons";
-  import { onMount } from "svelte";
 
   export let content;
   export let self;

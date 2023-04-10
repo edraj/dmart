@@ -1,9 +1,7 @@
 <script>
   import spaces, { getSpaces } from "../_stores/spaces.js";
-  import { active_entry } from "../_stores/active_entry.js";
   import { _ } from "../../../i18n/index.js";
   import { status_line } from "../_stores/status_line.js";
-  import { ListGroup } from "sveltestrap";
   import { slide } from "svelte/transition";
   import { dmartSpaces } from "../../../dmart.js";
   import { toastPushSuccess } from "../../../utils.js";
@@ -12,8 +10,6 @@
   import SidebarSpaces from "./SidebarSpaces.svelte";
   import { Collapse, Navbar, NavbarToggler } from "sveltestrap";
 
-  let headHeight;
-  let footHeight;
   let props = [];
   let popCreateSpaceModal = false;
   let popCreateSchemaModal = false;

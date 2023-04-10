@@ -2,19 +2,10 @@
   import { status_line } from "../_stores/status_line.js";
   import VirtualList from "svelte-tiny-virtual-list";
   import InfiniteLoading from "svelte-infinite-loading";
-  import {
-    dmartManContent,
-    dmartGetSchemas,
-    dmartRequest,
-  } from "../../../dmart.js";
+  import { dmartManContent, dmartRequest } from "../../../dmart.js";
   import { onDestroy } from "svelte";
-  import { dmartEntry, dmartQuery } from "../../../dmart.js";
-  import {
-    toastPushSuccess,
-    toastPushFail,
-    toastPushLoding,
-    toastPop,
-  } from "../../../utils.js";
+  import { dmartQuery } from "../../../dmart.js";
+  import { toastPushSuccess, toastPushFail } from "../../../utils.js";
   import { Breadcrumb, BreadcrumbItem } from "sveltestrap";
   import { createAjvValidator, Mode } from "svelte-jsoneditor";
   import ContentEditSection from "./ContentEditSection.svelte";
@@ -22,7 +13,6 @@
     triggerRefreshList,
     triggerSearchList,
   } from "../_stores/trigger_refresh.js";
-  import { goto } from "@roxi/routify";
 
   let showContentEditSection = false;
   let shortname = "";
