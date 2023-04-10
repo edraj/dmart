@@ -20,7 +20,6 @@
   function generatePostCURL(endpoint, body) {
     let curl = "curl\n";
     curl += `-X ${request.verb}\n`;
-    curl += "-H 'Accept: */*'\n";
     curl += "-H 'Content-Type: application/json'\n";
     curl += `-d '${JSON.stringify(body, undefined, 4)}'\n`;
     curl += `"${website.backend}/${endpoint}"`;
@@ -29,7 +28,6 @@
   function generateGetCURL(endpoint) {
     let curl = "curl\n";
     curl += `-X ${request.verb}\n`;
-    curl += "-H 'Accept: */*'\n";
     curl += `"${website.backend}/${endpoint}"`;
     return curl;
   }
