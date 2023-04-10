@@ -60,7 +60,6 @@
   const base_query = { ...query };
   export let cols;
   export let details_split = 0;
-  export let clickable = false;
   export let filterable = false;
 
   let total;
@@ -386,15 +385,16 @@
     margin-top: 8px;
     margin-left: 8px;
   }*/
-  hr {
+  /* hr {
     color: green;
     background-color: blue;
     height: 5px;
     user-select: none;
     margin: 0;
-    /*position: absolute;*/
-    /*border: solid 1px gray;*/
-  }
+    position: absolute;
+    border: solid 1px gray;
+  } 
+  */
   :global(.virtual-list-wrapper) {
     margin: 0 0px;
     background: #fff;
