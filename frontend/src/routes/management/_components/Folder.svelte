@@ -231,7 +231,6 @@
     if (response.status === "success") {
       toastPushSuccess();
       triggerRefreshList.set(true);
-      entryCreateModal = false;
       contentShortname = "";
       await updateList();
     } else {
