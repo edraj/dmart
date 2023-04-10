@@ -104,7 +104,6 @@
       toastPushFail();
     }
   }
-  console.log({ x: bodyContent.json });
 </script>
 
 <Tabs>
@@ -124,7 +123,7 @@
       <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
     </div>
     <div class="tab-list">
-      {#if Object.keys(bodyContent.json).length}
+      {#if bodyContent.json !== null}
         <Tab>Content</Tab>
       {/if}
       <Tab>Meta</Tab>
@@ -143,7 +142,7 @@
     </div>
   </TabList>
 
-  {#if Object.keys(bodyContent.json).length}
+  {#if bodyContent.json !== null}
     <TabPanel>
       <ContentJsonEditor
         bind:content={bodyContent}
