@@ -143,6 +143,7 @@
     const r = await dmartGetSchemas(data.space_name);
     schemas = r.records.map((e) => e.shortname);
     if (flag === "update") {
+      contentShortname = data.shortname;
       const d = { ...data };
       delete d.shortname;
       delete d.subpath;
@@ -154,7 +155,6 @@
       folderContent.json = d;
     }
     entryCreateModal = true;
-    contentShortname = data.shortname;
   }
 
   async function handleSubpathDelete() {
@@ -232,6 +232,7 @@
       toastPushSuccess();
       triggerRefreshList.set(true);
       entryCreateModal = false;
+      contentShortname = "";
       await updateList();
     } else {
       toastPushFail();
@@ -266,14 +267,13 @@
       toastPushFail();
     }
   }
-
-  $: entryCreateModal && (contentShortname = "");
 </script>
 
 <Modal
   isOpen={entryCreateModal}
   toggle={() => {
     entryCreateModal = !entryCreateModal;
+    contentShortname = "";
   }}
   size={"lg"}
 >
@@ -341,7 +341,10 @@
       <Button
         type="button"
         color="secondary"
-        on:click={() => (entryCreateModal = false)}>cancel</Button
+        on:click={() => {
+          entryCreateModal = false;
+          contentShortname = "";
+        }}>cancel</Button
       >
       <Button type="submit" color="primary">Submit</Button>
     </ModalFooter>
