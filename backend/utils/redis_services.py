@@ -104,8 +104,8 @@ class RedisServices(object):
         return self.init().__await__()
 
     async def init(self):
-        # if not hasattr(self, "client"):
-        self.client = await Redis(connection_pool=self.__pool)
+        if not hasattr(self, "client"):
+            self.client = await Redis(connection_pool=self.__pool)
         self.redis_indices: dict[str, dict[str, Search]] = {}
         return self
 
