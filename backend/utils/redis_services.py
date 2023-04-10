@@ -98,6 +98,7 @@ class RedisServices(object):
             port=settings.redis_port,
             password=settings.redis_password,
             decode_responses=True,
+            max_connections=200
         )
 
     def __await__(self):
