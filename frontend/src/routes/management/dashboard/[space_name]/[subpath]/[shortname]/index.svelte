@@ -22,7 +22,7 @@
     text: undefined,
   };
   let bodyContent = {
-    json: {},
+    json: null,
     text: undefined,
   };
   let metaContentAttachement = [];
@@ -102,14 +102,16 @@
       : JSON.parse(metaContent.text);
     const data = { ...metaData };
 
-    if (Object.keys(bodyContent.json).length) {
+    if (bodyContent.json !== null) {
       data.payload.body =
         bodyContent.json ?? JSON.parse(bodyContent.text) ?? data.payload.body;
+    } else {
+      data.payload.body = {};
     }
 
     const response = await dmartRequest("managed/request", {
       space_name: space_name,
-      request_type: "update",
+      request_type: "replace",
       records: [
         {
           resource_type,
@@ -135,8 +137,9 @@
   ...
 {:then _}
   <ContentEditSection
-    bind:space_name={$params.space_name}
-    bind:subpath={$params.subpath}
+    bind:space_name
+    bind:subpath
+    bind:resource_type
     bind:bodyContent
     bind:metaContent
     bind:errorContent

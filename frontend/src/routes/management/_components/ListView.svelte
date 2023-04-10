@@ -2,19 +2,10 @@
   import { status_line } from "../_stores/status_line.js";
   import VirtualList from "svelte-tiny-virtual-list";
   import InfiniteLoading from "svelte-infinite-loading";
-  import {
-    dmartManContent,
-    dmartGetSchemas,
-    dmartRequest,
-  } from "../../../dmart.js";
+  import { dmartManContent, dmartRequest } from "../../../dmart.js";
   import { onDestroy } from "svelte";
-  import { dmartEntry, dmartQuery } from "../../../dmart.js";
-  import {
-    toastPushSuccess,
-    toastPushFail,
-    toastPushLoding,
-    toastPop,
-  } from "../../../utils.js";
+  import { dmartQuery } from "../../../dmart.js";
+  import { toastPushSuccess, toastPushFail } from "../../../utils.js";
   import { Breadcrumb, BreadcrumbItem } from "sveltestrap";
   import { createAjvValidator, Mode } from "svelte-jsoneditor";
   import ContentEditSection from "./ContentEditSection.svelte";
@@ -22,7 +13,6 @@
     triggerRefreshList,
     triggerSearchList,
   } from "../_stores/trigger_refresh.js";
-  import { goto } from "@roxi/routify";
 
   let showContentEditSection = false;
   let shortname = "";
@@ -60,7 +50,6 @@
   const base_query = { ...query };
   export let cols;
   export let details_split = 0;
-  export let clickable = false;
   export let filterable = false;
 
   let total;
@@ -87,7 +76,6 @@
   }
 
   async function infiniteHandler({ detail: { loaded, complete, error } }) {
-    console.log({ query });
     if (Object.keys(query).length <= 2) {
       complete();
     } else {
@@ -106,7 +94,7 @@
               }
               if (lastbatch) {
                 page += 1;
-                items = [...items, ...records];
+                items = [...items, ...json.records];
                 loaded();
               } else {
                 complete();
@@ -134,7 +122,6 @@
   }
 
   function value(path, data, type) {
-    console.log(path, data, type);
     if (path.length == 1 && path[0].length > 0 && path[0] in data) {
       if (type == "json") return JSON.stringify(data[path[0]], undefined, 1);
       else return data[path[0]];
@@ -190,7 +177,6 @@
   }
 
   function handleSearchInput(target) {
-    console.log({ target });
     query =
       target === ""
         ? base_query
@@ -301,7 +287,7 @@
         on:click={async () => {
           const record = { ...records[index - 1] };
           shortname = record.shortname;
-
+          schema_shortname = record.attributes?.payload?.schema_shortname;
           window.history.replaceState(
             history.state,
             "",
@@ -389,15 +375,16 @@
     margin-top: 8px;
     margin-left: 8px;
   }*/
-  hr {
+  /* hr {
     color: green;
     background-color: blue;
     height: 5px;
     user-select: none;
     margin: 0;
-    /*position: absolute;*/
-    /*border: solid 1px gray;*/
-  }
+    position: absolute;
+    border: solid 1px gray;
+  } 
+  */
   :global(.virtual-list-wrapper) {
     margin: 0 0px;
     background: #fff;
