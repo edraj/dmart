@@ -43,9 +43,10 @@
   }
 
   $: {
-    if (content.json) {
-      self?.expand(() => true);
-    }
+    // if (content.json) {
+    //   self?.expand(() => true);
+    // }
+    self?.set(content);
   }
 </script>
 

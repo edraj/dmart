@@ -23,6 +23,7 @@ export async function dmartGetSchemas(space_name, shortname = null) {
     type: "subpath",
     subpath: "/schema",
     retrieve_json_payload: true,
+    limit: 99,
   };
   if (shortname) {
     query.filter_shortnames = [shortname];
