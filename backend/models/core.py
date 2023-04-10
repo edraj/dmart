@@ -240,6 +240,10 @@ class Comment(Attachment):
     state: str
 
 
+class Lock(Attachment):
+    pass
+
+
 class Media(Attachment):
     pass
 
