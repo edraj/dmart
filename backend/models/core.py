@@ -69,7 +69,7 @@ class Record(BaseModel):
         return json.loads(self.json())
 
     def __eq__(self, other):
-        return self.shortname == other.shortname
+        return isinstance(other, Record) and self.shortname == other.shortname
 
 
 class Translation(Resource):
@@ -238,6 +238,10 @@ class Json(Attachment):
 class Comment(Attachment):
     body: str
     state: str
+
+
+class Lock(Attachment):
+    pass
 
 
 class Media(Attachment):

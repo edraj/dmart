@@ -1,9 +1,8 @@
+from copy import copy
 import shutil
-import sys
 from models.enums import LockAction
-from utils.helpers import branch_path, camel_case, snake_case
+from utils.helpers import arr_remove_common, branch_path, snake_case
 from datetime import datetime
-import sys
 from models.enums import ContentType, ResourceType
 from utils.middleware import get_request_data
 from utils.redis_services import RedisServices
@@ -14,7 +13,6 @@ import models.api as api
 import os
 import json
 from pathlib import Path
-from fastapi.logger import logger
 from fastapi import status
 from datetime import datetime
 import aiofiles
@@ -128,6 +126,20 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
                 )
 
     return total, locators
+
+
+def folder_path(
+    space_name: str,
+    subpath: str,
+    shortname: str,
+    branch_name: str | None = settings.default_branch,
+):
+    if branch_name:
+        return (
+            f"{settings.spaces_folder}/{space_name}/{branch_name}/{subpath}/{shortname}"
+        )
+    else:
+        return f"{settings.spaces_folder}/{space_name}{subpath}/{shortname}"
 
 
 def metapath(
@@ -430,10 +442,20 @@ async def store_entry_diff(
     history_diff = {}
     for key in set(diff_keys):
         if key in updated_attributes_flattend:
-            old = old_version_flattend[key] if key in old_version_flattend else "null"
-            new = new_version_flattend[key] if key in new_version_flattend else "null"
+            old = (
+                copy(old_version_flattend[key])
+                if key in old_version_flattend
+                else "null"
+            )
+            new = (
+                copy(new_version_flattend[key])
+                if key in new_version_flattend
+                else "null"
+            )
 
             if old != new:
+                if type(old) == list and type(new) == list:
+                    old, new = arr_remove_common(old, new)
                 history_diff[key] = {
                     "old": old,
                     "new": new,
@@ -608,6 +630,7 @@ async def delete(
             if payload_file_path.is_file():
                 os.remove(payload_file_path)
 
-    # Remove entry folder
-    if not isinstance(meta, core.Attachment) or len(os.listdir(path)) == 0:
-        shutil.rmtree(path)
+    if isinstance(meta, core.Folder):
+        p = folder_path(space_name, subpath, meta.shortname, None)
+        if Path(p).is_dir():
+            shutil.rmtree(p)

@@ -1,15 +1,9 @@
 import { writable } from "svelte/store";
 
-const local = JSON.parse(localStorage.getItem("selected_subpath"));
-const { subscribe, set } = writable(local);
-
-function customSet(subpathShortname) {
-  set(subpathShortname);
-  localStorage.setItem("selected_subpath", JSON.stringify(subpathShortname));
-}
+const { subscribe, set } = writable({});
 
 const selectedSubpath = {
-  set: (value) => customSet(value),
+  set: (value) => set(value),
   subscribe,
   reset: () => customSet([]),
 };

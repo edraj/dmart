@@ -56,6 +56,7 @@ from api.user.service import (
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
 
+
 router = APIRouter()
 
 
@@ -147,15 +148,25 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     )
 
     redis_query_policies = await access_control.get_user_query_policies(user_shortname)
-    restricted_fields = [
-        "id",
-        "query_policies",
-        "subpath",
-        "branch_name",
-        "resource_type",
-        "meta_doc_id",
-        "owner_shortname",
-        "workflow_shortname",
+
+    folder = await db.load(
+        query.space_name,
+        query.subpath,
+        "",
+        core.Folder,
+        user_shortname,
+        query.branch_name,
+    )
+
+    folder_payload = db.load_resource_payload(
+        query.space_name,
+        "/",
+        f"{folder.shortname}.json",
+        core.Folder,
+        query.branch_name,
+    )
+    folder_views = [
+        f.get("key", "") for f in folder_payload.get("index_attributes", [])
     ]
 
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
@@ -164,9 +175,20 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         redis_doc_dict = redis_document.__dict__
         if "json" in redis_doc_dict:
             redis_doc_dict = json.loads(redis_doc_dict["json"])
-        json_data.append(
-            {k: v for k, v in redis_doc_dict.items() if k not in restricted_fields}
-        )
+
+        _json_data = {}
+        for folder_view in folder_views:
+            if folder_view.count(".") == 0:
+                _json_data[folder_view] = redis_doc_dict.get(folder_view)
+            elif folder_view.count(".") != 0:
+                result = {**redis_doc_dict}
+                for f in folder_view.split("."):
+                    if result is None:
+                        break
+                    result = result.get(f, None)
+                _json_data[folder_view] = result
+
+        json_data.append(_json_data)
 
     # Sort all entries from all schemas
     if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
@@ -196,7 +218,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     keys: set = set({})
     for row in json_data:
         keys.update(set(row.keys()))
-
+    print(f"{keys=}")
     writer = csv.DictWriter(v_path, fieldnames=list(keys))
     writer.writeheader()
     writer.writerows(json_data)
@@ -380,9 +402,6 @@ async def serve_space(
 async def query_entries(
     query: api.Query, user_shortname=Depends(JWTBearer())
 ) -> api.Response:
-
-    if query.subpath[0] != "/":
-        query.subpath = f"/{query.subpath}"
 
     await plugin_manager.before_action(
         core.Event(
@@ -583,7 +602,7 @@ async def serve_request(
                                         message=invitation_message,
                                     )
                                 except Exception as e:
-                                    logger.warn(
+                                    logger.warning(
                                         "Exception",
                                         extra={
                                             "props": {
@@ -633,7 +652,7 @@ async def serve_request(
                                         subject=generate_subject("activation"),
                                     )
                                 except Exception as e:
-                                    logger.warn(
+                                    logger.warning(
                                         "Exception",
                                         extra={
                                             "props": {
@@ -785,9 +804,15 @@ async def serve_request(
                         new_resource_payload_data = dict(
                             remove_none(new_resource_payload_data)
                         )
-
-                    resource_obj.payload = core.Payload(**record.attributes["payload"])
-                    resource_obj.payload.body = record.shortname + ".json"
+                    resource_obj.payload = core.Payload(
+                        content_type=record.attributes["payload"].get("content_type"),
+                        schema_shortname=record.attributes["payload"].get(
+                            "schema_shortname",
+                            old_resource_obj.payload.schema_shortname or
+                            None
+                        ),
+                        body=record.shortname + ".json"
+                    )
                     new_version_flattend.pop("payload.body", None)
                     new_version_flattend.update(
                         flatten_dict({"payload.body": new_resource_payload_data})
@@ -1670,9 +1695,13 @@ async def retrieve_entry_meta(
     subpath: str = Path(..., regex=regex.SUBPATH),
     shortname: str = Path(..., regex=regex.SHORTNAME),
     retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
+
+    if subpath == settings.root_subpath_mw:
+        subpath = "/"
 
     await plugin_manager.before_action(
         core.Event(
@@ -1722,12 +1751,25 @@ async def retrieve_entry_meta(
             ),
         )
 
+    attachments = {}
+    entry_path = (
+        settings.spaces_folder
+        / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
+    )
+    if retrieve_attachments:
+        attachments = await repository.get_entry_attachments(
+            subpath=subpath,
+            attachments_path=entry_path,
+            branch_name=branch_name,
+            retrieve_json_payload=retrieve_json_payload,
+        )
+
     if not retrieve_json_payload or (
         not meta.payload or meta.payload.content_type != ContentType.json
     ):
         # TODO
         # include locked before returning the dictionary
-        return meta.dict(exclude_none=True)
+        return {**meta.dict(exclude_none=True), "attachments": attachments}
 
     payload_body = db.load_resource_payload(
         space_name=space_name,
@@ -1759,7 +1801,7 @@ async def retrieve_entry_meta(
     )
     # TODO
     # include locked before returning the dictionary
-    return meta.dict(exclude_none=True)
+    return {**meta.dict(exclude_none=True), "attachments": attachments}
 
 
 # @router.post("/reload-redis-data", response_model_exclude_none=True)

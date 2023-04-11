@@ -1,18 +1,15 @@
 <script>
   import spaces, { getSpaces } from "../_stores/spaces.js";
-  import { active_entry } from "../_stores/active_entry.js";
   import { _ } from "../../../i18n/index.js";
   import { status_line } from "../_stores/status_line.js";
-  import { ListGroup } from "sveltestrap";
   import { slide } from "svelte/transition";
   import { dmartSpaces } from "../../../dmart.js";
   import { toastPushSuccess } from "../../../utils.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
   import SchemaFormModal from "./SchemaFormModal.svelte";
   import SidebarSpaces from "./SidebarSpaces.svelte";
+  import { Collapse, Navbar, NavbarToggler } from "sveltestrap";
 
-  let headHeight;
-  let footHeight;
   let props = [];
   let popCreateSpaceModal = false;
   let popCreateSchemaModal = false;
@@ -40,6 +37,22 @@
       popCreateSpaceModal = false;
     }
   }
+
+  let isOpen = false;
+  function handleUpdate(event) {
+    isOpen = event.detail.isOpen;
+  }
+  let subpaths = $spaces.children ? [...$spaces.children] : [];
+  $: {
+    async function refreshSidebar() {
+      await getSpaces();
+      subpaths = $spaces.children ? [...$spaces.children] : [];
+    }
+
+    if ($spaces.children === undefined) {
+      refreshSidebar();
+    }
+  }
 </script>
 
 {#key props}
@@ -51,39 +64,48 @@
   <SchemaFormModal {props} bind:open={popCreateSchemaModal} />
 {/key}
 
-<div
-  class="no-bullets scroller pe-0 w-100"
-  style="height: calc(100% - {headHeight +
-    footHeight}px); overflow: hidden auto;"
+<Navbar
+  container="fuild"
+  color="light"
+  light
+  expand="md"
+  class="w-100 rounded-3"
+  style="overflow-y: auto;overflow-x: hidden;"
 >
-  <ListGroup flush class="w-100">
-    {#each $spaces.children as child (child.uuid)}
-      <div transition:slide={{ duration: 400 }}>
-        <SidebarSpaces {child} />
-      </div>
-    {/each}
-  </ListGroup>
-</div>
-<div class="w-100" bind:clientHeight={footHeight}>
-  {#if $active_entry.data}
-    <hr class="my-0" />
-    <p class="lh-1 my-0">
-      <small>
-        <span class="text-muted">{$_("path")}:</span>
-        {$active_entry.data.subpath}/{$active_entry.data.shortname} <br />
-        <span class="text-muted">{$_("displayname")}:</span>
-        {$active_entry.data.displayname} <br />
-        <span class="text-muted">{$_("content_type")}:</span>
-        {$active_entry?.data?.attributes?.payload?.content_type?.split(
-          ";"
-        )[0] || "uknown"}<br />
-        <span class="text-muted">{$_("schema_shortname")}:</span>
-        {$active_entry?.data?.attributes?.payload?.schema_shortname || "uknown"}
-      </small>
-    </p>
-  {/if}
+  <NavbarToggler on:click={() => (isOpen = !isOpen)} />
+  <Collapse
+    class="px-0 py-0"
+    {isOpen}
+    navbar
+    expand="md"
+    on:update={handleUpdate}
+  >
+    <ul class="px-0 w-100 px-1">
+      {#each subpaths as child (child.uuid + Math.round(Math.random() * 10000).toString())}
+        <li transition:slide={{ duration: 400 }}>
+          <SidebarSpaces {child} />
+        </li>
+        <hr style="margin-top: 4px;margin-bottom: 4px;" />
+      {/each}
+    </ul>
+  </Collapse>
+</Navbar>
+<div class="w-100">
   {#if $status_line}
     <hr class="my-1" />
     {@html $status_line}
   {/if}
 </div>
+
+<style>
+  ul {
+    list-style: none;
+  }
+
+  li:hover {
+    z-index: 1;
+    color: #495057;
+    text-decoration: none;
+    background-color: #f8f9fa;
+  }
+</style>

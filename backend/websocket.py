@@ -4,6 +4,7 @@ from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect, status, Reque
 from utils.jwt import decode_jwt
 import asyncio
 from hypercorn.config import Config
+from utils.logger import changeLogFile, logging_schema
 from utils.settings import settings
 from hypercorn.asyncio import serve
 from models.enums import Status as ResponseStatus
@@ -188,11 +189,14 @@ async def service_info():
         }
     )
 
-
 if __name__ == "__main__":
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.websocket_port}"]
-    config.errorlog = logger
     config.backlog = 200
-    config.logconfig = "./json_log.ini"
+
+    changeLogFile(settings.ws_log_file)
+    config.logconfig_dict = logging_schema
+    config.errorlog = logger
+    config.accesslog = logger
+
     asyncio.run(serve(app, config))  # type: ignore
