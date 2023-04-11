@@ -907,6 +907,11 @@ class RedisServices(object):
     async def get_doc_by_id(self, doc_id: str) -> dict:
         try:
             return await self.client.json().get(name=doc_id)
+        except RuntimeError: # Solve Pytest error: event loop is closed
+            try:
+                return await self.client.json().get(name=doc_id)
+            except:
+                return {}
         except:
             return {}
 
