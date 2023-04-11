@@ -7,7 +7,19 @@
   import Notifications from "svelte-notifications";
   import { getSpaces } from "./_stores/spaces";
   import Header from "./_components/Header.svelte";
-  import Sidebar from "./_components/Sidebar.svelte";
+  import SidebarDashboard from "./_components/SidebarDashboard.svelte";
+  import SidebarQaTool from "./_components/SidebarQATool.svelte";
+  import { active_section } from "./_stores/active_section.js";
+
+  $: {
+    if (window.location.pathname.includes("dashboard")) {
+      active_section.set("dashboard");
+    } else if (window.location.pathname.includes("qatool")) {
+      active_section.set("qatool");
+    } else if (window.location.pathname.includes("events")) {
+      active_section.set("events");
+    }
+  }
 
   let init = getSpaces();
 </script>
@@ -35,8 +47,17 @@
           <Col
             sm="2"
             class="d-flex flex-column justify-content-between fixed-size border border-warning bg-light"
-            ><Sidebar /></Col
           >
+            {#if $active_section === "dashboard"}
+              <SidebarDashboard />
+            {/if}
+            {#if $active_section === "qatool"}
+              <SidebarQaTool />
+            {/if}
+            {#if $active_section === "events"}
+              <SidebarQaTool />
+            {/if}
+          </Col>
 
           <Col sm="10" class="fixed-size border border-info"><slot /></Col>
         </Row>
