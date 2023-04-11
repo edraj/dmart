@@ -19,7 +19,6 @@
     json: data,
     text: undefined,
   };
-  $: console.log("contents changed:", onError);
 
   function handleChange(updatedContent, previousContent, patchResult) {
     // content is an object { json: JSONData } | { text: string }

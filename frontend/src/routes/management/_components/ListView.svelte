@@ -2,28 +2,17 @@
   import { status_line } from "../_stores/status_line.js";
   import VirtualList from "svelte-tiny-virtual-list";
   import InfiniteLoading from "svelte-infinite-loading";
-  import {
-    dmartCreateContent,
-    dmartGetSchemas,
-    dmartRequest,
-  } from "../../../dmart.js";
+  import { dmartManContent, dmartRequest } from "../../../dmart.js";
   import { onDestroy } from "svelte";
-  import { dmartEntry, dmartQuery } from "../../../dmart.js";
-  import ContentJsonEditor from "./ContentJsonEditor.svelte";
+  import { dmartQuery } from "../../../dmart.js";
   import { toastPushSuccess, toastPushFail } from "../../../utils.js";
-  import "bootstrap";
-  import Fa from "sveltejs-fontawesome";
-  import { faPlusSquare } from "@fortawesome/free-regular-svg-icons";
-  import {
-    Button,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    ModalHeader,
-  } from "sveltestrap";
-  import { Form, FormGroup, Label, Input } from "sveltestrap";
+  import { Breadcrumb, BreadcrumbItem } from "sveltestrap";
   import { createAjvValidator, Mode } from "svelte-jsoneditor";
   import ContentEditSection from "./ContentEditSection.svelte";
+  import {
+    triggerRefreshList,
+    triggerSearchList,
+  } from "../_stores/trigger_refresh.js";
 
   let showContentEditSection = false;
   let shortname = "";
@@ -31,6 +20,11 @@
     json: {},
     text: undefined,
   };
+  let errorContent = {
+    json: {},
+    text: undefined,
+  };
+  let isError = false;
   let metaContentAttachement = {};
   let bodyContent = {
     json: {},
@@ -52,10 +46,10 @@
 
   onDestroy(() => status_line.set(""));
   export let query;
+
   const base_query = { ...query };
   export let cols;
   export let details_split = 0;
-  export let clickable = false;
   export let filterable = false;
 
   let total;
@@ -72,13 +66,6 @@
   };
   let infiniteId = Symbol();
 
-  function cleanUpSchema(obj) {
-    for (let prop in obj) {
-      if (prop === "comment") delete obj[prop];
-      else if (typeof obj[prop] === "object") cleanUpSchema(obj[prop]);
-    }
-  }
-
   function handleChange(updatedContent, previousContent, patchResult) {
     const v = patchResult.contentErrors.validationErrors;
     if (v === undefined || v.length === 0) {
@@ -86,28 +73,6 @@
     } else {
       isSchemaValidated = false;
     }
-  }
-
-  // TODO TBRemoved
-  async function fetchSearchKeys() {
-    if (records.length === 0) {
-      search.options = [];
-    }
-
-    await dmartGetSchemas(query.space_name, schema_shortname)
-      .then((json) => {
-        const schema = json.records[0].attributes["payload"].body;
-        search.options = Object.keys(schema["properties"]);
-        cleanUpSchema(schema.properties);
-        validator = createAjvValidator({ schema });
-        contentSchema = {
-          json: schema,
-          text: undefined,
-        };
-      })
-      .catch((e) => {
-        console.log(e);
-      });
   }
 
   async function infiniteHandler({ detail: { loaded, complete, error } }) {
@@ -129,7 +94,7 @@
               }
               if (lastbatch) {
                 page += 1;
-                items = [...items, ...records];
+                items = [...items, ...json.records];
                 loaded();
               } else {
                 complete();
@@ -170,6 +135,12 @@
   }
 
   const handleSave = async () => {
+    if (!isSchemaValidated) {
+      alert("The content does is not validated agains the schema");
+      return;
+    }
+    isError = false;
+
     const metaData = metaContent.json
       ? { ...metaContent.json }
       : JSON.parse(metaContent.text);
@@ -188,6 +159,8 @@
       records[currentItem - 1] = metaData;
     } else {
       toastPushFail();
+      errorContent.json = response.error;
+      isError = true;
     }
   };
 
@@ -203,33 +176,29 @@
     infiniteId = Symbol();
   }
 
-  let delay;
-  function handleSearchInput(event) {
-    clearTimeout(delay);
-    delay = setTimeout(async () => {
-      const target = event.target.value;
-      query =
-        target === ""
-          ? base_query
-          : {
-              request_type: "query",
-              space_name: query.space_name,
-              type: "search",
-              subpath: query.subpath,
-              retrieve_json_payload: true,
-              filter_schema_names: [
-                search.selected === "" ? "meta" : schema_shortname,
-              ],
-              search:
-                search.selected === ""
-                  ? `${target}*`
-                  : `@${search.selected}:${target}*`,
-              limit: 50,
-              offset: 50,
-            };
-      // await fetchRecords(q);
-      refreshList();
-    }, 500);
+  function handleSearchInput(target) {
+    query =
+      target === ""
+        ? base_query
+        : {
+            request_type: "query",
+            space_name: query.space_name,
+            type: "search",
+            subpath: query.subpath,
+            retrieve_json_payload: true,
+            filter_schema_names: [
+              search.selected === "" ? "meta" : schema_shortname,
+            ],
+            search: target ? `${target}` : "",
+            // search:
+            //   search.selected === ""
+            //     ? `${target}*`
+            //     : `@${search.selected}:${target}*`,
+            limit: 50,
+            offset: 50,
+          };
+    // await fetchRecords(q);
+    refreshList();
   }
 
   let height;
@@ -243,7 +212,7 @@
     e.preventDefault();
 
     if (isSchemaValidated) {
-      const response = await dmartCreateContent(
+      const response = await dmartManContent(
         base_query.space_name,
         base_query.subpath,
         contentShortname === "" ? "auto" : contentShortname,
@@ -268,96 +237,37 @@
   $: {
     refJsonEditor?.expand(() => false);
   }
+  $: {
+    if ($triggerRefreshList) {
+      refreshList();
+    }
+  }
+  $: triggerSearchList && handleSearchInput($triggerSearchList);
+  $: {
+    if (!showContentEditSection) {
+      shortname = "";
+    }
+  }
 </script>
 
 <svelte:window bind:innerHeight={height} />
 
-<Modal isOpen={open} {toggle} size={"lg"}>
-  <ModalHeader />
-  <Form on:submit={async (e) => await handleCreateContentSubmit(e)}>
-    <ModalBody>
-      <FormGroup>
-        <Label>Shorname</Label>
-        <Input placeholder="Shortname..." bind:value={contentShortname} />
-        <hr />
-
-        <Label>Content</Label>
-        <ContentJsonEditor
-          bind:content
-          {validator}
-          bind:isSchemaValidated
-          handleSave={null}
-          onChange={handleChange}
-        />
-
-        <hr />
-
-        <Label>Schema</Label>
-        <ContentJsonEditor
-          bind:self={refJsonEditor}
-          content={contentSchema}
-          readOnly={true}
-          mode={Mode.tree}
-        />
-      </FormGroup>
-    </ModalBody>
-    <ModalFooter>
-      <Button type="button" color="secondary" on:click={() => (open = false)}
-        >cancel</Button
-      >
-      <Button type="submit" color="primary">Submit</Button>
-    </ModalFooter>
-  </Form>
-</Modal>
-
+{#if filterable}
+  <div class="input-group">
+    <Breadcrumb class="mt-3 px-3">
+      <BreadcrumbItem>{query.space_name}</BreadcrumbItem>
+      {#each query.subpath.split("/") as s}
+        {#if s !== ""}
+          <BreadcrumbItem>{s}</BreadcrumbItem>
+        {/if}
+      {/each}
+      {#if shortname}
+        <BreadcrumbItem>{shortname}</BreadcrumbItem>
+      {/if}
+    </Breadcrumb>
+  </div>
+{/if}
 {#if !showContentEditSection}
-  {#if filterable}
-    <div class="input-group mb-3">
-      <!-- <button
-        class="btn btn-outline-secondary dropdown-toggle"
-        type="button"
-        data-bs-toggle="dropdown"
-        aria-expanded="false">Filter</button
-      > -->
-      <!-- <ul class="dropdown-menu">
-        <li>
-          <p
-            class="dropdown-item"
-            style="cursor: pointer;"
-            on:click={() => handleSearchSelection("")}
-          >
-            Anything
-          </p>
-        </li>
-        {#each search.options as option (option)}
-          <li>
-            <p
-              class="dropdown-item"
-              style="cursor: pointer;"
-              on:click={() => handleSearchSelection(option)}
-            >
-              {option}
-            </p>
-          </li>
-        {/each}
-      </ul> -->
-      <input
-        on:input={handleSearchInput}
-        placeholder="{search.selected}..."
-        type="text"
-        class="form-control"
-        aria-label="Text input with dropdown button"
-      />
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <div
-        style="cursor: pointer;"
-        on:click={async () => await handleCreateContent()}
-      >
-        <Fa icon={faPlusSquare} size={"3x"} color={"grey"} />
-      </div>
-    </div>
-  {/if}
-
   <div class="list">
     <VirtualList
       height={height - 105}
@@ -375,45 +285,18 @@
         style={style.replaceAll("left:0;", "")}
         class="my-row"
         on:click={async () => {
-          if (!clickable || index === 0) {
-            return;
-          }
-
-          currentItem = index;
-          showContentEditSection = true;
           const record = { ...records[index - 1] };
-
           shortname = record.shortname;
-          const json = { ...record };
-          metaContentAttachement = json.attachments;
-
-          delete json.attachments;
-          metaContent = {
-            json,
-            text: undefined,
-          };
-
-          if (record?.attributes?.payload?.body) {
-            bodyContent = {
-              json: await dmartEntry(
-                record.resource_type,
-                query.space_name,
-                record.subpath,
-                shortname,
-                schema_shortname,
-                "json"
-              ),
-              text: undefined,
-            };
-          }
-
-          historyQuery = {
-            type: "history",
-            space_name: query.space_name,
-            filter_shortnames: [shortname],
-            subpath: record.subpath,
-            retrieve_json_payload: true,
-          };
+          schema_shortname = record.attributes?.payload?.schema_shortname;
+          window.history.replaceState(
+            history.state,
+            "",
+            `/management/dashboard/${
+              query.space_name
+            }/${record.subpath.replaceAll("/", "-")}/${shortname}/${
+              record.resource_type
+            }/${schema_shortname}`
+          );
         }}
         class:current={currentItem == index}
       >
@@ -425,7 +308,10 @@
           {/each}
         {:else}
           {#each Object.keys(cols) as col}
-            <div class="my-cell" style=" width: {cols[col].width};">
+            <div
+              class="my-cell hide-scroll"
+              style=" width: {cols[col].width};overflow: auto;"
+            >
               {value(cols[col].path.split("."), items[index], cols[col].type)}
             </div>
           {/each}
@@ -465,6 +351,10 @@
     bind:records
     bind:bodyContent
     bind:metaContent
+    bind:errorContent
+    bind:validator
+    bind:isSchemaValidated
+    bind:isError
     bind:metaContentAttachement
     bind:historyQuery
     bind:showContentEditSection
@@ -485,15 +375,16 @@
     margin-top: 8px;
     margin-left: 8px;
   }*/
-  hr {
+  /* hr {
     color: green;
     background-color: blue;
     height: 5px;
     user-select: none;
     margin: 0;
-    /*position: absolute;*/
-    /*border: solid 1px gray;*/
-  }
+    position: absolute;
+    border: solid 1px gray;
+  } 
+  */
   :global(.virtual-list-wrapper) {
     margin: 0 0px;
     background: #fff;
@@ -510,7 +401,7 @@
     padding: 0 15px;
     border-bottom: 1px solid #eee;
     box-sizing: border-box;
-    line-height: 25px;
+    height: 30px;
     font-weight: 500;
     background: #fff;
     display: flex;
@@ -529,5 +420,16 @@
   .my-cell {
     display: inline;
     /*border: 1px solid orange;*/
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .hide-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .hide-scroll {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
   }
 </style>

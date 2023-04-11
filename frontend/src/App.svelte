@@ -2,6 +2,8 @@
   import { Router, createRouter } from "@roxi/routify";
   import routes from "../.routify/routes.default.js";
   import { SvelteToast } from "@zerodevx/svelte-toast";
+  import "bootstrap";
+  import "svelte-bootstrap-icons";
 
   const router = createRouter({ routes });
   const options = {};

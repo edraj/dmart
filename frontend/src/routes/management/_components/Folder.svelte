@@ -1,11 +1,19 @@
 <script>
-  import { goto, isActive } from "@roxi/routify";
-  import { dmartEntries, dmartFolder, dmartRequest } from "../../../dmart.js";
+  import {
+    triggerRefreshList,
+    triggerSearchList,
+  } from "./../_stores/trigger_refresh.js";
+  import {
+    dmartManContent,
+    dmartEntries,
+    dmartCreateFolder,
+    dmartGetSchemas,
+    dmartRequest,
+    dmartMoveFolder,
+  } from "../../../dmart.js";
   import selectedSubpath from "../_stores/selected_subpath.js";
   import { entries } from "../_stores/entries.js";
-  import { contents } from "../_stores/contents.js";
-  import spaces, { getSpaces } from "../_stores/spaces.js";
-  import DynamicFormModal from "./DynamicFormModal.svelte";
+  import spaces from "../_stores/spaces.js";
   import { _ } from "../../../i18n/index.js";
   import { slide } from "svelte/transition";
   import Folder from "./Folder.svelte";
@@ -16,22 +24,33 @@
     faEdit,
   } from "@fortawesome/free-regular-svg-icons";
   import { toastPushFail, toastPushSuccess } from "../../../utils.js";
-  import JsonEditorModal from "./JsonEditorModal.svelte";
+  import {
+    Form,
+    FormGroup,
+    Button,
+    Modal,
+    ModalBody,
+    ModalFooter,
+    ModalHeader,
+    Label,
+    Input,
+  } from "sveltestrap";
+  import ContentJsonEditor from "./ContentJsonEditor.svelte";
+  import { Mode } from "svelte-jsoneditor";
 
   let expanded = false;
   export let data;
-  let children_subpath;
+  export let parent_data;
+  let folderContent = { json: {}, text: undefined };
 
-  $: {
-    children_subpath = data.subpath + "/" + data.shortname;
-  }
-  async function toggle() {
-    if (!$isActive("/management/dashboard")) {
-      $goto("/management/dashboard");
-    }
-    selectedSubpath.set(data.subpath);
-    expanded = !expanded;
-    if (!$entries[children_subpath]) {
+  async function updateList(event = "create") {
+    const idxSpace = $spaces.children.findIndex(
+      (child) => child.shortname === data.space_name
+    );
+    let r = $spaces.children[idxSpace];
+    const s = data.subpath.replace("/", "").split("/");
+
+    if (event === "create") {
       const _entries = await dmartEntries(
         data.space_name,
         data.subpath,
@@ -40,93 +59,105 @@
         "search"
       );
       if (_entries.length === 0) {
-        contents.set({
-          type: "search",
-          search: "",
-          retrieve_attachments: true,
-          space_name: data.space_name,
-          subpath: data.subpath,
-        });
         return;
       }
+
       _entries.forEach((entry) => {
-        entry.subpath = `${entry.subpath}/${entry.shortname}`;
+        if (entry.subpath.startsWith("/")) {
+          entry.subpath = `${entry.subpath}/${entry.shortname}`;
+        } else {
+          entry.subpath = `/${entry.subpath}/${entry.shortname}`;
+        }
       });
 
-      const idxSpace = $spaces.children.findIndex(
-        (child) => child.shortname === data.space_name
-      );
-      const idxSubpath = $spaces.children[idxSpace].subpaths.findIndex(
-        (child) => child.shortname === data.shortname
-      );
-      data["subpaths"] = _entries;
-      $spaces.children[idxSpace].subpaths[idxSubpath]["subpaths"] = _entries;
-      $spaces.children[idxSpace].subpaths[idxSubpath][
-        "subpath"
-      ] += `/${data.shortname}`;
-
-      spaces.set({
-        ...$spaces,
-        children: $spaces.children,
+      data["subpaths"] = _entries
+        .map((e) => {
+          if (
+            e.subpath.split("/").length ===
+            data.subpath.split("/").length + 1
+          ) {
+            return e;
+          }
+          return null;
+        })
+        .filter((e) => e != null);
+      s.forEach((subpath) => {
+        const idx = r.subpaths.findIndex(
+          (child) => child.shortname === subpath
+        );
+        r = r.subpaths[idx];
       });
+
+      r["subpaths"] = _entries;
+      r["subpath"] = data.subpath;
+    } else if (event === "delete") {
+      r = r.subpaths;
+      s.pop();
+      s.forEach((subpath) => {
+        const idx = r.findIndex((child) => child.shortname === subpath);
+        r = r[idx].subpaths;
+      });
+      const idx = r.findIndex((child) => child.shortname === data.shortname);
+      r.splice(idx, 1);
+      parent_data.subpaths = r;
     }
+    spaces.set({
+      ...$spaces,
+      children: $spaces.children,
+    });
   }
 
-  let props = [];
+  async function toggle() {
+    triggerSearchList.set("");
+    selectedSubpath.set(data.uuid);
+    expanded = !expanded;
+    if (!$entries[data.shortname]) {
+      await updateList();
+    }
+    let subpath = data.subpath;
+    if (subpath.startsWith("/")) {
+      subpath = subpath.substring(1);
+    }
+    subpath = subpath.replaceAll("/", "-");
+    window.history.replaceState(
+      history.state,
+      "",
+      `/management/dashboard/${data.space_name}/${subpath}`
+    );
+  }
+
   let entryCreateModal = false;
   let modalFlag = "create";
-  async function handleModelSubmit(form) {
-    const response = await dmartFolder(
-      data.space_name,
-      data.subpath,
-      form[0].value,
-      form[1].value
-    );
-    if (response.error) {
-      alert(response.error.message);
-    } else {
-      toastPushSuccess();
-      await getSpaces();
-      entryCreateModal = false;
+  let entryType = "folder";
+  let contentShortname = "";
+  let content = {
+    json: {},
+    text: undefined,
+  };
+  let isSchemaValidated = false;
+  let schemas = [];
+  let selectedSchema;
+
+  async function handleSubpathMan(flag) {
+    modalFlag = flag;
+    const r = await dmartGetSchemas(data.space_name);
+    schemas = r.records.map((e) => e.shortname);
+    if (flag === "update") {
+      contentShortname = data.shortname;
+      const d = { ...data };
+      delete d.shortname;
+      delete d.subpath;
+      delete d.type;
+      delete d.subpaths;
+      delete d.attachments;
+      delete d.attributes.created_at;
+      delete d.attributes.updated_at;
+      folderContent.json = d;
     }
-  }
-  function handleSubpathCreate() {
-    props = [
-      { label: "Schema Shortname", name: "schema_shortname", value: "" },
-      { label: "Shortname", name: "shortname", value: "" },
-    ];
-    modalFlag = "create";
     entryCreateModal = true;
   }
 
-  let subpathUpdateContent = { json: data, text: undefined };
-  let isSubpathUpdateModalOpen = false;
-  async function handleSubpathUpdate(content) {
-    const record = content.json ?? JSON.parse(content.text);
-    delete record.space_name;
-    delete record.type;
-    delete record.uuid;
-
-    const arr = record.subpath.split("/");
-    arr[arr.length - 1] = "";
-    const parentSubpath = arr.join("/");
-
-    const request = {
-      space_name: data.space_name,
-      request_type: "update",
-      records: [{ ...record, subpath: parentSubpath }],
-    };
-    const response = await dmartRequest("managed/request", request);
-    if (response.error) {
-      alert(response.error.message);
-    } else {
-      toastPushSuccess();
-      await getSpaces();
-      isSubpathUpdateModalOpen = false;
-    }
-  }
   async function handleSubpathDelete() {
-    console.log({ data });
     // const space_name = child.shortname;
     if (
       confirm(`Are you sure want to delete ${data.shortname} subpath`) === false
@@ -154,102 +185,252 @@
     const response = await dmartRequest("managed/request", request);
     if (response.status === "success") {
       toastPushSuccess();
-      await getSpaces();
+      updateList("delete");
     } else {
       toastPushFail();
     }
   }
 
   let displayActionMenu = false;
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    let response;
+    if (entryType === "folder") {
+      if (modalFlag === "create") {
+        response = await dmartCreateFolder(
+          data.space_name,
+          data.subpath,
+          selectedSchema,
+          contentShortname
+        );
+      } else if (modalFlag === "update") {
+        const i = data.subpath.lastIndexOf("/");
+        const _subpath = data.subpath.substring(0, i);
+        if (data.shortname !== contentShortname)
+          response = await dmartMoveFolder(
+            data.space_name,
+            _subpath,
+            data.shortname,
+            contentShortname
+          );
+      }
+    } else if (entryType === "content") {
+      const body = content.json
+        ? { ...content.json }
+        : JSON.parse(content.text);
+      response = await dmartManContent(
+        data.space_name,
+        data.subpath,
+        contentShortname === "" ? "auto" : contentShortname,
+        selectedSchema,
+        body,
+        modalFlag
+      );
+    }
+    if (response.status === "success") {
+      toastPushSuccess();
+      triggerRefreshList.set(true);
+      contentShortname = "";
+      await updateList();
+    } else {
+      toastPushFail();
+    }
+  }
+
+  async function handleFolderUpdate() {
+    const payload = folderContent.json
+      ? { ...folderContent.json }
+      : JSON.parse(folderContent.text);
+
+    const arr = data.subpath.split("/");
+    arr[arr.length - 1] = "";
+    const parentSubpath = arr.join("/");
+
+    const request = {
+      space_name: data.space_name,
+      request_type: "update",
+      records: [
+        {
+          ...payload,
+          shortname: data.shortname,
+          subpath: parentSubpath,
+        },
+      ],
+    };
+    const response = await dmartRequest("managed/request", request);
+    if (response.status === "success") {
+      data = { ...data, ...payload };
+      toastPushSuccess();
+    } else {
+      toastPushFail();
+    }
+  }
 </script>
 
-{#key props}
-  <DynamicFormModal {props} bind:open={entryCreateModal} {handleModelSubmit} />
-{/key}
+<Modal
+  isOpen={entryCreateModal}
+  toggle={() => {
+    entryCreateModal = !entryCreateModal;
+    contentShortname = "";
+  }}
+  size={"lg"}
+>
+  <ModalHeader />
+  <Form on:submit={async (e) => await handleSubmit(e)}>
+    <ModalBody>
+      <FormGroup>
+        {#if modalFlag === "create"}
+          <Label>Type</Label>
+          <Input bind:value={entryType} type="select">
+            <option value="folder">Folder</option>
+            <option value="content">Content</option>
+          </Input>
+          <Label class="mt-3">Schema</Label>
+          <Input bind:value={selectedSchema} type="select">
+            <option value={""}>{"None"}</option>
+            {#each schemas as schema}
+              <option value={schema}>{schema}</option>
+            {/each}
+          </Input>
+        {/if}
+        {#if entryType === "content" && modalFlag === "create"}
+          <Label class="mt-3">Shorname</Label>
+          <Input placeholder="Shortname..." bind:value={contentShortname} />
+          <hr />
 
-<JsonEditorModal
+          <Label class="mt-3">Content</Label>
+          <ContentJsonEditor
+            bind:content
+            bind:isSchemaValidated
+            handleSave={null}
+          />
+          <!-- onChange={handleChange}
+              {validator} -->
+
+          <hr />
+
+          <!-- <Label>Schema</Label>
+            <ContentJsonEditor
+              bind:self={refJsonEditor}
+              content={contentSchema}
+              readOnly={true}
+              mode={Mode.tree}
+            /> -->
+        {/if}
+        {#if entryType === "folder"}
+          <Label class="mt-3">Shortname</Label>
+          <Input
+            placeholder="Shortname..."
+            bind:value={contentShortname}
+            required
+          />
+          {#if modalFlag === "update"}
+            <Label class="mt-3">Content</Label>
+            <ContentJsonEditor
+              bind:content={folderContent}
+              handleSave={async () => handleFolderUpdate()}
+              mode={Mode.tree}
+            />
+          {/if}
+        {/if}
+      </FormGroup>
+    </ModalBody>
+    <ModalFooter>
+      <Button
+        type="button"
+        color="secondary"
+        on:click={() => {
+          entryCreateModal = false;
+          contentShortname = "";
+        }}>cancel</Button
+      >
+      <Button type="submit" color="primary">Submit</Button>
+    </ModalFooter>
+  </Form>
+</Modal>
+
+<!-- <DynamicFormModal {props} bind:open={entryCreateModal} {handleModelSubmit} /> -->
+
+<!-- <JsonEditorModal
   bind:open={isSubpathUpdateModalOpen}
   handleModelSubmit={handleSubpathUpdate}
   bind:content={subpathUpdateContent}
-/>
+/> -->
 
-<div>
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-mouse-events-have-key-events -->
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-mouse-events-have-key-events -->
+<div
+  transition:slide={{ duration: 400 }}
+  class="d-flex row justify-content-between folder position-relative mt-1 ps-2 
+  {$selectedSubpath === data.uuid ? 'expanded' : ''}"
+  on:mouseover={(e) => (displayActionMenu = true)}
+  on:mouseleave={(e) => (displayActionMenu = false)}
+  on:click={toggle}
+>
+  <div class="col-12" style="overflow-wrap: anywhere;">
+    {data?.attributes?.displayname?.en ?? data.shortname}
+  </div>
+
   <div
-    transition:slide={{ duration: 400 }}
-    class="d-flex row folder position-relative mt-1 ps-2 {$selectedSubpath ===
-    data.subpath
-      ? 'expanded'
-      : ''}"
-    on:mouseover={(e) => (displayActionMenu = true)}
-    on:mouseleave={(e) => (displayActionMenu = false)}
+    class="d-flex col justify-content-end"
+    style="position: absolute;z-index: 1;"
   >
-    <div class="col-7" on:click={toggle}>
-      {data?.attributes?.displayname?.en ?? data.shortname}
-    </div>
-
     <div
-      class="col-1"
-      style="cursor: pointer;"
+      style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
-      on:click={() => handleSubpathCreate()}
+      on:click={(event) => {
+        event.stopPropagation();
+        handleSubpathMan("create");
+      }}
     >
       <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
     </div>
     <div
-      class="col-1"
-      style="cursor: pointer;"
+      class="px-1"
+      style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
-      on:click={() => (isSubpathUpdateModalOpen = true)}
+      on:click={(event) => {
+        event.stopPropagation();
+        handleSubpathMan("update");
+      }}
     >
       <Fa icon={faEdit} size="sm" color="dimgrey" />
     </div>
     <div
-      class="col-1"
-      style="cursor: pointer;"
+      style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
-      on:click={async () => await handleSubpathDelete()}
+      on:click={async (event) => {
+        event.stopPropagation();
+        await handleSubpathDelete();
+      }}
     >
       <Fa icon={faTrashCan} size="sm" color="dimgrey" />
     </div>
-
-    <span class="toolbar top-0 end-0 position-absolute px-0" />
   </div>
 </div>
 
 {#if data.subpaths}
-  {#each data.subpaths as subapth (subapth.shortname + subapth.uuid)}
+  {#each data.subpaths as subpath (subpath.shortname + subpath.uuid)}
     <div
       hidden={!expanded}
       style="padding-left: 5px;"
       transition:slide={{ duration: 400 }}
     >
-      <Folder data={{ space_name: data.space_name, ...subapth }} />
+      <Folder
+        data={{ space_name: data.space_name, ...subpath }}
+        bind:parent_data={data}
+      />
     </div>
   {/each}
 {/if}
 
-<!-- {#if expanded && $entries[children_subpath]}
-  <ul class="py-1 ps-1 ms-2 border-start">
-    {#each $entries[children_subpath] as child (children_subpath + child.data.shortname)}
-      <li>
-        {#if child.data.resource_type === "folder"}
-          <svelte:self data={child.data} />
-        {:else}
-          <File data={child.data} />
-        {/if}
-      </li>
-    {/each}
-  </ul>
-{/if} -->
 <style>
   .folder {
     /*font-weight: bold;*/
     cursor: pointer;
     display: list-item;
     list-style: none;
-    border-top: thin dotted grey;
   }
 
   .folder:hover {
@@ -262,14 +443,5 @@
   .expanded {
     background-color: #e8e9ea;
     border-bottom: thin dotted green;
-  }
-
-  .toolbar {
-    display: none;
-    color: brown;
-  }
-
-  .folder:hover .toolbar {
-    display: flex;
   }
 </style>

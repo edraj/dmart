@@ -34,7 +34,7 @@
 <Card class="w-25 mx-auto my-auto">
   <CardHeader class="text-center">{$_("login_to_members")}</CardHeader>
   <CardBody>
-    <Form on:submit={handleSubmit}>
+    <Form on:submit={handleSubmit} autocomplete="on">
       <FormGroup>
         <Label for="username">{$_("username")}</Label>
         <Input type="text" name="username" bind:value={username} />
