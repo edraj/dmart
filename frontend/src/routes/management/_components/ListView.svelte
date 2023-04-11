@@ -7,14 +7,16 @@
   import { dmartQuery } from "../../../dmart.js";
   import { toastPushSuccess, toastPushFail } from "../../../utils.js";
   import { Breadcrumb, BreadcrumbItem } from "sveltestrap";
-  import { createAjvValidator, Mode } from "svelte-jsoneditor";
-  import ContentEditSection from "./ContentEditSection.svelte";
+  import { createAjvValidator, JSONEditor } from "svelte-jsoneditor";
+  import Fa from "sveltejs-fontawesome";
   import {
     triggerRefreshList,
     triggerSearchList,
-  } from "../_stores/trigger_refresh.js";
+  } from "../_stores/triggers.js";
+  import { active_section } from "../_stores/active_section.js";
+  import { faCaretSquareLeft } from "@fortawesome/free-regular-svg-icons";
 
-  let showContentEditSection = false;
+  let quickPreview = false;
   let shortname = "";
   let metaContent = {
     json: {},
@@ -130,7 +132,6 @@
     if (path.length > 1 && path[0].length > 0 && path[0] in data) {
       return value(path.slice(1), data[path[0]], type);
     }
-
     return "not_applicable";
   }
 
@@ -244,7 +245,7 @@
   }
   $: triggerSearchList && handleSearchInput($triggerSearchList);
   $: {
-    if (!showContentEditSection) {
+    if (!quickPreview) {
       shortname = "";
     }
   }
@@ -267,7 +268,7 @@
     </Breadcrumb>
   </div>
 {/if}
-{#if !showContentEditSection}
+{#if !quickPreview}
   <div class="list">
     <VirtualList
       height={height - 105}
@@ -286,6 +287,11 @@
         class="my-row"
         on:click={async () => {
           const record = { ...records[index - 1] };
+          if ($active_section === "events") {
+            content.json = record;
+            quickPreview = true;
+            return;
+          }
           shortname = record.shortname;
           schema_shortname = record.attributes?.payload?.schema_shortname;
           window.history.replaceState(
@@ -344,25 +350,18 @@
   </div>
 {/if}
 
-{#if showContentEditSection}
-  <ContentEditSection
-    bind:space_name={query.space_name}
-    bind:subpath={query.subpath}
-    bind:records
-    bind:bodyContent
-    bind:metaContent
-    bind:errorContent
-    bind:validator
-    bind:isSchemaValidated
-    bind:isError
-    bind:metaContentAttachement
-    bind:historyQuery
-    bind:showContentEditSection
-    {handleSave}
-    bind:currentItem
-    bind:shortname
-    bind:height
-  />
+{#if quickPreview}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <div
+    class="tab-list back-icon"
+    style="cursor: pointer;"
+    on:click={() => {
+      quickPreview = false;
+    }}
+  >
+    <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
+  </div>
+  <JSONEditor bind:content readOnly={true} />
 {/if}
 
 <style>
