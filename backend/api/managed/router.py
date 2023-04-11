@@ -2056,6 +2056,7 @@ async def cancel_lock(
             user_shortname=logged_in_user,
         )
         meta.finished_at = datetime.now()
+        meta.lock_period = (datetime.now() - meta.created_at).seconds
         await db.save(
             space_name=space_name,
             subpath=f'{subpath}/{shortname}',

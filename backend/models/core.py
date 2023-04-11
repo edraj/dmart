@@ -237,7 +237,7 @@ class Json(Attachment):
 
 class Lock(Attachment):
     finished_at: datetime | None = Field(default=None)
-    lock_period: int | None
+    lock_period: int | None = None
 
 
 class Comment(Attachment):
