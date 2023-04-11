@@ -461,6 +461,7 @@ class RedisServices(object):
                         sortable=True,
                         as_name="reporter_governorate",
                     ),
+                    NumericField("$.lock_period", sortable=True, as_name="lock_period"),
                 )
 
                 await self.create_index(
