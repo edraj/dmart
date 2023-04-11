@@ -10,6 +10,7 @@
   import SidebarDashboard from "./_components/SidebarDashboard.svelte";
   import SidebarQaTool from "./_components/SidebarQATool.svelte";
   import { active_section } from "./_stores/active_section.js";
+  import SidebarQuery from "./_components/SidebarQuery.svelte";
 
   $: {
     if (window.location.pathname.includes("dashboard")) {
@@ -56,6 +57,9 @@
             {/if}
             {#if $active_section === "events"}
               <SidebarQaTool />
+            {/if}
+            {#if $active_section === "quering"}
+              <SidebarQuery />
             {/if}
           </Col>
 

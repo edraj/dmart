@@ -53,6 +53,10 @@
       href="/management/events"
       on:click={() => ($active_section = "events")}>Events</NavLink
     >
+    <NavLink
+      href="/management/quering"
+      on:click={() => ($active_section = "quering")}>Quering</NavLink
+    >
 
     <!-- <NavLink href="/about">{$_("about")}</NavLink> -->
     <!-- <NavLink href="/contact">{$_("contact_us")}</NavLink> -->
