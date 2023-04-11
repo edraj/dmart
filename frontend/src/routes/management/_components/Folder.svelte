@@ -2,7 +2,7 @@
   import {
     triggerRefreshList,
     triggerSearchList,
-  } from "./../_stores/trigger_refresh.js";
+  } from "./../_stores/triggers.js";
   import {
     dmartManContent,
     dmartEntries,
@@ -15,7 +15,6 @@
   import { entries } from "../_stores/entries.js";
   import spaces from "../_stores/spaces.js";
   import { _ } from "../../../i18n/index.js";
-  import { slide } from "svelte/transition";
   import Folder from "./Folder.svelte";
   import Fa from "sveltejs-fontawesome";
   import {
@@ -361,7 +360,6 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
 <div
-  transition:slide={{ duration: 400 }}
   class="d-flex row justify-content-between folder position-relative mt-1 ps-2 
   {$selectedSubpath === data.uuid ? 'expanded' : ''}"
   on:mouseover={(e) => (displayActionMenu = true)}
@@ -412,11 +410,7 @@
 
 {#if data.subpaths}
   {#each data.subpaths as subpath (subpath.shortname + subpath.uuid)}
-    <div
-      hidden={!expanded}
-      style="padding-left: 5px;"
-      transition:slide={{ duration: 400 }}
-    >
+    <div hidden={!expanded} style="padding-left: 5px;">
       <Folder
         data={{ space_name: data.space_name, ...subpath }}
         bind:parent_data={data}

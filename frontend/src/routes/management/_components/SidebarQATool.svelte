@@ -2,7 +2,6 @@
   import spaces, { getSpaces } from "../_stores/spaces.js";
   import { _ } from "../../../i18n/index.js";
   import { status_line } from "../_stores/status_line.js";
-  import { slide } from "svelte/transition";
   import { dmartSpaces } from "../../../dmart.js";
   import { toastPushSuccess } from "../../../utils.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
@@ -82,8 +81,8 @@
   >
     <ul class="px-0 w-100 px-1">
       {#each subpaths as child (child.uuid + Math.round(Math.random() * 10000).toString())}
-        <li transition:slide={{ duration: 400 }}>
-          <SidebarSpaces {child} />
+        <li>
+          <SidebarSpaces {child} isSingleLevel={true} />
         </li>
         <hr style="margin-top: 4px;margin-bottom: 4px;" />
       {/each}

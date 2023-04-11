@@ -10,8 +10,9 @@
     Button,
   } from "sveltestrap";
   import signedin_user from "../management/_stores/signedin_user.js";
-  import { dmartLogin } from "../../dmart.js";
+  import { dmartLogin, dmartProfile } from "../../dmart.js";
   import { _ } from "../../i18n/index.js";
+  import dmartFetch from "../../fetch.js";
 
   let username;
   let password;
@@ -20,13 +21,16 @@
     // TBD KEFAH CHECK
     event.preventDefault();
     let resp = await dmartLogin(username, password);
-    let user = resp.records[0];
+    if (resp.status !== "success") {
+      return;
+    }
+    resp = await dmartProfile();
+    const user = resp.records[0];
     if (user.attributes?.displayname?.en) {
       user.displayname = user.attributes.displayname.en;
     } else {
       user.displayname = user.shortname;
     }
-
     signedin_user.login(user);
   }
 </script>
