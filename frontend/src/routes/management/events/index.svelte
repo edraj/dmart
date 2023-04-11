@@ -17,35 +17,29 @@
       query = {};
     }
     cols = {
-      shortname: {
-        path: "shortname",
-        title: "shortname",
+      subpath: {
+        path: "subpath",
+        title: "Subpath",
         type: "string",
         width: "25%",
       },
-      resource_type: {
-        path: "resource_type",
+      shortname: {
+        path: "shortname",
+        title: "Shortname",
+        type: "string",
+        width: "25%",
+      },
+      request: {
+        path: "attributes.request",
         title: "Resource type",
         type: "string",
         width: "15%",
       },
-      owner_shortname: {
-        path: "attributes.payload.schema_shortname",
-        title: "Schema shortname",
+      timestamp: {
+        path: "attributes.timestamp",
+        title: "Timestamp",
         type: "string",
-        width: "15%",
-      },
-      created_at: {
-        path: "attributes.created_at",
-        title: "Created At",
-        type: "string",
-        width: "15%",
-      },
-      updated_at: {
-        path: "attributes.updated_at",
-        title: "Updated At",
-        type: "string",
-        width: "15%",
+        width: "25%",
       },
     };
   });
