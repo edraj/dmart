@@ -178,6 +178,9 @@
   }
 
   function handleSearchInput(target) {
+    if (active_section !== "dashboard") {
+      return;
+    }
     query =
       target === ""
         ? base_query
