@@ -21,7 +21,7 @@ class Plugin(PluginBase):
             or not isinstance(data.resource_type, ResourceType)
             or not isinstance(data.attributes, dict)
         ):
-            logger.warn(f"invalid data at action_log")
+            logger.warning(f"invalid data at action_log")
             return
 
         class_type = getattr(
