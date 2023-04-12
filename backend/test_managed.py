@@ -8,6 +8,7 @@ from test_utils import (
     assert_code_and_status_success,
     check_unauthorized,
 )
+from utils.redis_services import RedisServices
 from utils.settings import settings
 import os
 from models.api import Query, QueryType
@@ -61,6 +62,7 @@ resources_schema_shortname = "test_schema"
 resources_csv_path = f"../sample/test/resources.csv"
 csv_num_of_records = 11
 num_of_created_entries = 0
+RedisServices.is_pytest = True
 
 dirpath = f"{settings.spaces_folder}/{DEMO_SPACE}/{subpath}"
 if os.path.exists(dirpath):

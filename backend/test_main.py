@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from fastapi import status
 
 from test_utils import assert_code_and_status_success, check_unauthorized
+from utils.redis_services import RedisServices
 # import test_managed as managed
 from utils.settings import settings
 
@@ -40,7 +41,7 @@ subpath = "nicepost"
 
 dirpath = f"{settings.spaces_folder}/{MANAGEMENT_SPACE}/{USERS_SUBPATH}/.dm/{shortname}"
 filepath = f"{dirpath}/meta.user.json"
-
+RedisServices.is_pytest = True
 # TODO: remove test case dependencies from one another
 # def test_card():
 #     response = client.get("/")
