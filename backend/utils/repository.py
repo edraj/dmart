@@ -628,6 +628,8 @@ async def get_entry_attachments(
     filter_shortnames: list | None = None,
     retrieve_json_payload: bool = False,
 ) -> dict:
+    if not attachments_path.is_dir():
+        return {}
     attachments_iterator = os.scandir(attachments_path)
     attachments_dict: dict[str, list] = {}
     for attachment_entry in attachments_iterator:
@@ -791,7 +793,7 @@ async def update_payload_validation_status(
     if not isinstance(meta_obj.payload, core.Payload) or not isinstance(
         meta_obj.payload.body, str
     ):
-        logger.warn(
+        logger.warning(
             f"Meta.payload is None at repository.update_payload_validation_status"
         )
         return

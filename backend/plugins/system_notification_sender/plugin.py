@@ -19,7 +19,7 @@ from utils.redis_services import RedisServices
 from utils.repository import _save_model, get_entry_attachments, get_group_users
 from utils.settings import settings
 from fastapi.logger import logger
-from utils.db import load, load_resource_payload, save
+from utils.db import load, load_resource_payload
 
 
 
@@ -36,10 +36,10 @@ class Plugin(PluginBase):
         """
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
-        #    logger.warn(
-        #        f"data.shortname is None and str is required at system_notification_sender"
-        #    )
-            return
+           logger.warning(
+               f"data.shortname is None and str is required at system_notification_sender"
+           )
+           return
             
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"].dict()
