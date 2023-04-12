@@ -1,6 +1,34 @@
 # Data Mart (D-MART)
 
-<img src="https://img.shields.io/github/v/release/edraj/dmart.svg" > <img src="https://github.com/edraj/dmart/actions/workflows/dmart-checks.yml/badge.svg" > <img src="https://img.shields.io/github/stars/edraj/dmart.svg?style=social&label=Star&maxAge=3600">
+<!--img src="https://img.shields.io/github/v/release/edraj/dmart.svg" --> 
+
+<a href="https://github.com/edraj/dmart/releases/latest">
+<img src="https://github.com/edraj/dmart/actions/workflows/dmart-checks.yml/badge.svg" > 
+</a>
+
+<a href="https://github.com/edraj/dmart/releases/latest">
+<img alt="Latest release" src="https://img.shields.io/github/v/release/edraj/dmart" />
+</a>
+
+<a href="https://github.com/edraj/dmart/pulse">
+<img alt="Last commit" src="https://img.shields.io/github/last-commit/edraj/dmart"/>
+</a>
+
+<a href="https://github.com/edraj/dmart/blob/main/LICENSE">
+<img alt="License" src="https://img.shields.io/github/license/edraj/dmart" />
+</a>
+
+<a href="https://github.com/edraj/dmart/stargazers">
+<img alt="Stars" src="https://img.shields.io/github/stars/edraj/dmart" />
+</a>
+
+<a href="https://github.com/edraj/dmart/issues">
+<img alt="Issues" src="https://img.shields.io/github/issues/edraj/dmart" />
+</a>
+
+<a href="https://github.com/edraj/dmart">
+<img alt="Repo Size" src="https://img.shields.io/github/repo-size/edraj/dmart" />
+</a>
 
 DMART is a data service layer that offers a streamlined / simplified way to develop certain class of solutions with small to medium data footprint (<=300 million primary entries). DMART is not a one-solution fit-all kind of technology, but it tries to address a wide variety of needs. Specifically, DMART is not suited for systems that have large data (> 400 million primary entries) nor systems that require heavily/complex related data modeling or requiring atomic operations (transactions).
 
@@ -209,4 +237,6 @@ pip install --user  -r requirements.txt
 ### Mobile app skeleton (based on SvelteNative and NativeScript)
 
 ### Web app skeleton (based on Svelte)
+
+### Sample usecases
 

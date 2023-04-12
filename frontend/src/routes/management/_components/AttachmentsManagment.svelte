@@ -8,7 +8,6 @@
   } from "@fortawesome/free-regular-svg-icons";
   import {
     ctorULRForAttachment,
-    dmartEntry,
     dmarRresourceWithPayload,
     dmartRequest,
   } from "../../../dmart.js";

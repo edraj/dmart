@@ -57,7 +57,7 @@ class NotificationManager:
             await self.notifiers[platform].send(data)
             return True
         except Exception as e:
-            logger.warn(
+            logger.warning(
                 "Notification",
                 extra={
                     "props": {

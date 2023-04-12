@@ -49,6 +49,6 @@
   });
 </script>
 
-<div class="tabs">
+<div class="tabs my-2">
   <slot />
 </div>

@@ -2,29 +2,21 @@
   import { status_line } from "../_stores/status_line.js";
   import VirtualList from "svelte-tiny-virtual-list";
   import InfiniteLoading from "svelte-infinite-loading";
-  import {
-    dmartManContent,
-    dmartGetSchemas,
-    dmartRequest,
-  } from "../../../dmart.js";
+  import { dmartManContent, dmartRequest } from "../../../dmart.js";
   import { onDestroy } from "svelte";
-  import { dmartEntry, dmartQuery } from "../../../dmart.js";
-  import {
-    toastPushSuccess,
-    toastPushFail,
-    toastPushLoding,
-    toastPop,
-  } from "../../../utils.js";
+  import { dmartQuery } from "../../../dmart.js";
+  import { toastPushSuccess, toastPushFail } from "../../../utils.js";
   import { Breadcrumb, BreadcrumbItem } from "sveltestrap";
-  import { createAjvValidator, Mode } from "svelte-jsoneditor";
-  import ContentEditSection from "./ContentEditSection.svelte";
+  import { createAjvValidator, JSONEditor } from "svelte-jsoneditor";
+  import Fa from "sveltejs-fontawesome";
   import {
     triggerRefreshList,
     triggerSearchList,
-  } from "../_stores/trigger_refresh.js";
-  import { goto } from "@roxi/routify";
+  } from "../_stores/triggers.js";
+  import { active_section } from "../_stores/active_section.js";
+  import { faCaretSquareLeft } from "@fortawesome/free-regular-svg-icons";
 
-  let showContentEditSection = false;
+  let quickPreview = false;
   let shortname = "";
   let metaContent = {
     json: {},
@@ -60,7 +52,6 @@
   const base_query = { ...query };
   export let cols;
   export let details_split = 0;
-  export let clickable = false;
   export let filterable = false;
 
   let total;
@@ -105,7 +96,7 @@
               }
               if (lastbatch) {
                 page += 1;
-                items = [...items, ...records];
+                items = [...items, ...json.records];
                 loaded();
               } else {
                 complete();
@@ -141,7 +132,6 @@
     if (path.length > 1 && path[0].length > 0 && path[0] in data) {
       return value(path.slice(1), data[path[0]], type);
     }
-
     return "not_applicable";
   }
 
@@ -188,6 +178,9 @@
   }
 
   function handleSearchInput(target) {
+    if (active_section !== "dashboard") {
+      return;
+    }
     query =
       target === ""
         ? base_query
@@ -255,7 +248,7 @@
   }
   $: triggerSearchList && handleSearchInput($triggerSearchList);
   $: {
-    if (!showContentEditSection) {
+    if (!quickPreview) {
       shortname = "";
     }
   }
@@ -278,7 +271,7 @@
     </Breadcrumb>
   </div>
 {/if}
-{#if !showContentEditSection}
+{#if !quickPreview}
   <div class="list">
     <VirtualList
       height={height - 105}
@@ -297,7 +290,11 @@
         class="my-row"
         on:click={async () => {
           const record = { ...records[index - 1] };
-
+          if ($active_section === "events") {
+            content.json = record;
+            quickPreview = true;
+            return;
+          }
           shortname = record.shortname;
           schema_shortname = record.attributes?.payload?.schema_shortname;
           window.history.replaceState(
@@ -356,25 +353,18 @@
   </div>
 {/if}
 
-{#if showContentEditSection}
-  <ContentEditSection
-    bind:space_name={query.space_name}
-    bind:subpath={query.subpath}
-    bind:records
-    bind:bodyContent
-    bind:metaContent
-    bind:errorContent
-    bind:validator
-    bind:isSchemaValidated
-    bind:isError
-    bind:metaContentAttachement
-    bind:historyQuery
-    bind:showContentEditSection
-    {handleSave}
-    bind:currentItem
-    bind:shortname
-    bind:height
-  />
+{#if quickPreview}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <div
+    class="back-icon"
+    style="cursor: pointer;"
+    on:click={() => {
+      quickPreview = false;
+    }}
+  >
+    <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
+  </div>
+  <JSONEditor bind:content readOnly={true} />
 {/if}
 
 <style>
@@ -387,15 +377,16 @@
     margin-top: 8px;
     margin-left: 8px;
   }*/
-  hr {
+  /* hr {
     color: green;
     background-color: blue;
     height: 5px;
     user-select: none;
     margin: 0;
-    /*position: absolute;*/
-    /*border: solid 1px gray;*/
-  }
+    position: absolute;
+    border: solid 1px gray;
+  } 
+  */
   :global(.virtual-list-wrapper) {
     margin: 0 0px;
     background: #fff;

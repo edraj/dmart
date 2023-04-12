@@ -8,6 +8,15 @@ export async function dmartListSchemas() {
   return await dmartQuery({ type: "subpath", subpath: "schema" });
 }
 
+export async function dmartProfile() {
+  const browse_request = {
+    method: "GET",
+    credentials: "include",
+    cache: "no-cache",
+    mode: "cors",
+  };
+  return await dmartFetch(`${website.backend}/user/profile`, browse_request);
+}
 export async function dmartLogin(username, password) {
   const browse_query = {
     shortname: username,
@@ -23,6 +32,7 @@ export async function dmartGetSchemas(space_name, shortname = null) {
     type: "subpath",
     subpath: "/schema",
     retrieve_json_payload: true,
+    limit: 99,
   };
   if (shortname) {
     query.filter_shortnames = [shortname];

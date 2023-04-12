@@ -9,9 +9,11 @@
   import { toastPushSuccess, toastPushFail } from "../../../utils.js";
   import AttachmentsManagment from "./AttachmentsManagment.svelte";
   import ListView from "./ListView.svelte";
+  import { dmartRequest } from "../../../dmart";
+  import { Breadcrumb, BreadcrumbItem } from "sveltestrap";
+  import { status_line } from "../_stores/status_line";
 
-  export let space_name, subpath;
-  export let records;
+  export let space_name, subpath, resource_type;
   export let bodyContent;
   export let metaContent;
   export let errorContent;
@@ -22,9 +24,18 @@
   export let historyQuery;
   let showContentEditSection;
   export let handleSave;
-  let currentItem;
   export let shortname;
   export let height;
+
+  function fillStatusLine() {
+    let s = `Space: ${space_name} </br>`;
+    s += `Subpath: ${subpath} </br>`;
+    s += `Shortname: ${metaContent.json.shortname} </br>`;
+    s += `Resource Type: ${resource_type}`;
+    return s;
+  }
+
+  status_line.set(fillStatusLine());
 
   let historyCols = {
     owner_shortname: {
@@ -53,14 +64,19 @@
     },
   };
 
+  function back() {
+    window.history.replaceState(
+      history.state,
+      "",
+      `/management/dashboard/${space_name}/${subpath.replaceAll("/", "-")}`
+    );
+  }
+
   async function handleDelete() {
     if (confirm(`Are you sure want to delete ${shortname} entry`) === false) {
       return;
     }
-
-    const { resource_type, branch_name, subpath, shortname } = {
-      ...records[currentItem - 1],
-    };
+    showContentEditSection = false;
     const request = {
       space_name,
       request_type: "delete",
@@ -69,7 +85,7 @@
           resource_type,
           shortname,
           subpath,
-          branch_name,
+          branch_name: "master",
           attributes: {},
         },
       ],
@@ -77,20 +93,18 @@
     const response = await dmartRequest("managed/request", request);
     if (response.status === "success") {
       toastPushSuccess();
-      refreshList();
-      showContentEditSection = false;
+      back();
     } else {
       toastPushFail();
     }
   }
 
   async function updateSingleEntry() {
-    const { subpath, branch_name, shortname } = records[currentItem - 1];
     const request = {
-      type: "subpath",
+      type: "search",
       space_name: space_name,
       subpath,
-      branch_name,
+      branch_name: "master",
       filter_schema_names: ["meta"],
       filter_shortnames: [shortname],
       retrieve_json_payload: true,
@@ -99,32 +113,42 @@
     const response = await dmartRequest("managed/query", request);
     if (response.status === "success") {
       toastPushSuccess();
-      metaContentAttachement = records[currentItem - 1].attachments;
     } else {
       toastPushFail();
     }
   }
-  console.log({ x: bodyContent.json });
 </script>
 
 <Tabs>
   <TabList>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div
-      class="tab-list back-icon"
-      style="cursor: pointer;"
-      on:click={() => {
-        window.history.replaceState(
-          history.state,
-          "",
-          `/management/dashboard/${space_name}/${subpath.replaceAll("/", "-")}`
-        );
-      }}
-    >
-      <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
+    <div class="d-flex align-items-center">
+      <div
+        class="back-icon"
+        style="cursor: pointer;margin-right:16px"
+        on:click={back}
+      >
+        <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
+      </div>
+      <Breadcrumb class="cbreadcrumb">
+        <BreadcrumbItem>{space_name}</BreadcrumbItem>
+        {#each subpath.split("/") as s}
+          {#if s !== ""}
+            <BreadcrumbItem>{s}</BreadcrumbItem>
+          {/if}
+        {/each}
+        {#if shortname}
+          <BreadcrumbItem>{shortname}</BreadcrumbItem>
+        {/if}
+      </Breadcrumb>
+      <style>
+        .cbreadcrumb > .breadcrumb {
+          margin: 0px !important;
+        }
+      </style>
     </div>
-    <div class="tab-list">
-      {#if Object.keys(bodyContent.json).length}
+    <div>
+      {#if bodyContent.json !== null}
         <Tab>Content</Tab>
       {/if}
       <Tab>Meta</Tab>
@@ -133,7 +157,7 @@
     </div>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
-      class="tab-list back-icon"
+      class="back-icon"
       style="cursor: pointer;"
       on:click={async () => {
         await handleDelete();
@@ -143,7 +167,7 @@
     </div>
   </TabList>
 
-  {#if Object.keys(bodyContent.json).length}
+  {#if bodyContent.json !== null}
     <TabPanel>
       <ContentJsonEditor
         bind:content={bodyContent}
@@ -157,15 +181,13 @@
     <ContentJsonEditor bind:content={metaContent} {handleSave} />
   </TabPanel>
   <TabPanel>
-    {#key records}
-      <AttachmentsManagment
-        bind:attachments={metaContentAttachement}
-        bind:space_name
-        bind:subpath
-        bind:entryShortname={shortname}
-        forceRefresh={async () => await updateSingleEntry()}
-      />
-    {/key}
+    <AttachmentsManagment
+      bind:attachments={metaContentAttachement}
+      bind:space_name
+      bind:subpath
+      bind:entryShortname={shortname}
+      forceRefresh={async () => await updateSingleEntry()}
+    />
   </TabPanel>
 
   <TabPanel>

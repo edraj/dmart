@@ -26,7 +26,7 @@
     text: undefined,
   };
   let bodyContent = {
-    json: {},
+    json: null,
     text: undefined,
   };
   let metaContentAttachement = [];
@@ -84,7 +84,8 @@
         .catch((e) => {
           console.log(e);
         });
-
+    }
+    if (meta?.payload?.content_type === "json") {
       const body = await dmartEntry(
         resource_type,
         space_name,
@@ -108,15 +109,14 @@
       ? { ...metaContent.json }
       : JSON.parse(metaContent.text);
     const data = { ...metaData };
-
-    if (Object.keys(bodyContent.json).length) {
+    if (bodyContent.json !== null) {
       data.payload.body =
         bodyContent.json ?? JSON.parse(bodyContent.text) ?? data.payload.body;
     }
 
     const response = await dmartRequest("managed/request", {
       space_name: space_name,
-      request_type: "update",
+      request_type: "replace",
       records: [
         {
           resource_type,
@@ -152,8 +152,9 @@
   {/if}
   {#if schema_name !== "api"}
     <ContentEditSection
-      bind:space_name={$params.space_name}
-      bind:subpath={$params.subpath}
+      bind:space_name
+      bind:subpath
+      bind:resource_type
       bind:bodyContent
       bind:metaContent
       bind:errorContent

@@ -21,7 +21,6 @@
     "spank": "^2.0.0-12",
     "svelte": "^3.39.0",
     "svelte-check": "^3.1.4",
-    "bootstrap-icons": "^1.10.3",
     "vite": "^4.0.4"
   },
   "dependencies": {
@@ -32,7 +31,6 @@
     "@zerodevx/svelte-toast": "^0.8.2",
     "axios": "^1.3.4",
     "bootstrap": "^5.2.3",
-    "svelte-bootstrap-icons": "^2.3.1",
     "svelte-i18n": "^3.6.0",
     "svelte-infinite-loading": "^1.3.8",
     "svelte-jsoneditor": "^0.14.0",
