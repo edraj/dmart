@@ -356,7 +356,7 @@
 {#if quickPreview}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div
-    class="tab-list back-icon"
+    class="back-icon"
     style="cursor: pointer;"
     on:click={() => {
       quickPreview = false;

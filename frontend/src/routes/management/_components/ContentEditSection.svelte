@@ -11,6 +11,7 @@
   import ListView from "./ListView.svelte";
   import { dmartRequest } from "../../../dmart";
   import { Breadcrumb, BreadcrumbItem } from "sveltestrap";
+  import { status_line } from "../_stores/status_line";
 
   export let space_name, subpath, resource_type;
   export let bodyContent;
@@ -25,6 +26,16 @@
   export let handleSave;
   export let shortname;
   export let height;
+
+  function fillStatusLine() {
+    let s = `Space: ${space_name} </br>`;
+    s += `Subpath: ${subpath} </br>`;
+    s += `Shortname: ${metaContent.json.shortname} </br>`;
+    s += `Resource Type: ${resource_type}`;
+    return s;
+  }
+
+  status_line.set(fillStatusLine());
 
   let historyCols = {
     owner_shortname: {
@@ -108,25 +119,35 @@
   }
 </script>
 
-<Breadcrumb class="mt-3 px-3">
-  <BreadcrumbItem>{space_name}</BreadcrumbItem>
-  {#each subpath.split("/") as s}
-    {#if s !== ""}
-      <BreadcrumbItem>{s}</BreadcrumbItem>
-    {/if}
-  {/each}
-  {#if shortname}
-    <BreadcrumbItem>{shortname}</BreadcrumbItem>
-  {/if}
-</Breadcrumb>
-
 <Tabs>
   <TabList>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div class="tab-list back-icon" style="cursor: pointer;" on:click={back}>
-      <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
+    <div class="d-flex align-items-center">
+      <div
+        class="back-icon"
+        style="cursor: pointer;margin-right:16px"
+        on:click={back}
+      >
+        <Fa icon={faCaretSquareLeft} size="lg" color="dimgrey" />
+      </div>
+      <Breadcrumb class="cbreadcrumb">
+        <BreadcrumbItem>{space_name}</BreadcrumbItem>
+        {#each subpath.split("/") as s}
+          {#if s !== ""}
+            <BreadcrumbItem>{s}</BreadcrumbItem>
+          {/if}
+        {/each}
+        {#if shortname}
+          <BreadcrumbItem>{shortname}</BreadcrumbItem>
+        {/if}
+      </Breadcrumb>
+      <style>
+        .cbreadcrumb > .breadcrumb {
+          margin: 0px !important;
+        }
+      </style>
     </div>
-    <div class="tab-list">
+    <div>
       {#if bodyContent.json !== null}
         <Tab>Content</Tab>
       {/if}
@@ -136,7 +157,7 @@
     </div>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
-      class="tab-list back-icon"
+      class="back-icon"
       style="cursor: pointer;"
       on:click={async () => {
         await handleDelete();
