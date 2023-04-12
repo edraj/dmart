@@ -50,8 +50,19 @@
           <Col
             sm="2"
             class="d-flex flex-column justify-content-between fixed-size border border-warning bg-light"
-            ><Sidebar /></Col
-          >
+            >{#if $active_section === "dashboard"}
+              <SidebarDashboard />
+            {/if}
+            {#if $active_section === "qatool"}
+              <SidebarQaTool />
+            {/if}
+            {#if $active_section === "events"}
+              <SidebarQaTool />
+            {/if}
+            {#if $active_section === "quering"}
+              <SidebarQuery />
+            {/if}
+          </Col>
 
           <Col sm="10" class="fixed-size border border-info"><slot /></Col>
         </Row>
