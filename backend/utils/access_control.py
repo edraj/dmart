@@ -61,15 +61,10 @@ class AccessControl:
 
     async def create_user_premission_index(self):
         async with RedisServices() as redis_services:
-            existing_index = None
             try:
                 # Check if index already exist
-                existing_index = await redis_services.client.ft("user_permission").info()
-            except RuntimeError: # Solve Pytest error: event loop is closed
-                existing_index = await redis_services.client.ft("user_permission").info()
+                await redis_services.client.ft("user_permission").info()
             except:
-                if existing_index:
-                    return
                 await redis_services.client.ft("user_permission").create_index(
                     fields=(TextField("name")),
                     definition=IndexDefinition(
