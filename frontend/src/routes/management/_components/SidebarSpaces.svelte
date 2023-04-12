@@ -15,6 +15,8 @@
   import { toastPushSuccess } from "../../../utils.js";
 
   export let child;
+  export let selecting;
+  export let isSingleLevel = false;
   export let displayActionMenu = false;
   let expanded = false;
 
@@ -135,7 +137,7 @@
   {/if}
 {/key}
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
-<div style="padding-left: 8px;">
+<div style="padding-left: 10px;padding-right: 10px;">
   <ListGroupItem class="px-0">
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
@@ -144,7 +146,10 @@
       on:click={() => (expanded = !expanded)}
     >
       <div class="d-flex row justify-content-between folder position-relative">
-        <div class="col-12" style="overflow-wrap: anywhere;">
+        <div
+          class={`col-12 ${selecting === child.uuid ? "sidebar-item" : ""}`}
+          style="overflow-wrap: anywhere;"
+        >
           <b style="cursor: pointer;"
             >{child?.attributes?.displayname?.en ?? child.shortname}</b
           >
@@ -196,3 +201,11 @@
     </div>
   </ListGroupItem>
 </div>
+<hr class="w-100" style="margin-top: 4px;margin-bottom: 4px;" />
+
+<style>
+  .sidebar-item {
+    color: #495057;
+    background-color: #e8e9ea;
+  }
+</style>

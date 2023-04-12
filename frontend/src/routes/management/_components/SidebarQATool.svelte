@@ -1,8 +1,6 @@
 <script>
   import spaces, { getSpaces } from "../_stores/spaces.js";
   import { _ } from "../../../i18n/index.js";
-  import { status_line } from "../_stores/status_line.js";
-  import { slide } from "svelte/transition";
   import { dmartSpaces } from "../../../dmart.js";
   import { toastPushSuccess } from "../../../utils.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
@@ -39,7 +37,9 @@
   }
 
   let isOpen = false;
+  let selectedSpace;
   function handleUpdate(event) {
+    // selectedSubpath.set(data.uuid);
     isOpen = event.detail.isOpen;
   }
   let subpaths = $spaces.children ? [...$spaces.children] : [];
@@ -80,23 +80,33 @@
   >
     <ul class="px-0 w-100 px-1">
       {#each subpaths as child (child.uuid + Math.round(Math.random() * 10000).toString())}
-        <li transition:slide={{ duration: 400 }}>
-          <SidebarSpaces {child} />
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <li
+          on:click={() => {
+            selectedSpace = child.uuid;
+            console.log({ selectedSpace });
+          }}
+        >
+          <SidebarSpaces
+            {child}
+            isSingleLevel={true}
+            selecting={selectedSpace}
+          />
         </li>
-        <hr style="margin-top: 4px;margin-bottom: 4px;" />
       {/each}
     </ul>
   </Collapse>
 </Navbar>
-<div class="w-100 px-2 py-1">
-  {#if $status_line}
-    <hr class="my-2" />
-    {@html $status_line}
-  {/if}
-</div>
 
 <style>
   ul {
     list-style: none;
+  }
+
+  li:hover {
+    z-index: 1;
+    color: #495057;
+    text-decoration: none;
+    background-color: #f8f9fa;
   }
 </style>
