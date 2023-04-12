@@ -44,8 +44,8 @@ async def load_data_to_redis(space_name, branch_name, subpath, allowed_resource_
     )
 
     # Add Folder locator to the loaded locators
-    meta_folder = settings.spaces_folder / subpath / ".dm/meta.folder.json"
-    if ResourceType.folder in allowed_resource_types and  meta_folder.is_dir():
+    folder_meta = settings.spaces_folder / space_name / subpath / ".dm/meta.folder.json"
+    if ResourceType.folder in allowed_resource_types and  folder_meta.is_file():
         folder_parts = subpath.split("/")
         folder_locator = core.Locator(
             type=ResourceType.folder,
