@@ -238,3 +238,5 @@ pip install --user  -r requirements.txt
 
 ### Web app skeleton (based on Svelte)
 
+### Sample usecases
+

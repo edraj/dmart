@@ -8,6 +8,7 @@ from fastapi import status
 from test_utils import assert_code_and_status_success, check_unauthorized
 
 from main import app
+from utils.redis_services import RedisServices
 from utils.settings import settings
 
 
@@ -36,6 +37,7 @@ PASSWORD = alibaba["password"]
 
 dirpath = f"{settings.spaces_folder}/{MANAGEMENT_SPACE}/{USERS_SUBPATH}/.dm/{SHORTNAME}"
 filepath = f"{dirpath}/meta.user.json"
+RedisServices.is_pytest = True
 
 # def test_create():
 #     # TODO: remove dependencies of other tests to user registration test

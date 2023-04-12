@@ -50,7 +50,8 @@
           <Col
             sm="2"
             class="d-flex flex-column justify-content-between fixed-size border border-warning bg-light"
-            >{#if $active_section === "dashboard"}
+          >
+            {#if $active_section === "dashboard"}
               <SidebarDashboard />
             {/if}
             {#if $active_section === "qatool"}

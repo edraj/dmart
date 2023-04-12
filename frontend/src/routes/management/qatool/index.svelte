@@ -27,15 +27,15 @@
 </script>
 
 <div class="mx-2 mt-3 mb-3">
-  <Label for="exampleSelect">Space name</Label>
-  <Input type="select" on:change={async (e) => await handleChange(e)}>
+  <!-- <Label for="exampleSelect">Space name</Label> -->
+  <!-- <Input type="select" on:change={async (e) => await handleChange(e)}>
     <option value={""}> - Select Space - </option>
     {#each $spaces.children as space}
       <option value={space.shortname}>
         {space.shortname}
       </option>
     {/each}
-  </Input>
+  </Input> -->
 </div>
 {#if isLoading}
   <div class="d-flex justify-content-center mt-3">

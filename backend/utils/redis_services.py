@@ -25,6 +25,14 @@ from redis.exceptions import ResponseError as RedisResponseError
 
 class RedisServices(object):
 
+    POOL = BlockingConnectionPool(
+        host=settings.redis_host,
+        port=settings.redis_port,
+        password=settings.redis_password,
+        decode_responses=True,
+        max_connections=200
+    )
+
     CUSTOM_INDICES = [
         {
             "space": "management",
@@ -86,28 +94,21 @@ class RedisServices(object):
             ],
         },
     ]
+    redis_indices: dict[str, dict[str, Search]] = {}
+    is_pytest = False
 
-    def __new__(cls) -> Any:
-        if not hasattr(cls, "instance"):
-            cls.instance = super(RedisServices, cls).__new__(cls)
-        return cls.instance
-
-    def __init__(self):
-        self.__pool = BlockingConnectionPool(
-            host=settings.redis_host,
-            port=settings.redis_port,
-            password=settings.redis_password,
-            decode_responses=True,
-            max_connections=200
-        )
 
     def __await__(self):
         return self.init().__await__()
 
     async def init(self):
         if not hasattr(self, "client"):
-            self.client = await Redis(connection_pool=self.__pool)
-        self.redis_indices: dict[str, dict[str, Search]] = {}
+            self.client = await Redis(connection_pool=self.POOL)
+            if self.is_pytest:
+                try:
+                    await self.client.ping()
+                except RuntimeError:
+                    pass
         return self
 
     def __del__(self):
@@ -123,13 +124,16 @@ class RedisServices(object):
 
     async def __aenter__(self):
         if not hasattr(self, "client"):
-            self.client = await Redis(connection_pool=self.__pool)
-        self.redis_indices: dict[str, dict[str, Search]] = {}
+            self.client = await Redis(connection_pool=self.POOL)
+            if self.is_pytest:
+                try:
+                    await self.client.ping()
+                except RuntimeError:
+                    pass
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        pass
-        # await self.client.close()
+        await self.client.close()
 
     async def create_index(
         self, space_branch_name: str, schema_name: str, redis_schema: tuple

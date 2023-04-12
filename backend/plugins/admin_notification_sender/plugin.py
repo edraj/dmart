@@ -21,7 +21,7 @@ class Plugin(PluginBase):
 
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
-            logger.warn(
+            logger.warning(
                 f"data.shortname is None and str is required at system_notification_sender"
             )
             return
