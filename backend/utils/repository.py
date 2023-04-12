@@ -791,7 +791,7 @@ async def update_payload_validation_status(
     if not isinstance(meta_obj.payload, core.Payload) or not isinstance(
         meta_obj.payload.body, str
     ):
-        logger.warn(
+        logger.warning(
             f"Meta.payload is None at repository.update_payload_validation_status"
         )
         return
