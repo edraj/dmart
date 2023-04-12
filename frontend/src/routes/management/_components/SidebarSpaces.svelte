@@ -145,6 +145,8 @@
       on:mouseover={(e) => (displayActionMenu = true)}
       on:mouseleave={(e) => (displayActionMenu = false)}
       on:click={() => {
+        console.log({ $active_section });
+
         if ($active_section === "dashboard") {
           expanded = !expanded;
         } else if (["qatool", "events"].includes($active_section)) {

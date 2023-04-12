@@ -101,7 +101,7 @@
 
   async function updateSingleEntry() {
     const request = {
-      type: "subpath",
+      type: "search",
       space_name: space_name,
       subpath,
       branch_name: "master",
