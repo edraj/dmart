@@ -628,6 +628,8 @@ async def get_entry_attachments(
     filter_shortnames: list | None = None,
     retrieve_json_payload: bool = False,
 ) -> dict:
+    if not attachments_path.is_dir():
+        return {}
     attachments_iterator = os.scandir(attachments_path)
     attachments_dict: dict[str, list] = {}
     for attachment_entry in attachments_iterator:
