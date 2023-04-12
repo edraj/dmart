@@ -5,27 +5,25 @@
   import { Label, ListGroup, ListGroupItem, Input } from "sveltestrap";
   import "bootstrap";
   import { toastPushFail } from "../../../utils";
+  import { triggerSidebarSelection } from "../_stores/triggers";
 
   let isLoading;
-
-  let selectedSpaceName = "";
   let subpaths = {};
-
-  async function handleChange(e) {
-    selectedSpaceName = e.target.value;
-    if (selectedSpaceName === "") {
-      return;
+  $: {
+    async function updateSpaceHealthCheck() {
+      isLoading = true;
+      const response = await dmartHealthCheck($triggerSidebarSelection);
+      isLoading = false;
+      if (response.status === "success") {
+        subpaths = response.attributes.folders_report;
+      } else {
+        toastPushFail();
+      }
     }
-    isLoading = true;
-    const response = await dmartHealthCheck(selectedSpaceName);
-    isLoading = false;
-    if (response.status === "success") {
-      subpaths = response.attributes.folders_report;
-    } else {
-      toastPushFail();
+    if ($triggerSidebarSelection) {
+      updateSpaceHealthCheck();
     }
   }
-  console.log({ subpaths });
 </script>
 
 <div class="mx-2 mt-3 mb-3">
