@@ -19,7 +19,8 @@
   import LocalizedValue from "./LocalizedValue.svelte";
   import Fa from "sveltejs-fontawesome";
   import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
-  import { triggerSearchList } from "../_stores/trigger_refresh.js";
+  import { triggerSearchList } from "../_stores/triggers.js";
+  import { active_section } from "./../_stores/active_section.js";
 
   let search;
   function handleClick(event) {
@@ -40,8 +41,22 @@
     <!-- <NavLink href="/managed/folder/posts"
         >{$signedin_user.displayname}</NavLink
       > -->
-    <NavLink href="/management/dashboard">Dashbaord</NavLink>
-    <NavLink href="/management/qatool">QA Tool</NavLink>
+    <NavLink
+      href="/management/dashboard"
+      on:click={() => ($active_section = "dashboard")}>Dashbaord</NavLink
+    >
+    <NavLink
+      href="/management/qatool"
+      on:click={() => ($active_section = "qatool")}>QA Tool</NavLink
+    >
+    <NavLink
+      href="/management/events"
+      on:click={() => ($active_section = "events")}>Events</NavLink
+    >
+    <NavLink
+      href="/management/quering"
+      on:click={() => ($active_section = "quering")}>Quering</NavLink
+    >
 
     <!-- <NavLink href="/about">{$_("about")}</NavLink> -->
     <!-- <NavLink href="/contact">{$_("contact_us")}</NavLink> -->
@@ -74,6 +89,12 @@
     <Dropdown class="justify-content-end" style="margin-left: 16px">
       <DropdownToggle caret>{$signedin_user.displayname}</DropdownToggle>
       <DropdownMenu>
+        <DropdownItem header>Roles</DropdownItem>
+        {#each $signedin_user.attributes.roles as role}
+          <DropdownItem>{role}</DropdownItem>
+        {/each}
+        <DropdownItem divider />
+        <DropdownItem header>Actions</DropdownItem>
         <DropdownItem on:click={async () => await handleLogout()}
           ><div class="d-flex row">
             <div class="col-2">

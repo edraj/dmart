@@ -7,14 +7,17 @@
     faEdit,
   } from "@fortawesome/free-regular-svg-icons";
   import SidebarSubpaths from "./SidebarSubpaths.svelte";
-  import { slide } from "svelte/transition";
   import spaces, { getSpaces } from "../_stores/spaces.js";
   import { dmartCreateFolder, dmartSpaces } from "../../../dmart.js";
   import DynamicFormModal from "./DynamicFormModal.svelte";
   import JsonEditorModal from "./JsonEditorModal.svelte";
   import { toastPushSuccess } from "../../../utils.js";
+  import { active_section } from "../_stores/active_section";
+  import { triggerSidebarSelection } from "../_stores/triggers";
 
   export let child;
+  export let selecting;
+  export let isSingleLevel = false;
   export let displayActionMenu = false;
   let expanded = false;
 
@@ -135,64 +138,86 @@
   {/if}
 {/key}
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
-<div style="padding-left: 8px;">
+<div style="padding-left: 10px;padding-right: 10px;">
   <ListGroupItem class="px-0">
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
       on:mouseover={(e) => (displayActionMenu = true)}
       on:mouseleave={(e) => (displayActionMenu = false)}
-      on:click={() => (expanded = !expanded)}
+      on:click={() => {
+        console.log({ $active_section });
+
+        if ($active_section === "dashboard") {
+          expanded = !expanded;
+        } else if (["qatool", "events"].includes($active_section)) {
+          triggerSidebarSelection.set(child.shortname);
+        }
+      }}
     >
       <div class="d-flex row justify-content-between folder position-relative">
-        <div class="col-12" style="overflow-wrap: anywhere;">
+        <div
+          class={`col-12 ${selecting === child.uuid ? "sidebar-item" : ""}`}
+          style="overflow-wrap: anywhere;"
+        >
           <b style="cursor: pointer;"
             >{child?.attributes?.displayname?.en ?? child.shortname}</b
           >
         </div>
-
-        <div
-          class="d-flex col justify-content-end"
-          style="position: absolute;z-index: 1;"
-        >
+        {#if !isSingleLevel}
           <div
-            style="cursor: pointer;background-color: #e8e9ea;"
-            hidden={!displayActionMenu}
-            on:click={(e) => {
-              e.stopPropagation();
-              props = [
-                {
-                  label: "Schema Shortname",
-                  name: "schema_shortname",
-                  value: "",
-                },
-                { label: "Shortname", name: "shortname", value: "" },
-              ];
-              modalFlag = "create";
-              entryCreateModal = true;
-            }}
+            class="d-flex col justify-content-end"
+            style="position: absolute;z-index: 1;"
           >
-            <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
+            <div
+              style="cursor: pointer;background-color: #e8e9ea;"
+              hidden={!displayActionMenu}
+              on:click={(e) => {
+                e.stopPropagation();
+                props = [
+                  {
+                    label: "Schema Shortname",
+                    name: "schema_shortname",
+                    value: "",
+                  },
+                  { label: "Shortname", name: "shortname", value: "" },
+                ];
+                modalFlag = "create";
+                entryCreateModal = true;
+              }}
+            >
+              <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
+            </div>
+            <div
+              class="px-1"
+              style="cursor: pointer;background-color: #e8e9ea;"
+              hidden={!displayActionMenu}
+              on:click={(event) => handleEdit(event)}
+            >
+              <Fa icon={faEdit} size="sm" color="dimgrey" />
+            </div>
+            <div
+              style="cursor: pointer;background-color: #e8e9ea;"
+              hidden={!displayActionMenu}
+              on:click={async () => await handleSpaceDelete()}
+            >
+              <Fa icon={faTrashCan} size="sm" color="dimgrey" />
+            </div>
           </div>
-          <div
-            class="px-1"
-            style="cursor: pointer;background-color: #e8e9ea;"
-            hidden={!displayActionMenu}
-            on:click={(event) => handleEdit(event)}
-          >
-            <Fa icon={faEdit} size="sm" color="dimgrey" />
-          </div>
-          <div
-            style="cursor: pointer;background-color: #e8e9ea;"
-            hidden={!displayActionMenu}
-            on:click={async () => await handleSpaceDelete()}
-          >
-            <Fa icon={faTrashCan} size="sm" color="dimgrey" />
-          </div>
-        </div>
+        {/if}
       </div>
     </div>
-    <div hidden={!expanded} transition:slide={{ duration: 400 }}>
-      <SidebarSubpaths bind:parent={child} />
-    </div>
+    {#if !isSingleLevel}
+      <div hidden={!expanded}>
+        <SidebarSubpaths bind:parent={child} />
+      </div>
+    {/if}
   </ListGroupItem>
 </div>
+<hr class="w-100" style="margin-top: 4px;margin-bottom: 4px;" />
+
+<style>
+  .sidebar-item {
+    color: #495057;
+    background-color: #e8e9ea;
+  }
+</style>

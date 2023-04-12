@@ -4,8 +4,6 @@
   import { toastPushFail, toastPushSuccess } from "../../utils";
   import ContentEditSection from "./_components/ContentEditSection.svelte";
 
-  console.log("main fallback");
-
   let space_name;
   let shortname;
   let subpath;
@@ -48,8 +46,6 @@
       subpath = "/" + url.slice(1, url.length - 1).join("/");
       shortname = url[url.length - 1];
 
-      console.log({ space_name }, { subpath }, { shortname });
-
       if (space_name && shortname && subpath) {
         const request = {
           type: "subpath",
@@ -62,7 +58,6 @@
           retrieve_attachments: true,
         };
         const response = await dmartRequest("managed/query", request);
-        console.log({ response });
         if (response.status === "success") {
           toastPushSuccess();
           records[0] = response.records[0];
