@@ -82,7 +82,6 @@
         <li>
           <SidebarSpaces {child} />
         </li>
-        <hr style="margin-top: 4px;margin-bottom: 4px;" />
       {/each}
     </ul>
   </Collapse>
