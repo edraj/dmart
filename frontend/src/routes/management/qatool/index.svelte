@@ -59,7 +59,7 @@
       {#if subpaths[subpath].invalid_entries}
         {#each subpaths[subpath].invalid_entries as entry}
           <ListGroupItem
-            href={`/management/dashboard/${selectedSpaceName}/${subpath.replaceAll(
+            href={`/management/dashboard/${$triggerSidebarSelection}/${subpath.replaceAll(
               "/",
               "-"
             )}/${entry}`}

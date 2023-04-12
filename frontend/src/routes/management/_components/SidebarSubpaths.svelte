@@ -4,11 +4,9 @@
   export let parent;
 </script>
 
-<div transition:slide={{ duration: 400 }}>
-  {#each parent.subpaths as subapth (subapth.shortname + subapth.uuid)}
-    <Folder
-      data={{ space_name: parent.shortname, ...subapth }}
-      parent_data={parent}
-    />
-  {/each}
-</div>
+{#each parent.subpaths as subapth (subapth.shortname + subapth.uuid)}
+  <Folder
+    data={{ space_name: parent.shortname, ...subapth }}
+    parent_data={parent}
+  />
+{/each}

@@ -84,17 +84,16 @@
         .catch((e) => {
           console.log(e);
         });
-
-      if (meta?.payload?.content_type === "json") {
-        const body = await dmartEntry(
-          resource_type,
-          space_name,
-          subpath,
-          shortname,
-          schema_name
-        );
-        bodyContent.json = body;
-      }
+    }
+    if (meta?.payload?.content_type === "json") {
+      const body = await dmartEntry(
+        resource_type,
+        space_name,
+        subpath,
+        shortname,
+        schema_name
+      );
+      bodyContent.json = body;
     }
   }
   let init = initPage();

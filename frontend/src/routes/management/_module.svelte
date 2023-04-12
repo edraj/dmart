@@ -7,7 +7,22 @@
   import Notifications from "svelte-notifications";
   import { getSpaces } from "./_stores/spaces";
   import Header from "./_components/Header.svelte";
-  import Sidebar from "./_components/Sidebar.svelte";
+  import SidebarDashboard from "./_components/SidebarDashboard.svelte";
+  import SidebarQaTool from "./_components/SidebarQATool.svelte";
+  import { active_section } from "./_stores/active_section.js";
+  import SidebarQuery from "./_components/SidebarQuery.svelte";
+
+  $: {
+    if (window.location.pathname.includes("dashboard")) {
+      active_section.set("dashboard");
+    } else if (window.location.pathname.includes("qatool")) {
+      active_section.set("qatool");
+    } else if (window.location.pathname.includes("events")) {
+      active_section.set("events");
+    } else if (window.location.pathname.includes("quering")) {
+      active_section.set("quering");
+    }
+  }
 
   let init = getSpaces();
 </script>
