@@ -3,7 +3,7 @@
 # from logging import handlers
 from starlette.datastructures import UploadFile
 import asyncio
-import json
+# import json
 from os import getpid
 import sys
 import time
@@ -26,7 +26,7 @@ from utils.access_control import access_control
 from fastapi.responses import JSONResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
-from starlette.concurrency import iterate_in_threadpool
+# from starlette.concurrency import iterate_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import models.api as api
 from utils.settings import settings
@@ -218,7 +218,10 @@ async def middle(request: Request, call_next):
                 "error": {
                     "code": 400,
                     "message": "Validation error [3]",
-                    "info": str(e),
+                    "info": [{
+                        "loc": list(e.path),
+                        "msg": e.message
+                    }],
                 },
             },
         )

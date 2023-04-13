@@ -1,5 +1,8 @@
 <script>
-  import { triggerRefreshList } from "./../_stores/trigger_refresh.js";
+  import {
+    triggerRefreshList,
+    triggerSearchList,
+  } from "./../_stores/triggers.js";
   import {
     dmartManContent,
     dmartEntries,
@@ -12,7 +15,6 @@
   import { entries } from "../_stores/entries.js";
   import spaces from "../_stores/spaces.js";
   import { _ } from "../../../i18n/index.js";
-  import { slide } from "svelte/transition";
   import Folder from "./Folder.svelte";
   import Fa from "sveltejs-fontawesome";
   import {
@@ -55,19 +57,22 @@
         [],
         "search"
       );
+      if (_entries.length === 0) {
+        return;
+      }
 
       _entries.forEach((entry) => {
         if (entry.subpath.startsWith("/")) {
-          entry.subpath = `${data.subpath}/${entry.shortname}`;
+          entry.subpath = `${entry.subpath}/${entry.shortname}`;
         } else {
-          entry.subpath = `/${data.subpath}/${entry.shortname}`;
+          entry.subpath = `/${entry.subpath}/${entry.shortname}`;
         }
       });
 
       data["subpaths"] = _entries
         .map((e) => {
           if (
-            e.subpath.split("/").length ==
+            e.subpath.split("/").length ===
             data.subpath.split("/").length + 1
           ) {
             return e;
@@ -75,7 +80,6 @@
           return null;
         })
         .filter((e) => e != null);
-
       s.forEach((subpath) => {
         const idx = r.subpaths.findIndex(
           (child) => child.shortname === subpath
@@ -103,6 +107,7 @@
   }
 
   async function toggle() {
+    triggerSearchList.set("");
     selectedSubpath.set(data.uuid);
     expanded = !expanded;
     if (!$entries[data.shortname]) {
@@ -139,7 +144,9 @@
     if (flag === "update") {
       contentShortname = data.shortname;
       const d = { ...data };
+      delete d.shortname;
       delete d.subpath;
+      delete d.type;
       delete d.subpaths;
       delete d.attachments;
       delete d.attributes.created_at;
@@ -149,32 +156,6 @@
     entryCreateModal = true;
   }
 
-  // let subpathUpdateContent = { json: data, text: undefined };
-  // let isSubpathUpdateModalOpen = false;
-  // async function handleSubpathUpdate(content) {
-  //   const record = content.json ?? JSON.parse(content.text);
-  //   delete record.space_name;
-  //   delete record.type;
-  //   delete record.uuid;
-
-  //   const arr = record.subpath.split("/");
-  //   arr[arr.length - 1] = "";
-  //   const parentSubpath = arr.join("/");
-
-  //   const request = {
-  //     space_name: data.space_name,
-  //     request_type: "update",
-  //     records: [{ ...record, subpath: parentSubpath }],
-  //   };
-  //   const response = await dmartRequest("managed/request", request);
-  //   if (response.error) {
-  //     alert(response.error.message);
-  //   } else {
-  //     toastPushSuccess();
-  //     await getSpaces();
-  //     isSubpathUpdateModalOpen = false;
-  //   }
-  // }
   async function handleSubpathDelete() {
     // const space_name = child.shortname;
     if (
@@ -234,19 +215,22 @@
           );
       }
     } else if (entryType === "content") {
+      const body = content.json
+        ? { ...content.json }
+        : JSON.parse(content.text);
       response = await dmartManContent(
         data.space_name,
         data.subpath,
         contentShortname === "" ? "auto" : contentShortname,
         selectedSchema,
-        JSON.parse(content.text),
+        body,
         modalFlag
       );
     }
     if (response.status === "success") {
       toastPushSuccess();
       triggerRefreshList.set(true);
-      entryCreateModal = false;
+      contentShortname = "";
       await updateList();
     } else {
       toastPushFail();
@@ -268,25 +252,26 @@
       records: [
         {
           ...payload,
+          shortname: data.shortname,
           subpath: parentSubpath,
         },
       ],
     };
     const response = await dmartRequest("managed/request", request);
     if (response.status === "success") {
+      data = { ...data, ...payload };
       toastPushSuccess();
     } else {
       toastPushFail();
     }
   }
-
-  $: entryCreateModal && (contentShortname = "");
 </script>
 
 <Modal
   isOpen={entryCreateModal}
   toggle={() => {
     entryCreateModal = !entryCreateModal;
+    contentShortname = "";
   }}
   size={"lg"}
 >
@@ -333,7 +318,7 @@
             /> -->
         {/if}
         {#if entryType === "folder"}
-          <Label class="mt-3">Shorname</Label>
+          <Label class="mt-3">Shortname</Label>
           <Input
             placeholder="Shortname..."
             bind:value={contentShortname}
@@ -354,7 +339,10 @@
       <Button
         type="button"
         color="secondary"
-        on:click={() => (entryCreateModal = false)}>cancel</Button
+        on:click={() => {
+          entryCreateModal = false;
+          contentShortname = "";
+        }}>cancel</Button
       >
       <Button type="submit" color="primary">Submit</Button>
     </ModalFooter>
@@ -372,38 +360,48 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
 <div
-  transition:slide={{ duration: 400 }}
-  class="d-flex row justify-content-between folder position-relative mt-1 ps-2 {$selectedSubpath ===
-  data.uuid
-    ? 'expanded'
-    : ''}"
+  class="d-flex row justify-content-between folder position-relative mt-1 ps-2 
+  {$selectedSubpath === data.uuid ? 'expanded' : ''}"
   on:mouseover={(e) => (displayActionMenu = true)}
   on:mouseleave={(e) => (displayActionMenu = false)}
+  on:click={toggle}
 >
-  <div class="col-8" on:click={toggle}>
+  <div class="col-12" style="overflow-wrap: anywhere;">
     {data?.attributes?.displayname?.en ?? data.shortname}
   </div>
 
-  <div class="d-flex col-4">
+  <div
+    class="d-flex col justify-content-end"
+    style="position: absolute;z-index: 1;"
+  >
     <div
-      style="cursor: pointer;"
+      style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
-      on:click={() => handleSubpathMan("create")}
+      on:click={(event) => {
+        event.stopPropagation();
+        handleSubpathMan("create");
+      }}
     >
       <Fa icon={faPlusSquare} size="sm" color="dimgrey" />
     </div>
     <div
       class="px-1"
-      style="cursor: pointer;"
+      style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
-      on:click={() => handleSubpathMan("update")}
+      on:click={(event) => {
+        event.stopPropagation();
+        handleSubpathMan("update");
+      }}
     >
       <Fa icon={faEdit} size="sm" color="dimgrey" />
     </div>
     <div
-      style="cursor: pointer;"
+      style="cursor: pointer;background-color: #e8e9ea;"
       hidden={!displayActionMenu}
-      on:click={async () => await handleSubpathDelete()}
+      on:click={async (event) => {
+        event.stopPropagation();
+        await handleSubpathDelete();
+      }}
     >
       <Fa icon={faTrashCan} size="sm" color="dimgrey" />
     </div>
@@ -412,11 +410,7 @@
 
 {#if data.subpaths}
   {#each data.subpaths as subpath (subpath.shortname + subpath.uuid)}
-    <div
-      hidden={!expanded}
-      style="padding-left: 5px;"
-      transition:slide={{ duration: 400 }}
-    >
+    <div hidden={!expanded} style="padding-left: 5px;">
       <Folder
         data={{ space_name: data.space_name, ...subpath }}
         bind:parent_data={data}
@@ -425,37 +419,12 @@
   {/each}
 {/if}
 
-<!-- {#if expanded && $entries[children_subpath]}
-  <ul class="py-1 ps-1 ms-2 border-start">
-    {#each $entries[children_subpath] as child (children_subpath + child.data.shortname)}
-      <li>
-        {#if child.data.resource_type === "folder"}
-          <svelte:self data={child.data} />
-        {:else}
-          <File data={child.data} />
-        {/if}
-      </li>
-    {/each}
-  </ul>
-{/if} -->
 <style>
-  .no-hype {
-    color: inherit; /* blue colors for links too */
-    text-decoration: inherit; /* no underline */
-  }
-  ul {
-    /*padding: 0.2em 0 0 0.5em;
-    margin: 0 0 0 0.5em;*/
-    list-style: none;
-    /*border-left: 1px solid #eee;*/
-  }
-
   .folder {
     /*font-weight: bold;*/
     cursor: pointer;
     display: list-item;
     list-style: none;
-    border-top: thin dotted grey;
   }
 
   .folder:hover {
@@ -468,14 +437,5 @@
   .expanded {
     background-color: #e8e9ea;
     border-bottom: thin dotted green;
-  }
-
-  .toolbar {
-    display: none;
-    color: brown;
-  }
-
-  .folder:hover .toolbar {
-    display: flex;
   }
 </style>
