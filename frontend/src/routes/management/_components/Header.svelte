@@ -42,21 +42,31 @@
         >{$signedin_user.displayname}</NavLink
       > -->
     <NavLink
+      class={$active_section === "dashboard" ? "selected" : ""}
       href="/management/dashboard"
       on:click={() => ($active_section = "dashboard")}>Dashbaord</NavLink
     >
     <NavLink
+      class={$active_section === "qatool" ? "selected" : ""}
       href="/management/qatool"
       on:click={() => ($active_section = "qatool")}>QA Tool</NavLink
     >
     <NavLink
+      class={$active_section === "events" ? "selected" : ""}
       href="/management/events"
       on:click={() => ($active_section = "events")}>Events</NavLink
     >
     <NavLink
+      class={$active_section === "quering" ? "selected" : ""}
       href="/management/quering"
       on:click={() => ($active_section = "quering")}>Quering</NavLink
     >
+
+    <style>
+      .selected {
+        border-bottom: #0d6efd solid;
+      }
+    </style>
 
     <!-- <NavLink href="/about">{$_("about")}</NavLink> -->
     <!-- <NavLink href="/contact">{$_("contact_us")}</NavLink> -->

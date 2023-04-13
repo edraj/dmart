@@ -17,7 +17,9 @@ const spaces = {
  */
 const getSpaceSubpaths = async (spaceName) => {
   const response = await dmartRequest("managed/query", {
-    type: "subpath",
+    type: "search",
+    search: "",
+    exact_subpath: true,
     space_name: spaceName,
     subpath: "/",
     retrieve_json_payload: true,
