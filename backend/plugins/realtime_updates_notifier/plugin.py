@@ -37,16 +37,20 @@ class Plugin(PluginBase):
             ])
             subpath += "/"
 
-        requests.post(
-            url=f"{settings.websocket_url}/broadcast-to-channels",
-            data=json.dumps(
-                {
-                    "channels": channels,
-                    "message": {
-                        "title": "updated"
+        try:
+            
+            requests.post(
+                url=f"{settings.websocket_url}/broadcast-to-channels",
+                data=json.dumps(
+                    {
+                        "channels": channels,
+                        "message": {
+                            "title": "updated"
+                        }
                     }
-                }
-            ),
-        )
+                ),
+            )
+        except :
+            pass
 
         

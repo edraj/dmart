@@ -191,7 +191,7 @@ class WebsiteUser(HttpUser):
     # retrieve entry
     @task
     def retrieve_entry(self):
-        self.client.get("/managed/entry/content/products/banners/banner2", headers=self.headers)
+        self.client.get("/managed/entry/schema/test/schema/test_schema?retrieve_json_payload=true&retrieve_attachments=true", headers=self.headers)
 
     
     # health API
