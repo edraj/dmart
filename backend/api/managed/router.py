@@ -773,14 +773,18 @@ async def serve_request(
                     old_resource_obj.payload
                     and old_resource_obj.payload.content_type == ContentType.json
                 ):
-                    old_resource_payload_body = db.load_resource_payload(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        filename=old_resource_obj.payload.body,
-                        class_type=resource_cls,
-                        branch_name=record.branch_name,
-                        schema_shortname=schema_shortname,
-                    )
+                    try:
+                        old_resource_payload_body = db.load_resource_payload(
+                            space_name=request.space_name,
+                            subpath=record.subpath,
+                            filename=old_resource_obj.payload.body,
+                            class_type=resource_cls,
+                            branch_name=record.branch_name,
+                            schema_shortname=schema_shortname,
+                        )
+                    except api.Exception as e:
+                        if request.request_type == api.RequestType.update:
+                            raise e
 
                     old_version_flattend.pop("payload.body", None)
                     old_version_flattend.update(
@@ -808,10 +812,9 @@ async def serve_request(
                         content_type=record.attributes["payload"].get("content_type"),
                         schema_shortname=record.attributes["payload"].get(
                             "schema_shortname",
-                            old_resource_obj.payload.schema_shortname or
-                            None
+                            old_resource_obj.payload.schema_shortname or None,
                         ),
-                        body=record.shortname + ".json"
+                        body=record.shortname + ".json",
                     )
                     new_version_flattend.pop("payload.body", None)
                     new_version_flattend.update(
@@ -1363,7 +1366,8 @@ async def retrieve_entry_or_attachment_payload(
         branch_name=branch_name,
         schema_shortname=schema_shortname,
     )
-
+    print(f"{payload_path=}")
+    print(f"{meta.payload.body=}")
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
