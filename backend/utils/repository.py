@@ -69,12 +69,16 @@ async def serve_query(
             res_data: list = []
             for redis_document in search_res:
                 res_data.append(json.loads(redis_document.json))
-            if len(query.filter_schema_names) > 1 and query.sort_by:
-                res_data = sorted(
-                    res_data,
-                    key=lambda d: d[query.sort_by] if query.sort_by in d else "",
-                    reverse=(query.sort_type == api.SortType.descending),
-                )
+            if len(query.filter_schema_names) > 1:
+                if query.sort_by:
+                    res_data = sorted(
+                        res_data,
+                        key=lambda d: 
+                            d[query.sort_by] if query.sort_by in d
+                            else d.get("payload", {})[query.sort_by] if query.sort_by in d.get("payload", {})
+                            else "",
+                        reverse=(query.sort_type == api.SortType.descending),
+                    )
                 res_data = res_data[query.offset : (query.limit + query.offset)]
 
             async with RedisServices() as redis_services:
