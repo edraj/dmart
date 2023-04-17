@@ -12,6 +12,7 @@
     json: input,
     text: undefined,
   };
+  let outputContentJE;
   let outputContent = {
     json: {},
     text: undefined,
@@ -56,6 +57,7 @@
         `${website.backend}/${endpoint}`,
         request
       );
+      outputContentJE.set(outputContent);
     }
   }
 </script>
@@ -73,7 +75,12 @@
   <Row>
     <Col><ContentJsonEditor bind:content={inputContent} /></Col>
 
-    <Col><ContentJsonEditor bind:content={outputContent} readOnly={true} /></Col
+    <Col
+      ><ContentJsonEditor
+        bind:self={outputContentJE}
+        bind:content={outputContent}
+        readOnly={true}
+      /></Col
     >
   </Row>
   <Row>
