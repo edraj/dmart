@@ -1503,7 +1503,7 @@ async def create_or_update_resource_with_payload(
     if resource_obj.shortname == settings.auto_uuid_rule:
         resource_obj.uuid = uuid4()
         resource_obj.shortname = str(resource_obj.uuid)[:8]
-        resource_obj.payload.body = f"{str(resource_obj.uuid)[:8]}.json"
+        resource_obj.payload.body = f"{str(resource_obj.uuid)[:8]}." + payload_filename.split(".")[1]
 
     if (
         resource_content_type == ContentType.json
