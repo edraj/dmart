@@ -809,6 +809,7 @@ async def update_payload_validation_status(
         not (meta_path / meta_file).is_file()
         or (
             meta_obj.payload.validation_status == validation_status
+            and meta_obj.payload.last_validated
             and meta_obj.payload.last_validated > meta_obj.updated_at
         )
     ):
