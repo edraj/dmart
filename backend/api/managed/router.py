@@ -2133,11 +2133,22 @@ async def apply_alteration(
         user_shortname=logged_in_user,
         branch_name=on_entry.branch_name,
     )
+    entry_meta: core.Meta = await db.load(
+        space_name=space_name,
+        subpath=f"{on_entry.subpath}",
+        shortname=on_entry.shortname,
+        class_type=getattr(sys.modules["models.core"], camel_case(on_entry.resource_type)),
+        user_shortname=logged_in_user,
+        branch_name=on_entry.branch_name,
+    )
 
-    on_entry.attributes = alteration_meta.requested_update
+    record: core.Record = entry_meta.to_record(on_entry.subpath, on_entry.shortname, [], on_entry.branch_name)
+    record.attributes['payload'] = record.attributes['payload'].__dict__
+    record.attributes['payload']['body'] = alteration_meta.requested_update
+
     response = await serve_request(
         request=api.Request(
-            space_name=space_name, request_type=RequestType.update, records=[on_entry]
+            space_name=space_name, request_type=RequestType.update, records=[record]
         ),
         owner_shortname=logged_in_user,
     )
