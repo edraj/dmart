@@ -40,13 +40,6 @@
       isSchemaValidated = false;
     }
   }
-
-  $: {
-    // if (content.json) {
-    //   self?.expand(() => true);
-    // }
-    self?.set(content);
-  }
 </script>
 
 {#if validator}
