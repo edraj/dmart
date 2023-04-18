@@ -28,10 +28,26 @@
   export let height;
 
   function fillStatusLine() {
-    let s = `Space: ${space_name} </br>`;
-    s += `Subpath: ${subpath} </br>`;
-    s += `Shortname: ${metaContent.json.shortname} </br>`;
-    s += `Resource Type: ${resource_type}`;
+    let s = `Resource type: ${resource_type}<br/>`;
+
+    const schema_shortname = metaContent.json.payload.schema_shortname;
+    if (schema_shortname) {
+      s += `Schema name: ${schema_shortname}<br/>`;
+    } else {
+      s += `Schema name: None<br/>`;
+    }
+
+    const attachments = Object.keys(metaContent.json.attachments);
+    if (attachments.length === 0) {
+      s += "Attachments: 0<br/>";
+    } else {
+      let count = 0;
+      console.log({ attachments });
+      attachments.map((k) => {
+        count += metaContent.json.attachments[k].length;
+      });
+      s += `Attachments: ${count}<br/>`;
+    }
     return s;
   }
 

@@ -5,7 +5,7 @@ import { website } from "./config.js";
 // import sha1 from "./sha1.js";
 
 export async function dmartListSchemas() {
-  return await dmartQuery({ type: "subpath", subpath: "schema" });
+  return await dmartQuery({ type: "search", subpath: "schema" });
 }
 
 export async function dmartProfile() {
@@ -29,7 +29,7 @@ export async function dmartLogin(username, password) {
 export async function dmartGetSchemas(space_name, shortname = null) {
   const query = {
     space_name,
-    type: "subpath",
+    type: "search",
     subpath: "/schema",
     retrieve_json_payload: true,
     limit: 99,
@@ -144,7 +144,7 @@ export async function dmartPubQuery(
   subpath,
   resource_types,
   resource_shortnames = [],
-  query_type = "subpath",
+  query_type = "search",
   search = "*",
   limit = 10,
   offset = 0
