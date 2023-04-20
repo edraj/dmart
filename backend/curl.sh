@@ -11,35 +11,12 @@ declare -i RESULT=0
 # CREATE=$(jq -c -n --arg shortname "$SHORTNAME" --arg msisdn "$MSISDN" --arg password "$PASSWORD" '{resource_type: "user", subpath: "users", shortname: $shortname, attributes:{password: $password, msisdn:$msisdn, invitation: "hello"}}')
 # curl -s -H "$CT" -d "$CREATE" "${API_URL}/user/create?invitation=$INVITATION"  | jq .status
 
-# echo -n -e "Login: \t\t\t"
-# curl -s -H "$CT" -d "${ALIBABA}" ${API_URL}/user/login | jq
-# AUTH_TOKEN=$(curl -i -s -H "$CT" -d "${ALIBABA}" ${API_URL}/user/login  | grep set-cookie | sed 's/^[^=]*=\(.*\); Http.*$/\1/g')
-# echo " Auth : $AUTH_TOKEN"
-
 # #echo -n -e "Send OTP using MSISDN: \t"
 # #curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"msisdn": "'${MSISDN}'"}' ${API_URL}/user/otp-request | jq . 
 
 # #echo -n -e "Confirm OTP using MSISDN: \t"
 # #curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"msisdn": "'${MSISDN}'", "code": "'${OTP_CODE}'"}' ${API_URL}/user/otp-confirm | jq . 
 
-# echo -n -e "Get profile: \t\t"
-# #curl -s -H "$AUTH" -H "$CT" $API_URL/user/profile | jq .status
-# curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" $API_URL/user/profile | jq .status
-
-# echo -n -e "Update profile: \t"
-# UPDATE=$(jq -c -n --arg shortname "$SHORTNAME" '{resource_type: "user", subpath: "users", shortname: $shortname, attributes:{displayname: {"en": "New display name", "ar": "arabic", "kd": "kd"}}}')
-# #curl -s -H "$AUTH" -H "$CT" -d "$UPDATE" $API_URL/user/profile | jq .status
-# curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$UPDATE" $API_URL/user/profile | jq .status
-
-# echo -n -e "Get profile: \t\t"
-# curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" $API_URL/user/profile | jq .status
-
-# echo -n -e "Delete user: \t\t"
-# curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{}' $API_URL/user/delete | jq .status
-
-#echo -n -e "Create admin: \t\t"
-#CREATE=$(jq -c -n --arg shortname "$SUPER_ADMIN_SHORTNAME" --arg displayname "$DISPLAYNAME"  --arg password "$SUPER_ADMIN_PASSWORD" '{resource_type: "user", subpath: "users", shortname: $shortname, attributes:{"roles":["admin"],displayname: $displayname, password: $password, invitation: "hello"}}')
-#curl -s -H "$CT" -d "$CREATE" "${API_URL}/user/create?invitation=$INVITATION"  | jq .status
 
 echo -n -e "Login with admin: \t\t"
 AUTH_TOKEN=$(curl -i -s -H "$CT" -d "$SUPERMAN" ${API_URL}/user/login  | grep set-cookie | sed 's/^[^=]*=\(.*\); Http.*$/\1/g')
@@ -47,6 +24,9 @@ RESULT+=$?
 echo "$AUTH_TOKEN" | cut -d '.' -f 1| base64 -d | jq .typ
 RESULT+=$?
 # curl -s -c mycookies.jar -H "$CT" -d "$LOGIN" ${API_URL}/user/login | jq .status
+
+echo -n -e "Get profile: \t\t"
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" $API_URL/user/profile | jq .status
 
 echo -n -e "Create user from admin: \t" >&2
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"create","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"roles": ["distributor_admin"], "msisdn": "7895412658", "email": "dummy_unqiue@gmail.com"}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
@@ -148,9 +128,6 @@ echo -n -e "Create Schema for ticket: \t" >&2
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createschema.json"' -F 'payload_file=@"../sample/test/schema.json"' ${API_URL}/managed/resource_with_payload | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
-echo -n -e "Create ticket: \t\t\t" >&2
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"'  'request_type: "create"' -F 'request_record=@"../sample/test/ticketcontent.json"' -F 'payload_file=@"../sample/test/ticketbody.json"' ${API_URL}/managed/resource_with_payload  | jq .status | tee /dev/stderr | grep -q "success"
-RESULT+=$?
 
 
 echo -n -e "Create QR Code: \t\t" >&2
@@ -161,17 +138,21 @@ file -ib $TEMP_FILE  >&2
 rm -f $TEMP_FILE 
 #curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F  ${API_URL}/qr/generate/ticket/dummy/myfolder/an_example  | jq .status | tee /dev/stderr | grep -q "success"
 
-# echo -n -e "Move / rename ticket: \t"
-# curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "dummy","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder/an_example","shortname": "'${SHORTNAME}'","attributes": {"src_subpath": "/tickets/postpaid_prime","src_shortname": "'${SHORTNAME}'","dest_subpath": "/tickets/postpaid_prime","dest_shortname": "'${UPDATE_SHORTNAME}'","is_active": true}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
+echo -n -e "Create ticket: \t\t\t" >&2
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' 'request_type: "create"' -F 'request_record=@"../sample/test/ticketcontent.json"' -F 'payload_file=@"../sample/test/ticketbody.json"' ${API_URL}/managed/resource_with_payload  | jq .status | tee /dev/stderr | grep -q "success"
+RESULT+=$?
 
-# echo -n -e "Move / rename ticket back to old shortname: \t"
-# curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "dummy","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder/an_example","shortname": "'${UPDATE_SHORTNAME}'","attributes": {"src_subpath": "/tickets/postpaid_prime","src_shortname": "'${UPDATE_SHORTNAME}'","dest_subpath": "/tickets/postpaid_prime","dest_shortname": "'${SHORTNAME}'","is_active": true}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
+echo -n -e "Move / rename ticket: \t"
+curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "dummy","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder","shortname": "an_example","attributes": {"src_subpath": "/myfolder","src_shortname": "an_example","dest_subpath": "/myfolder_new","dest_shortname": "an_example_new","is_active": true}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 
-# echo -n -e "Lock profile: \t"
-# curl -s -X "PUT" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/lock/ticket/dummy/myfolder/an_example | jq .status | tee /dev/stderr | grep -q "success"
+echo -n -e "Move / rename ticket back to old shortname: \t"
+curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "dummy","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder_new","shortname": "an_example_new","attributes": {"src_subpath": "/myfolder_new","src_shortname": "an_example_new","dest_subpath": "/myfolder","dest_shortname": "an_example","is_active": true}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 
-# echo -n -e "Unlock profile: \t"
-# curl -s -X "DELETE" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/lock/dummy/myfolder/an_example | jq .status | tee /dev/stderr | grep -q "success"
+echo -n -e "Lock ticket: \t"
+curl -s -X "PUT" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/lock/ticket/dummy/myfolder/an_example | jq .status | tee /dev/stderr | grep -q "success"
+
+echo -n -e "Unlock ticket: \t"
+curl -s -X "DELETE" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/lock/dummy/myfolder/an_example | jq .status | tee /dev/stderr | grep -q "success"
 
 
 echo -n -e "Create Content: \t\t" >&2
