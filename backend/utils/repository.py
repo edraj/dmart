@@ -807,7 +807,11 @@ async def update_payload_validation_status(
     )
     if (
         not (meta_path / meta_file).is_file()
-        or meta_obj.payload.validation_status == validation_status
+        or (
+            meta_obj.payload.validation_status == validation_status
+            and meta_obj.payload.last_validated
+            and meta_obj.payload.last_validated > meta_obj.updated_at
+        )
     ):
         return
 
@@ -914,6 +918,10 @@ async def validate_subpath_data(
             if (
                 folder_meta_content.payload
                 and folder_meta_content.payload.content_type == ContentType.json
+                and not (
+                    folder_meta_content.payload.last_validated
+                    and folder_meta_content.updated_at <= folder_meta_content.payload.last_validated
+                )
             ):
                 payload_path = "/"
                 subpath_parts = subpath.split("/")
@@ -946,7 +954,7 @@ async def validate_subpath_data(
             ):
                 await update_payload_validation_status(
                     space_name,
-                    folder_name,
+                    "/".join(folder_name.split("/")[:-1]) or "/",
                     branch_name,
                     folder_meta_content,
                     folder_meta_payload,
@@ -1026,6 +1034,10 @@ async def validate_subpath_data(
                 elif (
                     entry_meta_obj.payload
                     and entry_meta_obj.payload.content_type == ContentType.json
+                     and not (
+                        entry_meta_obj.payload.last_validated
+                        and entry_meta_obj.updated_at <= entry_meta_obj.payload.last_validated
+                    )
                 ):
                     payload_file_path = f"{subpath}/{entry_meta_obj.payload.body}"
                     if not entry_meta_obj.payload.body.endswith(
