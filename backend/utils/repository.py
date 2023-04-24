@@ -22,6 +22,22 @@ from utils.helpers import branch_path, camel_case, snake_case, str_to_datetime
 from utils.custom_validations import validate_payload_with_schema
 import subprocess
 from redis.commands.search.document import Document as RedisDocument
+import redis.commands.search.aggregation as aggregations
+import redis.commands.search.reducers as reducers
+
+
+def parse_redis_response(rows : list) -> list:
+    mylist : list = []
+    for one in rows:
+        mydict = {}
+        key : str | None = None
+        for i, value in enumerate(one):
+            if i%2 == 0:
+                key = value
+            elif key:
+                mydict[key] = value
+        mylist.append(mydict)
+    return mylist 
 
 
 async def serve_query(
@@ -468,6 +484,26 @@ async def serve_query(
                     )
                     total += int(redis_res)
 
+        case api.QueryType.tags:
+            # FT.AGGREGATE "eser:master:meta" "*" GROUPBY 1 @tags REDUCE count 0 as freq SORTBY 2 @freq DESC MAX 50
+            req = aggregations.AggregateRequest("*").group_by("@tags", reducers.count().alias("freq")).sort_by(aggregations.Desc("@freq"), max=query.limit)
+            async with RedisServices() as redis_services:
+                rows = await redis_services.client.ft(f"{query.space_name}:{query.branch_name}:meta").aggregate(req).rows
+                records.append(core.Record(resource_type="x", shortname="y", subpath="n", attributes={})) #  += parse_redis_response(rows)
+        case api.QueryType.random:
+            # FT.AGGREGATE "eser:master:meta" "*" LOAD 1 @__key GROUPBY 1 @resource_type REDUCE RANDOM_SAMPLE 2 @__key 10 as random_sample 
+            req = aggregations.AggregateRequest("*").load("@__key").group_by("@resource_type", reducers.random_sample("@__key", limit).alias("id"))
+            async with RedisServices() as redis_services:
+                rows = redis_services.client.ft(f"{query.space_name}:{query.branch_name}:meta").aggregate(req).rows
+                ids = []
+                # redis response key, value, key, value
+                for one in rows:
+                    if one[1] in query.resource_types: 
+                        ids += one[3]
+
+                # FIX ME loop over the items and return normal records result
+                # FIX ME use json().mget
+
         case api.QueryType.history:
             if not await access_control.check_access(
                 user_shortname=logged_in_user,
@@ -695,6 +731,14 @@ async def get_entry_attachments(
 
     return attachments_dict
 
+
+async def redis_query_aggregate(
+    query: api.Query, redis_query_policies: list = []
+) -> tuple:
+    search_res: list = []
+    total = 0
+
+    pass
 
 async def redis_query_search(
     query: api.Query, redis_query_policies: list = []
