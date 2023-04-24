@@ -21,6 +21,7 @@ from utils.settings import settings
 import models.api as api
 from fastapi import status
 from redis.exceptions import ResponseError as RedisResponseError
+from fastapi.logger import logger
 
 
 class RedisServices(object):
@@ -145,8 +146,8 @@ class RedisServices(object):
             await self.redis_indices[space_branch_name][schema_name].dropindex(
                 delete_documents=True
             )
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Error at redis_services.create_index: {e}")
 
         # in case it's a management space schema:
         # create Redis index with this schema in all other spaces
@@ -831,7 +832,8 @@ class RedisServices(object):
         try:
             info = await ft_index.info()
             return info["num_docs"]
-        except:
+        except Exception as e:
+            logger.error(f"Error at redis_services.get_count: {e}")
             return 0
 
         # aggregate_request = AggregateRequest().group_by([], count_reducer().alias("counter"))
@@ -859,7 +861,8 @@ class RedisServices(object):
             ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
             # index_info =
             await ft_index.info()
-        except:
+        except Exception as e:
+            logger.error(f"Error at redis_services.search: {e}")
             return {"data": [], "total": 0}
 
         query_string = search
@@ -905,19 +908,22 @@ class RedisServices(object):
         try:
             search_res = await ft_index.search(query=search_query)
             return {"data": search_res.docs, "total": search_res.total}
-        except:
+        except Exception as e:
+            logger.warning(f"Error at redis_services.search: {e}")
             return {}
 
     async def get_doc_by_id(self, doc_id: str) -> dict:
         try:
             return await self.client.json().get(name=doc_id)
-        except:
+        except Exception as e:
+            logger.warning(f"Error at redis_services.get_doc_by_id: {e}")
             return {}
 
     async def get_content_by_id(self, doc_id: str) -> Any:
         try:
             return await self.client.get(doc_id)
-        except:
+        except Exception as e:
+            logger.warning(f"Error at redis_services.get_content_by_id: {e}")
             return ""
 
     async def delete_doc(
@@ -928,8 +934,9 @@ class RedisServices(object):
         )
         try:
             await self.client.json().delete(key=docid)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Error at redis_services.delete_doc: {e}")
+
 
     async def move_payload_doc(
         self,
@@ -956,8 +963,8 @@ class RedisServices(object):
             )
             await self.save_doc(new_docid, doc_content)
 
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Error at redis_services.move_payload_doc: {e}")
 
     async def move_meta_doc(
         self, space_name, branch_name, src_shortname, src_subpath, dest_subpath, meta
@@ -967,20 +974,24 @@ class RedisServices(object):
                 space_name, branch_name, "meta", src_shortname, src_subpath
             )
             await self.save_meta_doc(space_name, branch_name, dest_subpath, meta)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Error at redis_services.move_meta_doc: {e}")
+
 
     async def get_keys(self, pattern: str = "*") -> list:
         try:
             return await self.client.keys(pattern)
-        except:
+        except Exception as e:
+            logger.warning(f"Error at redis_services.get_keys: {e}")
             return []
 
     async def del_keys(self, keys: list):
         try:
             return await self.client.delete(*keys)
-        except:
+        except Exception as e:
+            logger.warning(f"Error at redis_services.def_keys: {e}")
             return False
+
 
     async def get(self, key):
         return await self.client.get(key)
