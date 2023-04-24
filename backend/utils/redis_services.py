@@ -933,7 +933,7 @@ class RedisServices(object):
             ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
             await ft_index.info()
         except:
-            return {"data": [], "total": 0}
+            return []
 
         
         aggr_request = aggregation.AggregateRequest(
@@ -961,7 +961,7 @@ class RedisServices(object):
             aggr_res = await ft_index.aggregate(aggr_request)
             return aggr_res.rows
         except:
-            return [[]]
+            return []
 
     def prepare_query_string(
         self,
