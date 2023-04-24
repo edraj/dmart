@@ -125,16 +125,9 @@ async def serve_query(
                         and query.retrieve_json_payload
                         and "payload_doc_id" in redis_doc_dict
                     ):
-                        payload_redis_doc = await redis_services.get_doc_by_id(
-                            redis_doc_dict["payload_doc_id"]
+                        payload_doc_content = await redis_services.get_payload_doc(
+                            redis_doc_dict["payload_doc_id"], redis_doc_dict["resource_type"]
                         )
-                        if payload_redis_doc:
-                            for key, value in payload_redis_doc.items():
-                                not_payload_attr = system_attributes + list(
-                                    resource_class.__fields__.keys()
-                                )
-                                if key not in not_payload_attr:
-                                    payload_doc_content[key] = value
 
                     meta_doc_content["created_at"] = datetime.fromtimestamp(
                         meta_doc_content["created_at"]
@@ -486,27 +479,16 @@ async def serve_query(
 
         case api.QueryType.tags:
             async with RedisServices() as redis_services:
-                rows = await redis_services.aggregate(
-                    space_name=query.space_name,
-                    branch_name=query.branch_name,
-                    schema_name="meta",
-                    search=str(query.search),
-                    filters={
-                        "resource_type": query.filter_types or [],
-                        "shortname": query.filter_shortnames or [],
-                        "subpath": [query.subpath],
-                        "query_policies": redis_query_policies
-                    },
+                query.sort_by = "@freq"
+                rows = await redis_query_aggregate(
+                    query=query, 
+                    redis_query_policies=redis_query_policies,
                     group_by={
                         "@tags": [
                             reducers.count().alias("freq")
                         ]
-                    },
-                    exact_subpath=query.exact_subpath,
-                    sort_by="@freq",
-                    max=query.limit,
-                    sort_type=query.sort_type or api.SortType.ascending
-                )
+                    }
+                ) 
                 records.append(core.Record(
                     resource_type=ResourceType.content, 
                     shortname="tags_frequency", 
@@ -518,17 +500,9 @@ async def serve_query(
         
         case api.QueryType.random:
             async with RedisServices() as redis_services:
-                rows = await redis_services.aggregate(
-                    space_name=query.space_name,
-                    branch_name=query.branch_name,
-                    schema_name="meta",
-                    search=str(query.search),
-                    filters={
-                        "resource_type": query.filter_types or [],
-                        "shortname": query.filter_shortnames or [],
-                        "subpath": [query.subpath],
-                        "query_policies": redis_query_policies
-                    },
+                rows = await redis_query_aggregate(
+                    query=query, 
+                    redis_query_policies=redis_query_policies,
                     load=[
                         "@__key"
                     ],
@@ -537,26 +511,43 @@ async def serve_query(
                             reducers.random_sample("@__key", query.limit).alias("id")
                         ]
                     },
-                    exact_subpath=query.exact_subpath,
-                    max=query.limit
-                )
-                
-                ids = [row[3] for row in rows]
-                total = len(ids)
-                docs = await redis_services.get_docs_by_ids(ids)
+                ) 
+                total = len(rows[3])
+                docs = await redis_services.get_docs_by_ids(rows[3])
                 for doc in docs:
-                    records.append(
-                        core.Record(
-                            shortname=doc["shortname"],
-                            resource_type=doc["resource_type"],
-                            uuid=doc["uuid"],
-                            branch_name=doc["branch_name"],
-                            subpath=doc["subpath"],
-                            attributes={
-                                "payload": doc["payload"]
-                            }
+                    doc = doc[0]
+                    if (
+                        query.retrieve_json_payload
+                        and doc.get("payload_doc_id", None)
+                    ):
+                        pp(docdocdocdoc=doc)
+                        doc["payload"]["body"] = await redis_services.get_payload_doc(
+                            doc["payload_doc_id"], doc["resource_type"]
                         )
+                    record = core.Record(
+                        shortname=doc["shortname"],
+                        resource_type=doc["resource_type"],
+                        uuid=doc["uuid"],
+                        branch_name=doc["branch_name"],
+                        subpath=doc["subpath"],
+                        attributes={
+                            "payload": doc.get("payload")
+                        }
                     )
+                    entry_path = (
+                        settings.spaces_folder
+                        / f"{query.space_name}/{branch_path(doc['branch_name'])}/{doc['subpath']}/.dm/{doc['shortname']}"
+                    )
+                    if query.retrieve_attachments and entry_path.is_dir():
+                        record.attachments = await get_entry_attachments(
+                            subpath=f"{doc['subpath']}/{doc['shortname']}",
+                            branch_name=doc["branch_name"],
+                            attachments_path=entry_path,
+                            filter_types=query.filter_types,
+                            include_fields=query.include_fields,
+                            retrieve_json_payload=query.retrieve_json_payload,
+                        )
+                    records.append(record)
 
         case api.QueryType.history:
             if not await access_control.check_access(
@@ -787,12 +778,55 @@ async def get_entry_attachments(
 
 
 async def redis_query_aggregate(
-    query: api.Query, redis_query_policies: list = []
-) -> tuple:
-    search_res: list = []
-    total = 0
+    query: api.Query, 
+    group_by: dict[str, list],
+    load: list = [],
+    redis_query_policies: list = [],
+) -> list:
 
-    pass
+    created_at_search = ""
+    if query.from_date and query.to_date:
+        created_at_search = (
+            "[" + f"{query.from_date.timestamp()} {query.to_date.timestamp()}" + "]"
+        )
+
+    elif query.from_date:
+        created_at_search = (
+            "["
+            + f"{query.from_date.timestamp()} {datetime(2199, 12, 31).timestamp()}"
+            + "]"
+        )
+
+    elif query.to_date:
+        created_at_search = (
+            "["
+            + f"{datetime(2010, 1, 1).timestamp()} {query.to_date.timestamp()}"
+            + "]"
+        )
+
+    async with RedisServices() as redis_services:
+        res = await redis_services.aggregate(
+            space_name=query.space_name,
+            branch_name=query.branch_name,
+            schema_name="meta",
+            search=str(query.search),
+            filters={
+                "resource_type": query.filter_types or [],
+                "shortname": query.filter_shortnames or [],
+                "subpath": [query.subpath],
+                "query_policies": redis_query_policies,
+                "created_at": created_at_search,
+            },
+            group_by=group_by,
+            load=load,
+            exact_subpath=query.exact_subpath,
+            sort_by=query.sort_by,
+            max=query.limit,
+            sort_type=query.sort_type or api.SortType.ascending
+        )
+
+    return res[0]
+
 
 async def redis_query_search(
     query: api.Query, redis_query_policies: list = []

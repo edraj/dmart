@@ -1,6 +1,7 @@
 import asyncio
 import re
 import json
+import sys
 from typing import Any
 from uuid import UUID
 from redis.asyncio import BlockingConnectionPool, Redis
@@ -16,7 +17,7 @@ from datetime import datetime
 # from redis.commands.search.reducers import count as count_reducer
 from redis.commands.search import Search, aggregation
 from redis.commands.search.query import Query
-from utils.helpers import branch_path, resolve_schema_references
+from utils.helpers import branch_path, camel_case, resolve_schema_references
 from utils.settings import settings
 import models.api as api
 from fastapi import status
@@ -732,6 +733,34 @@ class RedisServices(object):
             return
         await self.save_doc(docid, payload)
 
+    async def get_payload_doc(self, doc_id: str, resource_type: ResourceType):
+        system_attributes = [
+            "branch_name",
+            "query_policies",
+            "subpath",
+            "resource_type",
+            "meta_doc_id",
+            "payload_doc_id",
+        ]
+        resource_class = getattr(
+            sys.modules["models.core"],
+            camel_case(resource_type),
+        )
+        payload_redis_doc = await self.get_doc_by_id(
+            doc_id
+        )
+        payload_doc_content = {}
+        if not payload_redis_doc:
+            return payload_doc_content
+
+        not_payload_attr = system_attributes + list(
+            resource_class.__fields__.keys()
+        )
+        for key, value in payload_redis_doc.items():
+            if key not in not_payload_attr:
+                payload_doc_content[key] = value
+        return payload_doc_content
+
     async def save_lock_doc(
         self,
         space_name: str,
@@ -930,7 +959,6 @@ class RedisServices(object):
 
         try:
             aggr_res = await ft_index.aggregate(aggr_request)
-            pp(aggr_res=aggr_res.rows)
             return aggr_res.rows
         except:
             return {}
@@ -980,7 +1008,7 @@ class RedisServices(object):
 
     async def get_docs_by_ids(self, docs_ids: list[str]) -> list:
         try:
-            return (await self.client.json().mget(*docs_ids, "$"))[0]
+            return await self.client.json().mget(docs_ids, "$")
         except:
             return []
 
