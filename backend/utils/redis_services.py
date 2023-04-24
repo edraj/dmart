@@ -14,7 +14,7 @@ from datetime import datetime
 
 # from redis.commands.search.aggregation import AggregateRequest
 # from redis.commands.search.reducers import count as count_reducer
-from redis.commands.search import Search
+from redis.commands.search import Search, aggregation
 from redis.commands.search.query import Query
 from utils.helpers import branch_path, resolve_schema_references
 from utils.settings import settings
@@ -853,15 +853,94 @@ class RedisServices(object):
         schema_name: str = "meta",
         return_fields: list = [],
     ):
-        # index_info = None
         # Tries to get the index from the provided space
         try:
             ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
-            # index_info =
             await ft_index.info()
         except:
             return {"data": [], "total": 0}
 
+        search_query = Query(
+            query_string=self.prepare_query_string(
+                search,
+                filters,
+                exact_subpath
+            )
+        )
+
+        if highlight_fields:
+            search_query.highlight(highlight_fields, ["", ""])
+
+        if sort_by:
+            search_query.sort_by(sort_by, sort_type == SortType.ascending)
+
+        if return_fields:
+            search_query.return_fields(*return_fields)
+
+        search_query.paging(offset, limit)
+
+        try:
+            search_res = await ft_index.search(query=search_query)
+            return {"data": search_res.docs, "total": search_res.total}
+        except:
+            return {}
+
+    async def aggregate(
+        self,
+        space_name: str,
+        branch_name: str | None,
+        search: str,
+        filters: dict[str, str | list],
+        group_by: dict[str, list],
+        max: int,
+        exact_subpath: bool = False,
+        sort_type: SortType = SortType.ascending,
+        sort_by: str | None = None,
+        schema_name: str = "meta",
+        load: list = []
+    ):
+        # Tries to get the index from the provided space
+        try:
+            ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
+            await ft_index.info()
+        except:
+            return {"data": [], "total": 0}
+
+        
+        aggr_request = aggregation.AggregateRequest(
+            self.prepare_query_string(
+                search,
+                filters,
+                exact_subpath
+            )
+        )
+        for group_name, reducers in group_by.items():
+            aggr_request.group_by(group_name, *reducers)
+            
+
+        if sort_by:
+            aggr_request.sort_by(
+                aggregation.Desc(sort_by) if sort_type == SortType.ascending else aggregation.Asc(sort_by),
+                max=max
+            )
+
+        if load:
+            aggr_request.load(*load)
+
+
+        try:
+            aggr_res = await ft_index.aggregate(aggr_request)
+            pp(aggr_res=aggr_res.rows)
+            return aggr_res.rows
+        except:
+            return {}
+
+    def prepare_query_string(
+        self,
+        search: str,
+        filters: dict[str, str | list],
+        exact_subpath: bool
+    ):
         query_string = search
 
         redis_escape_chars = str.maketrans(
@@ -889,30 +968,21 @@ class RedisServices(object):
             elif item[1]:
                 query_string += " @" + item[0] + ":(" + "|".join(item[1]) + ")"
 
-        search_query = Query(query_string=query_string)
+        return query_string or "*"
 
-        if highlight_fields:
-            search_query.highlight(highlight_fields, ["", ""])
-
-        if sort_by:
-            search_query.sort_by(sort_by, sort_type == SortType.ascending)
-
-        if return_fields:
-            search_query.return_fields(*return_fields)
-
-        search_query.paging(offset, limit)
-
-        try:
-            search_res = await ft_index.search(query=search_query)
-            return {"data": search_res.docs, "total": search_res.total}
-        except:
-            return {}
 
     async def get_doc_by_id(self, doc_id: str) -> dict:
         try:
             return await self.client.json().get(name=doc_id)
         except:
             return {}
+
+
+    async def get_docs_by_ids(self, docs_ids: list[str]) -> list:
+        try:
+            return (await self.client.json().mget(*docs_ids, "$"))[0]
+        except:
+            return []
 
     async def get_content_by_id(self, doc_id: str) -> Any:
         try:

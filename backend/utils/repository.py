@@ -485,24 +485,78 @@ async def serve_query(
                     total += int(redis_res)
 
         case api.QueryType.tags:
-            # FT.AGGREGATE "eser:master:meta" "*" GROUPBY 1 @tags REDUCE count 0 as freq SORTBY 2 @freq DESC MAX 50
-            req = aggregations.AggregateRequest("*").group_by("@tags", reducers.count().alias("freq")).sort_by(aggregations.Desc("@freq"), max=query.limit)
             async with RedisServices() as redis_services:
-                rows = await redis_services.client.ft(f"{query.space_name}:{query.branch_name}:meta").aggregate(req).rows
-                records.append(core.Record(resource_type="x", shortname="y", subpath="n", attributes={})) #  += parse_redis_response(rows)
+                rows = await redis_services.aggregate(
+                    space_name=query.space_name,
+                    branch_name=query.branch_name,
+                    schema_name="meta",
+                    search=str(query.search),
+                    filters={
+                        "resource_type": query.filter_types or [],
+                        "shortname": query.filter_shortnames or [],
+                        "subpath": [query.subpath],
+                        "query_policies": redis_query_policies
+                    },
+                    group_by={
+                        "@tags": [
+                            reducers.count().alias("freq")
+                        ]
+                    },
+                    exact_subpath=query.exact_subpath,
+                    sort_by="@freq",
+                    max=query.limit,
+                    sort_type=query.sort_type or api.SortType.ascending
+                )
+                records.append(core.Record(
+                    resource_type=ResourceType.content, 
+                    shortname="tags_frequency", 
+                    subpath=query.subpath, 
+                    attributes={
+                        "result": rows
+                    }
+                ))
+        
         case api.QueryType.random:
-            # FT.AGGREGATE "eser:master:meta" "*" LOAD 1 @__key GROUPBY 1 @resource_type REDUCE RANDOM_SAMPLE 2 @__key 10 as random_sample 
-            req = aggregations.AggregateRequest("*").load("@__key").group_by("@resource_type", reducers.random_sample("@__key", limit).alias("id"))
             async with RedisServices() as redis_services:
-                rows = redis_services.client.ft(f"{query.space_name}:{query.branch_name}:meta").aggregate(req).rows
-                ids = []
-                # redis response key, value, key, value
-                for one in rows:
-                    if one[1] in query.resource_types: 
-                        ids += one[3]
-
-                # FIX ME loop over the items and return normal records result
-                # FIX ME use json().mget
+                rows = await redis_services.aggregate(
+                    space_name=query.space_name,
+                    branch_name=query.branch_name,
+                    schema_name="meta",
+                    search=str(query.search),
+                    filters={
+                        "resource_type": query.filter_types or [],
+                        "shortname": query.filter_shortnames or [],
+                        "subpath": [query.subpath],
+                        "query_policies": redis_query_policies
+                    },
+                    load=[
+                        "@__key"
+                    ],
+                    group_by={
+                        "@resource_type": [
+                            reducers.random_sample("@__key", query.limit).alias("id")
+                        ]
+                    },
+                    exact_subpath=query.exact_subpath,
+                    max=query.limit
+                )
+                
+                ids = [row[3] for row in rows]
+                total = len(ids)
+                docs = await redis_services.get_docs_by_ids(ids)
+                for doc in docs:
+                    records.append(
+                        core.Record(
+                            shortname=doc["shortname"],
+                            resource_type=doc["resource_type"],
+                            uuid=doc["uuid"],
+                            branch_name=doc["branch_name"],
+                            subpath=doc["subpath"],
+                            attributes={
+                                "payload": doc["payload"]
+                            }
+                        )
+                    )
 
         case api.QueryType.history:
             if not await access_control.check_access(
