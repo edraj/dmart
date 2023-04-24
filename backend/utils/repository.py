@@ -512,15 +512,17 @@ async def serve_query(
                         ]
                     },
                 ) 
-                total = len(rows[3])
-                docs = await redis_services.get_docs_by_ids(rows[3])
+                ids = []
+                for row in rows:
+                    ids.extend(row[3])
+                docs = await redis_services.get_docs_by_ids(ids)
+                total = len(ids)
                 for doc in docs:
                     doc = doc[0]
                     if (
                         query.retrieve_json_payload
                         and doc.get("payload_doc_id", None)
                     ):
-                        pp(docdocdocdoc=doc)
                         doc["payload"]["body"] = await redis_services.get_payload_doc(
                             doc["payload_doc_id"], doc["resource_type"]
                         )
@@ -805,7 +807,7 @@ async def redis_query_aggregate(
         )
 
     async with RedisServices() as redis_services:
-        res = await redis_services.aggregate(
+        return await redis_services.aggregate(
             space_name=query.space_name,
             branch_name=query.branch_name,
             schema_name="meta",
@@ -825,7 +827,6 @@ async def redis_query_aggregate(
             sort_type=query.sort_type or api.SortType.ascending
         )
 
-    return res[0]
 
 
 async def redis_query_search(

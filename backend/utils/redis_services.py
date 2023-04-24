@@ -927,7 +927,7 @@ class RedisServices(object):
         sort_by: str | None = None,
         schema_name: str = "meta",
         load: list = []
-    ):
+    ) -> list:
         # Tries to get the index from the provided space
         try:
             ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
@@ -961,7 +961,7 @@ class RedisServices(object):
             aggr_res = await ft_index.aggregate(aggr_request)
             return aggr_res.rows
         except:
-            return {}
+            return [[]]
 
     def prepare_query_string(
         self,
