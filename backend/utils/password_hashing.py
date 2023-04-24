@@ -18,4 +18,4 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def hash_password(password: str) -> str:
     bytes = password.encode('utf-8')
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(bytes, salt)
+    return bcrypt.hashpw(bytes, salt).decode("ascii")
