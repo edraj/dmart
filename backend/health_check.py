@@ -41,6 +41,7 @@ async def main(health_type: str, space_name: str, schemas: list, branch_name: st
         print(health_check)
     else:
         print("Wrong mode specify [soft or hard]")
+        return
 
     await save_health_check_entry(health_check, space_name)
 
