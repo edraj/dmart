@@ -283,6 +283,11 @@ class RedisServices(object):
                 "$.branch_name", sortable=True, no_stem=True, as_name="branch_name"
             ),
             TagField("$.query_policies.*", as_name="query_policies"),
+            TextField(
+                "$.payload_string",
+                sortable=False,
+                as_name="payload_string",
+            ),
         ]
         for field_name, model_field in class_ref.__fields__.items():
 
@@ -468,6 +473,11 @@ class RedisServices(object):
                         "$.reporter.governorate",
                         sortable=True,
                         as_name="reporter_governorate",
+                    ),
+                    TextField(
+                        "$.payload_string",
+                        sortable=False,
+                        as_name="payload_string",
                     ),
                 )
 
