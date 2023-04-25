@@ -3,7 +3,7 @@
 #pytest-cov
 #coverage
 #ipdb
-#check-jsonschema
+check-jsonschema
 httpx
 pytest
 pytest-asyncio
