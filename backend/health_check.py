@@ -1,33 +1,71 @@
 import argparse
 import asyncio
 import json
+import os
 import sys
 from datetime import datetime
+from pathlib import Path
+
+from jsonschema.validators import Draft4Validator
 from redis.commands.search.query import Query
 from redis.commands.search.result import Result
-from utils import db
-from utils.custom_validations import validate_payload_with_schema
-from utils.helpers import camel_case
+from utils import db, repository
+from utils.custom_validations import get_schema_path
+from utils.helpers import camel_case, branch_path
 from utils.redis_services import RedisServices
 from models import core
 from models.core import Payload
 from models.enums import ResourceType, ContentType, ValidationEnum
+from utils.settings import settings
+from utils.spaces import get_spaces
 
 
-async def main(health_type: str, space_name: str, schemas: list):
-    if not space_name or not schemas:
-        print('Add the space name and at least one schema')
-        return
+async def main(health_type: str, space_name: str, schemas: list, branch_name: str):
+    if not branch_name:
+        branch_name = settings.default_branch
 
+    health_check = {}
     if not health_type or health_type == 'soft':
+        if not schemas:
+            print('Add the space name and at least one schema')
+            return
         for schema_name in schemas:
-            health_check: dict = await soft_health_check(space_name, schema_name)
+            health_check = await soft_health_check(space_name, schema_name, branch_name)
             if not health_check:
-                return
-            await save_health_check_entry(health_check, space_name)
+                continue
+            print(health_check)
+    elif health_type == 'hard':
+        health_check = await hard_health_check(space_name, branch_name)
+        if not health_check:
+            return
+        print(health_check)
+    else:
+        print("Wrong mode specify [soft or hard]")
+
+    await save_health_check_entry(health_check, space_name)
 
 
-async def soft_health_check(space_name: str, schema_name: str, branch_name: str = 'master'):
+def load_space_schemas(space_name: str, branch_name: str):
+    schemas: dict = {}
+    schemas_path = Path(settings.spaces_folder / space_name / "schema" / ".dm")
+    for entry in os.scandir(schemas_path):
+        if entry.is_dir():
+            schema_path_meta = Path(schemas_path / entry.name / "meta.schema.json")
+            if schema_path_meta.is_file():
+                schema_meta = json.loads(schema_path_meta.read_text())
+                if schema_meta.get("payload", {}).get('body'):
+                    schema_path_body = get_schema_path(
+                        space_name=space_name,
+                        branch_name=branch_name,
+                        schema_shortname=schema_meta.get("payload").get('body'),
+                    )
+                    if schema_path_body.is_file():
+                        schemas[schema_meta['shortname']] = json.loads(schema_path_body.read_text())
+    return schemas
+
+
+async def soft_health_check(space_name: str, schema_name: str, branch_name: str = settings.default_branch):
+    schemas = load_space_schemas(space_name, branch_name)
     limit = 10000
     offset = 0
     folders_report = {}
@@ -101,13 +139,8 @@ async def soft_health_check(space_name: str, schema_name: str, branch_name: str 
                             and meta.payload.schema_shortname
                             and payload_doc_content is not None
                     ):
-                        # TODO schema json need to be loaded before the loop and check it here
-                        await validate_payload_with_schema(
-                            payload_data=payload_doc_content,
-                            space_name=space_name,
-                            branch_name=branch_name,
-                            schema_shortname=meta.payload.schema_shortname,
-                        )
+                        if meta.payload.schema_shortname in schemas:
+                            Draft4Validator(schemas.get(meta.payload.schema_shortname)).validate(payload_doc_content)
 
                     if folders_report[subpath].get('valid_entries'):
                         folders_report[subpath]['valid_entries'] += 1
@@ -132,7 +165,37 @@ async def soft_health_check(space_name: str, schema_name: str, branch_name: str 
                         is_valid=is_valid
                     )
 
-    return {"invalid_folders": {}, "folders_report": folders_report}
+    return {"invalid_folders": [], "folders_report": folders_report}
+
+
+async def hard_health_check(space_name: str, branch_name: str):
+    spaces = await get_spaces()
+    if space_name not in spaces:
+        print("space name is not found")
+        return None
+    space_obj = core.Space.parse_raw(spaces[space_name])
+    if not space_obj.check_health:
+        return None
+
+    invalid_folders = []
+    folders_report: dict[str, dict] = {}
+
+    path = settings.spaces_folder / space_name / branch_path(branch_name)
+
+    subpaths = os.scandir(path)
+    for subpath in subpaths:
+        if subpath.is_file():
+            continue
+
+        await repository.validate_subpath_data(
+            space_name=space_name,
+            subpath=subpath.path,
+            branch_name=branch_name,
+            user_shortname='dmart',
+            invalid_folders=invalid_folders,
+            folders_report=folders_report,
+        )
+        return {"invalid_folders": invalid_folders, "folders_report": folders_report}
 
 
 async def update_validation_status(space_name: str, subpath: str, meta: core.Meta, is_valid: bool, branch_name: str):
@@ -209,8 +272,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("-t", "--type", help="type of health check (soft or hard)")
     parser.add_argument("-s", "--space", help="hit the target space")
+    parser.add_argument("-b", "--branch", help="target a specific branch")
     parser.add_argument("-m", "--schemas", nargs="*", help="hit the target schema inside the space")
 
     args = parser.parse_args()
 
-    asyncio.run(main(args.type, args.space, args.schemas))
+    asyncio.run(main(args.type, args.space, args.schemas, args.branch))
