@@ -106,18 +106,11 @@ async def serve_query(
                         camel_case(redis_doc_dict["resource_type"]),
                     )
 
-                    system_attributes = [
-                        "branch_name",
-                        "query_policies",
-                        "subpath",
-                        "resource_type",
-                        "meta_doc_id",
-                        "payload_doc_id",
-                    ]
+                    
                     for key, value in redis_doc_dict.items():
                         if key in resource_class.__fields__.keys():
                             meta_doc_content[key] = value
-                        elif key not in system_attributes:
+                        elif key not in RedisServices.SYS_ATTRIBUTES:
                             payload_doc_content[key] = value
 
                     if (

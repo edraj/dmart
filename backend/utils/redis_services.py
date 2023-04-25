@@ -96,6 +96,16 @@ class RedisServices(object):
             ],
         },
     ]
+
+    SYS_ATTRIBUTES = [
+        "branch_name",
+        "query_policies",
+        "subpath",
+        "resource_type",
+        "meta_doc_id",
+        "payload_doc_id",
+        "payload_string"
+    ]
     redis_indices: dict[str, dict[str, Search]] = {}
     is_pytest = False
 
@@ -745,14 +755,6 @@ class RedisServices(object):
         await self.save_doc(docid, payload)
 
     async def get_payload_doc(self, doc_id: str, resource_type: ResourceType):
-        system_attributes = [
-            "branch_name",
-            "query_policies",
-            "subpath",
-            "resource_type",
-            "meta_doc_id",
-            "payload_doc_id",
-        ]
         resource_class = getattr(
             sys.modules["models.core"],
             camel_case(resource_type),
@@ -764,7 +766,7 @@ class RedisServices(object):
         if not payload_redis_doc:
             return payload_doc_content
 
-        not_payload_attr = system_attributes + list(
+        not_payload_attr = RedisServices.SYS_ATTRIBUTES + list(
             resource_class.__fields__.keys()
         )
         for key, value in payload_redis_doc.items():
