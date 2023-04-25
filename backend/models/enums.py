@@ -126,6 +126,7 @@ class QueryType(StrEnum):
     events = "events"
     history = "history"
     tags = "tags"
+    random = "random"
     spaces = "spaces"
     counters = "counters"
     reports = "reports"
