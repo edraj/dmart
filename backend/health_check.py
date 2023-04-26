@@ -113,7 +113,7 @@ async def soft_health_check(space_name: str, schema_name: str, branch_name: str 
                     elif key not in system_attributes:
                         payload_doc_content[key] = value
 
-                if not payload_doc_content and "payload_doc_id" in redis_doc_dict:
+                if not payload_doc_content and redis_doc_dict.get("payload_doc_id"):
                     payload_redis_doc = await redis.get_doc_by_id(
                         redis_doc_dict["payload_doc_id"]
                     )
