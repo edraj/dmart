@@ -3,6 +3,7 @@ import asyncio
 import json
 import os
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -67,7 +68,7 @@ def load_space_schemas(space_name: str, branch_name: str):
 
 async def soft_health_check(space_name: str, schema_name: str, branch_name: str = settings.default_branch):
     schemas = load_space_schemas(space_name, branch_name)
-    limit = 10000
+    limit = 1000
     offset = 0
     folders_report = {}
     async with RedisServices() as redis:
@@ -85,9 +86,12 @@ async def soft_health_check(space_name: str, schema_name: str, branch_name: str 
             if not res_data.docs:
                 break
             for redis_doc_dict in res_data.docs:
-                is_valid = True
                 redis_doc_dict = json.loads(redis_doc_dict.json)
                 subpath = redis_doc_dict['subpath']
+
+                if redis_doc_dict.get('updated_at') and redis_doc_dict.get('last_validated') \
+                        and redis_doc_dict["updated_at"] < redis_doc_dict["last_validated"]:
+                    continue
                 meta_doc_content = {}
                 payload_doc_content = {}
                 resource_class = getattr(
@@ -102,24 +106,20 @@ async def soft_health_check(space_name: str, schema_name: str, branch_name: str 
                     "meta_doc_id",
                     "payload_doc_id",
                 ]
+                class_fields = resource_class.__fields__.keys()
                 for key, value in redis_doc_dict.items():
-                    if key in resource_class.__fields__.keys():
+                    if key in class_fields:
                         meta_doc_content[key] = value
                     elif key not in system_attributes:
                         payload_doc_content[key] = value
 
-                if (
-                        not payload_doc_content
-                        and "payload_doc_id" in redis_doc_dict
-                ):
+                if not payload_doc_content and "payload_doc_id" in redis_doc_dict:
                     payload_redis_doc = await redis.get_doc_by_id(
                         redis_doc_dict["payload_doc_id"]
                     )
                     if payload_redis_doc:
+                        not_payload_attr = system_attributes + list(class_fields)
                         for key, value in payload_redis_doc.items():
-                            not_payload_attr = system_attributes + list(
-                                resource_class.__fields__.keys()
-                            )
                             if key not in not_payload_attr:
                                 payload_doc_content[key] = value
 
@@ -134,14 +134,14 @@ async def soft_health_check(space_name: str, schema_name: str, branch_name: str 
 
                 meta = None
                 try:
+                    is_valid = True
                     meta = resource_class.parse_obj(meta_doc_content)
-                    if (
-                            meta.payload
-                            and meta.payload.schema_shortname
-                            and payload_doc_content is not None
-                    ):
-                        if meta.payload.schema_shortname in schemas:
-                            Draft4Validator(schemas.get(meta.payload.schema_shortname)).validate(payload_doc_content)
+                    if meta.payload and meta.payload.schema_shortname and payload_doc_content is not None:
+                        schema_dict: dict = schemas.get(meta.payload.schema_shortname, {})
+                        if schema_dict:
+                            Draft4Validator(schema_dict).validate(payload_doc_content)
+                        else:
+                            continue
 
                     if folders_report[subpath].get('valid_entries'):
                         folders_report[subpath]['valid_entries'] += 1
@@ -150,7 +150,7 @@ async def soft_health_check(space_name: str, schema_name: str, branch_name: str 
 
                 except:
                     is_valid = False
-                    if not folders_report.get(subpath).get('invalid_entries'):
+                    if not folders_report.get(subpath, {}).get('invalid_entries'):
                         folders_report[subpath]['invalid_entries'] = []
                     if meta_doc_content["shortname"] \
                             not in folders_report[redis_doc_dict['subpath']]["invalid_entries"]:
@@ -200,6 +200,9 @@ async def hard_health_check(space_name: str, branch_name: str):
 
 
 async def update_validation_status(space_name: str, subpath: str, meta: core.Meta, is_valid: bool, branch_name: str):
+    if not meta.payload or not meta.payload.validation_status or not meta.payload.last_validated:
+        return
+
     meta.payload.validation_status = ValidationEnum.valid if is_valid else ValidationEnum.invalid
     meta.payload.last_validated = datetime.now()
     await db.save(
@@ -212,7 +215,7 @@ async def update_validation_status(space_name: str, subpath: str, meta: core.Met
         await redis.save_meta_doc(space_name, branch_name, subpath, meta)
 
 
-async def save_health_check_entry(health_check: dict, space_name: str, branch_name: str = 'master'):
+async def save_health_check_entry(health_check, space_name: str, branch_name: str = 'master'):
     schema_shortname = 'health_check'
     management_space = 'management'
     try:
@@ -277,5 +280,6 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--schemas", nargs="*", help="hit the target schema inside the space")
 
     args = parser.parse_args()
-
+    before_time = time.time()
     asyncio.run(main(args.type, args.space, args.schemas, args.branch))
+    print(f'total time: {"{:.2f}".format(time.time() - before_time)} sec')
