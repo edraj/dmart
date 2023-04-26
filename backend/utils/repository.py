@@ -1348,7 +1348,6 @@ async def generate_payload_string(
             settings.spaces_folder
             / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
         ),
-        filter_types=[ResourceType.comment, ResourceType.json, ResourceType.lock],
         retrieve_json_payload=True,
         include_fields=["shortname", "displayname", "description", "payload", "tags", "owner_shortname", "owner_group_shortname", "body", "state"]
     )
