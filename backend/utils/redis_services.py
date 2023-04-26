@@ -1,6 +1,7 @@
 import asyncio
 import re
 import json
+import sys
 from typing import Any
 from uuid import UUID
 from redis.asyncio import BlockingConnectionPool, Redis
@@ -14,13 +15,14 @@ from datetime import datetime
 
 # from redis.commands.search.aggregation import AggregateRequest
 # from redis.commands.search.reducers import count as count_reducer
-from redis.commands.search import Search
+from redis.commands.search import Search, aggregation
 from redis.commands.search.query import Query
-from utils.helpers import branch_path, resolve_schema_references
+from utils.helpers import branch_path, camel_case, resolve_schema_references
 from utils.settings import settings
 import models.api as api
 from fastapi import status
 from redis.exceptions import ResponseError as RedisResponseError
+from fastapi.logger import logger
 
 
 class RedisServices(object):
@@ -145,8 +147,8 @@ class RedisServices(object):
             await self.redis_indices[space_branch_name][schema_name].dropindex(
                 delete_documents=True
             )
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Error at redis_services.create_index: {e}")
 
         # in case it's a management space schema:
         # create Redis index with this schema in all other spaces
@@ -732,6 +734,34 @@ class RedisServices(object):
             return
         await self.save_doc(docid, payload)
 
+    async def get_payload_doc(self, doc_id: str, resource_type: ResourceType):
+        system_attributes = [
+            "branch_name",
+            "query_policies",
+            "subpath",
+            "resource_type",
+            "meta_doc_id",
+            "payload_doc_id",
+        ]
+        resource_class = getattr(
+            sys.modules["models.core"],
+            camel_case(resource_type),
+        )
+        payload_redis_doc = await self.get_doc_by_id(
+            doc_id
+        )
+        payload_doc_content = {}
+        if not payload_redis_doc:
+            return payload_doc_content
+
+        not_payload_attr = system_attributes + list(
+            resource_class.__fields__.keys()
+        )
+        for key, value in payload_redis_doc.items():
+            if key not in not_payload_attr:
+                payload_doc_content[key] = value
+        return payload_doc_content
+
     async def save_lock_doc(
         self,
         space_name: str,
@@ -831,7 +861,8 @@ class RedisServices(object):
         try:
             info = await ft_index.info()
             return info["num_docs"]
-        except:
+        except Exception as e:
+            logger.error(f"Error at redis_services.get_count: {e}")
             return 0
 
         # aggregate_request = AggregateRequest().group_by([], count_reducer().alias("counter"))
@@ -853,15 +884,94 @@ class RedisServices(object):
         schema_name: str = "meta",
         return_fields: list = [],
     ):
-        # index_info = None
         # Tries to get the index from the provided space
         try:
             ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
-            # index_info =
             await ft_index.info()
-        except:
+        except Exception as e:
+            logger.error(f"Error at redis_services.search: {e}")
             return {"data": [], "total": 0}
 
+        search_query = Query(
+            query_string=self.prepare_query_string(
+                search,
+                filters,
+                exact_subpath
+            )
+        )
+
+        if highlight_fields:
+            search_query.highlight(highlight_fields, ["", ""])
+
+        if sort_by:
+            search_query.sort_by(sort_by, sort_type == SortType.ascending)
+
+        if return_fields:
+            search_query.return_fields(*return_fields)
+
+        search_query.paging(offset, limit)
+
+        try:
+            search_res = await ft_index.search(query=search_query)
+            return {"data": search_res.docs, "total": search_res.total}
+        except:
+            return {}
+
+    async def aggregate(
+        self,
+        space_name: str,
+        branch_name: str | None,
+        search: str,
+        filters: dict[str, str | list],
+        group_by: dict[str, list],
+        max: int,
+        exact_subpath: bool = False,
+        sort_type: SortType = SortType.ascending,
+        sort_by: str | None = None,
+        schema_name: str = "meta",
+        load: list = []
+    ) -> list:
+        # Tries to get the index from the provided space
+        try:
+            ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
+            await ft_index.info()
+        except:
+            return []
+
+        
+        aggr_request = aggregation.AggregateRequest(
+            self.prepare_query_string(
+                search,
+                filters,
+                exact_subpath
+            )
+        )
+        for group_name, reducers in group_by.items():
+            aggr_request.group_by(group_name, *reducers)
+            
+
+        if sort_by:
+            aggr_request.sort_by(
+                aggregation.Desc(sort_by) if sort_type == SortType.ascending else aggregation.Asc(sort_by),
+                max=max
+            )
+
+        if load:
+            aggr_request.load(*load)
+
+
+        try:
+            aggr_res = await ft_index.aggregate(aggr_request)
+            return aggr_res.rows
+        except:
+            return []
+
+    def prepare_query_string(
+        self,
+        search: str,
+        filters: dict[str, str | list],
+        exact_subpath: bool
+    ):
         query_string = search
 
         redis_escape_chars = str.maketrans(
@@ -889,35 +999,29 @@ class RedisServices(object):
             elif item[1]:
                 query_string += " @" + item[0] + ":(" + "|".join(item[1]) + ")"
 
-        search_query = Query(query_string=query_string)
+        return query_string or "*"
 
-        if highlight_fields:
-            search_query.highlight(highlight_fields, ["", ""])
-
-        if sort_by:
-            search_query.sort_by(sort_by, sort_type == SortType.ascending)
-
-        if return_fields:
-            search_query.return_fields(*return_fields)
-
-        search_query.paging(offset, limit)
-
-        try:
-            search_res = await ft_index.search(query=search_query)
-            return {"data": search_res.docs, "total": search_res.total}
-        except:
-            return {}
 
     async def get_doc_by_id(self, doc_id: str) -> dict:
         try:
             return await self.client.json().get(name=doc_id)
-        except:
+        except Exception as e:
+            logger.warning(f"Error at redis_services.get_doc_by_id: {e}")
             return {}
+
+
+    async def get_docs_by_ids(self, docs_ids: list[str]) -> list:
+        try:
+            return await self.client.json().mget(docs_ids, "$")
+        except Exception as e:
+            logger.warning(f"Error at redis_services.get_docs_by_ids: {e}")
+            return []
 
     async def get_content_by_id(self, doc_id: str) -> Any:
         try:
             return await self.client.get(doc_id)
-        except:
+        except Exception as e:
+            logger.warning(f"Error at redis_services.get_content_by_id: {e}")
             return ""
 
     async def delete_doc(
@@ -928,8 +1032,9 @@ class RedisServices(object):
         )
         try:
             await self.client.json().delete(key=docid)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Error at redis_services.delete_doc: {e}")
+
 
     async def move_payload_doc(
         self,
@@ -956,8 +1061,8 @@ class RedisServices(object):
             )
             await self.save_doc(new_docid, doc_content)
 
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Error at redis_services.move_payload_doc: {e}")
 
     async def move_meta_doc(
         self, space_name, branch_name, src_shortname, src_subpath, dest_subpath, meta
@@ -967,20 +1072,24 @@ class RedisServices(object):
                 space_name, branch_name, "meta", src_shortname, src_subpath
             )
             await self.save_meta_doc(space_name, branch_name, dest_subpath, meta)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Error at redis_services.move_meta_doc: {e}")
+
 
     async def get_keys(self, pattern: str = "*") -> list:
         try:
             return await self.client.keys(pattern)
-        except:
+        except Exception as e:
+            logger.warning(f"Error at redis_services.get_keys: {e}")
             return []
 
     async def del_keys(self, keys: list):
         try:
             return await self.client.delete(*keys)
-        except:
+        except Exception as e:
+            logger.warning(f"Error at redis_services.def_keys: {e}")
             return False
+
 
     async def get(self, key):
         return await self.client.get(key)

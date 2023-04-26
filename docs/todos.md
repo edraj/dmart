@@ -16,6 +16,9 @@
 - Enable sha1 hash on history changes to guarantee change order
 - Ability to export one or group of entries in a zip file (simply collecting all relevent files under the zip file)
 
+- Create a schema definition for the combined meta data, to make it easy to validate meta.
+
+- Why space_name,subpath,resource_type,schema_shortname...etc is not indexed in meta? Saad
 
 ### Future improvements
 
