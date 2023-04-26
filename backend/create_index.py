@@ -1,6 +1,7 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 
 import argparse
+from copy import copy
 import json
 import re
 import traceback
@@ -14,6 +15,7 @@ from utils.helpers import branch_path, camel_case, divide_chunks
 from utils.custom_validations import validate_payload_with_schema
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from utils.redis_services import RedisServices
+from utils.repository import generate_payload_string
 from utils.settings import settings
 import utils.regex as regex
 import asyncio
@@ -106,13 +108,12 @@ async def generate_redis_docs(locators: list) -> list:
             meta_doc_id, meta_data = redis_man.prepate_meta_doc(
                 one.space_name, one.branch_name, one.subpath, meta
             )
-            redis_docs.append({"doc_id": meta_doc_id, "payload": meta_data})
+            payload_data = {}
             if (
                 meta.payload
                 and meta.payload.content_type == ContentType.json
                 and meta.payload.schema_shortname
             ):
-                payload_data = {}
                 try:
                     payload_path = db.payload_path(
                         one.space_name, one.subpath, myclass, one.branch_name
@@ -129,7 +130,7 @@ async def generate_redis_docs(locators: list) -> list:
                         branch_name=one.branch_name,
                         subpath=one.subpath,
                         resource_type=one.type,
-                        payload=payload_data,
+                        payload=copy(payload_data),
                         meta=meta,
                     )
                     payload.update(meta_data)
@@ -140,6 +141,16 @@ async def generate_redis_docs(locators: list) -> list:
                     )
                 except Exception as ex:
                     print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
+
+            meta_data["payload_string"] = await generate_payload_string(
+                space_name=one.space_name, 
+                subpath=one.subpath, 
+                shortname=one.shortname, 
+                branch_name=one.branch_name, 
+                payload=payload_data,
+            )
+            
+            redis_docs.append({"doc_id": meta_doc_id, "payload": meta_data})
 
         except:
             print(f"path: {one.space_name}/{one.subpath}/{one.shortname}")
