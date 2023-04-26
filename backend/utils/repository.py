@@ -18,7 +18,7 @@ from utils.redis_services import RedisServices
 import aiofiles
 from fastapi import status
 from fastapi.logger import logger
-from utils.helpers import branch_path, camel_case, snake_case, str_to_datetime
+from utils.helpers import branch_path, camel_case, flatten_all, snake_case, str_to_datetime
 from utils.custom_validations import validate_payload_with_schema
 import subprocess
 from redis.commands.search.document import Document as RedisDocument
@@ -106,18 +106,11 @@ async def serve_query(
                         camel_case(redis_doc_dict["resource_type"]),
                     )
 
-                    system_attributes = [
-                        "branch_name",
-                        "query_policies",
-                        "subpath",
-                        "resource_type",
-                        "meta_doc_id",
-                        "payload_doc_id",
-                    ]
+                    
                     for key, value in redis_doc_dict.items():
                         if key in resource_class.__fields__.keys():
                             meta_doc_content[key] = value
-                        elif key not in system_attributes:
+                        elif key not in RedisServices.SYS_ATTRIBUTES:
                             payload_doc_content[key] = value
 
                     if (
@@ -1328,3 +1321,46 @@ async def _save_model(
             subpath,
             meta,
         )
+
+
+async def generate_payload_string(
+    space_name: str, 
+    subpath: str,
+    shortname: str,
+    payload: dict,
+    branch_name: str | None = None,
+):
+    payload_string = ""
+    # Remove system related attributes from payload
+    for attr in RedisServices.SYS_ATTRIBUTES:
+        if attr in payload:
+            del payload[attr]
+
+    # Generate direct payload string
+    payload_values = set(flatten_all(payload).values())
+    payload_string += ",".join([str(i) for i in payload_values if i != None])
+
+    # Generate attachments payload string
+    attachments: dict[str, list] = await get_entry_attachments(
+        subpath=f"{subpath}/{shortname}",
+        branch_name=branch_name,
+        attachments_path=(
+            settings.spaces_folder
+            / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
+        ),
+        retrieve_json_payload=True,
+        include_fields=["shortname", "displayname", "description", "payload", "tags", "owner_shortname", "owner_group_shortname", "body", "state"]
+    )
+    if not attachments:
+        return payload_string.strip(",")
+
+    # Convert Record objects to dict
+    dict_attachments = {}
+    for k, v in attachments.items():
+        dict_attachments[k] = [i.dict() for i in v]
+
+    attachments_values = set(flatten_all(dict_attachments).values())
+    attachments_payload_string = ",".join([str(i) for i in attachments_values if i != None])
+    payload_string += attachments_payload_string
+    return payload_string.strip(",")
+
