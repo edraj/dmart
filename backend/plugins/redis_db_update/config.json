@@ -2,7 +2,7 @@
 	"is_active": true,
 	"filters": {
 		"subpaths": ["__ALL__"],
-		"resource_types": ["content", "ticket", "permission", "role", "group", "user", "schema", "notification", "folder", "comment", "json", "lock"],
+		"resource_types": ["content", "ticket", "permission", "role", "group", "user", "schema", "notification", "folder", "comment", "json", "lock", "media", "alteration", "Relationship"],
 		"schema_shortnames": ["__ALL__"],
 		"actions": ["create", "update", "delete", "move","progress_ticket"]
 	},
