@@ -273,7 +273,7 @@ async def serve_space(
             resource_obj.is_active = True
             resource_obj.indexing_enabled = True
             resource_obj.shortname = request.space_name
-            resource_obj.active_plugins = ["reload_spaces_branches"]
+            resource_obj.active_plugins = ["action_log", "redis_db_update"]
             await db.save(
                 request.space_name,
                 record.subpath,
