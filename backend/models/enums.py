@@ -49,11 +49,13 @@ class ResourceType(StrEnum):
 class ContentType(StrEnum):
     text = "text"
     markdown = "markdown"
+    html = "html"
     json = "json"
     image = "image"
     python = "python"
     pdf = "pdf"
     audio = "audio"
+    video = "video"
 
 
 class TaskType(StrEnum):
