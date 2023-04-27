@@ -23,35 +23,56 @@ from utils.settings import settings
 from utils.spaces import get_spaces
 
 
-async def main(health_type: str, space_name: str, schemas: list, branch_name: str):
+async def main(health_type: str, space_param: str, schemas_param: list, branch_name: str):
+    health_check = {}
     if not branch_name:
         branch_name = settings.default_branch
 
-    health_check = {}
+    is_full: bool = True if args.space and args.space == 'all' else False
     if not health_type or health_type == 'soft':
-        if not schemas:
+        params = {space_param: schemas_param}
+        if not schemas_param and not is_full:
             print('Add the space name and at least one schema')
             return
-        for schema_name in schemas:
-            health_check = await soft_health_check(space_name, schema_name, branch_name)
-            if not health_check:
-                continue
-            print(health_check)
+        if is_full:
+            params = await load_spaces_schemas_names()
+        for space in params:
+            print(f"Working on ({space}) space")
+            before_time = time.time()
+            for schema in params.get(space, []):
+                health_check = await soft_health_check(space, schema, branch_name)
+                if not health_check:
+                    continue
+                await save_health_check_entry(health_check, space)
+            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
+
     elif health_type == 'hard':
-        health_check = await hard_health_check(space_name, branch_name)
+        health_check = await hard_health_check(space_param, branch_name)
         if not health_check:
             return
         print(health_check)
+        await save_health_check_entry(health_check, space_param)
     else:
         print("Wrong mode specify [soft or hard]")
         return
 
-    await save_health_check_entry(health_check, space_name)
+
+async def load_spaces_schemas_names():
+    branch_name = settings.default_branch
+    result: dict = {}
+    spaces = await get_spaces()
+    for space_name in spaces:
+        schemas = [schema for schema in load_space_schemas(space_name, branch_name)]
+        if schemas:
+            result[space_name] = schemas
+    return result
 
 
 def load_space_schemas(space_name: str, branch_name: str):
     schemas: dict = {}
     schemas_path = Path(settings.spaces_folder / space_name / "schema" / ".dm")
+    if not schemas_path.is_dir():
+        return {}
     for entry in os.scandir(schemas_path):
         if entry.is_dir():
             schema_path_meta = Path(schemas_path / entry.name / "meta.schema.json")
@@ -68,7 +89,11 @@ def load_space_schemas(space_name: str, branch_name: str):
     return schemas
 
 
-async def soft_health_check(space_name: str, schema_name: str, branch_name: str = settings.default_branch):
+async def soft_health_check(
+        space_name: str,
+        schema_name: str,
+        branch_name: str = settings.default_branch
+):
     schemas = load_space_schemas(space_name, branch_name)
     limit = 1000
     offset = 0
@@ -277,7 +302,7 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("-t", "--type", help="type of health check (soft or hard)")
-    parser.add_argument("-s", "--space", help="hit the target space")
+    parser.add_argument("-s", "--space", help="hit the target space or pass (all) to make the full health check")
     parser.add_argument("-b", "--branch", help="target a specific branch")
     parser.add_argument("-m", "--schemas", nargs="*", help="hit the target schema inside the space")
 
