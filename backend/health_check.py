@@ -1,3 +1,5 @@
+#!/usr/bin/env -S BACKEND_ENV=config.env python3
+
 import argparse
 import asyncio
 import json
