@@ -1857,49 +1857,26 @@ async def get_space_report(
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ):
-    spaces = await get_spaces()
-    if space_name not in spaces:
+
+    body = db.load_resource_payload(
+        space_name=settings.management_space,
+        subpath="info",
+        filename="health_check.json",
+        class_type=core.Content,
+        branch_name=branch_name,
+        schema_shortname='health_check',
+    )
+    if not body.get(space_name):
         raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="media", code=221, message="Invalid space name"),
-        )
-
-    space_obj = core.Space.parse_raw(spaces[space_name])
-    if not space_obj.check_health:
-        return api.Response(
-            status=api.Status.success,
-            attributes={
-                "invalid_folders": [],
-                "folders_report": {},
-            },
-        )
-
-    invalid_folders = []
-    folders_report: dict[str, dict] = {}
-
-    path = settings.spaces_folder / space_name / branch_path(branch_name)
-
-    subpaths = os.scandir(path)
-    for subpath in subpaths:
-        if subpath.is_file():
-            continue
-
-        await repository.validate_subpath_data(
-            space_name=space_name,
-            subpath=subpath.path,
-            branch_name=branch_name,
-            user_shortname=logged_in_user,
-            invalid_folders=invalid_folders,
-            folders_report=folders_report,
-        )
+                status.HTTP_400_BAD_REQUEST,
+                error=api.Error(type="space", code=229, message=f"Can't find health check for `{space_name}` space"),
+            )
 
     return api.Response(
         status=api.Status.success,
-        attributes={
-            "invalid_folders": invalid_folders,
-            "folders_report": folders_report,
-        },
+        attributes=body.get(space_name),
     )
+
 
 
 @router.put("/lock/{resource_type}/{space_name}/{subpath:path}/{shortname}")
