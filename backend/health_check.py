@@ -198,7 +198,7 @@ async def hard_health_check(space_name: str, branch_name: str):
             invalid_folders=invalid_folders,
             folders_report=folders_report,
         )
-        return {"invalid_folders": invalid_folders, "folders_report": folders_report}
+    return {"invalid_folders": invalid_folders, "folders_report": folders_report}
 
 
 async def update_validation_status(space_name: str, subpath: str, meta: core.Meta, is_valid: bool, branch_name: str):
@@ -225,7 +225,7 @@ async def save_health_check_entry(health_check, space_name: str, branch_name: st
             space_name=management_space,
             subpath="info",
             shortname="health_check",
-            class_type=getattr(sys.modules["models.core"], ResourceType.content),
+            class_type=core.Content,
             user_shortname='dmart',
             branch_name=branch_name,
             schema_shortname=schema_shortname,
@@ -246,7 +246,7 @@ async def save_health_check_entry(health_check, space_name: str, branch_name: st
             space_name=management_space,
             subpath="info",
             filename="health_check.json",
-            class_type=getattr(sys.modules["models.core"], ResourceType.content),
+            class_type=core.Content,
             branch_name=branch_name,
             schema_shortname=schema_shortname,
         )
