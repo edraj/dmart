@@ -1863,15 +1863,6 @@ async def get_space_report(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(type="media", code=221, message="Invalid space name"),
         )
-    space_obj = core.Space.parse_raw(spaces[space_name])
-    if not space_obj.check_health:
-        return api.Response(
-            status=api.Status.success,
-            attributes={
-                "invalid_folders": [],
-                "folders_report": {},
-            },
-        )
     body = db.load_resource_payload(
         space_name=settings.management_space,
         subpath="info",
@@ -1880,7 +1871,9 @@ async def get_space_report(
         branch_name=branch_name,
         schema_shortname='health_check',
     )
-    if not body.get(space_name):
+
+    space_obj = core.Space.parse_raw(spaces[space_name])
+    if not body.get(space_name) or not space_obj.check_health:
         return api.Response(
             status=api.Status.success,
             attributes={
