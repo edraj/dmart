@@ -18,14 +18,14 @@ from utils.helpers import camel_case, branch_path
 from utils.redis_services import RedisServices
 from models import core
 from models.core import Payload
-from models.enums import ResourceType, ContentType, ValidationEnum
+from models.enums import  ContentType, ValidationEnum
 from utils.settings import settings
 from utils.spaces import get_spaces
 
 
 async def main(health_type: str, space_param: str, schemas_param: list, branch_name: str):
+    is_full: bool = True if args.space and args.space == 'all' else False
     if not health_type or health_type == 'soft':
-        is_full: bool = True if args.space and args.space == 'all' else False
         if not schemas_param and not is_full:
             print('Add the space name and at least one schema')
             return
@@ -35,7 +35,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
             params = {space_param: schemas_param}
 
         for space in params:
-            print(f"Working on ({space}) space")
+            print(f"-> Working on ({space}) space")
             before_time = time.time()
             for schema in params.get(space, []):
                 health_check = await soft_health_check(space, schema, branch_name)
@@ -45,10 +45,16 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
             print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
 
     elif health_type == 'hard':
-        health_check = await hard_health_check(space_param, branch_name)
-        if health_check:
-            await save_health_check_entry(health_check, space_param)
-            print(health_check)
+        spaces = [space_param]
+        if is_full:
+            spaces = await get_spaces()
+        for space in spaces:
+            print(f"-> Working on ({space}) space")
+            before_time = time.time()
+            health_check = await hard_health_check(space, branch_name)
+            if health_check:
+                await save_health_check_entry(health_check, space)
+            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
     else:
         print("Wrong mode specify [soft or hard]")
         return
