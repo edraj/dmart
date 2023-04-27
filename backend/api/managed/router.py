@@ -1863,17 +1863,21 @@ async def get_space_report(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(type="media", code=221, message="Invalid space name"),
         )
-    body = db.load_resource_payload(
-        space_name=settings.management_space,
-        subpath="info",
-        filename="health_check.json",
-        class_type=core.Content,
-        branch_name=branch_name,
-        schema_shortname='health_check',
-    )
+    try:
+        body = db.load_resource_payload(
+            space_name=settings.management_space,
+            subpath="info",
+            filename="health_check.json",
+            class_type=core.Content,
+            branch_name=branch_name,
+            schema_shortname='health_check',
+        )
+        health_check_file = True
+    except:
+        health_check_file = False
 
     space_obj = core.Space.parse_raw(spaces[space_name])
-    if not body.get(space_name) or not space_obj.check_health:
+    if not body.get(space_name) or not space_obj.check_health or not health_check_file:
         return api.Response(
             status=api.Status.success,
             attributes={
