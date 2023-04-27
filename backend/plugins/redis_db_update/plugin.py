@@ -78,9 +78,10 @@ class Plugin(PluginBase):
                 ActionType.update,
                 ActionType.progress_ticket,
             ]:
-                meta_doc_id, meta_json = await redis_services.save_meta_doc(
+                meta_doc_id, meta_json = redis_services.prepate_meta_doc(
                     data.space_name, data.branch_name, data.subpath, meta
                 )
+                payload = {}
                 if meta.payload and meta.payload.content_type == ContentType.json:
                     payload = db.load_resource_payload(
                         space_name=data.space_name,
@@ -90,6 +91,17 @@ class Plugin(PluginBase):
                         branch_name=data.branch_name,
                     )
 
+                meta_json["payload_string"] = await generate_payload_string(
+                    space_name=data.space_name, 
+                    subpath=meta_json["subpath"],
+                    shortname=meta_json["shortname"],
+                    branch_name=data.branch_name, 
+                    payload=payload
+                )
+
+                await redis_services.save_doc(meta_doc_id, meta_json)
+
+                if payload:
                     payload.update(meta_json)
                     await redis_services.save_payload_doc(
                         data.space_name,
