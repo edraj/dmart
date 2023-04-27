@@ -237,7 +237,7 @@ class Json(Attachment):
 
 class Comment(Attachment):
     body: str
-    state: str
+    state: str | None = None
 
 
 class Lock(Attachment):
