@@ -1857,6 +1857,12 @@ async def get_space_report(
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ):
+    spaces = await get_spaces()
+    if space_name not in spaces:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(type="media", code=221, message="Invalid space name"),
+        )
 
     body = db.load_resource_payload(
         space_name=settings.management_space,
@@ -1869,7 +1875,7 @@ async def get_space_report(
     if not body.get(space_name):
         raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
-                error=api.Error(type="space", code=400, message=f"Can't find health check for `{space_name}` space"),
+                error=api.Error(type="space", code=229, message=f"Can't find health check for `{space_name}` space"),
             )
 
     return api.Response(
