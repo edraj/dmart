@@ -24,41 +24,37 @@ from utils.spaces import get_spaces
 
 
 async def main(health_type: str, space_param: str, schemas_param: list, branch_name: str):
-    health_check = {}
-    if not branch_name:
-        branch_name = settings.default_branch
-
-    is_full: bool = True if args.space and args.space == 'all' else False
     if not health_type or health_type == 'soft':
-        params = {space_param: schemas_param}
+        is_full: bool = True if args.space and args.space == 'all' else False
         if not schemas_param and not is_full:
             print('Add the space name and at least one schema')
             return
         if is_full:
-            params = await load_spaces_schemas_names()
+            params = await load_spaces_schemas_names(branch_name)
+        else:
+            params = {space_param: schemas_param}
+
         for space in params:
             print(f"Working on ({space}) space")
             before_time = time.time()
             for schema in params.get(space, []):
                 health_check = await soft_health_check(space, schema, branch_name)
-                if not health_check:
-                    continue
-                await save_health_check_entry(health_check, space)
+                if health_check:
+                    await save_health_check_entry(health_check, space)
+
             print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
 
     elif health_type == 'hard':
         health_check = await hard_health_check(space_param, branch_name)
-        if not health_check:
-            return
-        print(health_check)
-        await save_health_check_entry(health_check, space_param)
+        if health_check:
+            await save_health_check_entry(health_check, space_param)
+            print(health_check)
     else:
         print("Wrong mode specify [soft or hard]")
         return
 
 
-async def load_spaces_schemas_names():
-    branch_name = settings.default_branch
+async def load_spaces_schemas_names(branch_name):
     result: dict = {}
     spaces = await get_spaces()
     for space_name in spaces:
@@ -307,6 +303,8 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--schemas", nargs="*", help="hit the target schema inside the space")
 
     args = parser.parse_args()
+    if not args.branch:
+        args.branch = settings.default_branch
     before_time = time.time()
     asyncio.run(main(args.type, args.space, args.schemas, args.branch))
     print(f'total time: {"{:.2f}".format(time.time() - before_time)} sec')
