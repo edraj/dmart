@@ -1869,7 +1869,7 @@ async def get_space_report(
     if not body.get(space_name):
         raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
-                error=api.Error(type="space", code=229, message=f"Can't find health check for `{space_name}` space"),
+                error=api.Error(type="space", code=400, message=f"Can't find health check for `{space_name}` space"),
             )
 
     return api.Response(
