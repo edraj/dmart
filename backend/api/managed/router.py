@@ -1881,10 +1881,13 @@ async def get_space_report(
         schema_shortname='health_check',
     )
     if not body.get(space_name):
-        raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                error=api.Error(type="space", code=229, message=f"Can't find health check for `{space_name}` space"),
-            )
+        return api.Response(
+            status=api.Status.success,
+            attributes={
+                "invalid_folders": [],
+                "folders_report": {},
+            },
+        )
 
     return api.Response(
         status=api.Status.success,
