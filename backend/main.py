@@ -13,6 +13,9 @@ from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import  ValidationError
+import strawberry
+from strawberry.fastapi import GraphQLRouter
+from api.managed.graphql import Query
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
@@ -61,6 +64,9 @@ app = FastAPI(
         },
     ],
 )
+schema = strawberry.Schema(Query)
+graphql_app = GraphQLRouter(schema)
+app.include_router(graphql_app, prefix="/graph")
 
 
 async def capture_body(request: Request):

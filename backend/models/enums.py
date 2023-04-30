@@ -1,5 +1,7 @@
 from enum import Enum
 
+import strawberry
+
 
 class StrEnum(str, Enum):
     def __str__(self):
@@ -21,7 +23,7 @@ class Language(StrEnum):
     fr = "french"
     tr = "trukish"
 
-
+@strawberry.enum
 class ResourceType(StrEnum):
     user = "user"
     group = "group"
@@ -45,7 +47,7 @@ class ResourceType(StrEnum):
     plugin_wrapper = "plugin_wrapper"
     notification = "notification"
 
-
+@strawberry.enum
 class ContentType(StrEnum):
     text = "text"
     markdown = "markdown"
@@ -67,7 +69,7 @@ class UserType(StrEnum):
     mobile = "mobile"
     bot = "bot"
 
-
+@strawberry.enum
 class ValidationEnum(StrEnum):
     valid = "valid"
     invalid = "invalid"
@@ -121,7 +123,7 @@ class EventListenTime(StrEnum):
     before = "before"
     after = "after"
 
-
+@strawberry.enum
 class QueryType(StrEnum):
     search = "search"
     subpath = "subpath"
@@ -133,7 +135,7 @@ class QueryType(StrEnum):
     counters = "counters"
     reports = "reports"
 
-
+@strawberry.enum
 class SortType(StrEnum):
     ascending = "ascending"
     descending = "descending"
