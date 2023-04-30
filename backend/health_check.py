@@ -34,13 +34,14 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
         else:
             params = {space_param: schemas_param}
         for space in params:
+            print(f'-> Working on {space}')
             print_header()
             before_time = time.time()
             for schema in params.get(space, []):
                 health_check = await soft_health_check(space, schema, branch_name)
                 if health_check:
                     await save_health_check_entry(health_check, space)
-                print_health_check(space, health_check)
+                print_health_check(health_check)
             print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec\n\n')
 
     elif health_type == 'hard':
@@ -48,12 +49,13 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
         if is_full:
             spaces = await get_spaces()
         for space in spaces:
+            print(f'-> Working on {space}')
             print_header()
             before_time = time.time()
             health_check = await hard_health_check(space, branch_name)
             if health_check:
                 await save_health_check_entry(health_check, space)
-            print_health_check(space, health_check)
+            print_health_check(health_check)
             print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec\n\n')
     else:
         print("Wrong mode specify [soft or hard]")
@@ -61,21 +63,19 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
 
 
 def print_header():
-    print("{:<25} {:<50} {:<15} {:<15}".format(
-        'space name',
+    print("{:<50} {:<10} {:<10}".format(
         'subpath',
-        'valid entries',
-        'invalid entries')
+        'valid',
+        'invalid')
     )
 
 
-def print_health_check(space_name, health_check):
+def print_health_check(health_check):
     if health_check:
         for schema_path, val in health_check.get('folders_report', {}).items():
             valid = val.get('valid_entries', 0)
             invalid = len(val.get('invalid_entries', []))
-            print("{:<25} {:<50} {:<15} {:<15}".format(
-                space_name,
+            print("{:<50} {:<10} {:<10}".format(
                 schema_path,
                 valid,
                 invalid)
