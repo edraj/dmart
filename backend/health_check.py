@@ -18,7 +18,7 @@ from utils.helpers import camel_case, branch_path
 from utils.redis_services import RedisServices
 from models import core
 from models.core import Payload
-from models.enums import  ContentType, ValidationEnum
+from models.enums import ContentType, ValidationEnum
 from utils.settings import settings
 from utils.spaces import get_spaces
 
@@ -33,31 +33,53 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
             params = await load_spaces_schemas_names(branch_name)
         else:
             params = {space_param: schemas_param}
-
         for space in params:
-            print(f"-> Working on ({space}) space")
+            print_header()
             before_time = time.time()
             for schema in params.get(space, []):
                 health_check = await soft_health_check(space, schema, branch_name)
                 if health_check:
                     await save_health_check_entry(health_check, space)
-
-            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
+                print_health_check(space, health_check)
+            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec\n\n')
 
     elif health_type == 'hard':
         spaces = [space_param]
         if is_full:
             spaces = await get_spaces()
         for space in spaces:
-            print(f"-> Working on ({space}) space")
+            print_header()
             before_time = time.time()
             health_check = await hard_health_check(space, branch_name)
             if health_check:
                 await save_health_check_entry(health_check, space)
-            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
+            print_health_check(space, health_check)
+            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec\n\n')
     else:
         print("Wrong mode specify [soft or hard]")
         return
+
+
+def print_header():
+    print("{:<25} {:<50} {:<15} {:<15}".format(
+        'space name',
+        'subpath',
+        'valid entries',
+        'invalid entries')
+    )
+
+
+def print_health_check(space_name, health_check):
+    if health_check:
+        for schema_path, val in health_check.get('folders_report', {}).items():
+            valid = val.get('valid_entries', 0)
+            invalid = len(val.get('invalid_entries', []))
+            print("{:<25} {:<50} {:<15} {:<15}".format(
+                space_name,
+                schema_path,
+                valid,
+                invalid)
+            )
 
 
 async def load_spaces_schemas_names(branch_name):
@@ -106,7 +128,8 @@ async def soft_health_check(
                 ft_index = redis.client.ft(f"{space_name}:{branch_name}:{schema_name}")
                 await ft_index.info()
             except Exception as x:
-                print(f"can't find index: `{space_name}:{branch_name}:{schema_name}`")
+                if 'meta_schema' not in schema_name:
+                    print(f"can't find index: `{space_name}:{branch_name}:{schema_name}`")
                 return None
             search_query = Query(query_string="*")
             search_query.paging(offset, limit)
