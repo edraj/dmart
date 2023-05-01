@@ -1302,7 +1302,7 @@ async def get_record_from_redis_doc(
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
     validate_schema: bool = False,
-    filter_types: list = [],
+    filter_types: list | None = None,
     branch_name: str = Field(default=settings.default_branch, regex=regex.SHORTNAME),
 ) -> core.Record:
     meta_doc_content = {}
