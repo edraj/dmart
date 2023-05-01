@@ -6,6 +6,7 @@ import re
 import sys
 import jq
 from fastapi.encoders import jsonable_encoder
+from pydantic.fields import Field
 from models.enums import ContentType, ResourceType, ValidationEnum
 from utils.access_control import access_control
 from utils.spaces import get_spaces
@@ -96,104 +97,31 @@ async def serve_query(
 
             async with RedisServices() as redis_services:
                 for redis_doc_dict in res_data:
-                    meta_doc_content = {}
-                    payload_doc_content = {}
-                    resource_class = getattr(
-                        sys.modules["models.core"],
-                        camel_case(redis_doc_dict["resource_type"]),
-                    )
-
-                    
-                    for key, value in redis_doc_dict.items():
-                        if key in resource_class.__fields__.keys():
-                            meta_doc_content[key] = value
-                        elif key not in RedisServices.SYS_ATTRIBUTES:
-                            payload_doc_content[key] = value
-
-                    if (
-                        not payload_doc_content
-                        and query.retrieve_json_payload
-                        and "payload_doc_id" in redis_doc_dict
-                    ):
-                        payload_doc_content = await redis_services.get_payload_doc(
-                            redis_doc_dict["payload_doc_id"], redis_doc_dict["resource_type"]
-                        )
-
-                    meta_doc_content["created_at"] = datetime.fromtimestamp(
-                        meta_doc_content["created_at"]
-                    )
-                    meta_doc_content["updated_at"] = datetime.fromtimestamp(
-                        meta_doc_content["updated_at"]
-                    )
-                    resource_obj = resource_class.parse_obj(meta_doc_content)
-                    resource_base_record = resource_obj.to_record(
-                        redis_doc_dict["subpath"],
-                        meta_doc_content["shortname"],
-                        [],
-                        redis_doc_dict["branch_name"],
-                    )
-                    if resource_base_record:
-                        locked_data = await redis_services.get_lock_doc(
-                            query.space_name,
-                            query.branch_name,
-                            redis_doc_dict["subpath"],
-                            resource_obj.shortname,
-                        )
-                        if locked_data:
-                            resource_base_record.attributes["locked"] = locked_data
-
-                    entry_path = (
-                        settings.spaces_folder
-                        / f"{query.space_name}/{branch_path(redis_doc_dict['branch_name'])}/{redis_doc_dict['subpath']}/.dm/{meta_doc_content['shortname']}"
-                    )
-
-                    if query.retrieve_attachments and entry_path.is_dir():
-                        resource_base_record.attachments = await get_entry_attachments(
-                            subpath=f"{redis_doc_dict['subpath']}/{meta_doc_content['shortname']}",
-                            branch_name=redis_doc_dict["branch_name"],
-                            attachments_path=entry_path,
-                            filter_types=query.filter_types,
-                            include_fields=query.include_fields,
+                    try:
+                        resource_base_record = await get_record_from_redis_doc(
+                            space_name=query.space_name,
+                            branch_name=query.branch_name,
+                            doc=redis_doc_dict,
                             retrieve_json_payload=query.retrieve_json_payload,
+                            retrieve_attachments=query.retrieve_attachments,
+                            validate_schema=query.validate_schema,
+                            filter_types=query.filter_types
                         )
+                    except:
+                        # Incase of schema validation error
+                        continue
 
-                    if (
-                        query.retrieve_json_payload
-                        and resource_base_record.attributes["payload"]
-                        and resource_base_record.attributes["payload"].content_type
-                        == ContentType.json
-                    ):
-                        resource_base_record.attributes[
-                            "payload"
-                        ].body = payload_doc_content
 
-                    if (
-                        query.retrieve_json_payload
-                        and resource_obj.payload
-                        and resource_obj.payload.schema_shortname
-                        and payload_doc_content is not None
-                        and query.validate_schema
-                    ):
-                        try:
-                            await validate_payload_with_schema(
-                                payload_data=payload_doc_content,
-                                space_name=query.space_name,
-                                branch_name=query.branch_name,
-                                schema_shortname=resource_obj.payload.schema_shortname,
-                            )
-                        except:
-                            continue
+                    # Don't repeat the same entry comming from different indices
+                    if resource_base_record in records:
+                        total -= 1
+                        continue
 
                     if query.highlight_fields:
                         for key, value in query.highlight_fields.items():
                             resource_base_record.attributes[value] = getattr(
                                 redis_doc_dict, key, None
                             )
-
-                    # Don't repeat the same entry comming from different indices
-                    if resource_base_record in records:
-                        total -= 1
-                        continue
 
                     resource_base_record.attributes = alter_dict_keys(
                         jsonable_encoder(resource_base_record.attributes),
@@ -1366,3 +1294,103 @@ async def generate_payload_string(
     payload_string += attachments_payload_string
     return payload_string.strip(",")
 
+
+    
+async def get_record_from_redis_doc(
+    space_name: str,
+    doc: dict,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
+    validate_schema: bool = False,
+    filter_types: list = [],
+    branch_name: str = Field(default=settings.default_branch, regex=regex.SHORTNAME),
+) -> core.Record:
+    meta_doc_content = {}
+    payload_doc_content = {}
+    resource_class = getattr(
+        sys.modules["models.core"],
+        camel_case(doc["resource_type"]),
+    )
+    
+    for key, value in doc.items():
+        if key in resource_class.__fields__.keys():
+            meta_doc_content[key] = value
+        elif key not in RedisServices.SYS_ATTRIBUTES:
+            payload_doc_content[key] = value
+
+    async with RedisServices() as redis_services:
+        # Get payload doc
+        if (
+            not payload_doc_content
+            and retrieve_json_payload
+            and "payload_doc_id" in doc
+        ):
+            payload_doc_content = await redis_services.get_payload_doc(
+                doc["payload_doc_id"], doc["resource_type"]
+            )
+
+        # Get lock data
+        locked_data = await redis_services.get_lock_doc(
+            space_name,
+            branch_name,
+            doc["subpath"],
+            doc["shortname"],
+        )
+
+    meta_doc_content["created_at"] = datetime.fromtimestamp(
+        meta_doc_content["created_at"]
+    )
+    meta_doc_content["updated_at"] = datetime.fromtimestamp(
+        meta_doc_content["updated_at"]
+    )
+    resource_obj = resource_class.parse_obj(meta_doc_content)
+    resource_base_record = resource_obj.to_record(
+        doc["subpath"],
+        meta_doc_content["shortname"],
+        [],
+        doc["branch_name"],
+    )
+    
+    if locked_data:
+        resource_base_record.attributes["locked"] = locked_data
+
+    # Get attachments
+    entry_path = (
+        settings.spaces_folder
+        / f"{space_name}/{branch_path(doc['branch_name'])}/{doc['subpath']}/.dm/{meta_doc_content['shortname']}"
+    )
+    if retrieve_attachments and entry_path.is_dir():
+        resource_base_record.attachments = await get_entry_attachments(
+            subpath=f"{doc['subpath']}/{meta_doc_content['shortname']}",
+            branch_name=doc["branch_name"],
+            attachments_path=entry_path,
+            filter_types=filter_types,
+            retrieve_json_payload=retrieve_json_payload,
+        )
+
+    if (
+        retrieve_json_payload
+        and resource_base_record.attributes["payload"]
+        and resource_base_record.attributes["payload"].content_type
+        == ContentType.json
+    ):
+        resource_base_record.attributes[
+            "payload"
+        ].body = payload_doc_content
+
+    # Validate payload
+    if (
+        retrieve_json_payload
+        and resource_obj.payload
+        and resource_obj.payload.schema_shortname
+        and payload_doc_content is not None
+        and validate_schema
+    ):
+        await validate_payload_with_schema(
+            payload_data=payload_doc_content,
+            space_name=space_name,
+            branch_name=branch_name,
+            schema_shortname=resource_obj.payload.schema_shortname,
+        )
+
+    return resource_base_record

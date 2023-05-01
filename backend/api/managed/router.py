@@ -1808,6 +1808,78 @@ async def retrieve_entry_meta(
     return {**meta.dict(exclude_none=True), "attachments": attachments}
 
 
+@router.get("/byuuid/{uuid}",response_model_exclude_none=True)
+async def get_entry_by_uuid(
+    uuid: str,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
+    logged_in_user=Depends(JWTBearer())
+):
+    spaces = await get_spaces()
+    entry_doc = None
+    entry_space = None
+    entry_branch = None
+    async with RedisServices() as redis_services:
+        for space_name, space in spaces.items():
+            space = json.loads(space)
+            for branch in space["branches"]:
+                search_res = await redis_services.search(
+                    space_name=space_name,
+                    branch_name=branch,
+                    search=f"@uuid:{uuid}*",
+                    limit=1,
+                    offset=0,
+                    filters={}
+                )
+                if search_res["total"] > 0:
+                    entry_doc = json.loads(search_res["data"][0].json)
+                    entry_branch = branch
+                    break
+            if entry_doc:
+                entry_space = space_name
+                break
+    
+    if not entry_doc:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="media", code=221, message="Requested object not found"
+            ),
+        )
+
+    if not await access_control.check_access(
+        user_shortname=logged_in_user,
+        space_name=space_name,
+        subpath=entry_doc["subpath"],
+        resource_type=entry_doc["resource_type"],
+        action_type=core.ActionType.view,
+        resource_is_active=entry_doc["is_active"],
+        resource_owner_shortname=entry_doc.get("owner_shortname"),
+        resource_owner_group=entry_doc.get("owner_group_shortname"),
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=401,
+                message="You don't have permission to this action [12]",
+            ),
+        )
+
+
+    resource_base_record = await repository.get_record_from_redis_doc(
+        space_name=entry_space,
+        branch_name=entry_branch,
+        doc=entry_doc,
+        retrieve_json_payload=retrieve_json_payload,
+        retrieve_attachments=retrieve_attachments,
+        validate_schema=True,
+    )
+
+    return resource_base_record
+            
+        
+
 # @router.post("/reload-redis-data", response_model_exclude_none=True)
 # async def recreate_redis_indices(
 #     for_space: str | None = None,
