@@ -25,6 +25,8 @@ from redis.exceptions import ResponseError as RedisResponseError
 from fastapi.logger import logger
 
 
+
+
 class RedisServices(object):
 
     POOL = BlockingConnectionPool(
@@ -158,7 +160,8 @@ class RedisServices(object):
                 delete_documents=True
             )
         except Exception as e:
-            logger.error(f"Error at redis_services.create_index: {e}")
+            pass
+            # logger.error(f"Error at redis_services.create_index: {e}")
 
         # in case it's a management space schema:
         # create Redis index with this schema in all other spaces
@@ -1102,7 +1105,7 @@ class RedisServices(object):
         try:
             return await self.client.delete(*keys)
         except Exception as e:
-            logger.warning(f"Error at redis_services.def_keys: {e}")
+            logger.warning(f"Error at redis_services.def_keys {keys}: {e}")
             return False
 
 
