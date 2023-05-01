@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import sys
 import jq
-
+from fastapi.encoders import jsonable_encoder
 from models.enums import ContentType, ResourceType, ValidationEnum
 from utils.access_control import access_control
 from utils.spaces import get_spaces
@@ -18,7 +18,7 @@ from utils.redis_services import RedisServices
 import aiofiles
 from fastapi import status
 from fastapi.logger import logger
-from utils.helpers import branch_path, camel_case, flatten_all, snake_case, str_to_datetime
+from utils.helpers import alter_dict_keys, branch_path, camel_case, flatten_all, snake_case, str_to_datetime
 from utils.custom_validations import validate_payload_with_schema
 import subprocess
 from redis.commands.search.document import Document as RedisDocument
@@ -78,9 +78,6 @@ async def serve_query(
 
         case api.QueryType.search:
 
-            query.include_fields = (
-                []
-            )  # Don't support include fields for now, will be supported after abandon meta doc enhancement
             search_res, total = await redis_query_search(query, redis_query_policies)
             res_data: list = []
             for redis_document in search_res:
@@ -132,7 +129,7 @@ async def serve_query(
                     resource_base_record = resource_obj.to_record(
                         redis_doc_dict["subpath"],
                         meta_doc_content["shortname"],
-                        query.include_fields,
+                        [],
                         redis_doc_dict["branch_name"],
                     )
                     if resource_base_record:
@@ -197,6 +194,12 @@ async def serve_query(
                     if resource_base_record in records:
                         total -= 1
                         continue
+
+                    resource_base_record.attributes = alter_dict_keys(
+                        jsonable_encoder(resource_base_record.attributes),
+                        query.include_fields,
+                        query.exclude_fields
+                    )
 
                     records.append(resource_base_record)
 
@@ -879,7 +882,6 @@ async def redis_query_search(
                 highlight_fields=list(query.highlight_fields.keys()),
                 sort_by=query.sort_by,
                 sort_type=query.sort_type or api.SortType.ascending,
-                return_fields=query.include_fields if query.include_fields else [],
             )
 
             if redis_res:
