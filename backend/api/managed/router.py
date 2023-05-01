@@ -1815,6 +1815,36 @@ async def get_entry_by_uuid(
     retrieve_attachments: bool = False,
     logged_in_user=Depends(JWTBearer())
 ):
+    return await get_entry_by_var(
+        "uuid",
+        uuid,
+        logged_in_user,
+        retrieve_json_payload,
+        retrieve_attachments,
+    )
+
+@router.get("/byslug/{slug}",response_model_exclude_none=True)
+async def get_entry_by_slug(
+    slug: str,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
+    logged_in_user=Depends(JWTBearer())
+):
+    return await get_entry_by_var(
+        "slug",
+        slug,
+        logged_in_user,
+        retrieve_json_payload,
+        retrieve_attachments,
+    )
+
+async def get_entry_by_var(
+    key: str,
+    val: str,
+    logged_in_user,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
+):
     spaces = await get_spaces()
     entry_doc = None
     entry_space = None
@@ -1826,7 +1856,7 @@ async def get_entry_by_uuid(
                 search_res = await redis_services.search(
                     space_name=space_name,
                     branch_name=branch,
-                    search=f"@uuid:{uuid}*",
+                    search=f"@{key}:{val}*",
                     limit=1,
                     offset=0,
                     filters={}
