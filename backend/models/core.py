@@ -81,6 +81,7 @@ class Translation(Resource):
 class Meta(Resource):
     uuid: UUID = Field(default_factory=uuid4)
     shortname: str = Field(regex=regex.SHORTNAME)
+    slug: str = Field(default=None, regex=regex.SHORTNAME)
     is_active: bool = False
     displayname: Translation | None = None
     description: Translation | None = None
