@@ -11,14 +11,14 @@ class Plugin(PluginBase):
         all_MKW = "__ALL__"
 
         state = data.attributes.get("state", all_MKW)
-        if data.subpath[0] == "/":
-            data.subpath = data.subpath[1:]
 
         # if subpath = parent/child
         # send to channels with subpaths "parent" and "parent/child"
         channels = []
         subpath = ""
         for subpath_part in data.subpath.split("/"):
+            if not subpath_part:
+                continue
             subpath += subpath_part
             
             # Consider channels with __ALL__ magic word
