@@ -35,7 +35,7 @@ class Plugin(PluginBase):
             return
 
         async with RedisServices() as redis_services:
-            if data.action_type in ActionType.delete:
+            if data.action_type == ActionType.delete:
                 doc_id = redis_services.generate_doc_id(
                     data.space_name,
                     data.branch_name,
