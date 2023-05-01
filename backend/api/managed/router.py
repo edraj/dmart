@@ -1866,6 +1866,18 @@ async def get_entry_by_uuid(
             ),
         )
 
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=entry_space,
+            branch_name=entry_branch,
+            subpath=entry_doc["subpath"],
+            shortname=entry_doc["shortname"],
+            action_type=core.ActionType.view,
+            resource_type=entry_doc["resource_type"],
+            user_shortname=logged_in_user,
+        )
+    )
+
 
     resource_base_record = await repository.get_record_from_redis_doc(
         space_name=entry_space,
@@ -1874,6 +1886,18 @@ async def get_entry_by_uuid(
         retrieve_json_payload=retrieve_json_payload,
         retrieve_attachments=retrieve_attachments,
         validate_schema=True,
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=entry_space,
+            branch_name=entry_branch,
+            subpath=entry_doc["subpath"],
+            shortname=entry_doc["shortname"],
+            action_type=core.ActionType.view,
+            resource_type=entry_doc["resource_type"],
+            user_shortname=logged_in_user,
+        )
     )
 
     return resource_base_record
