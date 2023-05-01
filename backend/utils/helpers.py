@@ -186,7 +186,12 @@ def remove_none(target: dict | list):
         return new_l
 
 
-def alter_dict_keys(target: dict, include: list = [], exclude: list = [], parents: str = ""):
+def alter_dict_keys(
+    target: dict, 
+    include: list | None = None, 
+    exclude: list | None = None, 
+    parents: str = ""
+):
     result: dict = {}
     for k in list(target):
         search_for = f"{parents}.{k}" if parents else f"{k}"
