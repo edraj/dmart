@@ -382,6 +382,9 @@ class RedisServices(object):
                         "$.shortname", sortable=True, no_stem=True, as_name="shortname"
                     ),
                     TextField(
+                        "$.slug", sortable=True, no_stem=True, as_name="slug"
+                    ),
+                    TextField(
                         "$.subpath", sortable=True, no_stem=True, as_name="subpath"
                     ),
                     TagField("$.subpath", as_name="exact_subpath"),
