@@ -15,7 +15,7 @@ from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import  ValidationError
 import strawberry
 from strawberry.fastapi import GraphQLRouter
-from api.managed.graphql import Query
+from api.managed.router_gql import Mutation, Query
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
@@ -64,7 +64,7 @@ app = FastAPI(
         },
     ],
 )
-schema = strawberry.Schema(Query)
+schema = strawberry.Schema(query=Query, mutation=Mutation)
 graphql_app = GraphQLRouter(schema)
 app.include_router(graphql_app, prefix="/graph")
 
