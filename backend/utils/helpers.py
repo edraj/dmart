@@ -184,9 +184,37 @@ def remove_none(target: dict | list):
                 new_l.append(val)
 
         return new_l
-            
-        
 
+
+def alter_dict_keys(target: dict, include: list = [], exclude: list = [], parents: str = ""):
+    result: dict = {}
+    for k in list(target):
+        search_for = f"{parents}.{k}" if parents else f"{k}"
+        if type(target[k]) == dict:
+            if include and search_for in include:
+                result[k] = target[k]
+                continue
+            if exclude and search_for in exclude:
+                continue
+            result[k] = alter_dict_keys(
+                target[k],
+                include,
+                exclude,
+                search_for if parents else f"{k}"
+            )
+
+        elif(
+            (include and search_for not in include)
+            or (exclude and search_for in exclude)
+        ):
+            continue
+
+        else:
+            result[k] = target[k]
+
+    return result
+
+        
 def branch_path(branch_name: str | None = settings.default_branch) -> str:
     return (
         (f"branches/{branch_name}") if branch_name != settings.default_branch else "./"
