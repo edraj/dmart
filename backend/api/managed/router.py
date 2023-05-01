@@ -1839,7 +1839,7 @@ async def get_entry_by_uuid(
                 entry_space = space_name
                 break
     
-    if not entry_doc:
+    if not entry_doc or not entry_space or not entry_branch:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
@@ -1849,7 +1849,7 @@ async def get_entry_by_uuid(
 
     if not await access_control.check_access(
         user_shortname=logged_in_user,
-        space_name=space_name,
+        space_name=entry_space,
         subpath=entry_doc["subpath"],
         resource_type=entry_doc["resource_type"],
         action_type=core.ActionType.view,
