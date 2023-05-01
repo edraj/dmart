@@ -96,7 +96,8 @@ class AccessControl:
             search_query = Query("*").no_content()
             docs = await redis_services.client.ft("user_permission").search(search_query)
             keys = [doc.id for doc in docs.docs]
-            await redis_services.del_keys(keys)
+            if len(keys) > 0:
+                await redis_services.del_keys(keys)
 
     def generate_user_permission_doc_id(self, user_shortname: str):
         return f"users_permissions_{user_shortname}"
