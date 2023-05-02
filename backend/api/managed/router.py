@@ -816,11 +816,17 @@ async def serve_request(
                         new_resource_payload_data = dict(
                             remove_none(new_resource_payload_data)
                         )
+                    old_schema = None
+                    if (
+                        getattr(old_resource_obj, "payload")
+                        and getattr(old_resource_obj.payload, "schema_shortname")
+                    ):
+                        old_schema = old_resource_obj.payload.schema_shortname
                     resource_obj.payload = core.Payload(
                         content_type=record.attributes["payload"].get("content_type"),
                         schema_shortname=record.attributes["payload"].get(
                             "schema_shortname",
-                            old_resource_obj.payload.schema_shortname or None,
+                            old_schema
                         ),
                         body=record.shortname + ".json",
                     )
