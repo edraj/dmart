@@ -22,6 +22,9 @@ from models.enums import ContentType, ValidationEnum
 from utils.settings import settings
 from utils.spaces import get_spaces
 
+duplicated_entries = {}
+key_entries: dict = {}
+
 
 async def main(health_type: str, space_param: str, schemas_param: list, branch_name: str):
     is_full: bool = True if args.space and args.space == 'all' else False
@@ -218,7 +221,45 @@ async def soft_health_check(
                         is_valid=is_valid
                     )
 
+                uuid = redis_doc_dict['uuid'][:8]
+                await collect_duplicated_with_key('uuid', uuid)
+                if redis_doc_dict.get('slug'):
+                    await collect_duplicated_with_key('slug', redis_doc_dict.get('slug'))
+
     return {"invalid_folders": [], "folders_report": folders_report}
+
+
+async def collect_duplicated_with_key(key, value):
+    spaces = await get_spaces()
+    async with RedisServices() as redis:
+        for space_name, space_data in spaces.items():
+            space_data = json.loads(space_data)
+            for branch in space_data["branches"]:
+                ft_index = redis.client.ft(f"{space_name}:{branch}:meta")
+                search_query = Query(query_string=f"@{key}:{value}*")
+                search_query.paging(0, 1000)
+                res_data: Result = await ft_index.search(query=search_query)
+
+                for redis_doc_dict in res_data.docs:
+                    redis_doc_dict = json.loads(redis_doc_dict.json)
+                    if redis_doc_dict['subpath'] == '/':
+                        redis_doc_dict['subpath'] = ''
+                    loc = space_name + "/" + redis_doc_dict['subpath']
+                    if key not in key_entries:
+                        key_entries[key] = {}
+                    if not key_entries[key].get(value):
+                        key_entries[key][value] = loc
+                    else:
+                        if not duplicated_entries.get(key):
+                            duplicated_entries[key] = {}
+                        if not duplicated_entries[key].get(value) or \
+                                key_entries[key][value] not in duplicated_entries[key][value]['loc']:
+                            duplicated_entries[key][value] = {}
+                            duplicated_entries[key][value]['loc'] = [key_entries[key][value]]
+                            duplicated_entries[key][value]['total'] = 1
+                        if loc not in duplicated_entries[key][value]['loc']:
+                            duplicated_entries[key][value]['total'] += 1
+                            duplicated_entries[key][value]['loc'].append(loc)
 
 
 async def hard_health_check(space_name: str, branch_name: str):
@@ -305,6 +346,8 @@ async def save_health_check_entry(health_check, space_name: str, branch_name: st
 
     body[space_name] = health_check
     body[space_name]['updated_at'] = str(datetime.now())
+    if duplicated_entries:
+        body['duplicated_entries'] = {'entries': duplicated_entries, 'updated_at': str(datetime.now())}
     meta.updated_at = datetime.now()
     await db.save(
         space_name=management_space,
