@@ -18,7 +18,7 @@
     "request_body": {
       "title": "request_body",
       "description" : "JSON request body",
-      "type": "string"
+      "type": "object"
     }
   },
   "required": [
