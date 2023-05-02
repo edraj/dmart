@@ -1,4 +1,3 @@
-import asyncio
 import json
 import re
 from redis.commands.search.field import TextField
@@ -197,6 +196,7 @@ class AccessControl:
         subpath = {subpath}/protected => __all_subpaths__/protected
         subpath = {subpath}/protected/mine => {subpath}/__all_subpaths__/mine
         """
+        original_subpath = search_subpath
         search_subpath_parts = search_subpath.split("/")
         if len(search_subpath_parts) > 1:
             search_subpath_parts[-2] = settings.all_subpaths_mw
@@ -210,9 +210,14 @@ class AccessControl:
         # check if has access to all spaces
         if f"{settings.all_spaces_mw}:{search_subpath}:{resource_type}" in user_permissions:
             permission_key = f"{settings.all_spaces_mw}:{search_subpath}:{resource_type}"
+        
         # check if has access to current spaces
         if f"{space_name}:{search_subpath}:{resource_type}" in user_permissions:
             permission_key = f"{space_name}:{search_subpath}:{resource_type}"
+        
+        # check if has access to current subpath
+        if f"{settings.all_spaces_mw}:{original_subpath}:{resource_type}" in user_permissions:
+            permission_key = f"{settings.all_spaces_mw}:{original_subpath}:{resource_type}"
 
         if not permission_key:
             return False
