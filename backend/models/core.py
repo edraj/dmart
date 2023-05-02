@@ -103,11 +103,9 @@ class Meta(Resource):
         if issubclass(meta_class, User) and "password" in record.attributes:
             hashed_pass = password_hashing.hash_password(record.attributes["password"])
             record.attributes["password"] = hashed_pass
-        meta_obj = meta_class(
-            owner_shortname=owner_shortname,
-            shortname=record.shortname,
-            **record.attributes,
-        )
+        record.attributes["owner_shortname"] = owner_shortname
+        record.attributes["shortname"] = record.shortname
+        meta_obj = meta_class(**record.attributes)
         return meta_obj
 
     @staticmethod
