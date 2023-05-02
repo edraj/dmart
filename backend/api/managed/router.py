@@ -395,6 +395,12 @@ async def serve_space(
                 )
 
             os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
+            
+            async with RedisServices() as redis_services:
+                indices: list[str] = await redis_services.list_indices()
+                for index in indices:
+                    if index.startswith(f"{request.space_name}:"):
+                        await redis_services.drop_index(index, True)
 
     await initialize_spaces()
 

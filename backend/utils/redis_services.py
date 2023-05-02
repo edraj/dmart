@@ -1120,3 +1120,14 @@ class RedisServices(object):
 
     async def set_ttl(self, key: str, ttl: int):
         return await self.client.expire(key, ttl)
+
+    async def drop_index(self, name: str, delete_docs: bool = False):
+        try:
+            ft_index = self.client.ft(name)
+            ft_index.dropindex(delete_docs)
+            return True
+        except :
+            return False
+
+    async def list_indices(self):
+        return await self.client.ft().execute_command("FT._LIST")
