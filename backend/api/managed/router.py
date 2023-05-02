@@ -147,7 +147,11 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies(user_shortname)
+    redis_query_policies = await access_control.get_user_query_policies(
+        user_shortname,
+        query.space_name,
+        query.subpath
+    )
 
     folder = await db.load(
         query.space_name,
@@ -414,7 +418,11 @@ async def query_entries(
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies(user_shortname)
+    redis_query_policies = await access_control.get_user_query_policies(
+        user_shortname,
+        query.space_name,
+        query.subpath
+    )
 
     total, records = await repository.serve_query(
         query, user_shortname, redis_query_policies
