@@ -1,4 +1,3 @@
-from copy import copy
 import json
 import re
 from redis.commands.search.field import TextField
@@ -196,7 +195,7 @@ class AccessControl:
         subpath = {subpath}/protected => __all_subpaths__/protected
         subpath = {subpath}/protected/mine => {subpath}/__all_subpaths__/mine
         """
-        original_subpath = copy(search_subpath)
+        original_subpath = search_subpath
         search_subpath_parts = search_subpath.split("/")
         if len(search_subpath_parts) > 1:
             search_subpath_parts[-2] = settings.all_subpaths_mw
