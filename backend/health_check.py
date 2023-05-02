@@ -346,7 +346,7 @@ async def save_health_check_entry(health_check, space_name: str, branch_name: st
 
     body[space_name] = health_check
     body[space_name]['updated_at'] = str(datetime.now())
-    if body['duplicated_entries'] and duplicated_entries:
+    if duplicated_entries:
         body['duplicated_entries'] = {'entries': duplicated_entries, 'updated_at': str(datetime.now())}
     meta.updated_at = datetime.now()
     await db.save(
