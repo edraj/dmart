@@ -150,14 +150,18 @@ class RedisServices(object):
         await self.client.close()
 
     async def create_index(
-        self, space_branch_name: str, schema_name: str, redis_schema: tuple
+        self, 
+        space_branch_name: str, 
+        schema_name: str, 
+        redis_schema: tuple, 
+        del_docs: bool = True
     ):
         """
         create redis schema index, drop it if exist first
         """
         try:
             await self.redis_indices[space_branch_name][schema_name].dropindex(
-                delete_documents=True
+                delete_documents=del_docs
             )
         except Exception as e:
             pass
@@ -355,7 +359,11 @@ class RedisServices(object):
             )
 
     async def create_indices_for_all_spaces_meta_and_schemas(
-        self, for_space: str | None = None, for_schemas: list | None = None
+        self, 
+        for_space: str | None = None, 
+        for_schemas: list | None = None,
+        for_custom_indices: bool = True,
+        del_docs: bool = True
     ):
         """
         Loop over all spaces, and for each one we create: (only if indexing_enabled is true for the space)
@@ -499,7 +507,7 @@ class RedisServices(object):
                 )
 
                 await self.create_index(
-                    f"{space_name}:{branch_name}", "meta", meta_schema
+                    f"{space_name}:{branch_name}", "meta", meta_schema, del_docs
                 )
 
                 # CREATE REDIS INDEX FOR EACH SCHEMA DEFINITION INSIDE THE SPACE
@@ -567,9 +575,11 @@ class RedisServices(object):
                             f"{space_name}:{branch_name}",
                             schema_shortname,
                             tuple(redis_schema_definition),
+                            del_docs
                         )
 
-        await self.create_custom_indices(for_space)
+        if for_custom_indices:
+            await self.create_custom_indices(for_space)
 
     def append_unique_index_fields(self, new_index: tuple, base_index: list):
         for field in new_index:
