@@ -349,8 +349,10 @@ async def save_health_check_entry(health_check, space_name: str, branch_name: st
     except:
         body = {}
 
-    body[space_name] = health_check
-    body[space_name]['updated_at'] = str(datetime.now())
+    if not body or not body.get('spaces'):
+        body = {"spaces": {}}
+    body['spaces'][space_name] = health_check
+    body['spaces'][space_name]['updated_at'] = str(datetime.now())
     if duplicated_entries:
         body['duplicated_entries'] = {'entries': duplicated_entries, 'updated_at': str(datetime.now())}
     meta.updated_at = datetime.now()
