@@ -344,7 +344,7 @@ async def save_health_check_entry(health_check, space_name: str, branch_name: st
     except:
         body = {}
 
-    if not body:
+    if not body or not body.get('spaces'):
         body = {"spaces": {}}
     body['spaces'][space_name] = health_check
     body['spaces'][space_name]['updated_at'] = str(datetime.now())
