@@ -494,7 +494,7 @@ class AccessControl:
         redis_query_policies = []
         for perm_key, permission in user_permissions.items():
             perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
-            perm_key = perm_key.replace(settings.all_subpaths_mw, subpath)
+            perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
             if (
                 core.ConditionType.is_active in permission["conditions"]
                 and core.ConditionType.own in permission["conditions"]
