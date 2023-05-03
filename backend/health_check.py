@@ -273,6 +273,7 @@ async def hard_health_check(space_name: str, branch_name: str):
 
     invalid_folders = []
     folders_report: dict[str, dict] = {}
+    meta_folders_health: list = []
 
     path = settings.spaces_folder / space_name / branch_path(branch_name)
 
@@ -288,8 +289,12 @@ async def hard_health_check(space_name: str, branch_name: str):
             user_shortname='dmart',
             invalid_folders=invalid_folders,
             folders_report=folders_report,
+            meta_folders_health=meta_folders_health,
         )
-    return {"invalid_folders": invalid_folders, "folders_report": folders_report}
+    res = {"invalid_folders": invalid_folders, "folders_report": folders_report}
+    if meta_folders_health:
+        res['invalid_meta_folders'] = meta_folders_health
+    return res
 
 
 async def update_validation_status(space_name: str, subpath: str, meta: core.Meta, is_valid: bool, branch_name: str):
