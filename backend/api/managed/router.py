@@ -415,6 +415,15 @@ async def serve_space(
     
     await initialize_spaces()
 
+    # Create general schemas Redis indices
+    if request.request_type == RequestType.create:
+        async with RedisServices() as redis_services:
+            await redis_services.create_indices_for_all_spaces_meta_and_schemas(
+                for_space=settings.management_space,
+                for_custom_indices=False,
+                del_docs=False
+            )
+
     await access_control.load_permissions_and_roles()
     return api.Response(status=api.Status.success)
 
