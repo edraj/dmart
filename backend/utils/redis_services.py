@@ -1007,11 +1007,11 @@ class RedisServices(object):
             elif item[0] == "created_at" and item[1]:
                 query_string += f" @{item[0]}:{item[1]}"
             elif item[0] == "subpath" and exact_subpath:
-                # remove forward slash from the beggining
-                formatted_item = [
-                    i[1:] if (len(i) > 1 and i[0] == "/") else i for i in item[1]
-                ]
-                query_string += f" @exact_subpath:{{{'|'.join(formatted_item).translate(redis_escape_chars)}}}"
+                search_value = ""
+                for subpath in item[1]:
+                    search_value += "|" + subpath.strip("/").translate(redis_escape_chars)
+                    search_value += "|" + f"/{subpath}".replace("//", "/").translate(redis_escape_chars)
+                query_string += f" @exact_subpath:{{{search_value.strip('|')}}}"
             elif item[0] == "subpath" and item[1][0] == "/":
                 pass
             elif item[1]:
