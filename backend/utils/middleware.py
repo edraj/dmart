@@ -4,7 +4,7 @@ from starlette.requests import Request
 from typing import Optional
 REQUEST_DATA_CTX_KEY = "request_data"
 
-_request_data_ctx_var: ContextVar[dict] = ContextVar(REQUEST_DATA_CTX_KEY, default=Optional[dict])
+_request_data_ctx_var: ContextVar[dict] = ContextVar(REQUEST_DATA_CTX_KEY, default=Optional[dict]) # type: ignore
 
 def get_request_data() -> dict:
     return _request_data_ctx_var.get()

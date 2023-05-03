@@ -402,6 +402,17 @@ async def serve_space(
                     if index.startswith(f"{request.space_name}:"):
                         await redis_services.drop_index(index, True)
 
+        case _:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=401,
+                    message="Not allowed request",
+                ),
+            )
+
+    
     await initialize_spaces()
 
     await access_control.load_permissions_and_roles()
