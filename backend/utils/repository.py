@@ -892,7 +892,7 @@ async def update_payload_validation_status(
         )
 
 
-async def get_group_users(group_name: str) -> list[RedisDocument]:
+async def get_group_users(group_name: str):
     async with RedisServices() as redis_services:
         users_docs = await redis_services.search(
             space_name=settings.management_space,
