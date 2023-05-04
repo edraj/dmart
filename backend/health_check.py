@@ -19,7 +19,6 @@ from utils.custom_validations import get_schema_path
 from utils.helpers import camel_case, branch_path
 from utils.redis_services import RedisServices
 from models import core, api
-from models.core import Payload
 from models.enums import ContentType, ValidationEnum, RequestType, ResourceType
 from utils.settings import settings
 from utils.spaces import get_spaces
