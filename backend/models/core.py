@@ -9,6 +9,7 @@ from uuid import uuid4
 from pydantic import Field
 from datetime import datetime
 import sys
+from pydantic.utils import deep_update
 from models.enums import (
     ActionType,
     ContentType,
@@ -22,7 +23,7 @@ from models.enums import (
     PluginType,
     EventListenTime,
 )
-from utils.helpers import camel_case, snake_case
+from utils.helpers import camel_case, remove_none, snake_case
 import utils.regex as regex
 from utils.settings import settings
 import utils.password_hashing as password_hashing
@@ -52,6 +53,32 @@ class Payload(Resource):
     body: str | dict[str, Any] | Path
     last_validated: datetime | None = None
     validation_status: ValidationEnum | None = None
+
+    def update(
+        self, 
+        payload: dict, 
+        old_body: dict | None = None,
+        replace: bool = False
+    ) -> dict | None:
+        if self.content_type == ContentType.json:
+            if replace:
+                separate_payload_body = payload["body"]
+            else:
+                separate_payload_body = dict(remove_none(deep_update(
+                    old_body,
+                    payload["body"],
+                )))
+            if "schema_shortname" in payload:
+                self.schema_shortname = payload["schema_shortname"]
+            
+            return separate_payload_body
+
+        else:
+            self.body = payload["body"]
+            return None
+
+
+
 
 
 class Record(BaseModel):
@@ -121,7 +148,12 @@ class Meta(Resource):
         )
         return meta_obj
 
-    def update_from_record(self, record: Record):
+    def update_from_record(
+        self, 
+        record: Record, 
+        old_body: dict | None = None,
+        replace: bool = False
+    ) -> dict | None:
         restricted_fields = [
             "uuid",
             "shortname",
@@ -140,6 +172,16 @@ class Meta(Resource):
                     continue
 
                 self.__setattr__(field_name, record.attributes[field_name])
+        
+        if(
+            self.payload and
+            record.attributes.get("payload", {}).get("content_type") == self.payload.content_type
+        ):
+            return self.payload.update(
+                payload=record.attributes["payload"],
+                old_body=old_body,
+                replace=replace
+            )
 
     def to_record(
         self,
