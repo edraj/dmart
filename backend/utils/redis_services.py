@@ -713,6 +713,8 @@ class RedisServices(object):
             meta.owner_shortname,
             meta.owner_group_shortname,
         )
+        if not payload["query_policies"]:
+            print(f"Warning: this entry `{space_name}/{subpath}/{meta.shortname}` can't be accessed")
         payload["subpath"] = subpath
         payload["branch_name"] = branch_name
         payload["resource_type"] = resource_type
