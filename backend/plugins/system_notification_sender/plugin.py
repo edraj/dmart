@@ -57,6 +57,7 @@ class Plugin(PluginBase):
             if (
                 entry["payload"]
                 and entry["payload"]["content_type"] == ContentType.json
+                and entry["payload"]["body"]
             ):
                 entry["payload"]["body"] = load_resource_payload(
                     space_name=data.space_name,

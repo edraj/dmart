@@ -579,6 +579,7 @@ async def serve_request(
                     if (
                         resource_obj.payload
                         and resource_obj.payload.content_type == ContentType.json
+                        and resource_obj.payload.body
                     ):
                         separate_payload_data = resource_obj.payload.body
                         resource_obj.payload.body = body_shortname + ".json"
