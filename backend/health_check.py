@@ -12,13 +12,15 @@ from pathlib import Path
 from jsonschema.validators import Draft4Validator
 from redis.commands.search.query import Query
 from redis.commands.search.result import Result
+
+from api.managed.router import serve_request
 from utils import db, repository
 from utils.custom_validations import get_schema_path
 from utils.helpers import camel_case, branch_path
 from utils.redis_services import RedisServices
-from models import core
+from models import core, api
 from models.core import Payload
-from models.enums import ContentType, ValidationEnum
+from models.enums import ContentType, ValidationEnum, RequestType
 from utils.settings import settings
 from utils.spaces import get_spaces
 
@@ -63,6 +65,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
     else:
         print("Wrong mode specify [soft or hard]")
         return
+    await save_duplicated_entries()
 
 
 def print_header():
@@ -314,60 +317,61 @@ async def update_validation_status(space_name: str, subpath: str, meta: core.Met
 
 
 async def save_health_check_entry(health_check, space_name: str, branch_name: str = 'master'):
-    schema_shortname = 'health_check'
-    management_space = 'management'
-    try:
-        meta = await db.load(
-            space_name=management_space,
-            subpath="info",
-            shortname="health_check",
-            class_type=core.Content,
-            user_shortname='dmart',
-            branch_name=branch_name,
-            schema_shortname=schema_shortname,
-        )
-    except:
-        meta = core.Content(
-            shortname='health_check',
-            is_active=True,
-            owner_shortname='dmart',
-            payload=Payload(
-                content_type=ContentType.json,
-                schema_shortname=schema_shortname,
-                body="health_check.json"
-            )
-        )
-    try:
-        body = db.load_resource_payload(
-            space_name=management_space,
-            subpath="info",
-            filename="health_check.json",
-            class_type=core.Content,
-            branch_name=branch_name,
-            schema_shortname=schema_shortname,
-        )
-    except:
-        body = {}
-
-    if not body or not body.get('spaces'):
-        body = {"spaces": {}}
-    body['spaces'][space_name] = health_check
-    body['spaces'][space_name]['updated_at'] = str(datetime.now())
-    if duplicated_entries:
-        body['duplicated_entries'] = {'entries': duplicated_entries, 'updated_at': str(datetime.now())}
-    meta.updated_at = datetime.now()
-    await db.save(
-        space_name=management_space,
-        subpath="info",
-        meta=meta,
-        branch_name=branch_name
+    request_type = RequestType.create
+    entry_path = Path(settings.spaces_folder / "management/health_check/.dm" / space_name / "meta.content.json")
+    if entry_path.is_file():
+        request_type = RequestType.update
+    await serve_request(
+        request=api.Request(
+            space_name="management",
+            request_type=request_type,
+            records=[
+                {
+                    "resource_type": "content",
+                    "subpath": "/health_check",
+                    "shortname": space_name,
+                    "attributes": {
+                        "is_active": True,
+                        "updated_at": str(datetime.now()),
+                        "payload": {
+                            "schema_shortname": "health_check",
+                            "content_type": ContentType.json,
+                            "body": {"health": health_check}
+                        }
+                    }
+                }
+            ],
+        ),
+        owner_shortname='dmart',
     )
-    await db.save_payload_from_json(
-        space_name=management_space,
-        subpath='info',
-        meta=meta,
-        payload_data=body,
-        branch_name=branch_name,
+
+
+async def save_duplicated_entries():
+    entry_path = Path(settings.spaces_folder / "management/health_check/.dm/duplicated_entries/meta.content.json")
+    request_type = RequestType.create
+    if entry_path.is_file():
+        request_type = RequestType.update
+    await serve_request(
+        request=api.Request(
+            space_name="management",
+            request_type=request_type,
+            records=[
+                {
+                    "resource_type": "content",
+                    "subpath": "/health_check",
+                    "shortname": "duplicated_entries",
+                    "attributes": {
+                        "is_active": True,
+                        "payload": {
+                            "schema_shortname": "health_check",
+                            "content_type": ContentType.json,
+                            "body": {"entries": duplicated_entries}
+                        }
+                    }
+                }
+            ],
+        ),
+        owner_shortname='dmart',
     )
 
 

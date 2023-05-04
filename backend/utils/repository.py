@@ -959,7 +959,7 @@ async def validate_subpath_data(
         folder_meta = Path(f"{folder.path}/meta.folder.json")
         folder_name = "/".join(subpath.split("/")[folder_name_index:])
         if not folder_meta.is_file():
-            meta_folders_health.append(str(folder_meta))
+            meta_folders_health.append(str(folder_meta)[len(str(settings.spaces_folder)):])
             continue
 
         validation_status = ValidationEnum.valid
