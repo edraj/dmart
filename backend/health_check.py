@@ -248,14 +248,14 @@ async def collect_duplicated_with_key(key, value):
         for space_name, space_data in spaces.items():
             space_data = json.loads(space_data)
             for branch in space_data["branches"]:
-                ft_index = redis.client.ft(f"{space_name}:{branch}:meta")
-                search_query = Query(query_string=f"@{key}:{value}*")
-                search_query.paging(0, 1000)
                 try:
-                    res_data: Result = await ft_index.search(query=search_query)
+                    ft_index = redis.client.ft(f"{space_name}:{branch}:meta")
                     await ft_index.info()
                 except:
-                    pass
+                    continue
+                search_query = Query(query_string=f"@{key}:{value}*")
+                search_query.paging(0, 1000)
+                res_data: Result = await ft_index.search(query=search_query)
                 for redis_doc_dict in res_data.docs:
                     redis_doc_dict = json.loads(redis_doc_dict.json)
                     if redis_doc_dict['subpath'] == '/':
