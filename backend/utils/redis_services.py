@@ -325,7 +325,7 @@ class RedisServices(object):
                 tuple(redis_schema),
             )
 
-    async def create_indices_for_all_spaces_meta_and_schemas(
+    async def create_indices(
         self, 
         for_space: str | None = None, 
         for_schemas: list | None = None,
