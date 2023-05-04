@@ -494,6 +494,9 @@ async def serve_request(
                 if record.subpath[0] != "/":
                     record.subpath = f"/{record.subpath}"
                 try:
+                    schema_shortname : str | None = None
+                    if "payload" in record.attributes and type(record.attributes.get("payload", None)) == 'dict' and "schema_shortname" in record.attributes["payload"]  : 
+                        schema_shortname = record.attributes["payload"]["schema_shortname"]
                     await plugin_manager.before_action(
                         core.Event(
                             space_name=request.space_name,
@@ -501,9 +504,7 @@ async def serve_request(
                             subpath=record.subpath,
                             shortname=record.shortname,
                             action_type=core.ActionType.create,
-                            schema_shortname=record.attributes.get("payload", {}).get(
-                                "schema_shortname", None
-                            ),
+                            schema_shortname=schema_shortname,
                             resource_type=record.resource_type,
                             user_shortname=owner_shortname,
                         )
