@@ -289,7 +289,11 @@ async def serve_space(
         case api.RequestType.update:
             try:
                 space = core.Space.from_record(record, owner_shortname)
-                if request.space_name not in spaces:
+                if(
+                    request.space_name not in spaces or
+                    request.space_name != record.shortname
+
+                ):
                     raise Exception
             except:
                 raise api.Exception(
@@ -328,11 +332,6 @@ async def serve_space(
                     user_shortname=owner_shortname,
                 )
             )
-
-            if request.space_name != space.shortname:
-                os.system(
-                    f"mv {settings.spaces_folder}/{request.space_name} {settings.spaces_folder}/{space.shortname}"
-                )
 
             old_space = await db.load(
                 space_name=space.shortname,
