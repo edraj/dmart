@@ -1457,6 +1457,8 @@ async def create_or_update_resource_with_payload(
         resource_content_type = ContentType.image
     elif payload_file.content_type and "audio/" in payload_file.content_type:
         resource_content_type = ContentType.audio
+    elif payload_file.content_type and "video/" in payload_file.content_type:
+        resource_content_type = ContentType.video
     else:
         raise api.Exception(
             status.HTTP_406_NOT_ACCEPTABLE,
