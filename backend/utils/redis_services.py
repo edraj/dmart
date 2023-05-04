@@ -167,39 +167,6 @@ class RedisServices(object):
             pass
             # logger.error(f"Error at redis_services.create_index: {e}")
 
-        # in case it's a management space schema:
-        # create Redis index with this schema in all other spaces
-        if (
-            space_branch_name
-            == f"{settings.management_space}:{settings.management_space_branch}"
-        ):
-            spaces = await self.get_doc_by_id("spaces")
-            for space_name, space_str in spaces.items():
-                if space_name == settings.management_space:
-                    continue
-                space_data = json.loads(space_str)
-                for branch_name in space_data["branches"]:
-                    try:
-                        self.redis_indices.setdefault(f"{space_name}:{branch_name}", {})
-                        self.redis_indices[f"{space_name}:{branch_name}"][
-                            schema_name
-                        ] = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
-                        await self.redis_indices[f"{space_name}:{branch_name}"][
-                            schema_name
-                        ].create_index(
-                            redis_schema,
-                            definition=IndexDefinition(
-                                prefix=[
-                                    f"{space_name}:{branch_name}:{schema_name}:",
-                                    f"{space_name}:{branch_name}:{schema_name}/",
-                                ],
-                                index_type=IndexType.JSON,
-                            ),
-                        )
-                    # Ignore schema already exist error
-                    except RedisResponseError:
-                        pass
-
         await self.redis_indices[space_branch_name][schema_name].create_index(
             redis_schema,
             definition=IndexDefinition(
@@ -358,7 +325,7 @@ class RedisServices(object):
                 tuple(redis_schema),
             )
 
-    async def create_indices_for_all_spaces_meta_and_schemas(
+    async def create_indices(
         self, 
         for_space: str | None = None, 
         for_schemas: list | None = None,

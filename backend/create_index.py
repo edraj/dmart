@@ -285,7 +285,7 @@ async def main(
 
         print(f"Creating Redis indices: {for_space=} {for_schemas=}")
         await access_control.load_permissions_and_roles()
-        await redis_man.create_indices_for_all_spaces_meta_and_schemas(
+        await redis_man.create_indices(
             for_space, for_schemas
         )
     res = await load_all_spaces_data_to_redis(for_space, for_subpaths)

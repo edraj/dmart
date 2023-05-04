@@ -17,7 +17,7 @@ from fastapi import status
 from datetime import datetime
 import aiofiles
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN
-
+from shutil import copy2 as copy_file
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
 
@@ -212,7 +212,7 @@ async def load(
     subpath: str,
     shortname: str,
     class_type: Type[MetaChild],
-    user_shortname: str,
+    user_shortname: str | None = None,
     branch_name: str | None = settings.default_branch,
     schema_shortname: str | None = None,
 ) -> MetaChild:
@@ -566,6 +566,61 @@ async def move(
     # Delete Src path if empty
     if src_path.is_dir() and len(os.listdir(src_path)) == 0:
         os.removedirs(src_path)
+
+async def clone(
+    src_space: str,
+    dest_space: str,
+    src_subpath: str,
+    src_shortname: str,
+    dest_subpath: str,
+    dest_shortname: str,
+    class_type: Type[MetaChild], 
+    branch_name: str | None = settings.default_branch,
+):
+
+    meta_obj = await load(
+        space_name=src_space,
+        subpath=src_subpath,
+        shortname=src_shortname,
+        class_type=class_type,
+        branch_name=branch_name
+    )
+
+    src_path, src_filename = metapath(
+        src_space, src_subpath, src_shortname, class_type, branch_name
+    )
+    dest_path, dest_filename = metapath(
+        dest_space,
+        dest_subpath,
+        dest_shortname,
+        class_type,
+        branch_name,
+    )
+
+    # Create dest dir if not exist
+    if not os.path.isdir(dest_path):
+        os.makedirs(dest_path)
+
+    copy_file(src=src_path / src_filename, dst=dest_path / dest_filename)
+
+    payload_path(src_space, src_subpath, class_type, branch_name)
+    # Move payload file with the meta file
+    if (
+        meta_obj.payload
+        and meta_obj.payload.content_type != ContentType.text
+        and isinstance(meta_obj.payload.body, str)
+    ):
+        src_payload_file_path = (
+            payload_path(src_space, src_subpath, class_type, branch_name)
+            / meta_obj.payload.body
+        )
+        dist_payload_file_path = (
+            payload_path(
+                dest_space, dest_subpath, class_type, branch_name
+            )
+            / meta_obj.payload.body
+        )
+        copy_file(src=src_payload_file_path, dst=dist_payload_file_path)
 
 
 async def delete(
