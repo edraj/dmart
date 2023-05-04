@@ -61,13 +61,14 @@ class Payload(Resource):
         replace: bool = False
     ) -> dict | None:
         if self.content_type == ContentType.json:
-            if replace:
-                separate_payload_body = payload["body"]
-            else:
+            if old_body and not replace:
                 separate_payload_body = dict(remove_none(deep_update(
                     old_body,
                     payload["body"],
                 )))
+            else:
+                separate_payload_body = payload["body"]
+                
             if "schema_shortname" in payload:
                 self.schema_shortname = payload["schema_shortname"]
             
