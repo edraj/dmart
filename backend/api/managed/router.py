@@ -39,12 +39,10 @@ import utils.repository as repository
 from utils.helpers import (
     branch_path,
     camel_case,
-    remove_none,
     flatten_dict,
     json_flater,
     resolve_schema_references,
 )
-from pydantic.utils import deep_update
 from utils.custom_validations import validate_payload_with_schema
 from utils.settings import settings
 from utils.plugin_manager import plugin_manager
@@ -820,36 +818,12 @@ async def serve_request(
                 # GENERATE NEW RESOURCE OBJECT
                 resource_obj = old_resource_obj
                 resource_obj.updated_at = datetime.now()
-                resource_obj.update_from_record(record=record)
+                new_resource_payload_data: dict | None = resource_obj.update_from_record(
+                    record=record, 
+                    old_body=old_resource_payload_body
+                )
                 new_version_flattend = flatten_dict(resource_obj.dict())
-                # GENERATE SEPARATE PAYLOAD BODY
-                new_resource_payload_data: dict | None = None
-                if record.attributes.get("payload", {}).get("body", None):
-                    if request.request_type == api.RequestType.r_replace:
-                        new_resource_payload_data = record.attributes["payload"]["body"]
-                    else:
-                        new_resource_payload_data = deep_update(
-                            old_resource_payload_body,
-                            record.attributes["payload"]["body"],
-                        )
-                        new_resource_payload_data = dict(
-                            remove_none(new_resource_payload_data)
-                        )
-                    old_schema = None
-                    if (
-                        getattr(old_resource_obj, "payload")
-                        and getattr(old_resource_obj.payload, "schema_shortname")
-                    ):
-                        old_schema = old_resource_obj.payload.schema_shortname
-                    resource_obj.payload = core.Payload(
-                        content_type=record.attributes["payload"].get("content_type"),
-                        schema_shortname=record.attributes["payload"].get(
-                            "schema_shortname",
-                            old_schema
-                        ),
-                        body=record.shortname + ".json",
-                    )
-                    new_version_flattend.pop("payload.body", None)
+                if new_resource_payload_data:
                     new_version_flattend.update(
                         flatten_dict({"payload.body": new_resource_payload_data})
                     )
@@ -860,6 +834,7 @@ async def serve_request(
                 # VALIDATE SEPARATE PAYLOAD BODY
                 if (
                     resource_obj.payload
+                    and resource_obj.payload.content_type == ContentType.json
                     and resource_obj.payload.schema_shortname
                     and new_resource_payload_data != None
                 ):
