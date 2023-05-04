@@ -6,11 +6,22 @@ from utils.redis_services import RedisServices
 from utils.repository import _save_model
 from utils.settings import settings
 from plugins.redis_db_update.plugin import Plugin as RedisUpdatePlugin
+from fastapi.logger import logger
 
 
 class Plugin(PluginBase):
 
     async def hook(self, data: Event):
+        # Type narrowing for PyRight
+        if (
+            not isinstance(data.shortname, str)
+            or not isinstance(data.resource_type, ResourceType)
+            or not isinstance(data.attributes, dict)
+        ):
+            logger.error(f"invalid data at resource_folders_creation")
+            return
+
+        folders = []
         if data.resource_type == ResourceType.user:
             folders = [
                 ("personal", f"people", {data.shortname}),
