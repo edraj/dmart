@@ -233,14 +233,6 @@ async def soft_health_check(
                         folders_report[redis_doc_dict['subpath']]["invalid_entries"].append(
                             status.get('invalid')
                         )
-                if meta:
-                    await update_validation_status(
-                        space_name=space_name,
-                        subpath=subpath,
-                        meta=meta,
-                        branch_name=branch_name,
-                        is_valid=status['is_valid']
-                    )
 
                 uuid = redis_doc_dict['uuid'][:8]
                 await collect_duplicated_with_key('uuid', uuid)
@@ -259,8 +251,11 @@ async def collect_duplicated_with_key(key, value):
                 ft_index = redis.client.ft(f"{space_name}:{branch}:meta")
                 search_query = Query(query_string=f"@{key}:{value}*")
                 search_query.paging(0, 1000)
-                res_data: Result = await ft_index.search(query=search_query)
-
+                try:
+                    res_data: Result = await ft_index.search(query=search_query)
+                    await ft_index.info()
+                except:
+                    pass
                 for redis_doc_dict in res_data.docs:
                     redis_doc_dict = json.loads(redis_doc_dict.json)
                     if redis_doc_dict['subpath'] == '/':
@@ -316,23 +311,6 @@ async def hard_health_check(space_name: str, branch_name: str):
     if meta_folders_health:
         res['invalid_meta_folders'] = meta_folders_health
     return res
-
-
-async def update_validation_status(space_name: str, subpath: str, meta: core.Meta, is_valid: bool, branch_name: str):
-    if not meta.payload or not meta.payload.validation_status or not meta.payload.last_validated:
-        return
-    if space_name == settings.management_space and subpath == 'health_check':
-        return
-    meta.payload.validation_status = ValidationEnum.valid if is_valid else ValidationEnum.invalid
-    meta.payload.last_validated = datetime.now()
-    await db.save(
-        space_name=space_name,
-        subpath=subpath,
-        meta=meta,
-        branch_name=branch_name
-    )
-    async with RedisServices() as redis:
-        await redis.save_meta_doc(space_name, branch_name, subpath, meta)
 
 
 async def save_health_check_entry(health_check, space_name: str, branch_name: str = 'master'):
