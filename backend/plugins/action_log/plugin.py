@@ -43,7 +43,11 @@ class Plugin(PluginBase):
         action_attributes = None
         if data.action_type == RequestType.create:
             payload = {}
-            if entry.payload and entry.payload.content_type == ContentType.json:
+            if(
+                entry.payload and 
+                entry.payload.content_type == ContentType.json
+                and entry.payload.body
+            ):
                 payload = load_resource_payload(
                     space_name=data.space_name,
                     branch_name=data.branch_name,
