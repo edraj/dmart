@@ -192,29 +192,46 @@ async def soft_health_check(
                     folders_report[subpath] = {}
 
                 meta = None
+                status = {
+                    'is_valid': True,
+                    "invalid": {
+                        "issues": [],
+                        "uuid": redis_doc_dict.get("uuid"),
+                        "shortname": redis_doc_dict.get("shortname"),
+                        "exception": ""
+                    }
+                }
                 try:
-                    is_valid = True
                     meta = resource_class.parse_obj(meta_doc_content)
-                    if meta.payload and meta.payload.schema_shortname and payload_doc_content is not None:
-                        schema_dict: dict = schemas.get(meta.payload.schema_shortname, {})
-                        if schema_dict:
-                            Draft4Validator(schema_dict).validate(payload_doc_content)
+                except Exception as ex:
+                    status['is_valid'] = False
+                    status['invalid']['exception'] = str(ex)
+                    status['invalid']['issues'].append('meta')
+                if meta:
+                    try:
+                        if meta.payload and meta.payload.schema_shortname and payload_doc_content is not None:
+                            schema_dict: dict = schemas.get(meta.payload.schema_shortname, {})
+                            if schema_dict:
+                                Draft4Validator(schema_dict).validate(payload_doc_content)
+                            else:
+                                continue
+                        if folders_report[subpath].get('valid_entries'):
+                            folders_report[subpath]['valid_entries'] += 1
                         else:
-                            continue
+                            folders_report[subpath]['valid_entries'] = 1
+                        status['is_valid'] = True
+                    except Exception as ex:
+                        status['is_valid'] = False
+                        status['invalid']['exception'] = str(ex)
+                        status['invalid']['issues'].append('payload')
 
-                    if folders_report[subpath].get('valid_entries'):
-                        folders_report[subpath]['valid_entries'] += 1
-                    else:
-                        folders_report[subpath]['valid_entries'] = 1
-
-                except:
-                    is_valid = False
+                if not status['is_valid']:
                     if not folders_report.get(subpath, {}).get('invalid_entries'):
                         folders_report[subpath]['invalid_entries'] = []
                     if meta_doc_content["shortname"] \
                             not in folders_report[redis_doc_dict['subpath']]["invalid_entries"]:
                         folders_report[redis_doc_dict['subpath']]["invalid_entries"].append(
-                            meta_doc_content["shortname"]
+                            status.get('invalid')
                         )
                 if meta:
                     await update_validation_status(
@@ -222,7 +239,7 @@ async def soft_health_check(
                         subpath=subpath,
                         meta=meta,
                         branch_name=branch_name,
-                        is_valid=is_valid
+                        is_valid=status['is_valid']
                     )
 
                 uuid = redis_doc_dict['uuid'][:8]
