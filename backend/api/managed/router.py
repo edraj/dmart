@@ -240,6 +240,8 @@ async def serve_space(
     request: api.Request, owner_shortname=Depends(JWTBearer())
 ) -> api.Response:
     spaces = await get_spaces()
+    record = request.records[0]
+    history_diff = {}
     match request.request_type:
         case api.RequestType.create:
             if request.space_name in spaces:
@@ -252,7 +254,6 @@ async def serve_space(
                     ),
                 )
 
-            record = request.records[0]
             if not await access_control.check_access(
                 user_shortname=owner_shortname,
                 space_name=settings.all_spaces_mw,
@@ -277,7 +278,7 @@ async def serve_space(
             resource_obj.is_active = True
             resource_obj.indexing_enabled = True
             resource_obj.shortname = request.space_name
-            resource_obj.active_plugins = ["action_log", "redis_db_update"]
+            resource_obj.active_plugins = ["action_log", "redis_db_update", "resource_folders_creation"]
             await db.save(
                 request.space_name,
                 record.subpath,
@@ -286,10 +287,13 @@ async def serve_space(
             )
 
         case api.RequestType.update:
-            record = request.records[0]
             try:
                 space = core.Space.from_record(record, owner_shortname)
-                if request.space_name not in spaces:
+                if(
+                    request.space_name not in spaces or
+                    request.space_name != record.shortname
+
+                ):
                     raise Exception
             except:
                 raise api.Exception(
@@ -329,11 +333,6 @@ async def serve_space(
                 )
             )
 
-            if request.space_name != space.shortname:
-                os.system(
-                    f"mv {settings.spaces_folder}/{request.space_name} {settings.spaces_folder}/{space.shortname}"
-                )
-
             old_space = await db.load(
                 space_name=space.shortname,
                 subpath=record.subpath,
@@ -354,19 +353,7 @@ async def serve_space(
                 branch_name=record.branch_name,
                 user_shortname=owner_shortname,
             )
-            await plugin_manager.after_action(
-                core.Event(
-                    space_name=space.shortname,
-                    branch_name=record.branch_name,
-                    subpath=record.subpath,
-                    shortname=space.shortname,
-                    action_type=core.ActionType.update,
-                    resource_type=record.resource_type,
-                    user_shortname=owner_shortname,
-                    attributes={"history_diff": history_diff},
-                )
-            )
-
+            
         case api.RequestType.delete:
             if request.space_name not in spaces:
                 raise api.Exception(
@@ -415,16 +402,21 @@ async def serve_space(
     
     await initialize_spaces()
 
-    # Create general schemas Redis indices
-    if request.request_type == RequestType.create:
-        async with RedisServices() as redis_services:
-            await redis_services.create_indices_for_all_spaces_meta_and_schemas(
-                for_space=settings.management_space,
-                for_custom_indices=False,
-                del_docs=False
-            )
-
     await access_control.load_permissions_and_roles()
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=record.shortname,
+            branch_name=record.branch_name,
+            subpath=record.subpath,
+            shortname=record.shortname,
+            action_type=core.ActionType(request.request_type),
+            resource_type=ResourceType.space,
+            user_shortname=owner_shortname,
+            attributes={"history_diff": history_diff},
+        )
+    )
+
     return api.Response(status=api.Status.success)
 
 
@@ -2004,7 +1996,7 @@ async def get_entry_by_var(
 #             )
 
 #     async with RedisServices() as redis_services:
-#         await redis_services.create_indices_for_all_spaces_meta_and_schemas(
+#         await redis_services.create_indices(
 #             for_space, for_schemas
 #         )
 #     loaded_data = await load_all_spaces_data_to_redis(for_space, for_subpaths)
