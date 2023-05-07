@@ -678,17 +678,21 @@ async def delete(
         os.remove(pathname)
 
         # Delete payload file
-        if meta.payload and meta.payload.content_type in [ContentType.json, ContentType.image]:
+        if meta.payload and meta.payload.content_type not in ContentType.inline_types():
             payload_file_path = payload_path(
                 space_name, subpath, meta.__class__, branch_name
             ) / str(meta.payload.body)
             if payload_file_path.is_file():
                 os.remove(payload_file_path)
 
-    if isinstance(meta, core.Folder):
-        p = folder_path(space_name, subpath, meta.shortname, None)
-        if Path(p).is_dir():
-            shutil.rmtree(p)
-
-    if path.is_dir() and len(os.listdir(path)) == 0:
+    if(
+        path.is_dir()
+        and (
+            not isinstance(meta, core.Attachment)
+            or len(os.listdir(path)) == 0
+        )
+    ):
         shutil.rmtree(path)
+        # in case of folder the path = {folder_name}/.dm
+        if isinstance(meta, core.Folder) and path.parent.is_dir():
+            shutil.rmtree(path.parent)
