@@ -41,6 +41,7 @@ from utils.helpers import (
     camel_case,
     flatten_dict,
     json_flater,
+    pp,
     resolve_schema_references,
 )
 from utils.custom_validations import validate_payload_with_schema
@@ -532,23 +533,27 @@ async def serve_request(
                             request, record.branch_name, owner_shortname
                         )
 
-                    resource_obj = await repository.get_resource_obj_or_none(
-                        space_name=request.space_name,
-                        branch_name=record.branch_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
+                    resource_cls = getattr(
+                        sys.modules["models.core"], camel_case(record.resource_type)
                     )
-                    payload_obj = repository.get_payload_obj_or_none(
-                        space_name=request.space_name,
-                        branch_name=record.branch_name,
-                        subpath=record.subpath,
-                        filename=resource_obj.payload.body if resource_obj and resource_obj.payload else "",
-                        resource_type=record.resource_type
+                    if issubclass(resource_cls, core.Attachment):
+                        search_path, filename = db.metapath(
+                            request.space_name,
+                            record.subpath,
+                            record.shortname,
+                            resource_cls,
+                            record.branch_name
+                        )
+                    else:
+                        search_path = settings.spaces_folder / f"{request.space_name}/{record.subpath}"
+                        filename = record.shortname
+
+                    shortname_exists = repository.dir_has_file(
+                        dir_path=search_path, 
+                        filename=filename
                     )
                     if (
-                        (resource_obj or payload_obj)
+                        shortname_exists
                         and record.shortname != settings.auto_uuid_rule
                     ):
                         raise api.Exception(
