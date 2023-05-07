@@ -30,5 +30,5 @@ sample/spaces/eser
 history.jsonl
 events.jsonl
 spaces/
-startappz/**
+sample/spaces/startappz/**
 .idea/
