@@ -1107,9 +1107,9 @@ async def validate_subpath_data(
                                 f"can't access this payload {str(subpath)[len(str(settings.spaces_folder)):]}/{entry_meta_obj.shortname}"
                             )
                 elif (
-                    entry_meta_obj.payload
+                    entry_meta_obj.payload and isinstance(entry_meta_obj.payload.body, str)
                     and entry_meta_obj.payload.content_type == ContentType.json
-                     and not (
+                    and not (
                         entry_meta_obj.payload.last_validated
                         and entry_meta_obj.updated_at <= entry_meta_obj.payload.last_validated
                     )
