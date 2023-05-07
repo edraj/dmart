@@ -841,6 +841,26 @@ async def get_resource_obj_or_none(
     except Exception:
         return None
 
+def get_payload_obj_or_none(
+    *,
+    space_name: str,
+    branch_name: str | None,
+    subpath: str,
+    filename: str,
+    resource_type: str
+):
+    resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
+    try:
+        return db.load_resource_payload(
+            space_name=space_name,
+            subpath=subpath,
+            filename=filename,
+            class_type=resource_cls,
+            branch_name=branch_name,
+        )
+    except Exception:
+        return None
+
 
 async def update_payload_validation_status(
     space_name: str,
