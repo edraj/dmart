@@ -1040,10 +1040,17 @@ async def validate_subpath_data(
                     break
 
             if not entry_match:
+                issue = {
+                    "issues": ["meta"],
+                    "uuid": "",
+                    "shortname": entry.name,
+                    "exception": f"Can't access this meta {subpath[len(str(settings.spaces_folder)):]}/{entry.name}"
+                }
+
                 if "invalid_entries" not in folders_report[folder_name]:
-                    folders_report[folder_name]["invalid_entries"] = [entry.name]
+                    folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
-                    folders_report[folder_name]["invalid_entries"].append(entry.name)
+                    folders_report[folder_name]["invalid_entries"].append(issue)
                 continue
 
             entry_shortname = entry_match.group(1)
@@ -1071,13 +1078,15 @@ async def validate_subpath_data(
                     branch_name=branch_name,
                 )
                 if entry_meta_obj.shortname != entry_shortname:
-                    raise Exception()
-
+                    raise Exception(
+                        "the shortname which got from the folder path doesn't match the shortname in the meta file."
+                    )
+                payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
                 if (
                     entry_meta_obj.payload
                     and entry_meta_obj.payload.content_type == ContentType.image
                 ):
-                    payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
+
                     if (
                         not payload_file_path.is_file()
                         or not bool(
@@ -1089,7 +1098,9 @@ async def validate_subpath_data(
                         or not os.access(payload_file_path, os.R_OK)
                         or not os.access(payload_file_path, os.W_OK)
                     ):
-                        raise Exception()
+                        raise Exception(
+                            f"can't access this payload {str(payload_file_path)[len(str(settings.spaces_folder)):]}"
+                        )
                 elif (
                     entry_meta_obj.payload
                     and entry_meta_obj.payload.content_type == ContentType.json
@@ -1102,7 +1113,9 @@ async def validate_subpath_data(
                     if not entry_meta_obj.payload.body.endswith(
                         ".json"
                     ) or not os.access(payload_file_path, os.W_OK):
-                        raise Exception()
+                        raise Exception(
+                            f"can't access this payload {payload_file_path[len(str(settings.spaces_folder)):]}"
+                        )
                     payload_file_content = db.load_resource_payload(
                         space_name,
                         folder_name,
@@ -1132,15 +1145,33 @@ async def validate_subpath_data(
                             or not os.access(attachment_folder_file.path, os.W_OK)
                             or not os.access(attachment_folder_file.path, os.R_OK)
                         ):
-                            raise Exception()
+                            raise Exception(
+                                f"can't access this attachment {attachment_folder_file.path[len(str(settings.spaces_folder)):]}"
+                            )
 
                 if "valid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["valid_entries"] = 1
                 else:
                     folders_report[folder_name]["valid_entries"] += 1
-            except:
+            except Exception as e:
+                issue_type = None
+                uuid = ""
+                if not payload_file_content:
+                    issue_type = "payload"
+                if not entry_meta_obj:
+                    issue_type = "meta"
+                else:
+                    uuid = str(entry_meta_obj.uuid) if entry_meta_obj.uuid else ""
+
+                issue = {
+                    "issues": [issue_type],
+                    "uuid": uuid,
+                    "shortname": entry_shortname,
+                    "exception": str(e)
+                }
+
                 if "invalid_entries" not in folders_report[folder_name]:
-                    folders_report[folder_name]["invalid_entries"] = [entry_shortname]
+                    folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
                     folders_report[folder_name]["invalid_entries"].append(
                         entry_shortname
