@@ -1081,12 +1081,12 @@ async def validate_subpath_data(
                     raise Exception(
                         "the shortname which got from the folder path doesn't match the shortname in the meta file."
                     )
-                payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
+                payload_file_path = None
                 if (
                     entry_meta_obj.payload
                     and entry_meta_obj.payload.content_type == ContentType.image
                 ):
-
+                    payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
                     if (
                         not payload_file_path.is_file()
                         or not bool(
@@ -1098,13 +1098,18 @@ async def validate_subpath_data(
                         or not os.access(payload_file_path, os.R_OK)
                         or not os.access(payload_file_path, os.W_OK)
                     ):
-                        raise Exception(
-                            f"can't access this payload {str(payload_file_path)[len(str(settings.spaces_folder)):]}"
-                        )
+                        if payload_file_path:
+                            raise Exception(
+                                f"can't access this payload {str(payload_file_path)[len(str(settings.spaces_folder)):]}"
+                            )
+                        else:
+                            raise Exception(
+                                f"can't access this payload {str(subpath)[len(str(settings.spaces_folder)):]}/{entry_meta_obj.shortname}"
+                            )
                 elif (
-                    entry_meta_obj.payload
+                    entry_meta_obj.payload and isinstance(entry_meta_obj.payload.body, str)
                     and entry_meta_obj.payload.content_type == ContentType.json
-                     and not (
+                    and not (
                         entry_meta_obj.payload.last_validated
                         and entry_meta_obj.updated_at <= entry_meta_obj.payload.last_validated
                     )
