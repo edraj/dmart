@@ -9,6 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic.fields import Field
 from models.enums import ContentType, ResourceType, ValidationEnum
 from utils.access_control import access_control
+from utils.plugin_manager import plugin_manager
 from utils.spaces import get_spaces
 from utils.settings import settings
 import utils.regex as regex
@@ -1395,5 +1396,101 @@ async def get_record_from_redis_doc(
             branch_name=branch_name,
             schema_shortname=resource_obj.payload.schema_shortname,
         )
+
+    return resource_base_record
+
+
+async def get_entry_by_var(
+    key: str,
+    val: str,
+    logged_in_user,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
+):
+    spaces = await get_spaces()
+    entry_doc = None
+    entry_space = None
+    entry_branch = None
+    async with RedisServices() as redis_services:
+        for space_name, space in spaces.items():
+            space = json.loads(space)
+            for branch in space["branches"]:
+                search_res = await redis_services.search(
+                    space_name=space_name,
+                    branch_name=branch,
+                    search=f"@{key}:{val}*",
+                    limit=1,
+                    offset=0,
+                    filters={}
+                )
+                if search_res["total"] > 0:
+                    entry_doc = json.loads(search_res["data"][0].json)
+                    entry_branch = branch
+                    break
+            if entry_doc:
+                entry_space = space_name
+                break
+    
+    if not entry_doc or not entry_space or not entry_branch:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="media", code=221, message="Requested object not found"
+            ),
+        )
+
+    if not await access_control.check_access(
+        user_shortname=logged_in_user,
+        space_name=entry_space,
+        subpath=entry_doc["subpath"],
+        resource_type=entry_doc["resource_type"],
+        action_type=core.ActionType.view,
+        resource_is_active=entry_doc["is_active"],
+        resource_owner_shortname=entry_doc.get("owner_shortname"),
+        resource_owner_group=entry_doc.get("owner_group_shortname"),
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=401,
+                message="You don't have permission to this action [12]",
+            ),
+        )
+
+    
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=entry_space,
+            branch_name=entry_branch,
+            subpath=entry_doc["subpath"],
+            shortname=entry_doc["shortname"],
+            action_type=core.ActionType.view,
+            resource_type=entry_doc["resource_type"],
+            user_shortname=logged_in_user,
+        )
+    )
+
+
+    resource_base_record = await get_record_from_redis_doc(
+        space_name=entry_space,
+        branch_name=entry_branch,
+        doc=entry_doc,
+        retrieve_json_payload=retrieve_json_payload,
+        retrieve_attachments=retrieve_attachments,
+        validate_schema=True,
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=entry_space,
+            branch_name=entry_branch,
+            subpath=entry_doc["subpath"],
+            shortname=entry_doc["shortname"],
+            action_type=core.ActionType.view,
+            resource_type=entry_doc["resource_type"],
+            user_shortname=logged_in_user,
+        )
+    )
 
     return resource_base_record
