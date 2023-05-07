@@ -841,57 +841,6 @@ async def get_resource_obj_or_none(
         return None
 
 
-async def update_payload_validation_status(
-    space_name: str,
-    subpath: str,
-    branch_name: str | None,
-    meta_obj: core.Meta,
-    meta_payload: dict,
-    validation_status: ValidationEnum,
-):
-    # Type narrowing for PyRight
-    if not isinstance(meta_obj.payload, core.Payload) or not isinstance(
-        meta_obj.payload.body, str
-    ):
-        logger.warning(
-            f"Meta.payload is None at repository.update_payload_validation_status"
-        )
-        return
-
-    meta_path, meta_file = db.metapath(
-        space_name, subpath, meta_obj.shortname, type(meta_obj)
-    )
-    if (
-        not (meta_path / meta_file).is_file()
-        or (
-            meta_obj.payload.validation_status == validation_status
-            and meta_obj.payload.last_validated
-            and meta_obj.payload.last_validated > meta_obj.updated_at
-        )
-    ):
-        return
-
-    meta_obj.payload.last_validated = datetime.now()
-    meta_obj.payload.validation_status = validation_status
-
-    await db.save(space_name, subpath, meta_obj, branch_name)
-
-    async with RedisServices() as redis_services:
-        _, meta_json = await redis_services.save_meta_doc(
-            space_name, branch_name, subpath, meta_obj
-        )
-
-        meta_payload.update(meta_json)
-        await redis_services.save_payload_doc(
-            space_name,
-            branch_name,
-            subpath,
-            meta_obj,
-            meta_payload,
-            meta_json["resource_type"],
-        )
-
-
 async def get_group_users(group_name: str):
     async with RedisServices() as redis_services:
         users_docs = await redis_services.search(
@@ -962,7 +911,6 @@ async def validate_subpath_data(
             meta_folders_health.append(str(folder_meta)[len(str(settings.spaces_folder)):])
             continue
 
-        validation_status = ValidationEnum.valid
         folder_meta_content = None
         folder_meta_payload = None
         try:
@@ -977,10 +925,6 @@ async def validate_subpath_data(
             if (
                 folder_meta_content.payload
                 and folder_meta_content.payload.content_type == ContentType.json
-                and not (
-                    folder_meta_content.payload.last_validated
-                    and folder_meta_content.updated_at <= folder_meta_content.payload.last_validated
-                )
             ):
                 payload_path = "/"
                 subpath_parts = subpath.split("/")
@@ -1002,23 +946,6 @@ async def validate_subpath_data(
                     )
         except:
             invalid_folders.append(folder_name)
-            validation_status = ValidationEnum.invalid
-        finally:
-            # Update payload validation status
-            if (
-                folder_meta_content
-                and folder_meta_content.payload
-                and folder_meta_content.payload.content_type == ContentType.json
-                and folder_meta_payload
-            ):
-                await update_payload_validation_status(
-                    space_name,
-                    "/".join(folder_name.split("/")[:-1]) or "/",
-                    branch_name,
-                    folder_meta_content,
-                    folder_meta_payload,
-                    validation_status,
-                )
 
         if folder_name not in folders_report:
             folders_report[folder_name] = {}
@@ -1062,7 +989,6 @@ async def validate_subpath_data(
                 folders_report[folder_name]["valid_entries"] += 1
                 continue
 
-            validation_status = ValidationEnum.valid
             entry_meta_obj = None
             payload_file_content = None
             try:
@@ -1109,10 +1035,6 @@ async def validate_subpath_data(
                 elif (
                     entry_meta_obj.payload and isinstance(entry_meta_obj.payload.body, str)
                     and entry_meta_obj.payload.content_type == ContentType.json
-                    and not (
-                        entry_meta_obj.payload.last_validated
-                        and entry_meta_obj.updated_at <= entry_meta_obj.payload.last_validated
-                    )
                 ):
                     payload_file_path = f"{subpath}/{entry_meta_obj.payload.body}"
                     if not entry_meta_obj.payload.body.endswith(
@@ -1179,23 +1101,6 @@ async def validate_subpath_data(
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
                     folders_report[folder_name]["invalid_entries"].append(issue)
-                validation_status = ValidationEnum.invalid
-            finally:
-                # Update payload validation status
-                if (
-                    entry_meta_obj
-                    and entry_meta_obj.payload
-                    and entry_meta_obj.payload.content_type == ContentType.json
-                    and payload_file_content
-                ):
-                    await update_payload_validation_status(
-                        space_name,
-                        folder_name,
-                        branch_name,
-                        entry_meta_obj,
-                        payload_file_content,
-                        validation_status,
-                    )
 
         if not folders_report.get(folder_name, {}):
             del folders_report[folder_name]
