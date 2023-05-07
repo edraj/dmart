@@ -540,16 +540,23 @@ async def serve_request(
                         resource_type=record.resource_type,
                         user_shortname=owner_shortname,
                     )
+                    payload_obj = repository.get_payload_obj_or_none(
+                        space_name=request.space_name,
+                        branch_name=record.branch_name,
+                        subpath=record.subpath,
+                        filename=resource_obj.payload.body if resource_obj and resource_obj.payload else "",
+                        resource_type=record.resource_type
+                    )
                     if (
-                        resource_obj
-                        and resource_obj.shortname != settings.auto_uuid_rule
+                        (resource_obj or payload_obj)
+                        and record.shortname != settings.auto_uuid_rule
                     ):
                         raise api.Exception(
                             status.HTTP_400_BAD_REQUEST,
                             api.Error(
                                 type="request",
                                 code=400,
-                                message=f"This shortname {resource_obj.shortname} already exists",
+                                message=f"This shortname {record.shortname} already exists",
                             ),
                         )
 
