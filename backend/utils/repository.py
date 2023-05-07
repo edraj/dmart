@@ -1081,10 +1081,8 @@ async def validate_subpath_data(
                 else:
                     folders_report[folder_name]["valid_entries"] += 1
             except Exception as e:
-                issue_type = None
+                issue_type = "payload"
                 uuid = ""
-                if not payload_file_content:
-                    issue_type = "payload"
                 if not entry_meta_obj:
                     issue_type = "meta"
                 else:
