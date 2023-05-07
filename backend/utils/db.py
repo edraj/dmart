@@ -678,7 +678,7 @@ async def delete(
         os.remove(pathname)
 
         # Delete payload file
-        if meta.payload and meta.payload.content_type != ContentType.text:
+        if meta.payload and meta.payload.content_type in [ContentType.json, ContentType.image]:
             payload_file_path = payload_path(
                 space_name, subpath, meta.__class__, branch_name
             ) / str(meta.payload.body)
@@ -689,3 +689,6 @@ async def delete(
         p = folder_path(space_name, subpath, meta.shortname, None)
         if Path(p).is_dir():
             shutil.rmtree(p)
+
+    if path.is_dir and len(os.listdir(path)) == 0:
+        shutil.rmtree(path)
