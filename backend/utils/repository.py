@@ -1099,7 +1099,7 @@ async def validate_subpath_data(
                         or not os.access(payload_file_path, os.W_OK)
                     ):
                         raise Exception(
-                            f"can't access this payload {payload_file_path[len(str(settings.spaces_folder)):]}"
+                            f"can't access this payload {str(payload_file_path)[len(str(settings.spaces_folder)):]}"
                         )
                 elif (
                     entry_meta_obj.payload
