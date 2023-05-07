@@ -818,6 +818,21 @@ async def redis_query_search(
                 total += redis_res["total"]
     return search_res, total
 
+def dir_has_file(dir_path: Path, filename: str) -> bool:
+    if not dir_path.is_dir(): 
+        return False
+
+    for item in os.scandir(dir_path):
+        if item.name == ".dm":
+            for dm_item in os.scandir(item):
+                if dm_item.name == filename:
+                    return True
+
+
+        if item.name == filename:
+            return True
+
+    return False
 
 async def get_resource_obj_or_none(
     *,
@@ -828,6 +843,7 @@ async def get_resource_obj_or_none(
     resource_type: str,
     user_shortname: str,
 ):
+
     resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
     try:
         return await db.load(
