@@ -71,7 +71,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
 
 
 def print_header():
-    print("{:<30} {:<6} {:<6}".format(
+    print("{:<32} {:<6} {:<6}".format(
         'subpath',
         'valid',
         'invalid')
@@ -83,13 +83,13 @@ def print_health_check(health_check):
         for schema_path, val in health_check.get('folders_report', {}).items():
             valid = val.get('valid_entries', 0)
             invalid = len(val.get('invalid_entries', []))
-            print("{:<30} {:<6} {:<6}".format(
+            print("{:<32} {:<6} {:<6}".format(
                 schema_path,
                 valid,
                 invalid)
             )
             for one in val.get("invalid_entries", []):
-                print(f"{one.get('shortname', 'n/a')} {','.join(one.get('issues', []))}")
+                print(f"\t\t\t\tInvalid item/issues: {one.get('shortname', 'n/a')}/{','.join(one.get('issues', []))}")
 
 
 async def load_spaces_schemas_names(branch_name):
