@@ -1173,9 +1173,7 @@ async def validate_subpath_data(
                 if "invalid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
-                    folders_report[folder_name]["invalid_entries"].append(
-                        entry_shortname
-                    )
+                    folders_report[folder_name]["invalid_entries"].append(issue)
                 validation_status = ValidationEnum.invalid
             finally:
                 # Update payload validation status
