@@ -574,7 +574,7 @@ def delete_resource(resource: str, del_subpath: str, del_shortname: str):
 
     response = client.post(endpoint, json=request_data, headers=headers)
     assert_code_and_status_success(response)
-    check_not_found(client.get(f"managed/entry/{resource}/{DEMO_SPACE}/{del_subpath}/{del_shortname}"))
+    check_not_found(client.get(f"/managed/entry/{resource}/{DEMO_SPACE}/{del_subpath}/{del_shortname}"))
     
 
 
