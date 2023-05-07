@@ -50,8 +50,7 @@ class Payload(Resource):
     schema_shortname: str | None = None
     checksum: str | None = None
     body: str | dict[str, Any]
-    last_validated: datetime | None = None
-    validation_status: ValidationEnum | None = None
+
 
     def update(
         self, 
