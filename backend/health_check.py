@@ -147,10 +147,6 @@ async def soft_health_check(
             for redis_doc_dict in res_data.docs:
                 redis_doc_dict = json.loads(redis_doc_dict.json)
                 subpath = redis_doc_dict['subpath']
-
-                if redis_doc_dict.get('updated_at') and redis_doc_dict.get('last_validated') \
-                        and redis_doc_dict["updated_at"] < redis_doc_dict["last_validated"]:
-                    continue
                 meta_doc_content = {}
                 payload_doc_content = {}
                 resource_class = getattr(
