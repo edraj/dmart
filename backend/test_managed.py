@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from models.enums import ResourceType
 from test_utils import (
+    check_not_found,
     check_repeated_shortname,
     assert_code_and_status_success,
     check_unauthorized,
@@ -522,22 +523,19 @@ def test_query_subpath():
 
 def test_delete_all():
     # DELETE CONTENT RESOURCE
-    response = delete_resource(
+    delete_resource(
         resource="content", del_subpath=subpath, del_shortname=json_entry_shortname
     )
-    assert_code_and_status_success(response=response)
 
     # DELETE FOLDER RESOURCE
-    response = delete_resource(
+    delete_resource(
         resource="folder", del_subpath="/", del_shortname=subpath
     )
-    assert_code_and_status_success(response=response)
 
     # DELETE SCHEMA RESOURCE
-    response = delete_resource(
+    delete_resource(
         resource="schema", del_subpath="schema", del_shortname=schema_shortname
     )
-    assert_code_and_status_success(response=response)
 
     path = settings.spaces_folder / DEMO_SPACE / subpath
     if path.is_dir():
@@ -574,7 +572,10 @@ def delete_resource(resource: str, del_subpath: str, del_shortname: str):
         ],
     }
 
-    return client.post(endpoint, json=request_data, headers=headers)
+    response = client.post(endpoint, json=request_data, headers=headers)
+    assert_code_and_status_success(response)
+    check_not_found(client.get(f"/managed/entry/{resource}/{DEMO_SPACE}/{del_subpath}/{del_shortname}"))
+    
 
 
 def upload_resource_with_payload(
