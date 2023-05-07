@@ -690,5 +690,5 @@ async def delete(
         if Path(p).is_dir():
             shutil.rmtree(p)
 
-    if path.is_dir and len(os.listdir(path)) == 0:
+    if path.is_dir() and len(os.listdir(path)) == 0:
         shutil.rmtree(path)
