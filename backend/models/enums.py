@@ -58,7 +58,7 @@ class ContentType(StrEnum):
     video = "video"
 
     @staticmethod
-    def inline_types() -> list[ContentType]:
+    def inline_types() -> list:
         return [
             ContentType.text,
             ContentType.markdown,
