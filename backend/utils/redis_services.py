@@ -1103,7 +1103,7 @@ class RedisServices(object):
     async def drop_index(self, name: str, delete_docs: bool = False):
         try:
             ft_index = self.client.ft(name)
-            ft_index.dropindex(delete_docs)
+            await ft_index.dropindex(delete_docs)
             return True
         except :
             return False

@@ -57,6 +57,14 @@ class ContentType(StrEnum):
     audio = "audio"
     video = "video"
 
+    @staticmethod
+    def inline_types() -> list:
+        return [
+            ContentType.text,
+            ContentType.markdown,
+            ContentType.html
+        ]
+
 
 class TaskType(StrEnum):
     query = "query"

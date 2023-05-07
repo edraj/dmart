@@ -465,6 +465,7 @@ async def serve_request(
     request: api.Request,
     token=Depends(GetJWTToken()),
     owner_shortname=Depends(JWTBearer()),
+    is_internal: bool = False
 ) -> api.Response:
     spaces = await get_spaces()
     if request.space_name not in spaces:
@@ -558,8 +559,9 @@ async def serve_request(
                     resource_obj = core.Meta.from_record(
                         record=record, owner_shortname=owner_shortname
                     )
-                    resource_obj.created_at = datetime.now()
-                    resource_obj.updated_at = datetime.now()
+                    if not is_internal or "created_at" not in record.attributes:
+                        resource_obj.created_at = datetime.now()
+                        resource_obj.updated_at = datetime.now()
                     body_shortname = record.shortname
                     if resource_obj.shortname == settings.auto_uuid_rule:
                         resource_obj.uuid = uuid4()
@@ -1686,6 +1688,7 @@ async def import_resources_from_csv(
                         records=[record],
                     ),
                     owner_shortname=owner_shortname,
+                    is_internal=True,
                 )
                 success_count += 1
             except:
@@ -1829,7 +1832,7 @@ async def get_entry_by_uuid(
     retrieve_attachments: bool = False,
     logged_in_user=Depends(JWTBearer())
 ):
-    return await get_entry_by_var(
+    return await repository.get_entry_by_var(
         "uuid",
         uuid,
         logged_in_user,
@@ -1844,7 +1847,7 @@ async def get_entry_by_slug(
     retrieve_attachments: bool = False,
     logged_in_user=Depends(JWTBearer())
 ):
-    return await get_entry_by_var(
+    return await repository.get_entry_by_var(
         "slug",
         slug,
         logged_in_user,
@@ -1852,100 +1855,6 @@ async def get_entry_by_slug(
         retrieve_attachments,
     )
 
-async def get_entry_by_var(
-    key: str,
-    val: str,
-    logged_in_user,
-    retrieve_json_payload: bool = False,
-    retrieve_attachments: bool = False,
-):
-    spaces = await get_spaces()
-    entry_doc = None
-    entry_space = None
-    entry_branch = None
-    async with RedisServices() as redis_services:
-        for space_name, space in spaces.items():
-            space = json.loads(space)
-            for branch in space["branches"]:
-                search_res = await redis_services.search(
-                    space_name=space_name,
-                    branch_name=branch,
-                    search=f"@{key}:{val}*",
-                    limit=1,
-                    offset=0,
-                    filters={}
-                )
-                if search_res["total"] > 0:
-                    entry_doc = json.loads(search_res["data"][0].json)
-                    entry_branch = branch
-                    break
-            if entry_doc:
-                entry_space = space_name
-                break
-    
-    if not entry_doc or not entry_space or not entry_branch:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="media", code=221, message="Requested object not found"
-            ),
-        )
-
-    if not await access_control.check_access(
-        user_shortname=logged_in_user,
-        space_name=entry_space,
-        subpath=entry_doc["subpath"],
-        resource_type=entry_doc["resource_type"],
-        action_type=core.ActionType.view,
-        resource_is_active=entry_doc["is_active"],
-        resource_owner_shortname=entry_doc.get("owner_shortname"),
-        resource_owner_group=entry_doc.get("owner_group_shortname"),
-    ):
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="request",
-                code=401,
-                message="You don't have permission to this action [12]",
-            ),
-        )
-
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=entry_space,
-            branch_name=entry_branch,
-            subpath=entry_doc["subpath"],
-            shortname=entry_doc["shortname"],
-            action_type=core.ActionType.view,
-            resource_type=entry_doc["resource_type"],
-            user_shortname=logged_in_user,
-        )
-    )
-
-
-    resource_base_record = await repository.get_record_from_redis_doc(
-        space_name=entry_space,
-        branch_name=entry_branch,
-        doc=entry_doc,
-        retrieve_json_payload=retrieve_json_payload,
-        retrieve_attachments=retrieve_attachments,
-        validate_schema=True,
-    )
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=entry_space,
-            branch_name=entry_branch,
-            subpath=entry_doc["subpath"],
-            shortname=entry_doc["shortname"],
-            action_type=core.ActionType.view,
-            resource_type=entry_doc["resource_type"],
-            user_shortname=logged_in_user,
-        )
-    )
-
-    return resource_base_record
-            
         
 
 # @router.post("/reload-redis-data", response_model_exclude_none=True)
