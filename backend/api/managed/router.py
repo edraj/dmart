@@ -558,7 +558,7 @@ async def serve_request(
                     resource_obj = core.Meta.from_record(
                         record=record, owner_shortname=owner_shortname
                     )
-                    if not is_internal:
+                    if not is_internal or "created_at" not in record.attributes:
                         resource_obj.created_at = datetime.now()
                         resource_obj.updated_at = datetime.now()
                     body_shortname = record.shortname
