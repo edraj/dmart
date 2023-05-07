@@ -2,7 +2,6 @@ import copy
 import json
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
-from pathlib import Path
 from typing import Any
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
@@ -50,7 +49,7 @@ class Payload(Resource):
     )
     schema_shortname: str | None = None
     checksum: str | None = None
-    body: str | dict[str, Any] | Path
+    body: str | dict[str, Any]
     last_validated: datetime | None = None
     validation_status: ValidationEnum | None = None
 
@@ -163,7 +162,7 @@ class Meta(Resource):
             "owner_shortname",
             "payload",
         ]
-        for field_name, field_value in self.__dict__.items():
+        for field_name, _ in self.__dict__.items():
             if field_name in record.attributes and field_name not in restricted_fields:
                 if isinstance(self, User) and field_name == "password":
                     self.__setattr__(
