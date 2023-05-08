@@ -43,6 +43,7 @@ class PluginManager:
     plugins_wrappers: dict[
         ActionType, list[PluginWrapper]
     ] = {}  # {action_type: list_of_plugins_wrappers]}
+    is_pytest = False
 
     async def load_plugins(self, app: FastAPI, capture_body):
         # Load core plugins
@@ -171,7 +172,9 @@ class PluginManager:
                     object = plugin_model.object
                     if isinstance(object, PluginBase):
                         plugin_execution = object.hook(event)
-                        if iscoroutine(plugin_execution):
+                        if iscoroutine(plugin_execution) and self.is_pytest:
+                            await plugin_execution
+                        elif iscoroutine(plugin_execution):
                             loop.create_task(plugin_execution)
                 except Exception as e:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
@@ -197,7 +200,9 @@ class PluginManager:
                     object = plugin_model.object
                     if isinstance(object, PluginBase):
                         plugin_execution = object.hook(event)
-                        if iscoroutine(plugin_execution):
+                        if iscoroutine(plugin_execution) and self.is_pytest:
+                            await plugin_execution
+                        elif iscoroutine(plugin_execution):
                             loop.create_task(plugin_execution)
                 except Exception as e:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
