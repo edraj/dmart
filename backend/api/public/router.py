@@ -144,8 +144,11 @@ async def retrieve_entry_meta(
         )
 
 
-    if not retrieve_json_payload or (
-        not meta.payload or meta.payload.content_type != ContentType.json
+    if (not retrieve_json_payload or 
+        not meta.payload or 
+        not meta.payload.body or 
+        type(meta.payload.body) != str or 
+        meta.payload.content_type != ContentType.json
     ):
         # TODO
         # include locked before returning the dictionary
