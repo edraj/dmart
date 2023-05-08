@@ -29,6 +29,12 @@ logging_schema = {
         }
     },
     'handlers': {
+        'console': { 
+            'class': 'logging.StreamHandler',
+            'level': 'INFO',
+            'formatter': 'json',
+            'stream': 'ext://sys.stdout',  # Default is stderr
+        },
         'file': {
             'class': 'concurrent_log_handler.ConcurrentRotatingFileHandler',
             'filename': settings.log_file,
@@ -40,7 +46,7 @@ logging_schema = {
     },
     'loggers': {
         'fastapi': {
-            'handlers': ['file'],
+            'handlers': settings.log_handlers,
             'level': logging.INFO,
             'propagate': True
         }
