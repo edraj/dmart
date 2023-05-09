@@ -351,7 +351,7 @@ async def serve_space(
                 branch_name=record.branch_name,
                 user_shortname=owner_shortname,
             )
-            
+
         case api.RequestType.delete:
             if request.space_name not in spaces:
                 raise api.Exception(
@@ -380,7 +380,7 @@ async def serve_space(
                 )
 
             os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
-            
+
             async with RedisServices() as redis_services:
                 indices: list[str] = await redis_services.list_indices()
                 for index in indices:
@@ -397,7 +397,7 @@ async def serve_space(
                 ),
             )
 
-    
+
     await initialize_spaces()
 
     await access_control.load_permissions_and_roles()
@@ -496,7 +496,7 @@ async def serve_request(
                     record.subpath = f"/{record.subpath}"
                 try:
                     schema_shortname : str | None = None
-                    if "payload" in record.attributes and type(record.attributes.get("payload", None)) == 'dict' and "schema_shortname" in record.attributes["payload"]  : 
+                    if "payload" in record.attributes and type(record.attributes.get("payload", None)) == 'dict' and "schema_shortname" in record.attributes["payload"]  :
                         schema_shortname = record.attributes["payload"]["schema_shortname"]
                     await plugin_manager.before_action(
                         core.Event(
@@ -822,7 +822,7 @@ async def serve_request(
                 resource_obj = old_resource_obj
                 resource_obj.updated_at = datetime.now()
                 new_resource_payload_data: dict | None = resource_obj.update_from_record(
-                    record=record, 
+                    record=record,
                     old_body=old_resource_payload_body
                 )
                 new_version_flattend = flatten_dict(resource_obj.dict())
@@ -1782,11 +1782,11 @@ async def retrieve_entry_meta(
             retrieve_json_payload=retrieve_json_payload,
         )
 
-    if ( not retrieve_json_payload or 
-        not meta.payload or 
-        not meta.payload.body or 
-        type(meta.payload.body) != str or 
-        meta.payload.content_type != ContentType.json 
+    if ( not retrieve_json_payload or
+        not meta.payload or
+        not meta.payload.body or
+        type(meta.payload.body) != str or
+        meta.payload.content_type != ContentType.json
     ):
         # TODO
         # include locked before returning the dictionary
@@ -1855,7 +1855,7 @@ async def get_entry_by_slug(
         retrieve_attachments,
     )
 
-        
+
 
 # @router.post("/reload-redis-data", response_model_exclude_none=True)
 # async def recreate_redis_indices(
@@ -1899,47 +1899,29 @@ async def get_entry_by_slug(
 
 #     return api.Response(status=api.Status.success, attributes={"report": report})
 
-
-@router.get("/health/{space_name}", response_model_exclude_none=True)
+@router.get("/health/{health_type}/{space_name}", response_model_exclude_none=True)
 async def get_space_report(
-    space_name: str,
-    logged_in_user=Depends(JWTBearer()),
-    branch_name: str | None = settings.default_branch,
+        space_name: str,
+        health_type: str,
+        logged_in_user=Depends(JWTBearer()),
+        branch_name: str | None = settings.default_branch,
 ):
     spaces = await get_spaces()
-    if space_name not in spaces:
+    if space_name not in spaces and space_name != 'all':
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(type="media", code=221, message="Invalid space name"),
         )
-    body = None
-    try:
-        body = db.load_resource_payload(
-            space_name=settings.management_space,
-            subpath="info",
-            filename="health_check.json",
-            class_type=core.Content,
-            branch_name=branch_name,
-            schema_shortname='health_check',
-        )
-    except:
-        pass
-
-    space_obj = core.Space.parse_raw(spaces[space_name])
-    if not body or not body.get(space_name) or not space_obj.check_health:
-        return api.Response(
-            status=api.Status.success,
-            attributes={
-                "invalid_folders": [],
-                "folders_report": {},
-            },
+    if health_type not in ['soft', 'hard']:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(type="media", code=221, message="Invalid health check type"),
         )
 
+    os.system(f"./health_check.py -t {health_type} -b {branch_name} -s {space_name} &")
     return api.Response(
         status=api.Status.success,
-        attributes=body.get(space_name),
     )
-
 
 
 @router.put("/lock/{resource_type}/{space_name}/{subpath:path}/{shortname}")
