@@ -818,6 +818,21 @@ async def redis_query_search(
                 total += redis_res["total"]
     return search_res, total
 
+def dir_has_file(dir_path: Path, filename: str) -> bool:
+    if not dir_path.is_dir(): 
+        return False
+
+    for item in os.scandir(dir_path):
+        if item.name == ".dm":
+            for dm_item in os.scandir(item):
+                if dm_item.name == filename:
+                    return True
+
+
+        if item.name == filename:
+            return True
+
+    return False
 
 async def get_resource_obj_or_none(
     *,
@@ -828,6 +843,7 @@ async def get_resource_obj_or_none(
     resource_type: str,
     user_shortname: str,
 ):
+
     resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
     try:
         return await db.load(
@@ -836,6 +852,26 @@ async def get_resource_obj_or_none(
             shortname=shortname,
             class_type=resource_cls,
             user_shortname=user_shortname,
+            branch_name=branch_name,
+        )
+    except Exception:
+        return None
+
+def get_payload_obj_or_none(
+    *,
+    space_name: str,
+    branch_name: str | None,
+    subpath: str,
+    filename: str,
+    resource_type: str
+):
+    resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
+    try:
+        return db.load_resource_payload(
+            space_name=space_name,
+            subpath=subpath,
+            filename=filename,
+            class_type=resource_cls,
             branch_name=branch_name,
         )
     except Exception:
