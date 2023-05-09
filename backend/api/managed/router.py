@@ -1900,46 +1900,29 @@ async def get_entry_by_slug(
 #     return api.Response(status=api.Status.success, attributes={"report": report})
 
 
-@router.get("/health/{space_name}", response_model_exclude_none=True)
+@router.get("/health/{health_type}/{space_name}", response_model_exclude_none=True)
 async def get_space_report(
-    space_name: str,
-    logged_in_user=Depends(JWTBearer()),
-    branch_name: str | None = settings.default_branch,
+        space_name: str,
+        health_type: str,
+        logged_in_user=Depends(JWTBearer()),
+        branch_name: str | None = settings.default_branch,
 ):
     spaces = await get_spaces()
-    if space_name not in spaces:
+    if space_name not in spaces and space_name != 'all':
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(type="media", code=221, message="Invalid space name"),
         )
-    body = None
-    try:
-        body = db.load_resource_payload(
-            space_name=settings.management_space,
-            subpath="info",
-            filename="health_check.json",
-            class_type=core.Content,
-            branch_name=branch_name,
-            schema_shortname='health_check',
-        )
-    except:
-        pass
-
-    space_obj = core.Space.parse_raw(spaces[space_name])
-    if not body or not body.get(space_name) or not space_obj.check_health:
-        return api.Response(
-            status=api.Status.success,
-            attributes={
-                "invalid_folders": [],
-                "folders_report": {},
-            },
+    if health_type not in ['soft', 'hard']:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(type="media", code=221, message="Invalid health check type"),
         )
 
+    os.system(f"./health_check.py -t {health_type} -b {branch_name} -s {space_name} &")
     return api.Response(
         status=api.Status.success,
-        attributes=body.get(space_name),
     )
-
 
 
 @router.put("/lock/{resource_type}/{space_name}/{subpath:path}/{shortname}")
