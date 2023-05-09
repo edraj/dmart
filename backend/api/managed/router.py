@@ -533,24 +533,35 @@ async def serve_request(
                             request, record.branch_name, owner_shortname
                         )
 
-                    resource_obj = await repository.get_resource_obj_or_none(
-                        space_name=request.space_name,
-                        branch_name=record.branch_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
+                    resource_cls = getattr(
+                        sys.modules["models.core"], camel_case(record.resource_type)
+                    )
+                    if issubclass(resource_cls, core.Attachment):
+                        search_path, filename = db.metapath(
+                            request.space_name,
+                            record.subpath,
+                            record.shortname,
+                            resource_cls,
+                            record.branch_name
+                        )
+                    else:
+                        search_path = settings.spaces_folder / f"{request.space_name}/{record.subpath}"
+                        filename = record.shortname
+
+                    shortname_exists = repository.dir_has_file(
+                        dir_path=search_path, 
+                        filename=filename
                     )
                     if (
-                        resource_obj
-                        and resource_obj.shortname != settings.auto_uuid_rule
+                        shortname_exists
+                        and record.shortname != settings.auto_uuid_rule
                     ):
                         raise api.Exception(
                             status.HTTP_400_BAD_REQUEST,
                             api.Error(
                                 type="request",
                                 code=400,
-                                message=f"This shortname {resource_obj.shortname} already exists",
+                                message=f"This shortname {record.shortname} already exists",
                             ),
                         )
 
