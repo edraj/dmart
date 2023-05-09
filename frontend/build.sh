@@ -1,2 +1,2 @@
 #!/bin/bash
-yarn install && yarn build && rsync -av dist/ /var/www/html/sysadmin
+git pull && yarn install && yarn build && rsync -av dist/ /var/www/html/sysadmin

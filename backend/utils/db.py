@@ -253,10 +253,11 @@ def load_resource_payload(
     path = payload_path(space_name, subpath, class_type, branch_name, schema_shortname)
     path /= filename
     if not path.is_file():
-        raise api.Exception(
-            status_code=status.HTTP_404_NOT_FOUND,
-            error=api.Error(type="db", code=12, message="requested object not found"),
-        )
+        return {}
+        # raise api.Exception(
+        #     status_code=status.HTTP_404_NOT_FOUND,
+        #     error=api.Error(type="db", code=12, message="requested object not found"),
+        # )
     return json.loads(path.read_bytes())
 
 

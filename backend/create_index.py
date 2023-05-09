@@ -111,6 +111,7 @@ async def generate_redis_docs(locators: list) -> list:
             payload_data = {}
             if (
                 meta.payload
+                and type(meta.payload.body) == str
                 and meta.payload.content_type == ContentType.json
                 and meta.payload.schema_shortname
             ):

@@ -29,7 +29,7 @@ logging_schema = {
         }
     },
     'handlers': {
-        'console': { 
+       'console': { 
             'class': 'logging.StreamHandler',
             'level': 'INFO',
             'formatter': 'json',
