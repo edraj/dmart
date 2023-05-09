@@ -229,8 +229,7 @@ async def soft_health_check(
                 if not status['is_valid']:
                     if not folders_report.get(subpath, {}).get('invalid_entries'):
                         folders_report[subpath]['invalid_entries'] = []
-                    if meta_doc_content["shortname"] not in folders_report[redis_doc_dict['subpath']][
-                        "invalid_entries"]:
+                    if meta_doc_content["shortname"] not in folders_report[redis_doc_dict['subpath']]["invalid_entries"]:
                         folders_report[redis_doc_dict['subpath']]["invalid_entries"].append(
                             status.get('invalid')
                         )
