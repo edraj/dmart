@@ -1907,6 +1907,9 @@ async def get_space_report(
         logged_in_user=Depends(JWTBearer()),
         branch_name: str | None = settings.default_branch,
 ):
+    if logged_in_user != 'dmart': 
+        raise api.Exception(status_code=status.HTTP_401_UNAUTHORIZED, error=api.Error(type="access", code=401, message="Not allowed"))
+
     spaces = await get_spaces()
     if space_name not in spaces and space_name != 'all':
         raise api.Exception(
