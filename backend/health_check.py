@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import os
+import shutil
 import sys
 import time
 from datetime import datetime
@@ -28,6 +29,7 @@ key_entries: dict = {}
 
 
 async def main(health_type: str, space_param: str, schemas_param: list, branch_name: str):
+    await cleanup_spaces()
     is_full: bool = True if not args.space or args.space == 'all' else False
     print_header()
     if health_type == 'soft':
@@ -372,6 +374,16 @@ async def save_duplicated_entries(branch_name: str = 'master'):
         owner_shortname='dmart',
     )
 
+
+async def cleanup_spaces():
+    spaces = await get_spaces()
+    folder_path = Path(settings.spaces_folder / "management/health_check/.dm")
+    for folder_name in os.listdir(folder_path):
+        if not os.path.isdir(os.path.join(folder_path, folder_name)):
+            continue
+        if folder_name not in spaces:
+            shutil.rmtree(Path(folder_path / folder_name))
+            os.remove(Path(settings.spaces_folder / "management/health_check" / f"{folder_name}.json"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
