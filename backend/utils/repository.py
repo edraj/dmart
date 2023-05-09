@@ -823,9 +823,6 @@ def dir_has_file(dir_path: Path, filename: str) -> bool:
         return False
 
     for item in os.scandir(dir_path):
-        if item.is_file:
-            continue
-
         if item.name == ".dm":
             for dm_item in os.scandir(item):
                 if dm_item.name == filename:
