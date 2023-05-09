@@ -25,9 +25,9 @@ RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}"
 COUNTER=0
 while [ $RESP -ne "200" ]; do
   sleep 1
-  echo "Waiting for the server to come up ${RESP}"
-  RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
   COUNTER=$((COUNTER+1))
+  echo "Waiting for the server to come up ${RESP} ${COUNTER} seconds"
+  RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
   [[ $COUNTER -ge 10 ]] && break
 done
 

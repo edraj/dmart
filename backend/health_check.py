@@ -19,7 +19,7 @@ from utils.custom_validations import get_schema_path
 from utils.helpers import camel_case, branch_path
 from utils.redis_services import RedisServices
 from models import core, api
-from models.enums import ContentType, ValidationEnum, RequestType, ResourceType
+from models.enums import ContentType, RequestType, ResourceType
 from utils.settings import settings
 from utils.spaces import get_spaces
 
@@ -28,8 +28,10 @@ key_entries: dict = {}
 
 
 async def main(health_type: str, space_param: str, schemas_param: list, branch_name: str):
-    is_full: bool = True if args.space and args.space == 'all' else False
-    if not health_type or health_type == 'soft':
+    is_full: bool = True if not args.space or args.space == 'all' else False
+    print_header()
+    if health_type == 'soft':
+        print("Running soft healthcheck")
         if not schemas_param and not is_full:
             print('Add the space name and at least one schema')
             return
@@ -38,8 +40,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
         else:
             params = {space_param: schemas_param}
         for space in params:
-            print(f'-> Working on {space}')
-            print_header()
+            print(f'>>>> Processing {space:<10} <<<<')
             before_time = time.time()
             health_check = {'invalid_folders': [], 'folders_report': {}}
             for schema in params.get(space, []):
@@ -48,21 +49,21 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
                     health_check['folders_report'].update(health_check_res.get('folders_report', {}))
             print_health_check(health_check)
             await save_health_check_entry(health_check, space)
-            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec\n\n')
+            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
 
-    elif health_type == 'hard':
+    elif not health_type or health_type == 'hard':
+        print("Running hard healthcheck")
         spaces = [space_param]
         if is_full:
             spaces = await get_spaces()
         for space in spaces:
-            print(f'-> Working on {space}')
-            print_header()
+            print(f'>>>> Processing {space:<10} <<<<')
             before_time = time.time()
             health_check = await hard_health_check(space, branch_name)
             if health_check:
                 await save_health_check_entry(health_check, space)
             print_health_check(health_check)
-            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec\n\n')
+            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
     else:
         print("Wrong mode specify [soft or hard]")
         return
@@ -70,7 +71,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
 
 
 def print_header():
-    print("{:<50} {:<10} {:<10}".format(
+    print("{:<32} {:<6} {:<6}".format(
         'subpath',
         'valid',
         'invalid')
@@ -82,11 +83,13 @@ def print_health_check(health_check):
         for schema_path, val in health_check.get('folders_report', {}).items():
             valid = val.get('valid_entries', 0)
             invalid = len(val.get('invalid_entries', []))
-            print("{:<50} {:<10} {:<10}".format(
+            print("{:<32} {:<6} {:<6}".format(
                 schema_path,
                 valid,
                 invalid)
             )
+            for one in val.get("invalid_entries", []):
+                print(f"\t\t\t\tInvalid item/issues: {one.get('shortname', 'n/a')}/{','.join(one.get('issues', []))}")
 
 
 async def load_spaces_schemas_names(branch_name):
@@ -134,7 +137,7 @@ async def soft_health_check(
             try:
                 ft_index = redis.client.ft(f"{space_name}:{branch_name}:{schema_name}")
                 await ft_index.info()
-            except Exception as x:
+            except Exception as _:
                 if 'meta_schema' not in schema_name:
                     print(f"can't find index: `{space_name}:{branch_name}:{schema_name}`")
                 return None
@@ -147,10 +150,6 @@ async def soft_health_check(
             for redis_doc_dict in res_data.docs:
                 redis_doc_dict = json.loads(redis_doc_dict.json)
                 subpath = redis_doc_dict['subpath']
-
-                if redis_doc_dict.get('updated_at') and redis_doc_dict.get('last_validated') \
-                        and redis_doc_dict["updated_at"] < redis_doc_dict["last_validated"]:
-                    continue
                 meta_doc_content = {}
                 payload_doc_content = {}
                 resource_class = getattr(
@@ -228,19 +227,10 @@ async def soft_health_check(
                 if not status['is_valid']:
                     if not folders_report.get(subpath, {}).get('invalid_entries'):
                         folders_report[subpath]['invalid_entries'] = []
-                    if meta_doc_content["shortname"] \
-                            not in folders_report[redis_doc_dict['subpath']]["invalid_entries"]:
+                    if meta_doc_content["shortname"] not in folders_report[redis_doc_dict['subpath']]["invalid_entries"]:
                         folders_report[redis_doc_dict['subpath']]["invalid_entries"].append(
                             status.get('invalid')
                         )
-                if meta:
-                    await update_validation_status(
-                        space_name=space_name,
-                        subpath=subpath,
-                        meta=meta,
-                        branch_name=branch_name,
-                        is_valid=status['is_valid']
-                    )
 
                 uuid = redis_doc_dict['uuid'][:8]
                 await collect_duplicated_with_key('uuid', uuid)
@@ -256,11 +246,14 @@ async def collect_duplicated_with_key(key, value):
         for space_name, space_data in spaces.items():
             space_data = json.loads(space_data)
             for branch in space_data["branches"]:
-                ft_index = redis.client.ft(f"{space_name}:{branch}:meta")
+                try:
+                    ft_index = redis.client.ft(f"{space_name}:{branch}:meta")
+                    await ft_index.info()
+                except:
+                    continue
                 search_query = Query(query_string=f"@{key}:{value}*")
                 search_query.paging(0, 1000)
                 res_data: Result = await ft_index.search(query=search_query)
-
                 for redis_doc_dict in res_data.docs:
                     redis_doc_dict = json.loads(redis_doc_dict.json)
                     if redis_doc_dict['subpath'] == '/':
@@ -316,23 +309,6 @@ async def hard_health_check(space_name: str, branch_name: str):
     if meta_folders_health:
         res['invalid_meta_folders'] = meta_folders_health
     return res
-
-
-async def update_validation_status(space_name: str, subpath: str, meta: core.Meta, is_valid: bool, branch_name: str):
-    if not meta.payload or not meta.payload.validation_status or not meta.payload.last_validated:
-        return
-    if space_name == settings.management_space and subpath == 'health_check':
-        return
-    meta.payload.validation_status = ValidationEnum.valid if is_valid else ValidationEnum.invalid
-    meta.payload.last_validated = datetime.now()
-    await db.save(
-        space_name=space_name,
-        subpath=subpath,
-        meta=meta,
-        branch_name=branch_name
-    )
-    async with RedisServices() as redis:
-        await redis.save_meta_doc(space_name, branch_name, subpath, meta)
 
 
 async def save_health_check_entry(health_check, space_name: str, branch_name: str = 'master'):
