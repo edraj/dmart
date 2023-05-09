@@ -1725,6 +1725,7 @@ async def retrieve_entry_meta(
     shortname: str = Path(..., regex=regex.SHORTNAME),
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
+    validate_schema: bool = True,
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
@@ -1811,7 +1812,7 @@ async def retrieve_entry_meta(
         branch_name=branch_name,
     )
 
-    if meta.payload and meta.payload.schema_shortname:
+    if meta.payload and meta.payload.schema_shortname and validate_schema:
         await validate_payload_with_schema(
             payload_data=payload_body,
             space_name=space_name,
