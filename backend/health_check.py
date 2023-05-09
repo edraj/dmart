@@ -199,6 +199,7 @@ async def soft_health_check(
                         "issues": [],
                         "uuid": redis_doc_dict.get("uuid"),
                         "shortname": redis_doc_dict.get("shortname"),
+                        "resource_type": redis_doc_dict["resource_type"],
                         "exception": ""
                     }
                 }
