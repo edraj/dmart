@@ -199,6 +199,7 @@ async def soft_health_check(
                         "issues": [],
                         "uuid": redis_doc_dict.get("uuid"),
                         "shortname": redis_doc_dict.get("shortname"),
+                        "resource_type": redis_doc_dict["resource_type"],
                         "exception": ""
                     }
                 }
@@ -334,7 +335,7 @@ async def save_health_check_entry(health_check, space_name: str, branch_name: st
                         "payload": {
                             "schema_shortname": "health_check",
                             "content_type": ContentType.json,
-                            "body": {"health": health_check}
+                            "body": health_check
                         }
                     },
                 )

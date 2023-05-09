@@ -1129,6 +1129,7 @@ async def validate_subpath_data(
                     "issues": [issue_type],
                     "uuid": uuid,
                     "shortname": entry_shortname,
+                    "resource_type": entry_resource_type,
                     "exception": str(e)
                 }
 
