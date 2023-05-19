@@ -49,6 +49,7 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
             if query.include_fields is None:
                 query.include_fields = []
 
+
             # Gel all matching entries
             meta_path = path / ".dm"
             if not meta_path.is_dir():
@@ -58,6 +59,7 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
             for entry in path_iterator:
                 if not entry.is_dir():
                     continue
+
 
                 subpath_iterator = os.scandir(entry)
                 for one in subpath_iterator:

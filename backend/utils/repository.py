@@ -665,14 +665,20 @@ async def get_entry_attachments(
             resource_class = getattr(
                 sys.modules["models.core"], camel_case(attach_resource_name)
             )
+            resource_obj = None
             async with aiofiles.open(attachments_file, "r") as meta_file:
-                resource_obj = resource_class.parse_raw(await meta_file.read())
+                try: 
+                    resource_obj = resource_class.parse_raw(await meta_file.read())
+                except Exception as e:
+                    raise Exception(f"Bad attachment ... {attachments_file=}") from e
 
             resource_record_obj = resource_obj.to_record(
                 subpath, attach_shortname, include_fields, branch_name
             )
             if (
                 retrieve_json_payload
+                and resource_obj
+                and resource_record_obj
                 and resource_obj.payload
                 and resource_obj.payload.content_type
                 and resource_obj.payload.content_type == ContentType.json

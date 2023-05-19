@@ -42,6 +42,10 @@ class ResourceType(StrEnum):
     ticket = "ticket"
     json = "json"
     lock = "lock"
+    post = "post"
+    reaction = "reaction"
+    reply = "reply"
+    share = "share"
     plugin_wrapper = "plugin_wrapper"
     notification = "notification"
 

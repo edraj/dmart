@@ -274,6 +274,14 @@ class Attachment(Meta):
 class Json(Attachment):
     pass
 
+class Share(Attachment):
+    pass
+
+class Reaction(Attachment):
+    pass
+
+class Reply(Attachment):
+    pass
 
 class Comment(Attachment):
     body: str
@@ -368,6 +376,8 @@ class Ticket(Meta):
     collaborators: dict[str, str] | None = None  # list[Collabolator] | None = None
     resolution_reason: str | None = None
 
+class Post(Content):
+    pass
 
 class Event(BaseModel):
     space_name: str
