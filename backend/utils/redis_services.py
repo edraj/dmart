@@ -909,6 +909,7 @@ class RedisServices(object):
         search_query.paging(offset, limit)
 
         try:
+            # print(f"ARGS {search_query.get_args()} O {search_query.query_string()}")
             search_res = await ft_index.search(query=search_query)
             return {"data": search_res.docs, "total": search_res.total}
         except:
@@ -988,9 +989,13 @@ class RedisServices(object):
             elif item[0] == "subpath" and exact_subpath:
                 search_value = ""
                 for subpath in item[1]:
-                    search_value += "|" + subpath.strip("/").translate(redis_escape_chars)
-                    search_value += "|" + f"/{subpath}".replace("//", "/").translate(redis_escape_chars)
-                query_string += f" @exact_subpath:{{{search_value.strip('|')}}}"
+                    # search_value += "|" + subpath.strip("/").translate(redis_escape_chars)
+                    # search_value += "|" + f"/{subpath}".replace("//", "/").translate(redis_escape_chars)
+                    search_value = subpath
+
+                exact_subpath_value = search_value.strip('|').replace('/', '\\/')
+                query_string += f" @exact_subpath:{{{exact_subpath_value}}}"
+                # print(query_string)
             elif item[0] == "subpath" and item[1][0] == "/":
                 pass
             elif item[1]:

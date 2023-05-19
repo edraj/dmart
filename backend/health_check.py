@@ -15,7 +15,7 @@ from redis.commands.search.query import Query
 from redis.commands.search.result import Result
 
 from api.managed.router import serve_request
-from utils import db, repository
+from utils import repository
 from utils.custom_validations import get_schema_path
 from utils.helpers import camel_case, branch_path
 from utils.redis_services import RedisServices
@@ -286,6 +286,7 @@ async def hard_health_check(space_name: str, branch_name: str):
         return None
     space_obj = core.Space.parse_raw(spaces[space_name])
     if not space_obj.check_health:
+        print("EARLY EXIT")
         return None
 
     invalid_folders = []
@@ -295,6 +296,7 @@ async def hard_health_check(space_name: str, branch_name: str):
     path = settings.spaces_folder / space_name / branch_path(branch_name)
 
     subpaths = os.scandir(path)
+    # print(f"{path=} {subpaths=}")
     for subpath in subpaths:
         if subpath.is_file():
             continue
