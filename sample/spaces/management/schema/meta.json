@@ -8,6 +8,7 @@
       },
       "shortname": {
         "type": "string",
+        "pattern": "^[\\w]{1,64}$",
         "description": "A short name or abbreviation for the entity."
       },
       "slug": {
