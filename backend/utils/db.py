@@ -1,4 +1,5 @@
 from copy import copy
+import hashlib
 import shutil
 from models.enums import LockAction
 from utils.helpers import arr_remove_common, branch_path, snake_case
@@ -411,10 +412,7 @@ async def update(
             )
 
     meta.updated_at = datetime.now()
-    async with aiofiles.open(path / filename, "w") as file:
-        await file.write(meta.json(exclude_none=True))
-
-    history_diff = await store_entry_diff(
+    history_obj: core.History = await store_entry_diff(
         space_name,
         branch_name,
         subpath,
@@ -424,9 +422,17 @@ async def update(
         new_version_flattend,
         updated_attributes_flattend,
         meta.__class__,
+        meta.latest_version_hash
     )
+    meta.latest_version_hash = hashlib\
+        .sha1(json.dumps(history_obj.json())\
+        .encode('utf-8'))\
+        .hexdigest()
+    
+    async with aiofiles.open(path / filename, "w") as file:
+        await file.write(meta.json(exclude_none=True))
 
-    return history_diff
+    return history_obj.diff
 
 
 async def store_entry_diff(
@@ -439,7 +445,8 @@ async def store_entry_diff(
     new_version_flattend: dict,
     updated_attributes_flattend: list,
     resource_type,
-) -> dict:
+    previous_hash: str
+) -> core.History:
     diff_keys = list(old_version_flattend.keys())
     diff_keys.extend(list(new_version_flattend.keys()))
     history_diff = {}
@@ -472,6 +479,7 @@ async def store_entry_diff(
         shortname="history",
         owner_shortname=owner_shortname,
         timestamp=datetime.now(),
+        previous_hash=previous_hash,
         diff=history_diff,
     )
     history_path = settings.spaces_folder / space_name / branch_path(branch_name)
@@ -496,7 +504,7 @@ async def store_entry_diff(
     ) as events_file:
         await events_file.write(f"{history_obj.json()}\n")
 
-    return history_diff
+    return history_obj
 
 
 async def move(

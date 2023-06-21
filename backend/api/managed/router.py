@@ -783,6 +783,19 @@ async def serve_request(
                     branch_name=record.branch_name,
                     schema_shortname=schema_shortname,
                 )
+                
+                if(
+                    not record.version_hash or 
+                    record.version_hash != old_resource_obj.latest_version_hash
+                ):
+                    raise api.Exception(
+                        status.HTTP_401_UNAUTHORIZED,
+                        api.Error(
+                            type="request",
+                            code=401,
+                            message="You're trying to update an old version",
+                        ),
+                    )
 
                 # CHECK PERMISSION
                 if not await access_control.check_access(

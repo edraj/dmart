@@ -88,6 +88,7 @@ class Record(BaseModel):
         default=settings.default_branch, regex=regex.SHORTNAME
     )
     subpath: str = Field(regex=regex.SUBPATH)
+    version_hash: str | None = None
     attributes: dict[str, Any]
     attachments: dict[ResourceType, list[Any]] | None = None
 
@@ -138,6 +139,7 @@ class Meta(Resource):
     owner_group_shortname: str | None = None
     payload: Payload | None = None
     relationships : list[Relationship] | None = None
+    latest_version_hash: str = "__INITIAL__"
 
     class Config:
         validate_assignment = True
@@ -317,6 +319,7 @@ class Action(Resource):
 
 class History(Meta):
     timestamp: datetime
+    previous_hash: str
     diff: dict[str, Any]
 
 

@@ -403,6 +403,7 @@ class RedisServices(object):
                     ),
                     NumericField("$.created_at", sortable=True, as_name="created_at"),
                     NumericField("$.updated_at", sortable=True, as_name="updated_at"),
+                    TextField("$.latest_version_hash", as_name="latest_version_hash"),
                     TagField("$.tags.*", as_name="tags"),
                     TextField(
                         "$.owner_shortname",
