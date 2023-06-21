@@ -88,7 +88,7 @@ class Record(BaseModel):
         default=settings.default_branch, regex=regex.SHORTNAME
     )
     subpath: str = Field(regex=regex.SUBPATH)
-    version_hash: str | None = None
+    version_hash: str = "__INITIAL__"
     attributes: dict[str, Any]
     attachments: dict[ResourceType, list[Any]] | None = None
 

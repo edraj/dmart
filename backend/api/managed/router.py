@@ -784,10 +784,7 @@ async def serve_request(
                     schema_shortname=schema_shortname,
                 )
                 
-                if(
-                    not record.version_hash or 
-                    record.version_hash != old_resource_obj.latest_version_hash
-                ):
+                if record.version_hash != old_resource_obj.latest_version_hash:
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(
@@ -2011,7 +2008,7 @@ async def lock_entry(
     # elif lock file exit but lock_period expired
     # elif lock file exist and lock_period isn't expired but the owner want to extend the lock
     async with RedisServices() as redis_services:
-        lock_type = await redis_services.save_lock_doc(
+        await redis_services.save_lock_doc(
             space_name,
             branch_name,
             subpath,
