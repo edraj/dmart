@@ -9,6 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic.fields import Field
 from models.enums import ContentType, ResourceType, ValidationEnum
 from utils.access_control import access_control
+from utils.plugin_manager import plugin_manager
 from utils.spaces import get_spaces
 from utils.settings import settings
 import utils.regex as regex
@@ -664,14 +665,20 @@ async def get_entry_attachments(
             resource_class = getattr(
                 sys.modules["models.core"], camel_case(attach_resource_name)
             )
+            resource_obj = None
             async with aiofiles.open(attachments_file, "r") as meta_file:
-                resource_obj = resource_class.parse_raw(await meta_file.read())
+                try: 
+                    resource_obj = resource_class.parse_raw(await meta_file.read())
+                except Exception as e:
+                    raise Exception(f"Bad attachment ... {attachments_file=}") from e
 
             resource_record_obj = resource_obj.to_record(
                 subpath, attach_shortname, include_fields, branch_name
             )
             if (
                 retrieve_json_payload
+                and resource_obj
+                and resource_record_obj
                 and resource_obj.payload
                 and resource_obj.payload.content_type
                 and resource_obj.payload.content_type == ContentType.json
@@ -817,6 +824,21 @@ async def redis_query_search(
                 total += redis_res["total"]
     return search_res, total
 
+def dir_has_file(dir_path: Path, filename: str) -> bool:
+    if not dir_path.is_dir(): 
+        return False
+
+    for item in os.scandir(dir_path):
+        if item.name == ".dm":
+            for dm_item in os.scandir(item):
+                if dm_item.name == filename:
+                    return True
+
+
+        if item.name == filename:
+            return True
+
+    return False
 
 async def get_resource_obj_or_none(
     *,
@@ -827,6 +849,7 @@ async def get_resource_obj_or_none(
     resource_type: str,
     user_shortname: str,
 ):
+
     resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
     try:
         return await db.load(
@@ -840,56 +863,25 @@ async def get_resource_obj_or_none(
     except Exception:
         return None
 
-
-async def update_payload_validation_status(
+def get_payload_obj_or_none(
+    *,
     space_name: str,
-    subpath: str,
     branch_name: str | None,
-    meta_obj: core.Meta,
-    meta_payload: dict,
-    validation_status: ValidationEnum,
+    subpath: str,
+    filename: str,
+    resource_type: str
 ):
-    # Type narrowing for PyRight
-    if not isinstance(meta_obj.payload, core.Payload) or not isinstance(
-        meta_obj.payload.body, str
-    ):
-        logger.warning(
-            f"Meta.payload is None at repository.update_payload_validation_status"
+    resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
+    try:
+        return db.load_resource_payload(
+            space_name=space_name,
+            subpath=subpath,
+            filename=filename,
+            class_type=resource_cls,
+            branch_name=branch_name,
         )
-        return
-
-    meta_path, meta_file = db.metapath(
-        space_name, subpath, meta_obj.shortname, type(meta_obj)
-    )
-    if (
-        not (meta_path / meta_file).is_file()
-        or (
-            meta_obj.payload.validation_status == validation_status
-            and meta_obj.payload.last_validated
-            and meta_obj.payload.last_validated > meta_obj.updated_at
-        )
-    ):
-        return
-
-    meta_obj.payload.last_validated = datetime.now()
-    meta_obj.payload.validation_status = validation_status
-
-    await db.save(space_name, subpath, meta_obj, branch_name)
-
-    async with RedisServices() as redis_services:
-        _, meta_json = await redis_services.save_meta_doc(
-            space_name, branch_name, subpath, meta_obj
-        )
-
-        meta_payload.update(meta_json)
-        await redis_services.save_payload_doc(
-            space_name,
-            branch_name,
-            subpath,
-            meta_obj,
-            meta_payload,
-            meta_json["resource_type"],
-        )
+    except Exception:
+        return None
 
 
 async def get_group_users(group_name: str):
@@ -917,6 +909,7 @@ async def validate_subpath_data(
     user_shortname: str,
     invalid_folders: list,
     folders_report: dict[str, dict],
+    meta_folders_health: list,
 ):
     """
     Params:
@@ -951,15 +944,16 @@ async def validate_subpath_data(
                 user_shortname,
                 invalid_folders,
                 folders_report,
+                meta_folders_health
             )
             continue
 
         folder_meta = Path(f"{folder.path}/meta.folder.json")
         folder_name = "/".join(subpath.split("/")[folder_name_index:])
         if not folder_meta.is_file():
+            meta_folders_health.append(str(folder_meta)[len(str(settings.spaces_folder)):])
             continue
 
-        validation_status = ValidationEnum.valid
         folder_meta_content = None
         folder_meta_payload = None
         try:
@@ -974,10 +968,6 @@ async def validate_subpath_data(
             if (
                 folder_meta_content.payload
                 and folder_meta_content.payload.content_type == ContentType.json
-                and not (
-                    folder_meta_content.payload.last_validated
-                    and folder_meta_content.updated_at <= folder_meta_content.payload.last_validated
-                )
             ):
                 payload_path = "/"
                 subpath_parts = subpath.split("/")
@@ -999,23 +989,6 @@ async def validate_subpath_data(
                     )
         except:
             invalid_folders.append(folder_name)
-            validation_status = ValidationEnum.invalid
-        finally:
-            # Update payload validation status
-            if (
-                folder_meta_content
-                and folder_meta_content.payload
-                and folder_meta_content.payload.content_type == ContentType.json
-                and folder_meta_payload
-            ):
-                await update_payload_validation_status(
-                    space_name,
-                    "/".join(folder_name.split("/")[:-1]) or "/",
-                    branch_name,
-                    folder_meta_content,
-                    folder_meta_payload,
-                    validation_status,
-                )
 
         if folder_name not in folders_report:
             folders_report[folder_name] = {}
@@ -1037,10 +1010,17 @@ async def validate_subpath_data(
                     break
 
             if not entry_match:
+                issue = {
+                    "issues": ["meta"],
+                    "uuid": "",
+                    "shortname": entry.name,
+                    "exception": f"Can't access this meta {subpath[len(str(settings.spaces_folder)):]}/{entry.name}"
+                }
+
                 if "invalid_entries" not in folders_report[folder_name]:
-                    folders_report[folder_name]["invalid_entries"] = [entry.name]
+                    folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
-                    folders_report[folder_name]["invalid_entries"].append(entry.name)
+                    folders_report[folder_name]["invalid_entries"].append(issue)
                 continue
 
             entry_shortname = entry_match.group(1)
@@ -1052,7 +1032,6 @@ async def validate_subpath_data(
                 folders_report[folder_name]["valid_entries"] += 1
                 continue
 
-            validation_status = ValidationEnum.valid
             entry_meta_obj = None
             payload_file_content = None
             try:
@@ -1068,8 +1047,10 @@ async def validate_subpath_data(
                     branch_name=branch_name,
                 )
                 if entry_meta_obj.shortname != entry_shortname:
-                    raise Exception()
-
+                    raise Exception(
+                        "the shortname which got from the folder path doesn't match the shortname in the meta file."
+                    )
+                payload_file_path = None
                 if (
                     entry_meta_obj.payload
                     and entry_meta_obj.payload.content_type == ContentType.image
@@ -1086,20 +1067,25 @@ async def validate_subpath_data(
                         or not os.access(payload_file_path, os.R_OK)
                         or not os.access(payload_file_path, os.W_OK)
                     ):
-                        raise Exception()
+                        if payload_file_path:
+                            raise Exception(
+                                f"can't access this payload {str(payload_file_path)[len(str(settings.spaces_folder)):]}"
+                            )
+                        else:
+                            raise Exception(
+                                f"can't access this payload {str(subpath)[len(str(settings.spaces_folder)):]}/{entry_meta_obj.shortname}"
+                            )
                 elif (
-                    entry_meta_obj.payload
+                    entry_meta_obj.payload and isinstance(entry_meta_obj.payload.body, str)
                     and entry_meta_obj.payload.content_type == ContentType.json
-                     and not (
-                        entry_meta_obj.payload.last_validated
-                        and entry_meta_obj.updated_at <= entry_meta_obj.payload.last_validated
-                    )
                 ):
                     payload_file_path = f"{subpath}/{entry_meta_obj.payload.body}"
                     if not entry_meta_obj.payload.body.endswith(
                         ".json"
                     ) or not os.access(payload_file_path, os.W_OK):
-                        raise Exception()
+                        raise Exception(
+                            f"can't access this payload {payload_file_path[len(str(settings.spaces_folder)):]}"
+                        )
                     payload_file_content = db.load_resource_payload(
                         space_name,
                         folder_name,
@@ -1129,36 +1115,34 @@ async def validate_subpath_data(
                             or not os.access(attachment_folder_file.path, os.W_OK)
                             or not os.access(attachment_folder_file.path, os.R_OK)
                         ):
-                            raise Exception()
+                            raise Exception(
+                                f"can't access this attachment {attachment_folder_file.path[len(str(settings.spaces_folder)):]}"
+                            )
 
                 if "valid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["valid_entries"] = 1
                 else:
                     folders_report[folder_name]["valid_entries"] += 1
-            except:
-                if "invalid_entries" not in folders_report[folder_name]:
-                    folders_report[folder_name]["invalid_entries"] = [entry_shortname]
+            except Exception as e:
+                issue_type = "payload"
+                uuid = ""
+                if not entry_meta_obj:
+                    issue_type = "meta"
                 else:
-                    folders_report[folder_name]["invalid_entries"].append(
-                        entry_shortname
-                    )
-                validation_status = ValidationEnum.invalid
-            finally:
-                # Update payload validation status
-                if (
-                    entry_meta_obj
-                    and entry_meta_obj.payload
-                    and entry_meta_obj.payload.content_type == ContentType.json
-                    and payload_file_content
-                ):
-                    await update_payload_validation_status(
-                        space_name,
-                        folder_name,
-                        branch_name,
-                        entry_meta_obj,
-                        payload_file_content,
-                        validation_status,
-                    )
+                    uuid = str(entry_meta_obj.uuid) if entry_meta_obj.uuid else ""
+
+                issue = {
+                    "issues": [issue_type],
+                    "uuid": uuid,
+                    "shortname": entry_shortname,
+                    "resource_type": entry_resource_type,
+                    "exception": str(e)
+                }
+
+                if "invalid_entries" not in folders_report[folder_name]:
+                    folders_report[folder_name]["invalid_entries"] = [issue]
+                else:
+                    folders_report[folder_name]["invalid_entries"].append(issue)
 
         if not folders_report.get(folder_name, {}):
             del folders_report[folder_name]
@@ -1392,5 +1376,101 @@ async def get_record_from_redis_doc(
             branch_name=branch_name,
             schema_shortname=resource_obj.payload.schema_shortname,
         )
+
+    return resource_base_record
+
+
+async def get_entry_by_var(
+    key: str,
+    val: str,
+    logged_in_user,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
+):
+    spaces = await get_spaces()
+    entry_doc = None
+    entry_space = None
+    entry_branch = None
+    async with RedisServices() as redis_services:
+        for space_name, space in spaces.items():
+            space = json.loads(space)
+            for branch in space["branches"]:
+                search_res = await redis_services.search(
+                    space_name=space_name,
+                    branch_name=branch,
+                    search=f"@{key}:{val}*",
+                    limit=1,
+                    offset=0,
+                    filters={}
+                )
+                if search_res["total"] > 0:
+                    entry_doc = json.loads(search_res["data"][0].json)
+                    entry_branch = branch
+                    break
+            if entry_doc:
+                entry_space = space_name
+                break
+    
+    if not entry_doc or not entry_space or not entry_branch:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="media", code=221, message="Requested object not found"
+            ),
+        )
+
+    if not await access_control.check_access(
+        user_shortname=logged_in_user,
+        space_name=entry_space,
+        subpath=entry_doc["subpath"],
+        resource_type=entry_doc["resource_type"],
+        action_type=core.ActionType.view,
+        resource_is_active=entry_doc["is_active"],
+        resource_owner_shortname=entry_doc.get("owner_shortname"),
+        resource_owner_group=entry_doc.get("owner_group_shortname"),
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=401,
+                message="You don't have permission to this action [12]",
+            ),
+        )
+
+    
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=entry_space,
+            branch_name=entry_branch,
+            subpath=entry_doc["subpath"],
+            shortname=entry_doc["shortname"],
+            action_type=core.ActionType.view,
+            resource_type=entry_doc["resource_type"],
+            user_shortname=logged_in_user,
+        )
+    )
+
+
+    resource_base_record = await get_record_from_redis_doc(
+        space_name=entry_space,
+        branch_name=entry_branch,
+        doc=entry_doc,
+        retrieve_json_payload=retrieve_json_payload,
+        retrieve_attachments=retrieve_attachments,
+        validate_schema=True,
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=entry_space,
+            branch_name=entry_branch,
+            subpath=entry_doc["subpath"],
+            shortname=entry_doc["shortname"],
+            action_type=core.ActionType.view,
+            resource_type=entry_doc["resource_type"],
+            user_shortname=logged_in_user,
+        )
+    )
 
     return resource_base_record

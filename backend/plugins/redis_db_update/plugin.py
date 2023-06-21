@@ -82,7 +82,11 @@ class Plugin(PluginBase):
                     data.space_name, data.branch_name, data.subpath, meta
                 )
                 payload = {}
-                if meta.payload and meta.payload.content_type == ContentType.json:
+                if(
+                    meta.payload and 
+                    meta.payload.content_type == ContentType.json
+                    and meta.payload.body
+                ):
                     payload = db.load_resource_payload(
                         space_name=data.space_name,
                         subpath=data.subpath,
