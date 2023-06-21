@@ -150,51 +150,22 @@ class RedisServices(object):
         await self.client.close()
 
     async def create_index(
-        self, space_branch_name: str, schema_name: str, redis_schema: tuple
+        self, 
+        space_branch_name: str, 
+        schema_name: str, 
+        redis_schema: tuple, 
+        del_docs: bool = True
     ):
         """
         create redis schema index, drop it if exist first
         """
         try:
             await self.redis_indices[space_branch_name][schema_name].dropindex(
-                delete_documents=True
+                delete_documents=del_docs
             )
         except Exception as e:
             pass
             # logger.error(f"Error at redis_services.create_index: {e}")
-
-        # in case it's a management space schema:
-        # create Redis index with this schema in all other spaces
-        if (
-            space_branch_name
-            == f"{settings.management_space}:{settings.management_space_branch}"
-        ):
-            spaces = await self.get_doc_by_id("spaces")
-            for space_name, space_str in spaces.items():
-                if space_name == settings.management_space:
-                    continue
-                space_data = json.loads(space_str)
-                for branch_name in space_data["branches"]:
-                    try:
-                        self.redis_indices.setdefault(f"{space_name}:{branch_name}", {})
-                        self.redis_indices[f"{space_name}:{branch_name}"][
-                            schema_name
-                        ] = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
-                        await self.redis_indices[f"{space_name}:{branch_name}"][
-                            schema_name
-                        ].create_index(
-                            redis_schema,
-                            definition=IndexDefinition(
-                                prefix=[
-                                    f"{space_name}:{branch_name}:{schema_name}:",
-                                    f"{space_name}:{branch_name}:{schema_name}/",
-                                ],
-                                index_type=IndexType.JSON,
-                            ),
-                        )
-                    # Ignore schema already exist error
-                    except RedisResponseError:
-                        pass
 
         await self.redis_indices[space_branch_name][schema_name].create_index(
             redis_schema,
@@ -354,8 +325,12 @@ class RedisServices(object):
                 tuple(redis_schema),
             )
 
-    async def create_indices_for_all_spaces_meta_and_schemas(
-        self, for_space: str | None = None, for_schemas: list | None = None
+    async def create_indices(
+        self, 
+        for_space: str | None = None, 
+        for_schemas: list | None = None,
+        for_custom_indices: bool = True,
+        del_docs: bool = True
     ):
         """
         Loop over all spaces, and for each one we create: (only if indexing_enabled is true for the space)
@@ -499,7 +474,7 @@ class RedisServices(object):
                 )
 
                 await self.create_index(
-                    f"{space_name}:{branch_name}", "meta", meta_schema
+                    f"{space_name}:{branch_name}", "meta", meta_schema, del_docs
                 )
 
                 # CREATE REDIS INDEX FOR EACH SCHEMA DEFINITION INSIDE THE SPACE
@@ -567,9 +542,11 @@ class RedisServices(object):
                             f"{space_name}:{branch_name}",
                             schema_shortname,
                             tuple(redis_schema_definition),
+                            del_docs
                         )
 
-        await self.create_custom_indices(for_space)
+        if for_custom_indices:
+            await self.create_custom_indices(for_space)
 
     def append_unique_index_fields(self, new_index: tuple, base_index: list):
         for field in new_index:
@@ -736,6 +713,8 @@ class RedisServices(object):
             meta.owner_shortname,
             meta.owner_group_shortname,
         )
+        if not payload["query_policies"]:
+            print(f"Warning: this entry `{space_name}/{subpath}/{meta.shortname}` can't be accessed")
         payload["subpath"] = subpath
         payload["branch_name"] = branch_name
         payload["resource_type"] = resource_type
@@ -930,6 +909,7 @@ class RedisServices(object):
         search_query.paging(offset, limit)
 
         try:
+            # print(f"ARGS {search_query.get_args()} O {search_query.query_string()}")
             search_res = await ft_index.search(query=search_query)
             return {"data": search_res.docs, "total": search_res.total}
         except:
@@ -1009,9 +989,13 @@ class RedisServices(object):
             elif item[0] == "subpath" and exact_subpath:
                 search_value = ""
                 for subpath in item[1]:
-                    search_value += "|" + subpath.strip("/").translate(redis_escape_chars)
-                    search_value += "|" + f"/{subpath}".replace("//", "/").translate(redis_escape_chars)
-                query_string += f" @exact_subpath:{{{search_value.strip('|')}}}"
+                    # search_value += "|" + subpath.strip("/").translate(redis_escape_chars)
+                    # search_value += "|" + f"/{subpath}".replace("//", "/").translate(redis_escape_chars)
+                    search_value = subpath
+
+                exact_subpath_value = search_value.strip('|').replace('/', '\\/')
+                query_string += f" @exact_subpath:{{{exact_subpath_value}}}"
+                # print(query_string)
             elif item[0] == "subpath" and item[1][0] == "/":
                 pass
             elif item[1]:
@@ -1124,7 +1108,7 @@ class RedisServices(object):
     async def drop_index(self, name: str, delete_docs: bool = False):
         try:
             ft_index = self.client.ft(name)
-            ft_index.dropindex(delete_docs)
+            await ft_index.dropindex(delete_docs)
             return True
         except :
             return False

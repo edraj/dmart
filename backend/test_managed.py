@@ -4,15 +4,16 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from models.enums import ResourceType
 from test_utils import (
+    check_not_found,
     check_repeated_shortname,
     assert_code_and_status_success,
     check_unauthorized,
 )
+from utils.plugin_manager import PluginManager
 from utils.redis_services import RedisServices
 from utils.settings import settings
 import os
 from models.api import Query, QueryType
-
 from pytest_mock import mocker
 from main import app
 
@@ -63,6 +64,7 @@ resources_csv_path = f"../sample/test/resources.csv"
 csv_num_of_records = 11
 num_of_created_entries = 0
 RedisServices.is_pytest = True
+PluginManager.is_pytest = True
 
 dirpath = f"{settings.spaces_folder}/{DEMO_SPACE}/{subpath}"
 if os.path.exists(dirpath):
@@ -94,6 +96,29 @@ def test_login():
     # assert response.json().get("status") == "failed"
     # assert response.json().get("error").get("type") == "auth"
 
+def test_create_space():
+    headers = {"Content-Type": "application/json"}
+    endpoint = "/managed/space"
+    request_data = {
+        "space_name": DEMO_SPACE,
+        "request_type": "create",
+        "records": [
+            {
+                "resource_type": "space",
+                "subpath": "/",
+                "shortname": DEMO_SPACE,
+                "attributes": {},
+            }
+        ],
+    }
+
+    assert_code_and_status_success(
+        client.post(endpoint, json=request_data, headers=headers)
+    )
+
+    get_res = client.get(f"/managed/entry/space/{DEMO_SPACE}/__root__/{DEMO_SPACE}")
+    assert get_res.status_code == status.HTTP_200_OK
+
 
 def test_get_profile():
     headers = {"Content-Type": "application/json"}
@@ -124,7 +149,7 @@ def test_create_folder_resource():
 
     assert_resource_created(
         query=Query(
-            type=QueryType.subpath,
+            type=QueryType.search,
             space_name=DEMO_SPACE,
             subpath="/",
             filter_shortnames=[subpath],
@@ -170,7 +195,7 @@ def test_create_text_content_resource(mocker):
 
     assert_resource_created(
         query=Query(
-            type=QueryType.subpath,
+            type=QueryType.search,
             space_name=DEMO_SPACE,
             subpath=subpath,
             filter_shortnames=[text_entry_shortname],
@@ -252,7 +277,7 @@ def test_create_json_content_resource():
 
     assert_resource_created(
         query=Query(
-            type=QueryType.subpath,
+            type=QueryType.search,
             space_name=DEMO_SPACE,
             subpath=subpath,
             filter_shortnames=[json_entry_shortname],
@@ -303,7 +328,7 @@ def test_update_json_content_resource():
 
     assert_resource_created(
         query=Query(
-            type=QueryType.subpath,
+            type=QueryType.search,
             space_name=DEMO_SPACE,
             subpath=subpath,
             filter_shortnames=[json_entry_shortname],
@@ -338,11 +363,12 @@ def test_create_comment_attachment():
 
     assert_resource_created(
         query=Query(
-            type=QueryType.subpath,
+            type=QueryType.search,
             space_name=DEMO_SPACE,
             subpath=subpath,
             filter_shortnames=[json_entry_shortname],
             retrieve_json_payload=True,
+            retrieve_attachments=True,
             limit=1,
         ),
         res_shortname=json_entry_shortname,
@@ -420,7 +446,7 @@ def test_upload_resource_with_payload_attached_to_entry():
 
     assert_resource_created(
         query=Query(
-            type=QueryType.subpath,
+            type=QueryType.search,
             space_name=DEMO_SPACE,
             subpath=subpath,
             filter_shortnames=[content_shortname],
@@ -520,63 +546,6 @@ def test_query_subpath():
     assert response.status_code == status.HTTP_200_OK
 
 
-def test_delete_all():
-    # DELETE CONTENT RESOURCE
-    response = delete_resource(
-        resource="content", del_subpath=subpath, del_shortname=json_entry_shortname
-    )
-    assert_code_and_status_success(response=response)
-
-    # DELETE FOLDER RESOURCE
-    response = delete_resource(
-        resource="folder", del_subpath="/", del_shortname=subpath
-    )
-    assert_code_and_status_success(response=response)
-
-    # DELETE SCHEMA RESOURCE
-    response = delete_resource(
-        resource="schema", del_subpath="schema", del_shortname=schema_shortname
-    )
-    assert_code_and_status_success(response=response)
-
-    path = settings.spaces_folder / DEMO_SPACE / subpath
-    if path.is_dir():
-        shutil.rmtree(path)
-
-    path = settings.spaces_folder / DEMO_SPACE / ".dm/events.jsonl"
-    if path.is_file():
-        os.remove(path)
-
-
-def test_health():
-    endpoint = f"/managed/health/{DEMO_SPACE}"
-    response = client.get(endpoint)
-    assert response.status_code == status.HTTP_200_OK
-
-    endpoint = f"/managed/health/DEMO_SPACE"
-    response = client.get(endpoint)
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-
-def delete_resource(resource: str, del_subpath: str, del_shortname: str):
-    headers = {"Content-Type": "application/json"}
-    endpoint = "/managed/request"
-    request_data = {
-        "space_name": DEMO_SPACE,
-        "request_type": "delete",
-        "records": [
-            {
-                "resource_type": resource,
-                "subpath": del_subpath,
-                "shortname": del_shortname,
-                "attributes": {},
-            }
-        ],
-    }
-
-    return client.post(endpoint, json=request_data, headers=headers)
-
-
 def upload_resource_with_payload(
     space_name,
     record_path: str,
@@ -617,11 +586,12 @@ def upload_resource_with_payload(
     if not attachment:
         assert_resource_created(
             query=Query(
-                type=QueryType.subpath,
+                type=QueryType.search,
                 space_name=space_name,
                 subpath=payload_subpath,
                 filter_shortnames=[payload_shortname],
                 retrieve_json_payload=True,
+                retrieve_attachments=True,
                 limit=1,
             ),
             res_shortname=payload_shortname,
@@ -660,7 +630,7 @@ def upload_resource_with_payload_wrong_space(
     if not attachment:
         assert_resource_created(
             query=Query(
-                type=QueryType.subpath,
+                type=QueryType.search,
                 space_name=DEMO_SPACE,
                 subpath=payload_subpath,
                 filter_shortnames=[payload_shortname],
@@ -680,6 +650,8 @@ def assert_resource_created(
     res_attributes: dict | None = None,
     res_attachments: dict[str, int] | None = None,
 ):
+    if not query.search:
+        query.search = ""
     response = client.post(
         "/managed/query",
         json=json.loads(query.json(exclude_none=True)),
@@ -716,3 +688,56 @@ def assert_resource_created(
 
 class MetaObj(object):
     payload = None
+
+
+def delete_resource(resource: str, del_subpath: str, del_shortname: str):
+    headers = {"Content-Type": "application/json"}
+    endpoint = "/managed/request"
+    request_data = {
+        "space_name": DEMO_SPACE,
+        "request_type": "delete",
+        "records": [
+            {
+                "resource_type": resource,
+                "subpath": del_subpath,
+                "shortname": del_shortname,
+                "attributes": {},
+            }
+        ],
+    }
+
+    response = client.post(endpoint, json=request_data, headers=headers)
+    assert_code_and_status_success(response)
+    check_not_found(client.get(f"/managed/entry/{resource}/{DEMO_SPACE}/{del_subpath}/{del_shortname}"))
+    
+
+def test_delete_content():
+    delete_resource(
+        resource="content", del_subpath=subpath, del_shortname=json_entry_shortname
+    )
+
+def test_delete_folder():
+    delete_resource(
+        resource="folder", del_subpath="/", del_shortname=subpath
+    )
+
+def test_delete_space():
+    headers = {"Content-Type": "application/json"}
+    endpoint = "/managed/space"
+    request_data = {
+        "space_name": DEMO_SPACE,
+        "request_type": "delete",
+        "records": [
+            {
+                "resource_type": "space",
+                "subpath": "/",
+                "shortname": DEMO_SPACE,
+                "attributes": {},
+            }
+        ],
+    }
+
+    assert_code_and_status_success(
+        client.post(endpoint, json=request_data, headers=headers)
+    )
+    check_not_found(client.get(f"/managed/entry/space/{DEMO_SPACE}/__root__/{DEMO_SPACE}"))

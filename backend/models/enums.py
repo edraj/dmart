@@ -42,6 +42,10 @@ class ResourceType(StrEnum):
     ticket = "ticket"
     json = "json"
     lock = "lock"
+    post = "post"
+    reaction = "reaction"
+    reply = "reply"
+    share = "share"
     plugin_wrapper = "plugin_wrapper"
     notification = "notification"
 
@@ -56,6 +60,14 @@ class ContentType(StrEnum):
     pdf = "pdf"
     audio = "audio"
     video = "video"
+
+    @staticmethod
+    def inline_types() -> list:
+        return [
+            ContentType.text,
+            ContentType.markdown,
+            ContentType.html
+        ]
 
 
 class TaskType(StrEnum):

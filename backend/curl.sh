@@ -96,11 +96,6 @@ REQUEST=$(jq -c -n --arg subpath "/" --arg shortname "posts"  '{ space_name: "du
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$REQUEST" ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
-echo -n -e "Create Schema folder: \t\t" >&2
-REQUEST=$(jq -c -n --arg subpath "/" --arg shortname "schema"  '{ space_name: "dummy", request_type:"create", records: [{resource_type: "folder", subpath: "/", shortname: "schema", attributes:{tags: ["one","two"], is_active: true, "description": {"en": "dummy","ar": "dummy","kd": "dummy"},"displayname" : {"en": "en","ar": "ar", "kd":"kd"}, "payload": { "content_type": "json", "schema_shortname": "folder_rendering", "body": { "shortname_title": "Shortname", "content_schema_shortnames": ["meta_schema"], "index_attributes": [ { "key": "shortname", "name": "Schema Shortname" }], "allow_create": false, "allow_update": false, "allow_delete": false, "use_media": false }}}}]}') 
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$REQUEST" ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
-RESULT+=$?
-
 echo -n -e "Create workflow folder: \t" >&2
 REQUEST=$(jq -c -n '{ space_name: "dummy", request_type:"create", records: [{resource_type: "folder", subpath: "/", shortname: "workflows", attributes:{ "description": {"en": "dummy","ar": "dummy","kd": "dummy"},"displayname" : {"en": "en","ar": "ar", "kd":"kd"}, "payload": { "content_type": "json", "schema_shortname": "folder_rendering", "body": { "shortname_title": "Schema Shortname", "content_schema_shortnames": ["meta_schema"], "index_attributes": [ { "key": "shortname", "name": "Schema Shortname" }], "allow_create": false, "allow_update": false, "allow_delete": false, "use_media": false }}}}]}')
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$REQUEST" ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
