@@ -399,20 +399,10 @@ async def update(
             await redis_services.delete_lock_doc(
                 space_name, branch_name, subpath, meta.shortname
             )
-            await store_entry_diff(
-                space_name,
-                branch_name,
-                "/" + subpath,
-                meta.shortname,
-                user_shortname,
-                {},
-                {"lock_type": LockAction.unlock},
-                ["lock_type"],
-                core.Content,
-            )
+
 
     meta.updated_at = datetime.now()
-    history_obj: core.History = await store_entry_diff(
+    history_obj: core.History | None = await store_entry_diff(
         space_name,
         branch_name,
         subpath,
@@ -424,15 +414,16 @@ async def update(
         meta.__class__,
         meta.latest_version_hash
     )
-    meta.latest_version_hash = hashlib\
-        .sha1(json.dumps(history_obj.json())\
-        .encode('utf-8'))\
-        .hexdigest()
+    if history_obj:
+        meta.latest_version_hash = hashlib\
+            .sha1(json.dumps(history_obj.json())\
+            .encode('utf-8'))\
+            .hexdigest()
     
     async with aiofiles.open(path / filename, "w") as file:
         await file.write(meta.json(exclude_none=True))
 
-    return history_obj.diff
+    return history_obj.diff if history_obj else {}
 
 
 async def store_entry_diff(
@@ -446,7 +437,7 @@ async def store_entry_diff(
     updated_attributes_flattend: list,
     resource_type,
     previous_hash: str
-) -> core.History:
+) -> core.History | None:
     diff_keys = list(old_version_flattend.keys())
     diff_keys.extend(list(new_version_flattend.keys()))
     history_diff = {}
@@ -471,11 +462,11 @@ async def store_entry_diff(
                     "new": new,
                 }
     if not history_diff:
-        return {}
+        return None
 
     history_diff["x_request_data"] = get_request_data()
 
-    history_obj = core.History(
+    history_obj: core.History = core.History(
         shortname="history",
         owner_shortname=owner_shortname,
         timestamp=datetime.now(),

@@ -2020,17 +2020,6 @@ async def lock_entry(
             settings.lock_period,
         )
 
-    await db.store_entry_diff(
-        space_name,
-        branch_name,
-        "/" + subpath,
-        shortname,
-        logged_in_user,
-        {},
-        {"lock_type": lock_type},
-        ["lock_type"],
-        core.Content,
-    )
     return api.Response(
         status=api.Status.success,
         attributes={
@@ -2068,17 +2057,6 @@ async def cancel_lock(
             space_name, branch_name, subpath, shortname
         )
 
-    await db.store_entry_diff(
-        space_name,
-        branch_name,
-        "/" + subpath,
-        shortname,
-        logged_in_user,
-        {},
-        {"lock_type": LockAction.cancel},
-        ["lock_type"],
-        core.Content,
-    )
     return api.Response(
         status=api.Status.success,
         attributes={"message": "Entry unlocked successfully"},
