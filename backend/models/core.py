@@ -77,6 +77,26 @@ class Translation(Resource):
     ar: str | None = None
     kd: str | None = None
 
+class Locator(Resource):
+    uuid: UUID | None = None
+    type: ResourceType
+    space_name: str
+    branch_name: str | None = Field(
+        default=settings.default_branch, regex=regex.SHORTNAME
+    )
+    subpath: str
+    shortname: str
+    schema_shortname: str | None = None
+    displayname: Translation | None = None
+    description: Translation | None = None
+    tags: list[str] | None = None
+
+
+class Relationship(Resource):
+    related_to: Locator
+    attributes: dict[str, Any]
+
+
 
 class Meta(Resource):
     uuid: UUID = Field(default_factory=uuid4)
@@ -91,6 +111,7 @@ class Meta(Resource):
     owner_shortname: str
     owner_group_shortname: str | None = None
     payload: Payload | None = None
+    relationships : list[Relationship] | None = None
 
     class Config:
         validate_assignment = True
@@ -174,21 +195,6 @@ class Meta(Resource):
         return Record(**record_fields)
 
 
-class Locator(Resource):
-    uuid: UUID | None = None
-    type: ResourceType
-    space_name: str
-    branch_name: str | None = Field(
-        default=settings.default_branch, regex=regex.SHORTNAME
-    )
-    subpath: str
-    shortname: str
-    schema_shortname: str | None = None
-    displayname: Translation | None = None
-    description: Translation | None = None
-    tags: list[str] | None = None
-
-
 class Space(Meta):
     root_registration_signature: str = ""
     primary_website: str = ""
@@ -246,10 +252,6 @@ class Lock(Attachment):
 class Media(Attachment):
     pass
 
-
-class Relationship(Attachment):
-    related_to: Locator
-    attributes: dict[str, Any]
 
 
 class Alteration(Attachment):
