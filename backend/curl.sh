@@ -138,16 +138,16 @@ curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' 'request_
 RESULT+=$?
 
 echo -n -e "Move ticket: \t\t\t"
-curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "dummy","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder","shortname": "an_example","attributes": {"src_subpath": "/myfolder","src_shortname": "an_example","dest_subpath": "/myfolder_new","dest_shortname": "an_example_new","is_active": true}}]}' ${API_URL}/managed/request 
+curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "dummy","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder","shortname": "an_example","attributes": {"src_subpath": "/myfolder","src_shortname": "an_example","dest_subpath": "/myfolder_new","dest_shortname": "an_example_new","is_active": true}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 
 echo -n -e "Move back to old: \t\t"
-curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "dummy","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder_new","shortname": "an_example_new","attributes": {"src_subpath": "/myfolder_new","src_shortname": "an_example_new","dest_subpath": "/myfolder","dest_shortname": "an_example","is_active": true}}]}' ${API_URL}/managed/request 
+curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "dummy","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder_new","shortname": "an_example_new","attributes": {"src_subpath": "/myfolder_new","src_shortname": "an_example_new","dest_subpath": "/myfolder","dest_shortname": "an_example","is_active": true}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 
 echo -n -e "Lock ticket: \t\t\t"
-curl -s -X "PUT" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/lock/ticket/dummy/myfolder/an_example 
+curl -s -X "PUT" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/lock/ticket/dummy/myfolder/an_example | jq .status | tee /dev/stderr | grep -q "success"
 
 echo -n -e "Unlock ticket: \t\t\t"
-curl -s -X "DELETE" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/lock/dummy/myfolder/an_example
+curl -s -X "DELETE" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/lock/dummy/myfolder/an_example | jq .status | tee /dev/stderr | grep -q "success"
 
 
 echo -n -e "Create Content: \t\t" >&2
