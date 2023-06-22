@@ -988,14 +988,12 @@ class RedisServices(object):
                 query_string += f" @{item[0]}:{item[1]}"
             elif item[0] == "subpath" and exact_subpath:
                 search_value = ""
-                for subpath in item[1]:
-                    # search_value += "|" + subpath.strip("/").translate(redis_escape_chars)
-                    # search_value += "|" + f"/{subpath}".replace("//", "/").translate(redis_escape_chars)
-                    search_value = subpath
+                for subpath in item[1]: # Handle existence/absence of `/`
+                    search_value += "|" + subpath.strip("/")
+                    search_value += "|" + f"/{subpath}".replace("//", "/")
 
-                exact_subpath_value = search_value.strip('|').replace('/', '\\/')
+                exact_subpath_value = search_value.strip('|').translate(redis_escape_chars)
                 query_string += f" @exact_subpath:{{{exact_subpath_value}}}"
-                # print(query_string)
             elif item[0] == "subpath" and item[1][0] == "/":
                 pass
             elif item[1]:
