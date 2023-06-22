@@ -37,7 +37,7 @@ curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"manag
 RESULT+=$?
 
 echo -n -e "Verify Email/msisdn admin side: " >&2
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"update","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"is_email_verified":true,"is_msisdn_verified":true}}]}' ${API_URL}/managed/request 
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"update","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"is_email_verified":true,"is_msisdn_verified":true}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
 echo -n -e "Reset user from admin side\t" >&2

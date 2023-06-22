@@ -834,7 +834,8 @@ async def serve_request(
                 resource_obj.updated_at = datetime.now()
                 new_resource_payload_data: dict | None = resource_obj.update_from_record(
                     record=record, 
-                    old_body=old_resource_payload_body
+                    old_body=old_resource_payload_body,
+                    replace=request.request_type == api.RequestType.r_replace
                 )
                 new_version_flattend = flatten_dict(resource_obj.dict())
                 if new_resource_payload_data:
