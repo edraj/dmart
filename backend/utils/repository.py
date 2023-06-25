@@ -546,7 +546,7 @@ async def serve_query(
             if Path(path).is_file():
                 cmd = (
                     f"(tail -n {query.limit + query.offset} {path}; echo "
-                    f") | tac"
+                    ") | tac"
                 )
                 if query.offset > 0:
                     cmd += f" | sed '1,{query.offset}d'"
