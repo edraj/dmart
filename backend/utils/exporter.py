@@ -47,10 +47,14 @@ SECURED_FIELDS = [
 OUTPUT_FOLDER_NAME = "spaces_data"
 
 
-async def get_meta(*, space_path: str, subpath: str, file_path: str, resource_type: str):
-    meta_content = os.path.join(
-        space_path, subpath, ".dm", file_path, f"meta.{resource_type}.json"
-    )
+async def get_meta(
+    *, 
+    space_path: Path, 
+    subpath: str, 
+    file_path: str, 
+    resource_type: str
+):
+    meta_content = space_path / f"{subpath}/.dm/{file_path}/meta.{resource_type}.json"
     async with aopen(meta_content, "r") as f:
         return json.loads(await f.read())
 
