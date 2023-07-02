@@ -184,7 +184,7 @@ async def extract(config_obj, spaces_path, output_path):
                 file_path=file_name.split(".")[0],
                 resource_type=resource_type,
             )
-        except jsonschema.ValidationError as error:
+        except Exception as error:
             print(f"{error=}")
             continue
 
