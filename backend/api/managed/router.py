@@ -811,6 +811,7 @@ async def serve_request(
                 if (
                     old_resource_obj.payload
                     and old_resource_obj.payload.content_type == ContentType.json
+                    and isinstance(old_resource_obj.payload.body, str)
                 ):
                     try:
                         old_resource_payload_body = db.load_resource_payload(
