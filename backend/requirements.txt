@@ -13,6 +13,7 @@ python-multipart
 jsonschema
 email-validator
 passlib[bcrypt]
+bcrypt
 jq
 segno
 jinja2

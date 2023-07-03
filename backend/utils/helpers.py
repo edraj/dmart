@@ -7,6 +7,18 @@ from models.enums import Language
 from utils.settings import settings
 from typing import Any
 
+def flatten_all(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict:
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, MutableMapping):
+            items.extend(flatten_all(v, new_key, sep=sep).items())
+        elif isinstance(v, list):
+            items.extend(flatten_all(flatten_list(v), new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
 
 def flatten_dict(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict:
     items = []
@@ -18,10 +30,10 @@ def flatten_dict(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dic
             items.append((new_key, v))
     return dict(items)
 
-def flatten_list(l: list, key: str):
+def flatten_list(l: list, key: str | None = None):
     flattened = {}
     for idx, item in enumerate(l):
-        flattened[f"{key}.{idx}"] = item
+        flattened[f"{key}.{idx}" if key else f"{idx}"] = item
     return flattened
 
 
@@ -172,9 +184,42 @@ def remove_none(target: dict | list):
                 new_l.append(val)
 
         return new_l
-            
-        
 
+
+def alter_dict_keys(
+    target: dict, 
+    include: list | None = None, 
+    exclude: list | None = None, 
+    parents: str = ""
+):
+    result: dict = {}
+    for k in list(target):
+        search_for = f"{parents}.{k}" if parents else f"{k}"
+        if type(target[k]) == dict:
+            if include and search_for in include:
+                result[k] = target[k]
+                continue
+            if exclude and search_for in exclude:
+                continue
+            result[k] = alter_dict_keys(
+                target[k],
+                include,
+                exclude,
+                search_for if parents else f"{k}"
+            )
+
+        elif(
+            (include and search_for not in include)
+            or (exclude and search_for in exclude)
+        ):
+            continue
+
+        else:
+            result[k] = target[k]
+
+    return result
+
+        
 def branch_path(branch_name: str | None = settings.default_branch) -> str:
     return (
         (f"branches/{branch_name}") if branch_name != settings.default_branch else "./"

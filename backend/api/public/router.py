@@ -37,7 +37,11 @@ async def query_entries(query: api.Query) -> api.Response:
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies("anonymous")
+    redis_query_policies = await access_control.get_user_query_policies(
+        "anonymous",
+        query.space_name,
+        query.subpath
+    )
 
     total, records = await repository.serve_query(
         query, "anonymous", redis_query_policies
@@ -140,8 +144,11 @@ async def retrieve_entry_meta(
         )
 
 
-    if not retrieve_json_payload or (
-        not meta.payload or meta.payload.content_type != ContentType.json
+    if (not retrieve_json_payload or 
+        not meta.payload or 
+        not meta.payload.body or 
+        type(meta.payload.body) != str or 
+        meta.payload.content_type != ContentType.json
     ):
         # TODO
         # include locked before returning the dictionary
@@ -297,7 +304,11 @@ async def query_via_urlparams(
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies("anonymous")
+    redis_query_policies = await access_control.get_user_query_policies(
+        "anonymous",
+        query.space_name,
+        query.subpath
+    )
     total, records = await repository.serve_query(
         query, "anonymous", redis_query_policies
     )
@@ -469,3 +480,32 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
     query_dict["filter_shortnames"] = filter_shortnames if isinstance(filter_shortnames, list) else []
 
     return await query_entries(api.Query(**query_dict))
+
+
+@router.get("/byuuid/{uuid}",response_model_exclude_none=True)
+async def get_entry_by_uuid(
+    uuid: str,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False
+):
+    return await repository.get_entry_by_var(
+        "uuid",
+        uuid,
+        "anonymous",
+        retrieve_json_payload,
+        retrieve_attachments,
+    )
+
+@router.get("/byslug/{slug}",response_model_exclude_none=True)
+async def get_entry_by_slug(
+    slug: str,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False
+):
+    return await repository.get_entry_by_var(
+        "slug",
+        slug,
+        "anonymous",
+        retrieve_json_payload,
+        retrieve_attachments,
+    )

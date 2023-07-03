@@ -21,7 +21,15 @@ RESULT+=$?
 
 which systemctl 2> /dev/null && systemctl --user list-units dmart.service > /dev/null && systemctl --user restart dmart.service
 RESULT+=$?
-sleep 4
+RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
+COUNTER=0
+while [ $RESP -ne "200" ]; do
+  sleep 1
+  COUNTER=$((COUNTER+1))
+  echo "Waiting for the server to come up ${RESP} ${COUNTER} seconds"
+  RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
+  [[ $COUNTER -ge 10 ]] && break
+done
 
 TOKEN=$(curl -s "${APP_URL}/user/login" -H 'Content-Type: application/json' -d "${SUPERMAN}" | jq -r '.records[0].attributes.access_token')
 RESULT+=$?

@@ -1,14 +1,1 @@
-{
-  "uuid": "ad4be0fc-04b3-43cc-a02d-5dd507980088",
-  "shortname": "world",
-  "is_active": true,
-  "tags": [],
-  "created_at": "2022-08-23T07:44:36.390286",
-  "updated_at": "2022-09-23T12:36:22.192544",
-  "owner_shortname": "dmart",
-  "permissions": [
-    "world",
-    "access_public",
-    "create_log"
-  ]
-}
+{"uuid": "ad4be0fc-04b3-43cc-a02d-5dd507980088", "shortname": "world", "is_active": true, "tags": [], "created_at": "2022-08-23T07:44:36.390286", "updated_at": "2023-04-25T15:47:25.118586", "owner_shortname": "dmart", "permissions": ["access_public", "world", "view_world", "create_log", "world_candidate"]}

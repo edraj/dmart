@@ -17,7 +17,7 @@ from fastapi import status
 from datetime import datetime
 import aiofiles
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN
-
+from shutil import copy2 as copy_file
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
 
@@ -49,6 +49,7 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
             if query.include_fields is None:
                 query.include_fields = []
 
+
             # Gel all matching entries
             meta_path = path / ".dm"
             if not meta_path.is_dir():
@@ -58,6 +59,7 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
             for entry in path_iterator:
                 if not entry.is_dir():
                     continue
+
 
                 subpath_iterator = os.scandir(entry)
                 for one in subpath_iterator:
@@ -212,7 +214,7 @@ async def load(
     subpath: str,
     shortname: str,
     class_type: Type[MetaChild],
-    user_shortname: str,
+    user_shortname: str | None = None,
     branch_name: str | None = settings.default_branch,
     schema_shortname: str | None = None,
 ) -> MetaChild:
@@ -253,10 +255,11 @@ def load_resource_payload(
     path = payload_path(space_name, subpath, class_type, branch_name, schema_shortname)
     path /= filename
     if not path.is_file():
-        raise api.Exception(
-            status_code=status.HTTP_404_NOT_FOUND,
-            error=api.Error(type="db", code=12, message="requested object not found"),
-        )
+        return {}
+        # raise api.Exception(
+        #     status_code=status.HTTP_404_NOT_FOUND,
+        #     error=api.Error(type="db", code=12, message="requested object not found"),
+        # )
     return json.loads(path.read_bytes())
 
 
@@ -567,6 +570,61 @@ async def move(
     if src_path.is_dir() and len(os.listdir(src_path)) == 0:
         os.removedirs(src_path)
 
+async def clone(
+    src_space: str,
+    dest_space: str,
+    src_subpath: str,
+    src_shortname: str,
+    dest_subpath: str,
+    dest_shortname: str,
+    class_type: Type[MetaChild], 
+    branch_name: str | None = settings.default_branch,
+):
+
+    meta_obj = await load(
+        space_name=src_space,
+        subpath=src_subpath,
+        shortname=src_shortname,
+        class_type=class_type,
+        branch_name=branch_name
+    )
+
+    src_path, src_filename = metapath(
+        src_space, src_subpath, src_shortname, class_type, branch_name
+    )
+    dest_path, dest_filename = metapath(
+        dest_space,
+        dest_subpath,
+        dest_shortname,
+        class_type,
+        branch_name,
+    )
+
+    # Create dest dir if not exist
+    if not os.path.isdir(dest_path):
+        os.makedirs(dest_path)
+
+    copy_file(src=src_path / src_filename, dst=dest_path / dest_filename)
+
+    payload_path(src_space, src_subpath, class_type, branch_name)
+    # Move payload file with the meta file
+    if (
+        meta_obj.payload
+        and meta_obj.payload.content_type != ContentType.text
+        and isinstance(meta_obj.payload.body, str)
+    ):
+        src_payload_file_path = (
+            payload_path(src_space, src_subpath, class_type, branch_name)
+            / meta_obj.payload.body
+        )
+        dist_payload_file_path = (
+            payload_path(
+                dest_space, dest_subpath, class_type, branch_name
+            )
+            / meta_obj.payload.body
+        )
+        copy_file(src=src_payload_file_path, dst=dist_payload_file_path)
+
 
 async def delete(
     space_name: str,
@@ -623,14 +681,21 @@ async def delete(
         os.remove(pathname)
 
         # Delete payload file
-        if meta.payload and meta.payload.content_type != ContentType.text:
+        if meta.payload and meta.payload.content_type not in ContentType.inline_types():
             payload_file_path = payload_path(
                 space_name, subpath, meta.__class__, branch_name
             ) / str(meta.payload.body)
             if payload_file_path.is_file():
                 os.remove(payload_file_path)
 
-    if isinstance(meta, core.Folder):
-        p = folder_path(space_name, subpath, meta.shortname, None)
-        if Path(p).is_dir():
-            shutil.rmtree(p)
+    if(
+        path.is_dir()
+        and (
+            not isinstance(meta, core.Attachment)
+            or len(os.listdir(path)) == 0
+        )
+    ):
+        shutil.rmtree(path)
+        # in case of folder the path = {folder_name}/.dm
+        if isinstance(meta, core.Folder) and path.parent.is_dir():
+            shutil.rmtree(path.parent)
