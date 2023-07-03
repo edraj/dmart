@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     websocket_port: int = 8484
     base_path: str = ""
     debug_enabled: bool = True
+    log_handlers: list[str] = ['console', 'file']
     log_file: str = "../logs/dmart.ljson.log"
     ws_log_file: str = "../logs/websocket.ljson.log"
     jwt_secret: str = "".join(random.sample(string.ascii_letters + string.digits,12))

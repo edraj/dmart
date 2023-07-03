@@ -2,13 +2,13 @@ import copy
 import json
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
-from pathlib import Path
 from typing import Any
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
 from pydantic import Field
 from datetime import datetime
 import sys
+from pydantic.utils import deep_update
 from models.enums import (
     ActionType,
     ContentType,
@@ -22,7 +22,7 @@ from models.enums import (
     PluginType,
     EventListenTime,
 )
-from utils.helpers import camel_case, snake_case
+from utils.helpers import camel_case, remove_none, snake_case
 import utils.regex as regex
 from utils.settings import settings
 import utils.password_hashing as password_hashing
@@ -49,9 +49,35 @@ class Payload(Resource):
     )
     schema_shortname: str | None = None
     checksum: str | None = None
-    body: str | dict[str, Any] | Path
-    last_validated: datetime | None = None
-    validation_status: ValidationEnum | None = None
+    body: str | dict[str, Any]
+
+
+    def update(
+        self, 
+        payload: dict, 
+        old_body: dict | None = None,
+        replace: bool = False
+    ) -> dict | None:
+        if self.content_type == ContentType.json:
+            if old_body and not replace:
+                separate_payload_body = dict(remove_none(deep_update(
+                    old_body,
+                    payload["body"],
+                )))
+            else:
+                separate_payload_body = payload["body"]
+                
+            if "schema_shortname" in payload:
+                self.schema_shortname = payload["schema_shortname"]
+            
+            return separate_payload_body
+
+        else:
+            self.body = payload["body"]
+            return None
+
+
+
 
 
 class Record(BaseModel):
@@ -77,10 +103,31 @@ class Translation(Resource):
     ar: str | None = None
     kd: str | None = None
 
+class Locator(Resource):
+    uuid: UUID | None = None
+    type: ResourceType
+    space_name: str
+    branch_name: str | None = Field(
+        default=settings.default_branch, regex=regex.SHORTNAME
+    )
+    subpath: str
+    shortname: str
+    schema_shortname: str | None = None
+    displayname: Translation | None = None
+    description: Translation | None = None
+    tags: list[str] | None = None
+
+
+class Relationship(Resource):
+    related_to: Locator
+    attributes: dict[str, Any]
+
+
 
 class Meta(Resource):
     uuid: UUID = Field(default_factory=uuid4)
     shortname: str = Field(regex=regex.SHORTNAME)
+    slug: str = Field(default=None, regex=regex.SHORTNAME)
     is_active: bool = False
     displayname: Translation | None = None
     description: Translation | None = None
@@ -90,6 +137,7 @@ class Meta(Resource):
     owner_shortname: str
     owner_group_shortname: str | None = None
     payload: Payload | None = None
+    relationships : list[Relationship] | None = None
 
     class Config:
         validate_assignment = True
@@ -102,11 +150,9 @@ class Meta(Resource):
         if issubclass(meta_class, User) and "password" in record.attributes:
             hashed_pass = password_hashing.hash_password(record.attributes["password"])
             record.attributes["password"] = hashed_pass
-        meta_obj = meta_class(
-            owner_shortname=owner_shortname,
-            shortname=record.shortname,
-            **record.attributes,
-        )
+        record.attributes["owner_shortname"] = owner_shortname
+        record.attributes["shortname"] = record.shortname
+        meta_obj = meta_class(**record.attributes)
         return meta_obj
 
     @staticmethod
@@ -122,7 +168,12 @@ class Meta(Resource):
         )
         return meta_obj
 
-    def update_from_record(self, record: Record):
+    def update_from_record(
+        self, 
+        record: Record, 
+        old_body: dict | None = None,
+        replace: bool = False
+    ) -> dict | None:
         restricted_fields = [
             "uuid",
             "shortname",
@@ -131,7 +182,7 @@ class Meta(Resource):
             "owner_shortname",
             "payload",
         ]
-        for field_name, field_value in self.__dict__.items():
+        for field_name, _ in self.__dict__.items():
             if field_name in record.attributes and field_name not in restricted_fields:
                 if isinstance(self, User) and field_name == "password":
                     self.__setattr__(
@@ -141,6 +192,16 @@ class Meta(Resource):
                     continue
 
                 self.__setattr__(field_name, record.attributes[field_name])
+        
+        if(
+            self.payload and
+            record.attributes.get("payload", {}).get("content_type") == self.payload.content_type
+        ):
+            return self.payload.update(
+                payload=record.attributes["payload"],
+                old_body=old_body,
+                replace=replace
+            )
 
     def to_record(
         self,
@@ -173,21 +234,6 @@ class Meta(Resource):
         record_fields["attributes"] = attributes
 
         return Record(**record_fields)
-
-
-class Locator(Resource):
-    uuid: UUID | None = None
-    type: ResourceType
-    space_name: str
-    branch_name: str | None = Field(
-        default=settings.default_branch, regex=regex.SHORTNAME
-    )
-    subpath: str
-    shortname: str
-    schema_shortname: str | None = None
-    displayname: Translation | None = None
-    description: Translation | None = None
-    tags: list[str] | None = None
 
 
 class Space(Meta):
@@ -234,10 +280,18 @@ class Attachment(Meta):
 class Json(Attachment):
     pass
 
+class Share(Attachment):
+    pass
+
+class Reaction(Attachment):
+    pass
+
+class Reply(Attachment):
+    pass
 
 class Comment(Attachment):
     body: str
-    state: str
+    state: str | None = None
 
 
 class Lock(Attachment):
@@ -247,10 +301,6 @@ class Lock(Attachment):
 class Media(Attachment):
     pass
 
-
-class Relationship(Attachment):
-    related_to: Locator
-    attributes: dict[str, Any]
 
 
 class Alteration(Attachment):
@@ -328,6 +378,8 @@ class Ticket(Meta):
     collaborators: dict[str, str] | None = None  # list[Collabolator] | None = None
     resolution_reason: str | None = None
 
+class Post(Content):
+    pass
 
 class Event(BaseModel):
     space_name: str

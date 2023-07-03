@@ -1,4 +1,3 @@
-import asyncio
 import json
 import re
 from redis.commands.search.field import TextField
@@ -96,7 +95,8 @@ class AccessControl:
             search_query = Query("*").no_content()
             docs = await redis_services.client.ft("user_permission").search(search_query)
             keys = [doc.id for doc in docs.docs]
-            await redis_services.del_keys(keys)
+            if len(keys) > 0:
+                await redis_services.del_keys(keys)
 
     def generate_user_permission_doc_id(self, user_shortname: str):
         return f"users_permissions_{user_shortname}"
@@ -196,6 +196,7 @@ class AccessControl:
         subpath = {subpath}/protected => __all_subpaths__/protected
         subpath = {subpath}/protected/mine => {subpath}/__all_subpaths__/mine
         """
+        original_subpath = search_subpath
         search_subpath_parts = search_subpath.split("/")
         if len(search_subpath_parts) > 1:
             search_subpath_parts[-2] = settings.all_subpaths_mw
@@ -209,9 +210,14 @@ class AccessControl:
         # check if has access to all spaces
         if f"{settings.all_spaces_mw}:{search_subpath}:{resource_type}" in user_permissions:
             permission_key = f"{settings.all_spaces_mw}:{search_subpath}:{resource_type}"
+        
         # check if has access to current spaces
         if f"{space_name}:{search_subpath}:{resource_type}" in user_permissions:
             permission_key = f"{space_name}:{search_subpath}:{resource_type}"
+        
+        # check if has access to current subpath
+        if f"{settings.all_spaces_mw}:{original_subpath}:{resource_type}" in user_permissions:
+            permission_key = f"{settings.all_spaces_mw}:{original_subpath}:{resource_type}"
 
         if not permission_key:
             return False
@@ -466,7 +472,12 @@ class AccessControl:
         return roles
 
     
-    async def get_user_query_policies(self, user_shortname: str) -> list:
+    async def get_user_query_policies(
+        self, 
+        user_shortname: str,
+        space_name: str,
+        subpath: str
+    ) -> list:
         """
         Generate list of query policies based on user's permissions
         ex: [
@@ -482,6 +493,8 @@ class AccessControl:
 
         redis_query_policies = []
         for perm_key, permission in user_permissions.items():
+            perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
+            perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
             if (
                 core.ConditionType.is_active in permission["conditions"]
                 and core.ConditionType.own in permission["conditions"]

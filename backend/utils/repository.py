@@ -5,9 +5,11 @@ from pathlib import Path
 import re
 import sys
 import jq
-
+from fastapi.encoders import jsonable_encoder
+from pydantic.fields import Field
 from models.enums import ContentType, ResourceType, ValidationEnum
 from utils.access_control import access_control
+from utils.plugin_manager import plugin_manager
 from utils.spaces import get_spaces
 from utils.settings import settings
 import utils.regex as regex
@@ -18,10 +20,26 @@ from utils.redis_services import RedisServices
 import aiofiles
 from fastapi import status
 from fastapi.logger import logger
-from utils.helpers import branch_path, camel_case, snake_case, str_to_datetime
+from utils.helpers import alter_dict_keys, branch_path, camel_case, flatten_all, snake_case, str_to_datetime
 from utils.custom_validations import validate_payload_with_schema
 import subprocess
 from redis.commands.search.document import Document as RedisDocument
+import redis.commands.search.aggregation as aggregations
+import redis.commands.search.reducers as reducers
+
+
+def parse_redis_response(rows : list) -> list:
+    mylist : list = []
+    for one in rows:
+        mydict = {}
+        key : str | None = None
+        for i, value in enumerate(one):
+            if i%2 == 0:
+                key = value
+            elif key:
+                mydict[key] = value
+        mylist.append(mydict)
+    return mylist 
 
 
 async def serve_query(
@@ -62,9 +80,6 @@ async def serve_query(
 
         case api.QueryType.search:
 
-            query.include_fields = (
-                []
-            )  # Don't support include fields for now, will be supported after abandon meta doc enhancement
             search_res, total = await redis_query_search(query, redis_query_policies)
             res_data: list = []
             for redis_document in search_res:
@@ -83,107 +98,25 @@ async def serve_query(
 
             async with RedisServices() as redis_services:
                 for redis_doc_dict in res_data:
-                    meta_doc_content = {}
-                    payload_doc_content = {}
-                    resource_class = getattr(
-                        sys.modules["models.core"],
-                        camel_case(redis_doc_dict["resource_type"]),
-                    )
-
-                    system_attributes = [
-                        "branch_name",
-                        "query_policies",
-                        "subpath",
-                        "resource_type",
-                        "meta_doc_id",
-                        "payload_doc_id",
-                    ]
-                    for key, value in redis_doc_dict.items():
-                        if key in resource_class.__fields__.keys():
-                            meta_doc_content[key] = value
-                        elif key not in system_attributes:
-                            payload_doc_content[key] = value
-
-                    if (
-                        not payload_doc_content
-                        and query.retrieve_json_payload
-                        and "payload_doc_id" in redis_doc_dict
-                    ):
-                        payload_redis_doc = await redis_services.get_doc_by_id(
-                            redis_doc_dict["payload_doc_id"]
-                        )
-                        if payload_redis_doc:
-                            for key, value in payload_redis_doc.items():
-                                not_payload_attr = system_attributes + list(
-                                    resource_class.__fields__.keys()
-                                )
-                                if key not in not_payload_attr:
-                                    payload_doc_content[key] = value
-
-                    meta_doc_content["created_at"] = datetime.fromtimestamp(
-                        meta_doc_content["created_at"]
-                    )
-                    meta_doc_content["updated_at"] = datetime.fromtimestamp(
-                        meta_doc_content["updated_at"]
-                    )
-                    resource_obj = resource_class.parse_obj(meta_doc_content)
-                    resource_base_record = resource_obj.to_record(
-                        redis_doc_dict["subpath"],
-                        meta_doc_content["shortname"],
-                        query.include_fields,
-                        redis_doc_dict["branch_name"],
-                    )
-                    if resource_base_record:
-                        locked_data = await redis_services.get_lock_doc(
-                            query.space_name,
-                            query.branch_name,
-                            redis_doc_dict["subpath"],
-                            resource_obj.shortname,
-                        )
-                        if locked_data:
-                            resource_base_record.attributes["locked"] = locked_data
-
-                    entry_path = (
-                        settings.spaces_folder
-                        / f"{query.space_name}/{branch_path(redis_doc_dict['branch_name'])}/{redis_doc_dict['subpath']}/.dm/{meta_doc_content['shortname']}"
-                    )
-
-                    if query.retrieve_attachments and entry_path.is_dir():
-                        resource_base_record.attachments = await get_entry_attachments(
-                            subpath=f"{redis_doc_dict['subpath']}/{meta_doc_content['shortname']}",
-                            branch_name=redis_doc_dict["branch_name"],
-                            attachments_path=entry_path,
-                            filter_types=query.filter_types,
-                            include_fields=query.include_fields,
+                    try:
+                        resource_base_record = await get_record_from_redis_doc(
+                            space_name=query.space_name,
+                            branch_name=query.branch_name,
+                            doc=redis_doc_dict,
                             retrieve_json_payload=query.retrieve_json_payload,
+                            retrieve_attachments=query.retrieve_attachments,
+                            validate_schema=query.validate_schema,
+                            filter_types=query.filter_types
                         )
+                    except:
+                        # Incase of schema validation error
+                        continue
 
-                    if (
-                        query.retrieve_json_payload
-                        and resource_base_record.attributes["payload"]
-                        and resource_base_record.attributes["payload"].content_type
-                        == ContentType.json
-                    ):
-                        resource_base_record.attributes[
-                            "payload"
-                        ].body = payload_doc_content
 
-                    if (
-                        query.retrieve_json_payload
-                        and resource_obj.payload
-                        and resource_obj.payload.schema_shortname
-                        and payload_doc_content is not None
-                        and query.validate_schema
-                    ):
-                        try:
-                            await validate_payload_with_schema(
-                                payload_data=payload_doc_content,
-                                space_name=query.space_name,
-                                branch_name=query.branch_name,
-                                schema_shortname=resource_obj.payload.schema_shortname,
-                            )
-                        except:
-                            continue
+                    # Don't repeat the same entry comming from different indices
+                    if resource_base_record in records:
+                        total -= 1
+                        continue
 
                     if query.highlight_fields:
                         for key, value in query.highlight_fields.items():
@@ -191,10 +124,11 @@ async def serve_query(
                                 redis_doc_dict, key, None
                             )
 
-                    # Don't repeat the same entry comming from different indices
-                    if resource_base_record in records:
-                        total -= 1
-                        continue
+                    resource_base_record.attributes = alter_dict_keys(
+                        jsonable_encoder(resource_base_record.attributes),
+                        query.include_fields,
+                        query.exclude_fields
+                    )
 
                     records.append(resource_base_record)
 
@@ -468,6 +402,80 @@ async def serve_query(
                     )
                     total += int(redis_res)
 
+        case api.QueryType.tags:
+            async with RedisServices() as redis_services:
+                query.sort_by = "@freq"
+                rows = await redis_query_aggregate(
+                    query=query, 
+                    redis_query_policies=redis_query_policies,
+                    group_by={
+                        "@tags": [
+                            reducers.count().alias("freq")
+                        ]
+                    }
+                ) 
+                records.append(core.Record(
+                    resource_type=ResourceType.content, 
+                    shortname="tags_frequency", 
+                    subpath=query.subpath, 
+                    attributes={
+                        "result": rows
+                    }
+                ))
+        
+        case api.QueryType.random:
+            async with RedisServices() as redis_services:
+                rows = await redis_query_aggregate(
+                    query=query, 
+                    redis_query_policies=redis_query_policies,
+                    load=[
+                        "@__key"
+                    ],
+                    group_by={
+                        "@resource_type": [
+                            reducers.random_sample("@__key", query.limit).alias("id")
+                        ]
+                    },
+                ) 
+                ids = []
+                for row in rows:
+                    ids.extend(row[3])
+                docs = await redis_services.get_docs_by_ids(ids)
+                total = len(ids)
+                for doc in docs:
+                    doc = doc[0]
+                    if (
+                        query.retrieve_json_payload
+                        and doc.get("payload_doc_id", None)
+                    ):
+                        doc["payload"]["body"] = await redis_services.get_payload_doc(
+                            doc["payload_doc_id"], doc["resource_type"]
+                        )
+                    record = core.Record(
+                        shortname=doc["shortname"],
+                        resource_type=doc["resource_type"],
+                        uuid=doc["uuid"],
+                        branch_name=doc["branch_name"],
+                        subpath=doc["subpath"],
+                        attributes={
+                            "payload": doc.get("payload")
+                        }
+                    )
+                    entry_path = (
+                        settings.spaces_folder
+                        / f"{query.space_name}/{branch_path(doc['branch_name'])}/{doc['subpath']}/.dm/{doc['shortname']}"
+                    )
+                    if query.retrieve_attachments and entry_path.is_dir():
+                        record.attachments = await get_entry_attachments(
+                            subpath=f"{doc['subpath']}/{doc['shortname']}",
+                            branch_name=doc["branch_name"],
+                            attachments_path=entry_path,
+                            filter_types=query.filter_types,
+                            include_fields=query.include_fields,
+                            retrieve_json_payload=query.retrieve_json_payload,
+                        )
+                    records.append(record)
+
         case api.QueryType.history:
             if not await access_control.check_access(
                 user_shortname=logged_in_user,
@@ -537,9 +545,11 @@ async def serve_query(
             path = f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl"
             if Path(path).is_file():
                 cmd = (
-                    f"(tail -n {query.limit + query.offset} {path} | head -n {query.limit}; echo "
+                    f"(tail -n {query.limit + query.offset} {path}; echo "
                     ") | tac"
                 )
+                if query.offset > 0:
+                    cmd += f" | sed '1,{query.offset}d'"
                 result = list(
                     filter(
                         None,
@@ -657,14 +667,20 @@ async def get_entry_attachments(
             resource_class = getattr(
                 sys.modules["models.core"], camel_case(attach_resource_name)
             )
+            resource_obj = None
             async with aiofiles.open(attachments_file, "r") as meta_file:
-                resource_obj = resource_class.parse_raw(await meta_file.read())
+                try: 
+                    resource_obj = resource_class.parse_raw(await meta_file.read())
+                except Exception as e:
+                    raise Exception(f"Bad attachment ... {attachments_file=}") from e
 
             resource_record_obj = resource_obj.to_record(
                 subpath, attach_shortname, include_fields, branch_name
             )
             if (
                 retrieve_json_payload
+                and resource_obj
+                and resource_record_obj
                 and resource_obj.payload
                 and resource_obj.payload.content_type
                 and resource_obj.payload.content_type == ContentType.json
@@ -694,6 +710,56 @@ async def get_entry_attachments(
             )
 
     return attachments_dict
+
+
+async def redis_query_aggregate(
+    query: api.Query, 
+    group_by: dict[str, list],
+    load: list = [],
+    redis_query_policies: list = [],
+) -> list:
+
+    created_at_search = ""
+    if query.from_date and query.to_date:
+        created_at_search = (
+            "[" + f"{query.from_date.timestamp()} {query.to_date.timestamp()}" + "]"
+        )
+
+    elif query.from_date:
+        created_at_search = (
+            "["
+            + f"{query.from_date.timestamp()} {datetime(2199, 12, 31).timestamp()}"
+            + "]"
+        )
+
+    elif query.to_date:
+        created_at_search = (
+            "["
+            + f"{datetime(2010, 1, 1).timestamp()} {query.to_date.timestamp()}"
+            + "]"
+        )
+
+    async with RedisServices() as redis_services:
+        return await redis_services.aggregate(
+            space_name=query.space_name,
+            branch_name=query.branch_name,
+            schema_name="meta",
+            search=str(query.search),
+            filters={
+                "resource_type": query.filter_types or [],
+                "shortname": query.filter_shortnames or [],
+                "subpath": [query.subpath],
+                "query_policies": redis_query_policies,
+                "created_at": created_at_search,
+            },
+            group_by=group_by,
+            load=load,
+            exact_subpath=query.exact_subpath,
+            sort_by=query.sort_by,
+            max=query.limit,
+            sort_type=query.sort_type or api.SortType.ascending
+        )
+
 
 
 async def redis_query_search(
@@ -753,7 +819,6 @@ async def redis_query_search(
                 highlight_fields=list(query.highlight_fields.keys()),
                 sort_by=query.sort_by,
                 sort_type=query.sort_type or api.SortType.ascending,
-                return_fields=query.include_fields if query.include_fields else [],
             )
 
             if redis_res:
@@ -761,6 +826,21 @@ async def redis_query_search(
                 total += redis_res["total"]
     return search_res, total
 
+def dir_has_file(dir_path: Path, filename: str) -> bool:
+    if not dir_path.is_dir(): 
+        return False
+
+    for item in os.scandir(dir_path):
+        if item.name == ".dm":
+            for dm_item in os.scandir(item):
+                if dm_item.name == filename:
+                    return True
+
+
+        if item.name == filename:
+            return True
+
+    return False
 
 async def get_resource_obj_or_none(
     *,
@@ -771,6 +851,7 @@ async def get_resource_obj_or_none(
     resource_type: str,
     user_shortname: str,
 ):
+
     resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
     try:
         return await db.load(
@@ -784,55 +865,28 @@ async def get_resource_obj_or_none(
     except Exception:
         return None
 
-
-async def update_payload_validation_status(
+def get_payload_obj_or_none(
+    *,
     space_name: str,
-    subpath: str,
     branch_name: str | None,
-    meta_obj: core.Meta,
-    meta_payload: dict,
-    validation_status: ValidationEnum,
+    subpath: str,
+    filename: str,
+    resource_type: str
 ):
-    # Type narrowing for PyRight
-    if not isinstance(meta_obj.payload, core.Payload) or not isinstance(
-        meta_obj.payload.body, str
-    ):
-        logger.warning(
-            f"Meta.payload is None at repository.update_payload_validation_status"
+    resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
+    try:
+        return db.load_resource_payload(
+            space_name=space_name,
+            subpath=subpath,
+            filename=filename,
+            class_type=resource_cls,
+            branch_name=branch_name,
         )
-        return
-
-    meta_path, meta_file = db.metapath(
-        space_name, subpath, meta_obj.shortname, type(meta_obj)
-    )
-    if (
-        not (meta_path / meta_file).is_file()
-        or meta_obj.payload.validation_status == validation_status
-    ):
-        return
-
-    meta_obj.payload.last_validated = datetime.now()
-    meta_obj.payload.validation_status = validation_status
-
-    await db.save(space_name, subpath, meta_obj, branch_name)
-
-    async with RedisServices() as redis_services:
-        _, meta_json = await redis_services.save_meta_doc(
-            space_name, branch_name, subpath, meta_obj
-        )
-
-        meta_payload.update(meta_json)
-        await redis_services.save_payload_doc(
-            space_name,
-            branch_name,
-            subpath,
-            meta_obj,
-            meta_payload,
-            meta_json["resource_type"],
-        )
+    except Exception:
+        return None
 
 
-async def get_group_users(group_name: str) -> list[RedisDocument]:
+async def get_group_users(group_name: str):
     async with RedisServices() as redis_services:
         users_docs = await redis_services.search(
             space_name=settings.management_space,
@@ -857,6 +911,7 @@ async def validate_subpath_data(
     user_shortname: str,
     invalid_folders: list,
     folders_report: dict[str, dict],
+    meta_folders_health: list,
 ):
     """
     Params:
@@ -891,15 +946,16 @@ async def validate_subpath_data(
                 user_shortname,
                 invalid_folders,
                 folders_report,
+                meta_folders_health
             )
             continue
 
         folder_meta = Path(f"{folder.path}/meta.folder.json")
         folder_name = "/".join(subpath.split("/")[folder_name_index:])
         if not folder_meta.is_file():
+            meta_folders_health.append(str(folder_meta)[len(str(settings.spaces_folder)):])
             continue
 
-        validation_status = ValidationEnum.valid
         folder_meta_content = None
         folder_meta_payload = None
         try:
@@ -935,23 +991,6 @@ async def validate_subpath_data(
                     )
         except:
             invalid_folders.append(folder_name)
-            validation_status = ValidationEnum.invalid
-        finally:
-            # Update payload validation status
-            if (
-                folder_meta_content
-                and folder_meta_content.payload
-                and folder_meta_content.payload.content_type == ContentType.json
-                and folder_meta_payload
-            ):
-                await update_payload_validation_status(
-                    space_name,
-                    folder_name,
-                    branch_name,
-                    folder_meta_content,
-                    folder_meta_payload,
-                    validation_status,
-                )
 
         if folder_name not in folders_report:
             folders_report[folder_name] = {}
@@ -973,10 +1012,17 @@ async def validate_subpath_data(
                     break
 
             if not entry_match:
+                issue = {
+                    "issues": ["meta"],
+                    "uuid": "",
+                    "shortname": entry.name,
+                    "exception": f"Can't access this meta {subpath[len(str(settings.spaces_folder)):]}/{entry.name}"
+                }
+
                 if "invalid_entries" not in folders_report[folder_name]:
-                    folders_report[folder_name]["invalid_entries"] = [entry.name]
+                    folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
-                    folders_report[folder_name]["invalid_entries"].append(entry.name)
+                    folders_report[folder_name]["invalid_entries"].append(issue)
                 continue
 
             entry_shortname = entry_match.group(1)
@@ -988,7 +1034,6 @@ async def validate_subpath_data(
                 folders_report[folder_name]["valid_entries"] += 1
                 continue
 
-            validation_status = ValidationEnum.valid
             entry_meta_obj = None
             payload_file_content = None
             try:
@@ -1004,8 +1049,10 @@ async def validate_subpath_data(
                     branch_name=branch_name,
                 )
                 if entry_meta_obj.shortname != entry_shortname:
-                    raise Exception()
-
+                    raise Exception(
+                        "the shortname which got from the folder path doesn't match the shortname in the meta file."
+                    )
+                payload_file_path = None
                 if (
                     entry_meta_obj.payload
                     and entry_meta_obj.payload.content_type == ContentType.image
@@ -1022,16 +1069,25 @@ async def validate_subpath_data(
                         or not os.access(payload_file_path, os.R_OK)
                         or not os.access(payload_file_path, os.W_OK)
                     ):
-                        raise Exception()
+                        if payload_file_path:
+                            raise Exception(
+                                f"can't access this payload {str(payload_file_path)[len(str(settings.spaces_folder)):]}"
+                            )
+                        else:
+                            raise Exception(
+                                f"can't access this payload {str(subpath)[len(str(settings.spaces_folder)):]}/{entry_meta_obj.shortname}"
+                            )
                 elif (
-                    entry_meta_obj.payload
+                    entry_meta_obj.payload and isinstance(entry_meta_obj.payload.body, str)
                     and entry_meta_obj.payload.content_type == ContentType.json
                 ):
                     payload_file_path = f"{subpath}/{entry_meta_obj.payload.body}"
                     if not entry_meta_obj.payload.body.endswith(
                         ".json"
                     ) or not os.access(payload_file_path, os.W_OK):
-                        raise Exception()
+                        raise Exception(
+                            f"can't access this payload {payload_file_path[len(str(settings.spaces_folder)):]}"
+                        )
                     payload_file_content = db.load_resource_payload(
                         space_name,
                         folder_name,
@@ -1061,36 +1117,34 @@ async def validate_subpath_data(
                             or not os.access(attachment_folder_file.path, os.W_OK)
                             or not os.access(attachment_folder_file.path, os.R_OK)
                         ):
-                            raise Exception()
+                            raise Exception(
+                                f"can't access this attachment {attachment_folder_file.path[len(str(settings.spaces_folder)):]}"
+                            )
 
                 if "valid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["valid_entries"] = 1
                 else:
                     folders_report[folder_name]["valid_entries"] += 1
-            except:
-                if "invalid_entries" not in folders_report[folder_name]:
-                    folders_report[folder_name]["invalid_entries"] = [entry_shortname]
+            except Exception as e:
+                issue_type = "payload"
+                uuid = ""
+                if not entry_meta_obj:
+                    issue_type = "meta"
                 else:
-                    folders_report[folder_name]["invalid_entries"].append(
-                        entry_shortname
-                    )
-                validation_status = ValidationEnum.invalid
-            finally:
-                # Update payload validation status
-                if (
-                    entry_meta_obj
-                    and entry_meta_obj.payload
-                    and entry_meta_obj.payload.content_type == ContentType.json
-                    and payload_file_content
-                ):
-                    await update_payload_validation_status(
-                        space_name,
-                        folder_name,
-                        branch_name,
-                        entry_meta_obj,
-                        payload_file_content,
-                        validation_status,
-                    )
+                    uuid = str(entry_meta_obj.uuid) if entry_meta_obj.uuid else ""
+
+                issue = {
+                    "issues": [issue_type],
+                    "uuid": uuid,
+                    "shortname": entry_shortname,
+                    "resource_type": entry_resource_type,
+                    "exception": str(e)
+                }
+
+                if "invalid_entries" not in folders_report[folder_name]:
+                    folders_report[folder_name]["invalid_entries"] = [issue]
+                else:
+                    folders_report[folder_name]["invalid_entries"].append(issue)
 
         if not folders_report.get(folder_name, {}):
             del folders_report[folder_name]
@@ -1183,3 +1237,242 @@ async def _save_model(
             subpath,
             meta,
         )
+
+
+async def generate_payload_string(
+    space_name: str, 
+    subpath: str,
+    shortname: str,
+    payload: dict,
+    branch_name: str | None = None,
+):
+    payload_string = ""
+    # Remove system related attributes from payload
+    for attr in RedisServices.SYS_ATTRIBUTES:
+        if attr in payload:
+            del payload[attr]
+
+    # Generate direct payload string
+    payload_values = set(flatten_all(payload).values())
+    payload_string += ",".join([str(i) for i in payload_values if i != None])
+
+    # Generate attachments payload string
+    attachments: dict[str, list] = await get_entry_attachments(
+        subpath=f"{subpath}/{shortname}",
+        branch_name=branch_name,
+        attachments_path=(
+            settings.spaces_folder
+            / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
+        ),
+        retrieve_json_payload=True,
+        include_fields=["shortname", "displayname", "description", "payload", "tags", "owner_shortname", "owner_group_shortname", "body", "state"]
+    )
+    if not attachments:
+        return payload_string.strip(",")
+
+    # Convert Record objects to dict
+    dict_attachments = {}
+    for k, v in attachments.items():
+        dict_attachments[k] = [i.dict() for i in v]
+
+    attachments_values = set(flatten_all(dict_attachments).values())
+    attachments_payload_string = ",".join([str(i) for i in attachments_values if i != None])
+    payload_string += attachments_payload_string
+    return payload_string.strip(",")
+
+
+    
+async def get_record_from_redis_doc(
+    space_name: str,
+    doc: dict,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
+    validate_schema: bool = False,
+    filter_types: list | None = None,
+    branch_name: str = Field(default=settings.default_branch, regex=regex.SHORTNAME),
+) -> core.Record:
+    meta_doc_content = {}
+    payload_doc_content = {}
+    resource_class = getattr(
+        sys.modules["models.core"],
+        camel_case(doc["resource_type"]),
+    )
+    
+    for key, value in doc.items():
+        if key in resource_class.__fields__.keys():
+            meta_doc_content[key] = value
+        elif key not in RedisServices.SYS_ATTRIBUTES:
+            payload_doc_content[key] = value
+
+    async with RedisServices() as redis_services:
+        # Get payload doc
+        if (
+            not payload_doc_content
+            and retrieve_json_payload
+            and "payload_doc_id" in doc
+        ):
+            payload_doc_content = await redis_services.get_payload_doc(
+                doc["payload_doc_id"], doc["resource_type"]
+            )
+
+        # Get lock data
+        locked_data = await redis_services.get_lock_doc(
+            space_name,
+            branch_name,
+            doc["subpath"],
+            doc["shortname"],
+        )
+
+    meta_doc_content["created_at"] = datetime.fromtimestamp(
+        meta_doc_content["created_at"]
+    )
+    meta_doc_content["updated_at"] = datetime.fromtimestamp(
+        meta_doc_content["updated_at"]
+    )
+    resource_obj = resource_class.parse_obj(meta_doc_content)
+    resource_base_record = resource_obj.to_record(
+        doc["subpath"],
+        meta_doc_content["shortname"],
+        [],
+        doc["branch_name"],
+    )
+    
+    if locked_data:
+        resource_base_record.attributes["locked"] = locked_data
+
+    # Get attachments
+    entry_path = (
+        settings.spaces_folder
+        / f"{space_name}/{branch_path(doc['branch_name'])}/{doc['subpath']}/.dm/{meta_doc_content['shortname']}"
+    )
+    if retrieve_attachments and entry_path.is_dir():
+        resource_base_record.attachments = await get_entry_attachments(
+            subpath=f"{doc['subpath']}/{meta_doc_content['shortname']}",
+            branch_name=doc["branch_name"],
+            attachments_path=entry_path,
+            filter_types=filter_types,
+            retrieve_json_payload=retrieve_json_payload,
+        )
+
+    if (
+        retrieve_json_payload
+        and resource_base_record.attributes["payload"]
+        and resource_base_record.attributes["payload"].content_type
+        == ContentType.json
+    ):
+        resource_base_record.attributes[
+            "payload"
+        ].body = payload_doc_content
+
+    # Validate payload
+    if (
+        retrieve_json_payload
+        and resource_obj.payload
+        and resource_obj.payload.schema_shortname
+        and payload_doc_content is not None
+        and validate_schema
+    ):
+        await validate_payload_with_schema(
+            payload_data=payload_doc_content,
+            space_name=space_name,
+            branch_name=branch_name,
+            schema_shortname=resource_obj.payload.schema_shortname,
+        )
+
+    return resource_base_record
+
+
+async def get_entry_by_var(
+    key: str,
+    val: str,
+    logged_in_user,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
+):
+    spaces = await get_spaces()
+    entry_doc = None
+    entry_space = None
+    entry_branch = None
+    async with RedisServices() as redis_services:
+        for space_name, space in spaces.items():
+            space = json.loads(space)
+            for branch in space["branches"]:
+                search_res = await redis_services.search(
+                    space_name=space_name,
+                    branch_name=branch,
+                    search=f"@{key}:{val}*",
+                    limit=1,
+                    offset=0,
+                    filters={}
+                )
+                if search_res["total"] > 0:
+                    entry_doc = json.loads(search_res["data"][0].json)
+                    entry_branch = branch
+                    break
+            if entry_doc:
+                entry_space = space_name
+                break
+    
+    if not entry_doc or not entry_space or not entry_branch:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="media", code=221, message="Requested object not found"
+            ),
+        )
+
+    if not await access_control.check_access(
+        user_shortname=logged_in_user,
+        space_name=entry_space,
+        subpath=entry_doc["subpath"],
+        resource_type=entry_doc["resource_type"],
+        action_type=core.ActionType.view,
+        resource_is_active=entry_doc["is_active"],
+        resource_owner_shortname=entry_doc.get("owner_shortname"),
+        resource_owner_group=entry_doc.get("owner_group_shortname"),
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=401,
+                message="You don't have permission to this action [12]",
+            ),
+        )
+
+    
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=entry_space,
+            branch_name=entry_branch,
+            subpath=entry_doc["subpath"],
+            shortname=entry_doc["shortname"],
+            action_type=core.ActionType.view,
+            resource_type=entry_doc["resource_type"],
+            user_shortname=logged_in_user,
+        )
+    )
+
+
+    resource_base_record = await get_record_from_redis_doc(
+        space_name=entry_space,
+        branch_name=entry_branch,
+        doc=entry_doc,
+        retrieve_json_payload=retrieve_json_payload,
+        retrieve_attachments=retrieve_attachments,
+        validate_schema=True,
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=entry_space,
+            branch_name=entry_branch,
+            subpath=entry_doc["subpath"],
+            shortname=entry_doc["shortname"],
+            action_type=core.ActionType.view,
+            resource_type=entry_doc["resource_type"],
+            user_shortname=logged_in_user,
+        )
+    )
+
+    return resource_base_record

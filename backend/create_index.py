@@ -1,6 +1,7 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 
 import argparse
+from copy import copy
 import json
 import re
 import traceback
@@ -14,6 +15,7 @@ from utils.helpers import branch_path, camel_case, divide_chunks
 from utils.custom_validations import validate_payload_with_schema
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from utils.redis_services import RedisServices
+from utils.repository import generate_payload_string
 from utils.settings import settings
 import utils.regex as regex
 import asyncio
@@ -94,6 +96,7 @@ async def generate_redis_docs(locators: list) -> list:
     for one in locators:
         try:
             myclass = getattr(sys.modules["models.core"], camel_case(one.type))
+            # print(f"{one=}")
 
             meta = await db.load(
                 space_name=one.space_name,
@@ -106,13 +109,13 @@ async def generate_redis_docs(locators: list) -> list:
             meta_doc_id, meta_data = redis_man.prepate_meta_doc(
                 one.space_name, one.branch_name, one.subpath, meta
             )
-            redis_docs.append({"doc_id": meta_doc_id, "payload": meta_data})
+            payload_data = {}
             if (
                 meta.payload
+                and type(meta.payload.body) == str
                 and meta.payload.content_type == ContentType.json
                 and meta.payload.schema_shortname
             ):
-                payload_data = {}
                 try:
                     payload_path = db.payload_path(
                         one.space_name, one.subpath, myclass, one.branch_name
@@ -129,7 +132,7 @@ async def generate_redis_docs(locators: list) -> list:
                         branch_name=one.branch_name,
                         subpath=one.subpath,
                         resource_type=one.type,
-                        payload=payload_data,
+                        payload=copy(payload_data),
                         meta=meta,
                     )
                     payload.update(meta_data)
@@ -141,8 +144,18 @@ async def generate_redis_docs(locators: list) -> list:
                 except Exception as ex:
                     print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
 
+            meta_data["payload_string"] = await generate_payload_string(
+                space_name=one.space_name, 
+                subpath=one.subpath, 
+                shortname=one.shortname, 
+                branch_name=one.branch_name, 
+                payload=payload_data,
+            )
+            
+            redis_docs.append({"doc_id": meta_doc_id, "payload": meta_data})
+
         except:
-            print(f"path: {one.space_name}/{one.subpath}/{one.shortname}")
+            print(f"path: {one.space_name}/{one.subpath}/{one.shortname} ({one.type})")
             print("stacktrace:")
             print(f"    {traceback.format_exc()}")
             pass
@@ -183,12 +196,18 @@ async def traverse_subpaths_entries(
     else:
         subpath_index = space_parts_count + 3
 
+
+    # print(f"{subpath_index=} @{space_name} {path=}")
+
     for subpath in path.iterdir():
+        # print(f"{subpath=} 1")
         if (
             branch_name == settings.default_branch
             and subpath.parts[space_parts_count + 1] == "branches"
         ):
             continue
+
+        # print(f"{subpath=} 2 {subpath.is_dir()} {re.match(regex.SUBPATH, subpath.name)}")
 
         if subpath.is_dir() and re.match(regex.SUBPATH, subpath.name):
             await traverse_subpaths_entries(
@@ -200,10 +219,12 @@ async def traverse_subpaths_entries(
                 for_subpaths,
             )
 
+            # print(f"{subpath=} 3")
             subpath_name = "/".join(subpath.parts[subpath_index:])
             if for_subpaths and subpath_name not in for_subpaths:
                 continue
 
+            # print(f"{subpath=} 4")
             loaded_data.append(
                 await load_data_to_redis(
                     space_name,
@@ -214,6 +235,7 @@ async def traverse_subpaths_entries(
                         ResourceType.ticket,
                         ResourceType.schema,
                         ResourceType.notification,
+                        ResourceType.post,
                         ResourceType.folder
                     ],
                 )
@@ -274,7 +296,7 @@ async def main(
 
         print(f"Creating Redis indices: {for_space=} {for_schemas=}")
         await access_control.load_permissions_and_roles()
-        await redis_man.create_indices_for_all_spaces_meta_and_schemas(
+        await redis_man.create_indices(
             for_space, for_schemas
         )
     res = await load_all_spaces_data_to_redis(for_space, for_subpaths)
