@@ -22,6 +22,7 @@ import models.api as api
 import models.core as core
 from models.enums import (
     ContentType,
+    Language,
     RequestType,
     ResourceType,
     LockAction,
@@ -53,6 +54,7 @@ from api.user.service import (
 )
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
+from languages.loader import languages
 
 
 router = APIRouter()
@@ -633,7 +635,9 @@ async def serve_request(
                                 link = (
                                     f"{settings.public_app_url}/managed/s/{token_uuid}"
                                 )
-                                invitation_message = f"Confirm your account via this link: {link}, This link can be used once and within the next 48 hours."
+                                invitation_message = languages[
+                                    record.attributes.get("language", Language.ar)
+                                ]
                                 channel += f"SMS:{record.attributes.get('msisdn')},"
                                 try:
                                     await send_sms(
@@ -2136,6 +2140,7 @@ async def execute(
     if "limit" in record.attributes:
         query_dict["limit"] = record.attributes["limit"]
 
+    # pp(query_dict=query_dict)
     return await query_entries(
         query=api.Query(**query_dict), user_shortname=logged_in_user
     )
