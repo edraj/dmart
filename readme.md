@@ -76,7 +76,7 @@ Valuable information (organizational and individual) is getting out of control!
 
 DMART is a "Data-first" platform to management your valuable data/information; allowing you to transform your perciption of data from liability into assets.
 
-<img src=".//tree.png" width="500">
+<img src="./docs/tree.png" width="500">
 
 ## API layer (REST-like, JSON-API)
 
