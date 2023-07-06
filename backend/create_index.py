@@ -221,8 +221,12 @@ async def traverse_subpaths_entries(
 
             # print(f"{subpath=} 3")
             subpath_name = "/".join(subpath.parts[subpath_index:])
-            if for_subpaths and subpath_name not in for_subpaths:
-                continue
+            if for_subpaths:
+                subpath_enabled = any(
+                    [subpath_name.startswith(subpath) for subpath in for_subpaths]
+                )
+                if not subpath_enabled:
+                    continue
 
             # print(f"{subpath=} 4")
             loaded_data.append(
