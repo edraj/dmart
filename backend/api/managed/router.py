@@ -2141,7 +2141,6 @@ async def execute(
     if "limit" in record.attributes:
         query_dict["limit"] = record.attributes["limit"]
 
-    # pp(query_dict=query_dict)
     return await query_entries(
         query=api.Query(**query_dict), user_shortname=logged_in_user
     )
