@@ -55,7 +55,7 @@ class Plugin(PluginBase):
                     ("cn", data.shortname.encode()),
                     ("sn", data.shortname.encode()),
                     ("gn", str(getattr(user_model, "displayname", "")).encode()),
-                    ("userPassword", user_model.password.encode())
+                    ("userPassword", getattr(user_model, "password", "").encode())
                 ]
             )
             
@@ -63,10 +63,19 @@ class Plugin(PluginBase):
             self.con.modify_s(
                 dn=f"cn={data.shortname},{settings.ldap_root_dn}",
                 modlist=[
-                    (ldap.MOD_REPLACE, "cn", data.shortname.encode()),
-                    (ldap.MOD_REPLACE, "sn", data.shortname.encode()),
-                    (ldap.MOD_REPLACE, "gn", str(getattr(user_model, "displayname", "")).encode()),
-                    (ldap.MOD_REPLACE, "userPassword", user_model.password.encode())
+                    # pyright doesn't identify ldap.MOD_REPLACE
+                    (ldap.MOD_REPLACE, "cn", data.shortname.encode()), #type: ignore
+                    (ldap.MOD_REPLACE, "sn", data.shortname.encode()), #type: ignore
+                    (
+                        ldap.MOD_REPLACE, #type: ignore
+                        "gn", 
+                        str(getattr(user_model, "displayname", "")).encode()
+                    ),
+                    (
+                        ldap.MOD_REPLACE, #type: ignore
+                        "userPassword", 
+                        getattr(user_model, "password", "").encode()
+                    ) 
                 ]
 
             )
