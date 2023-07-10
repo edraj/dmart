@@ -84,7 +84,7 @@ DMART is a "Data-first" platform to management your valuable data/information; a
   - **Discovery**   : Users, paths, scripts, changes/history, schema and content
   - **Consumption** : Content/attachments, scripts and submissions  
 
-Full OpenApi 3 compliant documentation can be found [here](https://dmart.cc/docs)
+Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/docs)
 
 ## Architecture and technology stack
 
