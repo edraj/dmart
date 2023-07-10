@@ -585,7 +585,7 @@ async def serve_query(
                     if not await access_control.check_access(
                         user_shortname=logged_in_user,
                         space_name=query.space_name,
-                        subpath=query.subpath,
+                        subpath=action_obj.get("resource", {}).get("subpath", "/"),
                         resource_type=action_obj["resource"]["type"],
                         action_type=core.ActionType(action_obj["request"]),
                     ):
