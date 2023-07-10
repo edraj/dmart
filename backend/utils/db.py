@@ -354,7 +354,7 @@ async def save_payload_from_json(
             error=api.Error(type="create", code=30, message="metadata is missing"),
         )
 
-    async with aiofiles.open(payload_file_path / payload_filename, "w+") as file:
+    async with aiofiles.open(payload_file_path / payload_filename, "w") as file:
         await file.write(json.dumps(payload_data))
 
 
