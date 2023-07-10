@@ -221,7 +221,6 @@ async def traverse_subpaths_entries(
 
             # print(f"{subpath=} 3")
             subpath_name = "/".join(subpath.parts[subpath_index:])
-            
             if for_subpaths:
                 subpath_enabled = any(
                     [subpath_name.startswith(subpath) for subpath in for_subpaths]
