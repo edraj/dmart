@@ -3,4 +3,3 @@ typer
 prompt_toolkit
 pydantic
 pydantic[email,dotenv]
-python-ldap
