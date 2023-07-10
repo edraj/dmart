@@ -1,7 +1,7 @@
 python-json-logger
 json_logging
 fastapi
-pydantic
+pydantic<2.0.0
 pydantic[email,dotenv]
 concurrent-log-handler
 hypercorn
