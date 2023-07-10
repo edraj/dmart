@@ -1,0 +1,11 @@
+{
+	"is_active": true,
+	"filters": {
+		"subpaths": ["users"],
+		"resource_types": ["user"],
+		"schema_shortnames": ["__ALL__"],
+		"actions": ["create", "update", "delete", "move"]
+	},
+	"type": "hook",
+	"listen_time": "after"
+}

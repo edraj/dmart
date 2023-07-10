@@ -545,9 +545,11 @@ async def serve_query(
             path = f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl"
             if Path(path).is_file():
                 cmd = (
-                    f"(tail -n {query.limit + query.offset} {path} | head -n {query.limit}; echo "
+                    f"(tail -n {query.limit + query.offset} {path}; echo "
                     ") | tac"
                 )
+                if query.offset > 0:
+                    cmd += f" | sed '1,{query.offset}d'"
                 result = list(
                     filter(
                         None,
@@ -583,7 +585,7 @@ async def serve_query(
                     if not await access_control.check_access(
                         user_shortname=logged_in_user,
                         space_name=query.space_name,
-                        subpath=query.subpath,
+                        subpath=action_obj.get("resource", {}).get("subpath", "/"),
                         resource_type=action_obj["resource"]["type"],
                         action_type=core.ActionType(action_obj["request"]),
                     ):
