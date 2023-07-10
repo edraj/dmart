@@ -46,6 +46,13 @@ SECURED_FIELDS = [
 ]
 OUTPUT_FOLDER_NAME = "spaces_data"
 
+def meta_path(
+    space_path: Path, 
+    subpath: str, 
+    file_path: str, 
+    resource_type: str
+) -> Path:
+    return space_path / f"{subpath}/.dm/{file_path}/meta.{resource_type}.json"    
 
 async def get_meta(
     *, 
@@ -54,7 +61,7 @@ async def get_meta(
     file_path: str, 
     resource_type: str
 ):
-    meta_content = space_path / f"{subpath}/.dm/{file_path}/meta.{resource_type}.json"
+    meta_content = meta_path(space_path, subpath, file_path, resource_type)
     async with aopen(meta_content, "r") as f:
         return json.loads(await f.read())
 
@@ -133,7 +140,12 @@ def prepare_output(
 
                 
 
-async def extract(config_obj, spaces_path, output_path):
+async def extract(
+    config_obj, 
+    spaces_path, 
+    output_path, 
+    entries_since = None
+):
     space = config_obj.get("space")
     subpath = config_obj.get("subpath")
     resource_type = config_obj.get("resource_type")
@@ -171,6 +183,19 @@ async def extract(config_obj, spaces_path, output_path):
     for file_name in os.listdir(path):
         if not file_name.endswith(".json"):
             continue
+        if entries_since:
+            payload_ts = int(round(
+                os.path.getmtime(os.path.join(path, file_name)) * 1000
+            ))
+            meta_ts = int(round(os.path.getmtime(meta_path(
+                space_path, 
+                subpath, 
+                file_name.split(".")[0], 
+                resource_type
+            )) * 1000))
+            if payload_ts <= entries_since and meta_ts <= entries_since:
+                continue
+            
         async with aopen(os.path.join(path, file_name), "r") as f:
             content = await f.read()
         try:
@@ -212,12 +237,20 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--output",
-        help="Output relative path from the script (the default path is the current script path)",
+        help="Output relative path from the script (the default path is the current script path",
+    )
+    parser.add_argument(
+        "--since",
+        help="Export entries created/updated since the provided timestamp",
     )
     args = parser.parse_args()
+    since = None
     output_path = ""
     if args.output:
         output_path = args.output
+        
+    if args.since:
+        since = int(round(float(args.since) * 1000))
 
     if not os.path.isdir(args.spaces):
         exit_with_error(f"The spaces folder {args.spaces} is not found.")
@@ -240,7 +273,7 @@ if __name__ == "__main__":
     for config_obj in config_objs:
         if not validate_config(config_obj):
             continue
-        tasks.append(extract(config_obj, args.spaces, output_path))
+        tasks.append(extract(config_obj, args.spaces, output_path, since))
 
     asyncio.run(main(tasks))
 
