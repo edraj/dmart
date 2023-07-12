@@ -909,7 +909,7 @@ class RedisServices(object):
 
         try:
             # print(f"ARGS {search_query.get_args()} O {search_query.query_string()}")
-            search_res = ft_index.search(query=search_query)
+            search_res = await ft_index.search(query=search_query) #type: ignore
             return {"data": search_res.docs, "total": search_res.total}
         except:
             return {}
@@ -958,7 +958,7 @@ class RedisServices(object):
 
 
         try:
-            aggr_res = ft_index.aggregate(aggr_request)
+            aggr_res = await ft_index.aggregate(aggr_request) #type: ignore
             return aggr_res.rows
         except:
             return []
@@ -1111,4 +1111,4 @@ class RedisServices(object):
             return False
 
     async def list_indices(self):
-        return [] # await self.client.ft().execute_command("FT._LIST")
+        return await self.client.ft().execute_command("FT._LIST") #type: ignore
