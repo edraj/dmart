@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import  ValidationError
+from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
@@ -404,6 +405,8 @@ async def catchall():
         ),
     )
 if __name__ == "__main__":
+    load_langs()
+    
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
     config.backlog = 200
