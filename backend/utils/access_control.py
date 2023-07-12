@@ -82,7 +82,7 @@ class AccessControl:
         async with RedisServices() as redis_services:
             for module_name in modules:
                 class_var = getattr(self, module_name)
-                for name, object in class_var.items():
+                for _, object in class_var.items():
                     await redis_services.save_meta_doc(
                         space_name=settings.management_space,
                         branch_name=settings.management_space_branch,
@@ -93,7 +93,7 @@ class AccessControl:
     async def delete_user_permissions_map_in_redis(self):
         async with RedisServices() as redis_services:
             search_query = Query("*").no_content()
-            docs = await redis_services.client.ft("user_permission").search(search_query)
+            docs = redis_services.client.ft("user_permission").search(search_query)
             keys = [doc.id for doc in docs.docs]
             if len(keys) > 0:
                 await redis_services.del_keys(keys)
@@ -302,7 +302,7 @@ class AccessControl:
         user_permissions = {}
 
         user_roles = await self.get_user_roles(user_shortname)
-        for name, role in user_roles.items():
+        for _, role in user_roles.items():
             role_permissions = await self.get_role_permissions(role)
 
             for permission in role_permissions:
