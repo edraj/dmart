@@ -172,8 +172,14 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--space", help="Space name")
     parser.add_argument("-c", "--schema", help="Schema name")
     parser.add_argument("-f", "--field", help="Field name to change")
-    parser.add_argument("--old-type", help="Field's old type")
-    parser.add_argument("--new-type", help="Field's new type")
+    parser.add_argument(
+        "--old-type", 
+        help="Field's old type, supported types: string, number, integer, array"
+    )
+    parser.add_argument(
+        "--new-type", 
+        help="Field's new type, supported types: string, number, integer, array"
+    )
 
     args = parser.parse_args()
 
