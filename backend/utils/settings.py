@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     files_query: str = "scandir"
     mock_smpp_api: bool = False
     invitation_link: str = ""
+    ldap_url: str = "ldap://"
+    ldap_admin_dn: str = ""
+    ldap_root_dn: str = ""
+    ldap_pass: str = ""
 
     class Config:
         """Load config"""
