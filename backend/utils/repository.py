@@ -1156,7 +1156,8 @@ async def _sys_update_model(
     meta: core.Meta,
     branch_name: str | None,
     updates: dict,
-    sync_redis: bool = True
+    sync_redis: bool = True,
+    payload_dict: dict = {}
 ) -> bool:
     """
     Update @meta entry and its payload by @updates dict of attributes in the
@@ -1166,15 +1167,15 @@ async def _sys_update_model(
     meta.updated_at = datetime.now()
     meta_updated = False
     payload_updated = False
-    payload_dict = {}
-
-    try:
-        body = str(meta.payload.body) if meta and meta.payload else ""
-        payload_dict = db.load_resource_payload(
-            space_name, subpath, body, core.Content, branch_name
-        )
-    except:
-        pass
+    
+    if not payload_dict:
+        try:
+            body = str(meta.payload.body) if meta and meta.payload else ""
+            payload_dict = db.load_resource_payload(
+                space_name, subpath, body, core.Content, branch_name
+            )
+        except:
+            pass
 
     restricted_fields = [
         "uuid",
