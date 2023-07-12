@@ -70,7 +70,11 @@ async def change_field_type(
             )
             
             # 5-if resource.schema_shortname == schema:
-            if resource_obj.payload.schema_shortname != schema_model.shortname:
+            if(
+                not resource_obj.payload or
+                type(resource_obj.payload.body) != str or
+                resource_obj.payload.schema_shortname != schema_model.shortname
+            ):
                 continue
             
             # 5.1-load payload file
@@ -130,8 +134,9 @@ async def main(
         class_type=Schema
     )
     if(
+        not schema_model.payload or
         schema_model.payload.content_type != ContentType.json or
-        not schema_model.payload.body
+        type(schema_model.payload.body) != str
     ):
         print(f"Invalid schema file: \n{schema_model.json()}")
         return
