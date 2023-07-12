@@ -1,20 +1,25 @@
 from fastapi.logger import logger
 from models.core import Event, PluginBase, User
-import ldap
 from models.enums import ActionType
-from utils.helpers import pp
 from utils.settings import settings
 from utils.db import load
+
+from ldap3 import MODIFY_REPLACE, Server, Connection, ALL, NTLM
 
 
 class Plugin(PluginBase):
 
     def __init__(self) -> None:
         super().__init__()
-        self.con = None
+        self.conn = None
         try:
-            self.con = ldap.initialize(settings.ldap_url)
-            self.con.simple_bind_s(settings.ldap_admin_dn, settings.ldap_pass)
+            server = Server(settings.ldap_url, get_info=ALL)
+            self.conn = Connection(
+                server, 
+                user=settings.ldap_admin_dn, 
+                password=settings.ldap_pass, 
+                auto_bind=True
+            )
         except Exception:
             logger.error(
                 "Failed to connect to LDAP"
@@ -23,7 +28,7 @@ class Plugin(PluginBase):
         
 
     async def hook(self, data: Event):
-        if not self.con:
+        if not self.conn:
             return
         
         # Type narrowing for PyRight
@@ -34,9 +39,7 @@ class Plugin(PluginBase):
             return
         
         if data.action_type == ActionType.delete:
-            self.con.delete_s(
-                dn=f"cn={data.shortname},{settings.ldap_root_dn}"
-            )
+            self.delete(data.shortname)
             return
         
         user_model: User = await load(
@@ -48,34 +51,52 @@ class Plugin(PluginBase):
         )
         
         if data.action_type == ActionType.create:
-            self.con.add_s(
-                dn=f"cn={data.shortname},{settings.ldap_root_dn}",
-                modlist=[
-                    ("objectClass", [b"dmartUser"]),
-                    ("cn", data.shortname.encode()),
-                    ("sn", data.shortname.encode()),
-                    ("gn", str(getattr(user_model, "displayname", "")).encode()),
-                    ("userPassword", getattr(user_model, "password", "").encode())
-                ]
-            )
+            self.add(data.shortname, user_model)
             
-        elif data.action_type in [ActionType.update, ActionType.move]:
-            self.con.modify_s(
-                dn=f"cn={data.shortname},{settings.ldap_root_dn}",
-                modlist=[
-                    # pyright doesn't identify ldap.MOD_REPLACE
-                    (ldap.MOD_REPLACE, "cn", data.shortname.encode()), #type: ignore
-                    (ldap.MOD_REPLACE, "sn", data.shortname.encode()), #type: ignore
-                    (
-                        ldap.MOD_REPLACE, #type: ignore
-                        "gn", 
-                        str(getattr(user_model, "displayname", "")).encode()
-                    ),
-                    (
-                        ldap.MOD_REPLACE, #type: ignore
-                        "userPassword", 
-                        getattr(user_model, "password", "").encode()
-                    ) 
-                ]
+        elif data.action_type == ActionType.update:
+            self.modify(data.shortname, user_model)
+            
 
-            )
+        elif data.action_type == ActionType.move and "src_shortname" in data.attributes:
+            self.delete(data.attributes['src_shortname'])
+            self.add(data.shortname, user_model)
+            
+            
+            
+    def delete(self, shortname: str):
+        self.conn.delete(f"cn={shortname},{settings.ldap_root_dn}")
+        
+    def add(
+        self, 
+        shortname: str, 
+        user_model: User
+    ):
+        self.conn.add(
+            f"cn={shortname},{settings.ldap_root_dn}", 
+            'dmartUser',
+            {
+                "cn": shortname.encode(),
+                "sn": shortname.encode(),
+                "gn": str(getattr(user_model, "displayname", "")).encode(),
+                "userPassword": getattr(user_model, "password", "").encode()
+            }
+        )
+        
+    def modify(
+        self, 
+        shortname: str, 
+        user_model: User
+    ):
+        self.conn.modify(
+            f"cn={shortname},{settings.ldap_root_dn}", 
+            {
+                "gn": [(
+                    MODIFY_REPLACE, 
+                    [str(getattr(user_model, "displayname", "")).encode()]
+                )],
+                "userPassword": [(
+                    MODIFY_REPLACE,
+                    [getattr(user_model, "password", "").encode()]
+                )],
+            }
+        )
