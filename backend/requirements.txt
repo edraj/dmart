@@ -17,4 +17,4 @@ bcrypt
 jq
 segno
 jinja2
-python-ldap
+ldap3
