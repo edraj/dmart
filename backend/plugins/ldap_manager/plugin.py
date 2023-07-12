@@ -4,21 +4,20 @@ from models.enums import ActionType
 from utils.settings import settings
 from utils.db import load
 
-from ldap3 import MODIFY_REPLACE, Server, Connection, ALL, NTLM
+from ldap3 import AUTO_BIND_NO_TLS, MODIFY_REPLACE, Server, Connection, ALL
 
 
 class Plugin(PluginBase):
 
     def __init__(self) -> None:
         super().__init__()
-        self.conn = None
         try:
             server = Server(settings.ldap_url, get_info=ALL)
             self.conn = Connection(
                 server, 
                 user=settings.ldap_admin_dn, 
                 password=settings.ldap_pass, 
-                auto_bind=True
+                auto_bind=AUTO_BIND_NO_TLS
             )
         except Exception:
             logger.error(
@@ -28,7 +27,7 @@ class Plugin(PluginBase):
         
 
     async def hook(self, data: Event):
-        if not self.conn:
+        if not hasattr(self, "conn"):
             return
         
         # Type narrowing for PyRight
