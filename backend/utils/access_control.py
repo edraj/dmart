@@ -93,7 +93,9 @@ class AccessControl:
     async def delete_user_permissions_map_in_redis(self):
         async with RedisServices() as redis_services:
             search_query = Query("*").no_content()
-            docs = redis_services.client.ft("user_permission").search(search_query)
+            docs = await redis_services.client.\
+                ft("user_permission").\
+                search(search_query) # type: ignore
             keys = [doc.id for doc in docs.docs]
             if len(keys) > 0:
                 await redis_services.del_keys(keys)
