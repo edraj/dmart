@@ -117,6 +117,8 @@ class ActionType(StrEnum):
     attach = "attach"
     move = "move"
     progress_ticket = "progress_ticket"
+    lock = "lock"
+    unlock = "unlock"
 
 
 class ConditionType(StrEnum):
