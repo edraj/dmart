@@ -95,7 +95,11 @@ class Record(BaseModel):
         return json.loads(self.json())
 
     def __eq__(self, other):
-        return isinstance(other, Record) and self.shortname == other.shortname
+        return (
+            isinstance(other, Record) and 
+            self.shortname == other.shortname and
+            self.subpath == other.subpath
+        )
 
 
 class Translation(Resource):
