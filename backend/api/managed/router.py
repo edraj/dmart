@@ -1978,6 +1978,17 @@ async def lock_entry(
                 type="db", code=12, message="requested object is not found"
             ),
         )
+        
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.lock,
+            user_shortname=logged_in_user,
+        )
+    )
 
     if resource_type == ResourceType.ticket:
         cls = getattr(sys.modules["models.core"], camel_case(resource_type))
@@ -2032,6 +2043,18 @@ async def lock_entry(
         ["lock_type"],
         core.Content,
     )
+    
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.lock,
+            user_shortname=logged_in_user,
+        )
+    )
+    
     return api.Response(
         status=api.Status.success,
         attributes={
@@ -2063,6 +2086,17 @@ async def cancel_lock(
                 message="Lock does not exist or you have no access",
             ),
         )
+        
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.unlock,
+            user_shortname=logged_in_user,
+        )
+    )
 
     async with RedisServices() as redis_services:
         await redis_services.delete_lock_doc(
@@ -2080,6 +2114,18 @@ async def cancel_lock(
         ["lock_type"],
         core.Content,
     )
+    
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.unlock,
+            user_shortname=logged_in_user,
+        )
+    )
+    
     return api.Response(
         status=api.Status.success,
         attributes={"message": "Entry unlocked successfully"},
