@@ -404,8 +404,10 @@ async def catchall():
             type="catchall", code=230, message="Requested method or path is invalid"
         ),
     )
+    
+load_langs()
+
 if __name__ == "__main__":
-    load_langs()
     
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
