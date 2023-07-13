@@ -43,7 +43,11 @@ class Plugin(PluginBase):
                 {
                     "channels": channels,
                     "message": {
-                        "title": "updated"
+                        "title": "updated",
+                        "space": data.space_name,
+                        "subpath": data.subpath,
+                        "shortname": data.shortname,
+                        "action_type": data.action_type
                     }
                 }
             ),
