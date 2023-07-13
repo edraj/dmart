@@ -91,7 +91,7 @@ async def generate_csv_from_report_saved_query(
             continue
         _data = {}
         _data["shortname"] = r.shortname
-        _data = {**_data, **payloads.dict()["body"]}
+        _data = {**_data, **payloads.get("body", {})}
         _data["is_active"] = r.attributes["is_active"]
         data = json_flater(_data)
         json_data.append(data)
@@ -148,9 +148,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     )
 
     redis_query_policies = await access_control.get_user_query_policies(
-        user_shortname,
-        query.space_name,
-        query.subpath
+        user_shortname, query.space_name, query.subpath
     )
 
     folder = await db.load(
@@ -278,7 +276,11 @@ async def serve_space(
             resource_obj.is_active = True
             resource_obj.indexing_enabled = True
             resource_obj.shortname = request.space_name
-            resource_obj.active_plugins = ["action_log", "redis_db_update", "resource_folders_creation"]
+            resource_obj.active_plugins = [
+                "action_log",
+                "redis_db_update",
+                "resource_folders_creation",
+            ]
             await db.save(
                 request.space_name,
                 record.subpath,
@@ -289,10 +291,9 @@ async def serve_space(
         case api.RequestType.update:
             try:
                 space = core.Space.from_record(record, owner_shortname)
-                if(
-                    request.space_name not in spaces or
-                    request.space_name != record.shortname
-
+                if (
+                    request.space_name not in spaces
+                    or request.space_name != record.shortname
                 ):
                     raise Exception
             except:
@@ -353,7 +354,7 @@ async def serve_space(
                 branch_name=record.branch_name,
                 user_shortname=owner_shortname,
             )
-            
+
         case api.RequestType.delete:
             if request.space_name not in spaces:
                 raise api.Exception(
@@ -382,7 +383,7 @@ async def serve_space(
                 )
 
             os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
-            
+
             async with RedisServices() as redis_services:
                 indices: list[str] = await redis_services.list_indices()
                 for index in indices:
@@ -399,7 +400,6 @@ async def serve_space(
                 ),
             )
 
-    
     await initialize_spaces()
 
     await access_control.load_permissions_and_roles()
@@ -424,7 +424,6 @@ async def serve_space(
 async def query_entries(
     query: api.Query, user_shortname=Depends(JWTBearer())
 ) -> api.Response:
-
     await plugin_manager.before_action(
         core.Event(
             space_name=query.space_name,
@@ -437,9 +436,7 @@ async def query_entries(
     )
 
     redis_query_policies = await access_control.get_user_query_policies(
-        user_shortname,
-        query.space_name,
-        query.subpath
+        user_shortname, query.space_name, query.subpath
     )
 
     total, records = await repository.serve_query(
@@ -467,7 +464,7 @@ async def serve_request(
     request: api.Request,
     token=Depends(GetJWTToken()),
     owner_shortname=Depends(JWTBearer()),
-    is_internal: bool = False
+    is_internal: bool = False,
 ) -> api.Response:
     spaces = await get_spaces()
     if request.space_name not in spaces:
@@ -497,9 +494,15 @@ async def serve_request(
                 if record.subpath[0] != "/":
                     record.subpath = f"/{record.subpath}"
                 try:
-                    schema_shortname : str | None = None
-                    if "payload" in record.attributes and type(record.attributes.get("payload", None)) == 'dict' and "schema_shortname" in record.attributes["payload"]  : 
-                        schema_shortname = record.attributes["payload"]["schema_shortname"]
+                    schema_shortname: str | None = None
+                    if (
+                        "payload" in record.attributes
+                        and type(record.attributes.get("payload", None)) == "dict"
+                        and "schema_shortname" in record.attributes["payload"]
+                    ):
+                        schema_shortname = record.attributes["payload"][
+                            "schema_shortname"
+                        ]
                     await plugin_manager.before_action(
                         core.Event(
                             space_name=request.space_name,
@@ -544,20 +547,19 @@ async def serve_request(
                             record.subpath,
                             record.shortname,
                             resource_cls,
-                            record.branch_name
+                            record.branch_name,
                         )
                     else:
-                        search_path = settings.spaces_folder / f"{request.space_name}/{record.subpath}"
+                        search_path = (
+                            settings.spaces_folder
+                            / f"{request.space_name}/{record.subpath}"
+                        )
                         filename = record.shortname
 
                     shortname_exists = repository.dir_has_file(
-                        dir_path=search_path, 
-                        filename=filename
+                        dir_path=search_path, filename=filename
                     )
-                    if (
-                        shortname_exists
-                        and record.shortname != settings.auto_uuid_rule
-                    ):
+                    if shortname_exists and record.shortname != settings.auto_uuid_rule:
                         raise api.Exception(
                             status.HTTP_400_BAD_REQUEST,
                             api.Error(
@@ -837,10 +839,12 @@ async def serve_request(
                 # GENERATE NEW RESOURCE OBJECT
                 resource_obj = old_resource_obj
                 resource_obj.updated_at = datetime.now()
-                new_resource_payload_data: dict | None = resource_obj.update_from_record(
-                    record=record, 
-                    old_body=old_resource_payload_body,
-                    replace=request.request_type == api.RequestType.r_replace
+                new_resource_payload_data: dict | None = (
+                    resource_obj.update_from_record(
+                        record=record,
+                        old_body=old_resource_payload_body,
+                        replace=request.request_type == api.RequestType.r_replace,
+                    )
                 )
                 new_version_flattend = flatten_dict(resource_obj.dict())
                 if new_resource_payload_data:
@@ -1181,7 +1185,6 @@ async def update_state(
             ),
         )
     if ticket_obj.payload.content_type == ContentType.json:
-
         workflows_data = await db.load(
             space_name=space_name,
             subpath="workflows",
@@ -1333,7 +1336,6 @@ async def retrieve_entry_or_attachment_payload(
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
-
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
@@ -1533,7 +1535,9 @@ async def create_or_update_resource_with_payload(
     if resource_obj.shortname == settings.auto_uuid_rule:
         resource_obj.uuid = uuid4()
         resource_obj.shortname = str(resource_obj.uuid)[:8]
-        resource_obj.payload.body = f"{str(resource_obj.uuid)[:8]}." + payload_filename.split(".")[1]
+        resource_obj.payload.body = (
+            f"{str(resource_obj.uuid)[:8]}." + payload_filename.split(".")[1]
+        )
 
     if (
         resource_content_type == ContentType.json
@@ -1586,7 +1590,6 @@ async def import_resources_from_csv(
     owner_shortname=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ):
-
     contents = await resources_file.read()
     decoded = contents.decode()
     buffer = StringIO(decoded)
@@ -1735,7 +1738,6 @@ async def retrieve_entry_meta(
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
-
     if subpath == settings.root_subpath_mw:
         subpath = "/"
 
@@ -1800,11 +1802,12 @@ async def retrieve_entry_meta(
             retrieve_json_payload=retrieve_json_payload,
         )
 
-    if ( not retrieve_json_payload or 
-        not meta.payload or 
-        not meta.payload.body or 
-        type(meta.payload.body) != str or 
-        meta.payload.content_type != ContentType.json 
+    if (
+        not retrieve_json_payload
+        or not meta.payload
+        or not meta.payload.body
+        or type(meta.payload.body) != str
+        or meta.payload.content_type != ContentType.json
     ):
         # TODO
         # include locked before returning the dictionary
@@ -1843,12 +1846,12 @@ async def retrieve_entry_meta(
     return {**meta.dict(exclude_none=True), "attachments": attachments}
 
 
-@router.get("/byuuid/{uuid}",response_model_exclude_none=True)
+@router.get("/byuuid/{uuid}", response_model_exclude_none=True)
 async def get_entry_by_uuid(
     uuid: str,
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
-    logged_in_user=Depends(JWTBearer())
+    logged_in_user=Depends(JWTBearer()),
 ):
     return await repository.get_entry_by_var(
         "uuid",
@@ -1858,12 +1861,13 @@ async def get_entry_by_uuid(
         retrieve_attachments,
     )
 
-@router.get("/byslug/{slug}",response_model_exclude_none=True)
+
+@router.get("/byslug/{slug}", response_model_exclude_none=True)
 async def get_entry_by_slug(
     slug: str,
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
-    logged_in_user=Depends(JWTBearer())
+    logged_in_user=Depends(JWTBearer()),
 ):
     return await repository.get_entry_by_var(
         "slug",
@@ -1873,7 +1877,6 @@ async def get_entry_by_slug(
         retrieve_attachments,
     )
 
-        
 
 # @router.post("/reload-redis-data", response_model_exclude_none=True)
 # async def recreate_redis_indices(
@@ -1920,24 +1923,29 @@ async def get_entry_by_slug(
 
 @router.get("/health/{health_type}/{space_name}", response_model_exclude_none=True)
 async def get_space_report(
-        space_name: str,
-        health_type: str,
-        logged_in_user=Depends(JWTBearer()),
-        branch_name: str | None = settings.default_branch,
+    space_name: str,
+    health_type: str,
+    logged_in_user=Depends(JWTBearer()),
+    branch_name: str | None = settings.default_branch,
 ):
-    if logged_in_user != 'dmart': 
-        raise api.Exception(status_code=status.HTTP_401_UNAUTHORIZED, error=api.Error(type="access", code=401, message="Not allowed"))
+    if logged_in_user != "dmart":
+        raise api.Exception(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            error=api.Error(type="access", code=401, message="Not allowed"),
+        )
 
     spaces = await get_spaces()
-    if space_name not in spaces and space_name != 'all':
+    if space_name not in spaces and space_name != "all":
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(type="media", code=221, message="Invalid space name"),
         )
-    if health_type not in ['soft', 'hard']:
+    if health_type not in ["soft", "hard"]:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="media", code=221, message="Invalid health check type"),
+            error=api.Error(
+                type="media", code=221, message="Invalid health check type"
+            ),
         )
 
     os.system(f"./health_check.py -t {health_type} -b {branch_name} -s {space_name} &")
@@ -2181,14 +2189,18 @@ async def apply_alteration(
         space_name=space_name,
         subpath=f"{on_entry.subpath}",
         shortname=on_entry.shortname,
-        class_type=getattr(sys.modules["models.core"], camel_case(on_entry.resource_type)),
+        class_type=getattr(
+            sys.modules["models.core"], camel_case(on_entry.resource_type)
+        ),
         user_shortname=logged_in_user,
         branch_name=on_entry.branch_name,
     )
 
-    record: core.Record = entry_meta.to_record(on_entry.subpath, on_entry.shortname, [], on_entry.branch_name)
-    record.attributes['payload'] = record.attributes['payload'].__dict__
-    record.attributes['payload']['body'] = alteration_meta.requested_update
+    record: core.Record = entry_meta.to_record(
+        on_entry.subpath, on_entry.shortname, [], on_entry.branch_name
+    )
+    record.attributes["payload"] = record.attributes["payload"].__dict__
+    record.attributes["payload"]["body"] = alteration_meta.requested_update
 
     response = await serve_request(
         request=api.Request(
