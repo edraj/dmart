@@ -639,7 +639,7 @@ async def serve_request(
                                 )
                                 invitation_message = languages[
                                     record.attributes.get("language", Language.ar)
-                                ]["invitation_message"]
+                                ]["invitation_message"].replace("{link}", link)
                                 channel += f"SMS:{record.attributes.get('msisdn')},"
                                 try:
                                     await send_sms(
