@@ -108,7 +108,7 @@ class Plugin(PluginBase):
             notification_dict = json.loads(redis_document.json)
             if (
                 "state" in entry
-                and "on_state" in notification_dict
+                and notification_dict.get("on_state", "") != ""
                 and notification_dict["on_state"] != entry["state"]
             ):
                 continue
