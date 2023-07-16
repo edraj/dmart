@@ -271,10 +271,18 @@ class AccessControl:
             if restricted_field in flattened_attributes:
                 return False
 
-        for allowed_field_name, allowed_field_values in allowed_fields_values.items():
+        for field_name, field_values in allowed_fields_values.items():
+            if field_name not in flattened_attributes:
+                continue
             if(
-                allowed_field_name in flattened_attributes and 
-                flattened_attributes[allowed_field_name] not in allowed_field_values
+                type(flattened_attributes[field_name]) == list and
+                type(field_values[0]) == list and
+                not all(i in field_values[0] for i in flattened_attributes[field_name])
+            ):
+                return False
+            elif(
+                type(flattened_attributes[field_name]) != list and
+                flattened_attributes[field_name] not in field_values
             ):
                 return False
 
