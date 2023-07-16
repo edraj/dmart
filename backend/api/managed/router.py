@@ -2149,6 +2149,12 @@ async def execute(
     if "limit" in record.attributes:
         query_dict["limit"] = record.attributes["limit"]
 
+    if "from_date" in record.attributes:
+        query_dict["from_date"] = record.attributes["from_date"]
+
+    if "to_date" in record.attributes:
+        query_dict["to_date"] = record.attributes["to_date"]
+
     return await query_entries(
         query=api.Query(**query_dict), user_shortname=logged_in_user
     )
