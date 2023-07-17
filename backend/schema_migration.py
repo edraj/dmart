@@ -33,7 +33,6 @@ async def change_field_type(
 ):
     # 3-update field type to new_type
     schema_properties = schema_payload["properties"]
-    schema_properties[field]["type"] = new_type
     await _sys_update_model(
         space_name=space,
         subpath="schema",
@@ -88,18 +87,27 @@ async def change_field_type(
             print(f"Error loading {one}", ex)
             continue
         
-        
-        if field not in resource_payload:
+        resource_payload_keys = helpers.flatten_dict(resource_payload)
+        if field not in resource_payload_keys:
             continue
         
         # 5.2-parse field's old_type to new_type
+        field_tree = field.split(".")
+        last_idx = len(field_tree)-1
+        main_field = resource_payload[field_tree[0]]
+        field_to_update = main_field
+        for i in range(1, last_idx):
+            field_to_update = main_field[field_tree[i]]
+        field_to_update[field_tree[last_idx]] = FIELD_TYPE_PARSER[new_type](
+            field_to_update[field_tree[last_idx]]
+        )
         await _sys_update_model(
             space_name=space,
             subpath=subpath,
             meta=resource_obj,
             payload_dict=resource_payload,
             updates={
-                field: FIELD_TYPE_PARSER[new_type](resource_payload[field])
+                field_tree[0]: main_field
             },
             branch_name=settings.default_branch
         )
@@ -147,11 +155,18 @@ async def main(
         class_type=Schema
     )
     
+    
     # 2-make sure field with old_type exist
-    if schema_payload["properties"].get(field, {}).get("type") != old_type:
+    field_tree = field.split(".")
+    field_definition = schema_payload
+    for f in field_tree:
+        field_definition = field_definition["properties"].get(f, {})
+        
+    if field_definition.get("type") != old_type:
         print("Invalid old type for the specified field under the specified schema")
         return
         
+    field_definition["type"] = new_type
         
     updated_num = await change_field_type(
         space,
