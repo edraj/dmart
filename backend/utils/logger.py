@@ -6,8 +6,11 @@ from utils.settings import settings
 
 class CustomFormatter(logging.Formatter):
     def format(self, record):
+        correlation_id = getattr(record, "correlation_id", "")
+        if correlation_id == "ROOT" and getattr(record, "props", None):
+            correlation_id = record.props["response"]["headers"]["x-correlation-id"]
         data = {
-            "correlation_id": getattr(record, "correlation_id", ""),
+            "correlation_id": correlation_id,
             "time": self.formatTime(record),
             "level": record.levelname,
             "message": record.getMessage(),
