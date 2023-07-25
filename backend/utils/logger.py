@@ -7,10 +7,11 @@ from utils.settings import settings
 class CustomFormatter(logging.Formatter):
     def format(self, record):
         data = {
-            'time': self.formatTime(record),
-            'level': record.levelname,
-            'message': record.getMessage(),
-            'props': getattr(record, "props", ""),
+            "correlation_id": getattr(record, "correlation_id", ""),
+            "time": self.formatTime(record),
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "props": getattr(record, "props", ""),
             "thread": record.threadName,
             "process": record.process,
             "pathname": record.pathname,
@@ -21,37 +22,43 @@ class CustomFormatter(logging.Formatter):
 
 
 logging_schema = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'json': {
-            '()': CustomFormatter
-        }
-    },
-    'handlers': {
-       'console': { 
-            'class': 'logging.StreamHandler',
-            'level': 'INFO',
-            'formatter': 'json',
-            'stream': 'ext://sys.stdout',  # Default is stderr
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "correlation_id": {
+            "()": "asgi_correlation_id.CorrelationIdFilter",
+            "uuid_length": 32,
+            "default_value": "ROOT",
         },
-        'file': {
-            'class': 'concurrent_log_handler.ConcurrentRotatingFileHandler',
-            'filename': settings.log_file,
-            'backupCount': 5,
-            'maxBytes': 1048576,
-            'use_gzip': True,
-            'formatter': 'json'
+    },
+    "formatters": {"json": {"()": CustomFormatter}},
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "filters": ["correlation_id"],
+            "level": "INFO",
+            "formatter": "json",
+            "stream": "ext://sys.stdout",  # Default is stderr
+        },
+        "file": {
+            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
+            "filters": ["correlation_id"],
+            "filename": settings.log_file,
+            "backupCount": 5,
+            "maxBytes": 1048576,
+            "use_gzip": True,
+            "formatter": "json",
+        },
+    },
+    "loggers": {
+        "fastapi": {
+            "handlers": settings.log_handlers,
+            "level": logging.INFO,
+            "propagate": True,
         }
     },
-    'loggers': {
-        'fastapi': {
-            'handlers': settings.log_handlers,
-            'level': logging.INFO,
-            'propagate': True
-        }
-    }
 }
+
 
 def changeLogFile(log_file: str | None = None) -> None:
     global logging_schema
