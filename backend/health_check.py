@@ -15,6 +15,7 @@ from redis.commands.search.query import Query
 from redis.commands.search.result import Result
 
 from api.managed.router import serve_request
+from models.core import Folder
 from utils import repository
 from utils.custom_validations import get_schema_path
 from utils.helpers import camel_case, branch_path
@@ -381,6 +382,13 @@ async def save_duplicated_entries(branch_name: str = 'master'):
 async def cleanup_spaces():
     spaces = await get_spaces()
     folder_path = Path(settings.spaces_folder / "management/health_check/.dm")
+    if not os.path.isdir(folder_path):
+        os.makedirs(folder_path)
+    file_path = Path(folder_path / "meta.folder.json")
+    if not os.path.isfile(file_path):
+        meta_obj = Folder(shortname="health_check", is_active=True, owner_shortname='dmart')
+        with open(file_path, "w") as f:
+            f.write(meta_obj.json(exclude_none=True))
     for folder_name in os.listdir(folder_path):
         if not os.path.isdir(os.path.join(folder_path, folder_name)):
             continue
