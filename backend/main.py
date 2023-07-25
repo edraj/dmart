@@ -139,7 +139,11 @@ async def app_shutdown():
     logger.info("Application shutdown")
 
 
-app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(
+    CorrelationIdMiddleware,
+    header_name='X-Correlation-ID',
+    update_request_header=False,
+)
 app.add_middleware(CustomRequestMiddleware)
 
 
