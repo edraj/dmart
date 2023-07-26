@@ -42,6 +42,12 @@ class Query(BaseModel):
     jq_filter: str | None = None
     limit: int = 10
     offset: int = 0
+    
+    # Replace -1 limit by settings.max_query_limit
+    def __init__(self, **data):
+        BaseModel.__init__(self, **data)
+        if self.limit == -1:
+            self.limit = settings.max_query_limit
 
 
 class Error(BaseModel):
