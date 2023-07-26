@@ -15,7 +15,8 @@ from redis.commands.search.query import Query
 from redis.commands.search.result import Result
 
 from api.managed.router import serve_request
-from utils import repository
+from models.core import Folder
+from utils import repository, db
 from utils.custom_validations import get_schema_path
 from utils.helpers import camel_case, branch_path
 from utils.redis_services import RedisServices
@@ -284,10 +285,11 @@ async def hard_health_check(space_name: str, branch_name: str):
     if space_name not in spaces:
         print("space name is not found")
         return None
-    space_obj = core.Space.parse_raw(spaces[space_name])
-    if not space_obj.check_health:
-        print("EARLY EXIT")
-        return None
+    # remove checking check_health value from meta space
+    # space_obj = core.Space.parse_raw(spaces[space_name])
+    # if not space_obj.check_health:
+    #     print("EARLY EXIT")
+    #     return None
 
     invalid_folders = []
     folders_report: dict[str, dict] = {}
@@ -380,7 +382,42 @@ async def save_duplicated_entries(branch_name: str = 'master'):
 
 async def cleanup_spaces():
     spaces = await get_spaces()
+    # create health check path meta
     folder_path = Path(settings.spaces_folder / "management/health_check/.dm")
+    if not os.path.isdir(folder_path):
+        os.makedirs(folder_path)
+    file_path = Path(folder_path / "meta.folder.json")
+    # create meta folder
+    if not os.path.isfile(file_path):
+        meta_obj = Folder(shortname="health_check", is_active=True, owner_shortname='dmart')
+        with open(file_path, "w") as f:
+            f.write(meta_obj.json(exclude_none=True))
+    # create health check schema
+    if (
+            not os.path.isfile(Path(settings.spaces_folder / "management/schema/health_check.json")) or
+            not os.path.isfile(Path(settings.spaces_folder / "management/schema/.dm/health_check/meta.schema.json"))
+    ):
+        meta = core.Schema(
+            shortname="health_check",
+            is_active=True,
+            owner_shortname="dmart",
+            payload=core.Payload(
+                content_type=ContentType.json,
+                body=f"health_check.json",
+            ),
+        )
+        schema = {
+            "type": "object",
+            "title": "health_check",
+            "additionalProperties": True,
+            "properties": {
+            },
+            "required": []
+        }
+        await db.save("management", "schema", meta, settings.default_branch)
+        await db.save_payload_from_json("management", "schema", meta, schema, settings.default_branch)
+
+    # clean up entries
     for folder_name in os.listdir(folder_path):
         if not os.path.isdir(os.path.join(folder_path, folder_name)):
             continue
