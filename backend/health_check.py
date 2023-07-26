@@ -392,7 +392,7 @@ async def cleanup_spaces():
         meta_obj = Folder(shortname="health_check", is_active=True, owner_shortname='dmart')
         with open(file_path, "w") as f:
             f.write(meta_obj.json(exclude_none=True))
-    # create schema
+    # create health check schema
     if (
             not os.path.isfile(Path(settings.spaces_folder / "management/schema/health_check.json")) or
             not os.path.isfile(Path(settings.spaces_folder / "management/schema/.dm/health_check/meta.schema.json"))
@@ -417,6 +417,7 @@ async def cleanup_spaces():
         await db.save("management", "schema", meta, settings.default_branch)
         await db.save_payload_from_json("management", "schema", meta, schema, settings.default_branch)
 
+    # clean up entries
     for folder_name in os.listdir(folder_path):
         if not os.path.isdir(os.path.join(folder_path, folder_name)):
             continue
