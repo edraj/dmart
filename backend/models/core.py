@@ -210,7 +210,11 @@ class Meta(Resource):
                 body=f"{record.shortname}.json"
             )
             
-        if self.payload and "payload" in record.attributes:
+        if(
+            self.payload and 
+            "payload" in record.attributes and
+            "content_type" in record.attributes["payload"]
+        ):
             return self.payload.update(
                 payload=record.attributes["payload"],
                 old_body=old_body,
