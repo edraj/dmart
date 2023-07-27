@@ -550,7 +550,7 @@ async def serve_query(
                 )
 
                 if query.search:
-                    cmd += f"grep \"{query.search}\""
+                    cmd += f" | grep \"{query.search}\""
 
                 if query.offset > 0:
                     cmd += f" | sed '1,{query.offset}d'"
