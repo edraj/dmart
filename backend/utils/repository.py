@@ -20,7 +20,14 @@ from utils.redis_services import RedisServices
 import aiofiles
 from fastapi import status
 from fastapi.logger import logger
-from utils.helpers import alter_dict_keys, branch_path, camel_case, flatten_all, snake_case, str_to_datetime
+from utils.helpers import (
+    alter_dict_keys,
+    branch_path,
+    camel_case,
+    flatten_all,
+    snake_case,
+    str_to_datetime,
+)
 from utils.custom_validations import validate_payload_with_schema
 import subprocess
 from redis.commands.search.document import Document as RedisDocument
@@ -28,18 +35,18 @@ import redis.commands.search.aggregation as aggregations
 import redis.commands.search.reducers as reducers
 
 
-def parse_redis_response(rows : list) -> list:
-    mylist : list = []
+def parse_redis_response(rows: list) -> list:
+    mylist: list = []
     for one in rows:
         mydict = {}
-        key : str | None = None
+        key: str | None = None
         for i, value in enumerate(one):
-            if i%2 == 0:
+            if i % 2 == 0:
                 key = value
             elif key:
                 mydict[key] = value
         mylist.append(mydict)
-    return mylist 
+    return mylist
 
 
 async def serve_query(
@@ -79,7 +86,6 @@ async def serve_query(
                     )
 
         case api.QueryType.search:
-
             search_res, total = await redis_query_search(query, redis_query_policies)
             res_data: list = []
             for redis_document in search_res:
@@ -88,10 +94,11 @@ async def serve_query(
                 if query.sort_by:
                     res_data = sorted(
                         res_data,
-                        key=lambda d: 
-                            d[query.sort_by] if query.sort_by in d
-                            else d.get("payload", {})[query.sort_by] if query.sort_by in d.get("payload", {})
-                            else "",
+                        key=lambda d: d[query.sort_by]
+                        if query.sort_by in d
+                        else d.get("payload", {})[query.sort_by]
+                        if query.sort_by in d.get("payload", {})
+                        else "",
                         reverse=(query.sort_type == api.SortType.descending),
                     )
                 res_data = res_data[query.offset : (query.limit + query.offset)]
@@ -106,12 +113,11 @@ async def serve_query(
                             retrieve_json_payload=query.retrieve_json_payload,
                             retrieve_attachments=query.retrieve_attachments,
                             validate_schema=query.validate_schema,
-                            filter_types=query.filter_types
+                            filter_types=query.filter_types,
                         )
                     except:
                         # Incase of schema validation error
                         continue
-
 
                     # Don't repeat the same entry comming from different indices
                     if resource_base_record in records:
@@ -127,7 +133,7 @@ async def serve_query(
                     resource_base_record.attributes = alter_dict_keys(
                         jsonable_encoder(resource_base_record.attributes),
                         query.include_fields,
-                        query.exclude_fields
+                        query.exclude_fields,
                     )
 
                     records.append(resource_base_record)
@@ -406,37 +412,31 @@ async def serve_query(
             async with RedisServices() as redis_services:
                 query.sort_by = "@freq"
                 rows = await redis_query_aggregate(
-                    query=query, 
+                    query=query,
                     redis_query_policies=redis_query_policies,
-                    group_by={
-                        "@tags": [
-                            reducers.count().alias("freq")
-                        ]
-                    }
-                ) 
-                records.append(core.Record(
-                    resource_type=ResourceType.content, 
-                    shortname="tags_frequency", 
-                    subpath=query.subpath, 
-                    attributes={
-                        "result": rows
-                    }
-                ))
-        
+                    group_by={"@tags": [reducers.count().alias("freq")]},
+                )
+                records.append(
+                    core.Record(
+                        resource_type=ResourceType.content,
+                        shortname="tags_frequency",
+                        subpath=query.subpath,
+                        attributes={"result": rows},
+                    )
+                )
+
         case api.QueryType.random:
             async with RedisServices() as redis_services:
                 rows = await redis_query_aggregate(
-                    query=query, 
+                    query=query,
                     redis_query_policies=redis_query_policies,
-                    load=[
-                        "@__key"
-                    ],
+                    load=["@__key"],
                     group_by={
                         "@resource_type": [
                             reducers.random_sample("@__key", query.limit).alias("id")
                         ]
                     },
-                ) 
+                )
                 ids = []
                 for row in rows:
                     ids.extend(row[3])
@@ -444,10 +444,7 @@ async def serve_query(
                 total = len(ids)
                 for doc in docs:
                     doc = doc[0]
-                    if (
-                        query.retrieve_json_payload
-                        and doc.get("payload_doc_id", None)
-                    ):
+                    if query.retrieve_json_payload and doc.get("payload_doc_id", None):
                         doc["payload"]["body"] = await redis_services.get_payload_doc(
                             doc["payload_doc_id"], doc["resource_type"]
                         )
@@ -457,9 +454,7 @@ async def serve_query(
                         uuid=doc["uuid"],
                         branch_name=doc["branch_name"],
                         subpath=doc["subpath"],
-                        attributes={
-                            "payload": doc.get("payload")
-                        }
+                        attributes={"payload": doc.get("payload")},
                     )
                     entry_path = (
                         settings.spaces_folder
@@ -544,17 +539,14 @@ async def serve_query(
 
             path = f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl"
             if Path(path).is_file():
-                cmd = (
-                    f"(tail -n {query.limit + query.offset} {path}; echo "
-                    ") | tac"
-                )
+                cmd = f"(tail -n {query.limit + query.offset} {path}; echo ) | tac"
 
                 if query.search:
-                    cmd += f"grep \"{query.search}\""
+                    cmd += f'| grep "{query.search}"'
 
                 if query.offset > 0:
                     cmd += f" | sed '1,{query.offset}d'"
-
+                print(cmd)
                 result = list(
                     filter(
                         None,
@@ -674,7 +666,7 @@ async def get_entry_attachments(
             )
             resource_obj = None
             async with aiofiles.open(attachments_file, "r") as meta_file:
-                try: 
+                try:
                     resource_obj = resource_class.parse_raw(await meta_file.read())
                 except Exception as e:
                     raise Exception(f"Bad attachment ... {attachments_file=}") from e
@@ -718,12 +710,11 @@ async def get_entry_attachments(
 
 
 async def redis_query_aggregate(
-    query: api.Query, 
+    query: api.Query,
     group_by: dict[str, list],
     load: list = [],
     redis_query_policies: list = [],
 ) -> list:
-
     created_at_search = ""
     if query.from_date and query.to_date:
         created_at_search = (
@@ -762,9 +753,8 @@ async def redis_query_aggregate(
             exact_subpath=query.exact_subpath,
             sort_by=query.sort_by,
             max=query.limit,
-            sort_type=query.sort_type or api.SortType.ascending
+            sort_type=query.sort_type or api.SortType.ascending,
         )
-
 
 
 async def redis_query_search(
@@ -831,8 +821,9 @@ async def redis_query_search(
                 total += redis_res["total"]
     return search_res, total
 
+
 def dir_has_file(dir_path: Path, filename: str) -> bool:
-    if not dir_path.is_dir(): 
+    if not dir_path.is_dir():
         return False
 
     for item in os.scandir(dir_path):
@@ -841,11 +832,11 @@ def dir_has_file(dir_path: Path, filename: str) -> bool:
                 if dm_item.name == filename:
                     return True
 
-
         if item.name == filename:
             return True
 
     return False
+
 
 async def get_resource_obj_or_none(
     *,
@@ -856,7 +847,6 @@ async def get_resource_obj_or_none(
     resource_type: str,
     user_shortname: str,
 ):
-
     resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
     try:
         return await db.load(
@@ -870,13 +860,14 @@ async def get_resource_obj_or_none(
     except Exception:
         return None
 
+
 def get_payload_obj_or_none(
     *,
     space_name: str,
     branch_name: str | None,
     subpath: str,
     filename: str,
-    resource_type: str
+    resource_type: str,
 ):
     resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
     try:
@@ -951,14 +942,16 @@ async def validate_subpath_data(
                 user_shortname,
                 invalid_folders,
                 folders_report,
-                meta_folders_health
+                meta_folders_health,
             )
             continue
 
         folder_meta = Path(f"{folder.path}/meta.folder.json")
         folder_name = "/".join(subpath.split("/")[folder_name_index:])
         if not folder_meta.is_file():
-            meta_folders_health.append(str(folder_meta)[len(str(settings.spaces_folder)):])
+            meta_folders_health.append(
+                str(folder_meta)[len(str(settings.spaces_folder)) :]
+            )
             continue
 
         folder_meta_content = None
@@ -1021,7 +1014,7 @@ async def validate_subpath_data(
                     "issues": ["meta"],
                     "uuid": "",
                     "shortname": entry.name,
-                    "exception": f"Can't access this meta {subpath[len(str(settings.spaces_folder)):]}/{entry.name}"
+                    "exception": f"Can't access this meta {subpath[len(str(settings.spaces_folder)):]}/{entry.name}",
                 }
 
                 if "invalid_entries" not in folders_report[folder_name]:
@@ -1083,7 +1076,8 @@ async def validate_subpath_data(
                                 f"can't access this payload {str(subpath)[len(str(settings.spaces_folder)):]}/{entry_meta_obj.shortname}"
                             )
                 elif (
-                    entry_meta_obj.payload and isinstance(entry_meta_obj.payload.body, str)
+                    entry_meta_obj.payload
+                    and isinstance(entry_meta_obj.payload.body, str)
                     and entry_meta_obj.payload.content_type == ContentType.json
                 ):
                     payload_file_path = f"{subpath}/{entry_meta_obj.payload.body}"
@@ -1143,7 +1137,7 @@ async def validate_subpath_data(
                     "uuid": uuid,
                     "shortname": entry_shortname,
                     "resource_type": entry_resource_type,
-                    "exception": str(e)
+                    "exception": str(e),
                 }
 
                 if "invalid_entries" not in folders_report[folder_name]:
@@ -1162,7 +1156,7 @@ async def _sys_update_model(
     branch_name: str | None,
     updates: dict,
     sync_redis: bool = True,
-    payload_dict: dict = {}
+    payload_dict: dict = {},
 ) -> bool:
     """
     Update @meta entry and its payload by @updates dict of attributes in the
@@ -1172,7 +1166,7 @@ async def _sys_update_model(
     meta.updated_at = datetime.now()
     meta_updated = False
     payload_updated = False
-    
+
     if not payload_dict:
         try:
             body = str(meta.payload.body) if meta and meta.payload else ""
@@ -1200,16 +1194,16 @@ async def _sys_update_model(
         elif payload_dict:
             payload_dict[key] = value
             payload_updated = True
-        
+
     if meta_updated:
         await db.save(space_name, subpath, meta, branch_name)
-    if(
-        payload_updated and
-        meta.payload and 
-        meta.payload.schema_shortname
-    ):
-        await validate_payload_with_schema(payload_dict, space_name, meta.payload.schema_shortname, branch_name)
-        await db.save_payload_from_json(space_name, subpath, meta, payload_dict, branch_name)
+    if payload_updated and meta.payload and meta.payload.schema_shortname:
+        await validate_payload_with_schema(
+            payload_dict, space_name, meta.payload.schema_shortname, branch_name
+        )
+        await db.save_payload_from_json(
+            space_name, subpath, meta, payload_dict, branch_name
+        )
 
     if not sync_redis:
         return True
@@ -1218,7 +1212,14 @@ async def _sys_update_model(
         await redis_services.save_meta_doc(space_name, branch_name, subpath, meta)
         if payload_updated:
             payload_dict.update(json.loads(meta.json()))
-            await redis_services.save_payload_doc(space_name, branch_name, subpath, meta, payload_dict, ResourceType(snake_case(type(meta).__name__)))
+            await redis_services.save_payload_doc(
+                space_name,
+                branch_name,
+                subpath,
+                meta,
+                payload_dict,
+                ResourceType(snake_case(type(meta).__name__)),
+            )
 
     return True
 
@@ -1246,7 +1247,7 @@ async def _save_model(
 
 
 async def generate_payload_string(
-    space_name: str, 
+    space_name: str,
     subpath: str,
     shortname: str,
     payload: dict,
@@ -1271,7 +1272,17 @@ async def generate_payload_string(
             / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
         ),
         retrieve_json_payload=True,
-        include_fields=["shortname", "displayname", "description", "payload", "tags", "owner_shortname", "owner_group_shortname", "body", "state"]
+        include_fields=[
+            "shortname",
+            "displayname",
+            "description",
+            "payload",
+            "tags",
+            "owner_shortname",
+            "owner_group_shortname",
+            "body",
+            "state",
+        ],
     )
     if not attachments:
         return payload_string.strip(",")
@@ -1282,12 +1293,13 @@ async def generate_payload_string(
         dict_attachments[k] = [i.dict() for i in v]
 
     attachments_values = set(flatten_all(dict_attachments).values())
-    attachments_payload_string = ",".join([str(i) for i in attachments_values if i != None])
+    attachments_payload_string = ",".join(
+        [str(i) for i in attachments_values if i != None]
+    )
     payload_string += attachments_payload_string
     return payload_string.strip(",")
 
 
-    
 async def get_record_from_redis_doc(
     space_name: str,
     doc: dict,
@@ -1303,7 +1315,7 @@ async def get_record_from_redis_doc(
         sys.modules["models.core"],
         camel_case(doc["resource_type"]),
     )
-    
+
     for key, value in doc.items():
         if key in resource_class.__fields__.keys():
             meta_doc_content[key] = value
@@ -1342,7 +1354,7 @@ async def get_record_from_redis_doc(
         [],
         doc["branch_name"],
     )
-    
+
     if locked_data:
         resource_base_record.attributes["locked"] = locked_data
 
@@ -1363,12 +1375,9 @@ async def get_record_from_redis_doc(
     if (
         retrieve_json_payload
         and resource_base_record.attributes["payload"]
-        and resource_base_record.attributes["payload"].content_type
-        == ContentType.json
+        and resource_base_record.attributes["payload"].content_type == ContentType.json
     ):
-        resource_base_record.attributes[
-            "payload"
-        ].body = payload_doc_content
+        resource_base_record.attributes["payload"].body = payload_doc_content
 
     # Validate payload
     if (
@@ -1409,7 +1418,7 @@ async def get_entry_by_var(
                     search=f"@{key}:{val}*",
                     limit=1,
                     offset=0,
-                    filters={}
+                    filters={},
                 )
                 if search_res["total"] > 0:
                     entry_doc = json.loads(search_res["data"][0].json)
@@ -1418,7 +1427,7 @@ async def get_entry_by_var(
             if entry_doc:
                 entry_space = space_name
                 break
-    
+
     if not entry_doc or not entry_space or not entry_branch:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -1446,7 +1455,6 @@ async def get_entry_by_var(
             ),
         )
 
-    
     await plugin_manager.before_action(
         core.Event(
             space_name=entry_space,
@@ -1458,7 +1466,6 @@ async def get_entry_by_var(
             user_shortname=logged_in_user,
         )
     )
-
 
     resource_base_record = await get_record_from_redis_doc(
         space_name=entry_space,
