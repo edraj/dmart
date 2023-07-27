@@ -547,7 +547,7 @@ async def serve_query(
                 cmd = ""
                 if query.search:
                     cmd = (
-                        f"grep -r \"{query.search}\" {path} | tail -n {query.limit + query.offset} | tac"
+                        f"grep \"{query.search}\" {path} | (tail -n {query.limit + query.offset}; echo) | tac"
                     )
                 else:
                     cmd = (
