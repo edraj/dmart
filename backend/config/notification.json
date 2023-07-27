@@ -5,7 +5,7 @@
         "class": "WebNotifier"
     },
     "sms": {
-        "active": false,
+        "active": true,
         "module": "utils.sms_notifier",
         "class": "SMSNotifier"
     },

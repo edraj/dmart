@@ -1,4 +1,3 @@
-from copy import deepcopy
 import json
 import requests
 from models.core import PluginBase, Event
@@ -41,9 +40,13 @@ class Plugin(PluginBase):
             url=f"{settings.websocket_url}/broadcast-to-channels",
             data=json.dumps(
                 {
-                    "channels": channels,
+                    "channels": [*set(channels)],
                     "message": {
-                        "title": "updated"
+                        "title": "updated",
+                        "space": data.space_name,
+                        "subpath": data.subpath,
+                        "shortname": data.shortname,
+                        "action_type": data.action_type
                     }
                 }
             ),

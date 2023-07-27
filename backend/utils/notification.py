@@ -62,7 +62,7 @@ class NotificationManager:
                 extra={
                     "props": {
                         "title": f"FAIL at {self.notifiers[platform]}.send",
-                        "message": e,
+                        "message": str(e),
                     }
                 },
             )
