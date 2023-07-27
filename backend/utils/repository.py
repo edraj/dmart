@@ -548,8 +548,13 @@ async def serve_query(
                     f"(tail -n {query.limit + query.offset} {path}; echo "
                     ") | tac"
                 )
+
+                if query.search:
+                    cmd += f"grep \"{query.search}\""
+
                 if query.offset > 0:
                     cmd += f" | sed '1,{query.offset}d'"
+
                 result = list(
                     filter(
                         None,
