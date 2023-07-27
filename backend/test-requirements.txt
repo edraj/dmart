@@ -4,3 +4,4 @@ pytest
 pytest-asyncio
 pytest-mock
 pyright
+jsf

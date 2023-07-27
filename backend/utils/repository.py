@@ -1223,6 +1223,7 @@ async def _save_model(
     subpath: str,
     meta: core.Meta,
     branch_name: str | None = settings.default_branch,
+    payload: dict | None = None
 ):
     await db.save(
         space_name=space_name,
@@ -1238,6 +1239,25 @@ async def _save_model(
             subpath,
             meta,
         )
+        
+        if payload:
+            await db.save_payload_from_json(
+                space_name=space_name,
+                subpath=subpath,
+                meta=meta,
+                payload_data=payload,
+                branch_name=branch_name
+            )
+            payload.update(json.loads(meta.json()))
+            await redis.save_payload_doc(
+                space_name, 
+                branch_name, 
+                subpath, 
+                meta, 
+                payload, 
+                ResourceType(snake_case(type(meta).__name__))
+            )
+
 
 
 async def generate_payload_string(
