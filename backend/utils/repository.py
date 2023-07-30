@@ -114,9 +114,9 @@ async def serve_query(
 
 
                     # Don't repeat the same entry comming from different indices
-                    if resource_base_record in records:
-                        total -= 1
-                        continue
+                    # if resource_base_record in records:
+                    #     total -= 1
+                    #     continue
 
                     if query.highlight_fields:
                         for key, value in query.highlight_fields.items():
