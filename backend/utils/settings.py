@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     ldap_admin_dn: str = ""
     ldap_root_dn: str = ""
     ldap_pass: str = ""
-    max_query_limit: int = 30000
+    max_query_limit: int = 10000
 
     class Config:
         """Load config"""
