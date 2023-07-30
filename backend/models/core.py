@@ -59,7 +59,7 @@ class Payload(Resource):
         replace: bool = False
     ) -> dict | None:
         self.content_type = payload["content_type"]
-        
+
         if self.content_type == ContentType.json:
             if old_body and not replace:
                 separate_payload_body = dict(remove_none(deep_update(
@@ -199,6 +199,17 @@ class Meta(Resource):
 
                 self.__setattr__(field_name, record.attributes[field_name])
         
+        if(
+            not self.payload and 
+            "payload" in record.attributes and
+            "content_type" in record.attributes["payload"]
+        ):
+            self.payload = Payload(
+                content_type=record.attributes["payload"]["content_type"],
+                schema_shortname=record.attributes["payload"].get("schema_shortname"),
+                body=f"{record.shortname}.json"
+            )
+            
         if(
             not self.payload and 
             "payload" in record.attributes and
