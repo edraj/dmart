@@ -16,7 +16,7 @@ async def main(
 ):
     
     if not Path(schema_path).is_file():
-        return "Invalid schema file path"
+        print("Invalid schema file path")
 
     
     faker = JSF.from_json(schema_path)
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     )
     
     args = parser.parse_args()
-    
+
     asyncio.run(main(
       args.space,
       args.subpath,
