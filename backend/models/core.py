@@ -211,10 +211,17 @@ class Meta(Resource):
             )
             
         if(
-            self.payload and 
+            not self.payload and 
             "payload" in record.attributes and
             "content_type" in record.attributes["payload"]
         ):
+            self.payload = Payload(
+                content_type=record.attributes["payload"]["content_type"],
+                schema_shortname=record.attributes["payload"].get("schema_shortname"),
+                body=f"{record.shortname}.json"
+            )
+            
+        if self.payload and "payload" in record.attributes:
             return self.payload.update(
                 payload=record.attributes["payload"],
                 old_body=old_body,
