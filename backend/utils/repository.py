@@ -565,15 +565,26 @@ async def serve_query(
                         ).stdout.split("\n"),
                     )
                 )
-                total = int(
-                    subprocess.run(
-                        [f"wc -l < {path}"],
-                        capture_output=True,
-                        text=True,
-                        shell=True,
-                    ).stdout,
-                    10,
-                )
+                if query.search:
+                    total = int(
+                        subprocess.run(
+                            [f'grep "{query.search}" {path} | wc -l'],
+                            capture_output=True,
+                            text=True,
+                            shell=True,
+                        ).stdout,
+                        10,
+                    )
+                else:
+                    total = int(
+                        subprocess.run(
+                            [f"wc -l < {path}"],
+                            capture_output=True,
+                            text=True,
+                            shell=True,
+                        ).stdout,
+                        10,
+                    )
                 for line in result:
                     action_obj = json.loads(line)
 
