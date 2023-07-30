@@ -256,7 +256,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 raise api.Exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     api.Error(
-                        type="request", code=422, message="Something went wrong [2]"
+                        type="request", code=422, message="Invalid identifier [2]"
                     ),
                 )
 
@@ -524,7 +524,7 @@ async def update_profile(
         if result is None or result != profile.attributes["confirmation"]:
             raise Exception(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
-                api.Error(type="request", code=422, message="Something went wrong [1]"),
+                api.Error(type="request", code=422, message="Invalid confirmation code [1]"),
             )
 
         if profile_user.email:
