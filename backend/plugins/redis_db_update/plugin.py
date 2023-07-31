@@ -81,11 +81,11 @@ class Plugin(PluginBase):
                 meta_doc_id, meta_json = redis_services.prepate_meta_doc(
                     data.space_name, data.branch_name, data.subpath, meta
                 )
-                payload = {}
+                payload = None
                 if(
                     meta.payload and 
                     meta.payload.content_type == ContentType.json
-                    and meta.payload.body
+                    and meta.payload.body is not None
                 ):
                     payload = db.load_resource_payload(
                         space_name=data.space_name,
@@ -105,7 +105,7 @@ class Plugin(PluginBase):
 
                 await redis_services.save_doc(meta_doc_id, meta_json)
 
-                if payload:
+                if payload is not None:
                     payload.update(meta_json)
                     await redis_services.save_payload_doc(
                         data.space_name,
