@@ -1,4 +1,5 @@
 """ Session Apis """
+from datetime import datetime
 import json
 import re
 import uuid
@@ -316,6 +317,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             if request.firebase_token:
                 user_updates["firebase_token"] = request.firebase_token
 
+            user_updates["last_activity"] = datetime.now()
             await repository._sys_update_model(
                 space_name=MANAGEMENT_SPACE,
                 subpath=USERS_SUBPATH,

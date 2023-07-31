@@ -292,6 +292,7 @@ class User(Actor):
     groups: list[str] = []
     firebase_token: str | None = None
     language: Language = Language.ar
+    last_activity: datetime | None = None
 
 
 class Group(Meta):

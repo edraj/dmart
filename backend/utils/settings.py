@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     ldap_root_dn: str = ""
     ldap_pass: str = ""
     max_query_limit: int = 10000
+    session_inactivity_timeout: int = 600 # in seconds
 
     class Config:
         """Load config"""

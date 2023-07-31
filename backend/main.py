@@ -15,6 +15,7 @@ from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import  ValidationError
 from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware
+from utils.session_middleware import SessionActivityMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
 from utils.spaces import initialize_spaces
@@ -32,6 +33,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import models.api as api
 from utils.settings import settings
 from asgi_correlation_id import CorrelationIdMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+
 
 app = FastAPI(
     title="Datamart API",
@@ -145,6 +148,10 @@ app.add_middleware(
     update_request_header=False,
 )
 app.add_middleware(CustomRequestMiddleware)
+app.add_middleware(
+    BaseHTTPMiddleware, 
+    dispatch=SessionActivityMiddleware()
+)
 
 
 @app.middleware("http")
