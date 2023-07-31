@@ -11,10 +11,10 @@ from utils.settings import settings
 class SessionActivityMiddleware:
 
     async def __call__(self, request: Request, call_next):
-        user_model = None
+        user_model: User | None = None
         try:
             user_shortname = await JWTBearer().__call__(request)
-            user_model: User = await load(
+            user_model = await load(
                 settings.management_space,
                 "users",
                 user_shortname,
