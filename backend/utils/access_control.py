@@ -503,6 +503,8 @@ class AccessControl:
 
         redis_query_policies = []
         for perm_key, permission in user_permissions.items():
+            if not perm_key.startswith(space_name):
+                continue
             perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
             perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
             if (
