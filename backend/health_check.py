@@ -27,7 +27,7 @@ from utils.spaces import get_spaces
 
 duplicated_entries = {}
 key_entries: dict = {}
-MAX_INVALID_SIZE = 3
+MAX_INVALID_SIZE = 100
 
 
 async def main(health_type: str, space_param: str, schemas_param: list, branch_name: str):
