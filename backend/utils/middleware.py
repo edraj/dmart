@@ -23,7 +23,7 @@ class CustomRequestMiddleware:
         request = Request(scope, receive)
         request_headers = {}
         for k,v in request.headers.items():
-            if k == 'cookie':
+            if k in ['cookie', 'authorization']:
                 continue
             request_headers[k] = v
 
