@@ -466,12 +466,11 @@ async def store_entry_diff(
     if not history_diff:
         return {}
 
-    history_diff={**history_diff, **get_request_data()}
-
     history_obj = core.History(
         shortname="history",
         owner_shortname=owner_shortname,
         timestamp=datetime.now(),
+        request_headers=get_request_data(),
         diff=history_diff,
     )
     history_path = settings.spaces_folder / space_name / branch_path(branch_name)
