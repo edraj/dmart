@@ -27,6 +27,7 @@ from utils.spaces import get_spaces
 
 duplicated_entries = {}
 key_entries: dict = {}
+MAX_INVALID_SIZE = 3
 
 
 async def main(health_type: str, space_param: str, schemas_param: list, branch_name: str):
@@ -232,9 +233,9 @@ async def soft_health_check(
                     if not folders_report.get(subpath, {}).get('invalid_entries'):
                         folders_report[subpath]['invalid_entries'] = []
                     if meta_doc_content["shortname"] not in folders_report[redis_doc_dict['subpath']]["invalid_entries"]:
-                        folders_report[redis_doc_dict['subpath']]["invalid_entries"].append(
-                            status.get('invalid')
-                        )
+                        if len(folders_report[redis_doc_dict['subpath']]["invalid_entries"]) >= MAX_INVALID_SIZE:
+                            break
+                        folders_report[redis_doc_dict['subpath']]["invalid_entries"].append(status.get('invalid'))
 
                 uuid = redis_doc_dict['uuid'][:8]
                 await collect_duplicated_with_key('uuid', uuid)
@@ -311,6 +312,7 @@ async def hard_health_check(space_name: str, branch_name: str):
             invalid_folders=invalid_folders,
             folders_report=folders_report,
             meta_folders_health=meta_folders_health,
+            max_invalid_size=MAX_INVALID_SIZE
         )
     res = {"invalid_folders": invalid_folders, "folders_report": folders_report}
     if meta_folders_health:
@@ -378,6 +380,7 @@ async def save_duplicated_entries(branch_name: str = 'master'):
         ),
         owner_shortname='dmart',
     )
+
 
 
 async def cleanup_spaces():
