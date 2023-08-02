@@ -929,6 +929,7 @@ async def validate_subpath_data(
     invalid_folders: list,
     folders_report: dict[str, dict],
     meta_folders_health: list,
+    max_invalid_size: int,
 ):
     """
     Params:
@@ -963,7 +964,8 @@ async def validate_subpath_data(
                 user_shortname,
                 invalid_folders,
                 folders_report,
-                meta_folders_health
+                meta_folders_health,
+                max_invalid_size
             )
             continue
 
@@ -1039,6 +1041,8 @@ async def validate_subpath_data(
                 if "invalid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
+                    if len(folders_report[folder_name]["invalid_entries"]) >= max_invalid_size:
+                        break
                     folders_report[folder_name]["invalid_entries"].append(issue)
                 continue
 
@@ -1161,6 +1165,8 @@ async def validate_subpath_data(
                 if "invalid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
+                    if len(folders_report[folder_name]["invalid_entries"]) >= max_invalid_size:
+                        break
                     folders_report[folder_name]["invalid_entries"].append(issue)
 
         if not folders_report.get(folder_name, {}):
