@@ -544,36 +544,46 @@ async def serve_query(
 
             path = f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl"
             if Path(path).is_file():
-                cmd = ""
                 if query.search:
-                    cmd = (
-                        f"grep \"{query.search}\" {path} | (tail -n {query.limit + query.offset}; echo) | tac"
-                    )
+                    p1 = subprocess.Popen(['grep', f'\"{query.search}\"', path], stdout=subprocess.PIPE)
+                    p2 = subprocess.Popen(['tail', '-n', f'{query.limit + query.offset}'], stdin=p1.stdout, stdout=subprocess.PIPE)
+                    p3 = subprocess.Popen(['tac'], stdin=p2.stdout, stdout=subprocess.PIPE)
                 else:
-                    cmd = (
-                        f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
-                    )
+                    p3 = subprocess.Popen(['tail', '-n', f'{query.limit + query.offset}', path], stdout=subprocess.PIPE)
+                    #! TBD: add tac
+                    # p3 = subprocess.Popen(['printf', ''], stdin=p2.stdout, stdout=subprocess.PIPE)
+                    # p3 = subprocess.Popen(['tac'], stdin=p2.stdout, stdout=subprocess.PIPE)
 
                 if query.offset > 0:
-                    cmd += f" | sed '1,{query.offset}d'"
-
+                    p3 = subprocess.Popen([f"sed", f"'1,{query.offset}d'"], stdin=p3.stdout, stdout=subprocess.PIPE)
+                
+                r, _ = p3.communicate()
                 result = list(
                     filter(
                         None,
-                        subprocess.run(
-                            [cmd], capture_output=True, text=True, shell=True
-                        ).stdout.split("\n"),
+                        r.decode('utf-8').split("\n")
                     )
-                )
-                total = int(
-                    subprocess.run(
-                        [f"wc -l < {path}"],
-                        capture_output=True,
-                        text=True,
-                        shell=True,
-                    ).stdout,
-                    10,
-                )
+                )            
+                if query.search:
+                    p1 = subprocess.Popen(
+                        ['grep', f'\"{query.search}\"', path], stdout=subprocess.PIPE
+                    )
+                    p2 = subprocess.Popen(['wc', '-l'], stdin=p1.stdout, stdout=subprocess.PIPE)
+                    r, _ = p2.communicate()
+                    total = int(
+                        r.decode(),
+                        10,
+                    )
+                else:
+                    total = int(
+                        subprocess.run(
+                            [f"wc -l < {path}"],
+                            capture_output=True,
+                            text=True,
+                            shell=True,
+                        ).stdout,
+                        10,
+                    )
                 for line in result:
                     action_obj = json.loads(line)
 
@@ -919,6 +929,7 @@ async def validate_subpath_data(
     invalid_folders: list,
     folders_report: dict[str, dict],
     meta_folders_health: list,
+    max_invalid_size: int,
 ):
     """
     Params:
@@ -953,7 +964,8 @@ async def validate_subpath_data(
                 user_shortname,
                 invalid_folders,
                 folders_report,
-                meta_folders_health
+                meta_folders_health,
+                max_invalid_size
             )
             continue
 
@@ -1029,6 +1041,8 @@ async def validate_subpath_data(
                 if "invalid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
+                    if len(folders_report[folder_name]["invalid_entries"]) >= max_invalid_size:
+                        break
                     folders_report[folder_name]["invalid_entries"].append(issue)
                 continue
 
@@ -1151,6 +1165,8 @@ async def validate_subpath_data(
                 if "invalid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
+                    if len(folders_report[folder_name]["invalid_entries"]) >= max_invalid_size:
+                        break
                     folders_report[folder_name]["invalid_entries"].append(issue)
 
         if not folders_report.get(folder_name, {}):
