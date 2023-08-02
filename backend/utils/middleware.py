@@ -23,8 +23,7 @@ class CustomRequestMiddleware:
         request = Request(scope, receive)
 
         request_data = _request_data_ctx_var.set({
-            "user_agent": request.headers.get("user-agent"),
-            "id_address": request.headers.get("x-real-ip"),
+            "request_headers": request.headers.__dict__,
         })
 
         await self.app(scope, receive, send)
