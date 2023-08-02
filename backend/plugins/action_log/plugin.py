@@ -61,7 +61,7 @@ class Plugin(PluginBase):
         elif data.action_type == ActionType.update:
             action_attributes = data.attributes.get("history_diff", {})
 
-        action_attributes["request_headers"] = get_request_data()
+        action_attributes={**action_attributes, **get_request_data()}
 
         event_obj = Action(
             resource=Locator(
