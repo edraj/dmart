@@ -50,7 +50,6 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
                 health_check_res = await soft_health_check(space, schema, branch_name)
                 if health_check_res:
                     health_check['folders_report'].update(health_check_res.get('folders_report', {}))
-            health_check = resize_invalid_to_max(health_check)
             print_health_check(health_check)
             await save_health_check_entry(health_check, space)
             print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
@@ -64,7 +63,6 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
             print(f'>>>> Processing {space:<10} <<<<')
             before_time = time.time()
             health_check = await hard_health_check(space, branch_name)
-            health_check = resize_invalid_to_max(health_check)
             if health_check:
                 await save_health_check_entry(health_check, space)
             print_health_check(health_check)
@@ -87,7 +85,7 @@ def print_health_check(health_check):
     if health_check:
         for schema_path, val in health_check.get('folders_report', {}).items():
             valid = val.get('valid_entries', 0)
-            invalid = val.get('invalid_entries_size', 0)
+            invalid = len(val.get('invalid_entries', []))
             print("{:<32} {:<6} {:<6}".format(
                 schema_path,
                 valid,
@@ -234,9 +232,9 @@ async def soft_health_check(
                     if not folders_report.get(subpath, {}).get('invalid_entries'):
                         folders_report[subpath]['invalid_entries'] = []
                     if meta_doc_content["shortname"] not in folders_report[redis_doc_dict['subpath']]["invalid_entries"]:
-                        folders_report[redis_doc_dict['subpath']]["invalid_entries"].append(
-                            status.get('invalid')
-                        )
+                        if len(folders_report[redis_doc_dict['subpath']]["invalid_entries"]) >= MAX_INVALID_SIZE:
+                            continue
+                        folders_report[redis_doc_dict['subpath']]["invalid_entries"].append(status.get('invalid'))
 
                 uuid = redis_doc_dict['uuid'][:8]
                 await collect_duplicated_with_key('uuid', uuid)
@@ -312,6 +310,7 @@ async def hard_health_check(space_name: str, branch_name: str):
             invalid_folders=invalid_folders,
             folders_report=folders_report,
             meta_folders_health=meta_folders_health,
+            max_invalid_size=MAX_INVALID_SIZE
         )
     res = {"invalid_folders": invalid_folders, "folders_report": folders_report}
     if meta_folders_health:
@@ -380,16 +379,6 @@ async def save_duplicated_entries(branch_name: str = 'master'):
         owner_shortname='dmart',
     )
 
-
-def resize_invalid_to_max(health_check):
-    if not health_check:
-        return health_check
-    for subpath in health_check.get('folders_report', []):
-        entry: dict = health_check['folders_report'][subpath]
-        health_check['folders_report'][subpath]['invalid_entries_size'] = len(entry.get("invalid_entries", []))
-        if len(entry.get("invalid_entries", [])) > MAX_INVALID_SIZE:
-            health_check['folders_report'][subpath]['invalid_entries'] = entry['invalid_entries'][:MAX_INVALID_SIZE]
-    return health_check
 
 
 async def cleanup_spaces():
