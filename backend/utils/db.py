@@ -444,6 +444,8 @@ async def store_entry_diff(
     diff_keys.extend(list(new_version_flattend.keys()))
     history_diff = {}
     for key in set(diff_keys):
+        if key in ["updated_at"]:
+            continue
         if key in updated_attributes_flattend:
             old = (
                 copy(old_version_flattend[key])
@@ -470,7 +472,7 @@ async def store_entry_diff(
         shortname="history",
         owner_shortname=owner_shortname,
         timestamp=datetime.now(),
-        request_headers=get_request_data(),
+        request_headers=get_request_data()['request_headers'],
         diff=history_diff,
     )
     history_path = settings.spaces_folder / space_name / branch_path(branch_name)
