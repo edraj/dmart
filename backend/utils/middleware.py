@@ -21,9 +21,14 @@ class CustomRequestMiddleware:
             return
 
         request = Request(scope, receive)
+        request_headers = {}
+        for k,v in request.headers.items():
+            if k in ['cookie', 'authorization']:
+                continue
+            request_headers[k] = v
 
         request_data = _request_data_ctx_var.set({
-            "request_headers": request.headers.__dict__,
+            "request_headers": request_headers,
         })
 
         await self.app(scope, receive, send)
