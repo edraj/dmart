@@ -544,26 +544,35 @@ async def serve_query(
 
             path = f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl"
             if Path(path).is_file():
+                result = []
                 if query.search:
-                    p1 = subprocess.Popen(['grep', f'\"{query.search}\"', path], stdout=subprocess.PIPE)
-                    p2 = subprocess.Popen(['tail', '-n', f'{query.limit + query.offset}'], stdin=p1.stdout, stdout=subprocess.PIPE)
-                    p3 = subprocess.Popen(['tac'], stdin=p2.stdout, stdout=subprocess.PIPE)
-                else:
-                    p3 = subprocess.Popen(['tail', '-n', f'{query.limit + query.offset}', path], stdout=subprocess.PIPE)
-                    #! TBD: add tac
-                    # p3 = subprocess.Popen(['printf', ''], stdin=p2.stdout, stdout=subprocess.PIPE)
-                    # p3 = subprocess.Popen(['tac'], stdin=p2.stdout, stdout=subprocess.PIPE)
-
-                if query.offset > 0:
-                    p3 = subprocess.Popen([f"sed", f"'1,{query.offset}d'"], stdin=p3.stdout, stdout=subprocess.PIPE)
-                
-                r, _ = p3.communicate()
-                result = list(
+                    p = subprocess.Popen(['grep', f'\"{query.search}\"', path], stdout=subprocess.PIPE)
+                    p = subprocess.Popen(['tail', '-n', f'{query.limit + query.offset}'], stdin=p.stdout, stdout=subprocess.PIPE)
+                    p = subprocess.Popen(['tac'], stdin=p.stdout, stdout=subprocess.PIPE)
+                    if query.offset > 0:
+                        p = subprocess.Popen(['sed', f'1,{query.offset}d'], stdin=p.stdout, stdout=subprocess.PIPE)
+                    r, _ = p.communicate()
+                    result = list(
                     filter(
                         None,
                         r.decode('utf-8').split("\n")
                     )
-                )            
+                ) 
+                else:
+                    cmd = (
+                        f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
+                    )
+                    if query.offset > 0:
+                        cmd += f" | sed '1,{query.offset}d'"
+                    result = list(
+                        filter(
+                            None,
+                            subprocess.run(
+                                [cmd], capture_output=True, text=True, shell=True
+                            ).stdout.split("\n"),
+                        )
+                    )
+
                 if query.search:
                     p1 = subprocess.Popen(
                         ['grep', f'\"{query.search}\"', path], stdout=subprocess.PIPE
