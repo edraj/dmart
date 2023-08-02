@@ -466,7 +466,7 @@ async def store_entry_diff(
     if not history_diff:
         return {}
 
-    history_diff["x_request_data"] = get_request_data()
+    history_diff={**history_diff, **get_request_data()}
 
     history_obj = core.History(
         shortname="history",
