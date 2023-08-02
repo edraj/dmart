@@ -26,7 +26,7 @@ from utils.spaces import get_spaces
 
 duplicated_entries = {}
 key_entries: dict = {}
-MAX_INVALID_SIZE = 100
+MAX_INVALID_SIZE = 3
 
 
 async def main(health_type: str, space_param: str, schemas_param: list, branch_name: str):
@@ -233,7 +233,7 @@ async def soft_health_check(
                         folders_report[subpath]['invalid_entries'] = []
                     if meta_doc_content["shortname"] not in folders_report[redis_doc_dict['subpath']]["invalid_entries"]:
                         if len(folders_report[redis_doc_dict['subpath']]["invalid_entries"]) >= MAX_INVALID_SIZE:
-                            continue
+                            break
                         folders_report[redis_doc_dict['subpath']]["invalid_entries"].append(status.get('invalid'))
 
                 uuid = redis_doc_dict['uuid'][:8]
