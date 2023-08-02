@@ -85,7 +85,7 @@ class Plugin(PluginBase):
                 if(
                     meta.payload and 
                     meta.payload.content_type == ContentType.json
-                    and meta.payload.body
+                    and meta.payload.body is not None
                 ):
                     payload = db.load_resource_payload(
                         space_name=data.space_name,
@@ -104,17 +104,15 @@ class Plugin(PluginBase):
                 )
 
                 await redis_services.save_doc(meta_doc_id, meta_json)
-
-                if payload:
-                    payload.update(meta_json)
-                    await redis_services.save_payload_doc(
-                        data.space_name,
-                        data.branch_name,
-                        data.subpath,
-                        meta,
-                        payload,
-                        data.resource_type,
-                    )
+                payload.update(meta_json)
+                await redis_services.save_payload_doc(
+                    data.space_name,
+                    data.branch_name,
+                    data.subpath,
+                    meta,
+                    payload,
+                    data.resource_type,
+                )
 
             elif data.action_type == ActionType.move:
                 await redis_services.move_meta_doc(

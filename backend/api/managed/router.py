@@ -581,13 +581,14 @@ async def serve_request(
                     if resource_obj.shortname == settings.auto_uuid_rule:
                         resource_obj.uuid = uuid4()
                         resource_obj.shortname = str(resource_obj.uuid)[:8]
+                        record.shortname = str(resource_obj.uuid)[:8]
                         body_shortname = resource_obj.shortname
 
                     separate_payload_data = None
                     if (
                         resource_obj.payload
                         and resource_obj.payload.content_type == ContentType.json
-                        and resource_obj.payload.body
+                        and resource_obj.payload.body is not None
                     ):
                         separate_payload_data = resource_obj.payload.body
                         resource_obj.payload.body = body_shortname + ".json"
