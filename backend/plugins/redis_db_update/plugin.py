@@ -104,15 +104,16 @@ class Plugin(PluginBase):
                 )
 
                 await redis_services.save_doc(meta_doc_id, meta_json)
-                payload.update(meta_json)
-                await redis_services.save_payload_doc(
-                    data.space_name,
-                    data.branch_name,
-                    data.subpath,
-                    meta,
-                    payload,
-                    data.resource_type,
-                )
+                if meta.payload:
+                    payload.update(meta_json)
+                    await redis_services.save_payload_doc(
+                        data.space_name,
+                        data.branch_name,
+                        data.subpath,
+                        meta,
+                        payload,
+                        data.resource_type,
+                    )
 
             elif data.action_type == ActionType.move:
                 await redis_services.move_meta_doc(
@@ -150,8 +151,10 @@ class Plugin(PluginBase):
                 parent_shortname,
                 parent_subpath,
             )
-            meta_doc = await redis_services.get_doc_by_id(doc_id)
-            payload_doc = await redis_services.get_doc_by_id(meta_doc.get("payload_doc_id", ""))
+            meta_doc: dict = await redis_services.get_doc_by_id(doc_id)
+            payload_doc = await redis_services.get_doc_by_id(
+                meta_doc.get("payload_doc_id", "")
+            )
             payload = {k:v for k, v in payload_doc.items() if k not in meta_doc}
 
             # generate the payload string
