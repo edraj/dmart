@@ -342,6 +342,7 @@ class Action(Resource):
 
 class History(Meta):
     timestamp: datetime
+    request_headers: dict[str, Any]
     diff: dict[str, Any]
 
 
