@@ -1025,7 +1025,7 @@ async def validate_subpath_data(
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
                     if len(folders_report[folder_name]["invalid_entries"]) >= max_invalid_size:
-                        continue
+                        break
                     folders_report[folder_name]["invalid_entries"].append(issue)
                 continue
 
@@ -1149,7 +1149,7 @@ async def validate_subpath_data(
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
                     if len(folders_report[folder_name]["invalid_entries"]) >= max_invalid_size:
-                        continue
+                        break
                     folders_report[folder_name]["invalid_entries"].append(issue)
 
         if not folders_report.get(folder_name, {}):
