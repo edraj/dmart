@@ -472,7 +472,7 @@ async def store_entry_diff(
         shortname="history",
         owner_shortname=owner_shortname,
         timestamp=datetime.now(),
-        request_headers=get_request_data()['request_headers'],
+        request_headers=get_request_data().get('request_headers', {}),
         diff=history_diff,
     )
     history_path = settings.spaces_folder / space_name / branch_path(branch_name)
