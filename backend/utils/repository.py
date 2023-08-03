@@ -852,14 +852,15 @@ async def redis_query_search(
                 total += redis_res["total"]
     return search_res, total
 
-def dir_has_file(dir_path: Path, filename: str) -> bool:
+def dir_has_file(dir_path: Path, filename: str, resource_type: ResourceType) -> bool:
     if not dir_path.is_dir(): 
         return False
 
     for item in os.scandir(dir_path):
         if item.name == ".dm":
             for dm_item in os.scandir(item):
-                if dm_item.name == filename:
+                meta_file = Path(f"{dm_item.path}/meta.{resource_type}.json")
+                if dm_item.name == filename and meta_file.is_file():
                     return True
 
 
