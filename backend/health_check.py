@@ -135,6 +135,7 @@ def load_space_schemas(space_name: str, branch_name: str) -> dict[str, dict]:
                 schema_shortname=schema_meta.get("payload").get('body'),
             )
             if schema_path_body.is_file():
+                print(f"\n\n\n {schema_path_body = } \n\n\n")
                 schemas[schema_meta['shortname']] = json.loads(schema_path_body.read_text())
     return schemas
 
@@ -372,6 +373,8 @@ async def save_duplicated_entries(
     for_space: str | None = None, 
     for_branches: list | None = None
 ):
+    print('>>>> Processing UUID duplication <<<<')
+    before_time = time.time()
     uuid_scanned_entries = set()
     uuid_duplicated_entries: dict = {}
     
@@ -458,6 +461,9 @@ async def save_duplicated_entries(
         ),
         owner_shortname='dmart',
     )
+    
+    print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
+    
 
 
 
