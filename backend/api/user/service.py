@@ -9,7 +9,7 @@ from utils.redis_services import RedisServices
 from utils.settings import settings
 from fastapi.logger import logger
 
-# TODO: change comms_api to zain backend api
+# comms_api = zain backend api
 send_otp_api = urllib.parse.urljoin(settings.comms_api, "sms/otp/send")
 send_sms_api = urllib.parse.urljoin(settings.comms_api, "sms/send")
 send_email_api = urllib.parse.urljoin(settings.comms_api, "smtp/send")
