@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     root_subpath_mw = "__root__"
     email_sender = "dmart@dmart.com"
 
-    otp_token_ttl: int = 60 * 2
+    otp_token_ttl: int = 60 * 5
     comms_api: str = ""
     mock_smtp_api: bool = True
     files_query: str = "scandir"
