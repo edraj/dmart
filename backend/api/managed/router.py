@@ -557,7 +557,9 @@ async def serve_request(
                         filename = record.shortname
 
                     shortname_exists = repository.dir_has_file(
-                        dir_path=search_path, filename=filename
+                        dir_path=search_path, 
+                        filename=filename, 
+                        resource_type=record.resource_type
                     )
                     if shortname_exists and record.shortname != settings.auto_uuid_rule:
                         raise api.Exception(
