@@ -74,7 +74,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
     else:
         print("Wrong mode specify [soft or hard]")
         return
-    await save_duplicated_entries(space_param, branch_name)
+    await save_duplicated_entries(branch_name)
 
 
 def print_header():
@@ -102,7 +102,7 @@ def print_health_check(health_check):
 async def load_spaces_schemas(branch_name: str, for_space: str | None = None) -> dict:
     global spaces_schemas
     if spaces_schemas:
-        return
+        return spaces_schemas
     spaces = await get_spaces()
     if for_space and for_space != "all" and for_space in spaces:
         spaces_schemas[for_space] = load_space_schemas(for_space, branch_name)
@@ -370,8 +370,7 @@ async def save_health_check_entry(health_check, space_name: str, branch_name: st
 
 
 async def save_duplicated_entries(
-    for_space: str | None = None, 
-    for_branches: list | None = None
+    branch_name: str = settings.default_branch
 ):
     print('>>>> Processing UUID duplication <<<<')
     before_time = time.time()
@@ -383,16 +382,12 @@ async def save_duplicated_entries(
     spaces = await get_spaces()
     async with RedisServices() as redis:
         for space_name, space_data in spaces.items():
-            if for_space and for_space != "all" and for_space != space_name:
-                continue
             space_data = json.loads(space_data)
             for branch in space_data["branches"]:
-                if for_branches and branch not in for_branches:
-                    continue
                 try:
                     ft_index = redis.client.ft(f"{space_name}:{branch}:meta")
                     index_info = await ft_index.info()
-                except Exception as e:
+                except:
                     continue
                 for i in range(0, int(index_info["num_docs"]), 10000):
                     search_query = Query(query_string="*")
@@ -441,7 +436,7 @@ async def save_duplicated_entries(
                     resource_type=ResourceType.content,
                     shortname="duplicated_entries",
                     subpath="/health_check",
-                    branch_name=settings.management_space_branch,
+                    branch_name=branch_name,
                     attributes={
                         "is_active": True,
                         "updated_at": str(datetime.now()),
