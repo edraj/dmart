@@ -395,18 +395,21 @@ async def save_duplicated_entries(
                     res_data: Result = await ft_index.search(query=search_query) #type: ignore
                     for redis_doc_dict in res_data.docs:
                         redis_doc_dict = json.loads(redis_doc_dict.json)
-                        # Handle UUID
-                        if redis_doc_dict["uuid"] in uuid_scanned_entries:
-                            short_uuid = redis_doc_dict["uuid"][:8]
-                            uuid_duplicated_entries.setdefault(
-                                short_uuid, {"loc": [], "total": 0}
-                            )
-                            uuid_duplicated_entries[short_uuid]["loc"].append(
-                                space_name + "/" + redis_doc_dict['subpath'] + "/" + redis_doc_dict['shortname']
-                            )
-                            uuid_duplicated_entries[short_uuid]["total"]+=1
+                        if "uuid" in redis_doc_dict:
+                            # Handle UUID
+                            if "uuid" in redis_doc_dict and redis_doc_dict["uuid"] in uuid_scanned_entries:
+                                short_uuid = redis_doc_dict["uuid"][:8]
+                                uuid_duplicated_entries.setdefault(
+                                    short_uuid, {"loc": [], "total": 0}
+                                )
+                                uuid_duplicated_entries[short_uuid]["loc"].append(
+                                    space_name + "/" + redis_doc_dict['subpath'] + "/" + redis_doc_dict['shortname']
+                                )
+                                uuid_duplicated_entries[short_uuid]["total"]+=1
+                            else:
+                                uuid_scanned_entries.add(redis_doc_dict["uuid"])
                         else:
-                            uuid_scanned_entries.add(redis_doc_dict["uuid"])
+                            print ("UUID is missing", redis_doc_dict)
                     
                         # Handle Slug
                         if "slug" in redis_doc_dict and redis_doc_dict["slug"] in slug_scanned_entries:

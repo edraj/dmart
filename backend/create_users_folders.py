@@ -22,6 +22,7 @@ async def main():
             ("personal", f"people/{entry.name}", "private"),
             ("personal", f"people/{entry.name}", "protected"),
             ("personal", f"people/{entry.name}", "public"),
+            ("personal", f"people/{entry.name}", "inbox"),
         ]
         for folder in folders:
             if (settings.spaces_folder / folder[0] / folder[1] / folder[2]).is_dir():
