@@ -10,7 +10,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from jsonschema.validators import Draft4Validator
+from jsonschema.validators import Draft7Validator
 from redis.commands.search.query import Query
 from redis.commands.search.result import Result
 
@@ -234,7 +234,7 @@ async def soft_health_check(
                         if meta.payload and meta.payload.schema_shortname and payload_doc_content is not None:
                             schema_dict: dict = schemas.get(meta.payload.schema_shortname, {})
                             if schema_dict:
-                                Draft4Validator(schema_dict).validate(payload_doc_content)
+                                Draft7Validator(schema_dict).validate(payload_doc_content)
                             else:
                                 continue
                         if folders_report[subpath].get('valid_entries'):
