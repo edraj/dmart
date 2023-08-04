@@ -97,6 +97,10 @@ def print_health_check(health_check):
             )
             for one in val.get("invalid_entries", []):
                 print(f"\t\t\t\tInvalid item/issues: {one.get('shortname', 'n/a')}/{','.join(one.get('issues', []))}")
+    if health_check.get('invalid_folders'):
+        print('Invalid folders :')
+    for val in health_check.get('invalid_folders'):
+        print(f"\t\t\t\t {val}")
 
 
 async def load_spaces_schemas(branch_name: str, for_space: str | None = None) -> dict:
@@ -339,14 +343,16 @@ async def hard_health_check(space_name: str, branch_name: str):
 
 
 async def save_health_check_entry(health_check, space_name: str, branch_name: str = 'master'):
-    request_type = RequestType.create
-    entry_path = Path(settings.spaces_folder / "management/health_check/.dm" / space_name / "meta.content.json")
+    meta_path = Path(settings.spaces_folder / "management/health_check/.dm" / space_name)
+    entry_path = Path(settings.spaces_folder / "management/health_check" / f"{space_name}.json")
+    if meta_path.is_dir():
+        shutil.rmtree(meta_path)
     if entry_path.is_file():
-        request_type = RequestType.update
+        os.remove(entry_path)
     await serve_request(
         request=api.Request(
             space_name="management",
-            request_type=request_type,
+            request_type=RequestType.create,
             records=[
                 core.Record(
                     resource_type=ResourceType.content,
