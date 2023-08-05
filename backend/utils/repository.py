@@ -730,10 +730,15 @@ async def get_entry_attachments(
 
     # SORT ALTERATION ATTACHMENTS BY ALTERATION.CREATED_AT
     for attachment_name, attachments in attachments_dict.items():
-        if attachment_name == ResourceType.alteration:
-            attachments_dict[attachment_name] = sorted(
-                attachments, key=lambda d: d.attributes["created_at"]
-            )
+        try:
+            if attachment_name == ResourceType.alteration:
+                attachments_dict[attachment_name] = sorted(
+                    attachments, key=lambda d: d.attributes["created_at"]
+                )
+        except Exception as e:
+            logger.error(f"Invalid attachment entry:{attachments_path/attachment_name}.\
+            Error: {e.args}")
+            
 
     return attachments_dict
 
