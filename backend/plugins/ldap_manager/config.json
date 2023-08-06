@@ -1,5 +1,5 @@
 {
-	"is_active": true,
+	"is_active": false,
 	"filters": {
 		"subpaths": ["users"],
 		"resource_types": ["user"],
