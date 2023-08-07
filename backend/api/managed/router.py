@@ -872,15 +872,21 @@ async def serve_request(
                         schema_shortname=resource_obj.payload.schema_shortname,
                     )
 
+                updated_attributes_flattend=list(
+                    flatten_dict(record.attributes).keys()
+                )
+                if request.request_type == RequestType.r_replace:
+                    updated_attributes_flattend = (
+                        list(old_version_flattend.keys()) + 
+                        list(new_version_flattend.keys())
+                    )
                 history_diff = await db.update(
                     space_name=request.space_name,
                     subpath=record.subpath,
                     meta=resource_obj,
                     old_version_flattend=old_version_flattend,
                     new_version_flattend=new_version_flattend,
-                    updated_attributes_flattend=list(
-                        flatten_dict(record.attributes).keys()
-                    ),
+                    updated_attributes_flattend=updated_attributes_flattend,
                     branch_name=record.branch_name,
                     user_shortname=owner_shortname,
                     schema_shortname=schema_shortname,
