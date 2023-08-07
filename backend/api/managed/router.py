@@ -629,6 +629,11 @@ async def serve_request(
                                     {"shortname": record.shortname, "channel": "SMS"},
                                     settings.jwt_access_expires,
                                 )
+                                channel += f"SMS:{record.attributes.get('msisdn')}"
+                                await redis_services.set(
+                                    f"users:login:invitation:{invitation_token}",
+                                    channel
+                                )
                                 invitation_link = f"{settings.invitation_link}/auth/invitation?invitation={invitation_token}"
                                 token_uuid = str(uuid.uuid4())[:8]
                                 await redis_services.set(
@@ -667,6 +672,11 @@ async def serve_request(
                                     {"shortname": record.shortname, "channel": "EMAIL"},
                                     settings.jwt_access_expires,
                                 )
+                                channel = f"EMAIL:{record.attributes.get('email')}"
+                                await redis_services.set(
+                                    f"users:login:invitation:{invitation_token}", 
+                                    channel
+                                )
                                 invitation_link = f"{settings.invitation_link}/auth/invitation?invitation={invitation_token}"
                                 token_uuid = str(uuid.uuid4())[:8]
                                 await redis_services.set(
@@ -678,7 +688,6 @@ async def serve_request(
                                 link = (
                                     f"{settings.public_app_url}/managed/s/{token_uuid}"
                                 )
-                                channel += f"EMAIL:{record.attributes.get('email')}"
                                 try:
                                     await send_email(
                                         from_address=settings.email_sender,
@@ -710,9 +719,6 @@ async def serve_request(
                                             }
                                         },
                                     )
-                            await redis_services.set(
-                                f"users:login:invitation:{invitation_token}", channel
-                            )
 
                     if separate_payload_data != None and isinstance(
                         separate_payload_data, dict
