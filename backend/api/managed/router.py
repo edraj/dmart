@@ -173,24 +173,37 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
     json_data = []
-    for redis_document in search_res:
-        redis_doc_dict = redis_document.__dict__
-        if "json" in redis_doc_dict:
-            redis_doc_dict = json.loads(redis_doc_dict["json"])
+    timestamp_fields = ["created_at", "updated_at"]
+    async with RedisServices() as redis_services:
+        for redis_document in search_res:
+            redis_doc_dict = redis_document.__dict__
+            if "json" in redis_doc_dict:
+                redis_doc_dict = json.loads(redis_doc_dict["json"])
+            if (
+                redis_doc_dict.get("payload_doc_id")
+                and query.retrieve_json_payload
+            ):
+                payload_doc_content = await redis_services.get_payload_doc(
+                    redis_doc_dict["payload_doc_id"], redis_doc_dict["resource_type"]
+                )
+                redis_doc_dict.update(payload_doc_content)
 
-        _json_data = {}
-        for folder_view in folder_views:
-            if folder_view.count(".") == 0:
-                _json_data[folder_view] = redis_doc_dict.get(folder_view)
-            elif folder_view.count(".") != 0:
-                result = {**redis_doc_dict}
-                for f in folder_view.split("."):
-                    if result is None:
-                        break
-                    result = result.get(f, None)
-                _json_data[folder_view] = result
-
-        json_data.append(_json_data)
+            _json_data = {}
+            for folder_view in folder_views:
+                if folder_view.count(".") == 0:
+                    _json_data[folder_view] = redis_doc_dict.get(folder_view)
+                elif folder_view.count(".") != 0:
+                    result = {**redis_doc_dict}
+                    for f in folder_view.split("."):
+                        if result is None:
+                            break
+                        result = result.get(f, None)
+                    _json_data[folder_view] = result
+                if folder_view in timestamp_fields:
+                    _json_data[folder_view] = datetime.fromtimestamp(
+                        _json_data[folder_view]
+                    )
+            json_data.append(_json_data)
 
     # Sort all entries from all schemas
     if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
