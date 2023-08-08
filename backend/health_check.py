@@ -338,7 +338,7 @@ async def hard_health_check(space_name: str, branch_name: str):
         )
     res = {"invalid_folders": invalid_folders, "folders_report": folders_report}
     if meta_folders_health:
-        res['invalid_meta_folders'] = meta_folders_health
+        res['invalid_folders'] = meta_folders_health
     return res
 
 
