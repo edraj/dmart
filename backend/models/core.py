@@ -92,6 +92,11 @@ class Record(BaseModel):
     subpath: str = Field(regex=regex.SUBPATH)
     attributes: dict[str, Any]
     attachments: dict[ResourceType, list[Any]] | None = None
+    
+    def __init__(self, **data):
+        BaseModel.__init__(self, **data)
+        if self.subpath != "/":
+            self.subpath = self.subpath.strip("/")
 
     def to_dict(self):
         return json.loads(self.json())
