@@ -158,7 +158,7 @@ class Meta(Resource):
             record.attributes["password"] = hashed_pass
         record.attributes["owner_shortname"] = owner_shortname
         record.attributes["shortname"] = record.shortname
-        meta_obj = meta_class(**remove_none(record.attributes))
+        meta_obj = meta_class(**remove_none(record.attributes)) #type: ignore
         return meta_obj
 
     @staticmethod
