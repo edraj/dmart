@@ -26,7 +26,7 @@ def gen_alphanumeric(length=16):
     )
 
 
-async def mock_sending_otp(msisdn):
+async def mock_sending_otp(msisdn) -> dict:
     key = f"users:otp:otps/{msisdn}"
     async with RedisServices() as redis_services:
         await redis_services.set(key, "123456", settings.otp_token_ttl)
