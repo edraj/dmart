@@ -104,7 +104,7 @@ class Plugin(PluginBase):
             branch_name=data.branch_name,
         )
 
-    async def prepare_request(self, notification_dict):
+    async def prepare_request(self, notification_dict) -> dict:
         # Get Notification Request Images
         attachments_path = (
             settings.spaces_folder
