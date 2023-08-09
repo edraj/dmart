@@ -25,7 +25,12 @@ from utils.access_control import access_control
 from multiprocessing import Pool
 
 
-async def load_data_to_redis(space_name, branch_name, subpath, allowed_resource_types):
+async def load_data_to_redis(
+    space_name, 
+    branch_name, 
+    subpath, 
+    allowed_resource_types
+) -> dict:
     """
     Load meta files inside subpath then store them to redis as :space_name:meta prefixed doc,
     and if the meta file has a separate payload file follwing a schema we loads the payload content and store it to redis as :space_name:schema_name prefixed doc
