@@ -6,6 +6,8 @@ from collections.abc import MutableMapping
 from models.enums import Language
 from utils.settings import settings
 from typing import Any
+from languages.loader import languages
+
 
 def flatten_all(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict:
     items = []
@@ -267,7 +269,10 @@ def replace_message_vars(message: str, dest_data: dict, locale: str):
                 f"{{{field}}}", datetime.strptime(str(value), "%Y-%m-%d %H:%M:%S.%f").strftime("%Y-%m-%d %H:%M:%S")
             )
         else:
-            message = message.replace(f"{{{field}}}", str(value))
+            message = message.replace(
+                f"{{{field}}}", 
+                languages[Language[locale]].get(str(value), str(value))
+            )
 
     return re_sub(r"\{\w*.*\}", "", message)
 
