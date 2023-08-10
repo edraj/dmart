@@ -1,5 +1,6 @@
-requests
 weasyprint
 pypdf
 dicttoxml
 pdf2image
+firebase-admin
+pillow
