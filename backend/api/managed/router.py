@@ -648,7 +648,7 @@ async def serve_request(
                                     channel
                                 )
                                 invitation_link = f"{settings.invitation_link}" +\
-                                    f"/auth/invitation?\invitation={invitation_token}"+\
+                                    f"/auth/invitation?invitation={invitation_token}"+\
                                     f"&lang={Language.code(record.attributes.get('language', Language.ar))}"
                                 
                                 token_uuid = str(uuid.uuid4())[:8]
@@ -694,7 +694,7 @@ async def serve_request(
                                     channel
                                 )
                                 invitation_link = f"{settings.invitation_link}" +\
-                                    f"/auth/invitation?\invitation={invitation_token}"+\
+                                    f"/auth/invitation?invitation={invitation_token}"+\
                                     f"&lang={Language.code(record.attributes.get('language', Language.ar))}"
                                 token_uuid = str(uuid.uuid4())[:8]
                                 await redis_services.set(
