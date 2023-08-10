@@ -647,7 +647,10 @@ async def serve_request(
                                     f"users:login:invitation:{invitation_token}",
                                     channel
                                 )
-                                invitation_link = f"{settings.invitation_link}/auth/invitation?invitation={invitation_token}"
+                                invitation_link = f"{settings.invitation_link}" +\
+                                    f"/auth/invitation?invitation={invitation_token}"+\
+                                    f"&lang={Language.code(record.attributes.get('language', Language.ar))}"
+                                
                                 token_uuid = str(uuid.uuid4())[:8]
                                 await redis_services.set(
                                     f"short/{token_uuid}",
@@ -690,7 +693,9 @@ async def serve_request(
                                     f"users:login:invitation:{invitation_token}", 
                                     channel
                                 )
-                                invitation_link = f"{settings.invitation_link}/auth/invitation?invitation={invitation_token}"
+                                invitation_link = f"{settings.invitation_link}" +\
+                                    f"/auth/invitation?invitation={invitation_token}"+\
+                                    f"&lang={Language.code(record.attributes.get('language', Language.ar))}"
                                 token_uuid = str(uuid.uuid4())[:8]
                                 await redis_services.set(
                                     f"short/{token_uuid}",
@@ -2228,6 +2233,7 @@ async def execute(
 
     if "to_date" in record.attributes:
         query_dict["to_date"] = record.attributes["to_date"]
+
 
     return await query_entries(
         query=api.Query(**query_dict), user_shortname=logged_in_user
