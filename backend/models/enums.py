@@ -20,6 +20,17 @@ class Language(StrEnum):
     kd = "kurdish"
     fr = "french"
     tr = "trukish"
+    
+    @staticmethod
+    def code(lang_str):
+        codes = {
+            "arabic": "ar",
+            "english": "en",
+            "kurdish": "kd",
+            "french": "fr",
+            "trukish": "tr",
+        }
+        return codes[lang_str]
 
 
 class ResourceType(StrEnum):
