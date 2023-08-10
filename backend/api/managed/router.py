@@ -40,6 +40,7 @@ import utils.repository as repository
 from utils.helpers import (
     branch_path,
     camel_case,
+    flatten_all,
     flatten_dict,
     json_flater,
     resolve_schema_references,
@@ -167,9 +168,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         core.Folder,
         query.branch_name,
     )
-    folder_views = [
-        f.get("key", "") for f in folder_payload.get("index_attributes", [])
-    ]
+    folder_views = folder_payload.get("csv_columns", [])
 
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
     json_data = []
@@ -188,22 +187,26 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                 )
                 redis_doc_dict.update(payload_doc_content)
 
-            _json_data = {}
+            csv_row = {}
             for folder_view in folder_views:
-                if folder_view.count(".") == 0:
-                    _json_data[folder_view] = redis_doc_dict.get(folder_view)
-                elif folder_view.count(".") != 0:
-                    result = {**redis_doc_dict}
-                    for f in folder_view.split("."):
-                        if result is None:
-                            break
-                        result = result.get(f, None)
-                    _json_data[folder_view] = result
-                if folder_view in timestamp_fields:
-                    _json_data[folder_view] = datetime.fromtimestamp(
-                        _json_data[folder_view]
+                column_key = folder_view.get("key")
+                column_title = folder_view.get("name")
+                flattened_doc = flatten_dict(redis_doc_dict)
+                attribute_val = redis_doc_dict.get(column_key)
+                if type(attribute_val) == list:
+                    flattened_cell_data = flatten_all({
+                        column_title: attribute_val
+                    })
+                    for k, v in flattened_cell_data.items():
+                        csv_row[k] = v
+                else:
+                    csv_row[column_title] = attribute_val
+
+                if column_key in timestamp_fields:
+                    csv_row[column_title] = datetime.fromtimestamp(
+                        csv_row[column_title]
                     )
-            json_data.append(_json_data)
+            json_data.append(csv_row)
 
     # Sort all entries from all schemas
     if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
@@ -223,13 +226,13 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
     )
 
-    v_path = StringIO()
     if len(json_data) == 0:
         return api.Response(
             status=api.Status.success,
             attributes={"message": "The records are empty"},
         )
 
+    v_path = StringIO()
     keys: set = set({})
     for row in json_data:
         keys.update(set(row.keys()))
