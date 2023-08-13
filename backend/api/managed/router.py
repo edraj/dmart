@@ -204,12 +204,10 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                                 csv_row[f"{column_title}.{k}"] = v
                                 new_keys.add(f"{column_title}.{k}")
                         else:
-                            if column_title == "Order Compensations":
-                                csv_row[column_title] = attribute_val
-
+                            csv_row[column_title] = attribute_val
+                            
                 elif attribute_val is not None:
-                    if column_title == "Order Compensations":
-                        csv_row[column_title] = attribute_val
+                    csv_row[column_title] = attribute_val
 
                 if column_key in timestamp_fields:
                     csv_row[column_title] = datetime.fromtimestamp(
