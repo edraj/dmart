@@ -124,8 +124,14 @@ class AccessControl:
         resource_is_active: bool = False,
         resource_owner_shortname: str | None = None,
         resource_owner_group: str | None = None,
-        record_attributes: dict = {}
+        record_attributes: dict = {},
+        entry_shortname: str | None = None
     ):
+        if resource_type == ResourceType.space and entry_shortname:
+            return await self.check_space_access(
+                user_shortname,
+                entry_shortname
+            )
         user_permissions = await self.get_user_premissions(user_shortname)
 
         user_groups = (await self.load_user_meta(user_shortname)).groups or []
