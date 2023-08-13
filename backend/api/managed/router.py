@@ -1,3 +1,4 @@
+from copy import copy
 import csv
 from datetime import datetime
 import hashlib
@@ -168,6 +169,9 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         query.branch_name,
     )
     folder_views = folder_payload.get("csv_columns", [])
+    if not folder_views:
+        folder_views = folder_payload.get("index_attributes", [])
+        
     keys: list = [i["name"] for i in folder_views]
 
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
@@ -189,31 +193,58 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                 )
                 redis_doc_dict.update(payload_doc_content)
 
-            csv_row = {}
+            rows: list[dict] = [{}]
             for folder_view in folder_views:
                 column_key = folder_view.get("key")
                 column_title = folder_view.get("name")
                 flattened_doc = flatten_dict(redis_doc_dict)
                 attribute_val = flattened_doc.get(column_key)
+                
+                """
+                Extract array items in a separate row per item
+                - list_new_rows = []
+                - for row in rows:
+                -      for item in new_list[1:]:
+                -          new_row = row
+                -          add item attributes to the new_row
+                -          list_new_rows.append(new_row)
+                -      add new_list[0] attributes to row
+                -    
+                -  rows += list_new_rows
+                """
                 if type(attribute_val) == list:
-                    for item in attribute_val:
-                        if type(item) == dict:
+                    list_new_rows: list[dict] = []
+                    # Duplicate old rows
+                    for row in rows:
+                        # New row for each item
+                        for item in attribute_val[1:]:
+                            new_row = copy(row)
+                            # New cell for each item's attribute
+                            if type(item) == dict:
+                                for k, v in item.items():
+                                    new_row[f"{column_title}.{k}"] = v
+                                    new_keys.add(f"{column_title}.{k}")
+                            else:
+                                new_row[column_title] = item
+                                
+                            list_new_rows.append(new_row)
+                        # Add first items's attribute to the existing rows
+                        if type(attribute_val[0]) == dict:
                             deprecated_keys.add(column_title)
-                            keys = list(filter(lambda item: item!=column_title, keys))
-                            for k, v in item.items():
-                                csv_row[f"{column_title}.{k}"] = v
+                            for k, v in attribute_val[0].items():
+                                row[f"{column_title}.{k}"] = v
                                 new_keys.add(f"{column_title}.{k}")
                         else:
-                            csv_row[column_title] = attribute_val
+                            row[column_title] = attribute_val[0]
+                    rows += list_new_rows
+                            
                             
                 elif attribute_val is not None:
-                    csv_row[column_title] = attribute_val
-
-                if column_key in timestamp_fields:
-                    csv_row[column_title] = datetime.fromtimestamp(
-                        csv_row[column_title]
-                    ).strftime('%Y-%m-%d %H:%M:%S')
-            json_data.append(csv_row)
+                    new_col = attribute_val if column_key not in timestamp_fields else\
+                        datetime.fromtimestamp(attribute_val).strftime('%Y-%m-%d %H:%M:%S')
+                    for row in rows:
+                        row[column_title] = new_col
+            json_data += rows
 
     # Sort all entries from all schemas
     if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
@@ -241,9 +272,9 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     v_path = StringIO()
     
-    list_new_keys = list(new_keys)
-    keys = list(filter(lambda item:item not in list_new_keys, keys))
-    writer = csv.DictWriter(v_path, fieldnames=(keys + list_new_keys))
+    list_deprecated_keys = list(deprecated_keys)
+    keys = list(filter(lambda item:item not in list_deprecated_keys, keys))
+    writer = csv.DictWriter(v_path, fieldnames=(keys + list(new_keys)))
     writer.writeheader()
     writer.writerows(json_data)
 
