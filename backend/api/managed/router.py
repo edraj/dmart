@@ -40,7 +40,6 @@ import utils.repository as repository
 from utils.helpers import (
     branch_path,
     camel_case,
-    flatten_all,
     flatten_dict,
     json_flater,
     resolve_schema_references,
@@ -169,10 +168,13 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         query.branch_name,
     )
     folder_views = folder_payload.get("csv_columns", [])
+    keys: list = [i["name"] for i in folder_views]
 
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
     json_data = []
     timestamp_fields = ["created_at", "updated_at"]
+    new_keys: set = set()
+    deprecated_keys: set = set()
     async with RedisServices() as redis_services:
         for redis_document in search_res:
             redis_doc_dict = redis_document.__dict__
@@ -192,20 +194,27 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                 column_key = folder_view.get("key")
                 column_title = folder_view.get("name")
                 flattened_doc = flatten_dict(redis_doc_dict)
-                attribute_val = redis_doc_dict.get(column_key)
+                attribute_val = flattened_doc.get(column_key)
                 if type(attribute_val) == list:
-                    flattened_cell_data = flatten_all({
-                        column_title: attribute_val
-                    })
-                    for k, v in flattened_cell_data.items():
-                        csv_row[k] = v
-                else:
-                    csv_row[column_title] = attribute_val
+                    for item in attribute_val:
+                        if type(item) == dict:
+                            deprecated_keys.add(column_title)
+                            keys = list(filter(lambda item: item!=column_title, keys))
+                            for k, v in item.items():
+                                csv_row[f"{column_title}.{k}"] = v
+                                new_keys.add(f"{column_title}.{k}")
+                        else:
+                            if column_title == "Order Compensations":
+                                csv_row[column_title] = attribute_val
+
+                elif attribute_val is not None:
+                    if column_title == "Order Compensations":
+                        csv_row[column_title] = attribute_val
 
                 if column_key in timestamp_fields:
                     csv_row[column_title] = datetime.fromtimestamp(
                         csv_row[column_title]
-                    )
+                    ).strftime('%Y-%m-%d %H:%M:%S')
             json_data.append(csv_row)
 
     # Sort all entries from all schemas
@@ -233,11 +242,10 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
 
     v_path = StringIO()
-    keys: set = set({})
-    for row in json_data:
-        keys.update(set(row.keys()))
-    print(f"{keys=}")
-    writer = csv.DictWriter(v_path, fieldnames=list(keys))
+    
+    list_new_keys = list(new_keys)
+    keys = list(filter(lambda item:item not in list_new_keys, keys))
+    writer = csv.DictWriter(v_path, fieldnames=(keys + list_new_keys))
     writer.writeheader()
     writer.writerows(json_data)
 
