@@ -1422,7 +1422,7 @@ async def retrieve_entry_or_attachment_payload(
     )
 
     cls = getattr(sys.modules["models.core"], camel_case(resource_type))
-    meta = await db.load(
+    meta: core.Meta = await db.load(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
@@ -1452,6 +1452,7 @@ async def retrieve_entry_or_attachment_payload(
         resource_is_active=meta.is_active,
         resource_owner_shortname=meta.owner_shortname,
         resource_owner_group=meta.owner_group_shortname,
+        entry_shortname=meta.shortname
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -1827,7 +1828,7 @@ async def retrieve_entry_meta(
     )
 
     resource_class = getattr(sys.modules["models.core"], camel_case(resource_type))
-    meta = await db.load(
+    meta: core.Meta = await db.load(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
@@ -1852,6 +1853,7 @@ async def retrieve_entry_meta(
         resource_is_active=meta.is_active,
         resource_owner_shortname=meta.owner_shortname,
         resource_owner_group=meta.owner_group_shortname,
+        entry_shortname=meta.shortname
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
