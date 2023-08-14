@@ -1,7 +1,7 @@
 from copy import copy
 import shutil
 from models.enums import LockAction
-from utils.helpers import arr_remove_common, branch_path, snake_case
+from utils.helpers import arr_remove_common, branch_path, pp, snake_case
 from datetime import datetime
 from models.enums import ContentType, ResourceType
 from utils.middleware import get_request_data
@@ -689,6 +689,9 @@ async def delete(
             if payload_file_path.is_file():
                 os.remove(payload_file_path)
 
+    history_path = f"{settings.spaces_folder}/{space_name}/{branch_path(branch_name)}" +\
+        f"{subpath}/.dm/{meta.shortname}"
+
     if(
         path.is_dir()
         and (
@@ -700,3 +703,5 @@ async def delete(
         # in case of folder the path = {folder_name}/.dm
         if isinstance(meta, core.Folder) and path.parent.is_dir():
             shutil.rmtree(path.parent)
+        if isinstance(meta, core.Folder) and Path(history_path).is_dir():
+            shutil.rmtree(history_path)
