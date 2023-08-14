@@ -10,7 +10,7 @@ from models.api import Exception as API_Exception, Error as API_Error
 from utils.settings import settings
 from pathlib import Path as FSPath
 from utils.settings import settings
-from jsonschema import Draft4Validator
+from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 
 
@@ -48,7 +48,7 @@ async def validate_payload_with_schema(
     else:
         data = payload_data
 
-    Draft4Validator(schema).validate(data)
+    Draft7Validator(schema).validate(data)
 
 
 def get_schema_path(space_name: str, branch_name: str | None, schema_shortname: str):

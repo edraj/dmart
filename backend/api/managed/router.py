@@ -1,3 +1,4 @@
+from copy import copy
 import csv
 from datetime import datetime
 import hashlib
@@ -167,30 +168,83 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         core.Folder,
         query.branch_name,
     )
-    folder_views = [
-        f.get("key", "") for f in folder_payload.get("index_attributes", [])
-    ]
+    folder_views = folder_payload.get("csv_columns", [])
+    if not folder_views:
+        folder_views = folder_payload.get("index_attributes", [])
+        
+    keys: list = [i["name"] for i in folder_views]
 
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
     json_data = []
-    for redis_document in search_res:
-        redis_doc_dict = redis_document.__dict__
-        if "json" in redis_doc_dict:
-            redis_doc_dict = json.loads(redis_doc_dict["json"])
+    timestamp_fields = ["created_at", "updated_at"]
+    new_keys: set = set()
+    deprecated_keys: set = set()
+    async with RedisServices() as redis_services:
+        for redis_document in search_res:
+            redis_doc_dict = redis_document.__dict__
+            if "json" in redis_doc_dict:
+                redis_doc_dict = json.loads(redis_doc_dict["json"])
+            if (
+                redis_doc_dict.get("payload_doc_id")
+                and query.retrieve_json_payload
+            ):
+                payload_doc_content = await redis_services.get_payload_doc(
+                    redis_doc_dict["payload_doc_id"], redis_doc_dict["resource_type"]
+                )
+                redis_doc_dict.update(payload_doc_content)
 
-        _json_data = {}
-        for folder_view in folder_views:
-            if folder_view.count(".") == 0:
-                _json_data[folder_view] = redis_doc_dict.get(folder_view)
-            elif folder_view.count(".") != 0:
-                result = {**redis_doc_dict}
-                for f in folder_view.split("."):
-                    if result is None:
-                        break
-                    result = result.get(f, None)
-                _json_data[folder_view] = result
-
-        json_data.append(_json_data)
+            rows: list[dict] = [{}]
+            for folder_view in folder_views:
+                column_key = folder_view.get("key")
+                column_title = folder_view.get("name")
+                flattened_doc = flatten_dict(redis_doc_dict)
+                attribute_val = flattened_doc.get(column_key)
+                
+                """
+                Extract array items in a separate row per item
+                - list_new_rows = []
+                - for row in rows:
+                -      for item in new_list[1:]:
+                -          new_row = row
+                -          add item attributes to the new_row
+                -          list_new_rows.append(new_row)
+                -      add new_list[0] attributes to row
+                -    
+                -  rows += list_new_rows
+                """
+                if type(attribute_val) == list:
+                    list_new_rows: list[dict] = []
+                    # Duplicate old rows
+                    for row in rows:
+                        # New row for each item
+                        for item in attribute_val[1:]:
+                            new_row = copy(row)
+                            # New cell for each item's attribute
+                            if type(item) == dict:
+                                for k, v in item.items():
+                                    new_row[f"{column_title}.{k}"] = v
+                                    new_keys.add(f"{column_title}.{k}")
+                            else:
+                                new_row[column_title] = item
+                                
+                            list_new_rows.append(new_row)
+                        # Add first items's attribute to the existing rows
+                        if type(attribute_val[0]) == dict:
+                            deprecated_keys.add(column_title)
+                            for k, v in attribute_val[0].items():
+                                row[f"{column_title}.{k}"] = v
+                                new_keys.add(f"{column_title}.{k}")
+                        else:
+                            row[column_title] = attribute_val[0]
+                    rows += list_new_rows
+                            
+                            
+                elif attribute_val is not None:
+                    new_col = attribute_val if column_key not in timestamp_fields else\
+                        datetime.fromtimestamp(attribute_val).strftime('%Y-%m-%d %H:%M:%S')
+                    for row in rows:
+                        row[column_title] = new_col
+            json_data += rows
 
     # Sort all entries from all schemas
     if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
@@ -210,18 +264,17 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
     )
 
-    v_path = StringIO()
     if len(json_data) == 0:
         return api.Response(
             status=api.Status.success,
             attributes={"message": "The records are empty"},
         )
 
-    keys: set = set({})
-    for row in json_data:
-        keys.update(set(row.keys()))
-    print(f"{keys=}")
-    writer = csv.DictWriter(v_path, fieldnames=list(keys))
+    v_path = StringIO()
+    
+    list_deprecated_keys = list(deprecated_keys)
+    keys = list(filter(lambda item:item not in list_deprecated_keys, keys))
+    writer = csv.DictWriter(v_path, fieldnames=(keys + list(new_keys)))
     writer.writeheader()
     writer.writerows(json_data)
 
@@ -557,7 +610,9 @@ async def serve_request(
                         filename = record.shortname
 
                     shortname_exists = repository.dir_has_file(
-                        dir_path=search_path, filename=filename
+                        dir_path=search_path, 
+                        filename=filename, 
+                        resource_type=record.resource_type
                     )
                     if shortname_exists and record.shortname != settings.auto_uuid_rule:
                         raise api.Exception(
@@ -581,13 +636,14 @@ async def serve_request(
                     if resource_obj.shortname == settings.auto_uuid_rule:
                         resource_obj.uuid = uuid4()
                         resource_obj.shortname = str(resource_obj.uuid)[:8]
+                        record.shortname = str(resource_obj.uuid)[:8]
                         body_shortname = resource_obj.shortname
 
                     separate_payload_data = None
                     if (
                         resource_obj.payload
                         and resource_obj.payload.content_type == ContentType.json
-                        and resource_obj.payload.body
+                        and resource_obj.payload.body is not None
                     ):
                         separate_payload_data = resource_obj.payload.body
                         resource_obj.payload.body = body_shortname + ".json"
@@ -626,7 +682,15 @@ async def serve_request(
                                     {"shortname": record.shortname, "channel": "SMS"},
                                     settings.jwt_access_expires,
                                 )
-                                invitation_link = f"{settings.invitation_link}/auth/invitation?invitation={invitation_token}"
+                                channel += f"SMS:{record.attributes.get('msisdn')}"
+                                await redis_services.set(
+                                    f"users:login:invitation:{invitation_token}",
+                                    channel
+                                )
+                                invitation_link = f"{settings.invitation_link}" +\
+                                    f"/auth/invitation?invitation={invitation_token}"+\
+                                    f"&lang={Language.code(record.attributes.get('language', Language.ar))}"
+                                
                                 token_uuid = str(uuid.uuid4())[:8]
                                 await redis_services.set(
                                     f"short/{token_uuid}",
@@ -664,7 +728,14 @@ async def serve_request(
                                     {"shortname": record.shortname, "channel": "EMAIL"},
                                     settings.jwt_access_expires,
                                 )
-                                invitation_link = f"{settings.invitation_link}/auth/invitation?invitation={invitation_token}"
+                                channel = f"EMAIL:{record.attributes.get('email')}"
+                                await redis_services.set(
+                                    f"users:login:invitation:{invitation_token}", 
+                                    channel
+                                )
+                                invitation_link = f"{settings.invitation_link}" +\
+                                    f"/auth/invitation?invitation={invitation_token}"+\
+                                    f"&lang={Language.code(record.attributes.get('language', Language.ar))}"
                                 token_uuid = str(uuid.uuid4())[:8]
                                 await redis_services.set(
                                     f"short/{token_uuid}",
@@ -675,7 +746,6 @@ async def serve_request(
                                 link = (
                                     f"{settings.public_app_url}/managed/s/{token_uuid}"
                                 )
-                                channel += f"EMAIL:{record.attributes.get('email')}"
                                 try:
                                     await send_email(
                                         from_address=settings.email_sender,
@@ -707,9 +777,6 @@ async def serve_request(
                                             }
                                         },
                                     )
-                            await redis_services.set(
-                                f"users:login:invitation:{invitation_token}", channel
-                            )
 
                     if separate_payload_data != None and isinstance(
                         separate_payload_data, dict
@@ -869,15 +936,21 @@ async def serve_request(
                         schema_shortname=resource_obj.payload.schema_shortname,
                     )
 
+                updated_attributes_flattend=list(
+                    flatten_dict(record.attributes).keys()
+                )
+                if request.request_type == RequestType.r_replace:
+                    updated_attributes_flattend = (
+                        list(old_version_flattend.keys()) + 
+                        list(new_version_flattend.keys())
+                    )
                 history_diff = await db.update(
                     space_name=request.space_name,
                     subpath=record.subpath,
                     meta=resource_obj,
                     old_version_flattend=old_version_flattend,
                     new_version_flattend=new_version_flattend,
-                    updated_attributes_flattend=list(
-                        flatten_dict(record.attributes).keys()
-                    ),
+                    updated_attributes_flattend=updated_attributes_flattend,
                     branch_name=record.branch_name,
                     user_shortname=owner_shortname,
                     schema_shortname=schema_shortname,
@@ -1349,7 +1422,7 @@ async def retrieve_entry_or_attachment_payload(
     )
 
     cls = getattr(sys.modules["models.core"], camel_case(resource_type))
-    meta = await db.load(
+    meta: core.Meta = await db.load(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
@@ -1379,6 +1452,7 @@ async def retrieve_entry_or_attachment_payload(
         resource_is_active=meta.is_active,
         resource_owner_shortname=meta.owner_shortname,
         resource_owner_group=meta.owner_group_shortname,
+        entry_shortname=meta.shortname
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -1754,7 +1828,7 @@ async def retrieve_entry_meta(
     )
 
     resource_class = getattr(sys.modules["models.core"], camel_case(resource_type))
-    meta = await db.load(
+    meta: core.Meta = await db.load(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
@@ -1779,6 +1853,7 @@ async def retrieve_entry_meta(
         resource_is_active=meta.is_active,
         resource_owner_shortname=meta.owner_shortname,
         resource_owner_group=meta.owner_group_shortname,
+        entry_shortname=meta.shortname
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -2200,6 +2275,7 @@ async def execute(
 
     if "to_date" in record.attributes:
         query_dict["to_date"] = record.attributes["to_date"]
+
 
     return await query_entries(
         query=api.Query(**query_dict), user_shortname=logged_in_user

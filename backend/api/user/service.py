@@ -9,7 +9,7 @@ from utils.redis_services import RedisServices
 from utils.settings import settings
 from fastapi.logger import logger
 
-
+# comms_api = zain backend api
 send_otp_api = urllib.parse.urljoin(settings.comms_api, "sms/otp/send")
 send_sms_api = urllib.parse.urljoin(settings.comms_api, "sms/send")
 send_email_api = urllib.parse.urljoin(settings.comms_api, "smtp/send")
@@ -26,7 +26,7 @@ def gen_alphanumeric(length=16):
     )
 
 
-async def mock_sending_otp(msisdn):
+async def mock_sending_otp(msisdn) -> dict:
     key = f"users:otp:otps/{msisdn}"
     async with RedisServices() as redis_services:
         await redis_services.set(key, "123456", settings.otp_token_ttl)
@@ -63,7 +63,7 @@ async def email_send_otp(email: str, language: str):
     else:
         code = "".join(random.choice("0123456789") for _ in range(6))
         async with RedisServices() as redis_services:
-            await redis_services.set(f"middleware:otp:otps/{email}", code)
+            await redis_services.set(f"middleware:otp:otps/{email}", code, settings.otp_token_ttl)
         message = f"<p>Your OTP code is <b>{code}</b></p>"
         return await send_email(settings.email_sender, email, message, "OTP")
 

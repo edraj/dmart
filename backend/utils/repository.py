@@ -114,9 +114,9 @@ async def serve_query(
 
 
                     # Don't repeat the same entry comming from different indices
-                    if resource_base_record in records:
-                        total -= 1
-                        continue
+                    # if resource_base_record in records:
+                    #     total -= 1
+                    #     continue
 
                     if query.highlight_fields:
                         for key, value in query.highlight_fields.items():
@@ -544,36 +544,55 @@ async def serve_query(
 
             path = f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl"
             if Path(path).is_file():
-                cmd = ""
+                result = []
                 if query.search:
-                    cmd = (
-                        f"grep \"{query.search}\" {path} | (tail -n {query.limit + query.offset}; echo) | tac"
+                    p = subprocess.Popen(['grep', f'\"{query.search}\"', path], stdout=subprocess.PIPE)
+                    p = subprocess.Popen(['tail', '-n', f'{query.limit + query.offset}'], stdin=p.stdout, stdout=subprocess.PIPE)
+                    p = subprocess.Popen(['tac'], stdin=p.stdout, stdout=subprocess.PIPE)
+                    if query.offset > 0:
+                        p = subprocess.Popen(['sed', f'1,{query.offset}d'], stdin=p.stdout, stdout=subprocess.PIPE)
+                    r, _ = p.communicate()
+                    result = list(
+                    filter(
+                        None,
+                        r.decode('utf-8').split("\n")
                     )
+                ) 
                 else:
                     cmd = (
                         f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
                     )
-
-                if query.offset > 0:
-                    cmd += f" | sed '1,{query.offset}d'"
-
-                result = list(
-                    filter(
-                        None,
-                        subprocess.run(
-                            [cmd], capture_output=True, text=True, shell=True
-                        ).stdout.split("\n"),
+                    if query.offset > 0:
+                        cmd += f" | sed '1,{query.offset}d'"
+                    result = list(
+                        filter(
+                            None,
+                            subprocess.run(
+                                [cmd], capture_output=True, text=True, shell=True
+                            ).stdout.split("\n"),
+                        )
                     )
-                )
-                total = int(
-                    subprocess.run(
-                        [f"wc -l < {path}"],
-                        capture_output=True,
-                        text=True,
-                        shell=True,
-                    ).stdout,
-                    10,
-                )
+
+                if query.search:
+                    p1 = subprocess.Popen(
+                        ['grep', f'\"{query.search}\"', path], stdout=subprocess.PIPE
+                    )
+                    p2 = subprocess.Popen(['wc', '-l'], stdin=p1.stdout, stdout=subprocess.PIPE)
+                    r, _ = p2.communicate()
+                    total = int(
+                        r.decode(),
+                        10,
+                    )
+                else:
+                    total = int(
+                        subprocess.run(
+                            [f"wc -l < {path}"],
+                            capture_output=True,
+                            text=True,
+                            shell=True,
+                        ).stdout,
+                        10,
+                    )
                 for line in result:
                     action_obj = json.loads(line)
 
@@ -711,10 +730,15 @@ async def get_entry_attachments(
 
     # SORT ALTERATION ATTACHMENTS BY ALTERATION.CREATED_AT
     for attachment_name, attachments in attachments_dict.items():
-        if attachment_name == ResourceType.alteration:
-            attachments_dict[attachment_name] = sorted(
-                attachments, key=lambda d: d.attributes["created_at"]
-            )
+        try:
+            if attachment_name == ResourceType.alteration:
+                attachments_dict[attachment_name] = sorted(
+                    attachments, key=lambda d: d.attributes["created_at"]
+                )
+        except Exception as e:
+            logger.error(f"Invalid attachment entry:{attachments_path/attachment_name}.\
+            Error: {e.args}")
+            
 
     return attachments_dict
 
@@ -833,14 +857,15 @@ async def redis_query_search(
                 total += redis_res["total"]
     return search_res, total
 
-def dir_has_file(dir_path: Path, filename: str) -> bool:
+def dir_has_file(dir_path: Path, filename: str, resource_type: ResourceType) -> bool:
     if not dir_path.is_dir(): 
         return False
 
     for item in os.scandir(dir_path):
         if item.name == ".dm":
             for dm_item in os.scandir(item):
-                if dm_item.name == filename:
+                meta_file = Path(f"{dm_item.path}/meta.{resource_type}.json")
+                if dm_item.name == filename and meta_file.is_file():
                     return True
 
 
@@ -919,6 +944,7 @@ async def validate_subpath_data(
     invalid_folders: list,
     folders_report: dict[str, dict],
     meta_folders_health: list,
+    max_invalid_size: int,
 ):
     """
     Params:
@@ -953,7 +979,8 @@ async def validate_subpath_data(
                 user_shortname,
                 invalid_folders,
                 folders_report,
-                meta_folders_health
+                meta_folders_health,
+                max_invalid_size
             )
             continue
 
@@ -1029,6 +1056,8 @@ async def validate_subpath_data(
                 if "invalid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
+                    if len(folders_report[folder_name]["invalid_entries"]) >= max_invalid_size:
+                        break
                     folders_report[folder_name]["invalid_entries"].append(issue)
                 continue
 
@@ -1151,6 +1180,8 @@ async def validate_subpath_data(
                 if "invalid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
+                    if len(folders_report[folder_name]["invalid_entries"]) >= max_invalid_size:
+                        break
                     folders_report[folder_name]["invalid_entries"].append(issue)
 
         if not folders_report.get(folder_name, {}):

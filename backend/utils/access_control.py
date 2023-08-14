@@ -124,8 +124,14 @@ class AccessControl:
         resource_is_active: bool = False,
         resource_owner_shortname: str | None = None,
         resource_owner_group: str | None = None,
-        record_attributes: dict = {}
+        record_attributes: dict = {},
+        entry_shortname: str | None = None
     ):
+        if resource_type == ResourceType.space and entry_shortname:
+            return await self.check_space_access(
+                user_shortname,
+                entry_shortname
+            )
         user_permissions = await self.get_user_premissions(user_shortname)
 
         user_groups = (await self.load_user_meta(user_shortname)).groups or []
@@ -503,6 +509,11 @@ class AccessControl:
 
         redis_query_policies = []
         for perm_key, permission in user_permissions.items():
+            if(
+                not perm_key.startswith(space_name) and 
+                not perm_key.startswith(settings.all_spaces_mw)
+            ):
+                continue
             perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
             perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
             if (

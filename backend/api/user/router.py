@@ -6,7 +6,7 @@ import aiofiles
 from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
-from models.enums import ActionType, RequestType, ResourceType, ContentType
+from models.enums import ActionType, Language, RequestType, ResourceType, ContentType
 from utils.custom_validations import validate_uniqueness
 import utils.db as db
 from utils.access_control import access_control
@@ -256,7 +256,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 raise api.Exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     api.Error(
-                        type="request", code=422, message="Something went wrong [2]"
+                        type="request", code=422, message="Invalid identifier [2]"
                     ),
                 )
 
@@ -524,7 +524,7 @@ async def update_profile(
         if result is None or result != profile.attributes["confirmation"]:
             raise Exception(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
-                api.Error(type="request", code=422, message="Something went wrong [1]"),
+                api.Error(type="request", code=422, message="Invalid confirmation code [1]"),
             )
 
         if profile_user.email:
@@ -803,9 +803,9 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     )
 
     invitation_token = sign_jwt({"shortname": shortname}, settings.jwt_access_expires)
-    invitation_link = (
-        f"{settings.invitation_link}/auth/invitation?invitation={invitation_token}"
-    )
+    invitation_link = f"{settings.invitation_link}" +\
+        f"/auth/invitation?invitation={invitation_token}"+\
+        f"&lang={Language.code(user.language)}"
 
     token_uuid = str(uuid.uuid4())[:8]
     async with RedisServices() as redis_services:

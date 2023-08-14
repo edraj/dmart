@@ -31,6 +31,7 @@ from hypercorn.config import Config
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import models.api as api
 from utils.settings import settings
+from asgi_correlation_id import CorrelationIdMiddleware
 
 app = FastAPI(
     title="Datamart API",
@@ -138,6 +139,11 @@ async def app_shutdown():
     logger.info("Application shutdown")
 
 
+app.add_middleware(
+    CorrelationIdMiddleware,
+    header_name='X-Correlation-ID',
+    update_request_header=False,
+)
 app.add_middleware(CustomRequestMiddleware)
 
 

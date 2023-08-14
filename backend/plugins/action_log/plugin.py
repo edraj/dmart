@@ -1,5 +1,6 @@
 import sys
 import aiofiles
+from utils.middleware import get_request_data
 from models.core import ActionType, PluginBase, Event
 from models.enums import ContentType, RequestType, ResourceType
 from utils.db import load, load_resource_payload
@@ -40,7 +41,7 @@ class Plugin(PluginBase):
                 user_shortname=data.user_shortname,
             )
 
-        action_attributes = None
+        action_attributes = {}
         if data.action_type == RequestType.create:
             payload = {}
             if(
@@ -59,6 +60,8 @@ class Plugin(PluginBase):
 
         elif data.action_type == ActionType.update:
             action_attributes = data.attributes.get("history_diff", {})
+
+        action_attributes={**action_attributes, **get_request_data()}
 
         event_obj = Action(
             resource=Locator(

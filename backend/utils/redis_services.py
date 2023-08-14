@@ -1003,7 +1003,7 @@ class RedisServices(object):
 
     async def get_doc_by_id(self, doc_id: str) -> dict:
         try:
-            return await self.client.json().get(name=doc_id)
+            return await self.client.json().get(name=doc_id) or {}
         except Exception as e:
             logger.warning(f"Error at redis_services.get_doc_by_id: {e}")
             return {}
@@ -1090,10 +1090,10 @@ class RedisServices(object):
             return False
 
 
-    async def get(self, key):
+    async def get(self, key) -> str | None:
         return await self.client.get(key)
 
-    async def getdel(self, key):
+    async def getdel(self, key) -> str | None:
         return await self.client.getdel(key)
 
     async def set(self, key, value, ex=None, nx: bool = False):

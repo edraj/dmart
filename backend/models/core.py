@@ -92,6 +92,11 @@ class Record(BaseModel):
     subpath: str = Field(regex=regex.SUBPATH)
     attributes: dict[str, Any]
     attachments: dict[ResourceType, list[Any]] | None = None
+    
+    def __init__(self, **data):
+        BaseModel.__init__(self, **data)
+        if self.subpath != "/":
+            self.subpath = self.subpath.strip("/")
 
     def to_dict(self):
         return json.loads(self.json())
@@ -158,7 +163,7 @@ class Meta(Resource):
             record.attributes["password"] = hashed_pass
         record.attributes["owner_shortname"] = owner_shortname
         record.attributes["shortname"] = record.shortname
-        meta_obj = meta_class(**record.attributes)
+        meta_obj = meta_class(**remove_none(record.attributes)) #type: ignore
         return meta_obj
 
     @staticmethod
@@ -210,11 +215,8 @@ class Meta(Resource):
                 body=f"{record.shortname}.json"
             )
             
-        if(
-            self.payload and 
-            "payload" in record.attributes and
-            "content_type" in record.attributes["payload"]
-        ):
+            
+        if self.payload and "payload" in record.attributes:
             return self.payload.update(
                 payload=record.attributes["payload"],
                 old_body=old_body,
@@ -335,6 +337,7 @@ class Action(Resource):
 
 class History(Meta):
     timestamp: datetime
+    request_headers: dict[str, Any]
     diff: dict[str, Any]
 
 

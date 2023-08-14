@@ -18,13 +18,13 @@ class Plugin(PluginBase):
             or not isinstance(data.resource_type, ResourceType)
             or not isinstance(data.attributes, dict)
         ):
-            logger.error(f"invalid data at resource_folders_creation")
+            logger.error("invalid data at resource_folders_creation")
             return
 
         folders = []
         if data.resource_type == ResourceType.user:
             folders = [
-                ("personal", f"people", {data.shortname}),
+                ("personal", "people", data.shortname),
                 ("personal", f"people/{data.shortname}", "notifications"),
                 ("personal", f"people/{data.shortname}", "private"),
                 ("personal", f"people/{data.shortname}", "protected"),

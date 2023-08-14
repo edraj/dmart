@@ -85,7 +85,7 @@ class Plugin(PluginBase):
                 if(
                     meta.payload and 
                     meta.payload.content_type == ContentType.json
-                    and meta.payload.body
+                    and meta.payload.body is not None
                 ):
                     payload = db.load_resource_payload(
                         space_name=data.space_name,
@@ -104,8 +104,7 @@ class Plugin(PluginBase):
                 )
 
                 await redis_services.save_doc(meta_doc_id, meta_json)
-
-                if payload:
+                if meta.payload:
                     payload.update(meta_json)
                     await redis_services.save_payload_doc(
                         data.space_name,
@@ -152,8 +151,10 @@ class Plugin(PluginBase):
                 parent_shortname,
                 parent_subpath,
             )
-            meta_doc = await redis_services.get_doc_by_id(doc_id)
-            payload_doc = await redis_services.get_doc_by_id(meta_doc.get("payload_doc_id", ""))
+            meta_doc: dict = await redis_services.get_doc_by_id(doc_id)
+            payload_doc = await redis_services.get_doc_by_id(
+                meta_doc.get("payload_doc_id", "")
+            )
             payload = {k:v for k, v in payload_doc.items() if k not in meta_doc}
 
             # generate the payload string
