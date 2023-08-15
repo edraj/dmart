@@ -805,7 +805,8 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     invitation_token = sign_jwt({"shortname": shortname}, settings.jwt_access_expires)
     invitation_link = f"{settings.invitation_link}" +\
         f"/auth/invitation?invitation={invitation_token}"+\
-        f"&lang={Language.code(user.language)}"
+        f"&lang={Language.code(user.language)}"+\
+        f"&user-type={user.type}"
 
     token_uuid = str(uuid.uuid4())[:8]
     async with RedisServices() as redis_services:
