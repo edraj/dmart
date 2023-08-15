@@ -466,6 +466,11 @@ class RedisServices(object):
                         as_name="reporter_governorate",
                     ),
                     TextField(
+                        "$.reporter.msisdn",
+                        sortable=True,
+                        as_name="reporter_msisdn",
+                    ),
+                    TextField(
                         "$.payload_string",
                         sortable=False,
                         as_name="payload_string",
