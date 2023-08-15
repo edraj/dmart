@@ -689,7 +689,8 @@ async def serve_request(
                                 )
                                 invitation_link = f"{settings.invitation_link}" +\
                                     f"/auth/invitation?invitation={invitation_token}"+\
-                                    f"&lang={Language.code(record.attributes.get('language', Language.ar))}"
+                                    f"&lang={Language.code(record.attributes.get('language', Language.ar))}"+\
+                                    f"&user-type={resource_obj.type}"
                                 
                                 token_uuid = str(uuid.uuid4())[:8]
                                 await redis_services.set(
@@ -735,7 +736,9 @@ async def serve_request(
                                 )
                                 invitation_link = f"{settings.invitation_link}" +\
                                     f"/auth/invitation?invitation={invitation_token}"+\
-                                    f"&lang={Language.code(record.attributes.get('language', Language.ar))}"
+                                    f"&lang={Language.code(record.attributes.get('language', Language.ar))}"+\
+                                    f"&user-type={resource_obj.type}"
+                                    
                                 token_uuid = str(uuid.uuid4())[:8]
                                 await redis_services.set(
                                     f"short/{token_uuid}",

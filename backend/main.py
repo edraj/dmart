@@ -70,7 +70,7 @@ async def capture_body(request: Request):
 
     if (
         request.method == "POST"
-        and request.headers.get("content-type") == "application/json"
+        and "application/json" in request.headers.get("content-type", "")
     ):
         request.state.request_body = await request.json()
 
