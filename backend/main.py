@@ -139,11 +139,6 @@ async def app_shutdown():
     logger.info("Application shutdown")
 
 
-app.add_middleware(
-    CorrelationIdMiddleware,
-    header_name='X-Correlation-ID',
-    update_request_header=False,
-)
 app.add_middleware(CustomRequestMiddleware)
 
 
@@ -330,6 +325,11 @@ async def middle(request: Request, call_next):
     return response
 
 
+app.add_middleware(
+    CorrelationIdMiddleware,
+    header_name='X-Correlation-ID',
+    update_request_header=False,
+)
 @app.get("/", include_in_schema=False)
 async def root():
     """Dummy api end point"""
