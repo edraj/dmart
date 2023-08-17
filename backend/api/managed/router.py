@@ -194,10 +194,10 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                 redis_doc_dict.update(payload_doc_content)
 
             rows: list[dict] = [{}]
+            flattened_doc = flatten_dict(redis_doc_dict)
             for folder_view in folder_views:
                 column_key = folder_view.get("key")
                 column_title = folder_view.get("name")
-                flattened_doc = flatten_dict(redis_doc_dict)
                 attribute_val = flattened_doc.get(column_key)
                 
                 """
