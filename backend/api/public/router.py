@@ -71,9 +71,9 @@ async def query_entries(query: api.Query) -> api.Response:
 )
 async def retrieve_entry_meta(
     resource_type: core.ResourceType,
-    space_name: str = Path(..., regex=regex.SPACENAME),
-    subpath: str = Path(..., regex=regex.SUBPATH),
-    shortname: str = Path(..., regex=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    shortname: str = Path(..., pattern=regex.SHORTNAME),
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
     branch_name: str | None = settings.default_branch,
@@ -199,10 +199,10 @@ async def retrieve_entry_meta(
 )
 async def retrieve_entry_or_attachment_payload(
     resource_type: core.ResourceType,
-    space_name: str = Path(..., regex=regex.SPACENAME),
-    subpath: str = Path(..., regex=regex.SUBPATH),
-    shortname: str = Path(..., regex=regex.SHORTNAME),
-    ext: str = Path(..., regex=regex.EXT),
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    shortname: str = Path(..., pattern=regex.SHORTNAME),
+    ext: str = Path(..., pattern=regex.EXT),
     branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
 
