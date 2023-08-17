@@ -49,9 +49,9 @@ USERS_SUBPATH: str = "users"
 )
 async def check_existing_user_fields(
     _=Depends(JWTBearer()),
-    shortname: str | None = Query(default=None, regex=rgx.SHORTNAME),
-    msisdn: str | None = Query(default=None, regex=rgx.EXTENDED_MSISDN),
-    email: str | None = Query(default=None, regex=rgx.EMAIL),
+    shortname: str | None = Query(default=None, pattern=rgx.SHORTNAME),
+    msisdn: str | None = Query(default=None, pattern=rgx.EXTENDED_MSISDN),
+    email: str | None = Query(default=None, pattern=rgx.EMAIL),
 ):
     unique_fields = {"shortname": shortname, "msisdn": msisdn, "email": email}
 
@@ -916,7 +916,7 @@ async def confirm_otp(
 
 @router.post("/reset", response_model=api.Response, response_model_exclude_none=True)
 async def user_reset(
-    shortname: str = Body(..., regex=rgx.SHORTNAME, embed=True),
+    shortname: str = Body(..., pattern=rgx.SHORTNAME, embed=True),
     logged_user=Depends(JWTBearer()),
 ) -> api.Response:
 

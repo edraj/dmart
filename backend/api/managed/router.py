@@ -1192,9 +1192,9 @@ async def serve_request(
 )
 async def update_state(
     logged_in_user=Depends(JWTBearer()),
-    space_name: str = Path(..., regex=regex.SPACENAME),
-    subpath: str = Path(..., regex=regex.SUBPATH),
-    shortname: str = Path(..., regex=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    shortname: str = Path(..., pattern=regex.SHORTNAME),
     action: str = Path(...),
     resolution: str | None = Body(None, embed=True),
     comment: str | None = Body(None, embed=True),
@@ -1404,11 +1404,11 @@ async def update_state(
 )
 async def retrieve_entry_or_attachment_payload(
     resource_type: api.ResourceType,
-    space_name: str = Path(..., regex=regex.SPACENAME),
-    subpath: str = Path(..., regex=regex.SUBPATH),
-    shortname: str = Path(..., regex=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    shortname: str = Path(..., pattern=regex.SHORTNAME),
     schema_shortname: str | None = None,
-    ext: str = Path(..., regex=regex.EXT),
+    ext: str = Path(..., pattern=regex.EXT),
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
@@ -1661,9 +1661,9 @@ async def create_or_update_resource_with_payload(
 async def import_resources_from_csv(
     resources_file: UploadFile,
     resource_type: api.ResourceType,
-    space_name: str = Path(..., regex=regex.SPACENAME),
-    subpath: str = Path(..., regex=regex.SUBPATH),
-    schema_shortname: str = Path(..., regex=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    schema_shortname: str = Path(..., pattern=regex.SHORTNAME),
     owner_shortname=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ):
@@ -1806,9 +1806,9 @@ async def import_resources_from_csv(
 )
 async def retrieve_entry_meta(
     resource_type: core.ResourceType,
-    space_name: str = Path(..., regex=regex.SPACENAME),
-    subpath: str = Path(..., regex=regex.SUBPATH),
-    shortname: str = Path(..., regex=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    shortname: str = Path(..., pattern=regex.SHORTNAME),
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
     validate_schema: bool = True,
@@ -2034,9 +2034,9 @@ async def get_space_report(
 
 @router.put("/lock/{resource_type}/{space_name}/{subpath:path}/{shortname}")
 async def lock_entry(
-    space_name: str = Path(..., regex=regex.SPACENAME),
-    subpath: str = Path(..., regex=regex.SUBPATH),
-    shortname: str = Path(..., regex=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    shortname: str = Path(..., pattern=regex.SHORTNAME),
     branch_name: str | None = settings.default_branch,
     resource_type: ResourceType | None = ResourceType.ticket,
     logged_in_user=Depends(JWTBearer()),
@@ -2144,9 +2144,9 @@ async def lock_entry(
 
 @router.delete("/lock/{space_name}/{subpath:path}/{shortname}")
 async def cancel_lock(
-    space_name: str = Path(..., regex=regex.SPACENAME),
-    subpath: str = Path(..., regex=regex.SUBPATH),
-    shortname: str = Path(..., regex=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    shortname: str = Path(..., pattern=regex.SHORTNAME),
     branch_name: str | None = settings.default_branch,
     logged_in_user=Depends(JWTBearer()),
 ):
