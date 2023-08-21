@@ -42,7 +42,6 @@ from utils.helpers import (
     branch_path,
     camel_case,
     flatten_dict,
-    json_flater,
     resolve_schema_references,
 )
 from utils.custom_validations import validate_payload_with_schema
@@ -87,15 +86,9 @@ async def generate_csv_from_report_saved_query(
 
     json_data = []
     for r in records:
-        payloads = r.attributes["payload"]
-        if payloads is None:
+        if r.attributes is None:
             continue
-        _data = {}
-        _data["shortname"] = r.shortname
-        _data = {**_data, **payloads.get("body", {})}
-        _data["is_active"] = r.attributes["is_active"]
-        data = json_flater(_data)
-        json_data.append(data)
+        json_data.append(flatten_dict(r.attributes))
 
     v_path = StringIO()
     if len(json_data) == 0:
