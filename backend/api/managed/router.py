@@ -173,7 +173,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         folder_views = folder_payload.get("index_attributes", [])
         
     keys: list = [i["name"] for i in folder_views]
-
+    keys_existence = dict(zip(keys, [False for x in range(len(keys))]))
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
     json_data = []
     timestamp_fields = ["created_at", "updated_at"]
@@ -199,7 +199,8 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                 column_title = folder_view.get("name")
                 flattened_doc = flatten_dict(redis_doc_dict)
                 attribute_val = flattened_doc.get(column_key)
-                
+                if attribute_val:
+                    keys_existence[column_title] = True
                 """
                 Extract array items in a separate row per item
                 - list_new_rows = []
@@ -270,6 +271,8 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
             attributes={"message": "The records are empty"},
         )
 
+    keys_existence = [key if keys_existence[key] else None for key in keys_existence]
+    keys = [key for key in keys if key in keys_existence]
     v_path = StringIO()
     
     list_deprecated_keys = list(deprecated_keys)
