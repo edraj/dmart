@@ -272,9 +272,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
 
     keys_existence = [key if keys_existence[key] else None for key in keys_existence]
-    for k in keys[:]:
-        if k not in keys_existence:
-            keys.remove(k)
+    keys = [key for key in keys if key in keys_existence]
     v_path = StringIO()
     
     list_deprecated_keys = list(deprecated_keys)
