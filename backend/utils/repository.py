@@ -781,6 +781,8 @@ async def redis_query_aggregate(
     query: api.Query,
     redis_query_policies: list = [],
 ) -> list:
+    if not query.aggregation_data:
+        return []
     created_at_search = ""
     if query.from_date and query.to_date:
         created_at_search = (
