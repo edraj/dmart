@@ -1,11 +1,15 @@
-from models.enums import QueryType, ResourceType, SortType, Status
 import models.core as core
-from enum import Enum
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Any
 from builtins import Exception as PyException
-from models.enums import RequestType
+from models.enums import (
+    QueryType,
+    ResourceType,
+    SortType,
+    Status,
+    RequestType
+)
 import utils.regex as regex
 from utils.settings import settings
 
@@ -15,6 +19,17 @@ class Request(BaseModel):
     request_type: RequestType
     records: list[core.Record]
 
+class RedisReducer(BaseModel):
+    reducer_name: str
+    alias: str | None = None
+    args: list = []
+    
+    
+class RedisAggregate(BaseModel):
+    group_by: list[str] = []
+    reducers: list[RedisReducer] = []
+    load: list = []
+    
 
 class Query(BaseModel):
     type: QueryType
@@ -42,12 +57,13 @@ class Query(BaseModel):
     jq_filter: str | None = None
     limit: int = 10
     offset: int = 0
+    aggregation_data: RedisAggregate | None = None
     
     # Replace -1 limit by settings.max_query_limit
     def __init__(self, **data):
         BaseModel.__init__(self, **data)
         if self.limit == -1:
-            self.limit = settings.max_query_limit
+            self.limit = settings.max_query_limit 
 
 
 class Error(BaseModel):
