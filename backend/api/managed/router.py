@@ -683,10 +683,11 @@ async def serve_request(
                                     f"users:login:invitation:{invitation_token}",
                                     channel
                                 )
-                                invitation_link = f"{settings.invitation_link}" +\
-                                    f"/auth/invitation?invitation={invitation_token}"+\
-                                    f"&lang={Language.code(record.attributes.get('language', Language.ar))}"+\
-                                    f"&user-type={resource_obj.type}"
+                                invitation_link = core.User.invitation_url_template()\
+                                    .replace("{url}", settings.invitation_link)\
+                                    .replace("{token}", invitation_token)\
+                                    .replace("{lang}", Language.code(record.attributes.get('language', Language.ar)))\
+                                    .replace("{user_type}", resource_obj.type)
                                 
                                 token_uuid = str(uuid.uuid4())[:8]
                                 await redis_services.set(
@@ -730,10 +731,11 @@ async def serve_request(
                                     f"users:login:invitation:{invitation_token}", 
                                     channel
                                 )
-                                invitation_link = f"{settings.invitation_link}" +\
-                                    f"/auth/invitation?invitation={invitation_token}"+\
-                                    f"&lang={Language.code(record.attributes.get('language', Language.ar))}"+\
-                                    f"&user-type={resource_obj.type}"
+                                invitation_link = core.User.invitation_url_template()\
+                                    .replace("{url}", settings.invitation_link)\
+                                    .replace("{token}", invitation_token)\
+                                    .replace("{lang}", Language.code(record.attributes.get('language', Language.ar)))\
+                                    .replace("{user_type}", resource_obj.type)
                                     
                                 token_uuid = str(uuid.uuid4())[:8]
                                 await redis_services.set(
