@@ -5,9 +5,9 @@ import sys
 from typing import Any
 from uuid import UUID
 from redis.asyncio import BlockingConnectionPool, Redis
-from models.api import SortType
+from models.api import RedisReducer, SortType
 import models.core as core
-from models.enums import ResourceType, LockAction
+from models.enums import RedisReducerName, ResourceType, LockAction
 from redis.commands.json.path import Path
 from redis.commands.search.field import TextField, NumericField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
@@ -24,16 +24,13 @@ from fastapi import status
 from fastapi.logger import logger
 
 
-
-
 class RedisServices(object):
-
     POOL = BlockingConnectionPool(
         host=settings.redis_host,
         port=settings.redis_port,
         password=settings.redis_password,
         decode_responses=True,
-        max_connections=200
+        max_connections=200,
     )
 
     CUSTOM_INDICES = [
@@ -105,11 +102,10 @@ class RedisServices(object):
         "resource_type",
         "meta_doc_id",
         "payload_doc_id",
-        "payload_string"
+        "payload_string",
     ]
     redis_indices: dict[str, dict[str, Search]] = {}
     is_pytest = False
-
 
     def __await__(self):
         return self.init().__await__()
@@ -149,11 +145,11 @@ class RedisServices(object):
         await self.client.close()
 
     async def create_index(
-        self, 
-        space_branch_name: str, 
-        schema_name: str, 
-        redis_schema: tuple, 
-        del_docs: bool = True
+        self,
+        space_branch_name: str,
+        schema_name: str,
+        redis_schema: tuple,
+        del_docs: bool = True,
     ):
         """
         create redis schema index, drop it if exist first
@@ -274,7 +270,6 @@ class RedisServices(object):
             ),
         ]
         for field_name, model_field in class_ref.__fields__.items():
-
             if field_name in exclude_from_index:
                 continue
 
@@ -325,11 +320,11 @@ class RedisServices(object):
             )
 
     async def create_indices(
-        self, 
-        for_space: str | None = None, 
+        self,
+        for_space: str | None = None,
         for_schemas: list | None = None,
         for_custom_indices: bool = True,
-        del_docs: bool = True
+        del_docs: bool = True,
     ):
         """
         Loop over all spaces, and for each one we create: (only if indexing_enabled is true for the space)
@@ -345,7 +340,6 @@ class RedisServices(object):
                 continue
 
             for branch_name in space_obj.branches:
-
                 # CREATE REDIS INDEX FOR THE META FILES INSIDE THE SPACE
                 self.redis_indices[f"{space_name}:{branch_name}"] = {}
                 self.redis_indices[f"{space_name}:{branch_name}"][
@@ -358,9 +352,7 @@ class RedisServices(object):
                     TextField(
                         "$.shortname", sortable=True, no_stem=True, as_name="shortname"
                     ),
-                    TextField(
-                        "$.slug", sortable=True, no_stem=True, as_name="slug"
-                    ),
+                    TextField("$.slug", sortable=True, no_stem=True, as_name="slug"),
                     TextField(
                         "$.subpath", sortable=True, no_stem=True, as_name="subpath"
                     ),
@@ -546,7 +538,7 @@ class RedisServices(object):
                             f"{space_name}:{branch_name}",
                             schema_shortname,
                             tuple(redis_schema_definition),
-                            del_docs
+                            del_docs,
                         )
 
         if for_custom_indices:
@@ -718,7 +710,9 @@ class RedisServices(object):
             meta.owner_group_shortname,
         )
         if not payload["query_policies"]:
-            print(f"Warning: this entry `{space_name}/{subpath}/{meta.shortname}` can't be accessed")
+            print(
+                f"Warning: this entry `{space_name}/{subpath}/{meta.shortname}` can't be accessed"
+            )
         payload["subpath"] = subpath
         payload["branch_name"] = branch_name
         payload["resource_type"] = resource_type
@@ -748,9 +742,7 @@ class RedisServices(object):
             sys.modules["models.core"],
             camel_case(resource_type),
         )
-        payload_redis_doc = await self.get_doc_by_id(
-            doc_id
-        )
+        payload_redis_doc = await self.get_doc_by_id(doc_id)
         payload_doc_content = {}
         if not payload_redis_doc:
             return payload_doc_content
@@ -772,7 +764,6 @@ class RedisServices(object):
         owner_shortname: str,
         ttl: int,
     ):
-
         lock_doc_id = self.generate_doc_id(
             space_name, branch_name, "lock", payload_shortname, subpath
         )
@@ -894,11 +885,7 @@ class RedisServices(object):
             return {"data": [], "total": 0}
 
         search_query = Query(
-            query_string=self.prepare_query_string(
-                search,
-                filters,
-                exact_subpath
-            )
+            query_string=self.prepare_query_string(search, filters, exact_subpath)
         )
 
         if highlight_fields:
@@ -914,7 +901,7 @@ class RedisServices(object):
 
         try:
             # print(f"ARGS {search_query.get_args()} O {search_query.query_string()}")
-            search_res = await ft_index.search(query=search_query) #type: ignore
+            search_res = await ft_index.search(query=search_query)  # type: ignore
             return {"data": search_res.docs, "total": search_res.total}
         except:
             return {}
@@ -922,16 +909,17 @@ class RedisServices(object):
     async def aggregate(
         self,
         space_name: str,
-        branch_name: str | None,
         search: str,
         filters: dict[str, str | list],
-        group_by: dict[str, list],
-        max: int,
+        group_by: list[str],
+        reducers: list[RedisReducer],
+        max: int = 10,
+        branch_name: str = settings.default_branch,
         exact_subpath: bool = False,
         sort_type: SortType = SortType.ascending,
         sort_by: str | None = None,
         schema_name: str = "meta",
-        load: list = []
+        load: list = [],
     ) -> list:
         # Tries to get the index from the provided space
         try:
@@ -940,39 +928,35 @@ class RedisServices(object):
         except:
             return []
 
-        
         aggr_request = aggregation.AggregateRequest(
-            self.prepare_query_string(
-                search,
-                filters,
-                exact_subpath
-            )
+            self.prepare_query_string(search, filters, exact_subpath)
         )
-        for group_name, reducers in group_by.items():
-            aggr_request.group_by(group_name, *reducers)
-            
+        if group_by:
+            reducers_functions = [
+                RedisReducerName.mapper(reducer.reducer_name)(*reducer.args).alias(reducer.alias)
+                for reducer in reducers
+            ]
+            aggr_request.group_by(group_by, *reducers_functions)
 
         if sort_by:
             aggr_request.sort_by(
-                aggregation.Desc(sort_by) if sort_type == SortType.ascending else aggregation.Asc(sort_by),
-                max=max
+                aggregation.Desc(f"@{sort_by}")
+                if sort_type == SortType.ascending
+                else aggregation.Asc(f"@{sort_by}"),
+                max=max,
             )
 
         if load:
             aggr_request.load(*load)
 
-
         try:
-            aggr_res = await ft_index.aggregate(aggr_request) #type: ignore
+            aggr_res = await ft_index.aggregate(aggr_request)  # type: ignore
             return aggr_res.rows
         except:
             return []
 
     def prepare_query_string(
-        self,
-        search: str,
-        filters: dict[str, str | list],
-        exact_subpath: bool
+        self, search: str, filters: dict[str, str | list], exact_subpath: bool
     ):
         query_string = search
 
@@ -992,11 +976,13 @@ class RedisServices(object):
                 query_string += f" @{item[0]}:{item[1]}"
             elif item[0] == "subpath" and exact_subpath:
                 search_value = ""
-                for subpath in item[1]: # Handle existence/absence of `/`
+                for subpath in item[1]:  # Handle existence/absence of `/`
                     search_value += "|" + subpath.strip("/")
                     search_value += "|" + f"/{subpath}".replace("//", "/")
 
-                exact_subpath_value = search_value.strip('|').translate(redis_escape_chars)
+                exact_subpath_value = search_value.strip("|").translate(
+                    redis_escape_chars
+                )
                 query_string += f" @exact_subpath:{{{exact_subpath_value}}}"
             elif item[0] == "subpath" and item[1][0] == "/":
                 pass
@@ -1005,14 +991,12 @@ class RedisServices(object):
 
         return query_string or "*"
 
-
     async def get_doc_by_id(self, doc_id: str) -> dict:
         try:
             return await self.client.json().get(name=doc_id) or {}
         except Exception as e:
             logger.warning(f"Error at redis_services.get_doc_by_id: {e}")
             return {}
-
 
     async def get_docs_by_ids(self, docs_ids: list[str]) -> list:
         try:
@@ -1038,7 +1022,6 @@ class RedisServices(object):
             await self.client.json().delete(key=docid)
         except Exception as e:
             logger.warning(f"Error at redis_services.delete_doc: {e}")
-
 
     async def move_payload_doc(
         self,
@@ -1079,7 +1062,6 @@ class RedisServices(object):
         except Exception as e:
             logger.warning(f"Error at redis_services.move_meta_doc: {e}")
 
-
     async def get_keys(self, pattern: str = "*") -> list:
         try:
             return await self.client.keys(pattern)
@@ -1093,7 +1075,6 @@ class RedisServices(object):
         except Exception as e:
             logger.warning(f"Error at redis_services.def_keys {keys}: {e}")
             return False
-
 
     async def get(self, key) -> str | None:
         return await self.client.get(key)
@@ -1112,8 +1093,8 @@ class RedisServices(object):
             ft_index = self.client.ft(name)
             await ft_index.dropindex(delete_docs)
             return True
-        except :
+        except:
             return False
 
     async def list_indices(self):
-        return await self.client.ft().execute_command("FT._LIST") #type: ignore
+        return await self.client.ft().execute_command("FT._LIST")  # type: ignore

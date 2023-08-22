@@ -1,4 +1,5 @@
 from enum import Enum
+import redis.commands.search.reducers as reducers
 
 
 class StrEnum(str, Enum):
@@ -20,7 +21,7 @@ class Language(StrEnum):
     kd = "kurdish"
     fr = "french"
     tr = "trukish"
-    
+
     @staticmethod
     def code(lang_str):
         codes = {
@@ -74,11 +75,7 @@ class ContentType(StrEnum):
 
     @staticmethod
     def inline_types() -> list:
-        return [
-            ContentType.text,
-            ContentType.markdown,
-            ContentType.html
-        ]
+        return [ContentType.text, ContentType.markdown, ContentType.html]
 
 
 class TaskType(StrEnum):
@@ -157,6 +154,7 @@ class QueryType(StrEnum):
     spaces = "spaces"
     counters = "counters"
     reports = "reports"
+    aggregation = "aggregation"
 
 
 class SortType(StrEnum):
@@ -167,3 +165,41 @@ class SortType(StrEnum):
 class Status(StrEnum):
     success = "success"
     failed = "failed"
+
+
+class RedisReducerName(StrEnum):
+    count_distinct = "count_distinct"
+    r_count = "r_count"
+    # Same as COUNT_DISTINCT - but provide an approximation instead of an exact count,
+    # at the expense of less memory and CPU in big groups
+    count_distinctish = "count_distinctish"
+    sum = "sum"
+    min = "min"
+    max = "max"
+    avg = "avg"
+    # Returns all the matched properties in a list
+    tolist = "tolist"
+    quantile = "quantile"
+    stddev = "stddev"
+    # Selects the first value within the group according to sorting parameters
+    first_value = "first_value"
+    # Returns a random sample of items from the dataset, from the given property
+    random_sample = "random_sample"
+
+    @staticmethod
+    def mapper(red: str):
+        map = {
+            "r_count": reducers.count,
+            "count_distinct": reducers.count_distinct,
+            "count_distinctish": reducers.count_distinctish,
+            "sum": reducers.sum,
+            "min": reducers.min,
+            "max": reducers.max,
+            "avg": reducers.avg,
+            "tolist": reducers.tolist,
+            "quantile": reducers.quantile,
+            "stddev": reducers.stddev,
+            "first_value": reducers.first_value,
+            "random_sample": reducers.random_sample,
+        }
+        return map[red]
