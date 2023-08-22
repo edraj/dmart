@@ -287,6 +287,10 @@ class User(Actor):
     groups: list[str] = []
     firebase_token: str | None = None
     language: Language = Language.ar
+    
+    @staticmethod
+    def invitation_url_template():
+        return "{url}/auth/invitation?invitation={token}&lang={lang}&user-type={user_type}"
 
 
 class Group(Meta):

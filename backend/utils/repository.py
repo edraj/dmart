@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import re
 import sys
+from uuid import uuid4
 import jq
 from fastapi.encoders import jsonable_encoder
 from pydantic.fields import Field
@@ -1515,3 +1516,16 @@ async def get_entry_by_var(
     )
 
     return resource_base_record
+
+
+async def url_shortner(url: str) -> str:
+    token_uuid = str(uuid4())[:8]
+    async with RedisServices() as redis_services:
+        await redis_services.set(
+            f"short/{token_uuid}",
+            url,
+            ex=60 * 60 * 48,
+            nx=False,
+        )
+
+    return f"{settings.public_app_url}/managed/s/{token_uuid}"

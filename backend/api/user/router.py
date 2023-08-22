@@ -803,22 +803,16 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     )
 
     invitation_token = sign_jwt({"shortname": shortname}, settings.jwt_access_expires)
-    invitation_link = f"{settings.invitation_link}" +\
-        f"/auth/invitation?invitation={invitation_token}"+\
-        f"&lang={Language.code(user.language)}"+\
-        f"&user-type={user.type}"
+    invitation_link = core.User.invitation_url_template()\
+        .replace("{url}", settings.invitation_link)\
+        .replace("{token}", invitation_token)\
+        .replace("{lang}", Language.code(user.language))\
+        .replace("{user_type}", user.type)
 
-    token_uuid = str(uuid.uuid4())[:8]
     async with RedisServices() as redis_services:
-        await redis_services.set(
-            f"short/{token_uuid}",
-            invitation_link,
-            ex=60 * 60 * 48,
-            nx=False,
-        )
         await redis_services.set(f"users:login:invitation:{invitation_token}", 1)
 
-    link = f"{settings.public_app_url}/managed/s/{token_uuid}"
+    link = await repository.url_shortner(invitation_link)
 
     reset_password_message = f"Reset password via this link: {link}, This link can be used once and within the next 48 hours."
 
@@ -949,14 +943,18 @@ async def user_reset(
 
     invitation_token = sign_jwt({"shortname": shortname}, settings.jwt_access_expires)
 
-    user_login_invitation_key = f"users:login:invitation:{invitation_token}"
     async with RedisServices() as redis_services:
-        await redis_services.set(
-            user_login_invitation_key, invitation_token, settings.jwt_access_expires
-        )
+        await redis_services.set(f"users:login:invitation:{invitation_token}", 1)
+        
+    invitation_link = core.User.invitation_url_template()\
+        .replace("{url}", settings.invitation_link)\
+        .replace("{token}", invitation_token)\
+        .replace("{lang}", Language.code(user.language))\
+        .replace("{user_type}", user.type)
 
     return api.Response(
-        status=api.Status.success, attributes={"invitation_token": invitation_token}
+        status=api.Status.success, 
+        attributes={"invitation_link": await repository.url_shortner(invitation_link)}
     )
 
 
