@@ -783,6 +783,15 @@ async def redis_query_aggregate(
 ) -> list:
     if not query.aggregation_data:
         return []
+
+    if len(query.filter_schema_names) > 1:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="query", code=250, message="only one argument is allowed in filter_schema_names"
+            ),
+        )
+
     created_at_search = ""
     if query.from_date and query.to_date:
         created_at_search = (
@@ -807,7 +816,7 @@ async def redis_query_aggregate(
         return await redis_services.aggregate(
             space_name=query.space_name,
             branch_name=query.branch_name,
-            schema_name="meta",
+            schema_name=query.filter_schema_names[0],
             search=str(query.search),
             filters={
                 "resource_type": query.filter_types or [],
