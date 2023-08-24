@@ -751,7 +751,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             api.Error(
                 type="auth",
                 code=19,
-                message=f"Invalid username or password [4] {key=} {value=}",
+                message="This username does not exist",
             ),
         )
 
