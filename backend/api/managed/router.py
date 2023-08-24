@@ -206,7 +206,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                 -    
                 -  rows += list_new_rows
                 """
-                if type(attribute_val) == list:
+                if type(attribute_val) == list and len(attribute_val) > 0:
                     list_new_rows: list[dict] = []
                     # Duplicate old rows
                     for row in rows:
@@ -233,7 +233,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                     rows += list_new_rows
                             
                             
-                elif attribute_val is not None:
+                elif attribute_val is not None and not isinstance(attribute_val, list):
                     new_col = attribute_val if column_key not in timestamp_fields else\
                         datetime.fromtimestamp(attribute_val).strftime('%Y-%m-%d %H:%M:%S')
                     for row in rows:
