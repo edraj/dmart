@@ -1,7 +1,6 @@
 """ Session Apis """
 import json
 import re
-import uuid
 import aiofiles
 from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
@@ -57,7 +56,7 @@ async def check_existing_user_fields(
 
     search_str = f"@subpath:{USERS_SUBPATH}"
     redis_escape_chars = str.maketrans(
-        {"@": r"@\\", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
+        {"@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
     async with RedisServices() as redis_man:
         for key, value in unique_fields.items():
