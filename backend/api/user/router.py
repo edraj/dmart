@@ -205,7 +205,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     try:
         if request.invitation:
             async with RedisServices() as redis_services:
-                invitation_token = await redis_services.getdel(
+                # FIXME invitation_token = await redis_services.getdel(
+                invitation_token = await redis_services.get(
                     f"users:login:invitation:{request.invitation}"
                 )
             if not invitation_token:
@@ -271,7 +272,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         api.Error(
                             type="auth",
                             code=10,
-                            message=f"Invalid username or password [1] {key=} {value=}",
+                            message=f"Invalid username or password [1]",
                         ),
                     )
             user = await db.load(
