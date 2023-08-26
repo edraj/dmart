@@ -101,19 +101,45 @@ async def validate_uniqueness(
         flatten_dict(record.attributes)
     )
     redis_escape_chars = str.maketrans(
-        {"@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
+        {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
     # Go over each composite unique array of fields and make sure there's no entry with those values
     for composite_unique_keys in folder_meta["unique_fields"]:
         redis_search_str = ""
         for unique_key in composite_unique_keys:
+            base_unique_key = unique_key
+            if unique_key.endswith("_unescaped"):
+                unique_key = unique_key.replace("_unescaped", "") 
             if unique_key not in entry_dict_flattened:
                 continue
 
             redis_column = unique_key.split("payload.body.")[-1].replace(".", "_")
 
             # construct redis search string
-            if type(entry_dict_flattened[unique_key]) in [
+            if(
+                base_unique_key.endswith("_unescaped")
+            ):
+                redis_search_str += (
+                    " @"
+                    + base_unique_key
+                    + ":{"
+                    + entry_dict_flattened[unique_key]
+                    .translate(redis_escape_chars)
+                    .replace("\\\\", "\\")
+                    + "}"
+
+                )
+            elif(
+                type(entry_dict_flattened[unique_key]) == list
+            ):
+                redis_search_str += (
+                    " @"
+                    + redis_column
+                    + ":{"
+                    + "|".join(entry_dict_flattened[unique_key])
+                    + "}"
+                )
+            elif type(entry_dict_flattened[unique_key]) in [
                 str,
                 bool,
             ]:  # booleans are indexed as TextField
@@ -133,14 +159,7 @@ async def validate_uniqueness(
                     + f":[{entry_dict_flattened[unique_key]} {entry_dict_flattened[unique_key]}]"
                 )
 
-            elif type(entry_dict_flattened[unique_key]) == list:
-                redis_search_str += (
-                    " @"
-                    + redis_column
-                    + ":{"
-                    + "|".join(entry_dict_flattened[unique_key])
-                    + "}"
-                )
+            
 
             else:
                 continue
