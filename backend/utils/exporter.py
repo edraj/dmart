@@ -8,21 +8,22 @@ import shutil
 import sys
 import copy
 import jsonschema
+from rich.console import Console
 import sqlite3
 from aiofiles import open as aopen
 from pathlib import Path
 
+console = Console()
 
-def hashing_data(data: str, hashed_data: dict):
+def hashing_data(data: str):
     hash = blake2b(salt=md5(data.encode()).digest())
     hash.update(data.encode())
-    hashed_val = md5(hash.digest()).hexdigest()
-    hashed_data[hashed_val] = data
-    return hashed_val
+    return md5(hash.digest()).hexdigest()
 
 
 def exit_with_error(msg: str):
-    print(f"ERROR!!", msg)
+    console.print(f"ERROR!!", style="#FF0B0B")
+    console.print(msg, style="#FF4040")
     sys.exit(1)
 
 
@@ -90,27 +91,25 @@ def remove_fields(src: dict, restricted_keys: list):
 
     return src
 
-def enc_dict(d: dict, hashed_data: dict):
+def enc_dict(d: dict):
     for k, v in d.items():
         if type(v) is dict:
-            d[k] = enc_dict(v, hashed_data)
+            d[k] = enc_dict(v)
         elif type(d[k]) == list:
             for item in d[k]:
                 if type(item) == dict:
-                    item = enc_dict(item, hashed_data)
+                    item = enc_dict(item)
 
-        # if k == "msisdn":
-        #     d[k] = hashing_data(str(v))
-        #     try:
-        #         print("ADD TO SQLLITE")
-        #         cur.execute(f"INSERT INTO migrated_data VALUES('{v}', '{d[k]}')")
-        #         con.commit()
-        #         print("FINSIHED")
-        #     except sqlite3.IntegrityError as e:
-        #         if "migrated_data.hash" in str(e):  # msisdn already in db
-        #             raise Exception(f"Collision on: msisdn {v}, hash {d[k]}")
+        if k == "msisdn":
+            d[k] = hashing_data(str(v))
+            try:
+                cur.execute(f"INSERT INTO migrated_data VALUES('{v}', '{d[k]}')")
+                con.commit()
+            except sqlite3.IntegrityError as e:
+                if "migrated_data.hash" in str(e):  # msisdn already in db
+                    raise Exception(f"Collision on: msisdn {v}, hash {d[k]}")
         elif k in SECURED_FIELDS:
-            d[k] = hashing_data(str(v), hashed_data)
+            d[k] = hashing_data(str(v))
 
     return d
 
@@ -147,7 +146,6 @@ async def extract(
     output_path, 
     entries_since = None
 ):
-    hashed_data: dict[str, str] = {}
     space = config_obj.get("space")
     subpath = config_obj.get("subpath")
     resource_type = config_obj.get("resource_type")
@@ -212,7 +210,7 @@ async def extract(
                 resource_type=resource_type,
             )
         except Exception as error:
-            # print(f"ERROR: {error.args = }")
+            print(f"{error=}")
             continue
 
         out = prepare_output(
@@ -221,11 +219,8 @@ async def extract(
 
         # jsonschema.validate(instance=out, schema=subpath_schema_obj)
 
-        encrypted_out = enc_dict(out, hashed_data)
+        encrypted_out = enc_dict(out)
         open(data_file, "a").write(json.dumps(encrypted_out) + "\n")
-        
-    open(f"{output_subpath}/hashed_data.json", "w").write(json.dumps(hashed_data))
-        
 
 
 async def main(tasks):
@@ -264,13 +259,12 @@ if __name__ == "__main__":
     if os.path.isdir(out_path):
         shutil.rmtree(out_path)
 
-    # con = sqlite3.connect(f"../../exporter_data/output/data.db")
-    # cur = con.cursor()
-    # cur.execute("DROP TABLE IF EXISTS migrated_data")
-    # cur.execute(
-    #     "CREATE TABLE migrated_data(hash VARCHAR UNIQUE, msisdn VARCHAR UNIQUE)"
-    # )
-    # print(con)
+    con = sqlite3.connect(f"/tmp/data.db")
+    cur = con.cursor()
+    cur.execute("DROP TABLE IF EXISTS migrated_data")
+    cur.execute(
+        "CREATE TABLE migrated_data(hash VARCHAR UNIQUE, msisdn VARCHAR UNIQUE)"
+    )
 
     tasks = []
     with open(args.config, "r") as f:
@@ -283,6 +277,7 @@ if __name__ == "__main__":
 
     asyncio.run(main(tasks))
 
-    print(
-        f"Output path: {os.path.abspath(os.path.join(output_path, OUTPUT_FOLDER_NAME))}"
+    console.print(
+        f"Output path: {os.path.abspath(os.path.join(output_path, OUTPUT_FOLDER_NAME))}",
+        style="#6EE853",
     )

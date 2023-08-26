@@ -101,7 +101,7 @@ async def validate_uniqueness(
         flatten_dict(record.attributes)
     )
     redis_escape_chars = str.maketrans(
-        {"@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
+        {"@": r"@\\", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
     # Go over each composite unique array of fields and make sure there's no entry with those values
     for composite_unique_keys in folder_meta["unique_fields"]:
