@@ -25,7 +25,7 @@ class FirebaseNotifier(Notifier):
         user_lang = lang_code(self.user.language)
         title = data.title.__getattribute__(user_lang)
         body = data.body.__getattribute__(user_lang)
-        image_url = data.image_urls.__getattribute__(user_lang)
+        image_url = data.image_urls.__getattribute__(user_lang) if data.image_urls else ""
 
         alert = messaging.ApsAlert(title = title, body = body)
         aps = messaging.Aps( alert = alert, sound = "default", content_available = True )
