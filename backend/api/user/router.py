@@ -628,7 +628,7 @@ async def logout(
         branch_name=MANAGEMENT_BRANCH,
     )
     if user.firebase_token:
-        repository._sys_update_model(
+        await repository._sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             meta=user,
