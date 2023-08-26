@@ -628,16 +628,15 @@ async def logout(
         branch_name=MANAGEMENT_BRANCH,
     )
     if user.firebase_token:
-        user.firebase_token = None
-        await db.update(
+        await repository._sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             meta=user,
-            old_version_flattend=flatten_dict({"firebase_token": user.firebase_token}),
-            new_version_flattend=flatten_dict({"firebase_token": None}),
-            updated_attributes_flattend=["firebase_token"],
             branch_name=MANAGEMENT_BRANCH,
-            user_shortname=shortname,
+            updates={
+                "firebase_token": None
+            }
+            
         )
 
     return api.Response(status=api.Status.success, records=[])

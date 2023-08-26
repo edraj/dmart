@@ -22,6 +22,9 @@ class FirebaseNotifier(Notifier):
         if not hasattr(self, "user"):
             await self._load_user(data.receiver)
         token = self.user.firebase_token
+        if not token:
+            raise Exception("Missing token for user shortname:"\
+                f"{self.user.shortname} - msisdn {self.user.msisdn}")
         user_lang = lang_code(self.user.language)
         title = data.title.__getattribute__(user_lang)
         body = data.body.__getattribute__(user_lang)
