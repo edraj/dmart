@@ -69,6 +69,7 @@ class RedisServices(object):
                 "displayname",
                 "payload",
                 "password",
+                "email",
                 "is_email_verified",
                 "is_msisdn_verified",
                 "type",
