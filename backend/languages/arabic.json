@@ -1,13 +1,14 @@
 {
-    "invitation_message": "قم بتأكيد حسابك عبر هذا الرابط: {link} ، يمكن استخدام هذا الرابط مرة واحدة وخلال الـ 48 ساعة القادمة.",
-    "rejected": "مرفوض",
-    "pending": "قيد الانتظار",
-    "cancelled": "ألغيت",
-    "assigned": "مُكَلَّف",
-    "failed": "فشل",
-    "confirmed": "مؤكد",
-    "new": "new",
-    "completed": "مكتمل",
-    "approved": "موافقة",
-    "contract_submitted": "تم تقديم العقد"
+  "invitation_message": "يُرجى تأكيد حسابك عبر هذا الرابط: {link} ، يمكن استخدام هذا الرابط مرة واحدة وخلال الـ 48 ساعة القادمة.",
+  "rejected": "مرفوض",
+  "pending": "قيد المُراجعة",
+  "cancelled": "مُلغى",
+  "assigned": "مُعيّن",
+  "failed": "فشل التسليم",
+  "confirmed": "مؤكد",
+  "new": "جديد",
+  "completed": "مكتمل",
+  "approved": "مقبول",
+  "delivered": "تم التسليم",
+  "contract_submitted": "تم تصعيد العقد"
 }
