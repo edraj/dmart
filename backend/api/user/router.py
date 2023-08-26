@@ -52,23 +52,21 @@ async def check_existing_user_fields(
     msisdn: str | None = Query(default=None, pattern=rgx.EXTENDED_MSISDN),
     email: str | None = Query(default=None, pattern=rgx.EMAIL),
 ):
-    unique_fields = {"shortname": shortname, "msisdn": msisdn, "email_unescaped": email}
+    unique_fields = {"shortname": shortname, "msisdn": msisdn, "email": email}
 
     search_str = f"@subpath:{USERS_SUBPATH}"
     redis_escape_chars = str.maketrans(
-        {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
+        {"@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
     async with RedisServices() as redis_man:
         for key, value in unique_fields.items():
             if not value:
                 continue
             value = value.translate(redis_escape_chars).replace("\\\\", "\\")
-            if key == "email_unescaped":
-                value = f"{{{value}}}"
             redis_search_res = await redis_man.search(
                 space_name=MANAGEMENT_SPACE,
                 branch_name=MANAGEMENT_BRANCH,
-                search=search_str + (f" @{key}:{value}"),
+                search=search_str + f" @{key}:{value}",
                 limit=1,
                 offset=0,
                 filters={},
