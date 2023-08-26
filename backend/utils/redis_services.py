@@ -69,6 +69,7 @@ class RedisServices(object):
                 "displayname",
                 "payload",
                 "password",
+                "email",
                 "is_email_verified",
                 "is_msisdn_verified",
                 "type",
@@ -262,6 +263,7 @@ class RedisServices(object):
             TextField(
                 "$.branch_name", sortable=True, no_stem=True, as_name="branch_name"
             ),
+            TagField("$.email", as_name="email_unescaped"),
             TagField("$.query_policies.*", as_name="query_policies"),
             TextField(
                 "$.payload_string",
@@ -404,7 +406,7 @@ class RedisServices(object):
                     TagField("$.query_policies.*", as_name="query_policies"),
                     # User fields
                     TextField("$.msisdn", sortable=True, as_name="msisdn"),
-                    TextField("$.email", sortable=True, as_name="email"),
+                    TagField("$.email", as_name="email_unescaped"),
                     # Ticket fields
                     TextField("$.state", sortable=True, no_stem=True, as_name="state"),
                     TagField("$.is_open", as_name="is_open"),
