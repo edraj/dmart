@@ -7,7 +7,7 @@ from models.core import NotificationData
 class FirebaseNotifier(Notifier):
     
     def _init_connection(self) -> None:
-        if not self._firebase_app:
+        if not hasattr(self, "_firebase_app"):
             firebase_cred = credentials.Certificate(settings.google_application_credentials)
             self._firebase_app = initialize_app(firebase_cred, name="[DEFAULT]")
 
