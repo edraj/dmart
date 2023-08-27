@@ -117,7 +117,9 @@ async def validate_uniqueness(
 
             # construct redis search string
             if(
-                base_unique_key.endswith("_unescaped")
+                base_unique_key.endswith("_unescaped") and
+                unique_key in entry_dict_flattened and
+                entry_dict_flattened[unique_key] is not None
             ):
                 redis_search_str += (
                     " @"
