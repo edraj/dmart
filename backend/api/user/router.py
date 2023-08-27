@@ -218,11 +218,22 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
             data = decode_jwt(request.invitation)
             shortname = data.get("shortname", None)
-            if shortname is None:
+            if(
+                shortname is None or
+                (
+                    data.get("channel") == "SMS" and
+                    f"SMS:{request.msisdn}" not in invitation_token
+                )
+            ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
-                    api.Error(type="jwtauth", code=12, message="Invalid invitation"),
+                    api.Error(
+                        type="jwtauth", 
+                        code=12, 
+                        message="Invalid invitation or data provided"
+                    ),
                 )
+
             user = await db.load(
                 space_name=MANAGEMENT_SPACE,
                 subpath=USERS_SUBPATH,
@@ -231,6 +242,21 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 user_shortname=shortname,
                 branch_name=MANAGEMENT_BRANCH,
             )
+            if(
+                    data.get("channel") == "EMAIL" and
+                    request.shortname != user.shortname and
+                    request.msisdn != user.msisdn and
+                    request.email != user.email
+            ):
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="jwtauth", 
+                        code=12, 
+                        message="Invalid invitation or data provided"
+                    ),
+                )
+            
 
             if (
                 data.get("channel") == "EMAIL"
