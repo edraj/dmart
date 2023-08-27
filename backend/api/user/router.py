@@ -219,11 +219,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             data = decode_jwt(request.invitation)
             shortname = data.get("shortname", None)
             if(
-                shortname is None or
-                (
-                    data.get("channel") == "SMS" and
-                    f"SMS:{request.msisdn}" not in invitation_token
-                )
+                shortname is None
             ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -243,7 +239,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 branch_name=MANAGEMENT_BRANCH,
             )
             if(
-                    data.get("channel") == "EMAIL" and
                     request.shortname != user.shortname and
                     request.msisdn != user.msisdn and
                     request.email != user.email
