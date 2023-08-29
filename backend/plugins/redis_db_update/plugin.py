@@ -23,7 +23,7 @@ class Plugin(PluginBase):
             return
 
         spaces = await get_spaces()
-        if not Space.parse_raw(spaces[data.space_name]).indexing_enabled:
+        if not Space.model_validate_json(spaces[data.space_name]).indexing_enabled:
             return
 
         class_type = getattr(

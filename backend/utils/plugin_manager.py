@@ -2,7 +2,6 @@ import asyncio
 from inspect import iscoroutine
 import os
 from pathlib import Path
-from typing import Any
 
 import aiofiles
 from fastapi import Depends, FastAPI
@@ -72,7 +71,7 @@ class PluginManager:
 
             # Load plugin config file
             async with aiofiles.open(config_file_path, "r") as config_file:
-                plugin_wrapper: PluginWrapper = PluginWrapper.parse_raw(
+                plugin_wrapper: PluginWrapper = PluginWrapper.model_validate_json(
                     await config_file.read()
                 )
             plugin_wrapper.shortname = plugin_path.name
@@ -158,7 +157,7 @@ class PluginManager:
         ):
             return
 
-        space_plugins = Space.parse_raw(spaces[event.space_name]).active_plugins
+        space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
 
         loop = asyncio.get_event_loop()
         for plugin_model in self.plugins_wrappers[event.action_type]:
@@ -187,7 +186,7 @@ class PluginManager:
         ):
             return
 
-        space_plugins = Space.parse_raw(spaces[event.space_name]).active_plugins
+        space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
         loop = asyncio.get_event_loop()
         for plugin_model in self.plugins_wrappers[event.action_type]:
             if (

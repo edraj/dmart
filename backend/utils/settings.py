@@ -3,7 +3,7 @@
 import os
 import string
 import random
-from pydantic import BaseSettings  # BaseModel,
+from pydantic_settings import BaseSettings
 from pathlib import Path
 
 
@@ -33,21 +33,21 @@ class Settings(BaseSettings):
     spaces_folder: Path = Path("../sample/spaces/")
     lock_period: int = 300
     servername: str = ""  # This is for print purposes only.
-    auto_uuid_rule = "auto"  # Used to generate a shortname from UUID
-    google_application_credentials = ""
-    default_branch = "master"
-    management_space_branch = "master"
-    all_spaces_mw = (
+    auto_uuid_rule: str = "auto"  # Used to generate a shortname from UUID
+    google_application_credentials: str = ""
+    default_branch: str = "master"
+    management_space_branch: str = "master"
+    all_spaces_mw: str = (
         "__all_spaces__"  # magic word used in access control refers to any space
     )
-    all_subpaths_mw = (
+    all_subpaths_mw: str = (
         "__all_subpaths__"  # used in access control refers to all subpaths
     )
-    current_user_mw = (
+    current_user_mw: str = (
         "__current_user__"  # used in access control refers to current logged-in user
     )
-    root_subpath_mw = "__root__"
-    email_sender = "dmart@dmart.com"
+    root_subpath_mw : str = "__root__"
+    email_sender: str = "dmart@dmart.com"
 
     otp_token_ttl: int = 60 * 5
     comms_api: str = ""

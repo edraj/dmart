@@ -33,7 +33,6 @@ from .models.requests import (
     UserLoginRequest,
 )
 import utils.regex as rgx
-from pathlib import Path
 
 
 router = APIRouter()
@@ -510,7 +509,7 @@ async def update_profile(
         branch_name=MANAGEMENT_BRANCH,
     )
 
-    old_version_flattend = flatten_dict(user.dict())
+    old_version_flattend = flatten_dict(user.model_dump())
 
     if profile_user.password and "old_password" in profile.attributes:
         if not password_hashing.verify_password(
@@ -598,7 +597,7 @@ async def update_profile(
         USERS_SUBPATH,
         user,
         old_version_flattend,
-        flatten_dict(user.dict()),
+        flatten_dict(user.model_dump()),
         list(profile.attributes.keys()),
         MANAGEMENT_BRANCH,
         shortname,
@@ -786,7 +785,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
         branch_name=MANAGEMENT_BRANCH,
     )
 
-    old_version_flattend = flatten_dict(user.dict())
+    old_version_flattend = flatten_dict(user.model_dump())
     user.force_password_change = True
 
     await plugin_manager.before_action(
@@ -806,7 +805,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
         USERS_SUBPATH,
         user,
         old_version_flattend,
-        flatten_dict(user.dict()),
+        flatten_dict(user.model_dump()),
         ["force_password_change"],
         MANAGEMENT_BRANCH,
         shortname,

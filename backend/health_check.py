@@ -309,7 +309,7 @@ async def hard_health_check(space_name: str, branch_name: str):
         print("space name is not found")
         return None
     # remove checking check_health value from meta space
-    # space_obj = core.Space.parse_raw(spaces[space_name])
+    # space_obj = core.Space.model_validate_json(spaces[space_name])
     # if not space_obj.check_health:
     #     print("EARLY EXIT")
     #     return None

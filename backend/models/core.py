@@ -85,11 +85,11 @@ class Payload(Resource):
 class Record(BaseModel):
     resource_type: ResourceType
     uuid: UUID | None = None
-    shortname: str = Field(regex=regex.SHORTNAME)
+    shortname: str = Field(pattern=regex.SHORTNAME)
     branch_name: str | None = Field(
-        default=settings.default_branch, regex=regex.SHORTNAME
+        default=settings.default_branch, pattern=regex.SHORTNAME
     )
-    subpath: str = Field(regex=regex.SUBPATH)
+    subpath: str = Field(pattern=regex.SUBPATH)
     attributes: dict[str, Any]
     attachments: dict[ResourceType, list[Any]] | None = None
     
@@ -119,7 +119,7 @@ class Locator(Resource):
     type: ResourceType
     space_name: str
     branch_name: str | None = Field(
-        default=settings.default_branch, regex=regex.SHORTNAME
+        default=settings.default_branch, pattern=regex.SHORTNAME
     )
     subpath: str
     shortname: str
@@ -137,8 +137,8 @@ class Relationship(Resource):
 
 class Meta(Resource):
     uuid: UUID = Field(default_factory=uuid4)
-    shortname: str = Field(regex=regex.SHORTNAME)
-    slug: str = Field(default=None, regex=regex.SHORTNAME)
+    shortname: str = Field(pattern=regex.SHORTNAME)
+    # slug: str = Field(default=None, pattern=regex.SHORTNAME)
     is_active: bool = False
     displayname: Translation | None = None
     description: Translation | None = None
@@ -278,7 +278,7 @@ class Actor(Meta):
 class User(Actor):
     password: str | None = None
     email: str | None = None
-    msisdn: str | None = Field(default=None, regex=regex.EXTENDED_MSISDN)
+    msisdn: str | None = Field(default=None, pattern=regex.EXTENDED_MSISDN)
     is_email_verified: bool = False
     is_msisdn_verified: bool = False
     force_password_change: bool = True
@@ -409,10 +409,10 @@ class Post(Content):
 class Event(BaseModel):
     space_name: str
     branch_name: str | None = Field(
-        default=settings.default_branch, regex=regex.SHORTNAME
+        default=settings.default_branch, pattern=regex.SHORTNAME
     )
-    subpath: str = Field(regex=regex.SUBPATH)
-    shortname: str | None = Field(default=None, regex=regex.SHORTNAME)
+    subpath: str = Field(pattern=regex.SUBPATH)
+    shortname: str | None = Field(default=None, pattern=regex.SHORTNAME)
     action_type: ActionType
     resource_type: ResourceType | None = None
     schema_shortname: str | None = None
@@ -434,7 +434,7 @@ class EventFilter(BaseModel):
 
 
 class PluginWrapper(Resource):
-    shortname: str = Field(default=None, regex=regex.SHORTNAME)
+    shortname: str = Field(default=None, pattern=regex.SHORTNAME)
     is_active: bool = False
     filters: EventFilter | None = None
     listen_time: EventListenTime | None = None

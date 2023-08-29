@@ -166,7 +166,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         folder_views = folder_payload.get("index_attributes", [])
         
     keys: list = [i["name"] for i in folder_views]
-    keys_existence = dict(zip(keys, [False for x in range(len(keys))]))
+    keys_existence = dict(zip(keys, [False for _ in range(len(keys))]))
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
     json_data = []
     timestamp_fields = ["created_at", "updated_at"]
@@ -395,8 +395,8 @@ async def serve_space(
                 space_name=space.shortname,
                 subpath=record.subpath,
                 meta=space,
-                old_version_flattend=flatten_dict(old_space.dict()),
-                new_version_flattend=flatten_dict(space.dict()),
+                old_version_flattend=flatten_dict(old_space.model_dump()),
+                new_version_flattend=flatten_dict(space.model_dump()),
                 updated_attributes_flattend=list(
                     flatten_dict(record.attributes).keys()
                 ),
@@ -881,7 +881,7 @@ async def serve_request(
 
                 # GET PAYLOAD DATA
                 old_resource_payload_body = {}
-                old_version_flattend = flatten_dict(old_resource_obj.dict())
+                old_version_flattend = flatten_dict(old_resource_obj.model_dump())
                 if (
                     old_resource_obj.payload
                     and old_resource_obj.payload.content_type == ContentType.json
@@ -914,7 +914,7 @@ async def serve_request(
                         replace=request.request_type == api.RequestType.r_replace,
                     )
                 )
-                new_version_flattend = flatten_dict(resource_obj.dict())
+                new_version_flattend = flatten_dict(resource_obj.model_dump())
                 if new_resource_payload_data:
                     new_version_flattend.update(
                         flatten_dict({"payload.body": new_resource_payload_data})
@@ -1302,7 +1302,7 @@ async def update_state(
                     ),
                 )
 
-            old_version_flattend = flatten_dict(ticket_obj.dict())
+            old_version_flattend = flatten_dict(ticket_obj.model_dump())
             old_version_flattend.pop("payload.body", None)
             old_version_flattend.update(flatten_dict({"payload.body": ticket_obj}))
 
@@ -1326,7 +1326,7 @@ async def update_state(
                     )
                 ticket_obj.resolution_reason = resolution
 
-            new_version_flattend = flatten_dict(ticket_obj.dict())
+            new_version_flattend = flatten_dict(ticket_obj.model_dump())
             new_version_flattend.pop("payload.body", None)
             new_version_flattend.update(flatten_dict({"payload.body": ticket_obj}))
 
@@ -1534,7 +1534,7 @@ async def create_or_update_resource_with_payload(
             ),
         )
 
-    record = core.Record.parse_raw(request_record.file.read())
+    record = core.Record.model_validate_json(request_record.file.read())
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
@@ -1688,7 +1688,7 @@ async def import_resources_from_csv(
     }
 
     resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
-    meta_class_attributes = resource_cls.__fields__.keys()
+    meta_class_attributes = resource_cls.model_fields()
     failed_shortnames: list = []
     success_count = 0
     for row in csv_reader:
@@ -1887,7 +1887,7 @@ async def retrieve_entry_meta(
     ):
         # TODO
         # include locked before returning the dictionary
-        return {**meta.dict(exclude_none=True), "attachments": attachments}
+        return {**meta.model_dump(exclude_none=True), "attachments": attachments}
 
     payload_body = db.load_resource_payload(
         space_name=space_name,
@@ -1919,7 +1919,7 @@ async def retrieve_entry_meta(
     )
     # TODO
     # include locked before returning the dictionary
-    return {**meta.dict(exclude_none=True), "attachments": attachments}
+    return {**meta.model_dump(exclude_none=True), "attachments": attachments}
 
 
 @router.get("/byuuid/{uuid}", response_model_exclude_none=True)
@@ -1964,7 +1964,7 @@ async def get_entry_by_slug(
 
 #     spaces = await get_spaces()
 #     for space_name, space_json in spaces.items():
-#         space_obj = core.Space.parse_raw(space_json)
+#         space_obj = core.Space.model_validate_json(space_json)
 #         if space_obj.indexing_enabled and not await access_control.check_access(
 #             user_shortname=logged_in_user,
 #             space_name=space_name,

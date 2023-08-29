@@ -15,7 +15,7 @@ from utils.settings import settings
 
 
 class Request(BaseModel):
-    space_name: str = Field(..., regex=regex.SPACENAME)
+    space_name: str = Field(..., pattern=regex.SPACENAME)
     request_type: RequestType
     records: list[core.Record]
 
@@ -32,15 +32,16 @@ class RedisAggregate(BaseModel):
     
 
 class Query(BaseModel):
+    __pydantic_extra__ = None
     type: QueryType
-    space_name: str = Field(..., regex=regex.SPACENAME)
-    subpath: str = Field(..., regex=regex.SUBPATH)
+    space_name: str = Field(..., pattern=regex.SPACENAME)
+    subpath: str = Field(..., pattern=regex.SUBPATH)
     exact_subpath: bool = False
-    branch_name: str = Field(default=settings.default_branch, regex=regex.SHORTNAME)
+    branch_name: str = Field(default=settings.default_branch, pattern=regex.SHORTNAME)
     filter_types: list[ResourceType] | None = None
     filter_schema_names: list[str] = ["meta"]
     filter_shortnames: list[str] | None = Field(
-        regex=regex.SHORTNAME, default_factory=list
+        pattern=regex.SHORTNAME, default_factory=list
     )
     filter_tags: list[str] | None = None
     search: str | None = None

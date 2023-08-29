@@ -334,7 +334,7 @@ class RedisServices(object):
         """
         spaces = await self.get_doc_by_id("spaces")
         for space_name in spaces:
-            space_obj = core.Space.parse_raw(spaces[space_name])
+            space_obj = core.Space.model_validate_json(spaces[space_name])
             if (
                 for_space and for_space != space_name
             ) or not space_obj.indexing_enabled:
@@ -642,7 +642,7 @@ class RedisServices(object):
                 meta.shortname,
                 subpath,
             )
-        meta_json = json.loads(meta.json(exclude_none=True))
+        meta_json = json.loads(meta.model_dump_json(exclude_none=True))
         meta_json["query_policies"] = self.generate_query_policies(
             space_name,
             subpath,
