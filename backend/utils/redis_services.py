@@ -275,7 +275,7 @@ class RedisServices(object):
                 continue
 
             mapper_key = None
-            for field_type in model_field.outer_type_.__mro__:
+            for field_type in type(model_field).mro():
                 if field_type in class_types_to_redis_fields_mapper.keys():
                     mapper_key = field_type
                     break
@@ -903,7 +903,7 @@ class RedisServices(object):
 
         try:
             # print(f"ARGS {search_query.get_args()} O {search_query.query_string()}")
-            search_res = await ft_index.search(query=search_query)  # type: ignore
+            search_res = await ft_index.search(query=search_query) 
             return {"data": search_res.docs, "total": search_res.total}
         except:
             return {}
@@ -952,7 +952,7 @@ class RedisServices(object):
             aggr_request.load(*load)
 
         try:
-            aggr_res = await ft_index.aggregate(aggr_request)  # type: ignore
+            aggr_res = await ft_index.aggregate(aggr_request)
             return aggr_res.rows
         except:
             return []
@@ -1099,4 +1099,4 @@ class RedisServices(object):
             return False
 
     async def list_indices(self):
-        return await self.client.ft().execute_command("FT._LIST")  # type: ignore
+        return await self.client.ft().execute_command("FT._LIST") 

@@ -170,7 +170,7 @@ async def soft_health_check(
             search_query = Query(query_string="*")
             search_query.paging(offset, limit)
             offset += limit
-            res_data: Result = await ft_index.search(query=search_query) #type: ignore
+            res_data: Result = await ft_index.search(query=search_query)
             if not res_data.docs:
                 break
             for redis_doc_dict in res_data.docs:
@@ -280,7 +280,7 @@ async def collect_duplicated_with_key(key, value):
                     continue
                 search_query = Query(query_string=f"@{key}:{value}*")
                 search_query.paging(0, 1000)
-                res_data: Result = await ft_index.search(query=search_query) #type: ignore
+                res_data: Result = await ft_index.search(query=search_query)
                 for redis_doc_dict in res_data.docs:
                     redis_doc_dict = json.loads(redis_doc_dict.json)
                     if redis_doc_dict['subpath'] == '/':
@@ -398,7 +398,7 @@ async def save_duplicated_entries(
                 for i in range(0, int(index_info["num_docs"]), 10000):
                     search_query = Query(query_string="*")
                     search_query.paging(i, 10000)
-                    res_data: Result = await ft_index.search(query=search_query) #type: ignore
+                    res_data: Result = await ft_index.search(query=search_query)
                     for redis_doc_dict in res_data.docs:
                         redis_doc_dict = json.loads(redis_doc_dict.json)
                         if "uuid" in redis_doc_dict:
