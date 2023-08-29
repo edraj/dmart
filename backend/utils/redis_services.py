@@ -750,7 +750,7 @@ class RedisServices(object):
             return payload_doc_content
 
         not_payload_attr = RedisServices.SYS_ATTRIBUTES + list(
-            resource_class.__fields__.keys()
+            resource_class.model_fields.keys()
         )
         for key, value in payload_redis_doc.items():
             if key not in not_payload_attr:

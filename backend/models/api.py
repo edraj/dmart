@@ -40,7 +40,7 @@ class Query(BaseModel):
     branch_name: str = Field(default=settings.default_branch, pattern=regex.SHORTNAME)
     filter_types: list[ResourceType] | None = None
     filter_schema_names: list[str] = ["meta"]
-    filter_shortnames: list[str] 
+    filter_shortnames: list[str] | None = [] # Field( pattern=regex.SHORTNAME, default_factory=list)
     filter_tags: list[str] | None = None
     search: str | None = None
     from_date: datetime | None = None
