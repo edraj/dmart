@@ -8,8 +8,9 @@ from uuid import uuid4
 import jq
 from fastapi.encoders import jsonable_encoder
 from pydantic.fields import Field
-from models.enums import ContentType, ResourceType
+from models.enums import ContentType, Language, ResourceType
 from utils.access_control import access_control
+from utils.jwt import sign_jwt
 from utils.plugin_manager import plugin_manager
 from utils.spaces import get_spaces
 from utils.settings import settings
@@ -1593,3 +1594,35 @@ async def url_shortner(url: str) -> str:
         )
 
     return f"{settings.public_app_url}/managed/s/{token_uuid}"
+
+
+async def store_user_invitation_token(user: core.User, channel: str) -> str | None:
+    """Generate and Store an invitation token 
+
+    Returns:
+        invitation link or None if the user is not eligible
+    """
+    invitation_value = None
+    if channel == "SMS" and user.msisdn:
+        invitation_value = f"{channel}:{user.msisdn}"
+    elif channel == "EMAIL" and user.email:
+        invitation_value = f"{channel}:{user.email}"
+        
+    if not invitation_value:
+        return None
+    
+    invitation_token = sign_jwt(
+        {"shortname": user.shortname, "channel": channel},
+        settings.jwt_access_expires,
+    )
+    async with RedisServices() as redis_services:
+        await redis_services.set(
+            f"users:login:invitation:{invitation_token}",
+            invitation_value
+        )
+        
+    return core.User.invitation_url_template()\
+        .replace("{url}", settings.invitation_link)\
+        .replace("{token}", invitation_token)\
+        .replace("{lang}", Language.code(user.language))\
+        .replace("{user_type}", user.type)
