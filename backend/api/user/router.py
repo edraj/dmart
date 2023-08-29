@@ -2,10 +2,12 @@
 import json
 import re
 import aiofiles
+from utils.generate_email import generate_subject
+from utils.generate_email import generate_email_from_template
 from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
-from models.enums import ActionType, Language, RequestType, ResourceType, ContentType
+from models.enums import ActionType, RequestType, ResourceType, ContentType
 from utils.custom_validations import validate_uniqueness
 import utils.db as db
 from utils.access_control import access_control
@@ -33,7 +35,7 @@ from .models.requests import (
     UserLoginRequest,
 )
 import utils.regex as rgx
-from pathlib import Path
+from languages.loader import languages
 
 
 router = APIRouter()
@@ -960,21 +962,50 @@ async def user_reset(
                 message="You don't have permission to this action",
             ),
         )
-
-    invitation_token = sign_jwt({"shortname": shortname}, settings.jwt_access_expires)
-
-    async with RedisServices() as redis_services:
-        await redis_services.set(f"users:login:invitation:{invitation_token}", 1)
         
-    invitation_link = core.User.invitation_url_template()\
-        .replace("{url}", settings.invitation_link)\
-        .replace("{token}", invitation_token)\
-        .replace("{lang}", Language.code(user.language))\
-        .replace("{user_type}", user.type)
+    sms_link = None
+    email_link = None
+        
+    if user.msisdn and not user.is_msisdn_verified:
+        sms_link = await repository.url_shortner(
+            await repository.store_user_invitation_token(
+                user, "SMS"
+            )
+        )
+        await send_sms(
+            msisdn=user.msisdn,
+            message=languages[
+                user.language
+            ]["invitation_message"].replace(
+                "{link}", 
+                sms_link
+            ),
+        )
+    if user.email and not user.is_email_verified:
+        email_link = await repository.url_shortner(
+            await repository.store_user_invitation_token(
+                user, "SMS"
+            )
+        )
+        await send_email(
+            from_address=settings.email_sender,
+            to_address=user.email,
+            message=generate_email_from_template(
+                "activation",
+                {
+                    "link": email_link,
+                    "name": user.displayname.en if user.displayname else "",
+                    "shortname": user.shortname,
+                    "msisdn": user.msisdn,
+                },
+            ),
+            subject=generate_subject("activation"),
+        )
+        
 
     return api.Response(
         status=api.Status.success, 
-        attributes={"invitation_link": await repository.url_shortner(invitation_link)}
+        attributes={"sms_sent": bool(sms_link), "email_sent": bool(email_link)}
     )
 
 
