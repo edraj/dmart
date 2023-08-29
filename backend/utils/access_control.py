@@ -95,7 +95,7 @@ class AccessControl:
             search_query = Query("*").no_content()
             docs = await redis_services.client.\
                 ft("user_permission").\
-                search(search_query) # type: ignore
+                search(search_query)
             keys = [doc.id for doc in docs.docs]
             if len(keys) > 0:
                 await redis_services.del_keys(keys)
