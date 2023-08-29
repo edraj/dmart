@@ -3,7 +3,7 @@
 import os
 import string
 import random
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
 
@@ -61,11 +61,6 @@ class Settings(BaseSettings):
     ldap_pass: str = ""
     max_query_limit: int = 10000
 
-    class Config:
-        """Load config"""
-
-        env_file = os.getenv("BACKEND_ENV", "config.env")
-        env_file_encoding = "utf-8"
-
+    model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", "config.env"), env_file_encoding = "utf-8")
 
 settings = Settings()
