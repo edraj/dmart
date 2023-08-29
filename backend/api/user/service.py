@@ -68,77 +68,84 @@ async def email_send_otp(email: str, language: str):
         return await send_email(settings.email_sender, email, message, "OTP")
 
 
-async def send_sms(msisdn: str, message: str):
+async def send_sms(msisdn: str, message: str) -> bool:
     json = {}
     status: int
     if settings.mock_smpp_api:
-        return {
-            "status": "success",
-            "data": {
-                "status": 0,
-                "statusDetail": "The message has been sent",
-                "message": message,
-            },
-        }
-    else:
-        async with AsyncRequest() as client:
-            response = await client.post(
-                send_sms_api,
-                headers={**headers},
-                json={"msisdn": msisdn, "message": message},
-            )
-            json = await response.json()
-            status = response.status
+        return True
+        
+    async with AsyncRequest() as client:
+        response = await client.post(
+            send_sms_api,
+            headers={**headers},
+            json={"msisdn": msisdn, "message": message},
+        )
+        json = await response.json()
+        status = response.status
 
     if status != 200:
-        raise Exception(status, json)
+        logger.warning(
+            "sms_sender_exception",
+            extra={
+                "props": {
+                    "status": status,
+                    "response": json,
+                    "target": msisdn
+                }
+            },
+        )
+        return False
 
-    return json.get("data")
+    return True
 
 
-async def send_email(from_address: str, to_address: str, message: str, subject: str):
+async def send_email(from_address: str, to_address: str, message: str, subject: str) -> bool:
     json = {}
     status: int
     start_time = time.time()
     if settings.mock_smpp_api:
-        return {
-            "status": "success",
-            "data": {
-                "status": 0,
-                "statusDetail": "The message has been sent",
-                "message": message,
+        return True
+    
+    async with AsyncRequest() as client:
+        response = await client.post(
+            send_email_api,
+            headers={**headers},
+            json={
+                "from_address": from_address,
+                "to": to_address,
+                "msg": message,
+                "subject": subject,
             },
-        }
-    else:
-        async with AsyncRequest() as client:
-            response = await client.post(
-                send_email_api,
-                headers={**headers},
-                json={
-                    "from_address": from_address,
-                    "to": to_address,
-                    "msg": message,
-                    "subject": subject,
-                },
-            )
-            json = await response.json()
-            status = response.status
-            logger.info(
-                "Email Service",
-                extra={
-                    "props": {
-                        "duration": 1000 * (time.time() - start_time),
-                        "request": {
-                            "from_address": from_address,
-                            "to": to_address,
-                            "msg": message,
-                        },
-                        "response": {"status": status, "json": json},
-                    }
-                },
-            )
+        )
+        json = await response.json()
+        status = response.status
+        logger.info(
+            "Email Service",
+            extra={
+                "props": {
+                    "duration": 1000 * (time.time() - start_time),
+                    "request": {
+                        "from_address": from_address,
+                        "to": to_address,
+                        "msg": message,
+                    },
+                    "response": {"status": status, "json": json},
+                }
+            },
+        )
 
     if status != 200:
-        raise Exception(status, json)
+        logger.warning(
+            "Email Service",
+            extra={
+                "props": {
+                    "status": status,
+                    "response": json,
+                    "target": to_address,
+                    "sender": from_address
+                }
+            },
+        )
+        return False
 
-    return json.get("data")
+    return True
