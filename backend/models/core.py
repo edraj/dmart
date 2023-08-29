@@ -1,7 +1,7 @@
 import copy
 import json
 from abc import ABC, abstractmethod
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Any
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
@@ -36,10 +36,7 @@ import utils.password_hashing as password_hashing
 
 
 class Resource(BaseModel):
-    class Config:
-        use_enum_values = True
-        arbitrary_types_allowed = True
-
+    model_config = ConfigDict(use_enum_values = True, arbitrary_types_allowed = True)
 
 class Payload(Resource):
     content_type: ContentType
@@ -149,8 +146,7 @@ class Meta(Resource):
     payload: Payload | None = None
     relationships : list[Relationship] | None = None
 
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment = True)
 
     @staticmethod
     def from_record(record: Record, owner_shortname: str):
