@@ -824,34 +824,32 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
         )
     )
 
-    invitation_token = sign_jwt({"shortname": shortname}, settings.jwt_access_expires)
-    invitation_link = core.User.invitation_url_template()\
-        .replace("{url}", settings.invitation_link)\
-        .replace("{token}", invitation_token)\
-        .replace("{lang}", Language.code(user.language))\
-        .replace("{user_type}", user.type)
-
-    async with RedisServices() as redis_services:
-        await redis_services.set(f"users:login:invitation:{invitation_token}", 1)
-
-    link = await repository.url_shortner(invitation_link)
-
-    reset_password_message = f"Reset password via this link: {link}, This link can be used once and within the next 48 hours."
+    reset_password_message = "Reset password via this link: {link}, This link can be used once and within the next 48 hours."
 
     if "msisdn" in result:
         if not user.msisdn or user.msisdn != result["msisdn"]:
             raise exception
+        shortened_link = await repository.url_shortner(
+            await repository.store_user_invitation_token(
+                user, "SMS"
+            )
+        )
         await send_sms(
             msisdn=user.msisdn,
-            message=reset_password_message,
+            message=reset_password_message.replace("{link}", shortened_link),
         )
     else:
         if not user.email or user.email != result["email"]:
             raise exception
+        shortened_link = await repository.url_shortner(
+            await repository.store_user_invitation_token(
+                user, "EMAIL"
+            )
+        )
         await send_email(
             from_address=settings.email_sender,
             to_address=user.email,
-            message=reset_password_message,
+            message=reset_password_message.replace("{link}", shortened_link),
             subject="Reset password",
         )
     return api.Response(status=api.Status.success)
