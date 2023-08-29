@@ -664,120 +664,47 @@ async def serve_request(
                         record.branch_name,
                     )
 
-                    if record.resource_type == ResourceType.user:
-                        invitation_token = sign_jwt(
-                            {"shortname": record.shortname}, settings.jwt_access_expires
-                        )
-
-                        channel = ""
-                        async with RedisServices() as redis_services:
-                            if not record.attributes.get(
-                                "is_msisdn_verified", False
-                            ) and record.attributes.get("msisdn"):
-                                invitation_token = sign_jwt(
-                                    {"shortname": record.shortname, "channel": "SMS"},
-                                    settings.jwt_access_expires,
+                    if isinstance(resource_obj, core.User):
+                        # SMS Invitation
+                        if not resource_obj.is_msisdn_verified and resource_obj.msisdn:
+                            inv_link = await repository.store_user_invitation_token(
+                                resource_obj, "SMS"
+                            )
+                            if inv_link:
+                                await send_sms(
+                                    msisdn=record.attributes.get("msisdn", ""),
+                                    message=languages[
+                                        resource_obj.language
+                                    ]["invitation_message"].replace(
+                                        "{link}", 
+                                        await repository.url_shortner(inv_link)
+                                    ),
                                 )
-                                channel += f"SMS:{record.attributes.get('msisdn')}"
-                                await redis_services.set(
-                                    f"users:login:invitation:{invitation_token}",
-                                    channel
-                                )
-                                invitation_link = core.User.invitation_url_template()\
-                                    .replace("{url}", settings.invitation_link)\
-                                    .replace("{token}", invitation_token)\
-                                    .replace("{lang}", Language.code(record.attributes.get('language', Language.ar)))\
-                                    .replace("{user_type}", resource_obj.type)
-                                
-                                token_uuid = str(uuid.uuid4())[:8]
-                                await redis_services.set(
-                                    f"short/{token_uuid}",
-                                    invitation_link,
-                                    ex=60 * 60 * 48,
-                                    nx=False,
-                                )
-                                link = (
-                                    f"{settings.public_app_url}/managed/s/{token_uuid}"
-                                )
-                                invitation_message = languages[
-                                    record.attributes.get("language", Language.ar)
-                                ]["invitation_message"].replace("{link}", link)
-                                channel += f"SMS:{record.attributes.get('msisdn')},"
-                                try:
-                                    await send_sms(
-                                        msisdn=record.attributes.get("msisdn", ""),
-                                        message=invitation_message,
-                                    )
-                                except Exception as e:
-                                    logger.warning(
-                                        "Exception",
-                                        extra={
-                                            "props": {
-                                                "record": record,
-                                                "target": "msisdn",
-                                                "exception": e,
-                                            }
+                        # EMAIL Invitation
+                        if not resource_obj.is_email_verified and resource_obj.email:
+                            inv_link = await repository.store_user_invitation_token(
+                                resource_obj, "EMAIL"
+                            )
+                            if inv_link:
+                                await send_email(
+                                    from_address=settings.email_sender,
+                                    to_address=resource_obj.email,
+                                    message=generate_email_from_template(
+                                        "activation",
+                                        {
+                                            "link": await repository.url_shortner(
+                                                inv_link
+                                            ),
+                                            "name": record.attributes.get(
+                                                "displayname", {}
+                                            ).get("en", ""),
+                                            "shortname": resource_obj.shortname,
+                                            "msisdn": resource_obj.msisdn,
                                         },
-                                    )
-                            if not record.attributes.get(
-                                "is_email_verified", False
-                            ) and record.attributes.get("email"):
-                                invitation_token = sign_jwt(
-                                    {"shortname": record.shortname, "channel": "EMAIL"},
-                                    settings.jwt_access_expires,
+                                    ),
+                                    subject=generate_subject("activation"),
                                 )
-                                channel = f"EMAIL:{record.attributes.get('email')}"
-                                await redis_services.set(
-                                    f"users:login:invitation:{invitation_token}", 
-                                    channel
-                                )
-                                invitation_link = core.User.invitation_url_template()\
-                                    .replace("{url}", settings.invitation_link)\
-                                    .replace("{token}", invitation_token)\
-                                    .replace("{lang}", Language.code(record.attributes.get('language', Language.ar)))\
-                                    .replace("{user_type}", resource_obj.type)
-                                    
-                                token_uuid = str(uuid.uuid4())[:8]
-                                await redis_services.set(
-                                    f"short/{token_uuid}",
-                                    invitation_link,
-                                    ex=60 * 60 * 48,
-                                    nx=True,
-                                )
-                                link = (
-                                    f"{settings.public_app_url}/managed/s/{token_uuid}"
-                                )
-                                try:
-                                    await send_email(
-                                        from_address=settings.email_sender,
-                                        to_address=record.attributes.get("email", ""),
-                                        # message=f"Welcome, this is your invitation link: {invitation_link}",
-                                        message=generate_email_from_template(
-                                            "activation",
-                                            {
-                                                "link": link,
-                                                "name": record.attributes.get(
-                                                    "displayname", {}
-                                                ).get("en", ""),
-                                                "shortname": record.shortname,
-                                                "msisdn": record.attributes.get(
-                                                    "msisdn"
-                                                ),
-                                            },
-                                        ),
-                                        subject=generate_subject("activation"),
-                                    )
-                                except Exception as e:
-                                    logger.warning(
-                                        "Exception",
-                                        extra={
-                                            "props": {
-                                                "record": record,
-                                                "target": "email",
-                                                "exception": e,
-                                            }
-                                        },
-                                    )
+                        
 
                     if separate_payload_data != None and isinstance(
                         separate_payload_data, dict
