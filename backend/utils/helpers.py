@@ -2,6 +2,8 @@ from copy import deepcopy
 from datetime import datetime
 from re import sub as re_sub
 from jsonschema import RefResolver
+# TBD from referencing import Registry, Resource
+# TBD import referencing.jsonschema
 from collections.abc import MutableMapping
 from models.enums import Language
 from utils.settings import settings

@@ -1408,7 +1408,7 @@ async def get_record_from_redis_doc(
     )
 
     for key, value in doc.items():
-        if key in resource_class.__fields__.keys():
+        if key in resource_class.model_fields.keys():
             meta_doc_content[key] = value
         elif key not in RedisServices.SYS_ATTRIBUTES:
             payload_doc_content[key] = value
@@ -1438,7 +1438,7 @@ async def get_record_from_redis_doc(
     meta_doc_content["updated_at"] = datetime.fromtimestamp(
         meta_doc_content["updated_at"]
     )
-    resource_obj = resource_class.parse_obj(meta_doc_content)
+    resource_obj = resource_class.model_validate(meta_doc_content)
     resource_base_record = resource_obj.to_record(
         doc["subpath"],
         meta_doc_content["shortname"],
