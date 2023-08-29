@@ -1688,7 +1688,7 @@ async def import_resources_from_csv(
     }
 
     resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
-    meta_class_attributes = resource_cls.model_fields()
+    meta_class_attributes = resource_cls.model_fields
     failed_shortnames: list = []
     success_count = 0
     for row in csv_reader:
