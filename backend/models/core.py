@@ -8,7 +8,7 @@ from uuid import uuid4
 from pydantic import Field
 from datetime import datetime
 import sys
-from pydantic.utils import deep_update
+from pydantic.v1.utils import deep_update
 from models.enums import (
     ActionType,
     ContentType,
@@ -17,7 +17,6 @@ from models.enums import (
     NotificationType,
     ResourceType,
     UserType,
-    ValidationEnum,
     ConditionType,
     PluginType,
     EventListenTime,
@@ -99,7 +98,7 @@ class Record(BaseModel):
             self.subpath = self.subpath.strip("/")
 
     def to_dict(self):
-        return json.loads(self.json())
+        return json.loads(self.model_dump_json())
 
     def __eq__(self, other):
         return (
