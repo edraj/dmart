@@ -4,7 +4,7 @@ from models.api import Response
 
 
 class Confirmation(BaseModel):
-    confirmation: str = Field(..., example="fjuGQYmZvCBsQbEZ")
+    confirmation: str = Field(...)
 
 
 class ConfirmationResponse(Response):
