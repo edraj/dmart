@@ -31,7 +31,7 @@ from utils.helpers import (
 )
 from utils.custom_validations import validate_payload_with_schema
 import subprocess
-import redis.commands.search.reducers as reducers
+# import redis.commands.search.reducers as reducers
 
 
 def parse_redis_response(rows: list) -> list:
@@ -69,7 +69,7 @@ async def serve_query(
     match query.type:
         case api.QueryType.spaces:
             for space_json in spaces.values():
-                space = core.Space.parse_raw(space_json)
+                space = core.Space.model_validate_json(space_json)
 
                 if await access_control.check_space_access(
                     logged_in_user, space.shortname
@@ -189,7 +189,7 @@ async def serve_query(
                             )
 
                             async with aiofiles.open(one, "r") as meta_file:
-                                resource_obj = resource_class.parse_raw(
+                                resource_obj = resource_class.model_validate_json(
                                     await meta_file.read()
                                 )
 
@@ -329,7 +329,7 @@ async def serve_query(
                     if len(records) >= query.limit or total < query.offset:
                         continue
 
-                    folder_obj = core.Folder.parse_raw(subfolder_meta.read_text())
+                    folder_obj = core.Folder.model_validate_json(subfolder_meta.read_text())
                     folder_record = folder_obj.to_record(
                         query.subpath,
                         shortname,
@@ -729,7 +729,7 @@ async def get_entry_attachments(
             resource_obj = None
             async with aiofiles.open(attachments_file, "r") as meta_file:
                 try:
-                    resource_obj = resource_class.parse_raw(await meta_file.read())
+                    resource_obj = resource_class.model_validate_json(await meta_file.read())
                 except Exception as e:
                     raise Exception(f"Bad attachment ... {attachments_file=}") from e
 
@@ -1302,7 +1302,7 @@ async def _sys_update_model(
     async with RedisServices() as redis_services:
         await redis_services.save_meta_doc(space_name, branch_name, subpath, meta)
         if payload_updated:
-            payload_dict.update(json.loads(meta.json()))
+            payload_dict.update(json.loads(meta.model_dump_json()))
             await redis_services.save_payload_doc(
                 space_name,
                 branch_name,
@@ -1381,7 +1381,7 @@ async def generate_payload_string(
     # Convert Record objects to dict
     dict_attachments = {}
     for k, v in attachments.items():
-        dict_attachments[k] = [i.dict() for i in v]
+        dict_attachments[k] = [i.model_dump() for i in v]
 
     attachments_values = set(flatten_all(dict_attachments).values())
     attachments_payload_string = ",".join(
@@ -1398,7 +1398,7 @@ async def get_record_from_redis_doc(
     retrieve_attachments: bool = False,
     validate_schema: bool = False,
     filter_types: list | None = None,
-    branch_name: str = Field(default=settings.default_branch, regex=regex.SHORTNAME),
+    branch_name: str = Field(default=settings.default_branch, pattern=regex.SHORTNAME),
 ) -> core.Record:
     meta_doc_content = {}
     payload_doc_content = {}

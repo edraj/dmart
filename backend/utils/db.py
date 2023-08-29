@@ -1,7 +1,7 @@
 from copy import copy
 import shutil
 from models.enums import LockAction
-from utils.helpers import arr_remove_common, branch_path, pp, snake_case
+from utils.helpers import arr_remove_common, branch_path, snake_case
 from datetime import datetime
 from models.enums import ContentType, ResourceType
 from utils.middleware import get_request_data
@@ -239,7 +239,7 @@ async def load(
     path /= filename
     async with aiofiles.open(path, "r") as file:
         content = await file.read()
-        return class_type.parse_raw(content)
+        return class_type.model_validate_json(content)
 
 
 def load_resource_payload(
@@ -280,7 +280,7 @@ async def save(
         os.makedirs(path)
 
     async with aiofiles.open(path / filename, "w") as file:
-        await file.write(meta.json(exclude_none=True))
+        await file.write(meta.model_dump_json(exclude_none=True))
 
 
 async def create(
@@ -300,7 +300,7 @@ async def create(
         os.makedirs(path)
 
     async with aiofiles.open(path / filename, "w") as file:
-        await file.write(meta.json(exclude_none=True))
+        await file.write(meta.model_dump_json(exclude_none=True))
 
 
 async def save_payload(
@@ -412,7 +412,7 @@ async def update(
 
     meta.updated_at = datetime.now()
     async with aiofiles.open(path / filename, "w") as file:
-        await file.write(meta.json(exclude_none=True))
+        await file.write(meta.model_dump_json(exclude_none=True))
 
     history_diff = await store_entry_diff(
         space_name,
@@ -495,7 +495,7 @@ async def store_entry_diff(
         f"{history_path}/history.jsonl",
         "a",
     ) as events_file:
-        await events_file.write(f"{history_obj.json()}\n")
+        await events_file.write(f"{history_obj.model_dump_json()}\n")
 
     return history_diff
 
@@ -565,7 +565,7 @@ async def move(
 
     if meta_updated:
         async with aiofiles.open(dest_path / dest_filename, "w") as opened_file:
-            await opened_file.write(meta.json(exclude_none=True))
+            await opened_file.write(meta.model_dump_json(exclude_none=True))
 
     # Delete Src path if empty
     if src_path.is_dir() and len(os.listdir(src_path)) == 0:

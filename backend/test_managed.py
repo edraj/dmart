@@ -14,7 +14,6 @@ from utils.redis_services import RedisServices
 from utils.settings import settings
 import os
 from models.api import Query, QueryType
-from pytest_mock import mocker
 from main import app
 
 client = TestClient(app)
@@ -654,7 +653,7 @@ def assert_resource_created(
         query.search = ""
     response = client.post(
         "/managed/query",
-        json=json.loads(query.json(exclude_none=True)),
+        json=json.loads(query.model_dump_json(exclude_none=True)),
         headers={"Content-Type": "application/json"},
     )
     assert_code_and_status_success(response)

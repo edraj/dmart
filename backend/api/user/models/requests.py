@@ -11,8 +11,8 @@ class OTPType(str, Enum):
 
 
 class SendOTPRequest(BaseModel):
-    msisdn: str | None = Field(None, regex=rgx.MSISDN, example="7839921514")
-    email: str | None = Field(None, regex=rgx.EMAIL, example="example@gmail.com")
+    msisdn: str | None = Field(None, pattern=rgx.MSISDN, example="7839921514")
+    email: str | None = Field(None, pattern=rgx.EMAIL, example="example@gmail.com")
 
     def check_fields(self) -> Dict[str, str]:
         if self.email is None and self.msisdn is None:
@@ -51,8 +51,8 @@ class SendOTPRequest(BaseModel):
 
 
 class PasswordResetRequest(BaseModel):
-    msisdn: str | None = Field(None, regex=rgx.MSISDN, example="7839921514")
-    email: str | None = Field(None, regex=rgx.EMAIL, example="example@gmail.com")
+    msisdn: str | None = Field(None, pattern=rgx.MSISDN, example="7839921514")
+    email: str | None = Field(None, pattern=rgx.EMAIL, example="example@gmail.com")
 
     def check_fields(self) -> Dict[str, str]:
         if self.email is None and self.msisdn is None:
@@ -91,15 +91,15 @@ class PasswordResetRequest(BaseModel):
 
 
 class ConfirmOTPRequest(SendOTPRequest, BaseModel):
-    code: str = Field(..., regex=rgx.OTP_CODE, example="165132")
+    code: str = Field(..., pattern=rgx.OTP_CODE, example="165132")
 
 
 class UserLoginRequest(BaseModel):
-    shortname: str | None = Field(None, regex=rgx.SHORTNAME, example="joe")
-    email: str | None = Field(None, regex=rgx.EMAIL, example="a@b.c")
-    msisdn: str | None = Field(None, regex=rgx.MSISDN, example="7812345678")
+    shortname: str | None = Field(None, pattern=rgx.SHORTNAME, example="joe")
+    email: str | None = Field(None, pattern=rgx.EMAIL, example="a@b.c")
+    msisdn: str | None = Field(None, pattern=rgx.MSISDN, example="7812345678")
     password: str | None = Field(None, example="123")
-    invitation: str | None = Field(None, regex=rgx.INVITATION, example="abc")
+    invitation: str | None = Field(None, pattern=rgx.INVITATION, example="abc")
     firebase_token: str | None = Field(None, example="djfb534lyb15qzdd5hbl15wjdsn")
 
     def check_fields(self) -> Dict[str, str] | None:

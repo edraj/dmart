@@ -370,7 +370,7 @@ class AccessControl:
         role_permissions: list[Permission] = []
 
         for permission_doc in permissions_search["data"]:
-            permission = Permission.parse_obj(json.loads(permission_doc.json))
+            permission = Permission.model_validate(json.loads(permission_doc.json))
             role_permissions.append(permission)
 
         return role_permissions
@@ -401,7 +401,7 @@ class AccessControl:
 
         all_user_roles_from_redis.extend(user_roles_from_groups)
         for role_json in all_user_roles_from_redis:
-            role = Role.parse_obj(role_json)
+            role = Role.model_validate(role_json)
             user_roles[role.shortname] = role
 
         return user_roles

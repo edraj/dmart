@@ -39,7 +39,7 @@ app = FastAPI(
     version="1.0.0",
     redoc_url=None,
     docs_url="/docs",
-    openapi_url=f"{settings.base_path}/openapi.json",
+    # openapi_url=f"{settings.base_path}/openapi.json",
     contact={
         "name": "Kefah T. Issa",
         "url": "https://dmart.cc",

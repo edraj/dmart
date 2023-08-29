@@ -88,7 +88,7 @@ class Plugin(PluginBase):
             / ".dm/events.jsonl"
         )
         file_content = (
-            f"\n{event_obj.json()}" if events_file_path.is_file() else event_obj.json()
+            f"\n{event_obj.model_dump_json()}" if events_file_path.is_file() else event_obj.model_dump_json()
         )
 
         async with aiofiles.open(events_file_path, "a") as events_file:
@@ -97,11 +97,11 @@ class Plugin(PluginBase):
     def generate_create_event_attributes(self, entry: Meta, attributes: dict):
         generated_attributes = {}
         for key, value in entry.__dict__.items():
-            if key not in Meta.__fields__:
+            if key not in Meta.model_fields:
                 generated_attributes[key] = value
 
         if entry.payload:
-            generated_attributes["payload"] = entry.payload.dict()
+            generated_attributes["payload"] = entry.payload.model_dump()
 
         if attributes:
             generated_attributes["payload"]["body"] = attributes
