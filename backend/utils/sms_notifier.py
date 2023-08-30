@@ -10,7 +10,7 @@ class SMSNotifier(Notifier):
         self, 
         data: NotificationData
     ):
-        if not hasattr(self, "user"):
+        if not hasattr(self, "user") or self.user.shortname != data.receiver:
             await self._load_user(data.receiver)
         user_lang = lang_code(self.user.language)
         if not self.user.msisdn:
