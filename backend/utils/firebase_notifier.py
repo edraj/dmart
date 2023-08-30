@@ -19,7 +19,7 @@ class FirebaseNotifier(Notifier):
     ):
         self._init_connection()
         # Receiver should be user.firebase_token
-        if not hasattr(self, "user"):
+        if not hasattr(self, "user") or self.user.shortname != data.receiver:
             await self._load_user(data.receiver)
         token = self.user.firebase_token
         if not token:
