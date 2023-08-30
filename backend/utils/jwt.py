@@ -109,16 +109,18 @@ def sign_jwt(data: dict, expires: int = 86400) -> str:
 
 async def set_redis_session_key(user_shortname: str) -> bool:
     async with RedisServices() as redis:
-        return await redis.set(
+        return bool(await redis.set(
             key=f"user_login_session:{user_shortname}",
             value=1,
             ex=settings.session_inactivity_ttl,
-        )
+        ))
 
 
 async def remove_redis_session_key(user_shortname: str) -> bool:
     async with RedisServices() as redis:
-        return await redis.del_keys([f"user_login_session:{user_shortname}"])
+        return bool(
+            await redis.del_keys([f"user_login_session:{user_shortname}"])
+        )
 
 
 if __name__ == "__main__":
