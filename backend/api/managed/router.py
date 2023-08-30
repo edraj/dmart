@@ -166,7 +166,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         folder_views = folder_payload.get("index_attributes", [])
         
     keys: list = [i["name"] for i in folder_views]
-    keys_existence = dict(zip(keys, [False for x in range(len(keys))]))
+    keys_existence = dict(zip(keys, [False for _ in range(len(keys))]))
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
     json_data = []
     timestamp_fields = ["created_at", "updated_at"]
@@ -434,10 +434,12 @@ async def serve_space(
             os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
 
             async with RedisServices() as redis_services:
-                indices: list[str] = await redis_services.list_indices()
-                for index in indices:
-                    if index.startswith(f"{request.space_name}:"):
-                        await redis_services.drop_index(index, True)
+                x = await redis_services.list_indices()
+                if x :
+                    indices: list[str] = x
+                    for index in indices:
+                        if index.startswith(f"{request.space_name}:"):
+                            await redis_services.drop_index(index, True)
 
         case _:
             raise api.Exception(
