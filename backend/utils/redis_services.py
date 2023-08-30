@@ -113,7 +113,7 @@ class RedisServices(object):
 
     async def init(self):
         if not hasattr(self, "client"):
-            self.client = Redis(connection_pool=self.POOL)
+            self.client = await Redis(connection_pool=self.POOL)
             if self.is_pytest:
                 try:
                     await self.client.ping()
@@ -134,7 +134,7 @@ class RedisServices(object):
 
     async def __aenter__(self):
         if not hasattr(self, "client"):
-            self.client = Redis(connection_pool=self.POOL)
+            self.client = await Redis(connection_pool=self.POOL)
             if self.is_pytest:
                 try:
                     await self.client.ping()
