@@ -740,3 +740,8 @@ def test_delete_space():
         client.post(endpoint, json=request_data, headers=headers)
     )
     check_not_found(client.get(f"/managed/entry/space/{DEMO_SPACE}/__root__/{DEMO_SPACE}"))
+
+if __name__ == "__main__":
+    test_login()
+    test_create_space()
+    test_delete_space()

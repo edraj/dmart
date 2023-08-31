@@ -286,7 +286,7 @@ async def collect_duplicated_with_key(key, value):
                 search_query.paging(0, 1000)
                 x = await ft_index.search(query=search_query)
                 if x and isinstance(x, Result):
-                    res_data: Result = x 
+                    res_data: Result = x
                     for redis_doc_dict in res_data.docs:
                         redis_doc_dict = json.loads(redis_doc_dict.json)
                         if redis_doc_dict['subpath'] == '/':

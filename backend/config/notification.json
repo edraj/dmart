@@ -10,7 +10,7 @@
         "class": "SMSNotifier"
     },
     "mobile": {
-        "active": false,
+        "active": true,
         "module": "utils.firebase_notifier",
         "class": "FirebaseNotifier"
     }
