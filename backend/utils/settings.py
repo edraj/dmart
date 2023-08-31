@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     ldap_root_dn: str = ""
     ldap_pass: str = ""
     max_query_limit: int = 10000
+    session_inactivity_ttl: int = 60 * 10
 
     model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", "config.env"), env_file_encoding = "utf-8")
 

@@ -3,7 +3,7 @@
 # from logging import handlers
 from starlette.datastructures import UploadFile
 import asyncio
-# import json
+import json
 from os import getpid
 import sys
 import time
@@ -27,7 +27,7 @@ from utils.access_control import access_control
 from fastapi.responses import JSONResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
-# from starlette.concurrency import iterate_in_threadpool
+from starlette.concurrency import iterate_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import models.api as api
 from utils.settings import settings
@@ -149,18 +149,18 @@ async def middle(request: Request, call_next):
         return await call_next(request)
 
     start_time = time.time()
-    # response_body: str | dict = ""
+    response_body: str | dict = {}
     exception_data: dict[str, Any] | None = None
     try:
         response = await call_next(request)
-        # raw_response = [section async for section in response.body_iterator]
-        # response.body_iterator = iterate_in_threadpool(iter(raw_response))
-        # raw_data = b"".join(raw_response)
-        # if raw_data:
-        #     try:
-        #         response_body = json.loads(raw_data)
-        #     except:
-        #         response_body = ""
+        raw_response = [section async for section in response.body_iterator]
+        response.body_iterator = iterate_in_threadpool(iter(raw_response))
+        raw_data = b"".join(raw_response)
+        if raw_data:
+            try:
+                response_body = json.loads(raw_data)
+            except:
+                response_body = ""
     except api.Exception as e:
         response = JSONResponse(
             status_code=e.status_code,
@@ -201,7 +201,7 @@ async def middle(request: Request, call_next):
                 },
             },
         )
-        # response_body = json.loads(response.body.decode())
+        response_body = json.loads(response.body.decode())
     except SchemaValidationError as e:
         stack = [
             {
@@ -227,7 +227,7 @@ async def middle(request: Request, call_next):
                 },
             },
         )
-        # response_body = json.loads(response.body.decode())
+        response_body = json.loads(response.body.decode())
     except Exception as e:
         exception_message = ""
         stack = None
@@ -254,7 +254,7 @@ async def middle(request: Request, call_next):
                 "error": error_log,
             },
         )
-        # response_body = json.loads(response.body.decode())
+        response_body = json.loads(response.body.decode())
 
     referer = request.headers.get(
         "referer",
@@ -312,8 +312,8 @@ async def middle(request: Request, call_next):
         extra["props"]["exception"] = exception_data
     if hasattr(request.state, "request_body"):
         extra["props"]["request"]["body"] = request.state.request_body
-    # if response_body:
-    #     extra["props"]["response"]["body"] = response_body
+    if response_body:
+        extra["props"]["response"]["body"] = response_body
 
     if response.status_code >= 400 and response.status_code < 500:
         logger.warning("Served request", extra=extra)
