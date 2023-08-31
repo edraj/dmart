@@ -2,13 +2,14 @@ import asyncio
 import re
 import json
 import sys
-from typing import Any
+from typing import Any, Awaitable
 from uuid import UUID
 from redis.asyncio import BlockingConnectionPool, Redis
 from models.api import RedisReducer, SortType
 import models.core as core
 from models.enums import RedisReducerName, ResourceType, LockAction
 from redis.commands.json.path import Path
+from redis.commands.search.result import Result
 from redis.commands.search.field import TextField, NumericField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from datetime import datetime
@@ -841,7 +842,9 @@ class RedisServices(object):
     async def save_doc(
         self, doc_id: str, payload: dict, path: str = Path.root_path(), nx: bool = False
     ):
-        await self.client.json().set(doc_id, path, payload, nx=nx)
+        x = self.client.json().set(doc_id, path, payload, nx=nx)
+        if x and isinstance(x, Awaitable):
+            await x
 
     async def save_bulk(self, data: list, path: str = Path.root_path()):
         pipe = self.client.pipeline()
@@ -904,7 +907,10 @@ class RedisServices(object):
         try:
             # print(f"ARGS {search_query.get_args()} O {search_query.query_string()}")
             search_res = await ft_index.search(query=search_query) 
-            return {"data": search_res.docs, "total": search_res.total}
+            if isinstance(search_res, Result):
+                return {"data": search_res.docs, "total": search_res.total}
+            else: 
+                return {}
         except:
             return {}
 
@@ -952,7 +958,7 @@ class RedisServices(object):
             aggr_request.load(*load)
 
         try:
-            aggr_res = await ft_index.aggregate(aggr_request)
+            aggr_res = await ft_index.aggregate(aggr_request) # type: ignore
             return aggr_res.rows
         except:
             return []
@@ -995,14 +1001,22 @@ class RedisServices(object):
 
     async def get_doc_by_id(self, doc_id: str) -> dict:
         try:
-            return await self.client.json().get(name=doc_id) or {}
+            x = self.client.json().get(name=doc_id) or {}
+            if x and isinstance(x, Awaitable):
+                return await x
+            else : 
+                return {}
         except Exception as e:
             logger.warning(f"Error at redis_services.get_doc_by_id: {e}")
             return {}
 
     async def get_docs_by_ids(self, docs_ids: list[str]) -> list:
         try:
-            return await self.client.json().mget(docs_ids, "$")
+            x = self.client.json().mget(docs_ids, "$")
+            if x and isinstance(x, Awaitable):
+                return await x
+            else: 
+                return []
         except Exception as e:
             logger.warning(f"Error at redis_services.get_docs_by_ids: {e}")
             return []
@@ -1021,7 +1035,9 @@ class RedisServices(object):
             space_name, branch_name, schema_shortname, shortname, subpath
         )
         try:
-            await self.client.json().delete(key=docid)
+            x = self.client.json().delete(key=docid)
+            if x and isinstance(x, Awaitable):
+                await x
         except Exception as e:
             logger.warning(f"Error at redis_services.delete_doc: {e}")
 
@@ -1099,4 +1115,6 @@ class RedisServices(object):
             return False
 
     async def list_indices(self):
-        return await self.client.ft().execute_command("FT._LIST") 
+        x = self.client.ft().execute_command("FT._LIST")
+        if x and isinstance(x, Awaitable): 
+            return await x

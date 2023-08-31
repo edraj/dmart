@@ -170,8 +170,12 @@ async def soft_health_check(
             search_query = Query(query_string="*")
             search_query.paging(offset, limit)
             offset += limit
-            res_data: Result = await ft_index.search(query=search_query)
-            if not res_data.docs:
+            x = await ft_index.search(query=search_query)
+            if x and isinstance(x, Result):
+                res_data: Result = x
+                if not res_data.docs:
+                    break
+            else: 
                 break
             for redis_doc_dict in res_data.docs:
                 redis_doc_dict = json.loads(redis_doc_dict.json)
@@ -280,27 +284,29 @@ async def collect_duplicated_with_key(key, value):
                     continue
                 search_query = Query(query_string=f"@{key}:{value}*")
                 search_query.paging(0, 1000)
-                res_data: Result = await ft_index.search(query=search_query)
-                for redis_doc_dict in res_data.docs:
-                    redis_doc_dict = json.loads(redis_doc_dict.json)
-                    if redis_doc_dict['subpath'] == '/':
-                        redis_doc_dict['subpath'] = ''
-                    loc = space_name + "/" + redis_doc_dict['subpath']
-                    if key not in key_entries:
-                        key_entries[key] = {}
-                    if not key_entries[key].get(value):
-                        key_entries[key][value] = loc
-                    else:
-                        if not duplicated_entries.get(key):
-                            duplicated_entries[key] = {}
-                        if not duplicated_entries[key].get(value) or \
-                                key_entries[key][value] not in duplicated_entries[key][value]['loc']:
-                            duplicated_entries[key][value] = {}
-                            duplicated_entries[key][value]['loc'] = [key_entries[key][value]]
-                            duplicated_entries[key][value]['total'] = 1
-                        if loc not in duplicated_entries[key][value]['loc']:
-                            duplicated_entries[key][value]['total'] += 1
-                            duplicated_entries[key][value]['loc'].append(loc)
+                x = await ft_index.search(query=search_query)
+                if x and isinstance(x, Result):
+                    res_data: Result = x 
+                    for redis_doc_dict in res_data.docs:
+                        redis_doc_dict = json.loads(redis_doc_dict.json)
+                        if redis_doc_dict['subpath'] == '/':
+                            redis_doc_dict['subpath'] = ''
+                        loc = space_name + "/" + redis_doc_dict['subpath']
+                        if key not in key_entries:
+                            key_entries[key] = {}
+                        if not key_entries[key].get(value):
+                            key_entries[key][value] = loc
+                        else:
+                            if not duplicated_entries.get(key):
+                                duplicated_entries[key] = {}
+                            if not duplicated_entries[key].get(value) or \
+                                    key_entries[key][value] not in duplicated_entries[key][value]['loc']:
+                                duplicated_entries[key][value] = {}
+                                duplicated_entries[key][value]['loc'] = [key_entries[key][value]]
+                                duplicated_entries[key][value]['total'] = 1
+                            if loc not in duplicated_entries[key][value]['loc']:
+                                duplicated_entries[key][value]['total'] += 1
+                                duplicated_entries[key][value]['loc'].append(loc)
 
 
 async def hard_health_check(space_name: str, branch_name: str):
@@ -398,36 +404,38 @@ async def save_duplicated_entries(
                 for i in range(0, int(index_info["num_docs"]), 10000):
                     search_query = Query(query_string="*")
                     search_query.paging(i, 10000)
-                    res_data: Result = await ft_index.search(query=search_query)
-                    for redis_doc_dict in res_data.docs:
-                        redis_doc_dict = json.loads(redis_doc_dict.json)
-                        if "uuid" in redis_doc_dict:
-                            # Handle UUID
-                            if "uuid" in redis_doc_dict and redis_doc_dict["uuid"] in uuid_scanned_entries:
-                                short_uuid = redis_doc_dict["uuid"][:8]
-                                uuid_duplicated_entries.setdefault(
-                                    short_uuid, {"loc": [], "total": 0}
+                    x = await ft_index.search(query=search_query)
+                    if x and isinstance(x, Result):
+                        res_data: Result = x
+                        for redis_doc_dict in res_data.docs:
+                            redis_doc_dict = json.loads(redis_doc_dict.json)
+                            if "uuid" in redis_doc_dict:
+                                # Handle UUID
+                                if "uuid" in redis_doc_dict and redis_doc_dict["uuid"] in uuid_scanned_entries:
+                                    short_uuid = redis_doc_dict["uuid"][:8]
+                                    uuid_duplicated_entries.setdefault(
+                                        short_uuid, {"loc": [], "total": 0}
+                                    )
+                                    uuid_duplicated_entries[short_uuid]["loc"].append(
+                                        space_name + "/" + redis_doc_dict['subpath'] + "/" + redis_doc_dict['shortname']
+                                    )
+                                    uuid_duplicated_entries[short_uuid]["total"]+=1
+                                else:
+                                    uuid_scanned_entries.add(redis_doc_dict["uuid"])
+                            else:
+                                print ("UUID is missing", redis_doc_dict)
+                        
+                            # Handle Slug
+                            if "slug" in redis_doc_dict and redis_doc_dict["slug"] in slug_scanned_entries:
+                                slug_duplicated_entries.setdefault(
+                                    "slug", {"loc": [], "total": 0}
                                 )
-                                uuid_duplicated_entries[short_uuid]["loc"].append(
+                                slug_duplicated_entries["slug"]["loc"].append(
                                     space_name + "/" + redis_doc_dict['subpath'] + "/" + redis_doc_dict['shortname']
                                 )
-                                uuid_duplicated_entries[short_uuid]["total"]+=1
-                            else:
-                                uuid_scanned_entries.add(redis_doc_dict["uuid"])
-                        else:
-                            print ("UUID is missing", redis_doc_dict)
-                    
-                        # Handle Slug
-                        if "slug" in redis_doc_dict and redis_doc_dict["slug"] in slug_scanned_entries:
-                            slug_duplicated_entries.setdefault(
-                                "slug", {"loc": [], "total": 0}
-                            )
-                            slug_duplicated_entries["slug"]["loc"].append(
-                                space_name + "/" + redis_doc_dict['subpath'] + "/" + redis_doc_dict['shortname']
-                            )
-                            slug_duplicated_entries["slug"]["total"]+=1
-                        elif "slug" in redis_doc_dict:
-                            slug_scanned_entries.add(redis_doc_dict["slug"])
+                                slug_duplicated_entries["slug"]["total"]+=1
+                            elif "slug" in redis_doc_dict:
+                                slug_scanned_entries.add(redis_doc_dict["slug"])
                         
                         
 
