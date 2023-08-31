@@ -3,6 +3,7 @@ import re
 from redis.commands.search.field import TextField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
+from redis.commands.search.result import Result
 from models.core import ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
 from utils.helpers import flatten_dict
@@ -96,9 +97,10 @@ class AccessControl:
             docs = await redis_services.client.\
                 ft("user_permission").\
                 search(search_query) # type: ignore
-            keys = [doc.id for doc in docs.docs]
-            if len(keys) > 0:
-                await redis_services.del_keys(keys)
+            if docs and isinstance(docs, Result): 
+                keys = [doc.id for doc in docs.docs]
+                if len(keys) > 0:
+                    await redis_services.del_keys(keys)
 
     def generate_user_permission_doc_id(self, user_shortname: str):
         return f"users_permissions_{user_shortname}"
