@@ -13,7 +13,7 @@ import utils.db as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
-from utils.jwt import JWTBearer, sign_jwt, decode_jwt
+from utils.jwt import JWTBearer, sign_jwt, decode_jwt, set_redis_session_key
 from typing import Any
 from utils.settings import settings
 import utils.repository as repository
@@ -220,15 +220,13 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
             data = decode_jwt(request.invitation)
             shortname = data.get("shortname", None)
-            if(
-                shortname is None
-            ):
+            if shortname is None:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
-                        type="jwtauth", 
-                        code=12, 
-                        message="Invalid invitation or data provided"
+                        type="jwtauth",
+                        code=12,
+                        message="Invalid invitation or data provided",
                     ),
                 )
 
@@ -240,20 +238,19 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 user_shortname=shortname,
                 branch_name=MANAGEMENT_BRANCH,
             )
-            if(
-                    request.shortname != user.shortname and
-                    request.msisdn != user.msisdn and
-                    request.email != user.email
+            if (
+                request.shortname != user.shortname
+                and request.msisdn != user.msisdn
+                and request.email != user.email
             ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
-                        type="jwtauth", 
-                        code=12, 
-                        message="Invalid invitation or data provided"
+                        type="jwtauth",
+                        code=12,
+                        message="Invalid invitation or data provided",
                     ),
                 )
-            
 
             if (
                 data.get("channel") == "EMAIL"
@@ -321,6 +318,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             access_token = sign_jwt(
                 {"username": shortname}, settings.jwt_access_expires
             )
+            await set_redis_session_key(shortname)
             response.set_cookie(
                 value=access_token,
                 max_age=settings.jwt_access_expires,

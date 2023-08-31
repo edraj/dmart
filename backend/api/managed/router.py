@@ -33,7 +33,7 @@ import utils.db as db
 import utils.regex as regex
 import sys
 import json
-from utils.jwt import JWTBearer, GetJWTToken, sign_jwt
+from utils.jwt import JWTBearer, GetJWTToken, sign_jwt, remove_redis_session_key
 from utils.access_control import access_control
 from utils.spaces import get_spaces, initialize_spaces
 from typing import Any
@@ -166,7 +166,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         folder_views = folder_payload.get("index_attributes", [])
         
     keys: list = [i["name"] for i in folder_views]
-    keys_existence = dict(zip(keys, [False for x in range(len(keys))]))
+    keys_existence = dict(zip(keys, [False for _ in range(len(keys))]))
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
     json_data = []
     timestamp_fields = ["created_at", "updated_at"]
@@ -434,10 +434,12 @@ async def serve_space(
             os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
 
             async with RedisServices() as redis_services:
-                indices: list[str] = await redis_services.list_indices()
-                for index in indices:
-                    if index.startswith(f"{request.space_name}:"):
-                        await redis_services.drop_index(index, True)
+                x = await redis_services.list_indices()
+                if x :
+                    indices: list[str] = x
+                    for index in indices:
+                        if index.startswith(f"{request.space_name}:"):
+                            await redis_services.drop_index(index, True)
 
         case _:
             raise api.Exception(
@@ -891,6 +893,12 @@ async def serve_request(
                         new_resource_payload_data,
                         record.branch_name,
                     )
+                    
+                if(
+                    isinstance(resource_obj, core.User) and 
+                    record.attributes.get("is_active") is False
+                ):
+                    await remove_redis_session_key(record.shortname)
 
                 records.append(
                     resource_obj.to_record(
