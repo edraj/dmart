@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from utils.settings import settings
 from utils.redis_services import RedisServices
 import models.api as api
+from models.enums import UserType
 
 
 def decode_jwt(token: str) -> dict[str, Any]:
@@ -66,24 +67,17 @@ class JWTBearer(HTTPBearer):
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(type="jwtauth", code=13, message="Not authenticated [1]"),
                 )
-
-            async with RedisServices() as redis:
-                user_redis_session = await redis.get(
-                    f"user_login_session:{user_shortname}"
+            user_redis_session = await get_redis_session_key(user_shortname)
+            if not user_redis_session:
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="jwtauth", code=11, message="Not authenticated [2]"
+                    ),
                 )
-                if not user_redis_session:
-                    raise api.Exception(
-                        status.HTTP_401_UNAUTHORIZED,
-                        api.Error(
-                            type="jwtauth", code=11, message="Not authenticated [2]"
-                        ),
-                    )
                 # Update the session with a new TTL
-                await redis.set(
-                    key=f"user_login_session:{user_shortname}",
-                    value=1,
-                    ex=settings.session_inactivity_ttl,
-                )
+            if user_redis_session != UserType.bot:
+                await set_redis_session_key(user_shortname)
             return user_shortname
 
 
@@ -107,12 +101,25 @@ def sign_jwt(data: dict, expires: int = 86400) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-async def set_redis_session_key(user_shortname: str) -> bool:
+async def get_redis_session_key(user_shortname: str) -> bool:
+    async with RedisServices() as redis:
+        return await redis.get(
+            f"user_login_session:{user_shortname}"
+        )
+        
+        
+async def set_redis_session_key(
+    user_shortname: str, 
+    user_type: str = 1
+) -> bool:
+    key_expiry = settings.session_inactivity_ttl
+    if user_type == UserType.bot:
+        key_expiry = None
     async with RedisServices() as redis:
         return bool(await redis.set(
             key=f"user_login_session:{user_shortname}",
-            value=1,
-            ex=settings.session_inactivity_ttl,
+            value=user_type,
+            ex=key_expiry,
         ))
 
 

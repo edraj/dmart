@@ -316,7 +316,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             access_token = sign_jwt(
                 {"username": shortname}, settings.jwt_access_expires
             )
-            await set_redis_session_key(shortname)
+            await set_redis_session_key(shortname, user.type)
             response.set_cookie(
                 value=access_token,
                 max_age=settings.jwt_access_expires,
