@@ -101,7 +101,7 @@ def sign_jwt(data: dict, expires: int = 86400) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-async def get_redis_session_key(user_shortname: str) -> bool:
+async def get_redis_session_key(user_shortname: str):
     async with RedisServices() as redis:
         return await redis.get(
             f"user_login_session:{user_shortname}"
@@ -110,7 +110,7 @@ async def get_redis_session_key(user_shortname: str) -> bool:
         
 async def set_redis_session_key(
     user_shortname: str, 
-    user_type: str = 1
+    user_type: str = "1"
 ) -> bool:
     key_expiry = settings.session_inactivity_ttl
     if user_type == UserType.bot:
