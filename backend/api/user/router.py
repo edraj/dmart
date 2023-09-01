@@ -961,6 +961,14 @@ async def user_reset(
             ),
         )
         
+    if not user.force_password_change:
+        await repository._sys_update_model(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            branch_name=MANAGEMENT_BRANCH,
+            updates={"force_password_change": True}
+        )
+        
     sms_link = None
     email_link = None
         
