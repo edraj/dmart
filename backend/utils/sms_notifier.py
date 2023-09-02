@@ -9,14 +9,12 @@ class SMSNotifier(Notifier):
     async def send(
         self, 
         data: NotificationData
-    ):
-        if not hasattr(self, "user") or self.user.shortname != data.receiver:
-            await self._load_user(data.receiver)
-        user_lang = lang_code(self.user.language)
-        if not self.user.msisdn:
+    ):  
+        user_lang = lang_code(data.receiver.get("language", "ar"))
+        if "msisdn" not in data.receiver:
             return False
         await send_sms(
-            self.user.msisdn, 
+            data.receiver["msisdn"], 
             data.title.__getattribute__(user_lang)
         )
 

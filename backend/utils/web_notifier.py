@@ -13,12 +13,10 @@ class WebNotifier(Notifier):
         self, 
         data: NotificationData
     ):
-        if not hasattr(self, "user") or self.user.shortname != data.receiver:
-            await self._load_user(data.receiver)
-        user_lang = lang_code(self.user.language)
+        user_lang = lang_code(data.receiver.get("language", "ar"))
         async with AsyncRequest() as client:
             await client.post(
-                f"{settings.websocket_url}/send-message/{data.receiver}",
+                f"{settings.websocket_url}/send-message/{data.receiver.get('shortname')}",
                 json={
                     "title": data.title.__getattribute__(user_lang),
                     "description": data.body.__getattribute__(user_lang),
