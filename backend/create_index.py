@@ -1,4 +1,4 @@
-#!/usr/bin/env -S BACKEND_ENV=config.env python3
+#!/usr/bin/env -S BACKEND_ENV=config.env python3.11
 
 import argparse
 from copy import copy

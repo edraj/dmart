@@ -1,4 +1,4 @@
-#!/usr/bin/env -S BACKEND_ENV=config.env python3
+#!/usr/bin/env -S BACKEND_ENV=config.env python3.11
 """ Main module """
 # from logging import handlers
 from starlette.datastructures import UploadFile
@@ -160,7 +160,7 @@ async def middle(request: Request, call_next):
             try:
                 response_body = json.loads(raw_data)
             except:
-                response_body = ""
+                response_body = {}
     except api.Exception as e:
         response = JSONResponse(
             status_code=e.status_code,
@@ -178,7 +178,7 @@ async def middle(request: Request, call_next):
             if "site-packages" not in frame.f_code.co_filename
         ]
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        # response_body = json.loads(response.body.decode())
+        response_body = json.loads(response.body.decode())
     except ValidationError as e:
         stack = [
             {
@@ -258,11 +258,12 @@ async def middle(request: Request, call_next):
 
     referer = request.headers.get(
         "referer",
+        request.headers.get("origin",
         request.headers.get("x-forwarded-proto", "http")
         + "://"
         + request.headers.get(
             "x-forwarded-host", f"{settings.listening_host}:{settings.listening_port}"
-        ),
+        )),
     )
     origin = urlparse(referer)
     response.headers[
