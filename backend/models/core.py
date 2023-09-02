@@ -445,7 +445,7 @@ class PluginWrapper(Resource):
 
 
 class NotificationData(Resource):
-    receiver: str
+    receiver: dict
     title: Translation
     body: Translation
     image_urls: Translation | None = None

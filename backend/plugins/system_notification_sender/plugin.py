@@ -101,6 +101,18 @@ class Plugin(PluginBase):
 
         if data.user_shortname in notification_subscribers:
             notification_subscribers.remove(data.user_shortname)
+            
+        users_objects: dict[str, dict] = {}
+        for subscriber in notification_subscribers:
+            async with RedisServices() as redis:
+                users_objects[subscriber] = await redis.get_doc_by_id(redis.generate_doc_id(
+                    settings.management_space,
+                    settings.management_space_branch,
+                    "meta",
+                    subscriber,
+                    settings.users_subpath
+                ))
+            
 
         # 3- send the notification
         notification_manager = NotificationManager()
@@ -131,7 +143,7 @@ class Plugin(PluginBase):
                     await notification_manager.send(
                         platform=platform,
                         data=NotificationData(
-                            receiver=receiver,
+                            receiver=users_objects[receiver],
                             title=formatted_req["title"],
                             body=formatted_req["body"],
                             image_urls=formatted_req["images_urls"],
