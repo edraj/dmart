@@ -19,13 +19,10 @@ class FirebaseNotifier(Notifier):
     ):
         self._init_connection()
         # Receiver should be user.firebase_token
-        if not hasattr(self, "user") or self.user.shortname != data.receiver:
-            await self._load_user(data.receiver)
-        token = self.user.firebase_token
-        if not token:
+        if "firebase_token" not in data.receiver:
             raise Exception("Missing token for user shortname:"\
-                f"{self.user.shortname} - msisdn {self.user.msisdn}")
-        user_lang = lang_code(self.user.language)
+                f"{data.receiver.get('shortname')} - msisdn {data.receiver.get('msisdn')}")
+        user_lang = lang_code(data.receiver.get("language", "ar"))
         title = data.title.__getattribute__(user_lang)
         body = data.body.__getattribute__(user_lang)
         image_url = (
@@ -49,7 +46,7 @@ class FirebaseNotifier(Notifier):
         web_push = messaging.WebpushConfig(headers={"image": image_url})
         message = messaging.Message(
             notification=messaging.Notification(title=title, body=body), 
-            token=token, 
+            token=data.receiver["firebase_token"], 
             apns=apns, 
             android=android_config,
             webpush=web_push,
