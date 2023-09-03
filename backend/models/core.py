@@ -264,6 +264,7 @@ class Space(Meta):
     hide_space: bool | None = None
     active_plugins: list[str] = []
     branches: list[str] = []
+    ordinal: int | None = None
 
 
 class Actor(Meta):
