@@ -83,6 +83,18 @@ async def serve_query(
                             query.branch_name,
                         )
                     )
+            if not query.sort_by:
+                query.sort_by = "ordinal"
+            record_fields = list(records[0].__fields__.keys())
+            records = sorted(
+                records,
+                key=lambda d: d.__getattribute__(query.sort_by)
+                if query.sort_by in record_fields
+                else d.attributes[query.sort_by]
+                if query.sort_by in d.attributes and d.attributes[query.sort_by] is not None
+                else 1,
+                reverse=(query.sort_type == api.SortType.descending),
+            )
 
         case api.QueryType.search:
             search_res, total = await redis_query_search(query, redis_query_policies)
