@@ -241,7 +241,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
             json_data += rows
 
     # Sort all entries from all schemas
-    if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
+    if query.sort_by in core.Meta.model_fields and len(query.filter_schema_names) > 1:
         json_data = sorted(
             json_data,
             key=lambda d: d[query.sort_by] if query.sort_by in d else "",

@@ -274,7 +274,7 @@ class RedisServices(object):
                 as_name="payload_string",
             ),
         ]
-        for field_name, model_field in class_ref.__fields__.items():
+        for field_name, model_field in class_ref.model_fields.items():
             if field_name in exclude_from_index:
                 continue
 
