@@ -85,7 +85,7 @@ async def serve_query(
                     )
             if not query.sort_by:
                 query.sort_by = "ordinal"
-            record_fields = list(records[0].__fields__.keys())
+            record_fields = list(records[0].model_fields.keys())
             records = sorted(
                 records,
                 key=lambda d: d.__getattribute__(query.sort_by)
@@ -381,7 +381,7 @@ async def serve_query(
                     query.sort_type != None
                     and query.sort_type == api.SortType.descending
                 )
-                if query.sort_by in core.Record.__fields__:
+                if query.sort_by in core.Record.model_fields:
                     records = sorted(
                         records,
                         key=lambda record: record.__getattribute__(str(query.sort_by)),
@@ -1291,7 +1291,7 @@ async def _sys_update_model(
         if key in restricted_fields:
             continue
 
-        if key in meta.__fields__.keys():
+        if key in meta.model_fields.keys():
             meta_updated = True
             meta.__setattr__(key, value)
         elif payload_dict:
