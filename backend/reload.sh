@@ -28,8 +28,9 @@ while [ $RESP -ne "200" ]; do
   COUNTER=$((COUNTER+1))
   echo "Waiting for the server to come up ${RESP} ${COUNTER} seconds"
   RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
-  [[ $COUNTER -ge 10 ]] && break
+  [[ $COUNTER -ge 30 ]] && break
 done
+sleep 4
 
 TOKEN=$(curl -s "${APP_URL}/user/login" -H 'Content-Type: application/json' -d "${SUPERMAN}" | jq -r '.records[0].attributes.access_token')
 RESULT+=$?

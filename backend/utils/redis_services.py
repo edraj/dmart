@@ -255,6 +255,9 @@ class RedisServices(object):
         }
 
         redis_schema = [
+            TextField(
+                "$.shortname", sortable=True, no_stem=True, as_name="shortname"
+            ),
             TextField("$.subpath", no_stem=True, as_name="subpath"),
             TagField("$.subpath", as_name="exact_subpath"),
             TextField(
