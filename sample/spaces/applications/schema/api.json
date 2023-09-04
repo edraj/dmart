@@ -1,6 +1,5 @@
 {
   "title": "Api Schema",
-  "description": "Api debug schema",
   "type": "object",
   "additionalProperties": true,
   "properties": {

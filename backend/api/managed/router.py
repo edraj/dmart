@@ -33,7 +33,7 @@ import utils.db as db
 import utils.regex as regex
 import sys
 import json
-from utils.jwt import JWTBearer, GetJWTToken, sign_jwt
+from utils.jwt import JWTBearer, GetJWTToken, sign_jwt, remove_redis_session_key
 from utils.access_control import access_control
 from utils.spaces import get_spaces, initialize_spaces
 from typing import Any
@@ -241,7 +241,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
             json_data += rows
 
     # Sort all entries from all schemas
-    if query.sort_by in core.Meta.__fields__ and len(query.filter_schema_names) > 1:
+    if query.sort_by in core.Meta.model_fields and len(query.filter_schema_names) > 1:
         json_data = sorted(
             json_data,
             key=lambda d: d[query.sort_by] if query.sort_by in d else "",
@@ -434,10 +434,12 @@ async def serve_space(
             os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
 
             async with RedisServices() as redis_services:
-                indices: list[str] = await redis_services.list_indices()
-                for index in indices:
-                    if index.startswith(f"{request.space_name}:"):
-                        await redis_services.drop_index(index, True)
+                x = await redis_services.list_indices()
+                if x :
+                    indices: list[str] = x
+                    for index in indices:
+                        if index.startswith(f"{request.space_name}:"):
+                            await redis_services.drop_index(index, True)
 
         case _:
             raise api.Exception(
@@ -891,6 +893,12 @@ async def serve_request(
                         new_resource_payload_data,
                         record.branch_name,
                     )
+                    
+                if(
+                    isinstance(resource_obj, core.User) and 
+                    record.attributes.get("is_active") is False
+                ):
+                    await remove_redis_session_key(record.shortname)
 
                 records.append(
                     resource_obj.to_record(

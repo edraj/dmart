@@ -2,13 +2,14 @@ import asyncio
 import re
 import json
 import sys
-from typing import Any
+from typing import Any, Awaitable
 from uuid import UUID
 from redis.asyncio import BlockingConnectionPool, Redis
 from models.api import RedisReducer, SortType
 import models.core as core
 from models.enums import RedisReducerName, ResourceType, LockAction
 from redis.commands.json.path import Path
+from redis.commands.search.result import Result
 from redis.commands.search.field import TextField, NumericField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from datetime import datetime
@@ -254,6 +255,9 @@ class RedisServices(object):
         }
 
         redis_schema = [
+            TextField(
+                "$.shortname", sortable=True, no_stem=True, as_name="shortname"
+            ),
             TextField("$.subpath", no_stem=True, as_name="subpath"),
             TagField("$.subpath", as_name="exact_subpath"),
             TextField(
@@ -270,12 +274,12 @@ class RedisServices(object):
                 as_name="payload_string",
             ),
         ]
-        for field_name, model_field in class_ref.__fields__.items():
+        for field_name, model_field in class_ref.model_fields.items():
             if field_name in exclude_from_index:
                 continue
 
             mapper_key = None
-            for field_type in model_field.outer_type_.__mro__:
+            for field_type in type(model_field).mro():
                 if field_type in class_types_to_redis_fields_mapper.keys():
                     mapper_key = field_type
                     break
@@ -750,7 +754,7 @@ class RedisServices(object):
             return payload_doc_content
 
         not_payload_attr = RedisServices.SYS_ATTRIBUTES + list(
-            resource_class.__fields__.keys()
+            resource_class.model_fields.keys()
         )
         for key, value in payload_redis_doc.items():
             if key not in not_payload_attr:
@@ -841,7 +845,9 @@ class RedisServices(object):
     async def save_doc(
         self, doc_id: str, payload: dict, path: str = Path.root_path(), nx: bool = False
     ):
-        await self.client.json().set(doc_id, path, payload, nx=nx)
+        x = self.client.json().set(doc_id, path, payload, nx=nx)
+        if x and isinstance(x, Awaitable):
+            await x
 
     async def save_bulk(self, data: list, path: str = Path.root_path()):
         pipe = self.client.pipeline()
@@ -903,8 +909,11 @@ class RedisServices(object):
 
         try:
             # print(f"ARGS {search_query.get_args()} O {search_query.query_string()}")
-            search_res = await ft_index.search(query=search_query)  # type: ignore
-            return {"data": search_res.docs, "total": search_res.total}
+            search_res = await ft_index.search(query=search_query) 
+            if isinstance(search_res, Result):
+                return {"data": search_res.docs, "total": search_res.total}
+            else: 
+                return {}
         except:
             return {}
 
@@ -952,7 +961,7 @@ class RedisServices(object):
             aggr_request.load(*load)
 
         try:
-            aggr_res = await ft_index.aggregate(aggr_request)  # type: ignore
+            aggr_res = await ft_index.aggregate(aggr_request) # type: ignore
             return aggr_res.rows
         except:
             return []
@@ -995,14 +1004,22 @@ class RedisServices(object):
 
     async def get_doc_by_id(self, doc_id: str) -> dict:
         try:
-            return await self.client.json().get(name=doc_id) or {}
+            x = self.client.json().get(name=doc_id) or {}
+            if x and isinstance(x, Awaitable):
+                return await x
+            else : 
+                return {}
         except Exception as e:
             logger.warning(f"Error at redis_services.get_doc_by_id: {e}")
             return {}
 
     async def get_docs_by_ids(self, docs_ids: list[str]) -> list:
         try:
-            return await self.client.json().mget(docs_ids, "$")
+            x = self.client.json().mget(docs_ids, "$")
+            if x and isinstance(x, Awaitable):
+                return await x
+            else: 
+                return []
         except Exception as e:
             logger.warning(f"Error at redis_services.get_docs_by_ids: {e}")
             return []
@@ -1021,7 +1038,9 @@ class RedisServices(object):
             space_name, branch_name, schema_shortname, shortname, subpath
         )
         try:
-            await self.client.json().delete(key=docid)
+            x = self.client.json().delete(key=docid)
+            if x and isinstance(x, Awaitable):
+                await x
         except Exception as e:
             logger.warning(f"Error at redis_services.delete_doc: {e}")
 
@@ -1099,4 +1118,6 @@ class RedisServices(object):
             return False
 
     async def list_indices(self):
-        return await self.client.ft().execute_command("FT._LIST")  # type: ignore
+        x = self.client.ft().execute_command("FT._LIST")
+        if x and isinstance(x, Awaitable): 
+            return await x

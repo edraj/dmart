@@ -1,12 +1,10 @@
 {
   "title": "Folder schema",
-  "description": "Folder schema description",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "expand_children": {
       "title": "Expand folders' children",
-      "description": "If the folder should expand children",
       "type": "boolean"
     },
     "append_subpath": {
@@ -118,10 +116,6 @@
         "type": "object",
         "properties": {}
       }
-    },
-    "append_subpath": {
-      "title": "Append string to subpath",
-      "type": "string"
     },
     "index_attributes": {
       "title": "index attributes",
