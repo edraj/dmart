@@ -1,14 +1,14 @@
 import copy
 import json
 from abc import ABC, abstractmethod
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Any
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
 from pydantic import Field
 from datetime import datetime
 import sys
-from pydantic.utils import deep_update
+from pydantic.v1.utils import deep_update
 from models.enums import (
     ActionType,
     ContentType,
@@ -17,7 +17,6 @@ from models.enums import (
     NotificationType,
     ResourceType,
     UserType,
-    ValidationEnum,
     ConditionType,
     PluginType,
     EventListenTime,
@@ -37,10 +36,7 @@ import utils.password_hashing as password_hashing
 
 
 class Resource(BaseModel):
-    class Config:
-        use_enum_values = True
-        arbitrary_types_allowed = True
-
+    model_config = ConfigDict(use_enum_values = True, arbitrary_types_allowed = True)
 
 class Payload(Resource):
     content_type: ContentType
@@ -99,7 +95,7 @@ class Record(BaseModel):
             self.subpath = self.subpath.strip("/")
 
     def to_dict(self):
-        return json.loads(self.json())
+        return json.loads(self.model_dump_json())
 
     def __eq__(self, other):
         return (
@@ -150,8 +146,7 @@ class Meta(Resource):
     payload: Payload | None = None
     relationships : list[Relationship] | None = None
 
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment = True)
 
     @staticmethod
     def from_record(record: Record, owner_shortname: str):
@@ -269,6 +264,7 @@ class Space(Meta):
     hide_space: bool | None = None
     active_plugins: list[str] = []
     branches: list[str] = []
+    ordinal: int | None = None
 
 
 class Actor(Meta):
@@ -445,7 +441,7 @@ class PluginWrapper(Resource):
 
 
 class NotificationData(Resource):
-    receiver: str
+    receiver: dict
     title: Translation
     body: Translation
     image_urls: Translation | None = None

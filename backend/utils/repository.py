@@ -84,6 +84,18 @@ async def serve_query(
                             query.branch_name,
                         )
                     )
+            if not query.sort_by:
+                query.sort_by = "ordinal"
+            record_fields = list(records[0].model_fields.keys())
+            records = sorted(
+                records,
+                key=lambda d: d.__getattribute__(query.sort_by)
+                if query.sort_by in record_fields
+                else d.attributes[query.sort_by]
+                if query.sort_by in d.attributes and d.attributes[query.sort_by] is not None
+                else 1,
+                reverse=(query.sort_type == api.SortType.descending),
+            )
 
         case api.QueryType.search:
             search_res, total = await redis_query_search(query, redis_query_policies)
@@ -370,7 +382,7 @@ async def serve_query(
                     query.sort_type != None
                     and query.sort_type == api.SortType.descending
                 )
-                if query.sort_by in core.Record.__fields__:
+                if query.sort_by in core.Record.model_fields:
                     records = sorted(
                         records,
                         key=lambda record: record.__getattribute__(str(query.sort_by)),
@@ -1280,7 +1292,7 @@ async def _sys_update_model(
         if key in restricted_fields:
             continue
 
-        if key in meta.__fields__.keys():
+        if key in meta.model_fields.keys():
             meta_updated = True
             meta.__setattr__(key, value)
         elif payload_dict:
@@ -1409,7 +1421,7 @@ async def get_record_from_redis_doc(
     )
 
     for key, value in doc.items():
-        if key in resource_class.__fields__.keys():
+        if key in resource_class.model_fields.keys():
             meta_doc_content[key] = value
         elif key not in RedisServices.SYS_ATTRIBUTES:
             payload_doc_content[key] = value
@@ -1439,7 +1451,7 @@ async def get_record_from_redis_doc(
     meta_doc_content["updated_at"] = datetime.fromtimestamp(
         meta_doc_content["updated_at"]
     )
-    resource_obj = resource_class.parse_obj(meta_doc_content)
+    resource_obj = resource_class.model_validate(meta_doc_content)
     resource_base_record = resource_obj.to_record(
         doc["subpath"],
         meta_doc_content["shortname"],
