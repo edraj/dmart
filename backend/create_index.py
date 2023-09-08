@@ -117,7 +117,7 @@ async def generate_redis_docs(locators: list) -> list:
             payload_data = {}
             if (
                 meta.payload
-                and type(meta.payload.body) == str
+                and isinstance(meta.payload.body, str)
                 and meta.payload.content_type == ContentType.json
                 and meta.payload.schema_shortname
             ):
@@ -159,7 +159,7 @@ async def generate_redis_docs(locators: list) -> list:
             
             redis_docs.append({"doc_id": meta_doc_id, "payload": meta_data})
 
-        except:
+        except Exception:
             print(f"path: {one.space_name}/{one.subpath}/{one.shortname} ({one.type})")
             print("stacktrace:")
             print(f"    {traceback.format_exc()}")

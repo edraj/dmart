@@ -8,7 +8,6 @@ from models.core import Action, Locator, Meta
 from utils.helpers import branch_path, camel_case
 from utils.settings import settings
 from datetime import datetime
-from utils.db import load, load_resource_payload
 from fastapi.logger import logger
 
 

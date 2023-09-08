@@ -117,7 +117,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
     try:
         decoded_token = decode_jwt(token)
-    except :
+    except Exception:
         return status.HTTP_401_UNAUTHORIZED, [], b"Invalid token\n"
 
     user_shortname = decoded_token["username"]

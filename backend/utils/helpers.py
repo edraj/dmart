@@ -34,9 +34,9 @@ def flatten_dict(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dic
             items.append((new_key, v))
     return dict(items)
 
-def flatten_list(l: list, key: str | None = None):
+def flatten_list(ll: list, key: str | None = None):
     flattened = {}
-    for idx, item in enumerate(l):
+    for idx, item in enumerate(ll):
         flattened[f"{key}.{idx}" if key else f"{idx}"] = item
     return flattened
 
@@ -153,14 +153,14 @@ def snake_case(camel_str):
     return re_sub(r"(?<!^)(?=[A-Z])", "_", camel_str).lower()
 
 
-def divide_chunks(l, n):
+def divide_chunks(lll, n):
     """
-    Yield successive n-sized chunks from l.
+    Yield successive n-sized chunks from lll.
     """
 
     # looping till length l
-    for i in range(0, len(l), n):
-        yield l[i : i + n]
+    for i in range(0, len(lll), n):
+        yield lll[i : i + n]
 
 
 def remove_none(target: dict | list):

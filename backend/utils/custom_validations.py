@@ -1,6 +1,5 @@
 import json
 import aiofiles
-import json
 from fastapi import status
 from models.core import Record
 from models.enums import RequestType
@@ -9,7 +8,6 @@ from utils.redis_services import RedisServices
 from models.api import Exception as API_Exception, Error as API_Error
 from utils.settings import settings
 from pathlib import Path as FSPath
-from utils.settings import settings
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 
