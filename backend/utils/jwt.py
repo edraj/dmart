@@ -42,8 +42,8 @@ class JWTBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
         super(JWTBearer, self).__init__(auto_error=auto_error)
 
-    async def __call__(self, request: Request) -> dict[str, Any]:
-        user_shortname = None
+    async def __call__(self, request: Request) -> str | None:
+        user_shortname : str | None = None
         try:
             # Handle token received in Auth header
             credentials: Optional[HTTPAuthorizationCredentials] = await super(
@@ -100,6 +100,7 @@ class GetJWTToken(HTTPBearer):
                 return credentials.credentials
         except Exception:
             return request.cookies.get("auth_token")
+        return None
 
 
 def sign_jwt(data: dict, expires: int = 86400) -> str:

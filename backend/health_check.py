@@ -157,7 +157,7 @@ async def soft_health_check(
     
     limit = 1000
     offset = 0
-    folders_report = {}
+    folders_report : dict = {}
     async with RedisServices() as redis:
         try:
             ft_index = redis.client.ft(f"{space_name}:{branch_name}:{schema_name}")
@@ -320,7 +320,7 @@ async def hard_health_check(space_name: str, branch_name: str):
     #     print("EARLY EXIT")
     #     return None
 
-    invalid_folders = []
+    invalid_folders : list = []
     folders_report: dict[str, dict] = {}
     meta_folders_health: list = []
 

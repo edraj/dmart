@@ -25,7 +25,7 @@ class CustomFormatter(logging.Formatter):
         return json.dumps(data)
 
 
-logging_schema = {
+logging_schema : dict = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
@@ -66,5 +66,5 @@ logging_schema = {
 
 def changeLogFile(log_file: str | None = None) -> None:
     global logging_schema
-    if log_file:
+    if log_file and "handlers" in logging_schema and "file" in logging_schema["handlers"] and "filename" in logging_schema["handlers"]["file"]:
         logging_schema["handlers"]["file"]["filename"] = log_file

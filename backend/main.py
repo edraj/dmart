@@ -290,7 +290,7 @@ async def middle(request: Request, call_next):
 
     user_shortname = "guest"
     try:
-        user_shortname = await JWTBearer().__call__(request)
+        user_shortname = str(await JWTBearer().__call__(request))
     except Exception:
         pass
 

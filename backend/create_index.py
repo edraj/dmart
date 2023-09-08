@@ -172,19 +172,20 @@ async def generate_redis_docs(locators: list) -> list:
 
 
 async def load_custom_indices_data(for_space: str | None = None):
-    for index in RedisServices.CUSTOM_INDICES:
+    for i, index in enumerate(RedisServices.CUSTOM_INDICES):
         if for_space and index["space"] != for_space:
             continue
 
-        res = await load_data_to_redis(
-            index["space"],
-            index["branch"],
-            index["subpath"],
-            [ResourceType(index["class"].__name__.lower())],
-        )
-        print(
-            f"{res['documents']}\tCustom  {index['space']}:{index['branch']}:meta:{index['subpath']}"
-        )
+        if i < len(RedisServices.CUSTOM_CLASSES) and issubclass(RedisServices.CUSTOM_CLASSES[i], core.Meta):
+            res = await load_data_to_redis(
+                index["space"],
+                index["branch"],
+                index["subpath"],
+                [ResourceType(RedisServices.CUSTOM_CLASSES[i].__name__.lower())],
+            )
+            print(
+                f"{res['documents']}\tCustom  {index['space']}:{index['branch']}:meta:{index['subpath']}"
+            )
 
 
 async def traverse_subpaths_entries(
