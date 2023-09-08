@@ -322,7 +322,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             response.set_cookie(
                 value=access_token,
                 max_age=settings.jwt_access_expires,
-                **cookie_options,
+                key="auth_token", httponly=True, secure=True, samesite="none"
             )
             record = core.Record(
                 resource_type=core.ResourceType.user,
@@ -337,6 +337,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 record.attributes["displayname"] = user.displayname
 
             if request.firebase_token:
+                print(type(user_updates["firebase_token"]))
+                print(type(request.firebase_token))
                 user_updates["firebase_token"] = request.firebase_token
 
             await repository._sys_update_model(
@@ -620,12 +622,12 @@ async def update_profile(
     return api.Response(status=api.Status.success)
 
 
-cookie_options = {
-    "key": "auth_token",
-    "httponly": True,
-    "secure": True,
-    "samesite": "none",
-}
+# cookie_options = {
+#    "key": "auth_token",
+#    "httponly": True,
+#    "secure": True,
+#    "samesite": "none",
+# }
 # "samesite": "lax" }
 # samesite="none",
 # secure=True,
@@ -640,7 +642,7 @@ async def logout(
     response: Response,
     shortname=Depends(JWTBearer()),
 ) -> api.Response:
-    response.set_cookie(value="", max_age=0, **cookie_options)
+    response.set_cookie(value="", max_age=0, key="auth_token", httponly=True, secure=True, samesite="none")
 
     user = await db.load(
         space_name=MANAGEMENT_SPACE,
