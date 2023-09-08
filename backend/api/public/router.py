@@ -1,7 +1,6 @@
 from re import sub as res_sub
 from uuid import uuid4
-from fastapi import APIRouter, Request, Path, status
-from fastapi import APIRouter, Path, Depends, status
+from fastapi import APIRouter, Request, Path, status, Depends
 from models.enums import ContentType, ResourceType, TaskType
 import utils.db as db
 import models.api as api

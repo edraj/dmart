@@ -345,7 +345,7 @@ async def serve_space(
                     or request.space_name != record.shortname
                 ):
                     raise Exception
-            except:
+            except Exception:
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
@@ -1794,7 +1794,7 @@ async def import_resources_from_csv(
                     is_internal=True,
                 )
                 success_count += 1
-            except:
+            except Exception:
                 failed_shortnames.append(shortname)
 
     return api.Response(
@@ -2231,6 +2231,7 @@ async def execute(
     branch_name: str | None = settings.default_branch,
     logged_in_user=Depends(JWTBearer()),
 ):
+    task_type = task_type
     meta = await db.load(
         space_name=space_name,
         subpath=record.subpath,

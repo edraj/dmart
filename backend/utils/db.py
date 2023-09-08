@@ -14,7 +14,6 @@ import os
 import json
 from pathlib import Path
 from fastapi import status
-from datetime import datetime
 import aiofiles
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN
 from shutil import copy2 as copy_file
@@ -459,7 +458,7 @@ async def store_entry_diff(
             )
 
             if old != new:
-                if type(old) == list and type(new) == list:
+                if isinstance(old, list) and isinstance(new, list):
                     old, new = arr_remove_common(old, new)
                 history_diff[key] = {
                     "old": old,

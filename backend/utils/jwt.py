@@ -53,7 +53,7 @@ class JWTBearer(HTTPBearer):
                 decoded = decode_jwt(credentials.credentials)
                 if decoded and "username" in decoded:
                     user_shortname = decoded["username"]
-        except:
+        except Exception:
             # Handle token received in the cookie
             auth_token = request.cookies.get("auth_token")
             if auth_token:
@@ -98,7 +98,7 @@ class GetJWTToken(HTTPBearer):
             ).__call__(request)
             if credentials and credentials.scheme == "Bearer":
                 return credentials.credentials
-        except:
+        except Exception:
             return request.cookies.get("auth_token")
 
 

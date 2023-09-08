@@ -917,7 +917,7 @@ class RedisServices(object):
                 return {"data": search_res.docs, "total": search_res.total}
             else: 
                 return {}
-        except:
+        except Exception:
             return {}
 
     async def aggregate(
@@ -939,7 +939,7 @@ class RedisServices(object):
         try:
             ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
             await ft_index.info()
-        except:
+        except Exception:
             return []
 
         aggr_request = aggregation.AggregateRequest(
@@ -966,7 +966,7 @@ class RedisServices(object):
         try:
             aggr_res = await ft_index.aggregate(aggr_request) # type: ignore
             return aggr_res.rows
-        except:
+        except Exception:
             return []
 
     def prepare_query_string(
@@ -1117,7 +1117,7 @@ class RedisServices(object):
             ft_index = self.client.ft(name)
             await ft_index.dropindex(delete_docs)
             return True
-        except:
+        except Exception:
             return False
 
     async def list_indices(self):

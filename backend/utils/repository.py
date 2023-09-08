@@ -126,7 +126,7 @@ async def serve_query(
                             validate_schema=query.validate_schema,
                             filter_types=query.filter_types,
                         )
-                    except:
+                    except Exception:
                         # Incase of schema validation error
                         continue
 
@@ -287,7 +287,7 @@ async def serve_query(
                                             branch_name=query.branch_name,
                                             schema_shortname=resource_obj.payload.schema_shortname,
                                         )
-                                except:
+                                except Exception:
                                     continue
 
                             resource_base_record.attachments = (
@@ -1079,7 +1079,7 @@ async def validate_subpath_data(
                         branch_name=branch_name or settings.default_branch,
                         schema_shortname=folder_meta_content.payload.schema_shortname,
                     )
-        except:
+        except Exception:
             invalid_folders.append(folder_name)
 
         if folder_name not in folders_report:
@@ -1275,7 +1275,7 @@ async def _sys_update_model(
             payload_dict = db.load_resource_payload(
                 space_name, subpath, body, core.Content, branch_name
             )
-        except:
+        except Exception:
             pass
 
     restricted_fields = [

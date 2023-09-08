@@ -64,7 +64,7 @@ class AccessControl:
             try:
                 # Check if index already exist
                 await redis_services.client.ft("user_permission").info()
-            except:
+            except Exception:
                 await redis_services.client.ft("user_permission").create_index(
                     fields=(TextField("name")),
                     definition=IndexDefinition(
@@ -283,13 +283,13 @@ class AccessControl:
             if field_name not in flattened_attributes:
                 continue
             if(
-                type(flattened_attributes[field_name]) == list and
-                type(field_values[0]) == list and
+                isinstance(flattened_attributes[field_name], list) and
+                isinstance(field_values[0], list) and
                 not all(i in field_values[0] for i in flattened_attributes[field_name])
             ):
                 return False
             elif(
-                type(flattened_attributes[field_name]) != list and
+                not isinstance(flattened_attributes[field_name], list) and
                 flattened_attributes[field_name] not in field_values
             ):
                 return False

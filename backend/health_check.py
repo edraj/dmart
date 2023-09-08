@@ -162,7 +162,7 @@ async def soft_health_check(
         try:
             ft_index = redis.client.ft(f"{space_name}:{branch_name}:{schema_name}")
             await ft_index.info()
-        except Exception as _:
+        except Exception:
             if 'meta_schema' not in schema_name:
                 print(f"can't find index: `{space_name}:{branch_name}:{schema_name}`")
             return None
@@ -280,7 +280,7 @@ async def collect_duplicated_with_key(key, value):
                 try:
                     ft_index = redis.client.ft(f"{space_name}:{branch}:meta")
                     await ft_index.info()
-                except:
+                except Exception:
                     continue
                 search_query = Query(query_string=f"@{key}:{value}*")
                 search_query.paging(0, 1000)
@@ -399,7 +399,7 @@ async def save_duplicated_entries(
                 try:
                     ft_index = redis.client.ft(f"{space_name}:{branch}:meta")
                     index_info = await ft_index.info()
-                except:
+                except Exception:
                     continue
                 for i in range(0, int(index_info["num_docs"]), 10000):
                     search_query = Query(query_string="*")

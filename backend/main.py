@@ -165,7 +165,7 @@ async def middle(request: Request, call_next):
         if raw_data:
             try:
                 response_body = json.loads(raw_data)
-            except:
+            except Exception:
                 response_body = {}
     except api.Exception as e:
         response = JSONResponse(
@@ -291,7 +291,7 @@ async def middle(request: Request, call_next):
     user_shortname = "guest"
     try:
         user_shortname = await JWTBearer().__call__(request)
-    except:
+    except Exception:
         pass
 
     extra = {
