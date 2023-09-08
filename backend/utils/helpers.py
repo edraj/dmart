@@ -76,7 +76,7 @@ def flatten_list_of_dicts_in_dict(d: dict) -> dict:
     """
     flattened_d = deepcopy(d)
     for parent_key, list_of_dict in d.items():
-        if type(list_of_dict) == list and len(list_of_dict) > 0 and type(list_of_dict[0]) == dict:
+        if isinstance(list_of_dict, list) and len(list_of_dict) > 0 and isinstance(list_of_dict[0], dict):
             flattened = {}
             for dict_item in list_of_dict:
                 for key, value in dict_item.items():
@@ -167,7 +167,7 @@ def remove_none(target: dict | list):
     if isinstance(target, dict):
         new_d: dict = {}
         for key, val in target.items():
-            if val == None:
+            if val is None:
                 continue
 
             if isinstance(val, dict) or isinstance(val, list):
@@ -179,7 +179,7 @@ def remove_none(target: dict | list):
     else:
         new_l: list = []
         for val in target:
-            if val == None:
+            if val is None:
                 continue
 
             if isinstance(val, dict) or isinstance(val, list):
@@ -199,7 +199,7 @@ def alter_dict_keys(
     result: dict = {}
     for k in list(target):
         search_for = f"{parents}.{k}" if parents else f"{k}"
-        if type(target[k]) == dict:
+        if isinstance(target[k], dict):
             if include and search_for in include:
                 result[k] = target[k]
                 continue
@@ -233,7 +233,7 @@ def branch_path(branch_name: str | None = settings.default_branch) -> str:
 def json_flater(data: dict[str, Any]) -> dict[str, Any]:
     flatened_data = {}
     for k, v in data.items():
-        if type(v) is dict:
+        if isinstance(v, dict):
             __flatened_data = json_flater(v)
             _flatened_data = {
                 key: val for key, val in __flatened_data.items()
@@ -264,7 +264,7 @@ def lang_code(lang: Language):
 def replace_message_vars(message: str, dest_data: dict, locale: str):
     dest_data_dict = flatten_dict(dest_data)
     for field, value in dest_data_dict.items():
-        if type(value) == dict and locale in value:
+        if isinstance(value, dict) and locale in value:
             value = value[locale]
         if field in ["created_at", "updated_at"]:
             message = message.replace(

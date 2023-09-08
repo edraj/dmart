@@ -502,7 +502,7 @@ async def cleanup_spaces():
             owner_shortname="dmart",
             payload=core.Payload(
                 content_type=ContentType.json,
-                body=f"health_check.json",
+                body="health_check.json",
             ),
         )
         schema = {

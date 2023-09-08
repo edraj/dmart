@@ -147,7 +147,7 @@ async def retrieve_entry_meta(
     if (not retrieve_json_payload or 
         not meta.payload or 
         not meta.payload.body or 
-        type(meta.payload.body) != str or 
+        not isinstance(meta.payload.body, str) or 
         meta.payload.content_type != ContentType.json
     ):
         # TODO
@@ -432,6 +432,7 @@ async def create_entry(
 
 @router.post("/excute/{task_type}/{space_name}")
 async def excute(space_name: str, task_type: TaskType, record: core.Record):
+    task_type = task_type
     meta = await db.load(
         space_name=space_name,
         subpath=record.subpath,
@@ -443,7 +444,7 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
 
     if (
         meta.payload is None
-        or type(meta.payload.body) != str
+        or not isinstance(meta.payload.body, str)
         or not str(meta.payload.body).endswith(".json")
     ):
         raise api.Exception(

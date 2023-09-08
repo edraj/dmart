@@ -1,6 +1,6 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 import json
-from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect, status, Request
+from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect, status
 from utils.jwt import decode_jwt
 import asyncio
 from hypercorn.config import Config
@@ -70,7 +70,6 @@ class ConnectionManager:
 
     
     def generate_channel_name(self, msg: dict):
-        s1 = {"space_name", "subpath"}
         if not {"space_name", "subpath"}.issubset(msg):
             return False
         space_name = msg["space_name"]

@@ -143,6 +143,9 @@ class RedisServices(object):
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        exc_type = exc_type
+        exc = exc
+        tb = tb
         await self.client.close()
 
     async def create_index(
@@ -186,11 +189,11 @@ class RedisServices(object):
             "number": NumericField,
             "array": TagField,
         }
-        if type(property) != dict:
+        if not isinstance(property, dict):
             return redis_schema_definition
 
         if "type" in property and property["type"] != "object":
-            if property["type"] in ["null", "boolean"] or type(property["type"]) != str:
+            if property["type"] in ["null", "boolean"] or not isinstance(property["type"], str):
                 return redis_schema_definition
 
             property_name = key_chain.replace(".", "_")

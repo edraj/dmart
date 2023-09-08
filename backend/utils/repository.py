@@ -185,8 +185,7 @@ async def serve_query(
                             resource_name = match.group(2).lower()
                             if (
                                 query.filter_types
-                                and not ResourceType(resource_name)
-                                in query.filter_types
+                                and ResourceType(resource_name) not in query.filter_types
                             ):
                                 continue
 
@@ -273,7 +272,7 @@ async def serve_query(
                                     payload_body = resource_base_record.attributes[
                                         "payload"
                                     ].body
-                                    if not payload_body or type(payload_body) == str:
+                                    if not payload_body or isinstance(payload_body, str):
                                         async with aiofiles.open(
                                             path / resource_obj.payload.body, "r"
                                         ) as payload_file_content:
@@ -378,7 +377,7 @@ async def serve_query(
 
             if query.sort_by:
                 sort_reverse: bool = (
-                    query.sort_type != None
+                    query.sort_type is not None
                     and query.sort_type == api.SortType.descending
                 )
                 if query.sort_by in core.Record.model_fields:
@@ -732,7 +731,7 @@ async def get_entry_attachments(
             if filter_shortnames and attach_shortname not in filter_shortnames:
                 continue
 
-            if filter_types and not ResourceType(attach_resource_name) in filter_types:
+            if filter_types and ResourceType(attach_resource_name) not in filter_types:
                 continue
 
             resource_class = getattr(
@@ -1364,7 +1363,7 @@ async def generate_payload_string(
 
     # Generate direct payload string
     payload_values = set(flatten_all(payload).values())
-    payload_string += ",".join([str(i) for i in payload_values if i != None])
+    payload_string += ",".join([str(i) for i in payload_values if i is not None])
 
     # Generate attachments payload string
     attachments: dict[str, list] = await get_entry_attachments(
@@ -1397,7 +1396,7 @@ async def generate_payload_string(
 
     attachments_values = set(flatten_all(dict_attachments).values())
     attachments_payload_string = ",".join(
-        [str(i) for i in attachments_values if i != None]
+        [str(i) for i in attachments_values if i is not None]
     )
     payload_string += attachments_payload_string
     return payload_string.strip(",")

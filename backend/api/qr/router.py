@@ -1,6 +1,6 @@
 from time import time
 from fastapi import APIRouter, Depends, Path, Body, status
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from api.managed.router import retrieve_entry_meta
 from utils.jwt import JWTBearer
 from io import BytesIO

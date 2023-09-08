@@ -76,7 +76,7 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
                     resource_name = match.group(2).lower()
                     if (
                         query.filter_types
-                        and not ResourceType(resource_name) in query.filter_types
+                        and ResourceType(resource_name) not in query.filter_types
                     ):
                         continue
 
@@ -178,7 +178,7 @@ def metapath(
         filename = f"{shortname}.json"
     elif issubclass(class_type, core.Branch):
         path = settings.spaces_folder / space_name / shortname / ".dm"
-        filename = f"meta.branch.json"
+        filename = "meta.branch.json"
     else:
         path = path / subpath / ".dm" / shortname
         filename = f"meta.{snake_case(class_type.__name__)}.json"

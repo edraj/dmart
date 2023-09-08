@@ -1,7 +1,6 @@
 from models.core import Folder, PluginBase, Event, Schema
 from models.enums import ActionType, ResourceType
 from utils.db import clone
-from utils.helpers import pp
 from utils.redis_services import RedisServices
 from utils.repository import _save_model
 from utils.settings import settings

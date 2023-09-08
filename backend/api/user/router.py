@@ -290,7 +290,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         api.Error(
                             type="auth",
                             code=10,
-                            message=f"Invalid username or password [1]",
+                            message="Invalid username or password [1]",
                         ),
                     )
             user = await db.load(

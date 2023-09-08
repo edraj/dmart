@@ -8,7 +8,6 @@ import shutil
 import sys
 import copy
 import jsonschema
-import sqlite3
 from aiofiles import open as aopen
 from pathlib import Path
 
@@ -22,7 +21,7 @@ def hashing_data(data: str, hashed_data: dict):
 
 
 def exit_with_error(msg: str):
-    print(f"ERROR!!", msg)
+    print("ERROR!!", msg)
     sys.exit(1)
 
 
@@ -78,11 +77,11 @@ def validate_config(config_obj: dict):
 
 def remove_fields(src: dict, restricted_keys: list):
     for k in list(src.keys()):
-        if type(src[k]) == list:
+        if isinstance(src[k], list):
             for item in src[k]:
-                if type(item) == dict:
+                if isinstance(item, dict):
                     item = remove_fields(item, restricted_keys)
-        elif type(src[k]) == dict:
+        elif isinstance(src[k], dict):
             src[k] = remove_fields(src[k], restricted_keys)
             
         if k in restricted_keys:
@@ -92,11 +91,11 @@ def remove_fields(src: dict, restricted_keys: list):
 
 def enc_dict(d: dict, hashed_data: dict):
     for k, v in d.items():
-        if type(v) is dict:
+        if isinstance(v, dict):
             d[k] = enc_dict(v, hashed_data)
-        elif type(d[k]) == list:
+        elif isinstance(d[k], list):
             for item in d[k]:
-                if type(item) == dict:
+                if isinstance(item, dict):
                     item = enc_dict(item, hashed_data)
 
         # if k == "msisdn":
@@ -166,7 +165,7 @@ async def extract(
         os.makedirs(output_subpath)
 
     # Generat output schema
-    schema_fil = output_subpath / f"schema.json"
+    schema_fil = output_subpath / "schema.json"
     for field in included_meta_fields:
         subpath_schema_obj["properties"][field["field_name"]] = field["schema_entry"]
         if field.get("rename_to"):
@@ -180,7 +179,7 @@ async def extract(
     open(schema_fil, "w").write(json.dumps(subpath_schema_obj) + "\n")
 
     # Generat output content file
-    data_file = output_subpath / f"data.ljson"
+    data_file = output_subpath / "data.ljson"
     path = os.path.join(spaces_path, space, subpath)
     for file_name in os.listdir(path):
         if not file_name.endswith(".json"):
@@ -211,7 +210,7 @@ async def extract(
                 file_path=file_name.split(".")[0],
                 resource_type=resource_type,
             )
-        except Exception as error:
+        except Exception:
             # print(f"ERROR: {error.args = }")
             continue
 

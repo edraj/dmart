@@ -19,7 +19,7 @@ class Plugin(PluginBase):
             or not isinstance(data.resource_type, ResourceType)
             or not isinstance(data.attributes, dict)
         ):
-            logger.error(f"invalid data at redis_db_update")
+            logger.error("invalid data at redis_db_update")
             return
 
         spaces = await get_spaces()

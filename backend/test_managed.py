@@ -32,7 +32,7 @@ for line in Lines:
         alibaba = json.loads(str(data))
 
 
-DEMO_SPACE: str = f"test"
+DEMO_SPACE: str = "test"
 DEFAULT_BRANCH: str = settings.default_branch
 USERS_SUBPATH: str = "users"
 
@@ -45,21 +45,21 @@ json_entry_shortname: str = "json_stuff"
 attachment_shortname: str = "my_comment"
 
 
-schema_record_path = f"../sample/test/createschema.json"
+schema_record_path = "../sample/test/createschema.json"
 schema_shortname = "test_schema"
-schema_payload_path = f"../sample/test/schema.json"
+schema_payload_path = "../sample/test/schema.json"
 
-content_record_path = f"../sample/test/createcontent.json"
+content_record_path = "../sample/test/createcontent.json"
 content_shortname = "buyer_123"
-content_payload_path = f"../sample/test//data.json"
-attachment_record_path = f"../sample/test/createmedia.json"
-attachment_payload_path = f"../sample/test/logo.jpeg"
+content_payload_path = "../sample/test//data.json"
+attachment_record_path = "../sample/test/createmedia.json"
+attachment_payload_path = "../sample/test/logo.jpeg"
 
-content_media_record_path = f"../sample/test/createmedia_entry.json"
-content_media_payload_path = f"../sample/test/logo.jpeg"
+content_media_record_path = "../sample/test/createmedia_entry.json"
+content_media_payload_path = "../sample/test/logo.jpeg"
 
 resources_schema_shortname = "test_schema"
-resources_csv_path = f"../sample/test/resources.csv"
+resources_csv_path = "../sample/test/resources.csv"
 csv_num_of_records = 11
 num_of_created_entries = 0
 RedisServices.is_pytest = True
