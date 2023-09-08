@@ -235,8 +235,9 @@ async def soft_health_check(
                     meta = resource_class.parse_obj(meta_doc_content)
                 except Exception as ex:
                     status['is_valid'] = False
-                    status['invalid']['exception'] = str(ex)
-                    status['invalid']['issues'].append('meta')
+                    if not isinstance(status, dict) and isinstance(status["invalid"], dict):
+                        status['invalid']['exception'] = str(ex)
+                        status['invalid']['issues'].append('meta')
                 if meta:
                     try:
                         if meta.payload and meta.payload.schema_shortname and payload_doc_content is not None:
@@ -252,8 +253,9 @@ async def soft_health_check(
                         status['is_valid'] = True
                     except Exception as ex:
                         status['is_valid'] = False
-                        status['invalid']['exception'] = str(ex)
-                        status['invalid']['issues'].append('payload')
+                        if not isinstance(status, dict) and isinstance(status["invalid"], dict):
+                            status['invalid']['exception'] = str(ex)
+                            status['invalid']['issues'].append('payload')
 
                 if not status['is_valid']:
                     if not folders_report.get(subpath, {}).get('invalid_entries'):
@@ -271,7 +273,7 @@ async def soft_health_check(
     return {"invalid_folders": [], "folders_report": folders_report}
 
 
-async def collect_duplicated_with_key(key, value):
+async def collect_duplicated_with_key(key, value) -> None:
     spaces = await get_spaces()
     async with RedisServices() as redis:
         for space_name, space_data in spaces.items():

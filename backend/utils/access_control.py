@@ -34,7 +34,7 @@ class AccessControl:
             entries_glob = ".dm/*/meta.*.json"
             for one in path.glob(entries_glob):
                 match = FILE_PATTERN.search(str(one))
-                if not match or not one.is_file:
+                if not match or not one.is_file():
                     continue
                 shortname = match.group(1)
                 try:
