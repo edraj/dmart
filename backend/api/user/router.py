@@ -198,7 +198,7 @@ async def check_existing_user_fields(
 async def login(response: Response, request: UserLoginRequest) -> api.Response:
     """Login and generate refresh token"""
 
-    shortname = ""
+    shortname : str | None = None
     user = None
     user_updates = {}
     identifier = request.check_fields()
@@ -283,7 +283,10 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 shortname = identifier["shortname"]
             else:
                 key, value = list(identifier.items())[0]
-                shortname = await access_control.get_user_by_criteria(key, value)
+                if isinstance(value, str) and isinstance(key, str):
+                    shortname = await access_control.get_user_by_criteria(key, value)
+                else: 
+                    shortname = None
                 if shortname is None:
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,

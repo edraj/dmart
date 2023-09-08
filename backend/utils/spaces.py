@@ -4,7 +4,7 @@ from utils.redis_services import RedisServices
 from utils.regex import SPACES_PATTERN
 
 
-async def initialize_spaces():
+async def initialize_spaces() -> None:
     if not settings.spaces_folder.is_dir():
         raise NotADirectoryError(
             f"{settings.spaces_folder} directory does not exist!"

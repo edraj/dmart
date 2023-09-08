@@ -11,7 +11,7 @@ from utils.settings import settings
 from fastapi.logger import logger
 import asyncio
 
-async def trigger_admin_notifications():
+async def trigger_admin_notifications() -> None:
     from_time = int((datetime.now() - timedelta(minutes=15)).timestamp()*1000)
     to_time = int(datetime.now().timestamp()*1000)
     async with RedisServices() as redis_services:

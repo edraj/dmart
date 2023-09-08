@@ -119,7 +119,7 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
 
 
 @app.on_event("startup")
-async def app_startup():
+async def app_startup() -> None:
     logger.info("Starting")
     print("Starting")
     # , extra={"props":{
@@ -141,7 +141,7 @@ async def app_startup():
 
 
 @app.on_event("shutdown")
-async def app_shutdown():
+async def app_shutdown() -> None:
     logger.info("Application shutdown")
 
 
@@ -237,18 +237,18 @@ async def middle(request: Request, call_next):
     except Exception:
         exception_message = ""
         stack = None
-        if e := sys.exc_info()[1]:
+        if ee := sys.exc_info()[1]:
             stack = [
                 {
                     "file": frame.f_code.co_filename,
                     "function": frame.f_code.co_name,
                     "line": lineno,
                 }
-                for frame, lineno in traceback.walk_tb(e.__traceback__)
+                for frame, lineno in traceback.walk_tb(ee.__traceback__)
                 if "site-packages" not in frame.f_code.co_filename
             ]
-            exception_message = str(e)
-            exception_data = {"props": {"exception": str(e), "stack": stack}}
+            exception_message = str(ee)
+            exception_data = {"props": {"exception": str(ee), "stack": stack}}
 
         error_log = {"code": 99, "message": exception_message}
         if settings.debug_enabled:
@@ -404,7 +404,7 @@ async def myoptions():
 @app.put("/{x:path}", include_in_schema=False)
 @app.patch("/{x:path}", include_in_schema=False)
 @app.delete("/{x:path}", include_in_schema=False)
-async def catchall():
+async def catchall() -> None:
     raise api.Exception(
         status_code=status.HTTP_404_NOT_FOUND,
         error=api.Error(

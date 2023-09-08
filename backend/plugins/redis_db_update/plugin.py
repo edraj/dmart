@@ -136,7 +136,7 @@ class Plugin(PluginBase):
                     )
 
 
-    async def update_parent_entry_payload_string(self):
+    async def update_parent_entry_payload_string(self) -> None:
 
         async with RedisServices() as redis_services:
             # get the parent meta doc

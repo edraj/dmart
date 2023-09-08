@@ -70,7 +70,7 @@ if os.path.exists(dirpath):
     shutil.rmtree(dirpath)
 
 
-def test_login():
+def test_login() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/user/login"
     request_data = {"shortname": user_shortname, "password": password}
@@ -95,7 +95,7 @@ def test_login():
     # assert response.json().get("status") == "failed"
     # assert response.json().get("error").get("type") == "auth"
 
-def test_create_space():
+def test_create_space() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/managed/space"
     request_data = {
@@ -119,14 +119,14 @@ def test_create_space():
     assert get_res.status_code == status.HTTP_200_OK
 
 
-def test_get_profile():
+def test_get_profile() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/user/profile"
     response = client.get(endpoint, headers=headers)
     assert_code_and_status_success(response)
 
 
-def test_create_folder_resource():
+def test_create_folder_resource() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/managed/request"
     request_data = {
@@ -240,13 +240,13 @@ def test_create_text_content_resource(mocker):
     # assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-def test_upload_schema_resource():
+def test_upload_schema_resource() -> None:
     upload_resource_with_payload(
         DEMO_SPACE, schema_record_path, schema_payload_path, "application/json"
     )
 
 
-def test_create_json_content_resource():
+def test_create_json_content_resource() -> None:
     global num_of_created_entries
     headers = {"Content-Type": "application/json"}
     endpoint = "/managed/request"
@@ -298,7 +298,7 @@ def test_create_json_content_resource():
     num_of_created_entries += 1
 
 
-def test_update_json_content_resource():
+def test_update_json_content_resource() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/managed/request"
     attributes = {
@@ -340,7 +340,7 @@ def test_update_json_content_resource():
     )
 
 
-def test_create_comment_attachment():
+def test_create_comment_attachment() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/managed/request"
     request_data = {
@@ -430,7 +430,7 @@ def test_reload_security_data(mocker):
     assert response.status_code == status.HTTP_200_OK
 
 
-def test_upload_json_content_resource():
+def test_upload_json_content_resource() -> None:
     global num_of_created_entries
     upload_resource_with_payload(
         DEMO_SPACE, content_record_path, content_payload_path, "application/json"
@@ -438,7 +438,7 @@ def test_upload_json_content_resource():
     num_of_created_entries += 1
 
 
-def test_upload_resource_with_payload_attached_to_entry():
+def test_upload_resource_with_payload_attached_to_entry() -> None:
     upload_resource_with_payload(
         DEMO_SPACE, attachment_record_path, attachment_payload_path, "image/jpeg", True
     )
@@ -457,7 +457,7 @@ def test_upload_resource_with_payload_attached_to_entry():
     )
 
 
-def test_upload_media_content_resource():
+def test_upload_media_content_resource() -> None:
     global num_of_created_entries
     upload_resource_with_payload(
         DEMO_SPACE, content_media_record_path, content_media_payload_path, "image/jpeg"
@@ -503,7 +503,7 @@ def test_retrieve_attachment(mocker):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
-def test_upload_resource_from_csv():
+def test_upload_resource_from_csv() -> None:
     global num_of_created_entries
     endpoint = f"managed/resources_from_csv/content/{DEMO_SPACE}/{subpath}/{resources_schema_shortname}"
     with open(resources_csv_path, "rb") as csv_file:
@@ -513,7 +513,7 @@ def test_upload_resource_from_csv():
     num_of_created_entries += csv_num_of_records
 
 
-def test_query_subpath():
+def test_query_subpath() -> None:
     global csv_num_of_records
     limit = 200
     filter_types = ["content"]
@@ -710,17 +710,17 @@ def delete_resource(resource: str, del_subpath: str, del_shortname: str):
     check_not_found(client.get(f"/managed/entry/{resource}/{DEMO_SPACE}/{del_subpath}/{del_shortname}"))
     
 
-def test_delete_content():
+def test_delete_content() -> None:
     delete_resource(
         resource="content", del_subpath=subpath, del_shortname=json_entry_shortname
     )
 
-def test_delete_folder():
+def test_delete_folder() -> None:
     delete_resource(
         resource="folder", del_subpath="/", del_shortname=subpath
     )
 
-def test_delete_space():
+def test_delete_space() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/managed/space"
     request_data = {

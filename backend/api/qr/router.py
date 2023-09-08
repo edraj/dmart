@@ -22,7 +22,7 @@ async def generate_qr_user_profile(
     shortname: str = Path(..., pattern=regex.SHORTNAME),
     logged_in_user=Depends(JWTBearer()),
 ) -> StreamingResponse:
-    data = await retrieve_entry_meta(
+    data : str | dict = await retrieve_entry_meta(
         resource_type,
         space_name,
         subpath,
@@ -31,7 +31,8 @@ async def generate_qr_user_profile(
     )
 
     if (
-        data.get("owner_shortname") != logged_in_user
+        isinstance(data, dict)
+        and data.get("owner_shortname") != logged_in_user
         and f"management/{subpath}/{data['shortname']}"
         != f"{space_name}/users/{logged_in_user}"
     ):

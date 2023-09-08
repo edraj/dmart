@@ -1101,10 +1101,18 @@ class RedisServices(object):
             return False
 
     async def get(self, key) -> str | None:
-        return await self.client.get(key)
+        value = await self.client.get(key)
+        if isinstance(value, str):
+            return value
+        else:
+            return None
 
     async def getdel(self, key) -> str | None:
-        return await self.client.getdel(key)
+        value = await self.client.getdel(key)
+        if isinstance(value, str):
+            return value
+        else:
+            return None
 
     async def set(self, key, value, ex=None, nx: bool = False):
         return await self.client.set(key, value, ex=ex, nx=nx)

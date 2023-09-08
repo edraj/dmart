@@ -14,7 +14,7 @@ from fastapi.logger import logger
 
 all_MKW = "__ALL__"
 class ConnectionManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.active_connections: dict[str, WebSocket] = {}
         # item => channel_name: list_of_subscribed_clients
         self.channels: dict[str, list[str]] = {}

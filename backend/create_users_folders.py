@@ -5,7 +5,7 @@ from models.core import Folder
 from utils.settings import settings
 
 
-async def main():  
+async def main() -> None:  
     users_processed = 0
     folder_processed = 0
     
