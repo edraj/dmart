@@ -91,7 +91,7 @@ async def send_sms(msisdn: str, message: str):
             status = response.status
 
     if status != 200:
-        raise Exception(status, json)
+        raise Exception(status, Error(type="otp", code=111, message="send sms", info=[json]))
 
     return json.get("data")
 
@@ -139,6 +139,6 @@ async def send_email(from_address: str, to_address: str, message: str, subject: 
             )
 
     if status != 200:
-        raise Exception(status, json)
+        raise Exception(status, Error(type="otp", code=112, message="send email", info=[json]))
 
     return json.get("data")

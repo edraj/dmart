@@ -34,6 +34,13 @@ class RedisServices(object):
         max_connections=200,
     )
 
+    CUSTOM_CLASSES : list[type[core.Meta]] = [
+            core.Role,
+            core.Group,
+            core.User,
+            core.Permission
+            ]
+
     CUSTOM_INDICES = [
         {
             "space": "management",
@@ -752,7 +759,7 @@ class RedisServices(object):
             camel_case(resource_type),
         )
         payload_redis_doc = await self.get_doc_by_id(doc_id)
-        payload_doc_content = {}
+        payload_doc_content : dict = {}
         if not payload_redis_doc:
             return payload_doc_content
 

@@ -13,7 +13,6 @@ import models.core as core
 from utils.regex import FILE_PATTERN
 from utils.redis_services import RedisServices
 
-
 class AccessControl:
     permissions: dict[str, Permission] = {}
     groups: dict[str, Group] = {}
@@ -24,14 +23,14 @@ class AccessControl:
         management_branch = settings.management_space_branch
         management_path = settings.spaces_folder / settings.management_space
 
-        management_modules = {
-            "groups": {"subpath": "groups", "type": core.Group},
-            "roles": {"subpath": "roles", "type": core.Role},
-            "permissions": {"subpath": "permissions", "type": core.Permission},
+        management_modules : dict[str, type[core.Meta]] = {
+            "groups": core.Group,
+            "roles": core.Role,
+            "permissions": core.Permission
         }
 
         for module_name, module_value in management_modules.items():
-            path = management_path / module_value["subpath"]
+            path = management_path / module_name
             entries_glob = ".dm/*/meta.*.json"
             for one in path.glob(entries_glob):
                 match = FILE_PATTERN.search(str(one))
@@ -39,11 +38,11 @@ class AccessControl:
                     continue
                 shortname = match.group(1)
                 try:
-                    resource_obj = await db.load(
+                    resource_obj : core.Meta = await db.load(
                         settings.management_space,
-                        module_value["subpath"],
+                        module_name,
                         shortname,
-                        module_value["type"],
+                        module_value,
                         "anonymous",
                         management_branch,
                     )
@@ -51,7 +50,7 @@ class AccessControl:
                     if resource_obj.is_active:
                         module[shortname] = resource_obj  # store in redis doc
                 except Exception as ex:
-                    print(f"Error processing @{settings.management_space}/{module_value['subpath']}/{shortname} ... ", ex)
+                    print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
                     raise ex
 
         await self.create_user_premission_index()
@@ -317,7 +316,7 @@ class AccessControl:
 
 
     async def generate_user_permissions(self, user_shortname: str):
-        user_permissions = {}
+        user_permissions : dict = {}
 
         user_roles = await self.get_user_roles(user_shortname)
         for _, role in user_roles.items():
