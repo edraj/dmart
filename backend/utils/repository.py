@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import sys
 from uuid import uuid4
-import jq
+import jq # type: ignore
 from fastapi.encoders import jsonable_encoder
 from pydantic.fields import Field
 from models.enums import ContentType, ResourceType
