@@ -1,8 +1,5 @@
 import json
-import os
-import shutil
 
-import redis
 from fastapi.testclient import TestClient
 from fastapi import status
 from test_utils import assert_code_and_status_success, check_unauthorized

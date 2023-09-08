@@ -347,7 +347,7 @@ class Schema(Meta):
     # USE meta_schema TO VALIDATE ANY SCHEMA
     def __init__(self, **data):
         Meta.__init__(self, **data)
-        if self.payload != None and self.shortname != "meta_schema":
+        if self.payload is not None and self.shortname != "meta_schema":
             self.payload.schema_shortname = "meta_schema"
 
 

@@ -153,7 +153,7 @@ class PluginManager:
         spaces = await get_spaces()
         if (
             event.space_name not in spaces
-            or not event.action_type in self.plugins_wrappers
+            or event.action_type not in self.plugins_wrappers
         ):
             return
 
@@ -182,7 +182,7 @@ class PluginManager:
         spaces = await get_spaces()
         if (
             event.space_name not in spaces
-            or not event.action_type in self.plugins_wrappers
+            or event.action_type not in self.plugins_wrappers
         ):
             return
 

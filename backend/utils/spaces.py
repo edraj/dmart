@@ -28,7 +28,7 @@ async def initialize_spaces():
         spaces[space_name] = space_obj.model_dump_json()
 
     async with RedisServices() as redis_services:
-        await redis_services.save_doc(f"spaces", spaces)
+        await redis_services.save_doc("spaces", spaces)
 
 
 async def get_spaces() -> dict:

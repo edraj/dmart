@@ -68,7 +68,7 @@ class AccessControl:
                 await redis_services.client.ft("user_permission").create_index(
                     fields=(TextField("name")),
                     definition=IndexDefinition(
-                        prefix=[f"users_permissions"],
+                        prefix=["users_permissions"],
                         index_type=IndexType.JSON,
                     )
                 )

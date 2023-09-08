@@ -33,6 +33,12 @@ import models.api as api
 from utils.settings import settings
 from asgi_correlation_id import CorrelationIdMiddleware
 
+from api.managed.router import router as managed
+from api.qr.router import router as qr
+from api.public.router import router as public
+from api.user.router import router as user
+from api.info.router import router as info
+
 app = FastAPI(
     title="Datamart API",
     description="Structured Content Management System",
@@ -228,7 +234,7 @@ async def middle(request: Request, call_next):
             },
         )
         response_body = json.loads(response.body.decode())
-    except Exception as e:
+    except Exception:
         exception_message = ""
         stack = None
         if e := sys.exc_info()[1]:
@@ -363,12 +369,6 @@ async def space_backup(key: str):
     }
     return api.Response(status=api.Status.success, attributes=attributes)
 
-
-from api.managed.router import router as managed
-from api.qr.router import router as qr
-from api.public.router import router as public
-from api.user.router import router as user
-from api.info.router import router as info
 
 app.include_router(
     user, prefix="/user", tags=["user"], dependencies=[Depends(capture_body)]

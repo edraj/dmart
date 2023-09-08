@@ -206,7 +206,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                 -    
                 -  rows += list_new_rows
                 """
-                if type(attribute_val) == list and len(attribute_val) > 0:
+                if isinstance(attribute_val, list) and len(attribute_val) > 0:
                     list_new_rows: list[dict] = []
                     # Duplicate old rows
                     for row in rows:
@@ -214,7 +214,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                         for item in attribute_val[1:]:
                             new_row = copy(row)
                             # New cell for each item's attribute
-                            if type(item) == dict:
+                            if isinstance(item, dict):
                                 for k, v in item.items():
                                     new_row[f"{column_title}.{k}"] = v
                                     new_keys.add(f"{column_title}.{k}")
@@ -223,7 +223,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                                 
                             list_new_rows.append(new_row)
                         # Add first items's attribute to the existing rows
-                        if type(attribute_val[0]) == dict:
+                        if isinstance(attribute_val[0], dict):
                             deprecated_keys.add(column_title)
                             for k, v in attribute_val[0].items():
                                 row[f"{column_title}.{k}"] = v
@@ -548,7 +548,7 @@ async def serve_request(
                     schema_shortname: str | None = None
                     if (
                         "payload" in record.attributes
-                        and type(record.attributes.get("payload", None)) == "dict"
+                        and isinstance(record.attributes.get("payload", None), dict)
                         and "schema_shortname" in record.attributes["payload"]
                     ):
                         schema_shortname = record.attributes["payload"][
@@ -781,7 +781,7 @@ async def serve_request(
                                         },
                                     )
 
-                    if separate_payload_data != None and isinstance(
+                    if separate_payload_data is not None and isinstance(
                         separate_payload_data, dict
                     ):
                         await db.save_payload_from_json(
@@ -930,7 +930,7 @@ async def serve_request(
                     resource_obj.payload
                     and resource_obj.payload.content_type == ContentType.json
                     and resource_obj.payload.schema_shortname
-                    and new_resource_payload_data != None
+                    and new_resource_payload_data is not None
                 ):
                     await validate_payload_with_schema(
                         payload_data=new_resource_payload_data,
@@ -958,7 +958,7 @@ async def serve_request(
                     user_shortname=owner_shortname,
                     schema_shortname=schema_shortname,
                 )
-                if new_resource_payload_data != None:
+                if new_resource_payload_data is not None:
                     await db.save_payload_from_json(
                         request.space_name,
                         record.subpath,
@@ -1890,7 +1890,7 @@ async def retrieve_entry_meta(
         not retrieve_json_payload
         or not meta.payload
         or not meta.payload.body
-        or type(meta.payload.body) != str
+        or not isinstance(meta.payload.body, str)
         or meta.payload.content_type != ContentType.json
     ):
         # TODO
@@ -2242,7 +2242,7 @@ async def execute(
 
     if (
         meta.payload is None
-        or type(meta.payload.body) != str
+        or not isinstance(meta.payload.body, str)
         or not str(meta.payload.body).endswith(".json")
     ):
         raise api.Exception(
