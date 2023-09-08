@@ -25,7 +25,7 @@ from models.enums import ContentType, RequestType, ResourceType
 from utils.settings import settings
 from utils.spaces import get_spaces
 
-duplicated_entries = {}
+duplicated_entries : dict= {}
 key_entries: dict = {}
 MAX_INVALID_SIZE = 100
 
@@ -49,10 +49,10 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
         for space in params:
             print(f'>>>> Processing {space:<10} <<<<')
             before_time = time.time()
-            health_check = {'invalid_folders': [], 'folders_report': {}}
+            health_check : dict[str, list|dict] | None = {'invalid_folders': [], 'folders_report': {}}
             for schema in params.get(space, []):
                 health_check_res = await soft_health_check(space, schema, branch_name)
-                if health_check_res:
+                if health_check_res and health_check and isinstance(health_check['folders_report'], dict):
                     health_check['folders_report'].update(health_check_res.get('folders_report', {}))
             print_health_check(health_check)
             await save_health_check_entry(health_check, space)
@@ -60,7 +60,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
 
     elif not health_type or health_type == 'hard':
         print("Running hard healthcheck")
-        spaces = [space_param]
+        spaces  : dict = {space_param : {}}
         if is_full:
             spaces = await get_spaces()
         for space in spaces:
@@ -77,7 +77,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
     await save_duplicated_entries(branch_name)
 
 
-def print_header():
+def print_header() -> None:
     print("{:<32} {:<6} {:<6}".format(
         'subpath',
         'valid',
@@ -391,7 +391,7 @@ async def save_duplicated_entries(
     
     slug_scanned_entries = set()
     slug_duplicated_entries: dict = {}
-    spaces = await get_spaces()
+    spaces : dict = await get_spaces()
     async with RedisServices() as redis:
         for space_name, space_data in spaces.items():
             space_data = json.loads(space_data)
@@ -479,7 +479,7 @@ async def save_duplicated_entries(
 
 
 
-async def cleanup_spaces():
+async def cleanup_spaces() -> None:
     spaces = await get_spaces()
     # create health check path meta
     folder_path = Path(settings.spaces_folder / "management/health_check/.dm")
@@ -490,7 +490,7 @@ async def cleanup_spaces():
     if not os.path.isfile(file_path):
         meta_obj = Folder(shortname="health_check", is_active=True, owner_shortname='dmart')
         with open(file_path, "w") as f:
-            f.write(meta_obj.json(exclude_none=True))
+            f.write(meta_obj.model_dump_json(exclude_none=True))
     # create health check schema
     if (
             not os.path.isfile(Path(settings.spaces_folder / "management/schema/health_check.json")) or

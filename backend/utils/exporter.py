@@ -11,6 +11,8 @@ import jsonschema
 from aiofiles import open as aopen
 from pathlib import Path
 
+# from pydantic import config
+
 
 def hashing_data(data: str, hashed_data: dict):
     hash = blake2b(salt=md5(data.encode()).digest())
@@ -141,18 +143,17 @@ def prepare_output(
                 
 
 async def extract(
-    config_obj, 
-    spaces_path, 
-    output_path, 
+        space : str, 
+        subpath : str, # = config_obj.get("subpath")
+        resource_type : str, #  = config_obj.get("resource_type")
+        schema_shortname : str, #  = config_obj.get("schema_shortname")
+        included_meta_fields : dict, #  = config_obj.get("included_meta_fields", [])
+        excluded_payload_fields : dict, # = config_obj.get("excluded_payload_fields", [])
+        spaces_path: str, 
+        output_path : str, 
     entries_since = None
-):
+) -> None:
     hashed_data: dict[str, str] = {}
-    space = config_obj.get("space")
-    subpath = config_obj.get("subpath")
-    resource_type = config_obj.get("resource_type")
-    schema_shortname = config_obj.get("schema_shortname")
-    included_meta_fields = config_obj.get("included_meta_fields", [])
-    excluded_payload_fields = config_obj.get("excluded_payload_fields", [])
 
     space_path = Path(f"{spaces_path}/{space}")
     subpath_schema_obj = None
@@ -293,7 +294,7 @@ if __name__ == "__main__":
     for config_obj in config_objs:
         if not validate_config(config_obj):
             continue
-        tasks.append(extract(config_obj, args.spaces, output_path, since))
+        tasks.append(extract(config_obj.get("space", ""), config_obj.get("subpath", ""), config_obj.get("resource_type", ""), config_obj.get("schema_shortname", ""), config_obj.get("included_meta_fields", {}), config_obj.get("excluded_payload_fields", {}), args.spaces, output_path, since))
 
     asyncio.run(main(tasks))
 

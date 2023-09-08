@@ -217,6 +217,7 @@ class Meta(Resource):
                 old_body=old_body,
                 replace=replace
             )
+        return None
 
     def to_record(
         self,

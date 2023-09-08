@@ -522,9 +522,9 @@ async def serve_query(
                     ),
                 )
 
-            path = f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl"
+            path = Path(f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
 
-            if Path(path).is_file():
+            if path.is_file():
                 cmd = f"tail -n +{query.offset} {path} | head -n {query.limit} | tac"
                 result = list(
                     filter(
@@ -561,8 +561,8 @@ async def serve_query(
             if trimmed_subpath[0] == "/":
                 trimmed_subpath = trimmed_subpath[1:]
 
-            path = f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl"
-            if Path(path).is_file():
+            path = Path(f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl")
+            if path.is_file():
                 result = []
                 if query.search:
                     p = subprocess.Popen(
@@ -1177,12 +1177,12 @@ async def validate_subpath_data(
                     and isinstance(entry_meta_obj.payload.body, str)
                     and entry_meta_obj.payload.content_type == ContentType.json
                 ):
-                    payload_file_path = f"{subpath}/{entry_meta_obj.payload.body}"
+                    payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
                     if not entry_meta_obj.payload.body.endswith(
                         ".json"
                     ) or not os.access(payload_file_path, os.W_OK):
                         raise Exception(
-                            f"can't access this payload {payload_file_path[len(str(settings.spaces_folder)):]}"
+                            f"can't access this payload {str(payload_file_path)[len(str(settings.spaces_folder)):]}"
                         )
                     payload_file_content = db.load_resource_payload(
                         space_name,

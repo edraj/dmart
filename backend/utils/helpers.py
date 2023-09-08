@@ -12,7 +12,7 @@ from languages.loader import languages
 
 
 def flatten_all(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict:
-    items = []
+    items : list = []
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
         if isinstance(v, MutableMapping):
@@ -25,7 +25,7 @@ def flatten_all(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict
 
 
 def flatten_dict(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict:
-    items = []
+    items : list = []
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
         if isinstance(v, MutableMapping):
@@ -77,7 +77,7 @@ def flatten_list_of_dicts_in_dict(d: dict) -> dict:
     flattened_d = deepcopy(d)
     for parent_key, list_of_dict in d.items():
         if isinstance(list_of_dict, list) and len(list_of_dict) > 0 and isinstance(list_of_dict[0], dict):
-            flattened = {}
+            flattened : dict = {}
             for dict_item in list_of_dict:
                 for key, value in dict_item.items():
                     flattened.setdefault(f"{parent_key}.{key}", [])

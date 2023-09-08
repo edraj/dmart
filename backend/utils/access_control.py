@@ -20,7 +20,7 @@ class AccessControl:
     roles: dict[str, Role] = {}
     users: dict[str, User] = {}
 
-    async def load_permissions_and_roles(self):
+    async def load_permissions_and_roles(self) -> None:
         management_branch = settings.management_space_branch
         management_path = settings.spaces_folder / settings.management_space
 
@@ -59,7 +59,7 @@ class AccessControl:
         await self.delete_user_permissions_map_in_redis()
 
 
-    async def create_user_premission_index(self):
+    async def create_user_premission_index(self) -> None:
         async with RedisServices() as redis_services:
             try:
                 # Check if index already exist
@@ -74,7 +74,7 @@ class AccessControl:
                 )
 
 
-    async def store_modules_to_redis(self):
+    async def store_modules_to_redis(self) -> None:
         modules = [
             "roles",
             "groups",
@@ -91,7 +91,7 @@ class AccessControl:
                         meta=object,
                     )
 
-    async def delete_user_permissions_map_in_redis(self):
+    async def delete_user_permissions_map_in_redis(self) -> None:
         async with RedisServices() as redis_services:
             search_query = Query("*").no_content()
             docs = await redis_services.client.\
@@ -451,7 +451,10 @@ class AccessControl:
         if not user_search["data"]:
             return None
         data = json.loads(user_search["data"][0].json)
-        return data["shortname"]
+        if "shortname" in data and data["shortname"] and isinstance (data["shortname"], str): 
+            return data["shortname"]
+        else:
+            return None
 
 
     async def get_user_roles_from_groups(self, user_meta: core.User) -> list:

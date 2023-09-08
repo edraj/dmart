@@ -477,15 +477,15 @@ async def store_entry_diff(
     history_path = settings.spaces_folder / space_name / branch_path(branch_name)
 
     if subpath == "/" and resource_type == core.Space:
-        history_path = f"{history_path}/.dm"
+        history_path = Path(f"{history_path}/.dm")
     else:
         if issubclass(resource_type, core.Attachment):
-            history_path = f"{history_path}/.dm/{subpath}"
+            history_path = Path(f"{history_path}/.dm/{subpath}")
         else:
             if subpath == "/":
-                history_path = f"{history_path}/.dm/{shortname}"
+                history_path = Path(f"{history_path}/.dm/{shortname}")
             else:
-                history_path = f"{history_path}/{subpath}/.dm/{shortname}"
+                history_path = Path(f"{history_path}/{subpath}/.dm/{shortname}")
 
     if not os.path.exists(history_path):
         os.makedirs(history_path)

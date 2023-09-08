@@ -3,7 +3,7 @@ import json
 
 
 languages: dict[str, dict[str, str]] = {}
-def load_langs():
+def load_langs() -> None:
     language_list = glob.glob("languages/*.json")
     for lang in language_list:
         filename = lang.split('/')
