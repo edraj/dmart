@@ -167,15 +167,30 @@ async def extract(
     # Generat output schema
     schema_fil = output_subpath / "schema.json"
     for field in included_meta_fields:
-        subpath_schema_obj["properties"][field["field_name"]] = field["schema_entry"]
-        if field.get("rename_to"):
-            subpath_schema_obj["properties"][field["rename_to"]] = subpath_schema_obj[
-                "properties"
-            ].pop(field["field_name"])
-    subpath_schema_obj["properties"] = remove_fields(
-        subpath_schema_obj["properties"], 
-        [field["field_name"] for field in excluded_payload_fields]
-    )
+        if "oneOf" in subpath_schema_obj:
+            for schema in subpath_schema_obj["oneOf"]:
+                schema["properties"][field["field_name"]] = field["schema_entry"]
+                if field.get("rename_to"):
+                    schema["properties"][field["rename_to"]] = schema[
+                        "properties"
+                    ].pop(field["field_name"])
+        else:
+            subpath_schema_obj["properties"][field["field_name"]] = field["schema_entry"]
+            if field.get("rename_to"):
+                subpath_schema_obj["properties"][field["rename_to"]] = subpath_schema_obj[
+                    "properties"
+                ].pop(field["field_name"])
+    if "oneOf" in subpath_schema_obj:
+        for schema in subpath_schema_obj["oneOf"]:
+            schema["properties"] = remove_fields(
+                schema["properties"], 
+                [field["field_name"] for field in excluded_payload_fields]
+            )
+    else:
+        subpath_schema_obj["properties"] = remove_fields(
+            subpath_schema_obj["properties"], 
+            [field["field_name"] for field in excluded_payload_fields]
+        )
     open(schema_fil, "w").write(json.dumps(subpath_schema_obj) + "\n")
 
     # Generat output content file
