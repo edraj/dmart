@@ -52,7 +52,7 @@ async def change_field_type(
     FILE_PATTERN = re.compile("(\\w*)\\/\\.dm\\/(\\w*)\\/meta\\.([a-zA-Z]*)\\.json$")
     for one in path.glob(entries_glob):
         match = FILE_PATTERN.search(str(one))
-        if not match or not one.is_file:
+        if not match or not one.is_file():
             continue
         subpath = match.group(1)
         shortname = match.group(2)

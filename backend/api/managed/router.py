@@ -55,6 +55,7 @@ from api.user.service import (
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
 from languages.loader import languages
+from typing import Callable
 
 
 router = APIRouter()
@@ -1686,7 +1687,7 @@ async def import_resources_from_csv(
         schema_content = json.load(schema_file)
     schema_content = resolve_schema_references(schema_content)
 
-    data_types_mapper = {
+    data_types_mapper : dict[str, Callable] = {
         "integer": int,
         "number": float,
         "string": str,
