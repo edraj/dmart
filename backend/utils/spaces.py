@@ -33,4 +33,8 @@ async def initialize_spaces() -> None:
 
 async def get_spaces() -> dict:
     async with RedisServices() as redis_services:
-        return await redis_services.get_doc_by_id("spaces")
+        value = await redis_services.get_doc_by_id("spaces")
+        if isinstance(value, dict):
+            return value
+        else:
+            return {}

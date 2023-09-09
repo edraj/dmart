@@ -4,7 +4,7 @@ from models.core import Notification, NotificationData, PluginBase, Event, Trans
 from utils.helpers import branch_path, camel_case
 from utils.notification import NotificationManager
 from utils.redis_services import RedisServices
-from utils.repository import _save_model, get_entry_attachments
+from utils.repository import internal_save_model, get_entry_attachments
 from utils.settings import settings
 from fastapi.logger import logger
 from utils.db import load, load_resource_payload, save_payload_from_json
@@ -77,7 +77,7 @@ class Plugin(PluginBase):
 
             if not formatted_req["push_only"]:
                 notification_obj = await Notification.from_request(notification_dict)
-                await _save_model(
+                await internal_save_model(
                     "personal",
                     f"people/{receiver}/notifications",
                     notification_obj,

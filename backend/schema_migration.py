@@ -6,7 +6,7 @@ import sys
 from models.enums import ContentType
 from utils import db, helpers
 from models.core import Meta, Schema
-from utils.repository import _sys_update_model
+from utils.repository import internal_sys_update_model
 from utils.settings import settings
 
 class FieldType(Enum):
@@ -33,7 +33,7 @@ async def change_field_type(
 ):
     # 3-update field type to new_type
     schema_properties = schema_payload["properties"]
-    await _sys_update_model(
+    await internal_sys_update_model(
         space_name=space,
         subpath="schema",
         meta=schema_model,
@@ -101,7 +101,7 @@ async def change_field_type(
         field_to_update[field_tree[last_idx]] = FIELD_TYPE_PARSER[new_type](
             field_to_update[field_tree[last_idx]]
         )
-        await _sys_update_model(
+        await internal_sys_update_model(
             space_name=space,
             subpath=subpath,
             meta=resource_obj,
@@ -146,7 +146,7 @@ async def main(
         schema_model.payload.content_type != ContentType.json or
         not isinstance(schema_model.payload.body, str)
     ):
-        print(f"Invalid schema file: \n{schema_model.json()}")
+        print(f"Invalid schema file: \n{schema_model.model_dump_json()}")
         return
     schema_payload: dict = db.load_resource_payload(
         space_name=space,

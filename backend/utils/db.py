@@ -248,7 +248,7 @@ def load_resource_payload(
     class_type: Type[MetaChild],
     branch_name: str | None = settings.default_branch,
     schema_shortname: str | None = None,
-) -> dict:
+) :
     """Load a Meta class payload file"""
 
     path = payload_path(space_name, subpath, class_type, branch_name, schema_shortname)

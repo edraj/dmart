@@ -16,7 +16,7 @@ from utils.helpers import branch_path, camel_case, replace_message_vars
 
 # from utils.notification import NotificationContext, send_notification
 from utils.redis_services import RedisServices
-from utils.repository import _save_model, get_entry_attachments, get_group_users
+from utils.repository import internal_save_model, get_entry_attachments, get_group_users
 from utils.settings import settings
 from fastapi.logger import logger
 from utils.db import load, load_resource_payload
@@ -132,7 +132,7 @@ class Plugin(PluginBase):
                     notification_obj = await Notification.from_request(
                         notification_dict, entry
                     )
-                    await _save_model(
+                    await internal_save_model(
                         "personal",
                         f"people/{receiver}/notifications",
                         notification_obj,

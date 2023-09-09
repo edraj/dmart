@@ -35,7 +35,10 @@ def decode_jwt(token: str) -> dict[str, Any]:
             api.Error(type="jwtauth", code=13, message="Expired Token"),
         )
 
-    return decoded_token["data"]
+    if isinstance(decoded_token["data"], dict):
+        return decoded_token["data"]
+    else:
+        return {}
 
 
 class JWTBearer(HTTPBearer):

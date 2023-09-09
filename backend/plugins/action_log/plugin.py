@@ -2,7 +2,7 @@ import sys
 import aiofiles
 from utils.middleware import get_request_data
 from models.core import ActionType, PluginBase, Event
-from models.enums import ContentType, RequestType, ResourceType
+from models.enums import ContentType, ResourceType
 from utils.db import load, load_resource_payload
 from models.core import Action, Locator, Meta
 from utils.helpers import branch_path, camel_case
@@ -41,7 +41,7 @@ class Plugin(PluginBase):
             )
 
         action_attributes = {}
-        if data.action_type == RequestType.create:
+        if data.action_type == ActionType.create:
             payload = {}
             if(
                 entry.payload and 

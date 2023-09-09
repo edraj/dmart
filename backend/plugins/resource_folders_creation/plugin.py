@@ -2,7 +2,7 @@ from models.core import Folder, PluginBase, Event, Schema
 from models.enums import ActionType, ResourceType
 from utils.db import clone
 from utils.redis_services import RedisServices
-from utils.repository import _save_model
+from utils.repository import internal_save_model
 from utils.settings import settings
 from plugins.redis_db_update.plugin import Plugin as RedisUpdatePlugin
 from fastapi.logger import logger
@@ -69,7 +69,7 @@ class Plugin(PluginBase):
             
 
         for folder in folders:
-            await _save_model(
+            await internal_save_model(
                 space_name=folder[0],
                 subpath=folder[1],
                 branch_name=data.branch_name,
