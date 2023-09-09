@@ -218,6 +218,7 @@ async def load(
     schema_shortname: str | None = None,
 ) -> MetaChild:
     """Load a Meta Json according to the reuqested Class type"""
+    user_shortname = user_shortname
     path, filename = metapath(
         space_name, subpath, shortname, class_type, branch_name, schema_shortname
     )
