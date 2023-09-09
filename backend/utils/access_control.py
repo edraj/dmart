@@ -106,12 +106,10 @@ class AccessControl:
 
     async def get_user_premissions(self, user_shortname: str) -> dict:
         async with RedisServices() as redis_services:
-            user_premissions = await redis_services.get_doc_by_id(
-                self.generate_user_permission_doc_id(user_shortname)
-            )
+            user_premissions : dict = await redis_services.get_doc_by_id(self.generate_user_permission_doc_id(user_shortname))
 
             if not user_premissions:
-                return await self.generate_user_permissions(user_shortname)
+               return await self.generate_user_permissions(user_shortname)
 
             return user_premissions
 
@@ -416,8 +414,8 @@ class AccessControl:
                 subpath="users",
                 shortname=user_shortname,
             )
-            user = await redis_services.get_doc_by_id(user_meta_doc_id)
-            if not user:
+            value : dict = await redis_services.get_doc_by_id(user_meta_doc_id)
+            if not value: 
                 user = await db.load(
                     space_name=settings.management_space,
                     branch_name=settings.management_space_branch,
@@ -432,9 +430,10 @@ class AccessControl:
                     "users",
                     user,
                 )
+                return user
             else:
-                user = core.User(**user)
-            return user
+                user = core.User(**value)
+                return user
 
 
     async def get_user_by_criteria(self, key: str, value: str) -> str | None:
