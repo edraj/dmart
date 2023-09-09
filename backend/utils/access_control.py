@@ -110,17 +110,10 @@ class AccessControl:
                 self.generate_user_permission_doc_id(user_shortname)
             )
 
-        if not user_premissions:
-            value = await self.generate_user_permissions(user_shortname)
-            if isinstance(value, dict):
-                return value
-            else:
-                return {}
+            if not user_premissions:
+                return await self.generate_user_permissions(user_shortname)
 
-        if isinstance(user_premissions, dict):
             return user_premissions
-        else:
-            return {}
 
     async def check_access(
         self,
@@ -322,7 +315,7 @@ class AccessControl:
         return subpath
 
 
-    async def generate_user_permissions(self, user_shortname: str):
+    async def generate_user_permissions(self, user_shortname: str) -> dict:
         user_permissions : dict = {}
 
         user_roles = await self.get_user_roles(user_shortname)
