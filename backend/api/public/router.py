@@ -69,7 +69,7 @@ async def query_entries(query: api.Query) -> api.Response:
     response_model_exclude_none=True,
 )
 async def retrieve_entry_meta(
-    resource_type: core.ResourceType,
+    resource_type: ResourceType,
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
@@ -197,7 +197,7 @@ async def retrieve_entry_meta(
     response_model_exclude_none=True,
 )
 async def retrieve_entry_or_attachment_payload(
-    resource_type: core.ResourceType,
+    resource_type: ResourceType,
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),

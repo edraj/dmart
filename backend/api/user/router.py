@@ -200,7 +200,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
     shortname : str | None = None
     user = None
-    user_updates = {}
+    user_updates : dict[str, Any] = {}
     identifier = request.check_fields()
     try:
         if request.invitation:
@@ -337,11 +337,9 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 record.attributes["displayname"] = user.displayname
 
             if request.firebase_token:
-                print(type(user_updates["firebase_token"]))
-                print(type(request.firebase_token))
                 user_updates["firebase_token"] = request.firebase_token
 
-            await repository._sys_update_model(
+            await repository.internal_sys_update_model(
                 space_name=MANAGEMENT_SPACE,
                 subpath=USERS_SUBPATH,
                 branch_name=MANAGEMENT_BRANCH,
@@ -653,7 +651,7 @@ async def logout(
         branch_name=MANAGEMENT_BRANCH,
     )
     if user.firebase_token:
-        await repository._sys_update_model(
+        await repository.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             meta=user,

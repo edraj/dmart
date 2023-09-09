@@ -6,7 +6,7 @@ from utils.db import load as load_meta
 from utils.helpers import branch_path
 from utils.notification import NotificationManager
 from utils.redis_services import RedisServices
-from utils.repository import _save_model, _sys_update_model, get_entry_attachments
+from utils.repository import internal_save_model, internal_sys_update_model, get_entry_attachments
 from utils.settings import settings
 from fastapi.logger import logger
 import asyncio
@@ -54,7 +54,7 @@ async def trigger_admin_notifications() -> None:
                 receiver_data = json.loads(receiver.json)
                 if not formatted_req["push_only"]:
                     notification_obj = await Notification.from_request(notification_dict)
-                    await _save_model(
+                    await internal_save_model(
                         space_name="personal",
                         subpath=f"people/{receiver_data['shortname']}/notifications",
                         meta=notification_obj,
@@ -80,7 +80,7 @@ async def trigger_admin_notifications() -> None:
                 notification_dict["owner_shortname"],
                 settings.management_space_branch,
             )
-            await _sys_update_model(
+            await internal_sys_update_model(
                 settings.management_space,
                 notification_dict["subpath"],
                 notification_meta,

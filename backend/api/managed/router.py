@@ -1410,7 +1410,7 @@ async def update_state(
     response_model_exclude_none=True,
 )
 async def retrieve_entry_or_attachment_payload(
-    resource_type: api.ResourceType,
+    resource_type: ResourceType,
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
@@ -1593,7 +1593,7 @@ async def create_or_update_resource_with_payload(
         content_type=resource_content_type,
         checksum=checksum,
         schema_shortname="meta_schema"
-        if record.resource_type == api.ResourceType.schema
+        if record.resource_type == ResourceType.schema
         else (
             None
             if "schema_shortname" not in record.attributes
@@ -1667,7 +1667,7 @@ async def create_or_update_resource_with_payload(
 )
 async def import_resources_from_csv(
     resources_file: UploadFile,
-    resource_type: api.ResourceType,
+    resource_type: ResourceType,
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     schema_shortname: str = Path(..., pattern=regex.SHORTNAME),
@@ -1812,7 +1812,7 @@ async def import_resources_from_csv(
     response_model_exclude_none=True,
 )
 async def retrieve_entry_meta(
-    resource_type: core.ResourceType,
+    resource_type: ResourceType,
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),

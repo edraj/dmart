@@ -111,9 +111,16 @@ class AccessControl:
             )
 
         if not user_premissions:
-            return await self.generate_user_permissions(user_shortname)
+            value = await self.generate_user_permissions(user_shortname)
+            if isinstance(value, dict):
+                return value
+            else:
+                return {}
 
-        return user_premissions
+        if isinstance(user_premissions, dict):
+            return user_premissions
+        else:
+            return {}
 
     async def check_access(
         self,
@@ -434,7 +441,7 @@ class AccessControl:
                 )
             else:
                 user = core.User(**user)
-        return user
+            return user
 
 
     async def get_user_by_criteria(self, key: str, value: str) -> str | None:

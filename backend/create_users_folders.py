@@ -1,6 +1,6 @@
 import asyncio
 import os
-from utils.repository import _save_model
+from utils.repository import internal_save_model
 from models.core import Folder
 from utils.settings import settings
 
@@ -27,7 +27,7 @@ async def main() -> None:
         for folder in folders:
             if (settings.spaces_folder / folder[0] / folder[1] / folder[2]).is_dir():
                 continue
-            await _save_model(
+            await internal_save_model(
                 space_name=folder[0],
                 subpath=folder[1],
                 meta=Folder(

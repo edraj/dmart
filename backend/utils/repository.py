@@ -824,7 +824,7 @@ async def redis_query_aggregate(
         )
 
     async with RedisServices() as redis_services:
-        return await redis_services.aggregate(
+        value = await redis_services.aggregate(
             space_name=query.space_name,
             branch_name=query.branch_name,
             schema_name=query.filter_schema_names[0],
@@ -844,6 +844,10 @@ async def redis_query_aggregate(
             max=query.limit,
             sort_type=query.sort_type or api.SortType.ascending,
         )
+        if isinstance(value, list):
+            return value
+        else:
+            return []
 
 
 async def redis_query_search(
@@ -1251,7 +1255,7 @@ async def validate_subpath_data(
             del folders_report[folder_name]
 
 
-async def _sys_update_model(
+async def internal_sys_update_model(
     space_name: str,
     subpath: str,
     meta: core.Meta,
@@ -1326,7 +1330,7 @@ async def _sys_update_model(
     return True
 
 
-async def _save_model(
+async def internal_save_model(
     space_name: str,
     subpath: str,
     meta: core.Meta,
@@ -1496,7 +1500,10 @@ async def get_record_from_redis_doc(
             schema_shortname=resource_obj.payload.schema_shortname,
         )
 
-    return resource_base_record
+    if isinstance(resource_base_record, core.Record):
+        return resource_base_record
+    else:
+        return core.Record() 
 
 
 async def get_entry_by_var(

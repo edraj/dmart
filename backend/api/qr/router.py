@@ -10,13 +10,14 @@ import utils.regex as regex
 import hmac
 import hashlib
 from utils.settings import settings
+from models.enums import ResourceType
 
 router = APIRouter()
 
 
 @router.get("/generate/{resource_type}/{space_name}/{subpath:path}/{shortname}")
 async def generate_qr_user_profile(
-    resource_type: api.ResourceType = Path(...),
+    resource_type: ResourceType = Path(...),
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
@@ -54,7 +55,7 @@ async def generate_qr_user_profile(
 
 @router.post("/validate")
 async def validate_qr_user_profile(
-    resource_type: api.ResourceType = Body(...),
+    resource_type: ResourceType = Body(...),
     space_name: str = Body(..., pattern=regex.SPACENAME),
     subpath: str = Body(..., pattern=regex.SUBPATH),
     shortname: str = Body(..., pattern=regex.SHORTNAME),

@@ -225,7 +225,7 @@ class Meta(Resource):
         shortname: str,
         include: list[str] = [],
         branch_name: str | None = None,
-    ):
+    ) -> Record:
         # Sanity check
 
         if self.shortname != shortname:
