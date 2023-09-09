@@ -294,7 +294,13 @@ if __name__ == "__main__":
     for config_obj in config_objs:
         if not validate_config(config_obj):
             continue
-        tasks.append(extract(config_obj.get("space", ""), config_obj.get("subpath", ""), config_obj.get("resource_type", ""), config_obj.get("schema_shortname", ""), config_obj.get("included_meta_fields", {}), config_obj.get("excluded_payload_fields", {}), args.spaces, output_path, since))
+        tasks.append(extract(config_obj.get("space", ""), 
+                             config_obj.get("subpath", ""), 
+                             config_obj.get("resource_type", ""), 
+                             config_obj.get("schema_shortname", ""), 
+                             config_obj.get("included_meta_fields", {}), 
+                             config_obj.get("excluded_payload_fields", {}), 
+                             args.spaces, output_path, since))
 
     asyncio.run(main(tasks))
 

@@ -4,3 +4,11 @@ pytest
 pytest-asyncio
 pytest-mock
 pyright
+ruff
+mypy
+types-aiofiles
+types-ldap3
+types-jsonschema
+types-ujson
+types-pyOpenSSL
+types-requests
