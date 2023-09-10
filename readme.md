@@ -228,7 +228,7 @@ pip install --user  -r requirements.txt
 ```
 
 
-### Offline deployment
+### Offline (aka airgapped) deployment
 
 ```bash
 # On the "online" computer
@@ -257,7 +257,7 @@ pip install --no-index --find-links=/tmp/pipi -r requirements.txt -r test-requir
 ```bash
 cd backend
 ruff check .
-mypy --explicit-package-bases --exclude pydantic[12] --warn-return-any .
+mypy --explicit-package-bases --warn-return-any .
 
 ```
 
