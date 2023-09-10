@@ -969,6 +969,7 @@ async def user_reset(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             branch_name=MANAGEMENT_BRANCH,
+            meta=user,
             updates={"force_password_change": True}
         )
         
@@ -976,40 +977,40 @@ async def user_reset(
     email_link = None
         
     if user.msisdn and not user.is_msisdn_verified:
-        sms_link = await repository.url_shortner(
-            await repository.store_user_invitation_token(
-                user, "SMS"
+        token = await repository.store_user_invitation_token(
+            user, "SMS"
+        )
+        if token:
+            sms_link = await repository.url_shortner(token)
+            await send_sms(
+                msisdn=user.msisdn,
+                message=languages[
+                    user.language
+                ]["invitation_message"].replace(
+                    "{link}", 
+                    sms_link
+                ),
             )
-        )
-        await send_sms(
-            msisdn=user.msisdn,
-            message=languages[
-                user.language
-            ]["invitation_message"].replace(
-                "{link}", 
-                sms_link
-            ),
-        )
     if user.email and not user.is_email_verified:
-        email_link = await repository.url_shortner(
-            await repository.store_user_invitation_token(
-                user, "SMS"
+        token = await repository.store_user_invitation_token(
+            user, "SMS"
+        )
+        if token:
+            email_link = await repository.url_shortner(token)
+            await send_email(
+                from_address=settings.email_sender,
+                to_address=user.email,
+                message=generate_email_from_template(
+                    "activation",
+                    {
+                        "link": email_link,
+                        "name": user.displayname.en if user.displayname else "",
+                        "shortname": user.shortname,
+                        "msisdn": user.msisdn,
+                    },
+                ),
+                subject=generate_subject("activation"),
             )
-        )
-        await send_email(
-            from_address=settings.email_sender,
-            to_address=user.email,
-            message=generate_email_from_template(
-                "activation",
-                {
-                    "link": email_link,
-                    "name": user.displayname.en if user.displayname else "",
-                    "shortname": user.shortname,
-                    "msisdn": user.msisdn,
-                },
-            ),
-            subject=generate_subject("activation"),
-        )
         
 
     return api.Response(

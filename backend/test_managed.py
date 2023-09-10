@@ -653,7 +653,7 @@ def assert_resource_created(
         query.search = ""
     response = client.post(
         "/managed/query",
-        json=json.loads(query.model_dump_json(exclude_none=True)),
+        json=query.model_dump(exclude_none=True),
         headers={"Content-Type": "application/json"},
     )
     assert_code_and_status_success(response)
