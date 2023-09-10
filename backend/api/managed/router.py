@@ -2062,6 +2062,7 @@ async def lock_entry(
             branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
+            resource_type=ResourceType.ticket,
             action_type=core.ActionType.lock,
             user_shortname=logged_in_user,
         )
@@ -2133,6 +2134,7 @@ async def cancel_lock(
             branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
+            resource_type=ResourceType.ticket,
             action_type=core.ActionType.unlock,
             user_shortname=logged_in_user,
         )
