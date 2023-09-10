@@ -217,6 +217,7 @@ class Meta(Resource):
                 old_body=old_body,
                 replace=replace
             )
+        return None
 
     def to_record(
         self,
@@ -224,7 +225,7 @@ class Meta(Resource):
         shortname: str,
         include: list[str] = [],
         branch_name: str | None = None,
-    ):
+    ) -> Record:
         # Sanity check
 
         if self.shortname != shortname:
@@ -347,7 +348,7 @@ class Schema(Meta):
     # USE meta_schema TO VALIDATE ANY SCHEMA
     def __init__(self, **data):
         Meta.__init__(self, **data)
-        if self.payload != None and self.shortname != "meta_schema":
+        if self.payload is not None and self.shortname != "meta_schema":
             self.payload.schema_shortname = "meta_schema"
 
 

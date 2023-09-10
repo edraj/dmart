@@ -29,7 +29,7 @@ MANAGEMENT_SPACE: str = f"{settings.management_space}"
 USERS_SUBPATH: str = "users"
 
 shortname: str = alibaba['shortname']
-displayname: dict = {"en": "Ali Baba"}
+displayname: dict[str, str] = {"en": "Ali Baba"}
 email: str = "ali_neww@baba.com"
 password: str = alibaba['password']
 invitation: str = "A1B2C3"
@@ -78,7 +78,7 @@ RedisServices.is_pytest = True
 #     assert_code_and_status_success(response)
 
 
-def test_login():
+def test_login() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/user/login"
     request_data = {"shortname": shortname, "password": password}
@@ -101,14 +101,14 @@ def test_login():
     client.cookies.set("auth_token", response.cookies["auth_token"])
 
 
-def test_get_profile():
+def test_get_profile() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/user/profile"
     response = client.get(endpoint, headers=headers)
     assert_code_and_status_success(response)
 
 
-def test_update_profile():
+def test_update_profile() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/user/profile"
     request_data = {

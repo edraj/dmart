@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import sys
 from uuid import uuid4
-import jq
+import jq # type: ignore
 from fastapi.encoders import jsonable_encoder
 from pydantic.fields import Field
 from models.enums import ContentType, Language, ResourceType
@@ -127,7 +127,7 @@ async def serve_query(
                             validate_schema=query.validate_schema,
                             filter_types=query.filter_types,
                         )
-                    except:
+                    except Exception:
                         # Incase of schema validation error
                         continue
 
@@ -186,8 +186,7 @@ async def serve_query(
                             resource_name = match.group(2).lower()
                             if (
                                 query.filter_types
-                                and not ResourceType(resource_name)
-                                in query.filter_types
+                                and ResourceType(resource_name) not in query.filter_types
                             ):
                                 continue
 
@@ -274,7 +273,7 @@ async def serve_query(
                                     payload_body = resource_base_record.attributes[
                                         "payload"
                                     ].body
-                                    if not payload_body or type(payload_body) == str:
+                                    if not payload_body or isinstance(payload_body, str):
                                         async with aiofiles.open(
                                             path / resource_obj.payload.body, "r"
                                         ) as payload_file_content:
@@ -289,7 +288,7 @@ async def serve_query(
                                             branch_name=query.branch_name,
                                             schema_shortname=resource_obj.payload.schema_shortname,
                                         )
-                                except:
+                                except Exception:
                                     continue
 
                             resource_base_record.attachments = (
@@ -379,7 +378,7 @@ async def serve_query(
 
             if query.sort_by:
                 sort_reverse: bool = (
-                    query.sort_type != None
+                    query.sort_type is not None
                     and query.sort_type == api.SortType.descending
                 )
                 if query.sort_by in core.Record.model_fields:
@@ -524,9 +523,9 @@ async def serve_query(
                     ),
                 )
 
-            path = f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl"
+            path = Path(f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
 
-            if Path(path).is_file():
+            if path.is_file():
                 cmd = f"tail -n +{query.offset} {path} | head -n {query.limit} | tac"
                 result = list(
                     filter(
@@ -563,8 +562,8 @@ async def serve_query(
             if trimmed_subpath[0] == "/":
                 trimmed_subpath = trimmed_subpath[1:]
 
-            path = f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl"
-            if Path(path).is_file():
+            path = Path(f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl")
+            if path.is_file():
                 result = []
                 if query.search:
                     p = subprocess.Popen(
@@ -733,7 +732,7 @@ async def get_entry_attachments(
             if filter_shortnames and attach_shortname not in filter_shortnames:
                 continue
 
-            if filter_types and not ResourceType(attach_resource_name) in filter_types:
+            if filter_types and ResourceType(attach_resource_name) not in filter_types:
                 continue
 
             resource_class = getattr(
@@ -826,7 +825,7 @@ async def redis_query_aggregate(
         )
 
     async with RedisServices() as redis_services:
-        return await redis_services.aggregate(
+        value = await redis_services.aggregate(
             space_name=query.space_name,
             branch_name=query.branch_name,
             schema_name=query.filter_schema_names[0],
@@ -846,6 +845,10 @@ async def redis_query_aggregate(
             max=query.limit,
             sort_type=query.sort_type or api.SortType.ascending,
         )
+        if isinstance(value, list):
+            return value
+        else:
+            return []
 
 
 async def redis_query_search(
@@ -1081,7 +1084,7 @@ async def validate_subpath_data(
                         branch_name=branch_name or settings.default_branch,
                         schema_shortname=folder_meta_content.payload.schema_shortname,
                     )
-        except:
+        except Exception:
             invalid_folders.append(folder_name)
 
         if folder_name not in folders_report:
@@ -1179,12 +1182,12 @@ async def validate_subpath_data(
                     and isinstance(entry_meta_obj.payload.body, str)
                     and entry_meta_obj.payload.content_type == ContentType.json
                 ):
-                    payload_file_path = f"{subpath}/{entry_meta_obj.payload.body}"
+                    payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
                     if not entry_meta_obj.payload.body.endswith(
                         ".json"
                     ) or not os.access(payload_file_path, os.W_OK):
                         raise Exception(
-                            f"can't access this payload {payload_file_path[len(str(settings.spaces_folder)):]}"
+                            f"can't access this payload {str(payload_file_path)[len(str(settings.spaces_folder)):]}"
                         )
                     payload_file_content = db.load_resource_payload(
                         space_name,
@@ -1253,7 +1256,7 @@ async def validate_subpath_data(
             del folders_report[folder_name]
 
 
-async def _sys_update_model(
+async def internal_sys_update_model(
     space_name: str,
     subpath: str,
     meta: core.Meta,
@@ -1277,7 +1280,7 @@ async def _sys_update_model(
             payload_dict = db.load_resource_payload(
                 space_name, subpath, body, core.Content, branch_name
             )
-        except:
+        except Exception:
             pass
 
     restricted_fields = [
@@ -1328,7 +1331,7 @@ async def _sys_update_model(
     return True
 
 
-async def _save_model(
+async def internal_save_model(
     space_name: str,
     subpath: str,
     meta: core.Meta,
@@ -1365,7 +1368,7 @@ async def generate_payload_string(
 
     # Generate direct payload string
     payload_values = set(flatten_all(payload).values())
-    payload_string += ",".join([str(i) for i in payload_values if i != None])
+    payload_string += ",".join([str(i) for i in payload_values if i is not None])
 
     # Generate attachments payload string
     attachments: dict[str, list] = await get_entry_attachments(
@@ -1398,7 +1401,7 @@ async def generate_payload_string(
 
     attachments_values = set(flatten_all(dict_attachments).values())
     attachments_payload_string = ",".join(
-        [str(i) for i in attachments_values if i != None]
+        [str(i) for i in attachments_values if i is not None]
     )
     payload_string += attachments_payload_string
     return payload_string.strip(",")
@@ -1498,7 +1501,10 @@ async def get_record_from_redis_doc(
             schema_shortname=resource_obj.payload.schema_shortname,
         )
 
-    return resource_base_record
+    if isinstance(resource_base_record, core.Record):
+        return resource_base_record
+    else:
+        return core.Record() 
 
 
 async def get_entry_by_var(

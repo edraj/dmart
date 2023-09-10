@@ -35,15 +35,18 @@ def decode_jwt(token: str) -> dict[str, Any]:
             api.Error(type="jwtauth", code=13, message="Expired Token"),
         )
 
-    return decoded_token["data"]
+    if isinstance(decoded_token["data"], dict):
+        return decoded_token["data"]
+    else:
+        return {}
 
 
 class JWTBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
         super(JWTBearer, self).__init__(auto_error=auto_error)
 
-    async def __call__(self, request: Request) -> dict[str, Any]:
-        user_shortname = None
+    async def __call__(self, request: Request) -> str | None:  # type: ignore
+        user_shortname : str | None = None
         try:
             # Handle token received in Auth header
             credentials: Optional[HTTPAuthorizationCredentials] = await super(
@@ -53,7 +56,7 @@ class JWTBearer(HTTPBearer):
                 decoded = decode_jwt(credentials.credentials)
                 if decoded and "username" in decoded:
                     user_shortname = decoded["username"]
-        except:
+        except Exception:
             # Handle token received in the cookie
             auth_token = request.cookies.get("auth_token")
             if auth_token:
@@ -91,15 +94,16 @@ class GetJWTToken(HTTPBearer):
     def __init__(self, auto_error: bool = True):
         super(GetJWTToken, self).__init__(auto_error=auto_error)
 
-    async def __call__(self, request: Request) -> str | None:
+    async def __call__(self, request: Request) -> str | None:  # type: ignore
         try:
             credentials: Optional[HTTPAuthorizationCredentials] = await super(
                 GetJWTToken, self
             ).__call__(request)
             if credentials and credentials.scheme == "Bearer":
                 return credentials.credentials
-        except:
+        except Exception:
             return request.cookies.get("auth_token")
+        return None
 
 
 def sign_jwt(data: dict, expires: int = 86400) -> str:

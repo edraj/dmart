@@ -1,6 +1,5 @@
 import json
 import aiofiles
-import json
 from fastapi import status
 from models.core import Record
 from models.enums import RequestType
@@ -9,7 +8,6 @@ from utils.redis_services import RedisServices
 from models.api import Exception as API_Exception, Error as API_Error
 from utils.settings import settings
 from pathlib import Path as FSPath
-from utils.settings import settings
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 
@@ -21,7 +19,7 @@ async def validate_payload_with_schema(
     branch_name: str | None = settings.default_branch,
 ):
 
-    if type(payload_data) not in [dict, UploadFile]:
+    if not isinstance(payload_data, (dict, UploadFile)):
         raise API_Exception(
             status.HTTP_400_BAD_REQUEST,
             API_Error(
@@ -94,7 +92,7 @@ async def validate_uniqueness(
         content = await file.read()
     folder_meta = json.loads(content)
 
-    if type(folder_meta.get("unique_fields", None)) != list:
+    if not isinstance(folder_meta.get("unique_fields", None), list):
         return True
 
     entry_dict_flattened = flatten_list_of_dicts_in_dict(
@@ -132,7 +130,7 @@ async def validate_uniqueness(
 
                 )
             elif(
-                type(entry_dict_flattened[unique_key]) == list
+                isinstance(entry_dict_flattened[unique_key], list)
             ):
                 redis_search_str += (
                     " @"
@@ -141,10 +139,7 @@ async def validate_uniqueness(
                     + "|".join(entry_dict_flattened[unique_key])
                     + "}"
                 )
-            elif type(entry_dict_flattened[unique_key]) in [
-                str,
-                bool,
-            ]:  # booleans are indexed as TextField
+            elif isinstance(entry_dict_flattened[unique_key], (str, bool)):  # booleans are indexed as TextField
                 redis_search_str += (
                     " @"
                     + redis_column
@@ -154,7 +149,7 @@ async def validate_uniqueness(
                     .replace("\\\\", "\\")
                 )
 
-            elif type(entry_dict_flattened[unique_key]) == int:
+            elif isinstance(entry_dict_flattened[unique_key], int):
                 redis_search_str += (
                     " @"
                     + redis_column
@@ -182,7 +177,7 @@ async def validate_uniqueness(
 
         for index in RedisServices.CUSTOM_INDICES:
             if space_name == index["space"] and index["subpath"] == subpath:
-                schema_name = f"meta"
+                schema_name = "meta"
                 break
 
         if not schema_name:

@@ -1,7 +1,6 @@
 from re import sub as res_sub
 from uuid import uuid4
-from fastapi import APIRouter, Request, Path, status
-from fastapi import APIRouter, Path, Depends, status
+from fastapi import APIRouter, Request, Path, status, Depends
 from models.enums import ContentType, ResourceType, TaskType
 import utils.db as db
 import models.api as api
@@ -70,7 +69,7 @@ async def query_entries(query: api.Query) -> api.Response:
     response_model_exclude_none=True,
 )
 async def retrieve_entry_meta(
-    resource_type: core.ResourceType,
+    resource_type: ResourceType,
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
@@ -147,7 +146,7 @@ async def retrieve_entry_meta(
     if (not retrieve_json_payload or 
         not meta.payload or 
         not meta.payload.body or 
-        type(meta.payload.body) != str or 
+        not isinstance(meta.payload.body, str) or 
         meta.payload.content_type != ContentType.json
     ):
         # TODO
@@ -198,7 +197,7 @@ async def retrieve_entry_meta(
     response_model_exclude_none=True,
 )
 async def retrieve_entry_or_attachment_payload(
-    resource_type: core.ResourceType,
+    resource_type: ResourceType,
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
@@ -432,6 +431,7 @@ async def create_entry(
 
 @router.post("/excute/{task_type}/{space_name}")
 async def excute(space_name: str, task_type: TaskType, record: core.Record):
+    task_type = task_type
     meta = await db.load(
         space_name=space_name,
         subpath=record.subpath,
@@ -443,7 +443,7 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
 
     if (
         meta.payload is None
-        or type(meta.payload.body) != str
+        or not isinstance(meta.payload.body, str)
         or not str(meta.payload.body).endswith(".json")
     ):
         raise api.Exception(
