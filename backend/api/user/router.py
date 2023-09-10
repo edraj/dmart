@@ -826,11 +826,12 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     if "msisdn" in result:
         if not user.msisdn or user.msisdn != result["msisdn"]:
             raise exception
-        shortened_link = await repository.url_shortner(
-            await repository.store_user_invitation_token(
-                user, "SMS"
-            )
+        token = await repository.store_user_invitation_token(
+            user, "SMS"
         )
+        if not token:
+            raise exception
+        shortened_link = await repository.url_shortner(token)
         await send_sms(
             msisdn=user.msisdn,
             message=reset_password_message.replace("{link}", shortened_link),
@@ -838,11 +839,13 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     else:
         if not user.email or user.email != result["email"]:
             raise exception
-        shortened_link = await repository.url_shortner(
-            await repository.store_user_invitation_token(
-                user, "EMAIL"
-            )
+        token = await repository.store_user_invitation_token(
+            user, "EMAIL"
         )
+        if not token:
+            raise exception
+            
+        shortened_link = await repository.url_shortner(token)
         await send_email(
             from_address=settings.email_sender,
             to_address=user.email,
