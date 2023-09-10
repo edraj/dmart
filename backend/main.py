@@ -44,8 +44,10 @@ app = FastAPI(
     description="Structured Content Management System",
     version="1.0.0",
     redoc_url=None,
-    docs_url="/docs",
+    # TBD FIXME check why the following fastapi settings break swagger
+    # docs_url="/docs",
     # openapi_url=f"{settings.base_path}/openapi.json",
+    # servers=[{"url": f"{settings.base_path}/"}],
     contact={
         "name": "Kefah T. Issa",
         "url": "https://dmart.cc",
@@ -55,7 +57,6 @@ app = FastAPI(
         "name": "GNU Affero General Public License v3+",
         "url": "https://www.gnu.org/licenses/agpl-3.0.en.html",
     },
-    servers=[{"url": f"{settings.base_path}/"}],
     swagger_ui_parameters={"defaultModelsExpandDepth": -1},
     openapi_tags=[
         {"name": "user", "description": "User registration, login, profile and delete"},
