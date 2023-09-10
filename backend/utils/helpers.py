@@ -1,7 +1,7 @@
 from copy import deepcopy
 from datetime import datetime
 from re import sub as re_sub
-from jsonschema import RefResolver
+from jsonschema.validators import _RefResolver as RefResolver
 # TBD from referencing import Registry, Resource
 # TBD import referencing.jsonschema
 from collections.abc import MutableMapping
@@ -108,7 +108,7 @@ def resolve_schema_references(schema: dict, refs: dict = {}):
     """
     refs = refs or {}
     resolved_schema = _resolve_schema_references(
-        schema, RefResolver("", schema, store=refs)
+        schema, RefResolver("", schema, store=refs) #type: ignore
     )
     if "definitions" in resolved_schema:
         resolved_schema.pop("definitions")
