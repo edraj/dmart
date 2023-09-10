@@ -286,7 +286,7 @@ class User(Actor):
     language: Language = Language.ar
     
     @staticmethod
-    def invitation_url_template():
+    def invitation_url_template() -> str:
         return "{url}/auth/invitation?invitation={token}&lang={lang}&user-type={user_type}"
 
 

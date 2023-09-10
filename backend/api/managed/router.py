@@ -3,8 +3,6 @@ import csv
 from datetime import datetime
 import hashlib
 import os
-import uuid
-from fastapi.logger import logger
 from uuid import uuid4
 from re import sub as res_sub
 from fastapi import APIRouter, Body, Depends, UploadFile, Path, Form, status
@@ -23,7 +21,6 @@ import models.api as api
 import models.core as core
 from models.enums import (
     ContentType,
-    Language,
     RequestType,
     ResourceType,
     LockAction,
@@ -33,7 +30,7 @@ import utils.db as db
 import utils.regex as regex
 import sys
 import json
-from utils.jwt import JWTBearer, GetJWTToken, sign_jwt, remove_redis_session_key
+from utils.jwt import JWTBearer, GetJWTToken, remove_redis_session_key
 from utils.access_control import access_control
 from utils.spaces import get_spaces, initialize_spaces
 from typing import Any
