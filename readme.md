@@ -227,9 +227,39 @@ pip install --user  -r requirements.txt
 ./cli.py
 ```
 
+
+### Offline deployment
+
+```bash
+# On the "online" computer
+rmdir /tmp/pipi
+rmdir /tmp/venv
+virtualenv /tmp/venv # or your favorate py env virtualization tool
+source /tmp/venv/bin/activate
+mkdir /tmp/pipi
+# under dmart/backend
+pip download -d /tmp/pipi/ $(cat *requirements.txt) virtualenv pip
+rsync -av /tmp/pipi/ TARGET_OFFLINE_SERVER:/tmp/pipi
+
+# On the "offline" target server
+pip install --no-index --find-links=/tmp/pipi virtualenv
+virtualenv /tmp/venv
+source /tmp/venv/bin/activate
+pip install --no-index --find-links=/tmp/pipi --upgrade pip
+pip install --no-index --find-links=/tmp/pipi -r requirements.txt -r test-requirements.txt -r plugins-requirements.txt
+```
+
 <img src="./docs/cli.png" width="450">
 
 
+### Running extra python checks
+
+```bash
+cd backend
+ruff check .
+mypy --explicit-package-bases --exclude pydantic[12] --warn-return-any .
+
+```
 
 ## Coming soon ...
 
@@ -239,4 +269,6 @@ pip install --user  -r requirements.txt
 ### Web app skeleton (based on Svelte)
 
 ### Sample usecases
+
+
 

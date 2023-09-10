@@ -201,9 +201,9 @@ async def check_existing_user_fields(
 async def login(response: Response, request: UserLoginRequest) -> api.Response:
     """Login and generate refresh token"""
 
-    shortname = ""
+    shortname : str | None = None
     user = None
-    user_updates = {}
+    user_updates : dict[str, Any] = {}
     identifier = request.check_fields()
     try:
         if request.invitation:
@@ -286,14 +286,17 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 shortname = identifier["shortname"]
             else:
                 key, value = list(identifier.items())[0]
-                shortname = await access_control.get_user_by_criteria(key, value)
+                if isinstance(value, str) and isinstance(key, str):
+                    shortname = await access_control.get_user_by_criteria(key, value)
+                else: 
+                    shortname = None
                 if shortname is None:
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(
                             type="auth",
                             code=10,
-                            message=f"Invalid username or password [1]",
+                            message="Invalid username or password [1]",
                         ),
                     )
             user = await db.load(
@@ -322,7 +325,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             response.set_cookie(
                 value=access_token,
                 max_age=settings.jwt_access_expires,
-                **cookie_options,
+                key="auth_token", httponly=True, secure=True, samesite="none"
             )
             record = core.Record(
                 resource_type=core.ResourceType.user,
@@ -339,7 +342,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             if request.firebase_token:
                 user_updates["firebase_token"] = request.firebase_token
 
-            await repository._sys_update_model(
+            await repository.internal_sys_update_model(
                 space_name=MANAGEMENT_SPACE,
                 subpath=USERS_SUBPATH,
                 branch_name=MANAGEMENT_BRANCH,
@@ -620,12 +623,12 @@ async def update_profile(
     return api.Response(status=api.Status.success)
 
 
-cookie_options = {
-    "key": "auth_token",
-    "httponly": True,
-    "secure": True,
-    "samesite": "none",
-}
+# cookie_options = {
+#    "key": "auth_token",
+#    "httponly": True,
+#    "secure": True,
+#    "samesite": "none",
+# }
 # "samesite": "lax" }
 # samesite="none",
 # secure=True,
@@ -640,7 +643,7 @@ async def logout(
     response: Response,
     shortname=Depends(JWTBearer()),
 ) -> api.Response:
-    response.set_cookie(value="", max_age=0, **cookie_options)
+    response.set_cookie(value="", max_age=0, key="auth_token", httponly=True, secure=True, samesite="none")
 
     user = await db.load(
         space_name=MANAGEMENT_SPACE,
@@ -651,7 +654,7 @@ async def logout(
         branch_name=MANAGEMENT_BRANCH,
     )
     if user.firebase_token:
-        await repository._sys_update_model(
+        await repository.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             meta=user,

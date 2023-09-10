@@ -4,7 +4,7 @@ from utils.redis_services import RedisServices
 from utils.regex import SPACES_PATTERN
 
 
-async def initialize_spaces():
+async def initialize_spaces() -> None:
     if not settings.spaces_folder.is_dir():
         raise NotADirectoryError(
             f"{settings.spaces_folder} directory does not exist!"
@@ -28,9 +28,12 @@ async def initialize_spaces():
         spaces[space_name] = space_obj.model_dump_json()
 
     async with RedisServices() as redis_services:
-        await redis_services.save_doc(f"spaces", spaces)
+        await redis_services.save_doc("spaces", spaces)
 
 
 async def get_spaces() -> dict:
     async with RedisServices() as redis_services:
-        return await redis_services.get_doc_by_id("spaces")
+        value = await redis_services.get_doc_by_id("spaces")
+        if isinstance(value, dict):
+            return value
+        return {}

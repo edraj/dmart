@@ -1,8 +1,5 @@
 import json
-import os
-import shutil
 
-import redis
 from fastapi.testclient import TestClient
 from fastapi import status
 from test_utils import assert_code_and_status_success, check_unauthorized
@@ -103,7 +100,7 @@ RedisServices.is_pytest = True
 #     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
-def test_login():
+def test_login() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/user/login"
     request_data = {"shortname": SHORTNAME, "password": PASSWORD}
@@ -126,7 +123,7 @@ def test_login():
     client.cookies.set("auth_token", response.cookies["auth_token"])
 
 
-def test_update():
+def test_update() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/user/profile"
     request_data = {
@@ -143,7 +140,7 @@ def test_update():
     )
 
 
-def test_logout():
+def test_logout() -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/user/logout"
     request_data = {"shortname": SHORTNAME, "password": PASSWORD}

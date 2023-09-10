@@ -19,7 +19,7 @@ class Plugin(PluginBase):
             or not isinstance(data.resource_type, ResourceType)
             or not isinstance(data.attributes, dict)
         ):
-            logger.error(f"invalid data at redis_db_update")
+            logger.error("invalid data at redis_db_update")
             return
 
         spaces = await get_spaces()
@@ -136,7 +136,7 @@ class Plugin(PluginBase):
                     )
 
 
-    async def update_parent_entry_payload_string(self):
+    async def update_parent_entry_payload_string(self) -> None:
 
         async with RedisServices() as redis_services:
             # get the parent meta doc

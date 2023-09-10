@@ -8,9 +8,10 @@ import shutil
 import sys
 import copy
 import jsonschema
-import sqlite3
 from aiofiles import open as aopen
 from pathlib import Path
+
+# from pydantic import config
 
 
 def hashing_data(data: str, hashed_data: dict):
@@ -22,7 +23,7 @@ def hashing_data(data: str, hashed_data: dict):
 
 
 def exit_with_error(msg: str):
-    print(f"ERROR!!", msg)
+    print("ERROR!!", msg)
     sys.exit(1)
 
 
@@ -78,11 +79,11 @@ def validate_config(config_obj: dict):
 
 def remove_fields(src: dict, restricted_keys: list):
     for k in list(src.keys()):
-        if type(src[k]) == list:
+        if isinstance(src[k], list):
             for item in src[k]:
-                if type(item) == dict:
+                if isinstance(item, dict):
                     item = remove_fields(item, restricted_keys)
-        elif type(src[k]) == dict:
+        elif isinstance(src[k], dict):
             src[k] = remove_fields(src[k], restricted_keys)
             
         if k in restricted_keys:
@@ -92,11 +93,11 @@ def remove_fields(src: dict, restricted_keys: list):
 
 def enc_dict(d: dict, hashed_data: dict):
     for k, v in d.items():
-        if type(v) is dict:
+        if isinstance(v, dict):
             d[k] = enc_dict(v, hashed_data)
-        elif type(d[k]) == list:
+        elif isinstance(d[k], list):
             for item in d[k]:
-                if type(item) == dict:
+                if isinstance(item, dict):
                     item = enc_dict(item, hashed_data)
 
         # if k == "msisdn":
@@ -142,18 +143,17 @@ def prepare_output(
                 
 
 async def extract(
-    config_obj, 
-    spaces_path, 
-    output_path, 
+        space : str, 
+        subpath : str, # = config_obj.get("subpath")
+        resource_type : str, #  = config_obj.get("resource_type")
+        schema_shortname : str, #  = config_obj.get("schema_shortname")
+        included_meta_fields : dict, #  = config_obj.get("included_meta_fields", [])
+        excluded_payload_fields : dict, # = config_obj.get("excluded_payload_fields", [])
+        spaces_path: str, 
+        output_path : str, 
     entries_since = None
-):
+) -> None:
     hashed_data: dict[str, str] = {}
-    space = config_obj.get("space")
-    subpath = config_obj.get("subpath")
-    resource_type = config_obj.get("resource_type")
-    schema_shortname = config_obj.get("schema_shortname")
-    included_meta_fields = config_obj.get("included_meta_fields", [])
-    excluded_payload_fields = config_obj.get("excluded_payload_fields", [])
 
     space_path = Path(f"{spaces_path}/{space}")
     subpath_schema_obj = None
@@ -166,21 +166,36 @@ async def extract(
         os.makedirs(output_subpath)
 
     # Generat output schema
-    schema_fil = output_subpath / f"schema.json"
+    schema_fil = output_subpath / "schema.json"
     for field in included_meta_fields:
-        subpath_schema_obj["properties"][field["field_name"]] = field["schema_entry"]
-        if field.get("rename_to"):
-            subpath_schema_obj["properties"][field["rename_to"]] = subpath_schema_obj[
-                "properties"
-            ].pop(field["field_name"])
-    subpath_schema_obj["properties"] = remove_fields(
-        subpath_schema_obj["properties"], 
-        [field["field_name"] for field in excluded_payload_fields]
-    )
+        if "oneOf" in subpath_schema_obj:
+            for schema in subpath_schema_obj["oneOf"]:
+                schema["properties"][field["field_name"]] = field["schema_entry"]
+                if field.get("rename_to"):
+                    schema["properties"][field["rename_to"]] = schema[
+                        "properties"
+                    ].pop(field["field_name"])
+        else:
+            subpath_schema_obj["properties"][field["field_name"]] = field["schema_entry"]
+            if field.get("rename_to"):
+                subpath_schema_obj["properties"][field["rename_to"]] = subpath_schema_obj[
+                    "properties"
+                ].pop(field["field_name"])
+    if "oneOf" in subpath_schema_obj:
+        for schema in subpath_schema_obj["oneOf"]:
+            schema["properties"] = remove_fields(
+                schema["properties"], 
+                [field["field_name"] for field in excluded_payload_fields]
+            )
+    else:
+        subpath_schema_obj["properties"] = remove_fields(
+            subpath_schema_obj["properties"], 
+            [field["field_name"] for field in excluded_payload_fields]
+        )
     open(schema_fil, "w").write(json.dumps(subpath_schema_obj) + "\n")
 
     # Generat output content file
-    data_file = output_subpath / f"data.ljson"
+    data_file = output_subpath / "data.ljson"
     path = os.path.join(spaces_path, space, subpath)
     for file_name in os.listdir(path):
         if not file_name.endswith(".json"):
@@ -211,7 +226,7 @@ async def extract(
                 file_path=file_name.split(".")[0],
                 resource_type=resource_type,
             )
-        except Exception as error:
+        except Exception:
             # print(f"ERROR: {error.args = }")
             continue
 
@@ -279,7 +294,13 @@ if __name__ == "__main__":
     for config_obj in config_objs:
         if not validate_config(config_obj):
             continue
-        tasks.append(extract(config_obj, args.spaces, output_path, since))
+        tasks.append(extract(config_obj.get("space", ""), 
+                             config_obj.get("subpath", ""), 
+                             config_obj.get("resource_type", ""), 
+                             config_obj.get("schema_shortname", ""), 
+                             config_obj.get("included_meta_fields", {}), 
+                             config_obj.get("excluded_payload_fields", {}), 
+                             args.spaces, output_path, since))
 
     asyncio.run(main(tasks))
 

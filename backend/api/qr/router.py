@@ -1,27 +1,29 @@
 from time import time
 from fastapi import APIRouter, Depends, Path, Body, status
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from api.managed.router import retrieve_entry_meta
 from utils.jwt import JWTBearer
 from io import BytesIO
 import segno
 import models.api as api
 import utils.regex as regex
-import hmac, hashlib
+import hmac
+import hashlib
 from utils.settings import settings
+from models.enums import ResourceType
 
 router = APIRouter()
 
 
 @router.get("/generate/{resource_type}/{space_name}/{subpath:path}/{shortname}")
 async def generate_qr_user_profile(
-    resource_type: api.ResourceType = Path(...),
+    resource_type: ResourceType = Path(...),
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
     logged_in_user=Depends(JWTBearer()),
 ) -> StreamingResponse:
-    data = await retrieve_entry_meta(
+    data : str | dict = await retrieve_entry_meta(
         resource_type,
         space_name,
         subpath,
@@ -30,7 +32,8 @@ async def generate_qr_user_profile(
     )
 
     if (
-        data.get("owner_shortname") != logged_in_user
+        isinstance(data, dict)
+        and data.get("owner_shortname") != logged_in_user
         and f"management/{subpath}/{data['shortname']}"
         != f"{space_name}/users/{logged_in_user}"
     ):
@@ -52,7 +55,7 @@ async def generate_qr_user_profile(
 
 @router.post("/validate")
 async def validate_qr_user_profile(
-    resource_type: api.ResourceType = Body(...),
+    resource_type: ResourceType = Body(...),
     space_name: str = Body(..., pattern=regex.SPACENAME),
     subpath: str = Body(..., pattern=regex.SUBPATH),
     shortname: str = Body(..., pattern=regex.SHORTNAME),

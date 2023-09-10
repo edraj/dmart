@@ -14,7 +14,6 @@ import os
 import json
 from pathlib import Path
 from fastapi import status
-from datetime import datetime
 import aiofiles
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN
 from shutil import copy2 as copy_file
@@ -76,7 +75,7 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
                     resource_name = match.group(2).lower()
                     if (
                         query.filter_types
-                        and not ResourceType(resource_name) in query.filter_types
+                        and ResourceType(resource_name) not in query.filter_types
                     ):
                         continue
 
@@ -178,7 +177,7 @@ def metapath(
         filename = f"{shortname}.json"
     elif issubclass(class_type, core.Branch):
         path = settings.spaces_folder / space_name / shortname / ".dm"
-        filename = f"meta.branch.json"
+        filename = "meta.branch.json"
     else:
         path = path / subpath / ".dm" / shortname
         filename = f"meta.{snake_case(class_type.__name__)}.json"
@@ -219,6 +218,7 @@ async def load(
     schema_shortname: str | None = None,
 ) -> MetaChild:
     """Load a Meta Json according to the reuqested Class type"""
+    user_shortname = user_shortname
     path, filename = metapath(
         space_name, subpath, shortname, class_type, branch_name, schema_shortname
     )
@@ -249,7 +249,7 @@ def load_resource_payload(
     class_type: Type[MetaChild],
     branch_name: str | None = settings.default_branch,
     schema_shortname: str | None = None,
-) -> dict:
+) :
     """Load a Meta class payload file"""
 
     path = payload_path(space_name, subpath, class_type, branch_name, schema_shortname)
@@ -459,7 +459,7 @@ async def store_entry_diff(
             )
 
             if old != new:
-                if type(old) == list and type(new) == list:
+                if isinstance(old, list) and isinstance(new, list):
                     old, new = arr_remove_common(old, new)
                 history_diff[key] = {
                     "old": old,
@@ -478,15 +478,15 @@ async def store_entry_diff(
     history_path = settings.spaces_folder / space_name / branch_path(branch_name)
 
     if subpath == "/" and resource_type == core.Space:
-        history_path = f"{history_path}/.dm"
+        history_path = Path(f"{history_path}/.dm")
     else:
         if issubclass(resource_type, core.Attachment):
-            history_path = f"{history_path}/.dm/{subpath}"
+            history_path = Path(f"{history_path}/.dm/{subpath}")
         else:
             if subpath == "/":
-                history_path = f"{history_path}/.dm/{shortname}"
+                history_path = Path(f"{history_path}/.dm/{shortname}")
             else:
-                history_path = f"{history_path}/{subpath}/.dm/{shortname}"
+                history_path = Path(f"{history_path}/{subpath}/.dm/{shortname}")
 
     if not os.path.exists(history_path):
         os.makedirs(history_path)

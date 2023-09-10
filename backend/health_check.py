@@ -25,7 +25,7 @@ from models.enums import ContentType, RequestType, ResourceType
 from utils.settings import settings
 from utils.spaces import get_spaces
 
-duplicated_entries = {}
+duplicated_entries : dict= {}
 key_entries: dict = {}
 MAX_INVALID_SIZE = 100
 
@@ -49,10 +49,10 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
         for space in params:
             print(f'>>>> Processing {space:<10} <<<<')
             before_time = time.time()
-            health_check = {'invalid_folders': [], 'folders_report': {}}
+            health_check : dict[str, list|dict] | None = {'invalid_folders': [], 'folders_report': {}}
             for schema in params.get(space, []):
                 health_check_res = await soft_health_check(space, schema, branch_name)
-                if health_check_res:
+                if health_check_res and health_check and isinstance(health_check['folders_report'], dict):
                     health_check['folders_report'].update(health_check_res.get('folders_report', {}))
             print_health_check(health_check)
             await save_health_check_entry(health_check, space)
@@ -60,7 +60,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
 
     elif not health_type or health_type == 'hard':
         print("Running hard healthcheck")
-        spaces = [space_param]
+        spaces  : dict = {space_param : {}}
         if is_full:
             spaces = await get_spaces()
         for space in spaces:
@@ -77,7 +77,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
     await save_duplicated_entries(branch_name)
 
 
-def print_header():
+def print_header() -> None:
     print("{:<32} {:<6} {:<6}".format(
         'subpath',
         'valid',
@@ -157,12 +157,12 @@ async def soft_health_check(
     
     limit = 1000
     offset = 0
-    folders_report = {}
+    folders_report : dict = {}
     async with RedisServices() as redis:
         try:
             ft_index = redis.client.ft(f"{space_name}:{branch_name}:{schema_name}")
             await ft_index.info()
-        except Exception as _:
+        except Exception:
             if 'meta_schema' not in schema_name:
                 print(f"can't find index: `{space_name}:{branch_name}:{schema_name}`")
             return None
@@ -235,8 +235,9 @@ async def soft_health_check(
                     meta = resource_class.parse_obj(meta_doc_content)
                 except Exception as ex:
                     status['is_valid'] = False
-                    status['invalid']['exception'] = str(ex)
-                    status['invalid']['issues'].append('meta')
+                    if not isinstance(status, dict) and isinstance(status["invalid"], dict):
+                        status['invalid']['exception'] = str(ex)
+                        status['invalid']['issues'].append('meta')
                 if meta:
                     try:
                         if meta.payload and meta.payload.schema_shortname and payload_doc_content is not None:
@@ -252,8 +253,9 @@ async def soft_health_check(
                         status['is_valid'] = True
                     except Exception as ex:
                         status['is_valid'] = False
-                        status['invalid']['exception'] = str(ex)
-                        status['invalid']['issues'].append('payload')
+                        if not isinstance(status, dict) and isinstance(status["invalid"], dict):
+                            status['invalid']['exception'] = str(ex)
+                            status['invalid']['issues'].append('payload')
 
                 if not status['is_valid']:
                     if not folders_report.get(subpath, {}).get('invalid_entries'):
@@ -271,7 +273,7 @@ async def soft_health_check(
     return {"invalid_folders": [], "folders_report": folders_report}
 
 
-async def collect_duplicated_with_key(key, value):
+async def collect_duplicated_with_key(key, value) -> None:
     spaces = await get_spaces()
     async with RedisServices() as redis:
         for space_name, space_data in spaces.items():
@@ -280,7 +282,7 @@ async def collect_duplicated_with_key(key, value):
                 try:
                     ft_index = redis.client.ft(f"{space_name}:{branch}:meta")
                     await ft_index.info()
-                except:
+                except Exception:
                     continue
                 search_query = Query(query_string=f"@{key}:{value}*")
                 search_query.paging(0, 1000)
@@ -289,24 +291,25 @@ async def collect_duplicated_with_key(key, value):
                     res_data: Result = x
                     for redis_doc_dict in res_data.docs:
                         redis_doc_dict = json.loads(redis_doc_dict.json)
-                        if redis_doc_dict['subpath'] == '/':
-                            redis_doc_dict['subpath'] = ''
-                        loc = space_name + "/" + redis_doc_dict['subpath']
-                        if key not in key_entries:
-                            key_entries[key] = {}
-                        if not key_entries[key].get(value):
-                            key_entries[key][value] = loc
-                        else:
-                            if not duplicated_entries.get(key):
-                                duplicated_entries[key] = {}
-                            if not duplicated_entries[key].get(value) or \
-                                    key_entries[key][value] not in duplicated_entries[key][value]['loc']:
-                                duplicated_entries[key][value] = {}
-                                duplicated_entries[key][value]['loc'] = [key_entries[key][value]]
-                                duplicated_entries[key][value]['total'] = 1
-                            if loc not in duplicated_entries[key][value]['loc']:
-                                duplicated_entries[key][value]['total'] += 1
-                                duplicated_entries[key][value]['loc'].append(loc)
+                        if isinstance(redis_doc_dict, dict):
+                            if redis_doc_dict['subpath'] == '/':
+                                redis_doc_dict['subpath'] = ''
+                            loc = space_name + "/" + redis_doc_dict['subpath']
+                            if key not in key_entries:
+                                key_entries[key] = {}
+                            if not key_entries[key].get(value):
+                                key_entries[key][value] = loc
+                            else:
+                                if not duplicated_entries.get(key):
+                                    duplicated_entries[key] = {}
+                                if not duplicated_entries[key].get(value) or \
+                                        key_entries[key][value] not in duplicated_entries[key][value]['loc']:
+                                    duplicated_entries[key][value] = {}
+                                    duplicated_entries[key][value]['loc'] = [key_entries[key][value]]
+                                    duplicated_entries[key][value]['total'] = 1
+                                if loc not in duplicated_entries[key][value]['loc']:
+                                    duplicated_entries[key][value]['total'] += 1
+                                    duplicated_entries[key][value]['loc'].append(loc)
 
 
 async def hard_health_check(space_name: str, branch_name: str):
@@ -320,7 +323,7 @@ async def hard_health_check(space_name: str, branch_name: str):
     #     print("EARLY EXIT")
     #     return None
 
-    invalid_folders = []
+    invalid_folders : list = []
     folders_report: dict[str, dict] = {}
     meta_folders_health: list = []
 
@@ -391,7 +394,7 @@ async def save_duplicated_entries(
     
     slug_scanned_entries = set()
     slug_duplicated_entries: dict = {}
-    spaces = await get_spaces()
+    spaces : dict = await get_spaces()
     async with RedisServices() as redis:
         for space_name, space_data in spaces.items():
             space_data = json.loads(space_data)
@@ -399,7 +402,7 @@ async def save_duplicated_entries(
                 try:
                     ft_index = redis.client.ft(f"{space_name}:{branch}:meta")
                     index_info = await ft_index.info()
-                except:
+                except Exception:
                     continue
                 for i in range(0, int(index_info["num_docs"]), 10000):
                     search_query = Query(query_string="*")
@@ -409,33 +412,36 @@ async def save_duplicated_entries(
                         res_data: Result = x
                         for redis_doc_dict in res_data.docs:
                             redis_doc_dict = json.loads(redis_doc_dict.json)
-                            if "uuid" in redis_doc_dict:
-                                # Handle UUID
-                                if "uuid" in redis_doc_dict and redis_doc_dict["uuid"] in uuid_scanned_entries:
-                                    short_uuid = redis_doc_dict["uuid"][:8]
-                                    uuid_duplicated_entries.setdefault(
-                                        short_uuid, {"loc": [], "total": 0}
+                            if isinstance(redis_doc_dict, dict):
+                                if "uuid" in redis_doc_dict:
+                                    # Handle UUID
+                                    if "uuid" in redis_doc_dict and redis_doc_dict["uuid"] in uuid_scanned_entries:
+                                        short_uuid = redis_doc_dict["uuid"][:8]
+                                        uuid_duplicated_entries.setdefault(
+                                            short_uuid, {"loc": [], "total": 0}
+                                        )
+                                        uuid_duplicated_entries[short_uuid]["loc"].append(
+                                            space_name + "/" + redis_doc_dict['subpath'] + "/" + redis_doc_dict['shortname']
+                                        )
+                                        uuid_duplicated_entries[short_uuid]["total"]+=1
+                                    else:
+                                        uuid_scanned_entries.add(redis_doc_dict["uuid"])
+                                else:
+                                    print ("UUID is missing", redis_doc_dict)
+                            
+                                # Handle Slug
+                                if "slug" in redis_doc_dict and redis_doc_dict["slug"] in slug_scanned_entries:
+                                    slug_duplicated_entries.setdefault(
+                                        "slug", {"loc": [], "total": 0}
                                     )
-                                    uuid_duplicated_entries[short_uuid]["loc"].append(
+                                    slug_duplicated_entries["slug"]["loc"].append(
                                         space_name + "/" + redis_doc_dict['subpath'] + "/" + redis_doc_dict['shortname']
                                     )
-                                    uuid_duplicated_entries[short_uuid]["total"]+=1
-                                else:
-                                    uuid_scanned_entries.add(redis_doc_dict["uuid"])
+                                    slug_duplicated_entries["slug"]["total"]+=1
+                                elif "slug" in redis_doc_dict:
+                                    slug_scanned_entries.add(redis_doc_dict["slug"])
                             else:
-                                print ("UUID is missing", redis_doc_dict)
-                        
-                            # Handle Slug
-                            if "slug" in redis_doc_dict and redis_doc_dict["slug"] in slug_scanned_entries:
-                                slug_duplicated_entries.setdefault(
-                                    "slug", {"loc": [], "total": 0}
-                                )
-                                slug_duplicated_entries["slug"]["loc"].append(
-                                    space_name + "/" + redis_doc_dict['subpath'] + "/" + redis_doc_dict['shortname']
-                                )
-                                slug_duplicated_entries["slug"]["total"]+=1
-                            elif "slug" in redis_doc_dict:
-                                slug_scanned_entries.add(redis_doc_dict["slug"])
+                                print("Loaded document is not a proper dictionary")
                         
                         
 
@@ -479,7 +485,7 @@ async def save_duplicated_entries(
 
 
 
-async def cleanup_spaces():
+async def cleanup_spaces() -> None:
     spaces = await get_spaces()
     # create health check path meta
     folder_path = Path(settings.spaces_folder / "management/health_check/.dm")
@@ -490,7 +496,7 @@ async def cleanup_spaces():
     if not os.path.isfile(file_path):
         meta_obj = Folder(shortname="health_check", is_active=True, owner_shortname='dmart')
         with open(file_path, "w") as f:
-            f.write(meta_obj.json(exclude_none=True))
+            f.write(meta_obj.model_dump_json(exclude_none=True))
     # create health check schema
     if (
             not os.path.isfile(Path(settings.spaces_folder / "management/schema/health_check.json")) or
@@ -502,7 +508,7 @@ async def cleanup_spaces():
             owner_shortname="dmart",
             payload=core.Payload(
                 content_type=ContentType.json,
-                body=f"health_check.json",
+                body="health_check.json",
             ),
         )
         schema = {

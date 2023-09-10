@@ -33,13 +33,21 @@ import models.api as api
 from utils.settings import settings
 from asgi_correlation_id import CorrelationIdMiddleware
 
+from api.managed.router import router as managed
+from api.qr.router import router as qr
+from api.public.router import router as public
+from api.user.router import router as user
+from api.info.router import router as info
+
 app = FastAPI(
     title="Datamart API",
     description="Structured Content Management System",
     version="1.0.0",
     redoc_url=None,
-    docs_url="/docs",
+    # TBD FIXME check why the following fastapi settings break swagger
+    # docs_url="/docs",
     # openapi_url=f"{settings.base_path}/openapi.json",
+    # servers=[{"url": f"{settings.base_path}/"}],
     contact={
         "name": "Kefah T. Issa",
         "url": "https://dmart.cc",
@@ -49,7 +57,6 @@ app = FastAPI(
         "name": "GNU Affero General Public License v3+",
         "url": "https://www.gnu.org/licenses/agpl-3.0.en.html",
     },
-    servers=[{"url": f"{settings.base_path}/"}],
     swagger_ui_parameters={"defaultModelsExpandDepth": -1},
     openapi_tags=[
         {"name": "user", "description": "User registration, login, profile and delete"},
@@ -113,7 +120,7 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
 
 
 @app.on_event("startup")
-async def app_startup():
+async def app_startup() -> None:
     logger.info("Starting")
     print("Starting")
     # , extra={"props":{
@@ -135,7 +142,7 @@ async def app_startup():
 
 
 @app.on_event("shutdown")
-async def app_shutdown():
+async def app_shutdown() -> None:
     logger.info("Application shutdown")
 
 
@@ -159,7 +166,7 @@ async def middle(request: Request, call_next):
         if raw_data:
             try:
                 response_body = json.loads(raw_data)
-            except:
+            except Exception:
                 response_body = {}
     except api.Exception as e:
         response = JSONResponse(
@@ -228,21 +235,21 @@ async def middle(request: Request, call_next):
             },
         )
         response_body = json.loads(response.body.decode())
-    except Exception as e:
+    except Exception:
         exception_message = ""
         stack = None
-        if e := sys.exc_info()[1]:
+        if ee := sys.exc_info()[1]:
             stack = [
                 {
                     "file": frame.f_code.co_filename,
                     "function": frame.f_code.co_name,
                     "line": lineno,
                 }
-                for frame, lineno in traceback.walk_tb(e.__traceback__)
+                for frame, lineno in traceback.walk_tb(ee.__traceback__)
                 if "site-packages" not in frame.f_code.co_filename
             ]
-            exception_message = str(e)
-            exception_data = {"props": {"exception": str(e), "stack": stack}}
+            exception_message = str(ee)
+            exception_data = {"props": {"exception": str(ee), "stack": stack}}
 
         error_log = {"code": 99, "message": exception_message}
         if settings.debug_enabled:
@@ -284,8 +291,8 @@ async def middle(request: Request, call_next):
 
     user_shortname = "guest"
     try:
-        user_shortname = await JWTBearer().__call__(request)
-    except:
+        user_shortname = str(await JWTBearer().__call__(request))
+    except Exception:
         pass
 
     extra = {
@@ -311,9 +318,9 @@ async def middle(request: Request, call_next):
 
     if exception_data is not None:
         extra["props"]["exception"] = exception_data
-    if hasattr(request.state, "request_body"):
+    if hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict) and isinstance(extra["props"]["request"], dict):
         extra["props"]["request"]["body"] = request.state.request_body
-    if response_body:
+    if response_body and isinstance(extra, dict) and isinstance(extra["props"], dict) and isinstance(extra["props"]["response"], dict):
         extra["props"]["response"]["body"] = response_body
 
     if response.status_code >= 400 and response.status_code < 500:
@@ -364,12 +371,6 @@ async def space_backup(key: str):
     return api.Response(status=api.Status.success, attributes=attributes)
 
 
-from api.managed.router import router as managed
-from api.qr.router import router as qr
-from api.public.router import router as public
-from api.user.router import router as user
-from api.info.router import router as info
-
 app.include_router(
     user, prefix="/user", tags=["user"], dependencies=[Depends(capture_body)]
 )
@@ -404,7 +405,7 @@ async def myoptions():
 @app.put("/{x:path}", include_in_schema=False)
 @app.patch("/{x:path}", include_in_schema=False)
 @app.delete("/{x:path}", include_in_schema=False)
-async def catchall():
+async def catchall() -> None:
     raise api.Exception(
         status_code=status.HTTP_404_NOT_FOUND,
         error=api.Error(

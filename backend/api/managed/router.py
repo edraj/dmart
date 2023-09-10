@@ -55,6 +55,7 @@ from api.user.service import (
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
 from languages.loader import languages
+from typing import Callable
 
 
 router = APIRouter()
@@ -206,7 +207,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                 -    
                 -  rows += list_new_rows
                 """
-                if type(attribute_val) == list and len(attribute_val) > 0:
+                if isinstance(attribute_val, list) and len(attribute_val) > 0:
                     list_new_rows: list[dict] = []
                     # Duplicate old rows
                     for row in rows:
@@ -214,7 +215,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                         for item in attribute_val[1:]:
                             new_row = copy(row)
                             # New cell for each item's attribute
-                            if type(item) == dict:
+                            if isinstance(item, dict):
                                 for k, v in item.items():
                                     new_row[f"{column_title}.{k}"] = v
                                     new_keys.add(f"{column_title}.{k}")
@@ -223,7 +224,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                                 
                             list_new_rows.append(new_row)
                         # Add first items's attribute to the existing rows
-                        if type(attribute_val[0]) == dict:
+                        if isinstance(attribute_val[0], dict):
                             deprecated_keys.add(column_title)
                             for k, v in attribute_val[0].items():
                                 row[f"{column_title}.{k}"] = v
@@ -345,7 +346,7 @@ async def serve_space(
                     or request.space_name != record.shortname
                 ):
                     raise Exception
-            except:
+            except Exception:
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
@@ -548,7 +549,7 @@ async def serve_request(
                     schema_shortname: str | None = None
                     if (
                         "payload" in record.attributes
-                        and type(record.attributes.get("payload", None)) == "dict"
+                        and isinstance(record.attributes.get("payload", None), dict)
                         and "schema_shortname" in record.attributes["payload"]
                     ):
                         schema_shortname = record.attributes["payload"][
@@ -708,7 +709,7 @@ async def serve_request(
                                 )
                         
 
-                    if separate_payload_data != None and isinstance(
+                    if separate_payload_data is not None and isinstance(
                         separate_payload_data, dict
                     ):
                         await db.save_payload_from_json(
@@ -857,7 +858,7 @@ async def serve_request(
                     resource_obj.payload
                     and resource_obj.payload.content_type == ContentType.json
                     and resource_obj.payload.schema_shortname
-                    and new_resource_payload_data != None
+                    and new_resource_payload_data is not None
                 ):
                     await validate_payload_with_schema(
                         payload_data=new_resource_payload_data,
@@ -885,7 +886,7 @@ async def serve_request(
                     user_shortname=owner_shortname,
                     schema_shortname=schema_shortname,
                 )
-                if new_resource_payload_data != None:
+                if new_resource_payload_data is not None:
                     await db.save_payload_from_json(
                         request.space_name,
                         record.subpath,
@@ -1336,7 +1337,7 @@ async def update_state(
     response_model_exclude_none=True,
 )
 async def retrieve_entry_or_attachment_payload(
-    resource_type: api.ResourceType,
+    resource_type: ResourceType,
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
@@ -1519,7 +1520,7 @@ async def create_or_update_resource_with_payload(
         content_type=resource_content_type,
         checksum=checksum,
         schema_shortname="meta_schema"
-        if record.resource_type == api.ResourceType.schema
+        if record.resource_type == ResourceType.schema
         else (
             None
             if "schema_shortname" not in record.attributes
@@ -1593,7 +1594,7 @@ async def create_or_update_resource_with_payload(
 )
 async def import_resources_from_csv(
     resources_file: UploadFile,
-    resource_type: api.ResourceType,
+    resource_type: ResourceType,
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     schema_shortname: str = Path(..., pattern=regex.SHORTNAME),
@@ -1613,7 +1614,7 @@ async def import_resources_from_csv(
         schema_content = json.load(schema_file)
     schema_content = resolve_schema_references(schema_content)
 
-    data_types_mapper = {
+    data_types_mapper : dict[str, Callable] = {
         "integer": int,
         "number": float,
         "string": str,
@@ -1721,7 +1722,7 @@ async def import_resources_from_csv(
                     is_internal=True,
                 )
                 success_count += 1
-            except:
+            except Exception:
                 failed_shortnames.append(shortname)
 
     return api.Response(
@@ -1738,7 +1739,7 @@ async def import_resources_from_csv(
     response_model_exclude_none=True,
 )
 async def retrieve_entry_meta(
-    resource_type: core.ResourceType,
+    resource_type: ResourceType,
     space_name: str = Path(..., pattern=regex.SPACENAME),
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
@@ -1817,7 +1818,7 @@ async def retrieve_entry_meta(
         not retrieve_json_payload
         or not meta.payload
         or not meta.payload.body
-        or type(meta.payload.body) != str
+        or not isinstance(meta.payload.body, str)
         or meta.payload.content_type != ContentType.json
     ):
         # TODO
@@ -2158,6 +2159,7 @@ async def execute(
     branch_name: str | None = settings.default_branch,
     logged_in_user=Depends(JWTBearer()),
 ):
+    task_type = task_type
     meta = await db.load(
         space_name=space_name,
         subpath=record.subpath,
@@ -2169,7 +2171,7 @@ async def execute(
 
     if (
         meta.payload is None
-        or type(meta.payload.body) != str
+        or not isinstance(meta.payload.body, str)
         or not str(meta.payload.body).endswith(".json")
     ):
         raise api.Exception(

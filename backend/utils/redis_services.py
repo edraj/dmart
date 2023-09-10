@@ -34,6 +34,13 @@ class RedisServices(object):
         max_connections=200,
     )
 
+    CUSTOM_CLASSES : list[type[core.Meta]] = [
+            core.Role,
+            core.Group,
+            core.User,
+            core.Permission
+            ]
+
     CUSTOM_INDICES = [
         {
             "space": "management",
@@ -143,6 +150,9 @@ class RedisServices(object):
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        exc_type = exc_type
+        exc = exc
+        tb = tb
         await self.client.close()
 
     async def create_index(
@@ -186,11 +196,11 @@ class RedisServices(object):
             "number": NumericField,
             "array": TagField,
         }
-        if type(property) != dict:
+        if not isinstance(property, dict):
             return redis_schema_definition
 
         if "type" in property and property["type"] != "object":
-            if property["type"] in ["null", "boolean"] or type(property["type"]) != str:
+            if property["type"] in ["null", "boolean"] or not isinstance(property["type"], str):
                 return redis_schema_definition
 
             property_name = key_chain.replace(".", "_")
@@ -242,7 +252,7 @@ class RedisServices(object):
         return redis_schema_definition
 
     def generate_redis_index_from_class(
-        self, class_ref: core.Resource, exclude_from_index: list
+        self, class_ref: type[core.Meta], exclude_from_index: list
     ) -> tuple:
         class_types_to_redis_fields_mapper = {
             str: TextField,
@@ -299,15 +309,17 @@ class RedisServices(object):
 
     async def create_custom_indices(self, for_space: str | None = None):
         redis_schemas: dict[str, list] = {}
-        for index in self.CUSTOM_INDICES:
-            if for_space and index["space"] != for_space:
+        for i, index in enumerate(self.CUSTOM_INDICES):
+            if for_space and index["space"] != for_space or not isinstance(index["exclude_from_index"], list):
                 continue
+
+            exclude_from_index : list = index["exclude_from_index"]
 
             redis_schemas.setdefault(f"{index['space']}:{index['branch']}", [])
             self.redis_indices.setdefault(f"{index['space']}:meta", {})
 
             generated_schema_fields = self.generate_redis_index_from_class(
-                index["class"], index["exclude_from_index"]
+                self.CUSTOM_CLASSES[i], exclude_from_index
             )
 
             redis_schemas[
@@ -749,7 +761,7 @@ class RedisServices(object):
             camel_case(resource_type),
         )
         payload_redis_doc = await self.get_doc_by_id(doc_id)
-        payload_doc_content = {}
+        payload_doc_content : dict = {}
         if not payload_redis_doc:
             return payload_doc_content
 
@@ -914,7 +926,7 @@ class RedisServices(object):
                 return {"data": search_res.docs, "total": search_res.total}
             else: 
                 return {}
-        except:
+        except Exception:
             return {}
 
     async def aggregate(
@@ -936,7 +948,7 @@ class RedisServices(object):
         try:
             ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
             await ft_index.info()
-        except:
+        except Exception:
             return []
 
         aggr_request = aggregation.AggregateRequest(
@@ -962,9 +974,11 @@ class RedisServices(object):
 
         try:
             aggr_res = await ft_index.aggregate(aggr_request) # type: ignore
-            return aggr_res.rows
-        except:
-            return []
+            if isinstance(aggr_res.rows, list):
+                return aggr_res.rows
+        except Exception:
+            pass
+        return []
 
     def prepare_query_string(
         self, search: str, filters: dict[str, str | list], exact_subpath: bool
@@ -1006,23 +1020,23 @@ class RedisServices(object):
         try:
             x = self.client.json().get(name=doc_id) or {}
             if x and isinstance(x, Awaitable):
-                return await x
-            else : 
-                return {}
+                value = await x
+                if isinstance(value, dict):
+                    return value
         except Exception as e:
             logger.warning(f"Error at redis_services.get_doc_by_id: {e}")
-            return {}
+        return {} 
 
     async def get_docs_by_ids(self, docs_ids: list[str]) -> list:
         try:
             x = self.client.json().mget(docs_ids, "$")
             if x and isinstance(x, Awaitable):
-                return await x
-            else: 
-                return []
+                value = await x
+                if isinstance(value, list):
+                    return value
         except Exception as e:
             logger.warning(f"Error at redis_services.get_docs_by_ids: {e}")
-            return []
+        return []
 
     async def get_content_by_id(self, doc_id: str) -> Any:
         try:
@@ -1085,10 +1099,12 @@ class RedisServices(object):
 
     async def get_keys(self, pattern: str = "*") -> list:
         try:
-            return await self.client.keys(pattern)
+            value = await self.client.keys(pattern)
+            if isinstance(value, list):
+                return value
         except Exception as e:
             logger.warning(f"Error at redis_services.get_keys: {e}")
-            return []
+        return []
 
     async def del_keys(self, keys: list):
         try:
@@ -1098,10 +1114,18 @@ class RedisServices(object):
             return False
 
     async def get(self, key) -> str | None:
-        return await self.client.get(key)
+        value = await self.client.get(key)
+        if isinstance(value, str):
+            return value
+        else:
+            return None
 
     async def getdel(self, key) -> str | None:
-        return await self.client.getdel(key)
+        value = await self.client.getdel(key)
+        if isinstance(value, str):
+            return value
+        else:
+            return None
 
     async def set(self, key, value, ex=None, nx: bool = False):
         return await self.client.set(key, value, ex=ex, nx=nx)
@@ -1114,7 +1138,7 @@ class RedisServices(object):
             ft_index = self.client.ft(name)
             await ft_index.dropindex(delete_docs)
             return True
-        except:
+        except Exception:
             return False
 
     async def list_indices(self):
