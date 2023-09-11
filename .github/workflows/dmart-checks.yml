@@ -18,17 +18,28 @@ jobs:
     - uses: actions/checkout@v3
     - name: Install python dependencies
       run: |
-        pip install --user pyright
-        pip install --user -r backend/requirements.txt
-        pip install --user -r backend/test-requirements.txt
+        source $HOME/venv/bin/activate
+        cd backend; 
+        pip install -r requirements.txt
+        pip install -r test-requirements.txt
+        pip install -r plugins-requirements.txt
         mkdir logs/
         cp ~/login_creds.sh backend/
         cp ~/config.env backend/
     - name: Lint with pyright
       run: |
         PYRIGHT_PYTHON_FORCE_VERSION=latest pyright backend/
+    - name: Lint with Ruff
+      run: |
+        source $HOME/venv/bin/activate
+        cd backend; ruff check .
+    - name: Check with mypy
+      run: |
+        source $HOME/venv/bin/activate
+        cd backend; mypy --explicit-package-bases --warn-return-any .
     - name: Test with pytest
       run: |
+        source $HOME/venv/bin/activate
         cd backend; pytest
     - name: Start dmart service and run curl.sh
       run: |
