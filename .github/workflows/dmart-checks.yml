@@ -29,6 +29,7 @@ jobs:
     - name: Lint with pyright
       run: |
         cd backend
+        source $HOME/venv/bin/activate
         PYRIGHT_PYTHON_FORCE_VERSION=latest pyright ./
     - name: Lint with Ruff
       run: |
