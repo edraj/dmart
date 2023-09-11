@@ -259,6 +259,9 @@ cd backend
 ruff check .
 mypy --explicit-package-bases --warn-return-any .
 
+# Freeze pip modules versions
+pip freeze > pip.freeze
+
 ```
 
 ## Coming soon ...
