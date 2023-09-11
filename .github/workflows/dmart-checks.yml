@@ -24,11 +24,12 @@ jobs:
         pip install -r test-requirements.txt
         pip install -r plugins-requirements.txt
         mkdir logs/
-        cp ~/login_creds.sh backend/
-        cp ~/config.env backend/
+        cp ~/login_creds.sh ./
+        cp ~/config.env ./
     - name: Lint with pyright
       run: |
-        PYRIGHT_PYTHON_FORCE_VERSION=latest pyright backend/
+        cd backend
+        PYRIGHT_PYTHON_FORCE_VERSION=latest pyright ./
     - name: Lint with Ruff
       run: |
         source $HOME/venv/bin/activate
