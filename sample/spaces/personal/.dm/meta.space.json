@@ -15,6 +15,7 @@
   "check_health": true,
   "branches": [],
   "hide_space": false,
+  "ordinal": 3,
   "active_plugins": [
     "action_log",
     "redis_db_update"
