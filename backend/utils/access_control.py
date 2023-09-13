@@ -448,7 +448,7 @@ class AccessControl:
             )
         if not user_search["data"]:
             return None
-        data = json.loads(user_search["data"][0].json)
+        data = json.loads(user_search["data"][0])
         if "shortname" in data and data["shortname"] and isinstance (data["shortname"], str): 
             return data["shortname"]
         else:
@@ -474,7 +474,7 @@ class AccessControl:
 
             roles = []
             for group in groups_search["data"]:
-                group_json = json.loads(group.json)
+                group_json = json.loads(group)
                 for role_shortname in group_json["roles"]:
                     role = await redis_services.get_doc_by_id(
                         redis_services.generate_doc_id(
