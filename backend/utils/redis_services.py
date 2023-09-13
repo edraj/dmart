@@ -9,7 +9,6 @@ from models.api import RedisReducer, SortType
 import models.core as core
 from models.enums import RedisReducerName, ResourceType, LockAction
 from redis.commands.json.path import Path
-from redis.commands.search.result import Result
 from redis.commands.search.field import TextField, NumericField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from datetime import datetime
@@ -31,7 +30,8 @@ class RedisServices(object):
         port=settings.redis_port,
         password=settings.redis_password,
         decode_responses=True,
-        max_connections=200,
+        protocol=3,
+        max_connections=20,
     )
 
     CUSTOM_CLASSES : list[type[core.Meta]] = [
@@ -922,8 +922,9 @@ class RedisServices(object):
         try:
             # print(f"ARGS {search_query.get_args()} O {search_query.query_string()}")
             search_res = await ft_index.search(query=search_query) 
-            if isinstance(search_res, Result):
-                return {"data": search_res.docs, "total": search_res.total}
+            if isinstance(search_res, dict) and "results" in search_res and "total_results" in search_res:
+
+                return {"data": [one["extra_attributes"]["$"] for one in search_res["results"] if "extra_attributes" in one], "total": search_res["total_results"] }
             else: 
                 return {}
         except Exception:
@@ -1023,8 +1024,12 @@ class RedisServices(object):
                 value = await x
                 if isinstance(value, dict):
                     return value
+                # else:
+                #    raise Exception(f"Not dict {value=}")
+            else:
+                raise Exception(f"Not awaitable {x=}")
         except Exception as e:
-            logger.warning(f"Error at redis_services.get_doc_by_id: {e}")
+            logger.warning(f"Error at redis_services.get_doc_by_id: {doc_id=} {e}")
         return {} 
 
     async def get_docs_by_ids(self, docs_ids: list[str]) -> list:

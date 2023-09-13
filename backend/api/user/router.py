@@ -433,7 +433,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     attributes["is_msisdn_verified"] = user.is_msisdn_verified
     attributes["force_password_change"] = user.force_password_change
 
-    attributes["permissions"] = await access_control.get_user_premissions(shortname)
+    attributes["permissions"] = await access_control.get_user_permissions(shortname)
     attributes["roles"] = user.roles
     attributes["groups"] = user.groups
 
