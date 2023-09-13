@@ -171,13 +171,13 @@ async def soft_health_check(
             search_query.paging(offset, limit)
             offset += limit
             x = await ft_index.search(query=search_query)
-            if x and isinstance(x, Result):
-                res_data: Result = x
-                if not res_data.docs:
+            if x and isinstance(x, dict) and "results" in x:
+                res_data : list = [one["extra_attributes"]["$"] for one in x["results"] if "extra_attributes" in one]
+                if not res_data:
                     break
             else: 
                 break
-            for redis_doc_dict in res_data.docs:
+            for redis_doc_dict in res_data:
                 redis_doc_dict = json.loads(redis_doc_dict.json)
                 subpath = redis_doc_dict['subpath']
                 meta_doc_content = {}
@@ -408,10 +408,10 @@ async def save_duplicated_entries(
                     search_query = Query(query_string="*")
                     search_query.paging(i, 10000)
                     x = await ft_index.search(query=search_query)
-                    if x and isinstance(x, Result):
-                        res_data: Result = x
-                        for redis_doc_dict in res_data.docs:
-                            redis_doc_dict = json.loads(redis_doc_dict.json)
+                    if x and isinstance(x, dict) and "results" in x:
+                        res_data : list = [ one["extra_attributes"]["$"] for one in x["results"] if 'extra_attributes' in one]
+                        for redis_doc_dict in res_data:
+                            redis_doc_dict = json.loads(redis_doc_dict)
                             if isinstance(redis_doc_dict, dict):
                                 if "uuid" in redis_doc_dict:
                                     # Handle UUID

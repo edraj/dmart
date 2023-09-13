@@ -1531,7 +1531,7 @@ async def get_entry_by_var(
                     filters={},
                 )
                 if search_res["total"] > 0:
-                    entry_doc = json.loads(search_res["data"][0].json)
+                    entry_doc = json.loads(search_res["data"][0])
                     entry_branch = branch
                     break
             if entry_doc:
