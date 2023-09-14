@@ -3,7 +3,6 @@ import re
 import json
 import sys
 from typing import Any, Awaitable
-from uuid import UUID
 from redis.asyncio import BlockingConnectionPool, Redis
 from models.api import RedisReducer, SortType
 import models.core as core
@@ -33,13 +32,137 @@ class RedisServices(object):
         decode_responses=True,
         max_connections=200,
     )
+    
+    META_SCHEMA = (
+        TextField("$.uuid", no_stem=True, as_name="uuid"),
+        TextField("$.branch_name", no_stem=True, as_name="branch_name"),
+        TextField(
+            "$.shortname", sortable=True, no_stem=True, as_name="shortname"
+        ),
+        TextField("$.slug", sortable=True, no_stem=True, as_name="slug"),
+        TextField(
+            "$.subpath", sortable=True, no_stem=True, as_name="subpath"
+        ),
+        TagField("$.subpath", as_name="exact_subpath"),
+        TextField(
+            "$.resource_type",
+            sortable=True,
+            no_stem=True,
+            as_name="resource_type",
+        ),
+        TextField(
+            "$.displayname.en", sortable=True, as_name="displayname_en"
+        ),
+        TextField(
+            "$.displayname.ar", sortable=True, as_name="displayname_ar"
+        ),
+        TextField(
+            "$.displayname.kd", sortable=True, as_name="displayname_kd"
+        ),
+        TextField(
+            "$.description.en", sortable=True, as_name="description_en"
+        ),
+        TextField(
+            "$.description.ar", sortable=True, as_name="description_ar"
+        ),
+        TextField(
+            "$.description.kd", sortable=True, as_name="description_kd"
+        ),
+        TagField("$.is_active", as_name="is_active"),
+        TextField(
+            "$.payload.content_type",
+            no_stem=True,
+            as_name="payload_content_type",
+        ),
+        TextField(
+            "$.payload.schema_shortname",
+            no_stem=True,
+            as_name="schema_shortname",
+        ),
+        NumericField("$.created_at", sortable=True, as_name="created_at"),
+        NumericField("$.updated_at", sortable=True, as_name="updated_at"),
+        TagField("$.tags.*", as_name="tags"),
+        TextField(
+            "$.owner_shortname",
+            sortable=True,
+            no_stem=True,
+            as_name="owner_shortname",
+        ),
+        TagField("$.query_policies.*", as_name="query_policies"),
+        # User fields
+        TextField("$.msisdn", sortable=True, as_name="msisdn"),
+        TextField("$.email", sortable=True, as_name="email"),
+        TagField("$.email", as_name="email_unescaped"),
+        # Ticket fields
+        TextField("$.state", sortable=True, no_stem=True, as_name="state"),
+        TagField("$.is_open", as_name="is_open"),
+        TextField(
+            "$.workflow_shortname",
+            sortable=True,
+            no_stem=True,
+            as_name="workflow_shortname",
+        ),
+        TextField(
+            "$.collaborators.delivered_by",
+            sortable=True,
+            no_stem=True,
+            as_name="collaborators_delivered_by",
+        ),
+        TextField(
+            "$.collaborators.processed_by",
+            sortable=True,
+            no_stem=True,
+            as_name="collaborators_processed_by",
+        ),
+        TextField(
+            "$.resolution_reason",
+            sortable=True,
+            no_stem=True,
+            as_name="resolution_reason",
+        ),
+        # Notification fields
+        TextField("$.type", sortable=True, no_stem=True, as_name="type"),
+        TagField("$.is_read", as_name="is_read"),
+        TextField(
+            "$.priority", sortable=True, no_stem=True, as_name="priority"
+        ),
+        TextField(
+            "$.reporter.type", sortable=True, as_name="reporter_type"
+        ),
+        TextField(
+            "$.reporter.name", sortable=True, as_name="reporter_name"
+        ),
+        TextField(
+            "$.reporter.channel", sortable=True, as_name="reporter_channel"
+        ),
+        TextField(
+            "$.reporter.distributor",
+            sortable=True,
+            as_name="reporter_distributor",
+        ),
+        TextField(
+            "$.reporter.governorate",
+            sortable=True,
+            as_name="reporter_governorate",
+        ),
+        TextField(
+            "$.reporter.msisdn",
+            sortable=True,
+            as_name="reporter_msisdn",
+        ),
+        TextField(
+            "$.payload_string",
+            sortable=False,
+            as_name="payload_string",
+        ),
+    )
 
     CUSTOM_CLASSES : list[type[core.Meta]] = [
-            core.Role,
-            core.Group,
-            core.User,
-            core.Permission
-            ]
+        core.Role,
+        core.Group,
+        core.User,
+        core.Permission
+    ]
 
     CUSTOM_INDICES = [
         {
@@ -255,43 +378,24 @@ class RedisServices(object):
         self, class_ref: type[core.Meta], exclude_from_index: list
     ) -> tuple:
         class_types_to_redis_fields_mapper = {
-            str: TextField,
-            bool: TextField,
-            UUID: TextField,
-            list: TagField,
-            datetime: NumericField,
-            set: TagField,
-            dict: TextField,
+            "str": TextField,
+            "bool": TextField,
+            "UUID": TextField,
+            "list": TagField,
+            "datetime": NumericField,
+            "set": TagField,
+            "dict": TextField,
         }
 
-        redis_schema = [
-            TextField(
-                "$.shortname", sortable=True, no_stem=True, as_name="shortname"
-            ),
-            TextField("$.subpath", no_stem=True, as_name="subpath"),
-            TagField("$.subpath", as_name="exact_subpath"),
-            TextField(
-                "$.resource_type", sortable=True, no_stem=True, as_name="resource_type"
-            ),
-            TextField(
-                "$.branch_name", sortable=True, no_stem=True, as_name="branch_name"
-            ),
-            TagField("$.email", as_name="email_unescaped"),
-            TagField("$.query_policies.*", as_name="query_policies"),
-            TextField(
-                "$.payload_string",
-                sortable=False,
-                as_name="payload_string",
-            ),
-        ]
+        redis_schema = []
         for field_name, model_field in class_ref.model_fields.items():
             if field_name in exclude_from_index:
                 continue
-
+            
             mapper_key = None
-            for field_type in type(model_field).mro():
-                if field_type in class_types_to_redis_fields_mapper.keys():
-                    mapper_key = field_type
+            for allowed_type in list(class_types_to_redis_fields_mapper.keys()):
+                if str(model_field.annotation).startswith(allowed_type):
+                    mapper_key = allowed_type
                     break
             if not mapper_key:
                 continue
@@ -316,7 +420,7 @@ class RedisServices(object):
             exclude_from_index : list = index["exclude_from_index"]
 
             redis_schemas.setdefault(f"{index['space']}:{index['branch']}", [])
-            self.redis_indices.setdefault(f"{index['space']}:meta", {})
+            self.redis_indices.setdefault(f"{index['space']}:{index['branch']}:meta", {})
 
             generated_schema_fields = self.generate_redis_index_from_class(
                 self.CUSTOM_CLASSES[i], exclude_from_index
@@ -330,6 +434,10 @@ class RedisServices(object):
             )
 
         for space_branch, redis_schema in redis_schemas.items():
+            redis_schema = self.append_unique_index_fields(
+                redis_schema,
+                list(self.META_SCHEMA),
+            )
             await self.create_index(
                 f"{space_branch}",
                 "meta",
@@ -363,132 +471,8 @@ class RedisServices(object):
                     "meta"
                 ] = self.client.ft(f"{space_name}:{branch_name}:meta")
 
-                meta_schema = (
-                    TextField("$.uuid", no_stem=True, as_name="uuid"),
-                    TextField("$.branch_name", no_stem=True, as_name="branch_name"),
-                    TextField(
-                        "$.shortname", sortable=True, no_stem=True, as_name="shortname"
-                    ),
-                    TextField("$.slug", sortable=True, no_stem=True, as_name="slug"),
-                    TextField(
-                        "$.subpath", sortable=True, no_stem=True, as_name="subpath"
-                    ),
-                    TagField("$.subpath", as_name="exact_subpath"),
-                    TextField(
-                        "$.resource_type",
-                        sortable=True,
-                        no_stem=True,
-                        as_name="resource_type",
-                    ),
-                    TextField(
-                        "$.displayname.en", sortable=True, as_name="displayname_en"
-                    ),
-                    TextField(
-                        "$.displayname.ar", sortable=True, as_name="displayname_ar"
-                    ),
-                    TextField(
-                        "$.displayname.kd", sortable=True, as_name="displayname_kd"
-                    ),
-                    TextField(
-                        "$.description.en", sortable=True, as_name="description_en"
-                    ),
-                    TextField(
-                        "$.description.ar", sortable=True, as_name="description_ar"
-                    ),
-                    TextField(
-                        "$.description.kd", sortable=True, as_name="description_kd"
-                    ),
-                    TagField("$.is_active", as_name="is_active"),
-                    TextField(
-                        "$.payload.content_type",
-                        no_stem=True,
-                        as_name="payload_content_type",
-                    ),
-                    TextField(
-                        "$.payload.schema_shortname",
-                        no_stem=True,
-                        as_name="schema_shortname",
-                    ),
-                    NumericField("$.created_at", sortable=True, as_name="created_at"),
-                    NumericField("$.updated_at", sortable=True, as_name="updated_at"),
-                    TagField("$.tags.*", as_name="tags"),
-                    TextField(
-                        "$.owner_shortname",
-                        sortable=True,
-                        no_stem=True,
-                        as_name="owner_shortname",
-                    ),
-                    TagField("$.query_policies.*", as_name="query_policies"),
-                    # User fields
-                    TextField("$.msisdn", sortable=True, as_name="msisdn"),
-                    TextField("$.email", sortable=True, as_name="email"),
-                    TagField("$.email", as_name="email_unescaped"),
-                    # Ticket fields
-                    TextField("$.state", sortable=True, no_stem=True, as_name="state"),
-                    TagField("$.is_open", as_name="is_open"),
-                    TextField(
-                        "$.workflow_shortname",
-                        sortable=True,
-                        no_stem=True,
-                        as_name="workflow_shortname",
-                    ),
-                    TextField(
-                        "$.collaborators.delivered_by",
-                        sortable=True,
-                        no_stem=True,
-                        as_name="collaborators_delivered_by",
-                    ),
-                    TextField(
-                        "$.collaborators.processed_by",
-                        sortable=True,
-                        no_stem=True,
-                        as_name="collaborators_processed_by",
-                    ),
-                    TextField(
-                        "$.resolution_reason",
-                        sortable=True,
-                        no_stem=True,
-                        as_name="resolution_reason",
-                    ),
-                    # Notification fields
-                    TextField("$.type", sortable=True, no_stem=True, as_name="type"),
-                    TagField("$.is_read", as_name="is_read"),
-                    TextField(
-                        "$.priority", sortable=True, no_stem=True, as_name="priority"
-                    ),
-                    TextField(
-                        "$.reporter.type", sortable=True, as_name="reporter_type"
-                    ),
-                    TextField(
-                        "$.reporter.name", sortable=True, as_name="reporter_name"
-                    ),
-                    TextField(
-                        "$.reporter.channel", sortable=True, as_name="reporter_channel"
-                    ),
-                    TextField(
-                        "$.reporter.distributor",
-                        sortable=True,
-                        as_name="reporter_distributor",
-                    ),
-                    TextField(
-                        "$.reporter.governorate",
-                        sortable=True,
-                        as_name="reporter_governorate",
-                    ),
-                    TextField(
-                        "$.reporter.msisdn",
-                        sortable=True,
-                        as_name="reporter_msisdn",
-                    ),
-                    TextField(
-                        "$.payload_string",
-                        sortable=False,
-                        as_name="payload_string",
-                    ),
-                )
-
                 await self.create_index(
-                    f"{space_name}:{branch_name}", "meta", meta_schema, del_docs
+                    f"{space_name}:{branch_name}", "meta", self.META_SCHEMA, del_docs
                 )
 
                 # CREATE REDIS INDEX FOR EACH SCHEMA DEFINITION INSIDE THE SPACE
@@ -511,14 +495,14 @@ class RedisServices(object):
                     if for_schemas and schema_shortname not in for_schemas:
                         continue
 
-                    if schema_shortname == "meta_schema":
+                    if schema_shortname in ["meta_schema", "meta"]:
                         continue
 
                     # GET SCHEMA PROPERTIES AND
                     # GENERATE REDIS INDEX DEFINITION BY MAPPIN SCHEMA PROPERTIES TO REDIS INDEX FIELDS
                     schema_content = json.loads(schema_path.read_text())
                     schema_content = resolve_schema_references(schema_content)
-                    redis_schema_definition = list(meta_schema)
+                    redis_schema_definition = list(self.META_SCHEMA)
                     if "properties" in schema_content:
                         for key, property in schema_content["properties"].items():
                             generated_schema_fields = self.get_redis_index_fields(
