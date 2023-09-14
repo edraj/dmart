@@ -104,6 +104,7 @@ class RedisServices(object):
     ]
 
     SYS_ATTRIBUTES = [
+        "payload_string",
         "branch_name",
         "query_policies",
         "subpath",
