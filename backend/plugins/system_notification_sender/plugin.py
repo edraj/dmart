@@ -53,7 +53,7 @@ class Plugin(PluginBase):
                     data.user_shortname,
                     data.branch_name,
                 )
-            ).dict()
+            ).model_dump()
             if (
                 entry["payload"]
                 and entry["payload"]["content_type"] == ContentType.json
