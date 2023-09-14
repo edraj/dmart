@@ -1,0 +1,1 @@
+{"uuid": "f110f6be-0ab6-4ae5-bf0c-bc6137ea9927", "shortname": "query_translated_enums", "is_active": true, "tags": [], "created_at": "2023-03-19T14:14:04.081672", "updated_at": "2023-03-19T14:14:04.081686", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "api", "body": "query_translated_enums.json"}}

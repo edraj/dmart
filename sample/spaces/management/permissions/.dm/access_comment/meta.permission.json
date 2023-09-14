@@ -1,0 +1,32 @@
+{
+    "uuid": "3135df0a-6d1b-4528-aabe-610a06e9add8",
+    "shortname": "access_comment",
+    "is_active": true,
+    "displayname": {
+        "en": "Acess comment",
+        "ar": "Acess comment",
+        "kd": "Acess comment"
+    },
+    "tags": [],
+    "created_at": "2023-04-03T13:57:00.245716",
+    "updated_at": "2023-04-03T13:57:00.245732",
+    "owner_shortname": "dmart",
+    "subpaths": {
+        "b2c": [
+            "tickets"
+        ]
+    },
+    "resource_types": [
+        "comment"
+    ],
+    "actions": [
+        "query",
+        "attach",
+        "create",
+        "view",
+        "update"
+    ],
+    "conditions": [],
+    "restricted_fields": [],
+    "allowed_fields_values": {}
+}

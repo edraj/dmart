@@ -1,0 +1,31 @@
+{
+  "uuid": "5263ff50-b7fb-436c-b03d-ba1063890022",
+  "shortname": "access_applications",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2023-03-14T14:48:22.074676",
+  "updated_at": "2023-03-14T14:48:22.074681",
+  "owner_shortname": "dmart",
+  "subpaths": {
+    "applications": [
+      "configuration",
+      "translations",
+      "api"
+    ]
+  },
+  "resource_types": [
+    "media",
+    "content",
+    "locator",
+    "ticket",
+    "folder",
+    "comment",
+    "alteration",
+    "json"
+  ],
+  "actions": [
+    "query",
+    "view"
+  ],
+  "conditions": []
+}

@@ -104,14 +104,14 @@ class AccessControl:
     def generate_user_permission_doc_id(self, user_shortname: str):
         return f"users_permissions_{user_shortname}"
 
-    async def get_user_premissions(self, user_shortname: str) -> dict:
+    async def get_user_permissions(self, user_shortname: str) -> dict:
         async with RedisServices() as redis_services:
-            user_premissions : dict = await redis_services.get_doc_by_id(self.generate_user_permission_doc_id(user_shortname))
+            user_permissions : dict = await redis_services.get_doc_by_id(self.generate_user_permission_doc_id(user_shortname))
 
-            if not user_premissions:
+            if not user_permissions:
                return await self.generate_user_permissions(user_shortname)
 
-            return user_premissions
+            return user_permissions
 
     async def check_access(
         self,
@@ -131,7 +131,7 @@ class AccessControl:
                 user_shortname,
                 entry_shortname
             )
-        user_permissions = await self.get_user_premissions(user_shortname)
+        user_permissions = await self.get_user_permissions(user_shortname)
 
         user_groups = (await self.load_user_meta(user_shortname)).groups or []
 
@@ -295,7 +295,7 @@ class AccessControl:
         
     
     async def check_space_access(self, user_shortname: str, space_name: str) -> bool:
-        user_permissions = await access_control.get_user_premissions(user_shortname)
+        user_permissions = await access_control.get_user_permissions(user_shortname)
         prog = re.compile(f"{space_name}:*|{settings.all_spaces_mw}:*")
         return bool(list(filter(prog.match, user_permissions.keys())))
     
@@ -369,7 +369,7 @@ class AccessControl:
         role_permissions: list[Permission] = []
 
         for permission_doc in permissions_search["data"]:
-            permission = Permission.model_validate(json.loads(permission_doc.json))
+            permission = Permission.model_validate(json.loads(permission_doc))
             role_permissions.append(permission)
 
         return role_permissions
@@ -396,11 +396,11 @@ class AccessControl:
 
         all_user_roles_from_redis = []
         for redis_document in roles_search["data"]:
-            all_user_roles_from_redis.append(json.loads(redis_document.json))
+            all_user_roles_from_redis.append(redis_document)
 
         all_user_roles_from_redis.extend(user_roles_from_groups)
         for role_json in all_user_roles_from_redis:
-            role = Role.model_validate(role_json)
+            role = Role.model_validate(json.loads(role_json))
             user_roles[role.shortname] = role
 
         return user_roles
@@ -448,7 +448,7 @@ class AccessControl:
             )
         if not user_search["data"]:
             return None
-        data = json.loads(user_search["data"][0].json)
+        data = json.loads(user_search["data"][0])
         if "shortname" in data and data["shortname"] and isinstance (data["shortname"], str): 
             return data["shortname"]
         else:
@@ -474,7 +474,7 @@ class AccessControl:
 
             roles = []
             for group in groups_search["data"]:
-                group_json = json.loads(group.json)
+                group_json = json.loads(group)
                 for role_shortname in group_json["roles"]:
                     role = await redis_services.get_doc_by_id(
                         redis_services.generate_doc_id(
@@ -506,7 +506,7 @@ class AccessControl:
             "products:offers:content:*", # IF conditions = {}
         ]
         """
-        user_permissions = await self.get_user_premissions(user_shortname)
+        user_permissions = await self.get_user_permissions(user_shortname)
         user_groups = (await self.load_user_meta(user_shortname)).groups or []
         user_groups.append(user_shortname)
 

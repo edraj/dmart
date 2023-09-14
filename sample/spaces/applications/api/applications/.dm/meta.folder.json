@@ -1,0 +1,1 @@
+{"uuid": "e6833aa1-5b45-4a61-839f-6803dd6992c4", "shortname": "applications", "is_active": true, "tags": [], "created_at": "2023-03-19T13:57:48.713045", "updated_at": "2023-03-19T13:57:48.713063", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "folder_rendering", "body": "applications.json"}}

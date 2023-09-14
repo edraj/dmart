@@ -29,7 +29,7 @@ async def trigger_admin_notifications() -> None:
 
     notification_manager = NotificationManager()
     for notification_doc in admin_notifications["data"]:
-        notification_dict = json.loads(notification_doc.json)
+        notification_dict = json.loads(notification_doc)
         formatted_req = await prepare_request(notification_dict)
 
         # Get notification receivers users
@@ -51,7 +51,7 @@ async def trigger_admin_notifications() -> None:
         formatted_req = await prepare_request(notification_dict)
         try:
             for receiver in receivers['data']:
-                receiver_data = json.loads(receiver.json)
+                receiver_data = json.loads(receiver)
                 if not formatted_req["push_only"]:
                     notification_obj = await Notification.from_request(notification_dict)
                     await internal_save_model(

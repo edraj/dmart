@@ -1,0 +1,1 @@
+{"end_point": "/managed/query", "verb": "post", "request_body": {"retrieve_json_payload": true, "search": "", "space_name": "applications", "type": "search", "resource_type": "content", "subpath": "/logs"}}

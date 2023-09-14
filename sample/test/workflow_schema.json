@@ -1,61 +1,61 @@
 {
   "title": "Ticket Workflow Schema",
-  "description": {"en": "Ticket Workflow Schema description"},
+  "description": "Ticket Workflow Schema description",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "initial_state": {
       "title": "name",
-      "description": {"en": "name description"},
+      "description": "name description",
       "type": "string"
     },
     "name": {
       "title": "name",
-      "description": {"en": "name description"},
+      "description": "name description",
       "type": "string"
     },
     "description": {
       "title": "description",
-      "description": {"en": "description description"},
+      "description": "description description",
       "type": "string"
     },
     "states": {
       "type": "array",
       "items": {
         "title": "transition",
-        "description": {"en": "name description"},
+        "description": "name description",
         "type": "object",
         "properties": {
           "name": {
             "title": "name",
-            "description": {"en": "name description"},
+            "description": "name description",
             "type": "string"
           },
           "state": {
             "title": "state",
-            "description": {"en": "current description"},
+            "description": "current description",
             "type": "string"
           },
           "next": {
             "title": "next",
-            "description": {"en": "List of next possible sstate stransitions"},
+            "description": "List of next possible sstate stransitions",
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
                 "role": {
                   "title": "role",
-                  "description": {"en": "user role"},
+                  "description": "user role",
                   "type": "string"
                 },
                 "action": {
                   "title": "action",
-                  "description": {"en": "The action required to apply this change"},
+                  "description": "The action required to apply this change",
                   "type": "string"
                 },
                 "state": {
                   "title": "Next state",
-                  "description": {"en": "The next state of the ticket once the action is applied"},
+                  "description": "The next state of the ticket once the action is applied",
                   "type": "string"
                 }
               }

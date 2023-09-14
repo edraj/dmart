@@ -101,7 +101,7 @@ async def serve_query(
             search_res, total = await redis_query_search(query, redis_query_policies)
             res_data: list = []
             for redis_document in search_res:
-                res_data.append(json.loads(redis_document.json))
+                res_data.append(json.loads(redis_document))
             if len(query.filter_schema_names) > 1:
                 if query.sort_by:
                     res_data = sorted(
@@ -1531,7 +1531,7 @@ async def get_entry_by_var(
                     filters={},
                 )
                 if search_res["total"] > 0:
-                    entry_doc = json.loads(search_res["data"][0].json)
+                    entry_doc = json.loads(search_res["data"][0])
                     entry_branch = branch
                     break
             if entry_doc:

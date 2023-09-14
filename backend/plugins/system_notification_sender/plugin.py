@@ -53,7 +53,7 @@ class Plugin(PluginBase):
                     data.user_shortname,
                     data.branch_name,
                 )
-            ).dict()
+            ).model_dump()
             if (
                 entry["payload"]
                 and entry["payload"]["content_type"] == ContentType.json
@@ -95,7 +95,7 @@ class Plugin(PluginBase):
         if entry.get("owner_group_shortname", None):
             group_users = await get_group_users(entry["owner_group_shortname"])
             group_members = [
-                json.loads(user_doc.json)["shortname"] for user_doc in group_users
+                json.loads(user_doc)["shortname"] for user_doc in group_users
             ]
             notification_subscribers.extend(group_members)
 
@@ -117,7 +117,7 @@ class Plugin(PluginBase):
         # 3- send the notification
         notification_manager = NotificationManager()
         for redis_document in matching_notification_requests["data"]:
-            notification_dict = json.loads(redis_document.json)
+            notification_dict = json.loads(redis_document)
             if (
                 "state" in entry
                 and notification_dict.get("on_state", "") != ""

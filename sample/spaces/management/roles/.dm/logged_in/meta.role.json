@@ -12,7 +12,7 @@
     "access_protected",
     "access_public",
     "access_inbox",
- "create_log",
- "view_workflows"
+    "create_log",
+    "access_applications"
   ]
 }
