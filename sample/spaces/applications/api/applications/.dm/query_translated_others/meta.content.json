@@ -1,0 +1,1 @@
+{"uuid": "0fd8e28b-ef1b-4692-936a-011c74a1eb97", "shortname": "query_translated_others", "is_active": true, "tags": [], "created_at": "2023-03-19T14:14:14.262534", "updated_at": "2023-03-19T14:14:14.262548", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "api", "body": "query_translated_others.json"}}

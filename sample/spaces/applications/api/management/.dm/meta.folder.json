@@ -1,0 +1,1 @@
+{"uuid": "7339a05d-8d1e-4f37-8596-48ef6391439c", "shortname": "management", "is_active": true, "tags": [], "created_at": "2023-03-15T15:45:12.549934", "updated_at": "2023-03-15T15:45:12.549951", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "folder_rendering", "body": "management.json"}}

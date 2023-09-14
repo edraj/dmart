@@ -1,0 +1,1 @@
+{"filter_types": ["ticket"], "filter_schema_names": ["order"], "limit": 10, "offset": 0, "retrieve_json_payload": true, "search": "", "space_name": "ordering", "query_subpath": "/orders", "type": "search", "sort_by": "updated_at", "sort_type": "descending"}

@@ -1,5 +1,6 @@
 {
   "title": "Api Schema",
+  "description": "Api debug schema",
   "type": "object",
   "additionalProperties": true,
   "properties": {
@@ -12,13 +13,13 @@
       "title": "verb",
       "description": "The Api http verb",
       "type": "string",
-      "enum": ["post", "get", "patch", "delete"]
+      "enum": ["post", "get", "patch", "delete","put"]
     },
     "request_body": {
       "title": "request_body",
       "description" : "JSON request body",
       "type": "object"
-    }
+    } 
   },
   "required": [
     "end_point",

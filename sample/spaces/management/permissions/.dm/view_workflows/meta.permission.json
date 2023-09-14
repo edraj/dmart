@@ -7,6 +7,18 @@
   "updated_at": "2022-08-23T07:44:36.399784",
   "owner_shortname": "dmart",
   "subpaths": {
+    "b2c": [
+      "workflows"
+    ],
+    "b2b": [
+      "workflows"
+    ],
+    "contracts": [
+      "workflows"
+    ],
+    "ordering": [
+      "workflows"
+    ],
     "applications": [
       "workflows"
     ]

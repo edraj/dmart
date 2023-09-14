@@ -1,1 +1,8 @@
-{"type": "object", "title": "health_check", "additionalProperties": true, "properties": {}, "required": []}
+{
+  "type": "object",
+  "title": "health_check",
+  "additionalProperties": true,
+  "properties": {
+  },
+  "required": []
+}

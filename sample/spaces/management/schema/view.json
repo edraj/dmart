@@ -1,5 +1,6 @@
 {
   "title": "View Schema",
+  "description": "Saved filter (query) schema",
   "type": "object",
   "additionalProperties": true,
   "properties": {

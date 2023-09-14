@@ -1,0 +1,1 @@
+{"shortname_title": "applications", "index_attributes": [{"key": "shortname", "name": "name"}], "allow_create": true, "allow_update": true, "allow_delete": true, "use_media": true, "content_schema_shortnames": ["api"]}

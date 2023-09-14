@@ -65,7 +65,7 @@ class Plugin(PluginBase):
 
         receivers_shortnames = set()
         for receiver in receivers["data"]:
-            receivers_shortnames.add(json.loads(receiver.json)["shortname"])
+            receivers_shortnames.add(json.loads(receiver)["shortname"])
 
         # await send_notification(
         #     notification_dict=notification_dict,
