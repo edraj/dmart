@@ -139,7 +139,6 @@ def load_space_schemas(space_name: str, branch_name: str) -> dict[str, dict]:
                 schema_shortname=schema_meta.get("payload").get('body'),
             )
             if schema_path_body.is_file():
-                print(f"\n\n\n {schema_path_body = } \n\n\n")
                 schemas[schema_meta['shortname']] = json.loads(schema_path_body.read_text())
     return schemas
 
@@ -178,7 +177,7 @@ async def soft_health_check(
             else: 
                 break
             for redis_doc_dict in res_data:
-                redis_doc_dict = json.loads(redis_doc_dict.json)
+                redis_doc_dict = json.loads(redis_doc_dict)
                 subpath = redis_doc_dict['subpath']
                 meta_doc_content = {}
                 payload_doc_content = {}
@@ -187,6 +186,7 @@ async def soft_health_check(
                     camel_case(redis_doc_dict["resource_type"]),
                 )
                 system_attributes = [
+                    "payload_string",
                     "branch_name",
                     "query_policies",
                     "subpath",
@@ -194,7 +194,7 @@ async def soft_health_check(
                     "meta_doc_id",
                     "payload_doc_id",
                 ]
-                class_fields = resource_class.__fields__.keys()
+                class_fields = resource_class.model_fields.keys()
                 for key, value in redis_doc_dict.items():
                     if key in class_fields:
                         meta_doc_content[key] = value
@@ -232,7 +232,7 @@ async def soft_health_check(
                     }
                 }
                 try:
-                    meta = resource_class.parse_obj(meta_doc_content)
+                    meta = resource_class.model_validate(meta_doc_content)
                 except Exception as ex:
                     status['is_valid'] = False
                     if not isinstance(status, dict) and isinstance(status["invalid"], dict):
