@@ -1,0 +1,1 @@
+{"shortname_title": "collections", "index_attributes": [{"key": "shortname", "name": "id"}, {"key": "schema_shortname", "name": "type"}, {"key": "displayname", "name": "name"}], "allow_create": false, "allow_update": false, "allow_delete": false, "use_media": false, "content_schema_shortnames": [], "expand_children": true, "icon": "BSICons508", "filter": [], "allow_view": true}

@@ -1,0 +1,19 @@
+{
+  "shortname": "custom_plugins",
+  "owner_shortname": "dmart",
+  "displayname": {"en":"custom plugins"},
+  "description": {"en":"custom plugins"},
+  "uuid": "7f55788b-3424-447f-ad98-97bb5b689548",
+  "resource_type": "Space",
+  "languages": [
+    "english"
+  ],
+  "primary_website": "https://dmart.cc",
+  "indexing_enabled": false,
+  "capture_misses": false,
+  "mirrors": [],
+  "check_health": false,
+  "branches": [],
+  "hide_space": true,
+  "ordinal": 5
+}

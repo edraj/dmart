@@ -1,6 +1,6 @@
 {
   "title": "My nice schema",
-  "description": {"en":"A schema that explains how things work"},
+  "description": "A schema that explains how things work",
   "type": "object",
   "properties": {
     "price": {
