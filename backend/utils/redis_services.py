@@ -436,7 +436,7 @@ class RedisServices(object):
 
         for space_branch, redis_schema in redis_schemas.items():
             redis_schema = self.append_unique_index_fields(
-                redis_schema,
+                tuple(redis_schema),
                 list(self.META_SCHEMA),
             )
             await self.create_index(
