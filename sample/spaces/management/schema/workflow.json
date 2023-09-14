@@ -1,5 +1,6 @@
 {
   "title": "Ticket Workflow Schema",
+  "description": "Ticket Workflow Schema description",
   "type": "object",
   "additionalProperties": false,
   "properties": {
