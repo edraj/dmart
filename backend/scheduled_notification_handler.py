@@ -91,6 +91,9 @@ async def trigger_admin_notifications() -> None:
             logger.error(f"Error at sending/updating admin based notification: {e.args}")
             pass
 
+    await RedisServices.POOL.disconnect(True)
+
+
 async def prepare_request(notification_dict) -> dict:
     # Get Notification Request Images
     attachments_path = (

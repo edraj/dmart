@@ -75,6 +75,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
         print("Wrong mode specify [soft or hard]")
         return
     await save_duplicated_entries(branch_name)
+    await RedisServices.POOL.disconnect(True)
 
 
 def print_header() -> None:
