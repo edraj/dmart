@@ -96,7 +96,7 @@ def print_health_check(health_check):
                 invalid)
             )
             for one in val.get("invalid_entries", []):
-                print(f"\t\t\t\tInvalid item/issues: {one.get('shortname', 'n/a')}/{','.join(one.get('issues', []))}")
+                print(f"\t\t\t\tInvalid item/issues: {one.get('shortname', 'n/a')}/{','.join(one.get('issues', []))} - {one.get('exception','')}")
     if health_check.get('invalid_folders'):
         print('Invalid folders :')
     for val in health_check.get('invalid_folders'):

@@ -31,5 +31,7 @@ history.jsonl
 events.jsonl
 sample/spaces/management/health_check/**
 sample/spaces/dummy/**
+sample/spaces/maqola/**
+sample/spaces/management/users
 sample/spaces/startappz/**
 .idea/
