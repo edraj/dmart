@@ -39,6 +39,8 @@ from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info
 
+from utils.redis_services import RedisServices
+
 app = FastAPI(
     title="Datamart API",
     description="Structured Content Management System",
@@ -415,13 +417,16 @@ async def catchall() -> None:
     
 load_langs()
 
-if __name__ == "__main__":
-    
+async def main():
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
     config.backlog = 200
 
     config.logconfig_dict = logging_schema
     config.errorlog = logger
+    await serve(app, config)  # type: ignore
+    await RedisServices.POOL.disconnect(True)
 
-    asyncio.run(serve(app, config))  # type: ignore
+
+if __name__ == "__main__":
+    asyncio.run(main())
