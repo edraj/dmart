@@ -33,7 +33,8 @@ async def load_data_to_redis(
 ) -> dict:
     """
     Load meta files inside subpath then store them to redis as :space_name:meta prefixed doc,
-    and if the meta file has a separate payload file follwing a schema we loads the payload content and store it to redis as :space_name:schema_name prefixed doc
+    and if the meta file has a separate payload file follwing a schema 
+    we loads the payload content and store it to redis as :space_name:schema_name prefixed doc
     """
     # start_time: int = int(time())
 
@@ -144,7 +145,8 @@ async def generate_redis_docs(locators: list) -> list:
                     redis_docs.append({"doc_id": doc_id, "payload": payload})
                 except SchemaValidationError as _:
                     print(
-                        f"Error: @{one.space_name}/{one.subpath}/{meta.shortname} does not match the schema {meta.payload.schema_shortname}"
+                        f"Error: @{one.space_name}/{one.subpath}/{meta.shortname} "
+                        f"does not match the schema {meta.payload.schema_shortname}"
                     )
                 except Exception as ex:
                     print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")

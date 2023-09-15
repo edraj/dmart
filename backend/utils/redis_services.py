@@ -909,7 +909,8 @@ class RedisServices(object):
             search_res = await ft_index.search(query=search_query) 
             if isinstance(search_res, dict) and "results" in search_res and "total_results" in search_res:
 
-                return {"data": [one["extra_attributes"]["$"] for one in search_res["results"] if "extra_attributes" in one], "total": search_res["total_results"] }
+                return {"data": [one["extra_attributes"]["$"] for one in search_res["results"] if "extra_attributes" in one], 
+                        "total": search_res["total_results"] }
             else: 
                 return {}
         except Exception:

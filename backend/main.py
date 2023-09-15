@@ -320,9 +320,11 @@ async def middle(request: Request, call_next):
 
     if exception_data is not None:
         extra["props"]["exception"] = exception_data
-    if hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict) and isinstance(extra["props"]["request"], dict):
+    if (hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict) 
+        and isinstance(extra["props"]["request"], dict)):
         extra["props"]["request"]["body"] = request.state.request_body
-    if response_body and isinstance(extra, dict) and isinstance(extra["props"], dict) and isinstance(extra["props"]["response"], dict):
+    if (response_body and isinstance(extra, dict) and isinstance(extra["props"], dict) 
+        and isinstance(extra["props"]["response"], dict)):
         extra["props"]["response"]["body"] = response_body
 
     if response.status_code >= 400 and response.status_code < 500:

@@ -66,5 +66,6 @@ logging_schema : dict = {
 
 def changeLogFile(log_file: str | None = None) -> None:
     global logging_schema
-    if log_file and "handlers" in logging_schema and "file" in logging_schema["handlers"] and "filename" in logging_schema["handlers"]["file"]:
+    if (log_file and "handlers" in logging_schema and "file" in logging_schema["handlers"] 
+        and "filename" in logging_schema["handlers"]["file"]):
         logging_schema["handlers"]["file"]["filename"] = log_file
