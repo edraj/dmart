@@ -502,7 +502,8 @@ class AccessControl:
         ex: [
             "products:offers:content:true:admin_shortname", # IF conditions = {"is_active", "own"}
             "products:offers:content:true:*", # IF conditions = {"is_active"}
-            "products:offers:content:false:admin_shortname|products:offers:content:true:admin_shortname", # IF conditions = {"own"}
+            "products:offers:content:false:admin_shortname|products:offers:content:true:admin_shortname",
+            # ^^^ IF conditions = {"own"}
             "products:offers:content:*", # IF conditions = {}
         ]
         """

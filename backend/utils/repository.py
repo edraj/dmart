@@ -523,7 +523,8 @@ async def serve_query(
                     ),
                 )
 
-            path = Path(f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
+            path = Path(f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}"
+                        f"{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
 
             if path.is_file():
                 cmd = f"tail -n +{query.offset} {path} | head -n {query.limit} | tac"
@@ -1175,7 +1176,8 @@ async def validate_subpath_data(
                             )
                         else:
                             raise Exception(
-                                f"can't access this payload {str(subpath)[len(str(settings.spaces_folder)):]}/{entry_meta_obj.shortname}"
+                                f"can't access this payload {str(subpath)[len(str(settings.spaces_folder)):]}"
+                                f"/{entry_meta_obj.shortname}"
                             )
                 elif (
                     entry_meta_obj.payload
