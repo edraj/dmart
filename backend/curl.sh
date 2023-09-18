@@ -205,5 +205,10 @@ RESULT+=$?
 #echo -n -e "Delete admin: \t\t"
 #curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{}' $API_URL/user/delete | jq .status | tee /dev/stderr | grep -q "success"
 
+echo -n -e "Delete dummy space: \t\t" >&2
+DELETE=$(jq -c -n '{ "space_name": "dummy", "request_type": "delete", "records": [{ "resource_type": "space", "subpath": "/", "shortname": "dummy","attributes": {} } ]}')
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$DELETE" ${API_URL}/managed/space  | jq .status | tee /dev/stderr | grep -q "success"
+RESULT+=$?
+
 echo "Sum of exist codes = $RESULT" >&2
 exit $RESULT
