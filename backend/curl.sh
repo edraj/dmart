@@ -152,7 +152,7 @@ curl -s -X "DELETE" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/lo
 
 
 echo -n -e "Create Content: \t\t" >&2
-REQUEST=$(jq -c -n --arg subpath "$SUBPATH" --arg shortname "$SHORTNAME"  '{ space_name: "dummy", request_type:"create", records: [{resource_type: "content", subpath: $subpath, shortname: $shortname, attributes:{payload: {body: "this content created from curl request for dummying", content_type: "json"}, tags: ["one","two"], "description": {"en": "dummy","ar": "dummy","kd": "dummy"},"displayname" : {"en": "en","ar": "ar", "kd":"kd"}}}]}')
+REQUEST=$(jq -c -n --arg subpath "$SUBPATH" --arg shortname "$SHORTNAME"  '{ space_name: "dummy", request_type:"create", records: [{resource_type: "content", subpath: $subpath, shortname: $shortname, attributes:{payload: {body: {"message": "this content created from curl request for dummying"}, content_type: "json"}, tags: ["one","two"], "description": {"en": "dummy","ar": "dummy","kd": "dummy"},"displayname" : {"en": "en","ar": "ar", "kd":"kd"}}}]}')
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$REQUEST" ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success" 
 RESULT+=$?
 
@@ -185,13 +185,14 @@ echo -n -e "Update content: \t\t" >&2
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --data-binary "@../sample/test/updatecontent.json" ${API_URL}/managed/request  | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
+echo -n -e "Upload attachment: \t\t" >&2
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createmedia.json"' -F 'payload_file=@"../sample/test/logo.jpeg"' ${API_URL}/managed/resource_with_payload  | jq .status | tee /dev/stderr | grep -q "success"
+RESULT+=$?
+
 echo -n -e "Delete content: \t\t" >&2
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --data-binary "@../sample/test/deletecontent.json" ${API_URL}/managed/request  | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
-echo -n -e "Upload attachment: \t\t" >&2
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createmedia.json"' -F 'payload_file=@"../sample/test/logo.jpeg"' ${API_URL}/managed/resource_with_payload  | jq .status | tee /dev/stderr | grep -q "success"
-RESULT+=$?
 
 echo -n -e "Query content: \t\t\t" >&2
 RECORD=$(jq -c -n --arg subpath "$SUBPATH" '{space_name: "dummy", type: "subpath", subpath: $subpath}')
