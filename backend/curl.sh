@@ -211,5 +211,9 @@ DELETE=$(jq -c -n '{ "space_name": "dummy", "request_type": "delete", "records":
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$DELETE" ${API_URL}/managed/space  | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
+echo -n -e "Server manifest: " >&2
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" ${API_URL}/info/manifest  | jq .
+RESULT+=$?
+
 echo "Sum of exist codes = $RESULT" >&2
 exit $RESULT
