@@ -39,7 +39,7 @@ USERS_SUBPATH: str = "users"
 user_shortname: str = superman["shortname"]
 password: str = superman["password"]
 
-subpath: str = "content"
+subpath: str = "myfolder"
 text_entry_shortname: str = "text_stuff"
 json_entry_shortname: str = "json_stuff"
 attachment_shortname: str = "my_comment"
