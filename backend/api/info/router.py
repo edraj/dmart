@@ -35,7 +35,8 @@ async def get_me(shortname=Depends(JWTBearer())) -> api.Response:
 @router.get("/settings", include_in_schema=False, response_model=api.Response, response_model_exclude_none=True)
 async def get_settings(shortname=Depends(JWTBearer())) -> api.Response:
     if shortname != 'dmart': 
-        raise api.Exception(status_code=status.HTTP_401_UNAUTHORIZED, error=api.Error(type="access", code=401, message="Not allowed"))
+        raise api.Exception(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            error=api.Error(type="access", code=401, message="Not allowed"))
     return api.Response(status=api.Status.success, attributes=settings.dict())
 
 @router.get("/manifest", include_in_schema=False, response_model=api.Response, response_model_exclude_none=True)

@@ -91,11 +91,14 @@ async def trigger_admin_notifications() -> None:
             logger.error(f"Error at sending/updating admin based notification: {e.args}")
             pass
 
+    await RedisServices.POOL.disconnect(True)
+
+
 async def prepare_request(notification_dict) -> dict:
     # Get Notification Request Images
     attachments_path = (
-        settings.spaces_folder
-        / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
+        settings.spaces_folder / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}"
+        f"/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
     )
     notification_attachments = await get_entry_attachments(
         subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",

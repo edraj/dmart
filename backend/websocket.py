@@ -10,6 +10,7 @@ from hypercorn.asyncio import serve
 from models.enums import Status as ResponseStatus
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
+from utils.redis_services import RedisServices
 
 
 all_MKW = "__ALL__"
@@ -188,7 +189,7 @@ async def service_info():
         }
     )
 
-if __name__ == "__main__":
+async def main():
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.websocket_port}"]
     config.backlog = 200
@@ -197,5 +198,9 @@ if __name__ == "__main__":
     config.logconfig_dict = logging_schema
     config.errorlog = logger
     config.accesslog = logger
+    await serve(app, config)  # type: ignore
+    await RedisServices.POOL.disconnect(True)
 
-    asyncio.run(serve(app, config))  # type: ignore
+if __name__ == "__main__":
+
+    asyncio.run(main())  # type: ignore
