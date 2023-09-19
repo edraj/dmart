@@ -75,6 +75,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
         print("Wrong mode specify [soft or hard]")
         return
     await save_duplicated_entries(branch_name)
+    await RedisServices.POOL.disconnect(True)
 
 
 def print_header() -> None:
@@ -96,7 +97,8 @@ def print_health_check(health_check):
                 invalid)
             )
             for one in val.get("invalid_entries", []):
-                print(f"\t\t\t\tInvalid item/issues: {one.get('shortname', 'n/a')}/{','.join(one.get('issues', []))}")
+                print(f"\t\t\t\tInvalid item/issues: {one.get('shortname', 'n/a')}/"
+                      f"{','.join(one.get('issues', []))} - {one.get('exception','')}")
     if health_check.get('invalid_folders'):
         print('Invalid folders :')
     for val in health_check.get('invalid_folders'):

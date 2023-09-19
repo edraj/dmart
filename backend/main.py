@@ -39,6 +39,8 @@ from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info
 
+from utils.redis_services import RedisServices
+
 app = FastAPI(
     title="Datamart API",
     description="Structured Content Management System",
@@ -318,9 +320,11 @@ async def middle(request: Request, call_next):
 
     if exception_data is not None:
         extra["props"]["exception"] = exception_data
-    if hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict) and isinstance(extra["props"]["request"], dict):
+    if (hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict) 
+        and isinstance(extra["props"]["request"], dict)):
         extra["props"]["request"]["body"] = request.state.request_body
-    if response_body and isinstance(extra, dict) and isinstance(extra["props"], dict) and isinstance(extra["props"]["response"], dict):
+    if (response_body and isinstance(extra, dict) and isinstance(extra["props"], dict) 
+        and isinstance(extra["props"]["response"], dict)):
         extra["props"]["response"]["body"] = response_body
 
     if response.status_code >= 400 and response.status_code < 500:
@@ -415,13 +419,16 @@ async def catchall() -> None:
     
 load_langs()
 
-if __name__ == "__main__":
-    
+async def main():
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
     config.backlog = 200
 
     config.logconfig_dict = logging_schema
     config.errorlog = logger
+    await serve(app, config)  # type: ignore
+    await RedisServices.POOL.disconnect(True)
 
-    asyncio.run(serve(app, config))  # type: ignore
+
+if __name__ == "__main__":
+    asyncio.run(main())
