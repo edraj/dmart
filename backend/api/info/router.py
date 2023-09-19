@@ -26,6 +26,10 @@ tag_cmd = "git name-rev --tags --name-only $(git rev-parse HEAD)"
 result = subprocess.run([tag_cmd], capture_output=True, text=True, shell=True)
 tag = result.stdout.split("\n")[0]
 
+version_date_cmd = "git show --pretty=format:'%ad'"
+result = subprocess.run([version_date_cmd], capture_output=True, text=True, shell=True)
+version_date = result.stdout.split("\n")[0]
+
 server = socket.gethostname()
 
 @router.get("/me", include_in_schema=False, response_model=api.Response, response_model_exclude_none=True)
@@ -37,7 +41,7 @@ async def get_settings(shortname=Depends(JWTBearer())) -> api.Response:
     if shortname != 'dmart': 
         raise api.Exception(status_code=status.HTTP_401_UNAUTHORIZED, 
                             error=api.Error(type="access", code=401, message="Not allowed"))
-    return api.Response(status=api.Status.success, attributes=settings.dict())
+    return api.Response(status=api.Status.success, attributes=settings.model_dump())
 
 @router.get("/manifest", include_in_schema=False, response_model=api.Response, response_model_exclude_none=True)
 async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
@@ -46,15 +50,20 @@ async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
             "name": "DMART",
             "type": "microservice",
             "description": "Structured CMS/IMS",
-            "start_time": service_start_time.isoformat(),
-            "current_time": now.isoformat(),
-            "running_for": str(now - service_start_time),
-            "versoin": version,
-            "branch": branch,
-            "tag": tag,
-            "server": server,
-            "process": getpid()
+            "service_details": {
+                "server": server,
+                "process_id": getpid(),
+                "start_time": service_start_time.isoformat(),
+                "current_time": now.isoformat(),
+                "running_for": str(now - service_start_time)
+            },
+            "git": {
+                "commit_hash": version,
+                "date": version_date,
+                "branch": branch,
+                "tag": tag
             }
+        }
     return api.Response(status=api.Status.success,
                         attributes=manifest)
 

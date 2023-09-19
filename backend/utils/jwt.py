@@ -127,10 +127,10 @@ async def remove_redis_session_key(user_shortname: str) -> bool:
         )
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     # import os
     # mport binascii
 
     # Generate secret
     # print(binascii.hexlify(os.urandom(24)))
-    pass
+#    pass

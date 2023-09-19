@@ -134,7 +134,7 @@ class Relationship(Resource):
 class Meta(Resource):
     uuid: UUID = Field(default_factory=uuid4)
     shortname: str = Field(pattern=regex.SHORTNAME)
-    # slug: str = Field(default=None, pattern=regex.SHORTNAME)
+    slug: str | None = Field(default=None, pattern=regex.SHORTNAME)
     is_active: bool = False
     displayname: Translation | None = None
     description: Translation | None = None
