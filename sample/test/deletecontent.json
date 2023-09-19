@@ -4,7 +4,7 @@
     "records": [
         {
             "resource_type": "content",
-            "subpath": "content",
+            "subpath": "myfolder",
             "shortname": "buyer_123",
             "attributes": {}
         }
