@@ -1,6 +1,6 @@
 {
   "resource_type": "content",
-  "subpath": "content",
+  "subpath": "myfolder",
   "shortname": "buyer_123",
   "attributes": { 
     "content_type": "json",
