@@ -1,6 +1,6 @@
 {
   "resource_type": "content",
-  "subpath": "content",
+  "subpath": "myfolder",
   "shortname": "MEDIA_ENTRY",
   "attributes": { "tags": ["fun", "personal"] }
 }
