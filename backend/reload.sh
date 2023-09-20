@@ -19,15 +19,19 @@ APP_URL="http://localhost:$PORT"
 time ./create_index.py --flushall
 RESULT+=$?
 
-which systemctl 2> /dev/null && systemctl --user list-units dmart.service > /dev/null && systemctl --user restart dmart.service
+which systemctl > /dev/null && \
+systemctl --user list-unit-files dmart.service > /dev/null  && \
+systemctl --user restart dmart.service
 RESULT+=$?
-RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
+sleep 2
+# RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
+RESP="000"
 COUNTER=0
 while [ $RESP -ne "200" ]; do
   sleep 1
   COUNTER=$((COUNTER+1))
   echo "Waiting for the server to come up ${RESP} ${COUNTER} seconds"
-  RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
+  RESP=$(curl --write-out '%{http_code}' --silent --connect-timeout 0.5 --output /dev/null  "${APP_URL}")
   [[ $COUNTER -ge 30 ]] && break
 done
 sleep 4
