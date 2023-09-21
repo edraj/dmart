@@ -18,14 +18,14 @@ declare -i RESULT=0
 # #curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"msisdn": "'${MSISDN}'", "code": "'${OTP_CODE}'"}' ${API_URL}/user/otp-confirm | jq . 
 
 
-echo -n -e "Login with admin: \t\t"
+echo -n -e "Login with admin: \t\t" >&2
 AUTH_TOKEN=$(curl -i -s -H "$CT" -d "$SUPERMAN" ${API_URL}/user/login  | grep set-cookie | sed 's/^[^=]*=\(.*\); Http.*$/\1/g')
 RESULT+=$?
-echo "$AUTH_TOKEN" | cut -d '.' -f 1| base64 -d | jq .typ
+echo "$AUTH_TOKEN" | cut -d '.' -f 1| base64 -d | jq .typ >&2
 RESULT+=$?
 # curl -s -c mycookies.jar -H "$CT" -d "$LOGIN" ${API_URL}/user/login | jq .status
 
-echo -n -e "Get profile: \t\t\t"
+echo -n -e "Get profile: \t\t\t" >&2
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" $API_URL/user/profile | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
@@ -138,16 +138,16 @@ echo -n -e "Create ticket: \t\t\t" >&2
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' 'request_type: "create"' -F 'request_record=@"../sample/test/ticketcontent.json"' -F 'payload_file=@"../sample/test/ticketbody.json"' ${API_URL}/managed/resource_with_payload  | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
-echo -n -e "Move ticket: \t\t\t"
+echo -n -e "Move ticket: \t\t\t" >&2
 curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "dummy","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder","shortname": "an_example","attributes": {"src_subpath": "/myfolder","src_shortname": "an_example","dest_subpath": "/myfolder_new","dest_shortname": "an_example_new","is_active": true}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 
-echo -n -e "Move back to old: \t\t"
+echo -n -e "Move back to old: \t\t" >&2
 curl -s -H "$CT" -H "Authorization: Bearer $AUTH_TOKEN"  -d '{"space_name": "dummy","request_type": "move","records": [{"resource_type": "ticket","subpath": "/myfolder_new","shortname": "an_example_new","attributes": {"src_subpath": "/myfolder_new","src_shortname": "an_example_new","dest_subpath": "/myfolder","dest_shortname": "an_example","is_active": true}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 
-echo -n -e "Lock ticket: \t\t\t"
+echo -n -e "Lock ticket: \t\t\t" >&2
 curl -s -X "PUT" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/lock/ticket/dummy/myfolder/an_example | jq .status | tee /dev/stderr | grep -q "success"
 
-echo -n -e "Unlock ticket: \t\t\t"
+echo -n -e "Unlock ticket: \t\t\t" >&2
 curl -s -X "DELETE" -H "Authorization: Bearer $AUTH_TOKEN" ${API_URL}/managed/lock/dummy/myfolder/an_example | jq .status | tee /dev/stderr | grep -q "success"
 
 
@@ -212,8 +212,8 @@ curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$DELETE" ${API_URL}/
 RESULT+=$?
 
 echo -n -e "Server manifest: " >&2
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" ${API_URL}/info/manifest  | jq .
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" ${API_URL}/info/manifest | jq . >&2
 RESULT+=$?
 
-echo "Sum of exist codes = $RESULT" >&2
+echo "Sum of exit codes = $RESULT" >&2
 exit $RESULT
