@@ -13,4 +13,4 @@ cd $BASEDIR
 PROCS=$(nproc --all)
 # PROCS=1
 #hypercorn -w ${PROCS}  --backlog 200 -b $LISTENING_HOST':'$LISTENING_PORT -k 'asyncio' main:app
-python3.11 -m hypercorn main:app --config file:utils/hypercorn_config.py
+$HOME/venv/bin/python3.11 -m hypercorn main:app --config file:utils/hypercorn_config.py
