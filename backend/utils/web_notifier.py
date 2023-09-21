@@ -13,6 +13,8 @@ class WebNotifier(Notifier):
         self, 
         data: NotificationData
     ):
+        if not settings.websocket_url:
+            return
         user_lang = lang_code(data.receiver.get("language", "ar"))
         async with AsyncRequest() as client:
             await client.post(

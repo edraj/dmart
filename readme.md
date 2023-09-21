@@ -232,21 +232,21 @@ pip install --user  -r requirements.txt
 
 ```bash
 # On the "online" computer
-rmdir /tmp/pipi
-rmdir /tmp/venv
-virtualenv /tmp/venv # or your favorate py env virtualization tool
-source /tmp/venv/bin/activate
-mkdir /tmp/pipi
+rmdir ~/.pipi
+rmdir ~/.venv
+virtualenv --python=/usr/bin/python3.11 ~/.venv # or your favorate py env virtualization tool
+source ~/.venv/bin/activate
+mkdir ~/.pipi
 # under dmart/backend
-pip download -d /tmp/pipi/ $(cat *requirements.txt) virtualenv pip
-rsync -av /tmp/pipi/ TARGET_OFFLINE_SERVER:/tmp/pipi
+pip download -d ~/.pipi/ $(cat *requirements.txt) virtualenv pip
+rsync -av ~/.pipi/ TARGET_OFFLINE_SERVER:~/.pipi
 
 # On the "offline" target server
-pip install --no-index --find-links=/tmp/pipi virtualenv
-virtualenv /tmp/venv
-source /tmp/venv/bin/activate
-pip install --no-index --find-links=/tmp/pipi --upgrade pip
-pip install --no-index --find-links=/tmp/pipi -r requirements.txt -r test-requirements.txt -r plugins-requirements.txt
+pip install --no-index --find-links=~/.pipi virtualenv
+virtualenv ~/.venv
+source ~/.venv/bin/activate
+pip install --no-index --find-links=~/.pipi --upgrade pip
+pip install --no-index --find-links=~/.pipi -r requirements.txt -r test-requirements.txt -r plugins-requirements.txt
 ```
 
 <img src="./docs/cli.png" width="450">
