@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.11
 
 import os
 from prompt_toolkit import PromptSession
@@ -6,7 +6,7 @@ import sys
 from rich import pretty
 from rich import print
 from rich.console import Console
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 import requests
 import re
 
@@ -69,9 +69,7 @@ class Settings(BaseSettings):
     default_space: str = "management"
     pagination: int = 5
 
-    class Config:
-        env_file = os.getenv("CONFIG_ENV", "config.ini")  # ~/.dm/config.ini"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", "config.ini"), env_file_encoding = "utf-8")
 
 
 settings = Settings()
@@ -846,8 +844,11 @@ def action(text: str):
                 if one["resource_type"] == "folder":
                     icon = ":file_folder:"
                 if (
-                    "attributes" in one
+                    isinstance(one, dict)
+                    and "attributes" in one
+                    and isinstance(one["attributes"], dict)
                     and "payload" in one["attributes"]
+                    and isinstance(one["attributes"]["payload"], dict)
                     and "content_type" in one["attributes"]["payload"]
                 ):
                     schema = ",schema="
