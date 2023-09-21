@@ -124,7 +124,7 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
 @app.on_event("startup")
 async def app_startup() -> None:
     logger.info("Starting")
-    print("Starting")
+    print('{"stage":"starting up"}')
     # , extra={"props":{
     #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
     #    "redis_port": settings.redis_port
@@ -145,7 +145,9 @@ async def app_startup() -> None:
 
 @app.on_event("shutdown")
 async def app_shutdown() -> None:
-    logger.info("Application shutdown")
+    logger.info("Application shutting down")
+    await RedisServices.POOL.disconnect(True)
+    print('{"stage":"shutting down"}')
 
 
 app.add_middleware(CustomRequestMiddleware)
@@ -427,7 +429,6 @@ async def main():
     config.logconfig_dict = logging_schema
     config.errorlog = logger
     await serve(app, config)  # type: ignore
-    await RedisServices.POOL.disconnect(True)
 
 
 if __name__ == "__main__":
