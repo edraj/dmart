@@ -123,7 +123,7 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
 
 @app.on_event("startup")
 async def app_startup() -> None:
-    logger.info("Starting")
+    logger.info("Starting up")
     print('{"stage":"starting up"}')
     # , extra={"props":{
     #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
