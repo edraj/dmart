@@ -1,0 +1,12 @@
+{
+  "space_name": "management",
+  "request_type": "update",
+  "records": [
+    {
+      "resource_type": "user",
+      "subpath": "users",
+      "shortname": "alibaba",
+      "attributes": { "is_email_verified": true, "is_msisdn_verified": true }
+    }
+  ]
+}
