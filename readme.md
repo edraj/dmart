@@ -152,11 +152,11 @@ With this scheme, only proper entry main payload files appear to the user. All m
 
 - git
 - jq
-- python >= 3.11
+- python == 3.11
 - pip
-- redis >= 7
-- RedisJSON (rejson) >= 2.4
-- RediSearch >= 2.6
+- redis >= 7.2
+- RedisJSON (rejson) >= 2.6
+- RediSearch >= 2.8
 
 
 ### Steps 
