@@ -1,30 +1,30 @@
 
-<a href="https://github.com/edraj/frontend-skeleton/releases/latest">
-<img src="https://github.com/edraj/frontend-skeleton/actions/workflows/dmart-checks.yml/badge.svg" > 
+<a href="https://github.com/edraj/dmart/releases/latest">
+<img src="https://github.com/edraj/dmart/actions/workflows/frontend-checks.yml/badge.svg" > 
 </a>
 
-<!--a href="https://github.com/edraj/frontend-skeleton/releases/latest">
-<img alt="Latest release" src="https://img.shields.io/github/v/release/edraj/frontend-skeleton" />
+<!--a href="https://github.com/edraj/dmart/releases/latest">
+<img alt="Latest release" src="https://img.shields.io/github/v/release/edraj/dmart" />
 </a-->
 
-<a href="https://github.com/edraj/frontend-skeleton/pulse">
-<img alt="Last commit" src="https://img.shields.io/github/last-commit/edraj/frontend-skeleton"/>
+<a href="https://github.com/edraj/dmart/pulse">
+<img alt="Last commit" src="https://img.shields.io/github/last-commit/edraj/dmart"/>
 </a>
 
-<a href="https://github.com/edraj/frontend-skeleton/blob/main/LICENSE">
-<img alt="License" src="https://img.shields.io/github/license/edraj/frontend-skeleton" />
+<a href="https://github.com/edraj/dmart/blob/main/LICENSE">
+<img alt="License" src="https://img.shields.io/github/license/edraj/dmart" />
 </a>
 
-<a href="https://github.com/edraj/frontend-skeleton/stargazers">
-<img alt="Stars" src="https://img.shields.io/github/stars/edraj/frontend-skeleton" />
+<a href="https://github.com/edraj/dmart/stargazers">
+<img alt="Stars" src="https://img.shields.io/github/stars/edraj/dmart" />
 </a>
 
-<a href="https://github.com/edraj/frontend-skeleton/issues">
-<img alt="Issues" src="https://img.shields.io/github/issues/edraj/frontend-skeleton" />
+<a href="https://github.com/edraj/dmart/issues">
+<img alt="Issues" src="https://img.shields.io/github/issues/edraj/dmart" />
 </a>
 
-<a href="https://github.com/edraj/frontend-skeleton">
-<img alt="Repo Size" src="https://img.shields.io/github/repo-size/edraj/frontend-skeleton" />
+<a href="https://github.com/edraj/dmart">
+<img alt="Repo Size" src="https://img.shields.io/github/repo-size/edraj/dmart" />
 </a>
 
 
@@ -41,8 +41,8 @@ Currently the code is confirgured to use https://api.dmart.cc
 
 ```bash
 
-git clone https://github.com/edraj/frontend-skeleton.git
-cd frontend-skeleton
+git clone https://github.com/edraj/dmart.git
+cd dmart/frontend
 yarn install
 
 
