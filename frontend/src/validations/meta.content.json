@@ -1,0 +1,127 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "restricted_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "resource_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowed_fields_values": {
+      "type": "object"
+    },
+    "attachments": {
+      "type": "string"
+    },
+    "subpaths": {
+      "type": "object"
+    },
+    "uuid": {
+      "type": "string"
+    },
+    "shortname": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "owner_shortname": {
+      "type": "string"
+    },
+    "displayname": {
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string"
+        },
+        "ar": {
+          "type": "string"
+        },
+        "kd": {
+          "type": "string"
+        }
+      }
+    },
+    "description": {
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string"
+        },
+        "ar": {
+          "type": "string"
+        },
+        "kd": {
+          "type": "string"
+        }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },  
+    "payload": {
+      "type": "object",
+      "properties": {
+        "content_type": {
+          "type": "string"
+        },
+        "schema_shortname": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "last_validated": {
+          "type": "string"
+        },
+        "validation_status": {
+          "type": "string"
+        }
+      },
+      "required": ["content_type"]
+    }
+  },
+  "required": [
+    "uuid",
+    "shortname",
+    "is_active",
+    "tags",
+    "created_at",
+    "updated_at",
+    "owner_shortname"
+  ]
+}

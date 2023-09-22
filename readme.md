@@ -3,7 +3,8 @@
 <!--img src="https://img.shields.io/github/v/release/edraj/dmart.svg" --> 
 
 <a href="https://github.com/edraj/dmart/releases/latest">
-<img src="https://github.com/edraj/dmart/actions/workflows/dmart-checks.yml/badge.svg" > 
+<img src="https://github.com/edraj/dmart/actions/workflows/backend-checks.yml/badge.svg" > 
+<img src="https://github.com/edraj/dmart/actions/workflows/frontend-checks.yml/badge.svg" > 
 </a>
 
 <a href="https://github.com/edraj/dmart/releases/latest">

@@ -1,100 +1,70 @@
 <!-- routify:meta reset -->
+
 <script lang="ts">
   import { Col, Container, Row } from "sveltestrap";
-  // import Footer from "../../_components/Footer.svelte";
-  import signedin_user from "./_stores/signedin_user.js";
-  import Login from "../_components/Login.svelte";
-  import Notifications from "svelte-notifications";
-  import { getSpaces } from "./_stores/spaces";
-  import Header from "./_components/Header.svelte";
-  import SidebarDashboard from "./_components/SidebarDashboard.svelte";
-  import SidebarQaTool from "./_components/SidebarQATool.svelte";
-  import { active_section } from "./_stores/active_section.js";
-  import SidebarQuery from "./_components/SidebarQuery.svelte";
+  import { user } from "@/stores/user";
+  import Login from "@/components/Login.svelte";
+  import Header from "@/components/management/Header.svelte";
+  import Sidebar from "@/components/management/Sidebar.svelte";
+  import { get_profile } from "@/dmart";
+  import { useRegisterSW } from "virtual:pwa-register/svelte";
+  import Offline from "@/components/Offline.svelte";
+  import TopLoadingBar from "@/components/management/TopLoadingBar.svelte";
+
+  let isOffline = false;
+
+  const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW({
+    onRegistered(swr) {
+      isOffline = !navigator.onLine;
+    },
+    onRegisterError(error) {
+    },
+    onOfflineReady() {
+      setTimeout(() => close(), 5000);
+    },
+  });
+  function close() {
+    offlineReady.set(false);
+    needRefresh.set(false);
+  }
+
+  let window_height: number;
+  let header_height: number;
 
   $: {
-    if (window.location.pathname.includes("dashboard")) {
-      active_section.set("dashboard");
-    } else if (window.location.pathname.includes("qatool")) {
-      active_section.set("qatool");
-    } else if (window.location.pathname.includes("events")) {
-      active_section.set("events");
-    } else if (window.location.pathname.includes("quering")) {
-      active_section.set("quering");
-    }
+    get_profile();
   }
-
-  let init = getSpaces();
 </script>
 
-<Notifications>
-  {#if !$signedin_user}
-    <div id="login-container">
-      <Login />
-    </div>
-  {:else}
-    {#await init}
-      <div />
-    {:then _}
-      <Container
-        fluid={true}
-        class="d-flex flex-column position-relative p-0 my-0 w-100 h-100"
-      >
-        <Row
-          class="align-items-start w-100 ms-0 border border-primary"
-          noGutters
-        >
-          <Col sm="12"><Header /></Col>
-        </Row>
-        <Row class="w-100 ms-0 my-0 border border-success h-100" noGutters>
-          <Col
-            sm="2"
-            class="d-flex flex-column justify-content-between fixed-size border border-warning bg-light"
-          >
-            {#if $active_section === "dashboard"}
-              <SidebarDashboard />
-            {/if}
-            {#if $active_section === "qatool"}
-              <SidebarQaTool />
-            {/if}
-            {#if $active_section === "events"}
-              <SidebarQaTool />
-            {/if}
-            {#if $active_section === "quering"}
-              <SidebarQuery />
-            {/if}
-          </Col>
+<svelte:window bind:innerHeight={window_height} />
 
-          <Col sm="10" class="fixed-size border border-info"><slot /></Col>
-        </Row>
-        <!--Row class="align-items-end w-100 ms-0 my-0 border border-dark" noGutters>
-        <Col sm="12" class=""><Footer /></Col>
-      </Row-->
-      </Container>
-      <style>
-        .fixed-size {
-          height: 95vh;
-          overflow-y: scroll;
-          top: 0;
-          bottom: 0;
-          -ms-overflow-style: none; /* IE and Edge */
-          scrollbar-width: none; /* Firefox */
-        }
+<TopLoadingBar />
 
-        /* Hide scrollbar for Chrome, Safari and Opera */
-        .fixed-size::-webkit-scrollbar {
-          display: none;
-        }
-      </style>
-    {:catch error}
-      <p style="color: red">{error.message}</p>
-    {/await}
-  {/if}
-</Notifications>
-
-<style>
-  #login-container {
-    display: flex;
-    height: 100vh;
-  }
-</style>
+{#if isOffline}
+  <div class="container-fluid d-flex align-items-start py-3 h-100">
+    <Offline />
+  </div>
+{:else if !$user || !$user.signedin}
+  <div
+    class="container-fluid d-flex align-items-start py-3 h-100"
+    id="login-container"
+  >
+    <Login />
+  </div>
+{:else}
+  <div bind:clientHeight={header_height} class="fixed-top"><Header /></div>
+  <Container
+    fluid={true}
+    class="position-relative p-0"
+    style="top: {header_height}px; height: {window_height -
+      header_height -
+      8}px;"
+  >
+    <Row class="h-100" noGutters>
+      <Col sm="2" class="h-100 border-end border-light px-1"><Sidebar /></Col>
+      <Col sm="10" class="h-100 border-end border-light px-1 overflow-auto"
+        ><slot />
+      </Col>
+    </Row>
+  </Container>
+{/if}
