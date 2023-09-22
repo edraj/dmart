@@ -1,0 +1,126 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "uuid": {
+      "type": "string"
+    },
+    "shortname": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "owner_shortname": {
+      "type": "string"
+    },
+    "displayname": {
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string"
+        },
+        "ar": {
+          "type": "string"
+        },
+        "kd": {
+          "type": "string"
+        }
+      }
+    },
+    "description": {
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string"
+        },
+        "ar": {
+          "type": "string"
+        },
+        "kd": {
+          "type": "string"
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "content_type": {
+          "type": "string"
+        },
+        "schema_shortname": {
+          "type": "string"
+        }
+      },
+      "required": ["content_type", "schema_shortname"]
+    },
+    "state": {
+      "type": "string"
+    },
+    "is_open": {
+      "type": "boolean"
+    },
+    "workflow_shortname": {
+      "type": "string"
+    },
+    "resolution_reason": {
+      "type": "string"
+    },
+    "reporter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "distributor": {
+          "type": "string"
+        },
+        "governorate": {
+          "type": "string"
+        },
+        "msisdn": {
+          "type": "string"
+        },
+        "channel_address": {
+          "type": "object"
+        }
+      }
+    },
+    "collaborators": {
+      "type": "object",
+      "properties": {
+        "processed_by": {
+          "type": "string"
+        },
+        "delivered_by": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [
+    "uuid",
+    "shortname",
+    "is_active",
+    "tags",
+    "created_at",
+    "updated_at",
+    "owner_shortname",
+    "payload",
+    "state",
+    "is_open",
+    "workflow_shortname"
+  ]
+}

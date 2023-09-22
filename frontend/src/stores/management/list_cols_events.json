@@ -1,0 +1,26 @@
+{
+  "shortname": {
+    "path": "shortname",
+    "title": "shortname",
+    "type": "string",
+    "width": "25%"
+  },
+  "resource_type": {
+    "path": "resource_type",
+    "title": "Resource type",
+    "type": "string",
+    "width": "15%"
+  },
+  "event": {
+    "path": "attributes.request",
+    "title": "Event",
+    "type": "string",
+    "width": "15%"
+  },
+  "timestamp": {
+    "path": "attributes.timestamp",
+    "title": "Timestamp",
+    "type": "string",
+    "width": "15%"
+  }
+}
