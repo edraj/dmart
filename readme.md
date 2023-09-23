@@ -307,7 +307,7 @@ Simply put, this will help small teams, individuals and interest groups to quick
 
 ## Coming soon ...
 
-
-### Mobile app skeleton (Could be based on SvelteNative and NativeScript or Flutter)
+### Universal online presence platform sample webapp (Svelte4, Routify3, Sveltestrap)
+### Universal online presence platform sample mobile app (Flutter)
 
 
