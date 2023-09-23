@@ -1,4 +1,4 @@
-name: DMART Frontend checks
+name: Frontend checks
 
 on:
   push:
