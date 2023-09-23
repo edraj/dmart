@@ -241,8 +241,8 @@ yarn tauri build --bundles appimage --debug
 
 ```
 
-<img src="./docs/admin_ui_1.png" width="450">
-<img src="./docs/admin_ui_2.png" width="450">
+<img src="./docs/admin_ui_1.png" width="800">
+<img src="./docs/admin_ui_2.png" width="800">
 
 ### Using the command line tool
 
