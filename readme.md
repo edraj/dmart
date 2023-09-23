@@ -10,7 +10,7 @@
 <a href="https://github.com/edraj/dmart/releases/latest">
 <img alt="Latest release" src="https://img.shields.io/github/v/release/edraj/dmart" />
 </a>
-
+<br/>
 <a href="https://github.com/edraj/dmart/pulse">
 <img alt="Last commit" src="https://img.shields.io/github/last-commit/edraj/dmart"/>
 </a>
