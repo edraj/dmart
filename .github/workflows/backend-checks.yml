@@ -1,4 +1,4 @@
-name: DMART App checks
+name: Backend checks
 
 on:
   push:
