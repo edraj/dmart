@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "plantuml-encoder": "^1.4.0",
+    "spank": "^2.0.0",
     "svelte-datatables-net": "https://github.com/edraj/svelte-datatables-net",
     "sveltestrap": "^5.11.2",
     "vite-plugin-pwa": "^0.16.4"

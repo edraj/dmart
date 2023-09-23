@@ -73,9 +73,9 @@ Valuable information (organizational and individual) is getting out of control!
   - Changes on entries are recorded for audit and tracking.
   - Structured content: Each structured json content (payload) is associated with a pre-defined json schema stored under the schema section in the space. 
   - Arbitrary attachments: An entity could have attachments (binary or otherwise)
-- Entries are stord and orgazined arbitrary hierarchical folder structure (aka categories) on the file-system. Facilitating folder-based routes.
+- Entries are stord and organized arbitrary hierarchical folder structure (aka categories) on the file-system. Facilitating folder-based routes.
 
-DMART is a "Data-first" platform to management your valuable data/information; allowing you to transform your perciption of data from liability into assets.
+DMART is a "Data-first" platform to management your valuable data/information; allowing you to transform your perception of data from liability into assets.
 
 <img src="./docs/tree.png" width="500">
 
@@ -83,7 +83,7 @@ DMART is a "Data-first" platform to management your valuable data/information; a
 
   - **Management**  : Create/update/delete schema, content, scripts, triggers, users and roles
   - **Discovery**   : Users, paths, scripts, changes/history, schema and content
-  - **Consumption** : Content/attachments, scripts and submissions  
+  - **Consumption** : Content/attachments, scripts and submissions
 
 Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/docs)
 
@@ -94,11 +94,11 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
   - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files. 
   - Python 3.11 with emphasis on 
     - asyncio : maximizing scalability and leverage of server resources and enabling background jobs (post api service time).
-    - type hinting and strengent linting (pyright).
+    - type hinting and stringent linting (pyright).
   - FastAPI as the api micro-framework (based on our _curated_ fastapi skeleton) and full leverage of Pydantic and OpenApi version 3. 
   - Hypercorn (runner server)
-  - Redis as the operational data store. With sepecific leverage of RediSearch RedisJSON modules.
-  - Intensive json-based logging for easier insights.  
+  - Redis as the operational data store. With specific leverage of RediSearch RedisJSON modules.
+  - Intensive json-based logging for easier insights.
 
 <img src="./docs/datamart-one.png" width="50"> <img src="./docs/datamart-two.png" width="50"> <img src="./docs/datamart-three.png" width="50"> <img src="./docs/datamart-four.png" width="50">
 
@@ -210,6 +210,39 @@ pytest
 <img src="./docs/pytest.png" width="450">
 
 
+### Using the Admin UI tool
+
+DMART has a comprehensive Admin UI that interacts with the backend entirely via the formal API. It is built with Svelte, Routify3 and SvelteStrap.
+
+```bash
+cd dmart/frontend
+yarn install
+
+# Configure the dmart server backend url in src/config.ts
+
+# To run in Development mode
+yarn dev
+
+# To build and run in production / static file serving mode (i.e. w/o nodejs) using Caddy
+yarn build
+caddy run
+```
+
+#### Building tauri binary (Linux AppImage)
+
+This allows packaging the admin tool as a desktop application.
+
+```
+# Regular build without inspection
+yarn tauri build --bundles appimage
+
+# To add inspection (right mouse click -> inspect)
+yarn tauri build --bundles appimage --debug
+
+```
+
+<img src="./docs/admin_ui_1.png" width="450">
+<img src="./docs/admin_ui_2.png" width="450">
 
 ### Using the command line tool
 
@@ -228,6 +261,7 @@ pip install --user  -r requirements.txt
 ./cli.py
 ```
 
+<img src="./docs/cli.png" width="450">
 
 ### Offline (aka airgapped) deployment
 
@@ -250,8 +284,6 @@ pip install --no-index --find-links=~/.pipi --upgrade pip
 pip install --no-index --find-links=~/.pipi -r requirements.txt -r test-requirements.txt -r plugins-requirements.txt
 ```
 
-<img src="./docs/cli.png" width="450">
-
 
 ### Running extra python checks
 
@@ -265,14 +297,17 @@ pip freeze > pip.freeze
 
 ```
 
+### Sample usecases
+
+DMART is a low-level general-purpose data platform. Hence it could apply to a reasonably wide variety of usecases.
+
+The one usecase we are currently focused on building is a universal online presence platform. A tool that combines CMS, Messaging, and Collaboration in a federated fashion (borrowing from how email federates its messaging service)
+
+Simply put, this will help small teams, individuals and interest groups to quickly launch a website (that is their own) index-able by search engines, provision users and allow all to author and interact with content (both from the website and mobile app). With the leverage of DMART all information elements are structures as entries within the specific hierarchy desired by the admin user. 
+
 ## Coming soon ...
 
 
-### Mobile app skeleton (based on SvelteNative and NativeScript)
-
-### Web app skeleton (based on Svelte)
-
-### Sample usecases
-
+### Mobile app skeleton (Could be based on SvelteNative and NativeScript or Flutter)
 
 
