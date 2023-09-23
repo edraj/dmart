@@ -53,7 +53,7 @@ export default defineConfig({
       toggleButtonPos: 'bottom-right'
     }),*/
     routify({
-      ssr: { enable: false },
+      ssr: { enable: production },
     }),
     svelte({
       compilerOptions: {
