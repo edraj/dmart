@@ -27,6 +27,7 @@
     "bootstrap-icons": "^1.10.3",
     "cl-editor": "^2.3.0",
     "eslint": "^8.44.0",
+    "intl-messageformat": "^10.5.3",
     "jsdom": "^22.1.0",
     "marked": "^5.0.0",
     "mdsvex": "^0.11.0",

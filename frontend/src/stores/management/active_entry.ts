@@ -22,7 +22,9 @@ const default_value : ResponseEntry = {
   }
 }; 
 
-let local : ResponseEntry = localStorage.getItem("active_entry") ? (JSON.parse(localStorage.getItem("active_entry")) as ResponseEntry): default_value;
+let local : ResponseEntry = default_value;
+if (typeof localStorage !== 'undefined') 
+  local = localStorage.getItem("active_entry") ? (JSON.parse(localStorage.getItem("active_entry")) as ResponseEntry): default_value;
 const {subscribe, set} = writable( local );
 
 export default {

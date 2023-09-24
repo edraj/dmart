@@ -20,8 +20,9 @@
   let children = [];
 
   function displayname(): string {
-    const lang = JSON.parse(localStorage.getItem("preferred_locale"));
-    if (folder?.attributes?.displayname) {
+
+    let lang = JSON.parse(typeof localStorage !== 'undefined' && localStorage.getItem("preferred_locale") || "ar");
+    if (folder?.attributes?.displayname && lang in folder?.attributes?.displayname) {
       return folder?.attributes?.displayname[lang] ?? folder.shortname;
     } else {
       return folder.shortname;

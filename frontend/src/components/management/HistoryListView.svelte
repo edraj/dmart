@@ -24,7 +24,7 @@
   let objectDatatable = functionCreateDatatable({
     parData: [],
     parSearchableColumns: Object.keys(columns),
-    parRowsPerPage: (localStorage.getItem("rowPerPage") as `${number}`) || "15",
+    parRowsPerPage: (typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage") as `${number}`) || "15",
     parSearchString: "",
     parSortBy: "shortname",
     parSortOrder: "ascending",
@@ -63,7 +63,7 @@
   let numberActivePage = 1;
   let propNumberOfPages = 1;
   let numberRowsPerPage: number =
-    parseInt(localStorage.getItem("rowPerPage")) || 15;
+    parseInt(typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage")) || 15;
 
   function setNumberOfPages() {
     propNumberOfPages = Math.ceil(total / numberRowsPerPage);
@@ -109,7 +109,7 @@
         parData: [],
         parSearchableColumns: Object.keys(columns),
         parRowsPerPage:
-          (localStorage.getItem("rowPerPage") as `${number}`) || "15",
+          (typeof localStorage !== 'undefined' &&  localStorage.getItem("rowPerPage") as `${number}`) || "15",
         parSearchString: "",
         parSortBy: "shortname",
         parSortOrder: "ascending",
@@ -134,7 +134,8 @@
       }
       if (objectDatatable.numberRowsPerPage != numberRowsPerPage) {
         numberRowsPerPage = objectDatatable.numberRowsPerPage;
-        localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
+        if (typeof localStorage !== 'undefined')
+          localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
         fetchPageRecords();
       }
       if (objectDatatable.numberActivePage != numberActivePage) {

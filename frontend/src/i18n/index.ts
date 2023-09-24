@@ -16,12 +16,15 @@ function switchLocale(_locale: string) {
   if (!(_locale in website.languages)) {
     _locale = website.default_language;
   }
-  localStorage.setItem("preferred_locale", JSON.stringify(_locale));
+  if (typeof localStorage !== 'undefined')
+    localStorage.setItem("preferred_locale", JSON.stringify(_locale));
   locale.set(_locale);
 }
 
 function getPreferredLocale() : string {
-  const preferred_locale = localStorage.getItem("preferred_locale");
+  let  preferred_locale = '"ar"';
+  if (typeof localStorage !== 'undefined')
+    preferred_locale = localStorage.getItem("preferred_locale");
   if (typeof preferred_locale === "string") {
     return JSON.parse(preferred_locale);
   }
@@ -50,7 +53,8 @@ function getPreferredLocale() : string {
     _locale = "en";
   }
 
-  localStorage.setItem("preferred_locale", JSON.stringify(_locale));
+  if(typeof localStorage !== 'undefined')
+    localStorage.setItem("preferred_locale", JSON.stringify(_locale));
   return _locale;
 }
 

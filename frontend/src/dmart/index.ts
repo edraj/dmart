@@ -357,7 +357,7 @@ export async function get_profile() {
         headers,
       }
     );
-    if (data.status === "success") {
+    if (typeof localStorage !== 'undefined' && data.status === "success") {
       localStorage.setItem(
         "permissions",
         JSON.stringify(data.records[0].attributes.permissions)
