@@ -1,5 +1,6 @@
 <script lang="ts">
-  import {highlight, languages} from "prismjs";
+  import pkg from "prismjs";
+  const {highlight, languages} = pkg;
   import "prismjs/components/prism-json";
   import "prismjs/components/prism-bash";
 

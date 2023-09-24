@@ -46,7 +46,9 @@ export async function signin(username: string, password: string) {
     const account = response.records[0];
     const auth = account.attributes.access_token;
     authToken.set(auth);
-    localStorage.setItem("authToken", auth);
+
+    if (typeof localStorage !== 'undefined')
+      localStorage.setItem("authToken", auth);
 
     const _user: User = {
       signedin: true,
@@ -56,16 +58,19 @@ export async function signin(username: string, password: string) {
       account: account,
     };
     user.set(_user);
-    localStorage.setItem(KEY, JSON.stringify(_user));
-    localStorage.setItem("rowPerPage", "15");
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(KEY, JSON.stringify(_user));
+      localStorage.setItem("rowPerPage", "15");
+    }
   } else {
     user.set(signedout);
-    localStorage.setItem(KEY, JSON.stringify(signedout));
+    if (typeof localStorage !== 'undefined')
+      localStorage.setItem(KEY, JSON.stringify(signedout));
   }
 }
 
 export async function signout() { 
-  if (JSON.parse(localStorage.getItem(KEY)).signedin) {
+  if (typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(KEY)).signedin) {
     logout();
     user.set(signedout);
     localStorage.setItem(KEY, JSON.stringify(signedout));
@@ -76,7 +81,8 @@ export function switchLocale(locale: Locale) {
   user.update((user) => {
     user.locale = locale;
     signedout.locale = locale; // remember the locale value in case we logout
-    localStorage.setItem(KEY, JSON.stringify(user));
+    if (typeof localStorage !== 'undefined')
+      localStorage.setItem(KEY, JSON.stringify(user));
     return user;
   });
 }

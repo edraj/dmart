@@ -51,7 +51,9 @@ export default function checkAccess(
   subpath: string,
   resourceType: string
 ): boolean {
-  const permissions = JSON.parse(localStorage.getItem("permissions"));
+  let permissions = {};
+  if (typeof localStorage !== 'undefined')
+    permissions = JSON.parse(localStorage.getItem("permissions"));
 
   if (permissions === null || Object.keys(permissions).length === 0) {
     return false;

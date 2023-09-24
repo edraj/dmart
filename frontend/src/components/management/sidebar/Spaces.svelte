@@ -28,8 +28,10 @@
 
   let expanded: string;
   function displayname(space_entry: ApiResponseRecord): string {
-    const lang = JSON.parse(localStorage.getItem("preferred_locale"));
-    if (space_entry?.attributes?.displayname) {
+    let lang = null;
+    if (typeof localStorage !== 'undefined')
+      lang = JSON.parse(localStorage.getItem("preferred_locale"));
+    if (space_entry?.attributes?.displayname && lang in space_entry?.attributes?.displayname) {
       return (
         space_entry?.attributes?.displayname[lang] ?? space_entry.shortname
       );
@@ -80,7 +82,9 @@
   }
   let canCreateNewSpace = false;
   $: {
-    const permissions = JSON.parse(localStorage.getItem("permissions"));
+    let permissions = [];
+    if (typeof localStorage !== 'undefined')
+      permissions = JSON.parse(localStorage.getItem("permissions"));
     if (permissions === null || Object.keys(permissions).length === 0) {
       canCreateNewSpace = false;
     }

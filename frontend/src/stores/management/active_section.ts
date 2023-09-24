@@ -29,17 +29,17 @@ export type Section = {
 const default_section : Section = sections[2]; // Content
 let local : Section;
 
-if (!localStorage.getItem("active_section")) {
+if (typeof localStorage !== 'undefined' && !localStorage.getItem("active_section")) 
   localStorage.setItem("active_section", JSON.stringify(default_section));
-}
 
-local = JSON.parse(localStorage.getItem("active_section") || "{}") as Section;
+JSON.parse(typeof localStorage !== 'undefined' && localStorage.getItem("active_section") || "{}") as Section;
 
 const { subscribe, set } = writable(local);
 
 function customSet(section : Section) {
   set(section);
-  localStorage.setItem("active_section", JSON.stringify(section));
+  if (typeof localStorage !== 'undefined')
+    localStorage.setItem("active_section", JSON.stringify(section));
 }
 
 export const active_section = {

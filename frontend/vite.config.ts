@@ -5,8 +5,6 @@ import { mdsvex } from "mdsvex";
 import preprocess from "svelte-preprocess";
 import routify from "@roxi/routify/vite-plugin";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-// import { svelteInspector } from '@sveltejs/vite-plugin-svelte-inspector';
-// import path from "path";
 
 const production = process.env.NODE_ENV === "production";
 
@@ -14,15 +12,9 @@ export default defineConfig({
   clearScreen: false,
   resolve: {
     alias: {
-      /*'@': path.resolve(__dirname, './src'),*/
       "@": process.cwd() + "/src",
     },
   },
-  /*resolve: {
-    alias: {
-      $root: path.resolve('./src')
-    }
-  },*/
   plugins: [
     VitePWA({
       strategies: "injectManifest",
@@ -53,7 +45,7 @@ export default defineConfig({
       toggleButtonPos: 'bottom-right'
     }),*/
     routify({
-      ssr: { enable: false },
+      ssr: { enable: production },
     }),
     svelte({
       compilerOptions: {
