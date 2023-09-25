@@ -305,9 +305,12 @@ The one usecase we are currently focused on building is a universal online prese
 
 Simply put, this will help small teams, individuals and interest groups to quickly launch a website (that is their own) index-able by search engines, provision users and allow all to author and interact with content (both from the website and mobile app). With the leverage of DMART all information elements are structures as entries within the specific hierarchy desired by the admin user. 
 
-## Coming soon ...
+### Universal online presence platform
 
-### Universal online presence platform sample webapp (Svelte4, Routify3, Sveltestrap)
-### Universal online presence platform sample mobile app (Flutter)
+[High-level description](universal_presence_platform.md)
 
+* Sample webapp (Svelte4, Routify3, Sveltestrap)
+* Sample mobile app (Flutter)
 
+> [!NOTE]
+> Comiong soon.
