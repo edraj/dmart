@@ -1,6 +1,6 @@
 ## Universal online presence platform
 
-The objective of this platform is to help customers establish their organisational or personal online presence. I.e. Ability to have a website, use messaging, digital assets and collaboration.
+The objective of this platform is to help customers establish their organisational or personal online presence. I.e. Ability to have a website, use messaging, maintain digital assets and collaborate.
 
 In otherwords, this is a simple platform that combines a number of features to cover the intial and generic needs of becoming available online.
 
