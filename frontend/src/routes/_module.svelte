@@ -1,17 +1,19 @@
 <script lang="ts">
-  import { Col, Container, Row } from "sveltestrap";
-  import Header from "@/components/Header.svelte";
-  import Footer from "@/components/Footer.svelte";
-  import Sidebar from "@/components/Sidebar.svelte";
-  import { user } from "@/stores/user";
-  import Login from "@/components/Login.svelte";
-  import { useRegisterSW } from "virtual:pwa-register/svelte";
-  import Offline from "@/components/Offline.svelte";
+  import { goto } from '@roxi/routify';
+  // import { Col, Container, Row } from "sveltestrap";
+  // import Header from "@/components/Header.svelte";
+  // import Footer from "@/components/Footer.svelte";
+  // import Sidebar from "@/components/Sidebar.svelte";
+  // import { user } from "@/stores/user";
+  // import Login from "@/components/Login.svelte";
+  // import { useRegisterSW } from "virtual:pwa-register/svelte";
+  // import Offline from "@/components/Offline.svelte";
 
-  let window_height: number;
-  let header_height: number;
-  let footer_height: number;
+  // let window_height: number;
+  // let header_height: number;
+  // let footer_height: number;
 
+  /*
   let isOffline = false;
 
   const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW({
@@ -28,8 +30,13 @@
     offlineReady.set(false);
     needRefresh.set(false);
   }
+
+  */
+
+  $goto("/management/")
 </script>
 
+<!--
 <svelte:window bind:innerHeight={window_height} />
 {#if isOffline}
   <div class="container-fluid d-flex align-items-start py-3 h-100">
@@ -50,18 +57,17 @@
     style="top: {header_height}px; height: {window_height - header_height - footer_height - 2}px;"
   >
     <Row class="border border-success h-100 w-100 ms-0 my-0" noGutters>
-    <h2> Loading </h2>
-<!--
+    <h2> ... </h2>
       <Col sm="2" class="h-100 border border-warning overflow-auto"
         ><Sidebar /></Col
       >
       <Col sm="10" class="h-100 border border-info overflow-auto">
         <slot />
       </Col>
-  -->
     </Row>
   </Container>
 {/if}
 <div bind:clientHeight={footer_height} class="fixed-bottom border border-error">
   <Footer />
 </div>
+  -->
