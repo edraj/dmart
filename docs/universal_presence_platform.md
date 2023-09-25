@@ -9,6 +9,7 @@ In otherwords, this is a simple platform that combines a number of features to c
 1. Manage complexity through generalisation. We tend to write reasonabily gneric code base that allows the user to deal with a larger variety of needs.
 2. Flat-file, json-based schema enabled meta-data enriched extensible data store with unified api with discovery. This is essentially accomplished by the DMART engine.
 3. Borrow concepts or protocols from similar systems where applicable.
+4. Federated node/instance/domain setup. This is similar to Email (smtp) concept, but applied additionally to content managment and interactions. Where each individual setup (aka node, instance, domain) of this system can interact with another setup. E.g. Messaging, Content interaction (comment, react, share), Follow, ...etc. Each setup manages their own user base. I.e. a user must always belong to a valid setup for them to interact and use the system (apart from public read-only view of course).
 
 
 ### Core features
