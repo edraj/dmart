@@ -11,7 +11,7 @@
       "people/__current_user__/private",
       "people/__current_user__/protected",
       "people/__current_user__/public",
-      "people/__current_user__/inbox",
+      "people/__current_user__/messages",
       "people/__current_user__/notifications"
     ]
   },
