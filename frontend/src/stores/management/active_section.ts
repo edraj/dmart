@@ -32,7 +32,7 @@ let local : Section;
 if (typeof localStorage !== 'undefined' && !localStorage.getItem("active_section")) 
   localStorage.setItem("active_section", JSON.stringify(default_section));
 
-JSON.parse(typeof localStorage !== 'undefined' && localStorage.getItem("active_section") || "{}") as Section;
+local = JSON.parse(typeof localStorage !== 'undefined' && localStorage.getItem("active_section") || JSON.stringify(default_section)) as Section;
 
 const { subscribe, set } = writable(local);
 

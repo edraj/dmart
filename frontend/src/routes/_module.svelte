@@ -50,12 +50,15 @@
     style="top: {header_height}px; height: {window_height - header_height - footer_height - 2}px;"
   >
     <Row class="border border-success h-100 w-100 ms-0 my-0" noGutters>
+    <h2> Loading </h2>
+<!--
       <Col sm="2" class="h-100 border border-warning overflow-auto"
         ><Sidebar /></Col
       >
       <Col sm="10" class="h-100 border border-info overflow-auto">
         <slot />
       </Col>
+  -->
     </Row>
   </Container>
 {/if}
