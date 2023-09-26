@@ -1,6 +1,6 @@
 #!/bin/bash -x 
 
-# Steps to get a fully working instance of dmart backend + admin ui + reids
+# Steps to get a fully working instance of dmart backend + admin ui + redis
 
 # 1. Create the container image
 podman build -t dmart -f Dockerfile ../../
@@ -20,6 +20,10 @@ podman exec -it -w /home/backend dmart ./curl.sh
 # 6. Print the server manifest
 podman exec -it -w /home/backend dmart /home/backend/manifest.sh
 
+# 7. Now open the browser to http://localhost:8000
+xdg-open http://localhost:8000
+
+
 # Reindex the data
 # podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 /home/backend/create_index.py --flushall
 
@@ -31,3 +35,4 @@ podman exec -it -w /home/backend dmart /home/backend/manifest.sh
 
 # Sample container image
 # echo -e 'FROM alpine:3.18\nRUN echo "hello world"' | podman build -t hello -
+#
