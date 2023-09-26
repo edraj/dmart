@@ -7,7 +7,10 @@ name="DMART Backend service"
 description="Headless content respository"
 
 command="/home/venv/bin/python3.11"
+# To run as a single process/thread mode
 command_args="/home/backend/main.py"
+# TO RUN via hypercorn (multi process)
+# command_args="-m hypercorn main:app --config file:utils/hypercorn_config.py"
 # command_user="imx:imx"
 command_background="true"
 directory="/home/backend"

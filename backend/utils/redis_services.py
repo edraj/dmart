@@ -257,9 +257,9 @@ class RedisServices(object):
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                loop.create_task(self.client.close())
+                loop.create_task(self.client.aclose())
             else:
-                loop.run_until_complete(self.client.close())
+                loop.run_until_complete(self.client.aclose())
         except Exception:
             pass
 
@@ -277,7 +277,7 @@ class RedisServices(object):
         exc_type = exc_type
         exc = exc
         tb = tb
-        await self.client.close()
+        await self.client.aclose()
 
     async def create_index(
         self,
@@ -950,9 +950,9 @@ class RedisServices(object):
 
         if sort_by:
             aggr_request.sort_by(
-                aggregation.Desc(f"@{sort_by}")
-                if sort_type == SortType.ascending
-                else aggregation.Asc(f"@{sort_by}"),
+                [ str(aggregation.Desc(f"@{sort_by}")
+                    if sort_type == SortType.ascending
+                    else aggregation.Asc(f"@{sort_by}"))],
                 max=max,
             )
 

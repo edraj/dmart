@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 API_URL="http://127.0.0.1:8282"
 CT="Content-Type: application/json"
