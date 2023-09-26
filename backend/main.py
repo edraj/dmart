@@ -44,12 +44,12 @@ from utils.redis_services import RedisServices
 app = FastAPI(
     title="Datamart API",
     description="Structured Content Management System",
-    version="1.0.0",
+    version="1.1.0",
     redoc_url=None,
     # TBD FIXME check why the following fastapi settings break swagger
     # docs_url="/docs",
     # openapi_url=f"{settings.base_path}/openapi.json",
-    # servers=[{"url": f"{settings.base_path}/"}],
+    servers=[{"url": f"{settings.base_path.rstrip('/')}/"}],
     contact={
         "name": "Kefah T. Issa",
         "url": "https://dmart.cc",

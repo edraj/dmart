@@ -28,6 +28,7 @@ RUN set -eux \
   && apk add --no-cache git su-exec tzdata openrc \
   && virtualenv --python=/usr/bin/python3.11 /home/venv \
   && source /home/venv/bin/activate \
+  && pip install --upgrade pip \
   && pip install -r /home/backend/requirements.txt -r /home/backend/test-requirements.txt -r /home/backend/plugins-requirements.txt \
   && pip cache purge \
   && apk add --no-cache nodejs yarn \

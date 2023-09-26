@@ -18,7 +18,7 @@ podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 -m pytest
 podman exec -it -w /home/backend dmart ./curl.sh
 
 # 6. Print the server manifest
-podman exec -it -w /home/backend dmart /home/backend/manifest.sh
+podman exec -it -w /home/backend dmart ./manifest.sh
 
 # 7. Now open the browser to http://localhost:8000
 xdg-open http://localhost:8000
@@ -26,8 +26,11 @@ xdg-open http://localhost:8000
 # 8. Run source code linters
 podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./pylint.sh'
 
+# 9. Run health-check
+podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 ./health_check.py
+
 # Reindex the data
-# podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 /home/backend/create_index.py --flushall
+# podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 ./create_index.py --flushall
 
 # Restart the dmart service if/when needed
 # podman exec -it dmart /etc/init.d/dmart restart
