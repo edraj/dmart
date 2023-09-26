@@ -1,1 +1,8 @@
 **/node_modules
+**/.*_cache
+LICENSE
+readme.md
+docs
+logs
+.dockerignore
+.github
