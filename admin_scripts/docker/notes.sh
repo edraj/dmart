@@ -23,6 +23,8 @@ podman exec -it -w /home/backend dmart /home/backend/manifest.sh
 # 7. Now open the browser to http://localhost:8000
 xdg-open http://localhost:8000
 
+# 8. Run source code linters
+podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./pylint.sh'
 
 # Reindex the data
 # podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 /home/backend/create_index.py --flushall
