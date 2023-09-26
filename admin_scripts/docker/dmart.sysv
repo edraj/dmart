@@ -1,0 +1,21 @@
+#!/sbin/openrc-run
+supervisor=supervise-daemon
+# start_stop_daemon_args="--chdir /home/imx/backend --env KEMAL_ENV=development"
+# start_stop_daemon_args="--env KEMAL_ENV=development"
+
+name="DMART Backend service"
+description="Headless content respository"
+
+command="/home/venv/bin/python3.11"
+command_args="/home/backend/main.py"
+# command_user="imx:imx"
+command_background="true"
+directory="/home/backend"
+output_log="/home/logs/dmart-out"
+error_log="/home/logs/dmart-err"
+
+depend() {
+  use net localmount logger
+  want redis
+  after redis
+}
