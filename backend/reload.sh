@@ -19,9 +19,8 @@ APP_URL="http://localhost:$PORT"
 time ./create_index.py --flushall
 RESULT+=$?
 
-which systemctl > /dev/null && \
-systemctl --user list-unit-files dmart.service > /dev/null  && \
-systemctl --user restart dmart.service
+(which systemctl > /dev/null && systemctl --user list-unit-files dmart.service > /dev/null  && systemctl --user restart dmart.service) || \
+( [[ -x "/etc/init.d/dmart" ]] && /etc/init.d/dmart restart )
 RESULT+=$?
 sleep 2
 # RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
