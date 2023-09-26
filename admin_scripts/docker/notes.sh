@@ -1,18 +1,33 @@
+#!/bin/bash -x 
 
+# Steps to get a fully working instance of dmart backend + admin ui + reids
+
+# 1. Create the container image
 podman build -t dmart -f Dockerfile ../../
+
+# 2. Instaniate the the container
 podman run --name dmart -p 8000:8000 -d -it dmart
-podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 /home/backend/create_index.py --flushall
-podman exec -it dmart /etc/init.d/dmart restart
-podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 -m pytest
-podman exec -it -w /home/backend dmart ./curl.sh
-podman exec -it -w /home/backend dmart /home/backend/manifest.sh
+
+# 3. Load the initial / sample space data
 podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
 
+# 4. Run automated tests -- using pytest
+podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 -m pytest
+
+# 5. Run automated tests -- using curl.sh
+podman exec -it -w /home/backend dmart ./curl.sh
+
+# 6. Print the server manifest
+podman exec -it -w /home/backend dmart /home/backend/manifest.sh
+
+# Reindex the data
+# podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 /home/backend/create_index.py --flushall
+
+# Restart the dmart service if/when needed
+# podman exec -it dmart /etc/init.d/dmart restart
 
 # List all containers
 # podman ps -a --storage
 
 # Sample container image
 # echo -e 'FROM alpine:3.18\nRUN echo "hello world"' | podman build -t hello -
-
-
