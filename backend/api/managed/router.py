@@ -1404,8 +1404,6 @@ async def retrieve_entry_or_attachment_payload(
         branch_name=branch_name,
         schema_shortname=schema_shortname,
     )
-    print(f"{payload_path=}")
-    print(f"{meta.payload.body=}")
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,

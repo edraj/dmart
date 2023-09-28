@@ -166,11 +166,11 @@ curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'reque
 RESULT+=$?
 
 
-# echo -n -e "Comment on content: \t"
-# COMMENT_SHORTNAME="greatcomment"
-# COMMENT_SUBPATH="$SUBPATH/$SHORTNAME"
-# RECORD=$(jq -c -n --arg subpath "$COMMENT_SUBPATH" --arg shortname "$COMMENT_SHORTNAME"  '{ space_name: "dummy", request_type:"create", records: [{resource_type: "comment", subpath: $subpath, shortname: $shortname, attributes:{body: "A comment insdie the content resource"}}]}')
-# curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$RECORD" ${API_URL}/managed/request | jq 
+echo -n -e "Comment on content: \t\t"
+COMMENT_SHORTNAME="greatcomment"
+COMMENT_SUBPATH="$SUBPATH/$SHORTNAME"
+RECORD=$(jq -c -n --arg subpath "$COMMENT_SUBPATH" --arg shortname "$COMMENT_SHORTNAME"  '{ space_name: "dummy", request_type:"create", records: [{resource_type: "comment", subpath: $subpath, shortname: $shortname, attributes:{body: "A comment insdie the content resource"}}]}')
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$RECORD" ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 
 echo -n -e "Managed CSV: \t\t\t" >&2
 curl -s -H "accept: text/csv" -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"dummy","subpath":"myfolder","type":"subpath","retrieve_json_payload":true,"limit":5}' ${API_URL}/managed/csv | xargs -0 echo | jq .status | tee /dev/stderr | grep -q "success"

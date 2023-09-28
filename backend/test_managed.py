@@ -367,12 +367,12 @@ def test_create_comment_attachment() -> None:
             subpath=subpath,
             filter_shortnames=[json_entry_shortname],
             retrieve_json_payload=True,
-            retrieve_attachments=False, # FIXME gives strange warning when set to True,
+            retrieve_attachments=True,
             limit=1,
         ),
         res_shortname=json_entry_shortname,
         res_subpath=subpath,
-        # FIXME related to the above fixme res_attachments={"comment": 1},
+        res_attachments={"comment": 1},
     )
 
     check_repeated_shortname(
@@ -579,6 +579,7 @@ def upload_resource_with_payload(
             assert_code_and_status_success(
                 client.post(endpoint, data={"space_name": space_name}, files=data)
             )
+
 
     media_file.close()
 
