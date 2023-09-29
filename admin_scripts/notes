@@ -10,3 +10,4 @@ systemctl --user daemon-reload
 loginctl enable-linger imx
 
 
+check-jsonschema --verbose --check-metaschema ../sample/spaces/*/schema/*.json
