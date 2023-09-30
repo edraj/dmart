@@ -4,4 +4,4 @@
 export SUPERMAN='{"shortname":"dmart","password":"xxxx"}'
 
 # Exctra account used for testing
-export ALIBABA='{"shortname":"alibaba","password":"yyyy"}'
+export ALIBABA='{"shortname":"alibaba","password":"xxxx"}'
