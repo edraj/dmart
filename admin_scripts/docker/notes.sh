@@ -8,8 +8,9 @@ podman build -t dmart -f Dockerfile ../../
 # 2. Instaniate the the container
 podman run --name dmart -p 8000:8000 -d -it dmart
 
-# 3. Load the initial / sample space data
-podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
+# 3. Load the initial / sample space data and restart the service
+podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 ./create_index.py --flushall
+podman exec -it dmart /etc/init.d/dmart restart
 
 # 4. Run automated tests -- using pytest
 podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 -m pytest
@@ -30,10 +31,7 @@ podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate &
 podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 ./health_check.py
 
 # Reindex the data
-# podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 ./create_index.py --flushall
-
-# Restart the dmart service if/when needed
-# podman exec -it dmart /etc/init.d/dmart restart
+# podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
 
 # List all containers
 # podman ps -a --storage
