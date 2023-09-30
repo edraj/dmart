@@ -17,10 +17,11 @@ COPY ./ /home/
 RUN set -eux \
   && mkdir -p /home/redis /home/logs/dmart /home/logs/redis \
   && cp /home/admin_scripts/docker/alpine@imx.sh-5f19b383.rsa.pub /etc/apk/keys/ \
-  && cp /home/admin_scripts/docker/dmart.sysv /etc/init.d/dmart \
+  && cp /home/admin_scripts/docker/dmart.sysv /etc/init.d/dmart && chmod a+x /etc/init.d/dmart \
   && cp /home/admin_scripts/docker/gitconfig /etc/gitconfig \
   && cp /home/admin_scripts/docker/config.ts /home/frontend/src/ \
   && cp /home/admin_scripts/docker/config.env /home/backend/ \
+  && chmod a+x /home/backend/*.py \
   && echo "https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
   && apk add --no-cache jq curl python3 py3-pip py3-wheel py3-setuptools py3-virtualenv gcc musl-dev python3-dev caddy bash coreutils file \
   && cp /home/admin_scripts/docker/Caddyfile /etc/caddy/ \
