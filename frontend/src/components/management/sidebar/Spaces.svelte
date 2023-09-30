@@ -138,7 +138,7 @@
     <p style="color: red">{error.message}</p>
   {/await}
 {/key}
-<!-- {#if canCreateNewSpace}
+{#if canCreateNewSpace}
   <hr class="w-100 mt-1 mb-0 py-1" />
   <Button
     class="w-100"
@@ -149,7 +149,7 @@
       isSpaceModalOpen = true;
     }}>Create new space</Button
   >
-{/if} -->
+{/if}
 
 <Modal
   isOpen={isSpaceModalOpen}
