@@ -11,11 +11,13 @@ LABEL org.label-schema.name="dmart" \
       org.label-schema.license="AGPLv3+"
 
 # COPY admin_scripts/docker/alpine@imx.sh-5f19b383.rsa.pub /etc/apk/keys/
-COPY ./ /home/
+# COPY ./ /home/
 
 # RUN set -eux 
 RUN set -eux \
   && mkdir -p /home/redis /home/logs/dmart /home/logs/redis \
+  && apk add --no-cache git \
+  && git clone https://github.com/edraj/dmart.git /home/ \
   && cp /home/admin_scripts/docker/alpine@imx.sh-5f19b383.rsa.pub /etc/apk/keys/ \
   && cp /home/admin_scripts/docker/dmart.sysv /etc/init.d/dmart && chmod a+x /etc/init.d/dmart \
   && cp /home/admin_scripts/docker/gitconfig /etc/gitconfig \
