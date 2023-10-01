@@ -147,8 +147,41 @@ With this scheme, only proper entry main payload files appear to the user. All m
 
 ## Installation
 
-### Requirements 
+### Container (recommended)
 
+Using podman (or docker), dmart can be fully setup and configured in few minutes.
+
+You only need a command line console, git and podman (or docker). 
+
+#### Steps
+```
+# Clone the git repo
+git clone https://github.com/edraj/dmart.git
+cd dmart/admin_scripts/docker
+
+# Build the container
+podman build -t dmart -f Dockerfile
+
+# Run the container
+podman run --name dmart -p 8000:8000 -d -it dmart
+
+# Set the admin password
+podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 ./set_admin_passwd.py
+
+# Load the sample spaces data
+podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
+
+# Run the auto tests 
+podman exec -it -w /home/backend dmart ./curl.sh
+podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 -m pytest
+
+# Open the browser to login to the admin tool. 
+# User name: dmart
+# Url : http://localhost:8000
+
+```
+
+### Manual (for advanced users)
 #### Requirements
 
 - git
@@ -190,7 +223,7 @@ cp config.env.sample config.env
 
 ```
 
-### Automated testing
+#### Automated testing
 
 #### Installing python dependencies
 
@@ -210,7 +243,7 @@ pytest
 <img src="./docs/pytest.png" width="450">
 
 
-### Using the Admin UI tool
+#### Using the Admin UI tool
 
 DMART has a comprehensive Admin UI that interacts with the backend entirely via the formal API. It is built with Svelte, Routify3 and SvelteStrap.
 
@@ -228,7 +261,7 @@ yarn build
 caddy run
 ```
 
-#### Building tauri binary (Linux AppImage)
+### Building tauri binary (Linux AppImage)
 
 This allows packaging the admin tool as a desktop application.
 
