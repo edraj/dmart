@@ -7,6 +7,7 @@
   import { retrieve_entry, ResourceType, ApiResponse } from "@/dmart";
   import { JSONEditor, JSONContent, Mode } from "svelte-jsoneditor";
   import Prism from "@/components/Prism.svelte";
+  import Icon from "@/components/Icon.svelte";
 
   type Request = {
     verb: string;
@@ -118,20 +119,35 @@
   {:then request}
     <Container>
       <Row class="my-3">
-        <Col class="d-flex justify-content-between">
-          <Col>
-            <p style="margin: 0px">
+        <!-- <Col class="d-flex justify-content-between">
+          <Col> -->
+        <!-- <p style="margin: 0px"> -->
+        <Col
+          ><Row>
+            <p class="m-0">
               <b>{$params.subpath} / {$params.shortname}</b> - Endpoint:
               <code>{request.endpoint}</code>
               Verb: <code>{request.verb}</code>
-              <Button on:click={toggleCurl}>Show curl</Button>
-              <Button
-                color="success"
-                on:click={async () => await call_api(request)}>Call</Button
-              >
             </p>
-          </Col>
-        </Col>
+          </Row></Col
+        >
+        <Col
+          ><Row style="justify-content: end;">
+            <Button class="mx-1" style="width:auto" on:click={toggleCurl}
+              ><Icon name="eye" color="grey" /></Button
+            >
+            <Button
+              class="mx-1"
+              style="width:auto"
+              color="success"
+              on:click={async () => await call_api(request)}
+              ><Icon name="send" color="grey" /></Button
+            >
+          </Row></Col
+        >
+        <!-- </p> -->
+        <!-- </Col>
+        </Col> -->
       </Row>
       <Row>
         <Col
