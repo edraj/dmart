@@ -511,16 +511,6 @@
     </ButtonGroup>
     <ButtonGroup size="sm" class="align-items-center">
       <span class="ps-2 pe-1"> {$_("actions")} </span>
-      <Button
-        outline
-        color="success"
-        size="sm"
-        title={$_("activate")}
-        on:click={() => {}}
-        class="justify-content-center text-center py-0 px-1"
-      >
-        <Icon name="file-check" />
-      </Button>
       {#if canDelete}
         <Button
           outline

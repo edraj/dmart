@@ -344,16 +344,6 @@
         outline
         color="success"
         size="sm"
-        title={$_("activate")}
-        on:click={() => {}}
-        class="justify-content-center text-center py-0 px-1"
-      >
-        <Icon name="file-check" />
-      </Button>
-      <Button
-        outline
-        color="success"
-        size="sm"
         title={$_("delete")}
         on:click={handleDelete}
         class="justify-content-center text-center py-0 px-1"
