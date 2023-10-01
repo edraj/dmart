@@ -151,7 +151,20 @@ let headers: { [key: string]: string } = {
   //"Authorization": ""
 };
 
+export type AggregationReducer = {
+  name: string,
+  alias: string,
+  args: Array<string>,
+}
+
+export type AggregationType = {
+  load: Array<string>,
+  group_by: Array<string>,
+  reducers: Array<AggregationReducer> | Array<string>
+}
+
 export enum QueryType {
+  aggregation = "aggregation",
   search = "search",
   subpath = "subpath",
   events = "events",
@@ -192,6 +205,7 @@ export type QueryRequest = {
   exact_subpath?: boolean;
   limit?: number;
   offset?: number;
+  aggregation_data?: AggregationType
 };
 
 export enum RequestType {
@@ -357,7 +371,7 @@ export async function get_profile() {
         headers,
       }
     );
-    if (typeof localStorage !== 'undefined' && data.status === "success") {
+    if (typeof localStorage !== "undefined" && data.status === "success") {
       localStorage.setItem(
         "permissions",
         JSON.stringify(data.records[0].attributes.permissions)
@@ -375,7 +389,7 @@ export type ApiQueryResponse = ApiResponse & {
 };
 
 export async function query(query: QueryRequest): Promise<ApiQueryResponse> {
-  if ( query.type != QueryType.spaces ) {
+  if (query.type != QueryType.spaces) {
     query.sort_type = query.sort_type || SortyType.ascending;
     query.sort_by = query.sort_by || "created_at";
   }
@@ -575,4 +589,18 @@ export async function progress_ticket(
   } catch (error) {
     return error.response.data;
   }
+}
+
+export async function get_manifest() {
+  const { data } = await axios.get<any>(website.backend + `/info/manifest`, {
+    headers,
+  });
+  return data;
+}
+
+export async function get_settings() {
+  const { data } = await axios.get<any>(website.backend + `/info/settings`, {
+    headers,
+  });
+  return data;
 }

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { _ } from "@/i18n";
   import {
+  AggregationType,
     QueryRequest,
     QueryType,
     ResourceType,
@@ -14,6 +15,7 @@
   import downloadFile from "@/utils/downloadFile";
   import { Level, showToast } from "@/utils/toast";
   import Input from "../Input.svelte";
+  import Aggregation from "./Aggregation.svelte";
 
   const dispatch = createEventDispatcher();
   let spaces = [];
@@ -25,6 +27,11 @@
     setup();
   });
 
+  let aggregation_data = {
+    load: [],
+    group_by: [],
+    reducers: [],
+  };
   let formData = null;
   async function handleResponse(event) {
     event.preventDefault();
@@ -60,7 +67,7 @@
       retrieve_attachments,
       retrieve_json_payload,
       exact_subpath: true,
-      search: search||"",
+      search: search || "",
       offset,
       limit,
     };
@@ -70,11 +77,19 @@
     if (to_date) {
       query_request.from_date = `${to_date}T00:00:00.000Z`;
     }
+    if (query_request.type === QueryType.aggregation) {
+      // query_request.
+      const aggregations: any = aggregation_data.reducers.map((agg)=>{
+        return {...agg, args: agg.args.split(",")}
+      });
+      query_request.aggregation_data = aggregations;
+    }
     const response = await query(query_request);
     dispatch("response", response);
   }
 
   let spacename = "management";
+  let queryType = "";
   let selectedSpacename = "";
   let subpath = "/";
   let tempSubpaths = [];
@@ -169,7 +184,7 @@
             id="type"
             type="select"
             title={$_("query_type")}
-            value="search"
+            bind:value={queryType}
           >
             {#each Object.keys(QueryType) as queryType}
               <option value={queryType}>{queryType}</option>
@@ -258,6 +273,10 @@
       >
     </Row>
   {/if}
+  {#if queryType == QueryType.aggregation}
+    <Aggregation bind:aggregation_data={aggregation_data}/>
+  {/if}
+
   <Row>
     <Col class="d-flex justify-content-between mb-2">
       <Button outline type="submit">{$_("submit")}</Button>
