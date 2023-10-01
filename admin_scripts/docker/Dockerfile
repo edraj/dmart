@@ -10,9 +10,6 @@ LABEL org.label-schema.name="dmart" \
       org.label-schema.version="1.0" \
       org.label-schema.license="AGPLv3+"
 
-# COPY admin_scripts/docker/alpine@imx.sh-5f19b383.rsa.pub /etc/apk/keys/
-# COPY ./ /home/
-
 # RUN set -eux 
 RUN set -eux \
   && apk add --no-cache git \
@@ -24,16 +21,18 @@ RUN set -eux \
   && cp /home/admin_scripts/docker/config.ts /home/frontend/src/ \
   && cp /home/admin_scripts/docker/config.env /home/backend/ \
   && echo "https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
-  && apk add --no-cache jq curl python3 py3-pip py3-wheel py3-setuptools py3-virtualenv gcc musl-dev python3-dev caddy bash coreutils file \
-  && cp /home/admin_scripts/docker/Caddyfile /etc/caddy/ \
+  && apk add --no-cache git su-exec tzdata openrc jq curl python3 py3-pip py3-virtualenv caddy bash coreutils file \
+  && apk add --no-cache  --virtual buildpkgs nodejs yarn gcc musl-dev python3-dev py3-wheel py3-setuptools \
   && apk add --no-cache redis redisearch redisjson --repository=https://apk.imx.sh/packages  \
-  && apk add --no-cache git su-exec tzdata openrc \
+  && cp /home/admin_scripts/docker/Caddyfile /etc/caddy/ \
   && virtualenv --python=/usr/bin/python3.11 /home/venv \
   && source /home/venv/bin/activate \
   && pip install -r /home/backend/requirements.txt -r /home/backend/test-requirements.txt -r /home/backend/plugins-requirements.txt \
   && pip cache purge \
-  && apk add --no-cache nodejs yarn \
   && cd /home/frontend/ && yarn install && yarn build && rm -rf node_modules && yarn cache clean \
+  && apk del --no-cache buildpkgs \
+  && rm -rf /tmp/js-offline \
+  && rm -rf /root/.cache && rm -rf /root/.local \
   && sed -i 's/^\(tty\d\:\:\)/#\1/g' /etc/inittab \
   && sed -i \
      -e 's/#rc_sys=".*"/rc_sys="docker"/g' \
@@ -57,7 +56,7 @@ RUN set -eux \
 
   # && /etc/init.d/redis start \
   # && cd /home/backend && ./create_index.py --flushall \
-  #  && /etc/init.d/redis stop \
+  # && /etc/init.d/redis stop \
 
 # EXPOSE 6379/tcp
 # CMD ["/redis.sh"]
