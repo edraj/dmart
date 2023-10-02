@@ -22,14 +22,14 @@ RUN set -eux \
   && cp /home/admin_scripts/docker/config.env /home/backend/ \
   && echo "https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
   && apk add --no-cache git su-exec tzdata openrc jq curl python3 py3-pip py3-virtualenv caddy bash coreutils file \
-  && apk add --no-cache  --virtual buildpkgs nodejs yarn gcc musl-dev python3-dev py3-wheel py3-setuptools \
+  && apk add --no-cache  --virtual buildpkgs nodejs npm gcc libffi-dev make g++ musl-dev python3-dev py3-wheel py3-setuptools \
   && apk add --no-cache redis redisearch redisjson --repository=https://apk.imx.sh/packages  \
   && cp /home/admin_scripts/docker/Caddyfile /etc/caddy/ \
   && virtualenv --python=/usr/bin/python3.11 /home/venv \
   && source /home/venv/bin/activate \
-  && pip install -r /home/backend/requirements.txt -r /home/backend/test-requirements.txt -r /home/backend/plugins-requirements.txt \
+  && pip install -r /home/backend/requirements.txt -r /home/backend/test-requirements.txt \
   && pip cache purge \
-  && cd /home/frontend/ && yarn install && yarn build && rm -rf node_modules && yarn cache clean \
+  && cd /home/frontend/ && npm install && npm run build && rm -rf node_modules && npm cache clean --force \
   && apk del --no-cache buildpkgs \
   && rm -rf /tmp/js-offline \
   && rm -rf /root/.cache && rm -rf /root/.local \
@@ -54,9 +54,9 @@ RUN set -eux \
   && rc-update add dmart \
   && rc-update add caddy
 
-  # && /etc/init.d/redis start \
-  # && cd /home/backend && ./create_index.py --flushall \
-  # && /etc/init.d/redis stop \
+  # && /etc/init.d/redis start
+  # && cd /home/backend && ./create_index.py --flushall
+  # && /etc/init.d/redis stop
 
 # EXPOSE 6379/tcp
 # CMD ["/redis.sh"]
