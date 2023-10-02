@@ -22,8 +22,10 @@
     {#if $user && $user.signedin}
       <NavLink href="/management/content">{$user.localized_displayname}</NavLink>
     {/if}
+    <!--
     <NavLink href="/about">{$_("about")}</NavLink>
     <NavLink href="/contact">{$_("contact_us")}</NavLink>
+    -->
     {#if !$user || !$user.signedin}
       <NavLink href="/management">{$_("login")}</NavLink>
     {:else}
@@ -32,6 +34,7 @@
       </NavLink>
     {/if}
   </Nav>
+  <!--
   <Form inline={true} class="ms-auto d-flex my-2 my-lg-0">
     <Input
       bsSize="sm"
@@ -45,4 +48,5 @@
       {$_("search")}
     </Button>
   </Form>
+  -->
 </Navbar>
