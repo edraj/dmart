@@ -8,11 +8,11 @@
   // import { redirect } from "@roxi/routify";
   import LocalizedValue from "./LocalizedValue.svelte";
 
-  let search : string = "";
-  function handleClick(event: Event) {
-     event.preventDefault();
-  //   $redirect(`/search/posts?q=${encodeURI(search)}`);
-  }
+  // let search : string = "";
+  // function handleClick(event: Event) {
+  //    event.preventDefault();
+  // //   $redirect(`/search/posts?q=${encodeURI(search)}`);
+  // }
 
 </script>
 
