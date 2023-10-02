@@ -2,12 +2,12 @@
   import { Col, Container, Row } from "sveltestrap";
 
 </script>
-<Container fluid={true} class="p-2">
+<Container fluid={true} class="p-4 m-4">
 <Row><Col>
 
 > #### What is DMART?
-> DMART is open-source general-purpose low-code data platform.
-> 
+> DMART is an open-source general-purpose low-code data platform.
+> DMART offers a number of unique features that simplify the setup of your backend. 
 
 ----
 
@@ -34,10 +34,10 @@
 </Col><Col>
 
 
-#### Technology stack
+##### Technology stack
 ----
 
-##### Backend 
+###### Backend 
 
 - Programming language : Python 3.11 (latest revision)
 - Microframework : FastApi (microframework for python) with full leverage of async programming paradigm 
@@ -45,27 +45,24 @@
 - Live-update : Web socket 
 - Operational store : Redis 7.2.x with RediSearch 2.8.x and ReJson 2.6.x modules (based on C/C++ and rust)
 - Grafana/Loki/Promtail for viewing logs and building dashboards (based on golang)
-- Container : Podman or Docker based option for fast setup using light-wieght Alpine linux
-- Systemd : System/User level service management 
+- Container : Podman (or Docker) based option for fast setup using light-wieght Alpine linux and OpenRC.
+- Systemd : System/User level service management for OS-level service management. 
 - Web proxy server : Caddy (with automatic SSL/Let's encrypt integration)
 
 ----
 
-##### Frontend
+###### Frontend
 
-- Sing-page-application : Svelte with Typescript (compiled as static files)
+- Single-page-application : Svelte with Typescript (compiled as static files)
 - CSS/UI framework : Bootstrap 5.3 with full RTL support
 
 ----
 
-##### High quality code
+###### High-quality code
 
 - Heavy leverage of type hinting
 - Automated tests via pytest and curl (curl.sh) tests
 - Full compliance with pyright, ruff and mypi (pylint.sh)
 - Load testing with vegeta
-
-
-----
 
 </Col></Row></Container>
