@@ -28,6 +28,11 @@
         "type": "link",
         "name": "query",
         "icon": "binoculars"
+      }, 
+      {
+        "type": "link",
+        "name": "info",
+        "icon": "info-circle"
       },
       {
         "type": "link",

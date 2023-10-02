@@ -31,17 +31,17 @@
 <img alt="Repo Size" src="https://img.shields.io/github/repo-size/edraj/dmart" />
 </a>
 
-DMART is a data service layer that offers a streamlined / simplified way to develop certain class of solutions with small to medium data footprint (<=300 million primary entries). DMART is not a one-solution fit-all kind of technology, but it tries to address a wide variety of needs. Specifically, DMART is not suited for systems that have large data (> 400 million primary entries) nor systems that require heavily/complex related data modeling or requiring atomic operations (transactions).
+DMART is a data service layer that offers a streamlined / simplified way to develop certain class of solutions with small to medium data footprint (<=300 million primary entries). It is not suited for systems that have large data nor systems that require heavily/complex related data modeling or requiring atomic operations (transactions).
 
-As such, DMART serves as general-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS). 
+DMART serves as general-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS).
 
 It represents a low-code information inventory platform (aka content registry/repository/vault) that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and extend. Thus, valuable data assets can be maintained as the mastered version and act as the single source of truth. 
 
 ## The problem DMART attempts to solve
 
-Valuable information (organizational and individual) is getting out of control!
+Valuable information (organizational and personal) is getting out of control!
 
-- Information is dispersed over too many systems, requiring multiple access contexts.
+- Dispersed over too many systems, requiring multiple access contexts.
 - Difficult to consolidate and link for consumption, insights, reporting and dashboards
 - Locked to vendors or application-specific data-formats
 - Chaotic and hard to discover / search the data piling up over the years
