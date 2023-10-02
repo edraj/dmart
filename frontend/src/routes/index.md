@@ -44,16 +44,16 @@
 - Api validation : Pydantic v2 (rust-based)
 - Live-update : Web socket 
 - Operational store : Redis 7.2.x with RediSearch 2.8.x and ReJson 2.6.x modules (based on C/C++ and rust)
-- Grafana/Loki/Promtail for viewing logs and building dashboards (based on golang)
+- Viewing logs and building dashboards: Grafana/Loki/Promtail (based on golang)
 - Container : Podman (or Docker) based option for fast setup using light-wieght Alpine linux and OpenRC.
-- Systemd : System/User level service management for OS-level service management. 
+- System/User level OS service management : Systemd.
 - Web proxy server : Caddy (with automatic SSL/Let's encrypt integration)
 
 ----
 
 ###### Frontend
 
-- Single-page-application : Svelte with Typescript (compiled as static files)
+- Single-Page-Application : Svelte with Typescript (compiled as static files)
 - CSS/UI framework : Bootstrap 5.3 with full RTL support
 
 ----
