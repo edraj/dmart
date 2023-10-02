@@ -78,6 +78,11 @@
         </NavLink>
       </NavItem>
     {/each}
+    <NavItem>
+      <NavLink href="/" title={$_("published")}>
+        <Icon name="globe" />
+      </NavLink>
+    </NavItem>
     <Form inline={true} class="ms-auto" on:submit={handleSearch}>
       <InputGroup size="sm">
         <Input
