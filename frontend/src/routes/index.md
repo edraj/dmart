@@ -2,11 +2,11 @@
   import { Col, Container, Row } from "sveltestrap";
 
 </script>
-<Container fluid={true} class="p-4 m-4">
+<Container fluid={true} class="pt-4 ps-4 pe-4">
 <Row><Col>
 
 > #### What is DMART?
-> DMART is an open-source general-purpose low-code data platform.
+> DMART is an open-source general-purpose low-code data platform that is capable of assimilating and servcing a wide variety of data.
 > DMART offers a number of unique features that simplify the setup of your backend. 
 
 ----
@@ -24,9 +24,9 @@
 
 ##### Design principals 
 
-- Entry-based, only requiring business-level descriptions (definitions)
+- Entry-based, which only requirs business-level descriptions (definitions) without the need for relational modeling and physical RDBMS table structure. 
 - Entries are extensible by meta-data and arbitrary attachments
-- Entries and attachments can be structured, unstructured and binary data
+- Entries and attachments can involve structured, unstructured and binary data
 - Entry changes are tracked for auditing and review : Who, when and what
 - Entries are represented using file-based Json that is optionally schema-enabled
 - Operational store can always reconstruct its index from the file-based data. 
