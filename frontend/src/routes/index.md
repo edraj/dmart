@@ -23,7 +23,7 @@
 
 ----
 
-##### <Icon name="bank" class="text-danger m-2 fs-2" /> Design principals
+##### <Icon name="bank" class="text-dark m-2 fs-2" /> Design principals
 
 - Entry-based, which only requires business-level descriptions (definitions) without the need for relational modeling and physical RDBMS table structure.
 - Entries are extensible by meta-data and arbitrary attachments
@@ -45,10 +45,10 @@
 - Api validation : Pydantic v2 (rust-based)
 - Live-update : Web socket
 - Operational store : Redis 7.2.x with RediSearch 2.8.x and ReJson 2.6.x modules (based on C/C++ and rust)
-- Viewing logs and building dashboards: Grafana/Loki/Promtail (based on golang)
-- Container : Podman (or Docker) based option for fast setup using light-wieght Alpine linux and OpenRC.
+- Viewing logs and building dashboards (optional): Grafana/Loki/Promtail (based on golang)
+- Container : Podman (or Docker) for fast setup using light-wieght Alpine linux and OpenRC.
 - System/User level OS service management : Systemd.
-- Web proxy server : Caddy (with automatic SSL/Let's encrypt integration)
+- Reverse-proxy : Caddy (with automatic SSL/Let's encrypt integration)
 
 ----
 
