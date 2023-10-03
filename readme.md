@@ -175,8 +175,9 @@ podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate &
 podman exec -it -w /home/backend dmart ./curl.sh
 podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 -m pytest
 
-# Open the browser to login to the admin tool. 
+# Open the browser to login to the admin tool and click on login. 
 # User name: dmart
+# Password: The password you entered in the set_admin_passwd step above.
 # Url : http://localhost:8000
 
 ```
