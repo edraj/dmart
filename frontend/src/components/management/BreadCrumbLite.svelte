@@ -31,6 +31,7 @@
   <span class="font-monospace">
     <small>
       <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
       <span
         class="text-success"
         style="cursor: pointer;"
@@ -41,6 +42,7 @@
         }}>{space_name}</span
       >
       <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
       {#each items as item (item.text)}
         <span
           class="text-primary"

@@ -25,6 +25,7 @@
   {#each spaces_data.records as space}
     <ListGroupItem class="ps-2 pe-0 py-0" style={selectedSpace == space.shortname?"background-color: #49505757;":""}>
       <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
       <div
         class="hover mb-2 mt-2"
         style="cursor: pointer;"
