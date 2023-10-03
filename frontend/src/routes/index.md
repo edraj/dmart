@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Col, Container, Row } from "sveltestrap";
+  import Icon from "@/components/Icon.svelte";
 
 </script>
 <Container fluid={true} class="pt-4 ps-4 pe-4">
@@ -7,42 +8,42 @@
 
 > #### What is DMART?
 > DMART is an open-source general-purpose low-code data platform that is capable of assimilating and servcing a wide variety of data.
-> DMART offers a number of unique features that simplify the setup of your backend. 
+> DMART offers a number of unique features that simplify the setup of your backend.
 
 ----
 
-##### Features
+##### <Icon name="stars" class="text-success m-2 fs-2" /> Features
 
 - Unified Api (Data-as-a-Service) that can readily and directly service Web and mobile frontends. (OpenApi-compatible JSON Api)
 - Built-in user management
 - Built-in security management (Permissions and Roles)
-- Web-based admin management UI 
+- Web-based admin management UI
 - Micro-service friendly (leveraging JWT)
-- Extensible by plugins 
+- Extensible by plugins
 
 ----
 
-##### Design principals 
+##### <Icon name="bank" class="text-danger m-2 fs-2" /> Design principals
 
-- Entry-based, which only requirs business-level descriptions (definitions) without the need for relational modeling and physical RDBMS table structure. 
+- Entry-based, which only requires business-level descriptions (definitions) without the need for relational modeling and physical RDBMS table structure.
 - Entries are extensible by meta-data and arbitrary attachments
 - Entries and attachments can involve structured, unstructured and binary data
 - Entry changes are tracked for auditing and review : Who, when and what
 - Entries are represented using file-based Json that is optionally schema-enabled
-- Operational store can always reconstruct its index from the file-based data. 
+- Operational store can always reconstruct its index from the file-based data.
 
 </Col><Col>
 
 
-##### Technology stack
+##### <Icon name="airplane-engines" class="text-primary m-2 fs-2" /> Technology stack
 ----
 
-###### Backend 
+###### Backend
 
 - Programming language : Python 3.11 (latest revision)
-- Microframework : FastApi (microframework for python) with full leverage of async programming paradigm 
+- Microframework : FastApi (microframework for python) with full leverage of async programming paradigm
 - Api validation : Pydantic v2 (rust-based)
-- Live-update : Web socket 
+- Live-update : Web socket
 - Operational store : Redis 7.2.x with RediSearch 2.8.x and ReJson 2.6.x modules (based on C/C++ and rust)
 - Viewing logs and building dashboards: Grafana/Loki/Promtail (based on golang)
 - Container : Podman (or Docker) based option for fast setup using light-wieght Alpine linux and OpenRC.
