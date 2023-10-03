@@ -224,6 +224,17 @@ export enum ResourceAttachementType {
   alteration = "alteration",
 }
 
+export enum EntryResourceType {
+  user = "user",
+  group = "group",
+  schema = "schema",
+  content = "content",
+  permission = "permission",
+  role = "role",
+  ticket = "ticket",
+  post = "post",
+}
+
 export enum ResourceType {
   user = "user",
   group = "group",
