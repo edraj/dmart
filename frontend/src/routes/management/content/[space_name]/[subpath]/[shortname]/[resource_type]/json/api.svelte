@@ -132,7 +132,7 @@
       (request.verb == "post"
         ? "\n-H 'Content-Type: application/json'\n" +
           `-d '${JSON.stringify(
-            (request_je.get() as JSONContent).json.request_body,
+            (request_je.get()).json.request_body,
             undefined,
             2
           )}'`
@@ -263,8 +263,8 @@
     }
   }
 
-  let request_je: JSONEditor;
-  let response_je: JSONEditor;
+  let request_je: any;
+  let response_je: any;
   async function call_api(request: Request) {
     curl = generateCURL(request);
     const { verb, endpoint } = request;
@@ -274,7 +274,7 @@
       if (verb === "post") {
         response = await axios.post<ApiResponse>(
           url,
-          JSON.stringify((request_je.get() as JSONContent).json.request_body),
+          JSON.stringify((request_je.get()).json.request_body),
           { headers }
         );
       } else if (verb === "get") {
