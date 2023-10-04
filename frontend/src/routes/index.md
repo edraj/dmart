@@ -14,7 +14,7 @@
 
 ##### <Icon name="stars" class="text-success m-2 fs-2" /> Features
 
-- Unified Api (Data-as-a-Service) that can readily and directly service Web and mobile frontends. (OpenApi-compatible JSON Api)
+- Unified Api (Data-as-a-Service) that can readily and directly service Web and mobile frontends. [OpenApi-compatible JSON Api](https://api.dmart.cc/docs)
 - Built-in user management
 - Built-in security management (Permissions and Roles)
 - Web-based admin management UI
@@ -23,7 +23,7 @@
 
 ----
 
-##### <Icon name="bank" class="text-dark m-2 fs-2" /> Design principals
+##### <Icon name="bank" class="text-danger m-2 fs-2" /> Design principals
 
 - Entry-based, which only requires business-level descriptions (definitions) without the need for relational modeling and physical RDBMS table structure.
 - Entries are extensible by meta-data and arbitrary attachments
