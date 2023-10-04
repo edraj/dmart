@@ -582,7 +582,6 @@
       }
     }
   }
-  console.log({managementEntities, subpath: `${space_name}/${subpath}`});
   
 </script>
 
