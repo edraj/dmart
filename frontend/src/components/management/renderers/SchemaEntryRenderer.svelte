@@ -12,7 +12,6 @@
   } from "@/dmart";
   import { Level, showToast } from "@/utils/toast";
   import { JSONEditor, Mode } from "svelte-jsoneditor";
-  import { onMount } from "svelte/internal";
   import { Button, Nav, ButtonGroup } from "sveltestrap";
   import Icon from "../../Icon.svelte";
   import Attachments from "../Attachments.svelte";
@@ -25,6 +24,7 @@
   } from "../editors/SchemaEditor.svelte";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
   import { generateUUID } from "@/utils/uuid";
+  import { onMount } from "svelte";
 
   let header_height: number;
 
