@@ -95,6 +95,14 @@
     return ws != null && ws.readyState === ws.OPEN;
   }
 
+  const managementEntities = [
+    "management/users",
+    "management/roles",
+    "management/permissions",
+    "management/groups",
+    "/schema",
+  ];
+
   let isNeedRefresh = false;
   onMount(async () => {
     const cpy = structuredClone(entry);
@@ -299,6 +307,18 @@
       description: "",
     },
   ];
+    console.log(`${space_name}/${subpath}`);
+    
+  function resolveResourceType(resourceType: ResourceType ) {
+    const fullSubpath = `${space_name}/${subpath}`;
+    switch(fullSubpath) {
+      case "management/users" : return ResourceType.user;
+      case "management/roles" : return ResourceType.role;
+      case "management/permissions" : return ResourceType.permission;
+      case "management/groups" : return ResourceType.group;
+    }
+    return fullSubpath.endsWith("/schema") ? ResourceType.schema : resourceType;
+  }
 
   let displayname = {
     en: "",
@@ -363,7 +383,7 @@
           request_type: RequestType.create,
           records: [
             {
-              resource_type: new_resource_type,
+              resource_type: resolveResourceType(new_resource_type),
               shortname: contentShortname === "" ? "auto" : contentShortname,
               subpath,
               attributes: {
@@ -563,6 +583,8 @@
       }
     }
   }
+  console.log({managementEntities, subpath: `${space_name}/${subpath}`});
+  
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
@@ -585,7 +607,7 @@
           >
         </h4>
         {#if modalFlag === "create"}
-          {#if entryType !== "folder"}
+          {#if entryType !== "folder" && !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
             <Label for="resource_type" class="mt-3">Resource type</Label>
             <Input
               id="resource_type"
@@ -630,7 +652,11 @@
         {/if}
 
         <Label class="mt-3">Shortname</Label>
-        <Input placeholder="Shortname..." bind:value={contentShortname} required/>
+        <Input
+          placeholder="Shortname..."
+          bind:value={contentShortname}
+          required
+        />
 
         <div class="row mt-3">
           <FormGroup class="col-6">
