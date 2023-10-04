@@ -1,7 +1,7 @@
 <script lang="ts">
   import { _ } from "@/i18n";
   import {
-  AggregationType,
+    AggregationType,
     QueryRequest,
     QueryType,
     ResourceType,
@@ -79,8 +79,8 @@
     }
     if (query_request.type === QueryType.aggregation) {
       // query_request.
-      const aggregations: any = aggregation_data.reducers.map((agg)=>{
-        return {...agg, args: agg.args.split(",")}
+      const aggregations: any = aggregation_data.reducers.map((agg) => {
+        return { ...agg, args: agg.args.split(",") };
       });
       query_request.aggregation_data = aggregations;
     }
@@ -168,6 +168,7 @@
       <Row>
         <Col class="d-flex align-items-center" sm="1">
           <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
           <h4
             class="my-4"
             style="cursor: pointer;"
@@ -274,7 +275,7 @@
     </Row>
   {/if}
   {#if queryType == QueryType.aggregation}
-    <Aggregation bind:aggregation_data={aggregation_data}/>
+    <Aggregation bind:aggregation_data />
   {/if}
 
   <Row>

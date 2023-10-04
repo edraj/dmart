@@ -14,6 +14,7 @@
     ContentType,
     upload_with_payload,
     csv,
+    EntryResourceType,
   } from "@/dmart";
   import {
     Form,
@@ -22,7 +23,6 @@
     Modal,
     ModalBody,
     ModalFooter,
-    ModalHeader,
     Label,
     Input,
     Nav,
@@ -60,9 +60,6 @@
   import downloadFile from "@/utils/downloadFile";
   import { encode } from "plantuml-encoder";
   import { startjsonForPlantUML } from "@/utils/plantUML";
-  // import Ajv from "ajv/dist/2019";
-  // import addFormats from "ajv-formats";
-  // import { improveAjvError, normalizeAjvError } from "@/utils/ajv";
 
   let header_height: number;
 
@@ -84,7 +81,6 @@
   let validatorMeta: Validator = createAjvValidator({
     schema: metaContentSchema,
   });
-
   let oldContentMeta = { json: {}, text: undefined };
 
   let contentContent: any = null;
@@ -92,7 +88,7 @@
   let entryContent: any;
 
   let ws = null;
-  if ('websocket' in website)
+  if ("websocket" in website)
     ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
 
   function isOpen(ws: any) {
@@ -113,12 +109,12 @@
     }
     delete cpy?.payload?.body;
     delete cpy?.attachments;
-  
+
     contentMeta.json = cpy;
     contentMeta = structuredClone(contentMeta);
     oldContentMeta = structuredClone(contentMeta);
 
-    if (ws != null ) {
+    if (ws != null) {
       ws.onopen = () => {
         ws.send(
           JSON.stringify({
@@ -304,10 +300,22 @@
     },
   ];
 
+  let displayname = {
+    en: "",
+    ar: "",
+  };
+  let description = {
+    en: "",
+    ar: "",
+  };
   async function handleSubmit(event: Event) {
     event.preventDefault();
 
     let response: any;
+    let request_body: any = {
+      displayname,
+      description,
+    };
     if (new_resource_type === "schema") {
       let body = content.json
         ? structuredClone(content.json)
@@ -316,7 +324,7 @@
       body = body[0];
       delete body.name;
 
-      const request_body = {
+      request_body = {
         space_name,
         request_type: RequestType.create,
         records: [
@@ -325,6 +333,7 @@
             shortname: contentShortname === "" ? "auto" : contentShortname,
             subpath,
             attributes: {
+              ...request_body,
               is_active: true,
               payload: {
                 content_type: "json",
@@ -349,7 +358,7 @@
           body = entryContent;
         }
 
-        const request_body: any = {
+        request_body = {
           space_name,
           request_type: RequestType.create,
           records: [
@@ -358,6 +367,7 @@
               shortname: contentShortname === "" ? "auto" : contentShortname,
               subpath,
               attributes: {
+                ...request_body,
                 workflow_shortname: workflowShortname,
                 is_active: true,
               },
@@ -390,7 +400,7 @@
         );
       }
     } else if (entryType === "folder") {
-      const request_body = {
+      request_body = {
         space_name,
         request_type: RequestType.create,
         records: [
@@ -399,6 +409,7 @@
             shortname: contentShortname === "" ? "auto" : contentShortname,
             subpath,
             attributes: {
+              ...request_body,
               is_active: true,
             },
           },
@@ -552,7 +563,6 @@
       }
     }
   }
-
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
@@ -565,53 +575,107 @@
   }}
   size={new_resource_type === "schema" ? "xl" : "lg"}
 >
-  <ModalHeader />
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
       <FormGroup>
         <h4>
-          Creating an entry under <span class="text-success">{space_name}</span
-          >/<span class="text-primary">{subpath}</span>
+          Creating an {entryType === "folder" ? "folder" : "entry"} under
+          <span class="text-success">{space_name}</span>/<span
+            class="text-primary">{subpath}</span
+          >
         </h4>
         {#if modalFlag === "create"}
-          <Label class="mt-3">Resource type</Label>
-          <Input bind:value={new_resource_type} type="select">
-            {#each Object.values(ResourceType) as type}
-              <option value={type}>{type}</option>
-            {/each}
-          </Input>
-
-          {#if new_resource_type !== "schema"}
-            <Label class="mt-3">Content type</Label>
-            <Input bind:value={selectedContentType} type="select">
-              <option value={null}>{"None"}</option>
-              {#each Object.values(ContentType) as type}
+          {#if entryType !== "folder"}
+            <Label for="resource_type" class="mt-3">Resource type</Label>
+            <Input
+              id="resource_type"
+              bind:value={new_resource_type}
+              type="select"
+            >
+              {#each Object.values(EntryResourceType) as type}
                 <option value={type}>{type}</option>
               {/each}
             </Input>
-            <Label class="mt-3">Schema</Label>
-            <Input bind:value={selectedSchema} type="select">
-              <option value={null}>{"None"}</option>
-              {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
-                {#each schemas.records.map((e) => e.shortname) as schema}
-                  <option value={schema}>{schema}</option>
-                {/each}
-              {/await}
-            </Input>
-            {#if new_resource_type === "ticket"}
-              <Label class="mt-3">Workflow Shortname</Label>
+
+            {#if new_resource_type !== "schema"}
+              <Label for="content_type" class="mt-3">Content type</Label>
               <Input
-                placeholder="Shortname..."
-                bind:value={workflowShortname}
-              />
+                id="content_type"
+                bind:value={selectedContentType}
+                type="select"
+              >
+                <option value={null}>{"None"}</option>
+                {#each Object.values(ContentType) as type}
+                  <option value={type}>{type}</option>
+                {/each}
+              </Input>
+              <Label class="mt-3">Schema</Label>
+              <Input bind:value={selectedSchema} type="select">
+                <option value={null}>{"None"}</option>
+                {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
+                  {#each schemas.records.map((e) => e.shortname) as schema}
+                    <option value={schema}>{schema}</option>
+                  {/each}
+                {/await}
+              </Input>
+              {#if new_resource_type === "ticket"}
+                <Label class="mt-3">Workflow Shortname</Label>
+                <Input
+                  placeholder="Shortname..."
+                  bind:value={workflowShortname}
+                />
+              {/if}
             {/if}
           {/if}
         {/if}
-        {#if entryType === "content" && modalFlag === "create"}
-          <Label class="mt-3">Shortname</Label>
-          <Input placeholder="Shortname..." bind:value={contentShortname} />
-          <hr />
 
+        <Label class="mt-3">Shortname</Label>
+        <Input placeholder="Shortname..." bind:value={contentShortname} required/>
+
+        <div class="row mt-3">
+          <FormGroup class="col-6">
+            <Label>{$_("displayname_en")}</Label>
+            <Input
+              type="text"
+              name="displayname_en"
+              placeholder={`${$_("displayname_en")}...`}
+              bind:value={displayname.en}
+            />
+          </FormGroup>
+          <FormGroup class="col-6">
+            <Label>{$_("displayname_ar")}</Label>
+            <Input
+              type="text"
+              name="displayname_ar"
+              placeholder={`${$_("displayname_en")}...`}
+              bind:value={displayname.ar}
+            />
+          </FormGroup>
+        </div>
+
+        <div class="row mt-3">
+          <FormGroup class="col-6">
+            <Label>{$_("description_en")}</Label>
+            <Input
+              type="text"
+              name="displayname_en"
+              placeholder={`${$_("description_en")}...`}
+              bind:value={description.en}
+            />
+          </FormGroup>
+          <FormGroup class="col-6">
+            <Label>{$_("description_ar")}</Label>
+            <Input
+              type="text"
+              name="displayname_ar"
+              placeholder={`${$_("description_ar")}...`}
+              bind:value={description.ar}
+            />
+          </FormGroup>
+        </div>
+        <hr />
+
+        {#if entryType === "content" && modalFlag === "create"}
           {#if new_resource_type === "schema"}
             <SchemaEditor bind:content bind:items={itemsSchemaContent} />
             <Row>
@@ -631,8 +695,6 @@
             {/if}
             {#if selectedContentType === "json"}
               <JSONEditor mode={Mode.text} bind:content={entryContent} />
-              <!-- onChange={handleChange}
-                {validator} -->
             {/if}
             {#if selectedContentType === "text"}
               <Input type="textarea" bind:value={entryContent} />
@@ -645,22 +707,8 @@
             {/if}
           {/if}
           <hr />
-
-          <!-- <Label>Schema</Label>
-            <ContentJsonEditor
-              bind:self={refJsonEditor}
-              content={contentSchema}
-              readOnly={true}
-              mode={Mode.tree}
-            /> -->
         {/if}
         {#if entryType === "folder"}
-          <Label class="mt-3">Shortname</Label>
-          <Input
-            placeholder="Shortname..."
-            bind:value={contentShortname}
-            required
-          />
           {#if modalFlag === "update"}
             <Label class="mt-3">Content</Label>
           {/if}
@@ -817,11 +865,19 @@
           outline
           color="success"
           size="sm"
-          title={$_("create")}
+          title={$_("create_entry")}
           class="justify-contnet-center text-center py-0 px-1"
           on:click={() => {
-            isModalOpen = true;
+            displayname = {
+              en: "",
+              ar: "",
+            };
+            description = {
+              en: "",
+              ar: "",
+            };
             entryType = "content";
+            isModalOpen = true;
           }}
           ><Icon name="file-plus" />
         </Button>
@@ -829,11 +885,20 @@
           outline
           color="success"
           size="sm"
-          title={$_("create")}
+          title={$_("create_folder")}
           class="justify-contnet-center text-center py-0 px-1"
           on:click={() => {
-            isModalOpen = true;
+            displayname = {
+              en: "",
+              ar: "",
+            };
+            description = {
+              en: "",
+              ar: "",
+            };
             entryType = "folder";
+            new_resource_type = ResourceType.folder;
+            isModalOpen = true;
           }}
           ><Icon name="folder-plus" />
         </Button>
@@ -881,21 +946,21 @@
   </div>
   <div class="tab-pane" class:active={tab_option === "edit_meta"}>
     {#if tab_option === "edit_meta"}
-    <div
-      class="px-1 pb-1 h-100"
-      style="text-align: left; direction: ltr; overflow: hidden auto;"
-    >
+      <div
+        class="px-1 pb-1 h-100"
+        style="text-align: left; direction: ltr; overflow: hidden auto;"
+      >
         <JSONEditor
           mode={Mode.text}
           bind:content={contentMeta}
           bind:validator={validatorMeta}
           onRenderMenu={handleRenderMenu}
         />
-      {#if errorContent}
-        <h3 class="mt-3">Error:</h3>
-        <Prism bind:code={errorContent} />
-      {/if}
-    </div>
+        {#if errorContent}
+          <h3 class="mt-3">Error:</h3>
+          <Prism bind:code={errorContent} />
+        {/if}
+      </div>
     {/if}
   </div>
   {#if entry.payload}
@@ -1002,7 +1067,6 @@
       </div>
     </div>
   {/if}
-
   <div class="tab-pane" class:active={tab_option === "history"}>
     {#key tab_option}
       {#if tab_option === "history"}
@@ -1029,5 +1093,10 @@
 <style>
   span {
     color: dimgrey;
+  }
+  :global(.X) {
+    transform: translate(-50%, -15%) !important;
+    left: 50%;
+    max-width: 90%;
   }
 </style>

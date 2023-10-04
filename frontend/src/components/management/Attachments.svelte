@@ -280,6 +280,7 @@
 </Modal>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="d-flex justify-content-end mx-2 flex-row">
   <div on:click={() => (openCreateAttachemntModal = true)}>
     <Icon style="cursor: pointer;" name="plus-square" />
@@ -308,6 +309,7 @@
           >
           <div class="col-1 d-flex justify-content-between">
             <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div
               class="mx-1"
               style="cursor: pointer;"
@@ -316,6 +318,7 @@
               <Icon name="trash" color="red" />
             </div>
             <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div
               class="mx-1"
               style="cursor: pointer;"
