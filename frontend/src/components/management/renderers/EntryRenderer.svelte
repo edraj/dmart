@@ -307,7 +307,6 @@
       description: "",
     },
   ];
-    console.log(`${space_name}/${subpath}`);
     
   function resolveResourceType(resourceType: ResourceType ) {
     const fullSubpath = `${space_name}/${subpath}`;
