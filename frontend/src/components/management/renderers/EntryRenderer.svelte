@@ -60,6 +60,9 @@
   import downloadFile from "@/utils/downloadFile";
   import { encode } from "plantuml-encoder";
   import { startjsonForPlantUML } from "@/utils/plantUML";
+  import { SchemaForm } from "@restspace/svelte-schema-form";
+  import './assets/layout.css';
+  import './assets/basic-skin.css';
 
   let header_height: number;
 
@@ -100,8 +103,12 @@
     "management/roles",
     "management/permissions",
     "management/groups",
+    "management/workflows",
     "/schema",
   ];
+
+  let selectedSchemaContent = {};
+  let selectedSchemaData = {};
 
   let isNeedRefresh = false;
   onMount(async () => {
@@ -293,9 +300,11 @@
   let entryType = "folder";
   let contentShortname = "";
   let workflowShortname = "";
-  let selectedSchema = "";
+  let selectedSchema = subpath === "workflows" ? "workflow" : "";
   let selectedContentType = ContentType.json;
-  let new_resource_type: ResourceType = ResourceType.content;
+  let new_resource_type: ResourceType = resolveResourceType(
+    ResourceType.content
+  );
   let payloadFiles: FileList;
 
   let itemsSchemaContent: any = [
@@ -307,33 +316,37 @@
       description: "",
     },
   ];
-    
-  function resolveResourceType(resourceType: ResourceType ) {
+
+  function resolveResourceType(resourceType: ResourceType) {
     const fullSubpath = `${space_name}/${subpath}`;
-    switch(fullSubpath) {
-      case "management/users" : return ResourceType.user;
-      case "management/roles" : return ResourceType.role;
-      case "management/permissions" : return ResourceType.permission;
-      case "management/groups" : return ResourceType.group;
+    switch (fullSubpath) {
+      case "management/users":
+        return ResourceType.user;
+      case "management/roles":
+        return ResourceType.role;
+      case "management/permissions":
+        return ResourceType.permission;
+      case "management/groups":
+        return ResourceType.group;
     }
     return fullSubpath.endsWith("/schema") ? ResourceType.schema : resourceType;
   }
 
-  let displayname = {
-    en: "",
-    ar: "",
-  };
-  let description = {
-    en: "",
-    ar: "",
-  };
+  // let displayname = {
+  //   en: "",
+  //   ar: "",
+  // };
+  // let description = {
+  //   en: "",
+  //   ar: "",
+  // };
   async function handleSubmit(event: Event) {
     event.preventDefault();
 
     let response: any;
     let request_body: any = {
-      displayname,
-      description,
+      // displayname,
+      // description,
     };
     if (new_resource_type === "schema") {
       let body = content.json
@@ -382,7 +395,7 @@
           request_type: RequestType.create,
           records: [
             {
-              resource_type: resolveResourceType(new_resource_type),
+              resource_type: new_resource_type,
               shortname: contentShortname === "" ? "auto" : contentShortname,
               subpath,
               attributes: {
@@ -398,9 +411,18 @@
             workflowShortname;
         }
         if (selectedContentType !== null) {
+          const schema_shortname =
+            subpath === "workflows"
+              ? "workflow"
+              : selectedSchema
+              ? selectedSchema
+              : "";
+          const content_type = selectedContentType
+            ? selectedContentType
+            : "json";
           request_body.records[0].attributes.payload = {
-            content_type: selectedContentType ? selectedContentType : "json",
-            schema_shortname: selectedSchema ? selectedSchema : "",
+            content_type,
+            schema_shortname,
             body,
           };
         }
@@ -582,7 +604,22 @@
       }
     }
   }
-  
+  let oldSelectedSchema = "old";
+  $: {
+    if (oldSelectedSchema !== selectedSchema) {
+      (async () => {
+        const _selectedSchemaContent = await retrieve_entry(
+          ResourceType.schema,
+          space_name,
+          "schema",
+          selectedSchema,
+          true
+        );
+        selectedSchemaContent = _selectedSchemaContent.payload.body;
+        oldSelectedSchema = selectedSchema;
+      })();
+    }
+  }
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
@@ -599,45 +636,52 @@
     <ModalBody>
       <FormGroup>
         <h4>
-          Creating an {entryType === "folder" ? "folder" : "entry"} under
+          Creating an {new_resource_type} under
           <span class="text-success">{space_name}</span>/<span
             class="text-primary">{subpath}</span
           >
         </h4>
         {#if modalFlag === "create"}
-          {#if entryType !== "folder" && !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
-            <Label for="resource_type" class="mt-3">Resource type</Label>
-            <Input
-              id="resource_type"
-              bind:value={new_resource_type}
-              type="select"
-            >
-              {#each Object.values(EntryResourceType) as type}
-                <option value={type}>{type}</option>
-              {/each}
-            </Input>
-
-            {#if new_resource_type !== "schema"}
-              <Label for="content_type" class="mt-3">Content type</Label>
+          {#if entryType !== "folder"}
+            {#if !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
+              <Label for="resource_type" class="mt-3">Resource type</Label>
               <Input
-                id="content_type"
-                bind:value={selectedContentType}
+                id="resource_type"
+                bind:value={new_resource_type}
                 type="select"
               >
-                <option value={null}>{"None"}</option>
-                {#each Object.values(ContentType) as type}
+                {#each Object.values(EntryResourceType) as type}
                   <option value={type}>{type}</option>
                 {/each}
               </Input>
-              <Label class="mt-3">Schema</Label>
-              <Input bind:value={selectedSchema} type="select">
-                <option value={null}>{"None"}</option>
-                {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
-                  {#each schemas.records.map((e) => e.shortname) as schema}
-                    <option value={schema}>{schema}</option>
+            {/if}
+
+            {#if new_resource_type !== "schema"}
+              {#if !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
+                <Label for="content_type" class="mt-3">Content type</Label>
+                <Input
+                  id="content_type"
+                  bind:value={selectedContentType}
+                  type="select"
+                >
+                  <option value={null}>{"None"}</option>
+                  {#each Object.values(ContentType) as type}
+                    <option value={type}>{type}</option>
                   {/each}
-                {/await}
-              </Input>
+                </Input>
+              {/if}
+              {#if subpath !== "workflows"}
+                <Label class="mt-3">Schema</Label>
+                <Input bind:value={selectedSchema} type="select">
+                  <option value={null}>{"None"}</option>
+                  {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
+                    {#each schemas.records.map((e) => e.shortname) as schema}
+                      <option value={schema}>{schema}</option>
+                    {/each}
+                  {/await}
+                </Input>
+              {/if}
+
               {#if new_resource_type === "ticket"}
                 <Label class="mt-3">Workflow Shortname</Label>
                 <Input
@@ -655,7 +699,7 @@
           bind:value={contentShortname}
           required
         />
-
+        <!-- 
         <div class="row mt-3">
           <FormGroup class="col-6">
             <Label>{$_("displayname_en")}</Label>
@@ -675,9 +719,9 @@
               bind:value={displayname.ar}
             />
           </FormGroup>
-        </div>
+        </div> -->
 
-        <div class="row mt-3">
+        <!-- <div class="row mt-3">
           <FormGroup class="col-6">
             <Label>{$_("description_en")}</Label>
             <Input
@@ -696,7 +740,7 @@
               bind:value={description.ar}
             />
           </FormGroup>
-        </div>
+        </div> -->
         <hr />
 
         {#if entryType === "content" && modalFlag === "create"}
@@ -709,7 +753,7 @@
               {/if}
             </Row>
           {:else if selectedContentType}
-            <Label class="mt-3">Content</Label>
+            <Label class="mt-3">Payload</Label>
             {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
               <Input
                 accept="image/png, image/jpeg"
@@ -719,6 +763,13 @@
             {/if}
             {#if selectedContentType === "json"}
               <JSONEditor mode={Mode.text} bind:content={entryContent} />
+              <!-- {#if Object.keys(selectedSchemaContent).length !== 0}
+              <SchemaForm
+              schema={selectedSchemaContent}
+              bind:value={selectedSchemaData}
+            />
+              {/if} -->
+              
             {/if}
             {#if selectedContentType === "text"}
               <Input type="textarea" bind:value={entryContent} />
@@ -885,47 +936,51 @@
     </ButtonGroup>
     {#if resource_type === ResourceType.folder}
       <ButtonGroup>
-        <Button
-          outline
-          color="success"
-          size="sm"
-          title={$_("create_entry")}
-          class="justify-contnet-center text-center py-0 px-1"
-          on:click={() => {
-            displayname = {
-              en: "",
-              ar: "",
-            };
-            description = {
-              en: "",
-              ar: "",
-            };
-            entryType = "content";
-            isModalOpen = true;
-          }}
-          ><Icon name="file-plus" />
-        </Button>
-        <Button
-          outline
-          color="success"
-          size="sm"
-          title={$_("create_folder")}
-          class="justify-contnet-center text-center py-0 px-1"
-          on:click={() => {
-            displayname = {
-              en: "",
-              ar: "",
-            };
-            description = {
-              en: "",
-              ar: "",
-            };
-            entryType = "folder";
-            new_resource_type = ResourceType.folder;
-            isModalOpen = true;
-          }}
-          ><Icon name="folder-plus" />
-        </Button>
+        {#if subpath !== "health_check"}
+          <Button
+            outline
+            color="success"
+            size="sm"
+            title={$_("create_entry")}
+            class="justify-contnet-center text-center py-0 px-1"
+            on:click={() => {
+              // displayname = {
+              //   en: "",
+              //   ar: "",
+              // };
+              // description = {
+              //   en: "",
+              //   ar: "",
+              // };
+              entryType = "content";
+              isModalOpen = true;
+            }}
+            ><Icon name="file-plus" />
+          </Button>
+          {#if !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
+            <Button
+              outline
+              color="success"
+              size="sm"
+              title={$_("create_folder")}
+              class="justify-contnet-center text-center py-0 px-1"
+              on:click={() => {
+                // displayname = {
+                //   en: "",
+                //   ar: "",
+                // };
+                // description = {
+                //   en: "",
+                //   ar: "",
+                // };
+                entryType = "folder";
+                new_resource_type = ResourceType.folder;
+                isModalOpen = true;
+              }}
+              ><Icon name="folder-plus" />
+            </Button>
+          {/if}
+        {/if}
         <Button
           outline={!isNeedRefresh}
           color={isNeedRefresh ? "danger" : "success"}
@@ -1109,7 +1164,7 @@
       {space_name}
       {subpath}
       parent_shortname={entry.shortname}
-      attachments={Object.values(entry.attachments).pop()}
+      attachments={Object.values(entry.attachments)}
     />
   </div>
 </div>

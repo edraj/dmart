@@ -428,7 +428,7 @@
       {space_name}
       {subpath}
       parent_shortname={entry.shortname}
-      attachments={Object.values(entry.attachments).pop()}
+      attachments={Object.values(entry.attachments)}
     />
   </div>
 </div>

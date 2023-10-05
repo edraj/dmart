@@ -24,8 +24,11 @@
     ModalHeader,
   } from "sveltestrap";
   import { JSONEditor, JSONContent, Mode } from "svelte-jsoneditor";
+  import { jsonToFile } from "@/utils/jsonToFile";
 
-  export let attachments: Array<any>;
+  export let attachments: Array<any> = [];
+  console.log({attachments});
+  
   export let space_name: string;
   export let subpath: string;
   export let parent_shortname: string;
@@ -91,6 +94,7 @@
         (e: { shortname: string }) => e.shortname !== item.shortname
       );
       openCreateAttachemntModal = false;
+      location.reload();
     } else {
       showToast(Level.warn);
     }
@@ -136,7 +140,9 @@
         subpath + "/" + parent_shortname,
         ResourceType[resourceType],
         shortname,
-        payloadFiles[0]
+        ResourceType[resourceType] === ResourceType.json
+          ? jsonToFile(payloadContent)
+          : payloadFiles[0]
       );
     } else if (
       [
@@ -265,7 +271,8 @@
 >
   <ModalHeader />
   <ModalBody>
-    <JSONEditor mode={Mode.text}
+    <JSONEditor
+      mode={Mode.text}
       content={{ json: JSON.parse(JSON.stringify(content)) }}
       readOnly={true}
     />
@@ -288,65 +295,63 @@
 </div>
 
 <div class="d-flex justify-content-center flex-column px-5">
-  {#if attachments}
-    {#each attachments as attachment}
-      <hr />
-      <div class="col">
-        <div class="row mb-2">
-          <a
-            class="col-11"
-            style="font-size: 1.25em;"
-            href={get_attachment_url(
-              attachment.resource_type,
-              space_name,
-              subpath,
-              parent_shortname,
-              attachment.shortname,
-              getFileExtension(attachment.attributes?.payload?.body)
-            )}
+  {#each attachments.flat(1) as attachment}
+    <hr />
+    <div class="col">
+      <div class="row mb-2">
+        <a
+          class="col-11"
+          style="font-size: 1.25em;"
+          href={get_attachment_url(
+            attachment.resource_type,
+            space_name,
+            subpath,
+            parent_shortname,
+            attachment.shortname,
+            getFileExtension(attachment.attributes?.payload?.body)
+          )}
+        >
+          {attachment.shortname}</a
+        >
+        <div class="col-1 d-flex justify-content-between">
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <div
+            class="mx-1"
+            style="cursor: pointer;"
+            on:click={async () => await handleDelete(attachment)}
           >
-            {attachment.shortname}</a
+            <Icon name="trash" color="red" />
+          </div>
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <div
+            class="mx-1"
+            style="cursor: pointer;"
+            on:click={() => {
+              handleView(attachment.shortname);
+            }}
           >
-          <div class="col-1 d-flex justify-content-between">
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-static-element-interactions -->
-            <div
-              class="mx-1"
-              style="cursor: pointer;"
-              on:click={async () => await handleDelete(attachment)}
-            >
-              <Icon name="trash" color="red" />
-            </div>
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-static-element-interactions -->
-            <div
-              class="mx-1"
-              style="cursor: pointer;"
-              on:click={() => {
-                handleView(attachment.shortname);
-              }}
-            >
-              <Icon name="eyeglasses" color="grey" />
-            </div>
+            <Icon name="eyeglasses" color="grey" />
           </div>
         </div>
-        <div class="d-flex col justify-content-center">
-          <Media
-            resource_type={attachment.resource_type}
-            attributes={attachment.attributes}
-            displayname={attachment.shortname}
-            url={get_attachment_url(
-              attachment.resource_type,
-              space_name,
-              subpath,
-              parent_shortname,
-              attachment.shortname,
-              getFileExtension(attachment.attributes?.payload?.body)
-            )}
-          />
-        </div>
       </div>
-      <hr />
-    {/each}
-  {/if}
+      <div class="d-flex col justify-content-center">
+        <Media
+          resource_type={attachment.resource_type}
+          attributes={attachment.attributes}
+          displayname={attachment.shortname}
+          url={get_attachment_url(
+            attachment.resource_type,
+            space_name,
+            subpath,
+            parent_shortname,
+            attachment.shortname,
+            getFileExtension(attachment.attributes?.payload?.body)
+          )}
+        />
+      </div>
+    </div>
+    <hr />
+  {/each}
 </div>
