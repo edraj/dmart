@@ -14,12 +14,13 @@
 
 ##### <Icon name="stars" class="text-success m-2 fs-2" /> Features
 
-- Unified Api (Data-as-a-Service) that can readily and directly service Web and mobile frontends. [OpenApi-compatible JSON Api](https://api.dmart.cc/docs)
+- Unified Api (Data-as-a-Service) that can readily and directly service Web and mobile frontends. OpenApi-compatible [JSON Api](https://api.dmart.cc/docs)
 - Built-in user management
 - Built-in security management (Permissions and Roles)
 - Web-based admin management UI
 - Micro-service friendly (leveraging JWT)
 - Extensible by plugins
+- Licensed as free / open source software (AGPL3+)
 
 ----
 
@@ -30,7 +31,7 @@
 - Entries and attachments can involve structured, unstructured and binary data
 - Entry changes are tracked for auditing and review : Who, when and what
 - Entries are represented using file-based Json that is optionally schema-enabled
-- Operational store can always reconstruct its index from the file-based data.
+- Operational store can always be reconstructed from the file-based data.
 
 </Col><Col>
 
