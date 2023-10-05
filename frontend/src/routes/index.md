@@ -14,7 +14,7 @@
 
 ##### <Icon name="stars" class="text-success m-2 fs-2" /> Features
 
-- Unified Api (Data-as-a-Service) that can readily and directly service Web and mobile frontends. OpenApi-compatible [JSON Api](https://api.dmart.cc/docs)
+- Unified API (Data-as-a-Service) that can readily and directly service Web and mobile frontends. OpenAPI-compatible [JSON API](https://api.dmart.cc/docs)
 - Built-in user management
 - Built-in security management (Permissions and Roles)
 - Web-based admin management UI
@@ -42,8 +42,8 @@
 ###### Backend
 
 - Programming language : Python 3.11 (latest revision)
-- Microframework : FastApi (microframework for python) with full leverage of async programming paradigm
-- Api validation : Pydantic v2 (rust-based)
+- Microframework : FastAPI (microframework for python) with full leverage of async programming paradigm
+- API validation : Pydantic v2 (rust-based)
 - Live-update : Web socket
 - Operational store : Redis 7.2.x with RediSearch 2.8.x and ReJson 2.6.x modules (based on C/C++ and rust)
 - Viewing logs and building dashboards (optional): Grafana/Loki/Promtail (based on golang)
