@@ -60,7 +60,7 @@
   import downloadFile from "@/utils/downloadFile";
   import { encode } from "plantuml-encoder";
   import { startjsonForPlantUML } from "@/utils/plantUML";
-  import { SchemaForm } from "@restspace/svelte-schema-form";
+  // import { SchemaForm } from "@restspace/svelte-schema-form";
   import './assets/layout.css';
   import './assets/basic-skin.css';
 
