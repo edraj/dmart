@@ -407,8 +407,9 @@
           ],
         };
         if (new_resource_type === "ticket") {
-          request_body.records[0].attributes.workflow_shortname =
-            workflowShortname;
+          request_body.records[0].attributes.workflow_shortname =  workflowShortname;
+          selectedContentType = ContentType.json;
+
         }
         if (selectedContentType !== null) {
           const schema_shortname =
@@ -657,7 +658,7 @@
             {/if}
 
             {#if new_resource_type !== "schema"}
-              {#if !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
+              {#if !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) ) && new_resource_type !== "ticket"}
                 <Label for="content_type" class="mt-3">Content type</Label>
                 <Input
                   id="content_type"
