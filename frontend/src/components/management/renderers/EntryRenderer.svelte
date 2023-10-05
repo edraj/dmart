@@ -61,8 +61,8 @@
   import { encode } from "plantuml-encoder";
   import { startjsonForPlantUML } from "@/utils/plantUML";
   // import { SchemaForm } from "@restspace/svelte-schema-form";
-  import './assets/layout.css';
-  import './assets/basic-skin.css';
+  // import './assets/layout.css';
+  // import './assets/basic-skin.css';
 
   let header_height: number;
 
@@ -108,7 +108,7 @@
   ];
 
   let selectedSchemaContent = {};
-  let selectedSchemaData = {};
+  // let selectedSchemaData = {};
 
   let isNeedRefresh = false;
   onMount(async () => {
