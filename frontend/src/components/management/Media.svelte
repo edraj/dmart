@@ -3,11 +3,14 @@
 
   export let attributes: any = {};
   export let resource_type: string;
+  export let url: string;
+  export let displayname: string = undefined;
   let content_type: string = attributes?.payload?.content_type || "";
   let body: any = attributes?.payload?.body;
 
-  export let url: string;
-  export let displayname: string = undefined;
+console.log({resource_type});
+console.log({attributes});
+
 </script>
 
 {#if resource_type === "comment"}
