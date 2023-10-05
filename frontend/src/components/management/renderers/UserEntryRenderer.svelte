@@ -124,7 +124,7 @@
 
     errorContent = null;
     const meta = contentMeta.json
-      ? structuredClone(contentMeta.json )
+      ? structuredClone(contentMeta.json)
       : JSON.parse(contentMeta.text);
     const data = contentContent.json
       ? structuredClone(contentContent.json)
@@ -397,7 +397,7 @@
   $: user &&
     (() => {
       const meta = contentMeta.json
-        ? structuredClone(contentMeta.json )
+        ? structuredClone(contentMeta.json)
         : JSON.parse(contentMeta.text);
 
       contentMeta.json = { ...meta, ...user };
@@ -762,7 +762,6 @@
         </Form>
 
         <JSONEditor
-          mode={Mode.text}
           bind:content={contentMeta}
           onRenderMenu={handleRenderMenu}
           bind:validator={validatorMeta}
@@ -811,7 +810,7 @@
       {space_name}
       {subpath}
       parent_shortname={entry.shortname}
-      attachments={Object.values(entry.attachments).pop()}
+      attachments={Object.values(entry.attachments)}
     />
   </div>
 </div>

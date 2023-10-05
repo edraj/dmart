@@ -45,6 +45,7 @@
     "workbox-window": "^7.0.0"
   },
   "dependencies": {
+    "@restspace/svelte-schema-form": "^0.1.6",
     "plantuml-encoder": "^1.4.0",
     "spank": "^2.0.0",
     "svelte-datatables-net": "https://github.com/edraj/svelte-datatables-net",
