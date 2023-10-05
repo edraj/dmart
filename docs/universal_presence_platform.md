@@ -1,6 +1,6 @@
 ## Universal Online Presence Platform
 
-The objective of this platform is to enabled providers establish their organizational or personal online presence: The ability to publish a website, use messaging, maintain digital assets and collaborate with users within the systems and those who come from other installments of the platform..
+The objective of this platform is to enable users (aka providers) establish their organizational or personal online presence: The ability to publish a website, use messaging, maintain digital assets and collaborate with consumers ( regular users who are onboarded on the setup itself or coming from other installments of the platform - i.e. federated).
 
 This is a simple platform that combines a number of features to cover the initial and generic needs of becoming available online.
 
@@ -44,5 +44,5 @@ A starter kit (template) defines ...
 5. Initial content (sample / seed)
 6. Theme packs (look and feel)
 
-When the environment setup is completed, the provider can create and organize entries such as products, services, activities, and content. Regular users can consume and interact with the entries. An entry can optionally have a geo-context, so it is matched with the user's geo context (Country-level, City-level, Area-level, Global). Regular users can also initiate requests (like orders, requests, tickets ...etc).
+When the environment setup is completed, the provider can create and organize entries such as products, services, activities, and content. Consumers can consume and interact with the entries. An entry can optionally have a geo-context, so it is matched with the user's geo context (Country-level, City-level, Area-level, Global). Consumers can also initiate requests (like orders, requests, tickets ...etc).
 
