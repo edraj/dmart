@@ -8,9 +8,9 @@
 
 <Navbar class=" px-3 mt-0 py-0" color="light" light>
   <SelectLanguage />
-  <LocalizedValue field="{website.footer}" />
-  <NavbarBrand href="/"><LocalizedValue field="{website.display_name}" /></NavbarBrand>
-  <NavbarBrand href="https://github.com/edraj/dmart" title="Our github"><Icon name="github" class="text-secondary"/></NavbarBrand>
-  <NavbarBrand href="mailto:kefah.issa@gmail.com" title="Mail"><Icon name="envelope-at" class="text-secondary"/></NavbarBrand>
-  <NavbarBrand href="https://matrix.to/#/#public:dmart.cc" title="Chat on Matrix"><Icon name="chat-left-text" class="text-secondary"/></NavbarBrand>
+  <!--LocalizedValue field="{website.footer}" /-->
+  <!--NavbarBrand href="/" ><LocalizedValue field="{website.display_name}" /></NavbarBrand-->
+  <NavbarBrand href="https://github.com/edraj/dmart" title="github" class="ms-auto"><Icon name="github" class="text-secondary"/></NavbarBrand>
+  <NavbarBrand href="mailto:kefah.issa@gmail.com" title="eMail"><Icon name="envelope-at" class="text-secondary"/></NavbarBrand>
+  <NavbarBrand href="https://matrix.to/#/#public:dmart.cc" title="Public chat on Matrix"><Icon name="chat-left-text" class="text-secondary"/></NavbarBrand>
 </Navbar>
