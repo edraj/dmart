@@ -21,6 +21,7 @@ jobs:
     - name: Install frontend js depdenencies
       run: |
         cd frontend
+        rm .yarnrc
         yarn install
     - name: Build frontend
       run: |
