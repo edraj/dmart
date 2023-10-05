@@ -26,12 +26,12 @@
 
 ##### <Icon name="bank" class="text-danger m-2 fs-2" /> Design principals
 
-- Entry-based, which only requires business-level descriptions (definitions) without the need for relational modeling and physical RDBMS table structure.
+- Entry-based, business-oriented data definitions (no need for relational modeling and physical RDBMS table structure).
 - Entries are extensible by meta-data and arbitrary attachments
 - Entries and attachments can involve structured, unstructured and binary data
 - Entry changes are tracked for auditing and review : Who, when and what
 - Entries are represented using file-based Json that is optionally schema-enabled
-- Operational store can always be reconstructed from the file-based data.
+- Operational store that can be reconstructed from the file-based data.
 
 </Col><Col>
 
