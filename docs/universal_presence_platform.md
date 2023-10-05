@@ -1,14 +1,14 @@
 ## Universal Online Presence Platform
 
-The objective of this platform is to enable users (aka providers) establish their organizational or personal online presence: The ability to publish a website, use messaging, maintain digital assets and collaborate with consumers ( regular users who are onboarded on the setup itself or coming from other installments of the platform - i.e. federated).
+The objective of this platform is to enable users (aka providers) establish their organizational or personal online presence: The ability to publish a website, use messaging, maintain digital assets and collaborate with consumers ( regular users who are on-boarded on the setup itself or coming from other installments of the platform - i.e. federated).
 
 This is a simple platform that combines a number of features to cover the initial and generic needs of becoming available online.
 
 ### Target provider types
 
-1. Individuals like content creators, influences, self-run service providers like doctors
+1. Individuals like content creators, influencers, self-run service providers like tutors, doctors
 2. Small businesses like restaurants, shops, healthcare, educational providers 
-3. (Non-Government-Organizations) NGOs and (Special-Interest-Groups) SIGs like sports clubs, political parties, communities, non-profit.
+3. NGOs (Non-Government-Organizations) and SIGs (Special-Interest-Groups) like sports clubs, political parties, communities, non-profit.
 
 ### Design principles
 
