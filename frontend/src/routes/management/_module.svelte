@@ -7,13 +7,13 @@
   import Header from "@/components/management/Header.svelte";
   import Sidebar from "@/components/management/Sidebar.svelte";
   import { get_profile } from "@/dmart";
-  import { useRegisterSW } from "virtual:pwa-register/svelte";
+  // import { useRegisterSW } from "virtual:pwa-register/svelte";
   import Offline from "@/components/Offline.svelte";
   import TopLoadingBar from "@/components/management/TopLoadingBar.svelte";
 
   let isOffline = false;
 
-  const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW({
+  /*const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW({
     onRegistered(swr) {
       isOffline = !navigator.onLine;
     },
@@ -26,7 +26,7 @@
   function close() {
     offlineReady.set(false);
     needRefresh.set(false);
-  }
+  }*/
 
   let window_height: number;
   let header_height: number;

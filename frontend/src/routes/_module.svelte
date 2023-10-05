@@ -1,21 +1,21 @@
 <script lang="ts">
-  import { goto } from '@roxi/routify';
+  // import { goto } from '@roxi/routify';
   import { Col, Container, Row } from "sveltestrap";
   import Header from "@/components/Header.svelte";
   import Footer from "@/components/Footer.svelte";
   // import Sidebar from "@/components/Sidebar.svelte";
   // import { user } from "@/stores/user";
   // import Login from "@/components/Login.svelte";
-  import { useRegisterSW } from "virtual:pwa-register/svelte";
+  // import { useRegisterSW } from "virtual:pwa-register/svelte";
   //import Offline from "@/components/Offline.svelte";
 
   let window_height: number;
   let header_height: number;
   let footer_height: number;
 
-  let isOffline = false;
+  // let isOffline = false;
 
-  const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW({
+  /* const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW({
     onRegistered(swr) {
       isOffline = !navigator.onLine;
     },
@@ -28,7 +28,7 @@
   function close() {
     offlineReady.set(false);
     needRefresh.set(false);
-  }
+  }*/
 
   // $goto("/management/")
 </script>

@@ -19,9 +19,7 @@
             ]
         },
         "types": [
-            "vitest/globals",
-            "vite-plugin-pwa/client",
-            "vite-plugin-pwa/svelte"
+            "vitest/globals"
         ]
     },
     "include": [
