@@ -34,9 +34,9 @@
 
 </Col><Col>
 
+----
 
 ##### <Icon name="airplane-engines" class="text-primary m-2 fs-2" /> Technology stack
-----
 
 ###### Backend
 
@@ -50,14 +50,10 @@
 - System/User level OS service management : Systemd.
 - Reverse-proxy : Caddy (with automatic SSL/Let's encrypt integration)
 
-----
-
 ###### Frontend
 
 - Single-Page-Application : Svelte with Typescript (compiled as static files)
 - CSS/UI framework : Bootstrap 5.3 with full RTL support
-
-----
 
 ###### High-quality code
 
