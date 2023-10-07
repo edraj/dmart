@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { Form, Input, Button, Navbar, NavbarBrand, Nav, NavLink } from "sveltestrap";
+  // import { Form, Input, Button, Navbar, NavbarBrand, Nav, NavLink } from "sveltestrap";
+  import { Navbar, NavbarBrand, Nav, NavLink } from "sveltestrap";
   import { _ } from "@/i18n";
-  import { website } from "@/config";
-  import Icon from "@/components/Icon.svelte";
+  // import { website } from "@/config";
+  // import Icon from "@/components/Icon.svelte";
   // import signedin_user from "../management/_stores/signedin_user";
   import { user, signout } from "@/stores/user";
   // import { redirect } from "@roxi/routify";
-  import LocalizedValue from "./LocalizedValue.svelte";
+  // import LocalizedValue from "./LocalizedValue.svelte";
 
   // let search : string = "";
   // function handleClick(event: Event) {
@@ -17,7 +18,7 @@
 </script>
 
 <Navbar color="light" light expand="md" class="px-2 w-100 py-0">
-  <NavbarBrand href="/"><LocalizedValue field="{website.short_name}" /></NavbarBrand>
+  <NavbarBrand href="/" title="{$_('home')}">{$_('home')}</NavbarBrand>
   <Nav class="me-auto" navbar>
     {#if $user && $user.signedin}
       <NavLink href="/management/content">{$user.localized_displayname}</NavLink>
@@ -26,12 +27,11 @@
     <NavLink href="/about">{$_("about")}</NavLink>
     <NavLink href="/contact">{$_("contact_us")}</NavLink>
     -->
+    
     {#if !$user || !$user.signedin}
-      <NavLink href="/management">{$_("login")}</NavLink>
+      <NavLink href="/management/content" title="{$_('login')}">{$_('login')}</NavLink>
     {:else}
-      <NavLink href="#" title="{$_('logout')}" on:click="{signout}">
-        <Icon name="power" />
-      </NavLink>
+      <NavLink href="#" title="{$_('logout')}" on:click="{signout}"> {$_('logout')} </NavLink>
     {/if}
   </Nav>
   <!--
