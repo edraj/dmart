@@ -1,5 +1,5 @@
-python-json-logger
-json_logging
+# python-json-logger
+# json_logging
 fastapi
 pydantic
 pydantic[email]
@@ -17,6 +17,5 @@ bcrypt
 jq
 segno
 jinja2
-ldap3
 asgi-correlation-id
 pydantic-settings
