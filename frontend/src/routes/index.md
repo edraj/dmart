@@ -3,7 +3,7 @@
   import Icon from "@/components/Icon.svelte";
 
 </script>
-<Container fluid={true} class="pt-4 ps-4 pe-4">
+<!--Container fluid={true} class="pt-4 ps-4 pe-4"-->
 <Row><Col>
 
 > #### What is DMART?
@@ -18,9 +18,8 @@
 - Built-in user management
 - Built-in security management (Permissions and Roles)
 - Web-based admin management UI
-- Micro-service friendly (leveraging JWT)
-- Extensible by plugins
-- Licensed as free / open source software (AGPL3+)
+- Extensible by plugins or micro-services (leveraging JWT)
+- Licensed as free / open source software (AGPL3+). 
 
 ----
 
@@ -34,6 +33,13 @@
 - Operational store that can be reconstructed from the file-based data.
 
 </Col><Col>
+
+
+##### <Icon name="briefcase" class="text-warning m-2 fs-2" /> Usecases
+
+One initial category of usecases targets organizations and individuals to establish their online presence: Provision a website that is indexed by search engines, manage users, be able to recieve/send messages/emails and allow users to ineract with published content. 
+
+[Universal online presnce](/presence_usecases)
 
 ----
 
@@ -63,4 +69,4 @@
 - Full compliance with pyright, ruff and mypi (pylint.sh)
 - Load testing with vegeta
 
-</Col></Row></Container>
+</Col></Row><!--/Container-->
