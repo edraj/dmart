@@ -4,3 +4,4 @@ dicttoxml
 pdf2image
 firebase-admin
 pillow
+ldap3
