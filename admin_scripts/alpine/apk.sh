@@ -1,4 +1,4 @@
-apk add gcc abuild coreutils linux-headers make musl-dev openssl-dev g++ bash make cmake atools
+apk add git doas gcc abuild coreutils linux-headers make musl-dev openssl-dev g++ bash make cmake atools
 
 # apk add gcc abuild  --no-cache
 # apk add --no-cache --virtual .build-deps coreutils gcc linux-headers make musl-dev openssl-dev g++ bash make cmake
@@ -20,6 +20,10 @@ build-keygen -a -i
 
 
 # Building apk
+
+
+apk add clang16 cargo
+apk add boost1.82-dev py3-numpy py3-scipy zlib py3-virtualenv file
 
 
 cd redisearch
