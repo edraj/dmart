@@ -8,9 +8,6 @@
   let content_type: string = attributes?.payload?.content_type || "";
   let body: any = attributes?.payload?.body;
 
-console.log({resource_type});
-console.log({attributes});
-
 </script>
 
 {#if resource_type === "comment"}
