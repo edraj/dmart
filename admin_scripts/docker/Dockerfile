@@ -12,8 +12,8 @@ LABEL org.label-schema.name="dmart" \
 
 # RUN set -eux 
 RUN set -eux \
-  && apk add --no-cache git \
-  && git clone https://github.com/edraj/dmart.git /home/ \
+  && apk add git \
+  && git clone --depth 1 https://github.com/edraj/dmart.git /home/ \
   && mkdir -p /home/redis /home/logs/dmart /home/logs/redis \
   && cp /home/admin_scripts/docker/alpine@imx.sh-5f19b383.rsa.pub /etc/apk/keys/ \
   && cp /home/admin_scripts/docker/dmart.sysv /etc/init.d/dmart \
@@ -21,18 +21,18 @@ RUN set -eux \
   && cp /home/admin_scripts/docker/config.ts /home/frontend/src/ \
   && cp /home/admin_scripts/docker/config.env /home/backend/ \
   && echo "https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
-  && apk add --no-cache git su-exec tzdata openrc jq curl python3 py3-pip py3-virtualenv caddy bash coreutils file \
-  && apk add --no-cache  --virtual buildpkgs nodejs npm gcc libffi-dev make g++ musl-dev python3-dev py3-wheel py3-setuptools \
-  && apk add --no-cache redis redisearch redisjson --repository=https://apk.imx.sh/packages  \
+  && apk add  git su-exec tzdata openrc jq curl python3 py3-virtualenv caddy bash coreutils file \
+  && apk add --virtual buildpkgs nodejs npm gcc libffi-dev make g++ musl-dev py3-pip python3-dev py3-wheel py3-setuptools \
+  && apk add redis redisearch redisjson --repository=https://apk.imx.sh/packages  \
   && cp /home/admin_scripts/docker/Caddyfile /etc/caddy/ \
   && virtualenv --python=/usr/bin/python3.11 /home/venv \
   && source /home/venv/bin/activate \
-  && pip install -r /home/backend/requirements.txt -r /home/backend/test-requirements.txt \
+  && pip install -r /home/backend/requirements.txt \
   && pip cache purge \
   && cd /home/frontend/ && npm install && npm run build && rm -rf node_modules && npm cache clean --force \
-  && apk del --no-cache buildpkgs \
+  && apk del buildpkgs \
   && rm -rf /tmp/js-offline \
-  && rm -rf /root/.cache && rm -rf /root/.local \
+  && rm -rf /root/.cache /root/.local  /var/cache/apk/ \
   && sed -i 's/^\(tty\d\:\:\)/#\1/g' /etc/inittab \
   && sed -i \
      -e 's/#rc_sys=".*"/rc_sys="docker"/g' \

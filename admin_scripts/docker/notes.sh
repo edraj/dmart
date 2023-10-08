@@ -18,23 +18,17 @@ podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 ./set_admin_pas
 # 4. Load the initial / sample space data and restart the service
 podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
 
-# 5. Run automated tests -- using pytest
-podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 -m pytest
-
-# 6. Run automated tests -- using curl.sh
+# 5. Run automated tests -- using curl.sh
 podman exec -it -w /home/backend dmart ./curl.sh
 
-# 7. Print the server manifest
-podman exec -it -w /home/backend dmart ./manifest.sh
+# 6. Run health-check
+podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 ./health_check.py
 
-# 8. Now open the browser to http://localhost:8000
+# 7. Now open the browser to http://localhost:8000
+# User name: dmart
+# Password: The password you entered in the set_admin_passwd step above.
 xdg-open http://localhost:8000
 
-# 9. Run source code linters
-podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./pylint.sh'
-
-# 10. Run health-check
-podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 ./health_check.py
 
 # Reindex the data
 # podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 ./create_index.py --flushall
@@ -46,3 +40,12 @@ podman exec -it -w /home/backend  dmart /home/venv/bin/python3.11 ./health_check
 # Sample container image
 # echo -e 'FROM alpine:3.18\nRUN echo "hello world"' | podman build -t hello -
 #
+# Run automated tests -- using pytest
+# podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 -m pytest
+
+# Print the server manifest
+# podman exec -it -w /home/backend dmart ./manifest.sh
+
+# Run source code linters
+# podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./pylint.sh'
+
