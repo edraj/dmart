@@ -111,14 +111,20 @@
   let selectedSchemaContent = {};
   // let selectedSchemaData = {};
 
-
   async function checkWorkflowsSubpath() {
-    const chk = await retrieve_entry(ResourceType.folder,space_name,"/","workflows", true, false, true);
+    const chk = await retrieve_entry(
+      ResourceType.folder,
+      space_name,
+      "/",
+      "workflows",
+      true,
+      false,
+      true
+    );
     if (chk) {
       resourceTypes.push(ResourceType.ticket);
     }
   }
-
 
   let isNeedRefresh = false;
   onMount(async () => {
@@ -419,9 +425,9 @@
           ],
         };
         if (new_resource_type === "ticket") {
-          request_body.records[0].attributes.workflow_shortname =  workflowShortname;
+          request_body.records[0].attributes.workflow_shortname =
+            workflowShortname;
           selectedContentType = ContentType.json;
-
         }
         if (selectedContentType !== null) {
           const schema_shortname =
@@ -688,7 +694,9 @@
                 <Input bind:value={selectedSchema} type="select">
                   <option value={null}>{"None"}</option>
                   {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
-                    {#each schemas.records.map((e) => e.shortname).filter((e)=> !["meta_schema", "folder_rendering"].includes(e)) as schema}
+                    {#each schemas.records
+                      .map((e) => e.shortname)
+                      .filter((e) => !["meta_schema", "folder_rendering"].includes(e)) as schema}
                       <option value={schema}>{schema}</option>
                     {/each}
                   {/await}
@@ -782,7 +790,6 @@
               bind:value={selectedSchemaData}
             />
               {/if} -->
-              
             {/if}
             {#if selectedContentType === "text"}
               <Input type="textarea" bind:value={entryContent} />
