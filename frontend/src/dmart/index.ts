@@ -152,16 +152,16 @@ let headers: { [key: string]: string } = {
 };
 
 export type AggregationReducer = {
-  name: string,
-  alias: string,
-  args: Array<string>,
-}
+  name: string;
+  alias: string;
+  args: Array<string>;
+};
 
 export type AggregationType = {
-  load: Array<string>,
-  group_by: Array<string>,
-  reducers: Array<AggregationReducer> | Array<string>
-}
+  load: Array<string>;
+  group_by: Array<string>;
+  reducers: Array<AggregationReducer> | Array<string>;
+};
 
 export enum QueryType {
   aggregation = "aggregation",
@@ -205,7 +205,7 @@ export type QueryRequest = {
   exact_subpath?: boolean;
   limit?: number;
   offset?: number;
-  aggregation_data?: AggregationType
+  aggregation_data?: AggregationType;
 };
 
 export enum RequestType {
@@ -222,11 +222,6 @@ export enum ResourceAttachementType {
   media = "media",
   relationship = "relationship",
   alteration = "alteration",
-}
-
-export enum EntryResourceType {
-  content = "content",
-  ticket = "ticket",
 }
 
 export enum ResourceType {
@@ -458,16 +453,20 @@ export async function retrieve_entry(
   retrieve_attachments: boolean = false,
   validate_schema: boolean = true
 ): Promise<ResponseEntry> {
-  if (!subpath || subpath == "/") subpath = "__root__";
-  const { data } = await axios.get<ResponseEntry>(
-    website.backend +
-      `/managed/entry/${resource_type}/${space_name}/${subpath}/${shortname}?retrieve_json_payload=${retrieve_json_payload}&retrieve_attachments=${retrieve_attachments}&validate_schema=${validate_schema}`.replace(
-        /\/+/g,
-        "/"
-      ),
-    { headers }
-  );
-  return data;
+  try {
+    if (!subpath || subpath == "/") subpath = "__root__";
+    const { data } = await axios.get<ResponseEntry>(
+      website.backend +
+        `/managed/entry/${resource_type}/${space_name}/${subpath}/${shortname}?retrieve_json_payload=${retrieve_json_payload}&retrieve_attachments=${retrieve_attachments}&validate_schema=${validate_schema}`.replace(
+          /\/+/g,
+          "/"
+        ),
+      { headers }
+    );
+    return data;
+  } catch (error) {
+    return null;
+  }
 }
 
 export async function upload_with_payload(
