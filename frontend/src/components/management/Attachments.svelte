@@ -27,7 +27,6 @@
   import { jsonToFile } from "@/utils/jsonToFile";
 
   export let attachments: Array<any> = [];
-  console.log({attachments});
   
   export let space_name: string;
   export let subpath: string;
