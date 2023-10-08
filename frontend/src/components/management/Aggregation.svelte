@@ -9,8 +9,6 @@
   function addInput(event) {
     event.preventDefault();
 
-    console.log({ currentSection });
-
     aggregation_data[currentSection].push(
       currentSection === "reducers"
         ? {
