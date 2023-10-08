@@ -14,7 +14,6 @@
     ContentType,
     upload_with_payload,
     csv,
-    EntryResourceType,
   } from "@/dmart";
   import {
     Form,
@@ -90,6 +89,8 @@
   let validator: Validator = createAjvValidator({ schema: {} });
   let entryContent: any;
 
+  const resourceTypes = [ResourceType.content];
+
   let ws = null;
   if ("websocket" in website)
     ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
@@ -109,6 +110,15 @@
 
   let selectedSchemaContent = {};
   // let selectedSchemaData = {};
+
+
+  async function checkWorkflowsSubpath() {
+    const chk = await retrieve_entry(ResourceType.folder,space_name,"/","workflows", true, false, true);
+    if (chk) {
+      resourceTypes.push(ResourceType.ticket);
+    }
+  }
+
 
   let isNeedRefresh = false;
   onMount(async () => {
@@ -147,6 +157,8 @@
         }
       };
     }
+
+    checkWorkflowsSubpath();
   });
 
   onDestroy(() => {
@@ -651,7 +663,7 @@
                 bind:value={new_resource_type}
                 type="select"
               >
-                {#each Object.values(EntryResourceType) as type}
+                {#each resourceTypes as type}
                   <option value={type}>{type}</option>
                 {/each}
               </Input>
@@ -676,7 +688,7 @@
                 <Input bind:value={selectedSchema} type="select">
                   <option value={null}>{"None"}</option>
                   {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
-                    {#each schemas.records.map((e) => e.shortname) as schema}
+                    {#each schemas.records.map((e) => e.shortname).filter((e)=> !["meta_schema", "folder_rendering"].includes(e)) as schema}
                       <option value={schema}>{schema}</option>
                     {/each}
                   {/await}

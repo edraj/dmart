@@ -14,11 +14,15 @@
 
   let username: string;
   let password: string;
-
+  let isError: boolean;
   async function handleSubmit(event: Event) {
     event.preventDefault();
-
-    signin(username, password);
+    isError = false;
+    try {
+      await signin(username, password);
+    } catch (error) {
+      isError = true;
+    }
   }
 </script>
 
@@ -28,12 +32,27 @@
     <Form on:submit={handleSubmit}>
       <FormGroup>
         <Label for="username">{$_("username")}</Label>
-        <Input type="text" name="username" bind:value={username} />
+        <Input
+          class={isError ? "border-danger" : ""}
+          type="text"
+          name="username"
+          bind:value={username}
+          required
+        />
       </FormGroup>
       <FormGroup>
         <Label for="password">{$_("password")}</Label>
-        <Input type="password" name="password" bind:value={password} />
+        <Input
+          class={isError ? "border-danger" : ""}
+          type="password"
+          name="password"
+          bind:value={password}
+          required
+        />
       </FormGroup>
+      {#if isError}
+        <p class="text-danger">Wrong credentials!</p>
+      {/if}
       <div class="w-100 d-flex align-items-end">
         <Button type="submit" color="primary" class="ms-auto"
           >{$_("login")}</Button
