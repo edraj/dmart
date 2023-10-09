@@ -595,6 +595,7 @@ async def serve_request(
                         space_name=request.space_name,
                         subpath=record.subpath,
                         shortname=record.shortname,
+                        resource_type=record.resource_type,
                         branch_name=record.branch_name,
                         schema_shortname=record.attributes.get("schema_shortname", None)
                     )
