@@ -590,20 +590,6 @@ async def serve_request(
                     resource_cls = getattr(
                         sys.modules["models.core"], camel_case(record.resource_type)
                     )
-                    if issubclass(resource_cls, core.Attachment):
-                        search_path, filename = db.metapath(
-                            request.space_name,
-                            record.subpath,
-                            record.shortname,
-                            resource_cls,
-                            record.branch_name,
-                        )
-                    else:
-                        search_path = (
-                            settings.spaces_folder
-                            / f"{request.space_name}/{record.subpath}"
-                        )
-                        filename = record.shortname
 
                     shortname_exists = repository.is_entry_exist(
                         space_name=request.space_name,
