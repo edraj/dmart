@@ -918,20 +918,43 @@ async def redis_query_search(
     return search_res, total
 
 
-def dir_has_file(dir_path: Path, filename: str, resource_type: ResourceType) -> bool:
-    if not dir_path.is_dir():
-        return False
+def is_entry_exist(
+    space_name: str,
+    subpath: str,
+    shortname: str,
+    branch_name: str | None = settings.default_branch,
+    schema_shortname: str | None = None,
+) -> bool:
+    """Check if an entry with the given name already exist or not in the given path
 
-    for item in os.scandir(dir_path):
-        if item.name == ".dm":
-            for dm_item in os.scandir(item):
-                meta_file = Path(f"{dm_item.path}/meta.{resource_type}.json")
-                if dm_item.name == filename and meta_file.is_file():
-                    return True
+    Args:
+        space_name (str): The target space name
+        subpath (str): The target subpath
+        shortname (str): the target shortname
+        class_type (core.Meta): The target class of the entry
+        branch_name (str | None, optional): The target branch under the target space. Defaults to settings.default_branch.
+        schema_shortname (str | None, optional): schema shortname of the entry. Defaults to None.
 
-        if item.name == filename:
+    Returns:
+        bool: True if it's already exist, False otherwise
+    """
+    if subpath[0] == "/":
+        subpath = f".{subpath}"
+        
+    payload_file = settings.spaces_folder / space_name / branch_path(branch_name) / subpath / f"{shortname}.json"
+    if payload_file.is_file():
+        return True
+        
+    for resource_type in ResourceType:
+        resource_cls = getattr(
+            sys.modules["models.core"], camel_case(resource_type.value), None
+        )
+        if not resource_cls:
+            continue
+        meta_path, meta_file = db.metapath(space_name, subpath, shortname, resource_cls, branch_name, schema_shortname)
+        if (meta_path/meta_file).is_file():
             return True
-
+        
     return False
 
 
