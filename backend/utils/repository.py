@@ -922,6 +922,7 @@ def is_entry_exist(
     space_name: str,
     subpath: str,
     shortname: str,
+    resource_type: ResourceType,
     branch_name: str | None = settings.default_branch,
     schema_shortname: str | None = None,
 ) -> bool:
@@ -945,9 +946,12 @@ def is_entry_exist(
     if payload_file.is_file():
         return True
         
-    for resource_type in ResourceType:
+    for r_type in ResourceType:
+        # Spaces compared with each others only
+        if r_type == ResourceType.space and r_type != resource_type:
+            continue
         resource_cls = getattr(
-            sys.modules["models.core"], camel_case(resource_type.value), None
+            sys.modules["models.core"], camel_case(r_type.value), None
         )
         if not resource_cls:
             continue
