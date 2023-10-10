@@ -61,6 +61,7 @@
   import { startjsonForPlantUML } from "@/utils/plantUML";
   import SchemaForm from "svelte-jsonschema-form";
   import type {JSONSchema7} from "json-schema";
+  import {goto} from "@roxi/routify";
   // import { SchemaForm } from "svelte-schemaform"
   // import { SchemaForm } from "@restspace/svelte-schema-form";
   // import './assets/layout.css';
@@ -237,6 +238,62 @@
     if (response.status == Status.success) {
       showToast(Level.info);
       oldContentMeta = structuredClone(contentMeta);
+
+      if (attributes.shortname !== entry.shortname){
+        const moveAttrb = {
+          src_subpath: subpath,
+          src_shortname: entry.shortname,
+          dest_subpath: subpath,
+          dest_shortname: attributes.shortname
+        }
+        const response = await request({
+          space_name: space_name,
+          request_type: RequestType.move,
+          records: [
+            {
+              resource_type,
+              shortname: entry.shortname,
+              subpath,
+              attributes: moveAttrb,
+            },
+          ],
+        });
+        if (response.status == Status.success) {
+          showToast(Level.info);
+          console.log("OK");
+          if (entry?.payload?.schema_shortname) {
+            console.log("OKX");
+            $goto(
+                    "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
+                    {
+                      space_name: space_name,
+                      subpath,
+                      shortname: attributes.shortname,
+                      resource_type,
+                      payload_type: entry?.payload?.content_type,
+                      schema_name: entry.payload.schema_shortname,
+                    }
+            );
+          } else {
+            console.log("OKY");
+            $goto(
+                    "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
+                    {
+                      space_name: space_name,
+                      subpath,
+                      shortname: attributes.shortname,
+                      resource_type,
+                    }
+            );
+          }
+        }
+        else {
+          errorContent = response;
+          showToast(Level.warn);
+        }
+      }
+
+
     } else {
       errorContent = response;
       showToast(Level.warn);
