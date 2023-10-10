@@ -5,7 +5,7 @@ import { mdsvex } from "mdsvex";
 import preprocess from "svelte-preprocess";
 import routify from "@roxi/routify/vite-plugin";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-
+import path from 'path';
 const production = process.env.NODE_ENV === "production";
 
 export default defineConfig({
@@ -13,6 +13,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": process.cwd() + "/src",
+      "~bootstrap": path.resolve(__dirname, "node_modules/bootstrap/dist/css/"),
+      "~bootstrap-icons": path.resolve(__dirname, "node_modules/bootstrap-icons/")
     },
   },
   plugins: [

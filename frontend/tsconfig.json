@@ -29,7 +29,6 @@
         "src/**/*.ts",
         "src/**/*.js",
         "src/**/*.svelte",
-        ".routify/**.js",
         "test/**/*.ts",
         "test/**/*.js"
     ]
