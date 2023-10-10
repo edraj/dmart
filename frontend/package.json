@@ -19,6 +19,7 @@
     "@roxi/routify": "^3.0.0-next.1",
     "@sveltejs/vite-plugin-svelte": "^2.4.1",
     "@tauri-apps/cli": "^1.4.0",
+    "@types/json-schema": "^7.0.13",
     "@types/marked": "^4.3.0",
     "@types/prismjs": "^1.26.0",
     "@zerodevx/svelte-toast": "^0.9.3",
@@ -45,8 +46,12 @@
     "workbox-window": "^7.0.0"
   },
   "dependencies": {
+    "@json-schema-tools/dereferencer": "^1.6.1",
+    "@json-schema-tools/traverse": "^1.10.1",
+    "json-schema": "^0.4.0",
     "plantuml-encoder": "^1.4.0",
     "svelte-datatables-net": "https://github.com/edraj/svelte-datatables-net",
+    "svelte-jsonschema-form": "https://github.com/webgme/svelte-jsonschema-form",
     "sveltestrap": "https://github.com/edraj/sveltestrap"
   }
 }

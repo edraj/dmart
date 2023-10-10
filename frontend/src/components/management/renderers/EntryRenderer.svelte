@@ -59,6 +59,9 @@
   import downloadFile from "@/utils/downloadFile";
   import { encode } from "plantuml-encoder";
   import { startjsonForPlantUML } from "@/utils/plantUML";
+  import SchemaForm from "svelte-jsonschema-form";
+  import type {JSONSchema7} from "json-schema";
+  // import { SchemaForm } from "svelte-schemaform"
   // import { SchemaForm } from "@restspace/svelte-schema-form";
   // import './assets/layout.css';
   // import './assets/basic-skin.css';
@@ -108,7 +111,7 @@
     "/schema",
   ];
 
-  let selectedSchemaContent = {};
+  let selectedSchemaContent: JSONSchema7 = {};
   // let selectedSchemaData = {};
 
   async function checkWorkflowsSubpath() {
@@ -624,6 +627,9 @@
     }
   }
   let oldSelectedSchema = "old";
+  let schemaForm: SchemaForm;
+  let selectedSchemaData = {};
+  let uischema = {};
   $: {
     if (oldSelectedSchema !== selectedSchema) {
       (async () => {
@@ -634,7 +640,9 @@
           selectedSchema,
           true
         );
-        selectedSchemaContent = _selectedSchemaContent.payload.body;
+        selectedSchemaContent = _selectedSchemaContent?.payload?.body ?? {};
+        delete selectedSchemaContent.required;
+        console.log({selectedSchemaContent})
         oldSelectedSchema = selectedSchema;
       })();
     }
@@ -783,13 +791,13 @@
               />
             {/if}
             {#if selectedContentType === "json"}
-              <JSONEditor mode={Mode.text} bind:content={entryContent} />
-              <!-- {#if Object.keys(selectedSchemaContent).length !== 0}
-              <SchemaForm
-              schema={selectedSchemaContent}
-              bind:value={selectedSchemaData}
-            />
-              {/if} -->
+              <!-- <JSONEditor mode={Mode.text} bind:content={entryContent} /> -->
+              <!--{#if Object.keys(selectedSchemaContent).length !== 0}-->
+                {JSON.stringify(selectedSchemaContent)}
+                {JSON.stringify(selectedSchemaData)}
+
+                <SchemaForm schema={selectedSchemaContent} bind:data={selectedSchemaData} />
+              <!--{/if}-->
             {/if}
             {#if selectedContentType === "text"}
               <Input type="textarea" bind:value={entryContent} />
