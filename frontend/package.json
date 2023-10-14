@@ -47,6 +47,6 @@
   "dependencies": {
     "plantuml-encoder": "^1.4.0",
     "svelte-datatables-net": "https://github.com/edraj/svelte-datatables-net",
-    "sveltestrap": "https://github.com/edraj/sveltestrap"
+    "sveltestrap": "edraj/sveltestrap#fix-svelte4"
   }
 }
