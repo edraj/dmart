@@ -45,6 +45,7 @@
   import checkAccess from "@/utils/checkAccess";
   import { fade } from "svelte/transition";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
+  import {goto} from "@roxi/routify";
 
   let header_height: number;
   export let entry: ResponseEntry;
@@ -144,6 +145,58 @@
       showToast(Level.info);
       oldContentMeta = structuredClone(contentMeta);
       oldContent = structuredClone(contentContent);
+
+      if (attributes.shortname !== entry.shortname){
+        const moveAttrb = {
+          src_subpath: subpath,
+          src_shortname: entry.shortname,
+          dest_subpath: subpath,
+          dest_shortname: attributes.shortname
+        }
+        const response = await request({
+          space_name: space_name,
+          request_type: RequestType.move,
+          records: [
+            {
+              resource_type,
+              shortname: entry.shortname,
+              subpath,
+              attributes: moveAttrb,
+            },
+          ],
+        });
+        if (response.status == Status.success) {
+          showToast(Level.info);
+          if (entry?.payload?.schema_shortname) {
+            $goto(
+                    "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
+                    {
+                      space_name: space_name,
+                      subpath,
+                      shortname: attributes.shortname,
+                      resource_type,
+                      payload_type: entry?.payload?.content_type,
+                      schema_name: entry.payload.schema_shortname,
+                    }
+            );
+          } else {
+            console.log("OKY");
+            $goto(
+                    "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
+                    {
+                      space_name: space_name,
+                      subpath,
+                      shortname: attributes.shortname,
+                      resource_type,
+                    }
+            );
+          }
+        }
+        else {
+          errorContent = response;
+          showToast(Level.warn);
+        }
+      }
     } else {
       errorContent = response;
       showToast(Level.warn);
