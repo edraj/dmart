@@ -192,7 +192,6 @@
                     }
             );
           } else {
-            console.log("OKY");
             $goto(
                     "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
                     {
