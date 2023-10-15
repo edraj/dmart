@@ -146,12 +146,12 @@
       oldContentMeta = structuredClone(contentMeta);
       oldContent = structuredClone(contentContent);
 
-      if (attributes.shortname !== entry.shortname){
+      if (data.shortname !== entry.shortname){
         const moveAttrb = {
           src_subpath: subpath,
           src_shortname: entry.shortname,
           dest_subpath: subpath,
-          dest_shortname: attributes.shortname
+          dest_shortname: data.shortname
         }
         const response = await request({
           space_name: space_name,
@@ -173,20 +173,19 @@
                     {
                       space_name: space_name,
                       subpath,
-                      shortname: attributes.shortname,
+                      shortname: data.shortname,
                       resource_type,
                       payload_type: entry?.payload?.content_type,
                       schema_name: entry.payload.schema_shortname,
                     }
             );
           } else {
-            console.log("OKY");
             $goto(
                     "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
                     {
                       space_name: space_name,
                       subpath,
-                      shortname: attributes.shortname,
+                      shortname: data.shortname,
                       resource_type,
                     }
             );
