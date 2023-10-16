@@ -687,7 +687,7 @@
           selectedSchema,
           true
         );
-        selectedSchemaContent = _selectedSchemaContent.payload.body;
+        selectedSchemaContent = _selectedSchemaContent?.payload?.body;
         oldSelectedSchema = selectedSchema;
       })();
     }
