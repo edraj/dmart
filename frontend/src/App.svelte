@@ -52,7 +52,7 @@
 </div>
 
 <style>
-  @import "../node_modules/bootstrap-icons/font/bootstrap-icons.min.css";
+  @import "~/bootstrap-icons/font/bootstrap-icons.min.css";
 
   :global(.custom-toast.info) {
     --toastBackground: rgba(72, 187, 120, 0.9);
