@@ -25,18 +25,23 @@
 
   setupI18n();
   $: {
-    try {
-      document.dir = $dir;
-      if ($dir == "rtl") {
-        document.head.children["bootstrap"].href =
-          "/assets/bootstrap.rtl.min.css";
-      } else {
-        if (document && document.head && document.head.children["bootstrap"])
-          document.head.children["bootstrap"].href =
-            "/assets/bootstrap.min.css";
-      }
-    } catch (error) {
-      showToast(Level.warn, "Error in App: "+error)
+     try {
+       document.dir = $dir;
+       const rtl = (<HTMLLinkElement>document.querySelector('link#rtl'));
+       const ltr = (<HTMLLinkElement>document.querySelector('link#ltr'));
+       if ($dir == "rtl") {
+         // document.head.children["rtl"].disabled = false;
+         // document.head.children["ltr"].disabled = true;
+         rtl.disabled = false;
+         ltr.disabled = true;
+       } else {
+         // document.head.children["ltr"].disabled = false;
+         // document.head.children["rtl"].disabled = true;
+         ltr.disabled = false;
+         rtl.disabled = true;
+       }
+     } catch (error) {
+       showToast(Level.warn, "Error in App: "+error)
     }
   }
 </script>
@@ -47,6 +52,8 @@
 </div>
 
 <style>
+  @import "../node_modules/bootstrap-icons/font/bootstrap-icons.min.css";
+
   :global(.custom-toast.info) {
     --toastBackground: rgba(72, 187, 120, 0.9);
     --toastBarBackground: #2f855a;
