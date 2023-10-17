@@ -53,6 +53,7 @@
 
 <style>
   @import "~/bootstrap-icons/font/bootstrap-icons.min.css";
+  @import "~/bootstrap/dist/css/bootstrap.min.css";
 
   :global(.custom-toast.info) {
     --toastBackground: rgba(72, 187, 120, 0.9);
