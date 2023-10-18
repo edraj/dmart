@@ -1,6 +1,5 @@
 import { Writable, writable } from "svelte/store";
 import { login, logout } from "@/dmart";
-
 import { authToken } from "@/stores/management/auth";
 import { getLocaleFromNavigator } from "svelte-i18n";
 
@@ -72,6 +71,7 @@ export async function signin(username: string, password: string) {
 export async function signout() { 
   if (typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(KEY)).signedin) {
     logout();
+    localStorage.setItem("active_section", null);
     user.set(signedout);
     localStorage.setItem(KEY, JSON.stringify(signedout));
   }
