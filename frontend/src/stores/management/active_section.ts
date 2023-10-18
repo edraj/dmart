@@ -26,7 +26,7 @@ export type Section = {
   children: Array<Child>
 };
 
-const default_section : Section = sections[2]; // Content
+const default_section : Section = sections[1]; // Content
 let local : Section;
 
 if (typeof localStorage !== 'undefined' && !localStorage.getItem("active_section")) 
