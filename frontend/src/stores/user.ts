@@ -69,9 +69,9 @@ export async function signin(username: string, password: string) {
 }
 
 export async function signout() { 
-  if (typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(KEY)).signedin) {
+  if (typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(KEY))?.signedin) {
     logout();
-    localStorage.setItem("active_section", null);
+    localStorage.removeItem("active_section");
     user.set(signedout);
     localStorage.setItem(KEY, JSON.stringify(signedout));
   }
