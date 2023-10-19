@@ -60,8 +60,7 @@
       8}px;"
     >
         <Row class="h-100" noGutters>
-            {#await get_profile()}
-            {:then _}
+            {#await get_profile() then _}
                 <Col sm="2" class="h-100 border-end border-light px-1">
                     <Sidebar/>
                 </Col>
