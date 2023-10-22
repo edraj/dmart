@@ -2,6 +2,9 @@
   import { Router, createRouter } from "@roxi/routify";
   import routes from "../.routify/routes.default";
   import { SvelteToast } from "@zerodevx/svelte-toast";
+  import "bootstrap-icons/font/bootstrap-icons.min.css";
+  const rtlUrl = new URL('bootstrap/dist/css/bootstrap.rtl.min.css', import.meta.url).href;
+  const ltrUrl = new URL('bootstrap/dist/css/bootstrap.min.css', import.meta.url).href;
 
   const router = createRouter({ routes });
   const options = {
@@ -21,30 +24,20 @@
 
 <script lang="ts">
   import { setupI18n, dir } from "./i18n";
-  import { Level, showToast } from "./utils/toast";
 
   setupI18n();
-  $: {
-     try {
-       document.dir = $dir;
-       const rtl = (<HTMLLinkElement>document.querySelector('link#rtl'));
-       const ltr = (<HTMLLinkElement>document.querySelector('link#ltr'));
-       if ($dir == "rtl") {
-         // document.head.children["rtl"].disabled = false;
-         // document.head.children["ltr"].disabled = true;
-         rtl.disabled = false;
-         ltr.disabled = true;
-       } else {
-         // document.head.children["ltr"].disabled = false;
-         // document.head.children["rtl"].disabled = true;
-         ltr.disabled = false;
-         rtl.disabled = true;
-       }
-     } catch (error) {
-       showToast(Level.warn, "Error in App: "+error)
-    }
-  }
+  $: { document.dir = $dir; }
 </script>
+
+
+
+<svelte:head>
+  {#if $dir == "rtl"}
+    <link rel="stylesheet" id="bootstrap" href="{rtlUrl}" />
+  {:else}
+    <link rel="stylesheet" id="bootstrap" href="{ltrUrl}" />
+  {/if}
+</svelte:head>
 
 <div id="routify-app">
   <SvelteToast {options} />
@@ -52,9 +45,6 @@
 </div>
 
 <style>
-  @import "~/bootstrap-icons/font/bootstrap-icons.min.css";
-  @import "~/bootstrap/dist/css/bootstrap.min.css";
-
   :global(.custom-toast.info) {
     --toastBackground: rgba(72, 187, 120, 0.9);
     --toastBarBackground: #2f855a;
