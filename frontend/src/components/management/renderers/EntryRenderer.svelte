@@ -59,8 +59,8 @@
   import downloadFile from "@/utils/downloadFile";
   import { encode } from "plantuml-encoder";
   import { startjsonForPlantUML } from "@/utils/plantUML";
-  import {goto} from "@roxi/routify";
-  // import { SchemaForm } from "@restspace/svelte-schema-form";
+  import { goto } from "@roxi/routify";
+  import SchemaForm from "svelte-jsonschema-form";
   // import './assets/layout.css';
   // import './assets/basic-skin.css';
 
@@ -109,8 +109,8 @@
     "/schema",
   ];
 
-  let selectedSchemaContent = {};
-  // let selectedSchemaData = {};
+  let selectedSchemaContent = null;
+  let selectedSchemaData = {};
 
   async function checkWorkflowsSubpath() {
     const chk = await retrieve_entry(
@@ -185,6 +185,7 @@
   );
 
   let errorContent = null;
+
   async function handleSave(e: Event) {
     e.preventDefault();
     // if (!isSchemaValidated) {
@@ -236,13 +237,13 @@
       showToast(Level.info);
       oldContentMeta = structuredClone(contentMeta);
 
-      if (data.shortname !== entry.shortname){
+      if (data.shortname !== entry.shortname) {
         const moveAttrb = {
           src_subpath: subpath,
           src_shortname: entry.shortname,
           dest_subpath: subpath,
-          dest_shortname: data.shortname
-        }
+          dest_shortname: data.shortname,
+        };
         const response = await request({
           space_name: space_name,
           request_type: RequestType.move,
@@ -259,34 +260,32 @@
           showToast(Level.info);
           if (entry?.payload?.schema_shortname) {
             $goto(
-                    "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
-                    {
-                      space_name: space_name,
-                      subpath,
-                      shortname: data.shortname,
-                      resource_type,
-                      payload_type: entry?.payload?.content_type,
-                      schema_name: entry.payload.schema_shortname,
-                    }
+              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
+              {
+                space_name: space_name,
+                subpath,
+                shortname: data.shortname,
+                resource_type,
+                payload_type: entry?.payload?.content_type,
+                schema_name: entry.payload.schema_shortname,
+              }
             );
           } else {
             $goto(
-                    "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
-                    {
-                      space_name: space_name,
-                      subpath,
-                      shortname: data.shortname,
-                      resource_type,
-                    }
+              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
+              {
+                space_name: space_name,
+                subpath,
+                shortname: data.shortname,
+                resource_type,
+              }
             );
           }
-        }
-        else {
+        } else {
           errorContent = response;
           showToast(Level.warn);
         }
       }
-
     } else {
       errorContent = response;
       showToast(Level.warn);
@@ -324,7 +323,9 @@
       else if (typeof obj[prop] === "object") cleanUpSchema(obj[prop]);
     }
   }
+
   let schema = null;
+
   async function get_schema() {
     if (entry.payload && entry.payload.schema_shortname) {
       try {
@@ -454,9 +455,21 @@
       ) {
         let body: any;
         if (selectedContentType === "json") {
-          body = entryContent.json
-            ? structuredClone(entryContent.json)
-            : JSON.parse(entryContent.text);
+          if (
+            selectedSchemaContent != null &&
+            selectedSchemaData &&
+            Object.keys(selectedSchemaData).length !== 0
+          ) {
+            if (!schemaFormRef.reportValidity()) {
+              return;
+            }
+            body = selectedSchemaData;
+            console.log("ppppppppppppppppppppppppppp");
+          } else {
+            body = entryContent.json
+              ? structuredClone(entryContent.json)
+              : JSON.parse(entryContent.text);
+          }
         } else {
           body = entryContent;
         }
@@ -530,6 +543,7 @@
       };
       response = await request(request_body);
     }
+
     if (response.status === "success") {
       showToast(Level.info);
       contentShortname = "";
@@ -648,6 +662,7 @@
 
     return output;
   }
+
   function schemaVisualizationEncoder() {
     if (typeof entry.payload.body === "object") {
       try {
@@ -676,6 +691,7 @@
       }
     }
   }
+
   let oldSelectedSchema = "old";
   $: {
     if (oldSelectedSchema !== selectedSchema) {
@@ -692,6 +708,8 @@
       })();
     }
   }
+  let schemaFormRef;
+  $: console.log({ schemaFormRef });
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
@@ -773,48 +791,48 @@
           bind:value={contentShortname}
           required
         />
-        <!-- 
-        <div class="row mt-3">
-          <FormGroup class="col-6">
-            <Label>{$_("displayname_en")}</Label>
-            <Input
-              type="text"
-              name="displayname_en"
-              placeholder={`${$_("displayname_en")}...`}
-              bind:value={displayname.en}
-            />
-          </FormGroup>
-          <FormGroup class="col-6">
-            <Label>{$_("displayname_ar")}</Label>
-            <Input
-              type="text"
-              name="displayname_ar"
-              placeholder={`${$_("displayname_en")}...`}
-              bind:value={displayname.ar}
-            />
-          </FormGroup>
-        </div> -->
+        <!--
+    <div class="row mt-3">
+      <FormGroup class="col-6">
+        <Label>{$_("displayname_en")}</Label>
+        <Input
+          type="text"
+          name="displayname_en"
+          placeholder={`${$_("displayname_en")}...`}
+          bind:value={displayname.en}
+        />
+      </FormGroup>
+      <FormGroup class="col-6">
+        <Label>{$_("displayname_ar")}</Label>
+        <Input
+          type="text"
+          name="displayname_ar"
+          placeholder={`${$_("displayname_en")}...`}
+          bind:value={displayname.ar}
+        />
+      </FormGroup>
+    </div> -->
 
         <!-- <div class="row mt-3">
-          <FormGroup class="col-6">
-            <Label>{$_("description_en")}</Label>
-            <Input
-              type="text"
-              name="displayname_en"
-              placeholder={`${$_("description_en")}...`}
-              bind:value={description.en}
-            />
-          </FormGroup>
-          <FormGroup class="col-6">
-            <Label>{$_("description_ar")}</Label>
-            <Input
-              type="text"
-              name="displayname_ar"
-              placeholder={`${$_("description_ar")}...`}
-              bind:value={description.ar}
-            />
-          </FormGroup>
-        </div> -->
+      <FormGroup class="col-6">
+        <Label>{$_("description_en")}</Label>
+        <Input
+          type="text"
+          name="displayname_en"
+          placeholder={`${$_("description_en")}...`}
+          bind:value={description.en}
+        />
+      </FormGroup>
+      <FormGroup class="col-6">
+        <Label>{$_("description_ar")}</Label>
+        <Input
+          type="text"
+          name="displayname_ar"
+          placeholder={`${$_("description_ar")}...`}
+          bind:value={description.ar}
+        />
+      </FormGroup>
+    </div> -->
         <hr />
 
         {#if entryType === "content" && modalFlag === "create"}
@@ -827,8 +845,8 @@
               {/if}
             </Row>
           {:else if selectedContentType}
-            <Label class="mt-3">Payload</Label>
             {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
+              <Label class="mt-3">Payload</Label>
               <Input
                 accept="image/png, image/jpeg"
                 bind:files={payloadFiles}
@@ -836,21 +854,25 @@
               />
             {/if}
             {#if selectedContentType === "json"}
-              <JSONEditor mode={Mode.text} bind:content={entryContent} />
-              <!-- {#if Object.keys(selectedSchemaContent).length !== 0}
-              <SchemaForm
-              schema={selectedSchemaContent}
-              bind:value={selectedSchemaData}
-            />
-              {/if} -->
+              {#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}
+                <Label class="mt-3">Payload</Label>
+                <SchemaForm
+                  bind:ref={schemaFormRef}
+                  schema={selectedSchemaContent}
+                  bind:data={selectedSchemaData}
+                />
+              {/if}
             {/if}
             {#if selectedContentType === "text"}
+              <Label class="mt-3">Payload</Label>
               <Input type="textarea" bind:value={entryContent} />
             {/if}
             {#if selectedContentType === "html"}
+              <Label class="mt-3">Payload</Label>
               <HtmlEditor bind:content={entryContent} />
             {/if}
             {#if selectedContentType === "markdown"}
+              <Label class="mt-3">Payload</Label>
               <MarkdownEditor bind:content={entryContent} />
             {/if}
           {/if}
@@ -870,8 +892,9 @@
         on:click={() => {
           isModalOpen = false;
           contentShortname = "";
-        }}>cancel</Button
-      >
+        }}
+        >cancel
+      </Button>
       <Button type="submit" color="primary">Submit</Button>
     </ModalFooter>
   </Form>
@@ -898,7 +921,7 @@
           color="success"
           size="sm"
           class="justify-content-center text-center py-0 px-1"
-          active={"list" == tab_option}
+          active={"list" === tab_option}
           title={$_("list")}
           on:click={() => (tab_option = "list")}
         >
@@ -911,7 +934,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"view" == tab_option}
+        active={"view" === tab_option}
         title={$_("view")}
         on:click={() => (tab_option = "view")}
       >
@@ -924,7 +947,7 @@
           color="success"
           size="sm"
           class="justify-content-center text-center py-0 px-1"
-          active={"edit_meta" == tab_option}
+          active={"edit_meta" === tab_option}
           title={$_("edit") + " meta"}
           on:click={() => (tab_option = "edit_meta")}
         >
@@ -936,7 +959,7 @@
             color="success"
             size="sm"
             class="justify-content-center text-center py-0 px-1"
-            active={"edit_content" == tab_option}
+            active={"edit_content" === tab_option}
             title={$_("edit") + " payload"}
             on:click={() => (tab_option = "edit_content")}
           >
@@ -950,7 +973,7 @@
             color="success"
             size="sm"
             class="justify-content-center text-center py-0 px-1"
-            active={"visualization" == tab_option}
+            active={"visualization" === tab_option}
             title={$_("edit") + " payload"}
             on:click={() => (tab_option = "visualization")}
           >
@@ -964,7 +987,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"attachments" == tab_option}
+        active={"attachments" === tab_option}
         title={$_("attachments")}
         on:click={() => (tab_option = "attachments")}
       >
@@ -975,7 +998,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"history" == tab_option}
+        active={"history" === tab_option}
         title={$_("history")}
         on:click={() => (tab_option = "history")}
       >
@@ -1028,7 +1051,8 @@
               entryType = "content";
               isModalOpen = true;
             }}
-            ><Icon name="file-plus" />
+          >
+            <Icon name="file-plus" />
           </Button>
           {#if !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
             <Button
@@ -1050,7 +1074,8 @@
                 new_resource_type = ResourceType.folder;
                 isModalOpen = true;
               }}
-              ><Icon name="folder-plus" />
+            >
+              <Icon name="folder-plus" />
             </Button>
           {/if}
         {/if}
@@ -1063,7 +1088,8 @@
           on:click={() => {
             refresh = !refresh;
           }}
-          ><Icon name="arrow-clockwise" />
+        >
+          <Icon name="arrow-clockwise" />
         </Button>
       </ButtonGroup>
     {/if}
@@ -1084,8 +1110,8 @@
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
       <pre>
-        {JSON.stringify(entry, undefined, 1)}
-      </pre>
+{JSON.stringify(entry, undefined, 1)}
+</pre>
     </div>
   </div>
   <div class="tab-pane" class:active={tab_option === "view"}>
@@ -1246,6 +1272,7 @@
   span {
     color: dimgrey;
   }
+
   :global(.X) {
     transform: translate(-50%, -15%) !important;
     left: 50%;
