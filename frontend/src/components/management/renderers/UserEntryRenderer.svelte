@@ -98,20 +98,20 @@
       user.displayname = entry.displayname;
     }
 
-    const cpy = JSON.parse(JSON.stringify(entry));
+    const cpy = structuredClone(entry);
 
     if (contentContent === null) {
       contentContent = { json: {}, text: undefined };
     }
     contentContent.json = cpy?.payload?.body ?? {};
-    contentContent = structuredClone(contentContent);
-    oldContentContent = structuredClone(contentContent);
 
     delete cpy?.payload?.body;
     delete cpy?.attachments;
     contentMeta.json = cpy;
-    contentMeta = structuredClone(contentMeta);
 
+    contentContent = structuredClone(contentContent);
+    oldContentContent = structuredClone(contentContent);
+    contentMeta = structuredClone(contentMeta);
     oldContentMeta = structuredClone(contentMeta);
   });
 
@@ -831,7 +831,6 @@
           style="text-align: left; direction: ltr; overflow: hidden auto;"
         >
           <JSONEditor
-            mode={Mode.text}
             bind:content={contentContent}
             onRenderMenu={handleRenderMenu}
             bind:validator={validatorContent}
