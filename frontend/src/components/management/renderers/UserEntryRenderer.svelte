@@ -459,19 +459,20 @@
       };
       contentMeta = structuredClone(contentMeta);
     })();
+  const toggleModal = () => {
+      isModalOpen = !isModalOpen;
+      contentShortname = "";
+  }
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
 
 <Modal
   isOpen={isModalOpen}
-  toggle={() => {
-    isModalOpen = !isModalOpen;
-    contentShortname = "";
-  }}
+  toggle={toggleModal}
   size={"lg"}
 >
-  <ModalHeader />
+  <ModalHeader toggle={toggleModal}/>
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
       <FormGroup>

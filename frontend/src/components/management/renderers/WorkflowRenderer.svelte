@@ -580,19 +580,21 @@
     const data = await csv(body);
     downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
   }
+
+  const toggleModal = () => {
+      isModalOpen = !isModalOpen;
+      contentShortname = "";
+  }
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
 
 <Modal
   isOpen={isModalOpen}
-  toggle={() => {
-    isModalOpen = !isModalOpen;
-    contentShortname = "";
-  }}
+  toggle={toggleModal}
   size={new_resource_type === "schema" ? "xl" : "lg"}
 >
-  <ModalHeader />
+  <ModalHeader toggle={toggleModal} />
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
       <FormGroup>

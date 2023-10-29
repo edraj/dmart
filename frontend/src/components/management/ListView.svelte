@@ -284,19 +284,18 @@
         paginationBottomInfoTo >= total ? total : paginationBottomInfoTo;
     }
   }
+  const toggelModal = () => {
+      open != open;
+  }
 </script>
 
 {#key open}
   <Modal
     isOpen={open}
-    toggle={() => {
-      open != open;
-    }}
+    toggle={toggelModal}
     size={"lg"}
   >
-    <ModalHeader toggle={() => (open = false)}
-      >{modalData.shortname}</ModalHeader
-    >
+    <ModalHeader toggle={toggelModal}>{modalData.shortname}</ModalHeader>
     <ModalBody>
       <Prism code={modalData} />
     </ModalBody>
