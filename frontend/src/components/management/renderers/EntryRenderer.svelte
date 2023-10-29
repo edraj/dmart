@@ -20,6 +20,7 @@
     FormGroup,
     Button,
     Modal,
+    ModalHeader,
     ModalBody,
     ModalFooter,
     Label,
@@ -464,7 +465,6 @@
               return;
             }
             body = selectedSchemaData;
-            console.log("ppppppppppppppppppppppppppp");
           } else {
             body = entryContent.json
               ? structuredClone(entryContent.json)
@@ -709,28 +709,26 @@
     }
   }
   let schemaFormRef;
-  $: console.log({ schemaFormRef });
+  const modalToggle = () => {
+      isModalOpen = !isModalOpen;
+      contentShortname = "";
+  }
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
 
 <Modal
   isOpen={isModalOpen}
-  toggle={() => {
-    isModalOpen = !isModalOpen;
-    contentShortname = "";
-  }}
+  toggle={modalToggle}
   size={new_resource_type === "schema" ? "xl" : "lg"}
 >
+  <ModalHeader toggle={modalToggle}>
+    Creating an {new_resource_type} under
+    <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>
+  </ModalHeader>
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
       <FormGroup>
-        <h4>
-          Creating an {new_resource_type} under
-          <span class="text-success">{space_name}</span>/<span
-            class="text-primary">{subpath}</span
-          >
-        </h4>
         {#if modalFlag === "create"}
           {#if entryType !== "folder"}
             {#if !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}

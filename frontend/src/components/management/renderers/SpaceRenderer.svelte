@@ -212,19 +212,20 @@
       }
     }
   }
+  const toggelModal = () => {
+      isModalOpen = !isModalOpen;
+      contentShortname = "";
+  }
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
 
 <Modal
   isOpen={isModalOpen}
-  toggle={() => {
-    isModalOpen = !isModalOpen;
-    contentShortname = "";
-  }}
+  toggle={toggelModal}
   size={"lg"}
 >
-  <ModalHeader />
+  <ModalHeader toggle={toggelModal} />
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
       <FormGroup>
