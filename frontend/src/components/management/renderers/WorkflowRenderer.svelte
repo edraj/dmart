@@ -59,7 +59,8 @@
   import { generateUUID } from "@/utils/uuid";
   import downloadFile from "@/utils/downloadFile";
   import { encode } from "plantuml-encoder";
-  import {goto} from "@roxi/routify";
+  import { goto } from "@roxi/routify";
+  import SchemaForm from "svelte-jsonschema-form";
 
   let header_height: number;
 
@@ -88,7 +89,7 @@
   let entryContent: any;
 
   let ws = null;
-  if ('websocket' in website){
+  if ("websocket" in website) {
     ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
   }
   function isOpen(ws: any) {
@@ -149,6 +150,7 @@
     }</strong></small>`
   );
 
+  let schemaFormRef;
   let errorContent = null;
   async function handleSave(e: Event) {
     e.preventDefault();
@@ -156,10 +158,15 @@
     //   alert("The content does is not validated agains the schema");
     //   return;
     // }
+
+    if (!schemaFormRef.reportValidity()) {
+      return;
+    }
+
     errorContent = null;
 
     const x = contentMeta.json
-      ? structuredClone(contentMeta.json )
+      ? structuredClone(contentMeta.json)
       : JSON.parse(contentMeta.text);
 
     let data: any = structuredClone(x);
@@ -201,13 +208,13 @@
       showToast(Level.info);
       oldContentMeta = structuredClone(contentMeta);
 
-      if (data.shortname !== entry.shortname){
+      if (data.shortname !== entry.shortname) {
         const moveAttrb = {
           src_subpath: subpath,
           src_shortname: entry.shortname,
           dest_subpath: subpath,
-          dest_shortname: data.shortname
-        }
+          dest_shortname: data.shortname,
+        };
         const response = await request({
           space_name: space_name,
           request_type: RequestType.move,
@@ -224,34 +231,32 @@
           showToast(Level.info);
           if (entry?.payload?.schema_shortname) {
             $goto(
-                    "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
-                    {
-                      space_name: space_name,
-                      subpath,
-                      shortname: data.shortname,
-                      resource_type,
-                      payload_type: entry?.payload?.content_type,
-                      schema_name: entry.payload.schema_shortname,
-                    }
+              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
+              {
+                space_name: space_name,
+                subpath,
+                shortname: data.shortname,
+                resource_type,
+                payload_type: entry?.payload?.content_type,
+                schema_name: entry.payload.schema_shortname,
+              }
             );
           } else {
             $goto(
-                    "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
-                    {
-                      space_name: space_name,
-                      subpath,
-                      shortname: data.shortname,
-                      resource_type,
-                    }
+              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
+              {
+                space_name: space_name,
+                subpath,
+                shortname: data.shortname,
+                resource_type,
+              }
             );
           }
-        }
-        else {
+        } else {
           errorContent = response;
           showToast(Level.warn);
         }
       }
-
     } else {
       errorContent = response;
       showToast(Level.warn);
@@ -342,7 +347,9 @@
 
     let response: any;
     if (new_resource_type === "schema") {
-      let body = content.json ? structuredClone(content.json) : JSON.parse(content.text);
+      let body = content.json
+        ? structuredClone(content.json)
+        : JSON.parse(content.text);
       body = transformToProperBodyRequest(body);
       body = body[0];
       delete body.name;
@@ -582,9 +589,9 @@
   }
 
   const toggleModal = () => {
-      isModalOpen = !isModalOpen;
-      contentShortname = "";
-  }
+    isModalOpen = !isModalOpen;
+    contentShortname = "";
+  };
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
@@ -766,6 +773,19 @@
           >
             <Icon name="pencil" />
           </Button>
+          {#if schema}
+            <Button
+              outline
+              color="success"
+              size="sm"
+              class="justify-content-center text-center py-0 px-1"
+              active={"edit_content_form" === tab_option}
+              title={$_("edit") + " payload"}
+              on:click={() => (tab_option = "edit_content_form")}
+            >
+              <Icon name="pencil-square" />
+            </Button>
+          {/if}
         {/if}
         {#if entry.payload}
           <Button
@@ -900,21 +920,21 @@
   </div>
   <div class="tab-pane" class:active={tab_option === "edit_meta"}>
     {#if tab_option === "edit_meta"}
-    <div
-      class="px-1 pb-1 h-100"
-      style="text-align: left; direction: ltr; overflow: hidden auto;"
-    >
-      <JSONEditor
-        mode={Mode.text}
-        bind:content={contentMeta}
-        onRenderMenu={handleRenderMenu}
-        bind:validator={validatorMeta}
-      />
-      {#if errorContent}
-        <h3 class="mt-3">Error:</h3>
-        <Prism bind:code={errorContent} />
-      {/if}
-    </div>
+      <div
+        class="px-1 pb-1 h-100"
+        style="text-align: left; direction: ltr; overflow: hidden auto;"
+      >
+        <JSONEditor
+          mode={Mode.text}
+          bind:content={contentMeta}
+          onRenderMenu={handleRenderMenu}
+          bind:validator={validatorMeta}
+        />
+        {#if errorContent}
+          <h3 class="mt-3">Error:</h3>
+          <Prism bind:code={errorContent} />
+        {/if}
+      </div>
     {/if}
   </div>
   {#if entry.payload}
@@ -938,6 +958,20 @@
         {/if}
       </div>
     </div>
+    {#if schema}
+      <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
+        <div class="d-flex justify-content-end my-1">
+          <Button on:click={handleSave}>Save</Button>
+        </div>
+        <div class="px-1 pb-1 h-100">
+          <SchemaForm
+            bind:ref={schemaFormRef}
+            {schema}
+            bind:data={contentContent.json}
+          />
+        </div>
+      </div>
+    {/if}
   {/if}
   {#if entry.payload}
     <div class="tab-pane" class:active={tab_option === "workflow"}>
