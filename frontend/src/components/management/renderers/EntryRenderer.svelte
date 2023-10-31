@@ -187,6 +187,7 @@
 
   let errorContent = null;
 
+  let schemaFormRef;
   async function handleSave(e: Event) {
     e.preventDefault();
     // if (!isSchemaValidated) {
@@ -708,11 +709,11 @@
       })();
     }
   }
-  let schemaFormRef;
+
   const modalToggle = () => {
-      isModalOpen = !isModalOpen;
-      contentShortname = "";
-  }
+    isModalOpen = !isModalOpen;
+    contentShortname = "";
+  };
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
@@ -724,7 +725,9 @@
 >
   <ModalHeader toggle={modalToggle}>
     Creating an {new_resource_type} under
-    <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>
+    <span class="text-success">{space_name}</span>/<span class="text-primary"
+      >{subpath}</span
+    >
   </ModalHeader>
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
@@ -963,6 +966,19 @@
           >
             <Icon name="pencil" />
           </Button>
+          {#if schema}
+            <Button
+              outline
+              color="success"
+              size="sm"
+              class="justify-content-center text-center py-0 px-1"
+              active={"edit_content_form" === tab_option}
+              title={$_("edit") + " payload"}
+              on:click={() => (tab_option = "edit_content_form")}
+            >
+              <Icon name="pencil-square" />
+            </Button>
+          {/if}
         {/if}
 
         {#if resource_type === ResourceType.schema}
@@ -1220,6 +1236,20 @@
         {/if}
       </div>
     </div>
+    {#if schema}
+      <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
+        <div class="d-flex justify-content-end my-1">
+          <Button on:click={handleSave}>Save</Button>
+        </div>
+        <div class="px-1 pb-1 h-100">
+          <SchemaForm
+            bind:ref={schemaFormRef}
+            {schema}
+            bind:data={contentContent.json}
+          />
+        </div>
+      </div>
+    {/if}
   {/if}
   {#if resource_type === ResourceType.schema}
     <div class="tab-pane" class:active={tab_option === "visualization"}>

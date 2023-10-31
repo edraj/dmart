@@ -63,7 +63,9 @@
     //   return;
     // }
     errorContent = null;
-    const data = content.json ? structuredClone(content.json) : JSON.parse(content.text);
+    const data = content.json
+      ? structuredClone(content.json)
+      : JSON.parse(content.text);
     const response = await space({
       space_name: current_space.shortname,
       request_type: RequestType.update,
@@ -213,18 +215,14 @@
     }
   }
   const toggelModal = () => {
-      isModalOpen = !isModalOpen;
-      contentShortname = "";
-  }
+    isModalOpen = !isModalOpen;
+    contentShortname = "";
+  };
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
 
-<Modal
-  isOpen={isModalOpen}
-  toggle={toggelModal}
-  size={"lg"}
->
+<Modal isOpen={isModalOpen} toggle={toggelModal} size={"lg"}>
   <ModalHeader toggle={toggelModal} />
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
