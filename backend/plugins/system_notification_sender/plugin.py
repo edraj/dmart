@@ -42,7 +42,7 @@ class Plugin(PluginBase):
            return
             
         if data.action_type == ActionType.delete:
-            entry = data.attributes["entry"].dict()
+            entry = data.attributes["entry"].model_dump()
         else:
             entry = (
                 await load(
