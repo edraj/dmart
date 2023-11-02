@@ -82,6 +82,7 @@ class Record(BaseModel):
     resource_type: ResourceType
     uuid: UUID | None = None
     shortname: str = Field(pattern=regex.SHORTNAME)
+    slug: str = Field(default=None, pattern=regex.SHORTNAME)
     branch_name: str | None = Field(
         default=settings.default_branch, pattern=regex.SHORTNAME
     )
@@ -158,6 +159,7 @@ class Meta(Resource):
             record.attributes["password"] = hashed_pass
         record.attributes["owner_shortname"] = owner_shortname
         record.attributes["shortname"] = record.shortname
+        record.attributes["slug"] = record.slug
         meta_obj = meta_class(**remove_none(record.attributes)) #type: ignore
         return meta_obj
 
