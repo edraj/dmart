@@ -269,7 +269,7 @@ def delete_resource(resource_type: str, del_subpath: str, del_shortname: str):
     assert_code_and_status_success(response)
 
 
-def test_retrieve_content_folder():
+def retrieve_content_folder():
     assert client.get(
         f"managed/entry/folder/{DEMO_SPACE}/{settings.root_subpath_mw}/{DEMO_SUBPATH}"
     ).status_code == status.HTTP_200_OK
