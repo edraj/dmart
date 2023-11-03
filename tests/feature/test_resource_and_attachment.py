@@ -1,3 +1,4 @@
+import pytest
 from base_test import (
     assert_bad_request,
     assert_code_and_status_success,
@@ -12,7 +13,7 @@ from base_test import (
     DEMO_SPACE,
     DEMO_SUBPATH,
     upload_resource_with_payload,
-    test_retrieve_content_folder,
+    retrieve_content_folder,
 )
 from fastapi import status
 from models.api import Query
@@ -23,7 +24,11 @@ set_superman_cookie()
 
 init_test_db()
 
-test_retrieve_content_folder()
+
+@pytest.mark.run(order=2)
+def test_retrieve_content_folder():
+    retrieve_content_folder()
+
 
 schema_record_path = "data/record_of_schema.json"
 schema_shortname = "test_schema"
@@ -44,6 +49,7 @@ media_payload_path = "data/logo.jpeg"
 resources_csv_path = "data/resources.csv"
 
 
+@pytest.mark.run(order=2)
 def test_create_text_content_resource():
     attributes = {"payload": {"content_type": "text", "body": "this is a text content"}}
     request_data = {
@@ -78,12 +84,14 @@ def test_create_text_content_resource():
     check_repeated_shortname(client.post("/managed/request", json=request_data))
 
 
+@pytest.mark.run(order=2)
 def test_upload_schema_resource() -> None:
     upload_resource_with_payload(
         DEMO_SPACE, schema_record_path, schema_payload_path, "application/json"
     )
 
 
+@pytest.mark.run(order=2)
 def test_create_json_content_resource() -> None:
     global json_entry_uuid
     endpoint = "/managed/request"
@@ -135,6 +143,7 @@ def test_create_json_content_resource() -> None:
     )
 
 
+@pytest.mark.run(order=2)
 def test_create_invalid_json_resource():
     global json_entry_uuid
     request_data = {
@@ -159,6 +168,7 @@ def test_create_invalid_json_resource():
     assert_bad_request(client.post("/managed/request", json=request_data))
 
 
+@pytest.mark.run(order=2)
 def test_update_json_content_resource() -> None:
     endpoint = "/managed/request"
     request_data = {
@@ -183,6 +193,7 @@ def test_update_json_content_resource() -> None:
     assert_code_and_status_success(client.post(endpoint, json=request_data))
 
 
+@pytest.mark.run(order=2)
 def test_create_comment_attachment() -> None:
     endpoint = "/managed/request"
     request_data = {
@@ -218,6 +229,7 @@ def test_create_comment_attachment() -> None:
     check_repeated_shortname(client.post(endpoint, json=request_data))
 
 
+@pytest.mark.run(order=2)
 def test_get_entry_from_managed():
     response = client.get(
         f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}"
@@ -226,18 +238,21 @@ def test_get_entry_from_managed():
     assert response.json()["uuid"] == json_entry_uuid
 
 
+@pytest.mark.run(order=2)
 def test_get_entry_by_uuid():
     response = client.get(f"managed/byuuid/{json_entry_uuid.split('-')[0]}")
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["uuid"] == json_entry_uuid
 
 
+@pytest.mark.run(order=2)
 def test_get_entry_by_slug():
     response = client.get(f"managed/byslug/{json_entry_shortname}_slug")
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["uuid"] == json_entry_uuid
 
 
+@pytest.mark.run(order=2)
 def test_get_not_found_entry():
     response = client.get(
         f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/json_entry_shortname"
@@ -245,6 +260,7 @@ def test_get_not_found_entry():
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
+@pytest.mark.run(order=2)
 def test_get_unauthorized_resource_from_managed_api(mocker):
     mocker.patch("utils.access_control.access_control.check_access", return_value=None)
     response = client.get(
@@ -253,6 +269,7 @@ def test_get_unauthorized_resource_from_managed_api(mocker):
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
+@pytest.mark.run(order=2)
 def test_get_unauthorized_entry_from_public_api():
     response = client.get(
         f"public/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}"
@@ -260,18 +277,21 @@ def test_get_unauthorized_entry_from_public_api():
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
+@pytest.mark.run(order=2)
 def test_upload_json_content_resource() -> None:
     upload_resource_with_payload(
         DEMO_SPACE, content_record_path, content_payload_path, "application/json"
     )
 
 
+@pytest.mark.run(order=2)
 def test_upload_image_attachment() -> None:
     upload_resource_with_payload(
         DEMO_SPACE, media_record_path, media_payload_path, "image/jpeg", True
     )
 
 
+@pytest.mark.run(order=2)
 def test_retrieve_attachment():
     # Retrieve from MANAGED API
     endpoint = f"managed/payload/media/{DEMO_SPACE}/{DEMO_SUBPATH}/{content_shortname}/{media_shortname}"
@@ -284,6 +304,7 @@ def test_retrieve_attachment():
     assert response.status_code == status.HTTP_200_OK
 
 
+@pytest.mark.run(order=2)
 def test_upload_resource_from_csv() -> None:
     with open(resources_csv_path, "rb") as csv_file:
         no_of_rows = len(csv_file.readlines()) - 1
@@ -299,9 +320,12 @@ def test_upload_resource_from_csv() -> None:
         assert response.json()["attributes"]["success_count"] == no_of_rows
 
 
+@pytest.mark.run("last")
 def test_delete_attachment():
     delete_resource(
-        ResourceType.media, f"{DEMO_SUBPATH}/{content_shortname}", media_shortname.split('.')[0]
+        ResourceType.media,
+        f"{DEMO_SUBPATH}/{content_shortname}",
+        media_shortname.split(".")[0],
     )
 
     assert (
@@ -325,6 +349,7 @@ def test_delete_content():
     )
 
 
+@pytest.mark.run("last")
 def test_delete_folder():
     delete_resource(ResourceType.folder, "/", DEMO_SUBPATH)
 
@@ -338,5 +363,6 @@ def test_delete_folder():
     )
 
 
+@pytest.mark.run("last")
 def test_delete_space():
     delete_space()
