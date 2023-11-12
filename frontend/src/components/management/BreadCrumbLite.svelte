@@ -28,11 +28,11 @@
 </script>
 
 <ButtonGroup size="sm" class="align-items-center">
-  <span class="font-monospace">
+  <span dir="ltr" class="font-monospace">
     <small>
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <span
+      <span dir="ltr"
         class="text-success"
         style="cursor: pointer;"
         on:click={() => {
@@ -44,11 +44,10 @@
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
       {#each items as item (item.text)}
-        <span
+        <span dir="ltr"
           class="text-primary"
           style="cursor: pointer;"
-          on:click={item.action}>{item.text}</span
-        >
+          on:click={item.action}>{item.text}</span>
       {/each}
       {#if resource_type !== ResourceType.folder}: <strong>{shortname}</strong>
       {/if}

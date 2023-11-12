@@ -51,10 +51,12 @@
     open = true;
   }
 
+  const toggleModal = () => {open != open}
+
 </script>
 
-<Modal isOpen={open} toggle={() => {open != open}} size={"lg"}>
-  <ModalHeader toggle={() => (open = false)}>{modalData.shortname}</ModalHeader>
+<Modal isOpen={open} toggle={toggleModal} size={"lg"}>
+  <ModalHeader toggle={toggleModal}>{modalData.shortname}</ModalHeader>
   <ModalBody>
     <p><b>UUID:</b> {modalData.uuid}</p>
     <p><b>Space name:</b> {$params.shortname}</p>
