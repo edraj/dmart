@@ -45,6 +45,8 @@
   import checkAccess from "@/utils/checkAccess";
   import { fade } from "svelte/transition";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
+  import { goto } from "@roxi/routify";
+  import SchemaForm from "svelte-jsonschema-form";
 
   let header_height: number;
   export let entry: ResponseEntry;
@@ -106,6 +108,7 @@
     }
   }
 
+  let schemaFormRef;
   let errorContent = null;
   async function handleSave(e) {
     e.preventDefault();
@@ -113,6 +116,11 @@
     //   alert("The content does is not validated agains the schema");
     //   return;
     // }
+
+    if (!schemaFormRef.reportValidity()) {
+      return;
+    }
+
     errorContent = null;
 
     const x = contentMeta.json
@@ -144,6 +152,56 @@
       showToast(Level.info);
       oldContentMeta = structuredClone(contentMeta);
       oldContent = structuredClone(contentContent);
+
+      if (data.shortname !== entry.shortname) {
+        const moveAttrb = {
+          src_subpath: subpath,
+          src_shortname: entry.shortname,
+          dest_subpath: subpath,
+          dest_shortname: data.shortname,
+        };
+        const response = await request({
+          space_name: space_name,
+          request_type: RequestType.move,
+          records: [
+            {
+              resource_type,
+              shortname: entry.shortname,
+              subpath,
+              attributes: moveAttrb,
+            },
+          ],
+        });
+        if (response.status == Status.success) {
+          showToast(Level.info);
+          if (entry?.payload?.schema_shortname) {
+            $goto(
+              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
+              {
+                space_name: space_name,
+                subpath,
+                shortname: data.shortname,
+                resource_type,
+                payload_type: entry?.payload?.content_type,
+                schema_name: entry.payload.schema_shortname,
+              }
+            );
+          } else {
+            $goto(
+              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
+              {
+                space_name: space_name,
+                subpath,
+                shortname: data.shortname,
+                resource_type,
+              }
+            );
+          }
+        } else {
+          errorContent = response;
+          showToast(Level.warn);
+        }
+      }
     } else {
       errorContent = response;
       showToast(Level.warn);
@@ -346,19 +404,16 @@
       showToast(Level.warn, response.error.message);
     }
   }
+  const toggleModal = () => {
+    isModalOpen = !isModalOpen;
+    contentShortname = "";
+  };
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
 
-<Modal
-  isOpen={isModalOpen}
-  toggle={() => {
-    isModalOpen = !isModalOpen;
-    contentShortname = "";
-  }}
-  size={"lg"}
->
-  <ModalHeader />
+<Modal isOpen={isModalOpen} toggle={toggleModal} size={"lg"}>
+  <ModalHeader toggle={toggleModal} />
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
       <FormGroup>
@@ -484,6 +539,19 @@
         >
           <Icon name="pencil" />
         </Button>
+        {#if schema}
+          <Button
+            outline
+            color="success"
+            size="sm"
+            class="justify-content-center text-center py-0 px-1"
+            active={"edit_content_form" === tab_option}
+            title={$_("edit") + " payload"}
+            on:click={() => (tab_option = "edit_content_form")}
+          >
+            <Icon name="pencil-square" />
+          </Button>
+        {/if}
       {/if}
 
       <Button
@@ -607,8 +675,7 @@
                 {/each}
               </Input>
             </FormGroup>
-            {#if payload.states.filter((e) => e.name === entry.state).length !== 0
-            && payload.states.filter((e) => e.name === entry.state)[0]?.resolutions.length !== 0}
+            {#if payload.states.filter((e) => e.name === entry.state).length !== 0 && payload.states.filter((e) => e.name === entry.state)[0]?.resolutions.length !== 0}
               <FormGroup>
                 <Label>Resolution</Label>
                 <Input
@@ -667,6 +734,20 @@
       {/if}
     {/if}
   </div>
+  {#if schema}
+    <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
+      <div class="d-flex justify-content-end my-1">
+        <Button on:click={handleSave}>Save</Button>
+      </div>
+      <div class="px-1 pb-1 h-100">
+        <SchemaForm
+          bind:ref={schemaFormRef}
+          {schema}
+          bind:data={contentContent.json}
+        />
+      </div>
+    </div>
+  {/if}
   <div class="tab-pane" class:active={tab_option === "history"}>
     {#key tab_option}
       <ListView

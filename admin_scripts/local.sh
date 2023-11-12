@@ -1,6 +1,6 @@
 #!/bin/bash
-pip3.11 install --user -r backend/requirements.txt
-pip3.11 install --user check-jsonschema
+pip install --user -r backend/requirements.txt
+pip install --user check-jsonschema
 
 mkdir ~/logs/dmart ~/spaces -p
 redis-cli -h 127.0.0.1 -p 6389 --no-auth-warning -a xxxx flushall
@@ -33,17 +33,17 @@ systemctl --user show-environment
 # View the service logs
 journalctl --user-unit dmart.service --follow -o json | jq '.MESSAGE | fromjson'
 
-# Build python 3.11 from source
-# As root user
-sudo dnf install gcc openssl-devel bzip2-devel libffi-devel sqlite-devel
-sudo dnf groupinstall "Development Tools"
-wget 'https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
-tar xzf Python-3.11.2.tgz
-cd Python-3.11.2/
-./configure --enable-optimizations
-sudo make altinstall
-
-# As regular user
-ln -s /usr/local/bin/python3.11 ~/.local/bin/python3
-ln -s /usr/local/bin/python3.11 ~/.local/bin/python
-ln -s /usr/local/bin/pip3.11 ~/.local/bin/pip
+# # Build python 3.11 from source
+# # As root user
+# sudo dnf install gcc openssl-devel bzip2-devel libffi-devel sqlite-devel
+# sudo dnf groupinstall "Development Tools"
+# wget 'https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
+# tar xzf Python-3.11.2.tgz
+# cd Python-3.11.2/
+# ./configure --enable-optimizations
+# sudo make altinstall
+#
+# # As regular user
+# ln -s /usr/local/bin/python3.11 ~/.local/bin/python3
+# ln -s /usr/local/bin/python3.11 ~/.local/bin/python
+# ln -s /usr/local/bin/pip3.11 ~/.local/bin/pip

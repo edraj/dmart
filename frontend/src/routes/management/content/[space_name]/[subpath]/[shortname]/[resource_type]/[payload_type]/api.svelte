@@ -4,13 +4,13 @@
   axios.defaults.withCredentials = true;
   import { website } from "@/config";
   import {
-    Col,
-    Container,
-    Row,
-    Button,
-    Modal,
-    Nav,
-    ButtonGroup,
+      Col,
+      Container,
+      Row,
+      Button,
+      Modal,
+      Nav,
+      ButtonGroup, ModalHeader,
   } from "sveltestrap";
   import { params } from "@roxi/routify";
   import {
@@ -300,6 +300,7 @@
   toggle={toggleCurl}
   size="lg"
 >
+  <ModalHeader toggle={toggleCurl}/>
   <Prism language="bash" code={curl} />
 </Modal>
 

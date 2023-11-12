@@ -1,7 +1,8 @@
-#!/usr/bin/env -S BACKEND_ENV=config.env python3.11
+#!/usr/bin/env -S BACKEND_ENV=config.env python3
 """ Main module """
 # from logging import handlers
 from starlette.datastructures import UploadFile
+from contextlib import asynccontextmanager
 import asyncio
 import json
 from os import getpid
@@ -40,6 +41,35 @@ from api.user.router import router as user
 from api.info.router import router as info
 
 from utils.redis_services import RedisServices
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting up")
+    print('{"stage":"starting up"}')
+    # , extra={"props":{
+    #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
+    #    "redis_port": settings.redis_port
+    #    }})
+
+    openapi_schema = app.openapi()
+    paths = openapi_schema["paths"]
+    for path in paths:
+        for method in paths[path]:
+            responses = paths[path][method]["responses"]
+            if responses.get("422"):
+                responses.pop("422")
+    app.openapi_schema = openapi_schema
+
+    await initialize_spaces()
+    await access_control.load_permissions_and_roles()
+
+    yield
+    logger.info("Application shutting down")
+    await RedisServices.POOL.aclose()
+    await RedisServices.POOL.disconnect(True)
+    print('{"stage":"shutting down"}')
+
+
 
 app = FastAPI(
     title="Datamart API",
@@ -121,37 +151,7 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
     )
 
 
-@app.on_event("startup")
-async def app_startup() -> None:
-    logger.info("Starting up")
-    print('{"stage":"starting up"}')
-    # , extra={"props":{
-    #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
-    #    "redis_port": settings.redis_port
-    #    }})
-
-    openapi_schema = app.openapi()
-    paths = openapi_schema["paths"]
-    for path in paths:
-        for method in paths[path]:
-            responses = paths[path][method]["responses"]
-            if responses.get("422"):
-                responses.pop("422")
-    app.openapi_schema = openapi_schema
-
-    await initialize_spaces()
-    await access_control.load_permissions_and_roles()
-
-
-@app.on_event("shutdown")
-async def app_shutdown() -> None:
-    logger.info("Application shutting down")
-    await RedisServices.POOL.disconnect(True)
-    print('{"stage":"shutting down"}')
-
-
 app.add_middleware(CustomRequestMiddleware)
-
 
 @app.middleware("http")
 async def middle(request: Request, call_next):

@@ -32,8 +32,7 @@ axios.interceptors.response.use(
   async function (error) {
     if (
       !error?.request?.responseURL.includes("/profile") &&
-      error?.response?.data?.error?.type === "jwtauth" &&
-      error?.response?.data?.error?.code == 13
+      error?.response?.data?.error?.type === "jwtauth"
     ) {
       await signout();
     }

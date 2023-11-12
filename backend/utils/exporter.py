@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.9
+#!/usr/bin/env python3
 import argparse
 import asyncio
 from hashlib import blake2b, md5

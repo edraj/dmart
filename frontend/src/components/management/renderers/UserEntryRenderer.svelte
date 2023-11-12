@@ -49,6 +49,8 @@
   import { toast } from "@zerodevx/svelte-toast";
   import ToastActionComponent from "@/components/management/ToastActionComponent.svelte";
   import { goto } from "@roxi/routify";
+  import HtmlEditor from "@/components/management/editors/HtmlEditor.svelte";
+  import SchemaForm from "svelte-jsonschema-form";
 
   let header_height: number;
   export let entry: ResponseEntry;
@@ -98,29 +100,29 @@
       user.displayname = entry.displayname;
     }
 
-    const cpy = JSON.parse(JSON.stringify(entry));
+    const cpy = structuredClone(entry);
 
     if (contentContent === null) {
       contentContent = { json: {}, text: undefined };
     }
     contentContent.json = cpy?.payload?.body ?? {};
-    contentContent = structuredClone(contentContent);
-    oldContentContent = structuredClone(contentContent);
 
     delete cpy?.payload?.body;
     delete cpy?.attachments;
     contentMeta.json = cpy;
-    contentMeta = structuredClone(contentMeta);
 
+    contentContent = structuredClone(contentContent);
+    oldContentContent = structuredClone(contentContent);
+    contentMeta = structuredClone(contentMeta);
     oldContentMeta = structuredClone(contentMeta);
   });
 
+  let schemaFormRef;
   let errorContent = null;
   async function handleSave() {
-    // if (!isSchemaValidated) {
-    //   alert("The content does is not validated agains the schema");
-    //   return;
-    // }
+      if (!schemaFormRef.reportValidity()) {
+          return;
+      }
 
     errorContent = null;
     const meta = contentMeta.json
@@ -140,7 +142,6 @@
       attributes.payload = attributes.payload || {};
       attributes.payload.body = data;
     }
-    // console.log(attributes);
     const response = await request({
       space_name: space_name,
       request_type: RequestType.update,
@@ -157,6 +158,56 @@
       showToast(Level.info);
       oldContentMeta = structuredClone(contentMeta);
       oldContentContent = structuredClone(contentContent);
+
+      if (attributes.shortname !== entry.shortname) {
+        const moveAttrb = {
+          src_subpath: subpath,
+          src_shortname: entry.shortname,
+          dest_subpath: subpath,
+          dest_shortname: attributes.shortname,
+        };
+        const response = await request({
+          space_name: space_name,
+          request_type: RequestType.move,
+          records: [
+            {
+              resource_type,
+              shortname: entry.shortname,
+              subpath,
+              attributes: moveAttrb,
+            },
+          ],
+        });
+        if (response.status == Status.success) {
+          showToast(Level.info);
+          if (entry?.payload?.schema_shortname) {
+            $goto(
+              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
+              {
+                space_name: space_name,
+                subpath,
+                shortname: attributes.shortname,
+                resource_type,
+                payload_type: entry?.payload?.content_type,
+                schema_name: entry.payload.schema_shortname,
+              }
+            );
+          } else {
+            $goto(
+              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
+              {
+                space_name: space_name,
+                subpath,
+                shortname: attributes.shortname,
+                resource_type,
+              }
+            );
+          }
+        } else {
+          errorContent = response;
+          showToast(Level.warn);
+        }
+      }
     } else {
       errorContent = response;
       showToast(Level.warn);
@@ -407,19 +458,22 @@
       };
       contentMeta = structuredClone(contentMeta);
     })();
+
+
+  const toggleModal = () => {
+    isModalOpen = !isModalOpen;
+    contentShortname = "";
+  };
+
+  $: {
+    contentContent = structuredClone(contentContent);
+  }
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
 
-<Modal
-  isOpen={isModalOpen}
-  toggle={() => {
-    isModalOpen = !isModalOpen;
-    contentShortname = "";
-  }}
-  size={"lg"}
->
-  <ModalHeader />
+<Modal isOpen={isModalOpen} toggle={toggleModal} size={"lg"}>
+  <ModalHeader toggle={toggleModal} />
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
       <FormGroup>
@@ -502,7 +556,7 @@
           color="success"
           size="sm"
           class="justify-content-center text-center py-0 px-1"
-          active={"list" == tab_option}
+          active={"list" === tab_option}
           title={$_("list")}
           on:click={() => (tab_option = "list")}
         >
@@ -515,7 +569,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"view" == tab_option}
+        active={"view" === tab_option}
         title={$_("view")}
         on:click={() => (tab_option = "view")}
       >
@@ -527,7 +581,7 @@
           color="success"
           size="sm"
           class="justify-content-center text-center py-0 px-1"
-          active={"edit_meta" == tab_option}
+          active={"edit_meta" === tab_option}
           title={$_("edit") + " meta"}
           on:click={() => (tab_option = "edit_meta")}
         >
@@ -539,12 +593,25 @@
             color="success"
             size="sm"
             class="justify-content-center text-center py-0 px-1"
-            active={"edit_content" == tab_option}
+            active={"edit_content" === tab_option}
             title={$_("edit") + " payload"}
             on:click={() => (tab_option = "edit_content")}
           >
             <Icon name="pencil" />
           </Button>
+          {#if schema}
+            <Button
+              outline
+              color="success"
+              size="sm"
+              class="justify-content-center text-center py-0 px-1"
+              active={"edit_content_form" === tab_option}
+              title={$_("edit") + " payload"}
+              on:click={() => (tab_option = "edit_content_form")}
+            >
+              <Icon name="pencil-square" />
+            </Button>
+          {/if}
         {/if}
       {/if}
 
@@ -553,7 +620,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"attachments" == tab_option}
+        active={"attachments" === tab_option}
         title={$_("attachments")}
         on:click={() => (tab_option = "attachments")}
       >
@@ -564,7 +631,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"history" == tab_option}
+        active={"history" === tab_option}
         title={$_("history")}
         on:click={() => (tab_option = "history")}
       >
@@ -779,7 +846,6 @@
           style="text-align: left; direction: ltr; overflow: hidden auto;"
         >
           <JSONEditor
-            mode={Mode.text}
             bind:content={contentContent}
             onRenderMenu={handleRenderMenu}
             bind:validator={validatorContent}
@@ -791,6 +857,20 @@
           {/if}
         </div>
       </div>
+      {#if schema}
+        <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
+          <div class="d-flex justify-content-end my-1">
+            <Button on:click={handleSave}>Save</Button>
+          </div>
+          <div class="px-1 pb-1 h-100">
+            <SchemaForm
+              bind:ref={schemaFormRef}
+              {schema}
+              bind:data={contentContent.json}
+            />
+          </div>
+        </div>
+      {/if}
     {/if}
   {/if}
 
