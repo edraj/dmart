@@ -193,7 +193,7 @@
   toggle={toggleCreateAttachemntModal}
   size={"lg"}
 >
-  <ModalHeader toggle={() => (openCreateAttachemntModal = false)}>
+  <ModalHeader toggle={toggleCreateAttachemntModal}>
     <h3>Add attachment</h3>
   </ModalHeader>
   <ModalBody>

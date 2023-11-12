@@ -236,7 +236,7 @@ pip install --user -r test-requirements.txt
 ```bash
 cd backend
 ./curl.sh
-pytest
+python -m pytest
 ```
 
 <img src="./docs/curl-test.png" width="300">

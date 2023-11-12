@@ -1,4 +1,4 @@
-#!/usr/bin/env -S BACKEND_ENV=config.env python3.11
+#!/usr/bin/env -S BACKEND_ENV=config.env python3
 
 from utils.password_hashing import hash_password
 from utils.settings import settings
