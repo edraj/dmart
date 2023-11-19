@@ -3,7 +3,6 @@ import re
 from redis.commands.search.field import TextField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
-from redis.commands.search.result import Result
 from models.core import ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
 from utils.helpers import flatten_dict
@@ -30,6 +29,8 @@ class AccessControl:
         }
 
         for module_name, module_value in management_modules.items():
+            self_module = getattr(self, module_name)
+            self_module = {}
             path = management_path / module_name
             entries_glob = ".dm/*/meta.*.json"
             for one in path.glob(entries_glob):
@@ -46,9 +47,8 @@ class AccessControl:
                         "anonymous",
                         management_branch,
                     )
-                    module = getattr(self, module_name)
                     if resource_obj.is_active:
-                        module[shortname] = resource_obj  # store in redis doc
+                        self_module[shortname] = resource_obj  # store in redis doc
                 except Exception as ex:
                     print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
                     raise ex
@@ -96,8 +96,8 @@ class AccessControl:
             docs = await redis_services.client.\
                 ft("user_permission").\
                 search(search_query) # type: ignore
-            if docs and isinstance(docs, Result): 
-                keys = [doc.id for doc in docs.docs]
+            if docs and len(docs.get("results", [])):
+                keys = [doc["id"] for doc in docs["results"]]
                 if len(keys) > 0:
                     await redis_services.del_keys(keys)
 
