@@ -94,6 +94,10 @@
       canCreateNewSpace = permissions[k].allowed_actions.includes("create");
     }
   }
+
+  const toggleModal = () => {
+      isSpaceModalOpen = !isSpaceModalOpen;
+  }
 </script>
 
 {#key $refresh_spaces}
@@ -154,12 +158,10 @@
 
 <Modal
   isOpen={isSpaceModalOpen}
-  toggle={() => {
-    isSpaceModalOpen = !isSpaceModalOpen;
-  }}
+  toggle={toggleModal}
   size={"lg"}
 >
-  <ModalHeader />
+  <ModalHeader toggle={toggleModal}/>
   <Form on:submit={(e) => handleCreateSpace(e)}>
     <ModalBody>
       <FormGroup>
