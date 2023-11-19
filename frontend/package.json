@@ -47,7 +47,7 @@
   "dependencies": {
     "plantuml-encoder": "^1.4.0",
     "svelte-datatables-net": "https://github.com/edraj/svelte-datatables-net",
-    "sveltestrap": "edraj/sveltestrap#extending-UI",
-    "svelte-jsonschema-form": "edraj/svelte-jsonschema-form"
+    "svelte-jsonschema-form": "edraj/svelte-jsonschema-form",
+    "sveltestrap": "edraj/sveltestrap#extending-UI"
   }
 }
