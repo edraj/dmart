@@ -61,7 +61,6 @@
   import { encode } from "plantuml-encoder";
   import { startjsonForPlantUML } from "@/utils/plantUML";
   import SchemaForm from "svelte-jsonschema-form";
-  import type {JSONSchema7} from "json-schema";
   import {goto} from "@roxi/routify";
   // import { SchemaForm } from "svelte-schemaform"
   // import { SchemaForm } from "@restspace/svelte-schema-form";
@@ -113,9 +112,7 @@
     "/schema",
   ];
 
-  let selectedSchemaContent: JSONSchema7 = {};
-  // let selectedSchemaData = {};
-  let selectedSchemaContent = null;
+  let selectedSchemaContent: any = {};
   let selectedSchemaData = {};
 
   async function checkWorkflowsSubpath() {
@@ -699,7 +696,6 @@
 
   let oldSelectedSchema = "old";
   let schemaForm: SchemaForm;
-  let selectedSchemaData = {};
   let uischema = {};
   $: {
     if (oldSelectedSchema !== selectedSchema) {
@@ -713,7 +709,6 @@
         );
         selectedSchemaContent = _selectedSchemaContent?.payload?.body ?? {};
         delete selectedSchemaContent.required;
-        console.log({selectedSchemaContent})
         oldSelectedSchema = selectedSchema;
       })();
     }
