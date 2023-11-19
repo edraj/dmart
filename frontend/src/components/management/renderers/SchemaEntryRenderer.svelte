@@ -25,7 +25,7 @@
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
   import { generateUUID } from "@/utils/uuid";
   import { onMount } from "svelte";
-  import {goto} from "@roxi/routify";
+  import { goto } from "@roxi/routify";
 
   let header_height: number;
 
@@ -157,13 +157,13 @@
       showToast(Level.info);
       oldContentMeta = structuredClone(contentMeta);
 
-      if (data.shortname !== entry.shortname){
+      if (data.shortname !== entry.shortname) {
         const moveAttrb = {
           src_subpath: subpath,
           src_shortname: entry.shortname,
           dest_subpath: subpath,
-          dest_shortname: data.shortname
-        }
+          dest_shortname: data.shortname,
+        };
         const response = await request({
           space_name: space_name,
           request_type: RequestType.move,
@@ -180,29 +180,28 @@
           showToast(Level.info);
           if (entry?.payload?.schema_shortname) {
             $goto(
-                    "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
-                    {
-                      space_name: space_name,
-                      subpath,
-                      shortname: data.shortname,
-                      resource_type,
-                      payload_type: entry?.payload?.content_type,
-                      schema_name: entry.payload.schema_shortname,
-                    }
+              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
+              {
+                space_name: space_name,
+                subpath,
+                shortname: data.shortname,
+                resource_type,
+                payload_type: entry?.payload?.content_type,
+                schema_name: entry.payload.schema_shortname,
+              }
             );
           } else {
             $goto(
-                    "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
-                    {
-                      space_name: space_name,
-                      subpath,
-                      shortname: data.shortname,
-                      resource_type,
-                    }
+              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
+              {
+                space_name: space_name,
+                subpath,
+                shortname: data.shortname,
+                resource_type,
+              }
             );
           }
-        }
-        else {
+        } else {
           errorContent = response;
           showToast(Level.warn);
         }
@@ -218,7 +217,9 @@
 
     errorContent = null;
 
-    let body = content.json ? structuredClone(content.json) : JSON.parse(content.text);
+    let body = content.json
+      ? structuredClone(content.json)
+      : JSON.parse(content.text);
     body = transformToProperBodyRequest(body);
     body = body[0];
     delete body.name;
