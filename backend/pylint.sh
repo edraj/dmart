@@ -1,9 +1,9 @@
 #!/bin/bash
 
 echo "Pyright ..."
-pyright
+python -m pyright
 echo "Ruff ..."
-ruff check .
+python -m ruff check .
 echo "Mypy ..."
-mypy --explicit-package-bases --warn-return-any .
+python -m mypy --explicit-package-bases --warn-return-any .
 
