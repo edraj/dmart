@@ -39,7 +39,6 @@
   import { timeAgo } from "@/utils/timeago";
   import { showToast, Level } from "@/utils/toast";
   import { faSave } from "@fortawesome/free-regular-svg-icons";
-  import history_cols from "@/stores/management/list_cols_history.json";
   import "bootstrap";
   import { isDeepEqual, removeEmpty } from "@/utils/compare";
   import metaUserSchema from "@/validations/meta.user.json";

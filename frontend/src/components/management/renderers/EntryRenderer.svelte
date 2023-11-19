@@ -60,8 +60,10 @@
   import downloadFile from "@/utils/downloadFile";
   import { encode } from "plantuml-encoder";
   import { startjsonForPlantUML } from "@/utils/plantUML";
-  import { goto } from "@roxi/routify";
   import SchemaForm from "svelte-jsonschema-form";
+  import {goto} from "@roxi/routify";
+  // import { SchemaForm } from "svelte-schemaform"
+  // import { SchemaForm } from "@restspace/svelte-schema-form";
   // import './assets/layout.css';
   // import './assets/basic-skin.css';
 
@@ -110,7 +112,7 @@
     "/schema",
   ];
 
-  let selectedSchemaContent = null;
+  let selectedSchemaContent: any = {};
   let selectedSchemaData = {};
 
   async function checkWorkflowsSubpath() {
@@ -327,7 +329,6 @@
   }
 
   let schema = null;
-
   async function get_schema() {
     if (entry.payload && entry.payload.schema_shortname) {
       try {
@@ -694,6 +695,8 @@
   }
 
   let oldSelectedSchema = "old";
+  let schemaForm: SchemaForm;
+  let uischema = {};
   $: {
     if (oldSelectedSchema !== selectedSchema) {
       (async () => {
@@ -704,7 +707,8 @@
           selectedSchema,
           true
         );
-        selectedSchemaContent = _selectedSchemaContent?.payload?.body;
+        selectedSchemaContent = _selectedSchemaContent?.payload?.body ?? {};
+        delete selectedSchemaContent.required;
         oldSelectedSchema = selectedSchema;
       })();
     }
@@ -792,48 +796,48 @@
           bind:value={contentShortname}
           required
         />
-        <!--
-    <div class="row mt-3">
-      <FormGroup class="col-6">
-        <Label>{$_("displayname_en")}</Label>
-        <Input
-          type="text"
-          name="displayname_en"
-          placeholder={`${$_("displayname_en")}...`}
-          bind:value={displayname.en}
-        />
-      </FormGroup>
-      <FormGroup class="col-6">
-        <Label>{$_("displayname_ar")}</Label>
-        <Input
-          type="text"
-          name="displayname_ar"
-          placeholder={`${$_("displayname_en")}...`}
-          bind:value={displayname.ar}
-        />
-      </FormGroup>
-    </div> -->
+        <!-- 
+        <div class="row mt-3">
+          <FormGroup class="col-6">
+            <Label>{$_("displayname_en")}</Label>
+            <Input
+              type="text"
+              name="displayname_en"
+              placeholder={`${$_("displayname_en")}...`}
+              bind:value={displayname.en}
+            />
+          </FormGroup>
+          <FormGroup class="col-6">
+            <Label>{$_("displayname_ar")}</Label>
+            <Input
+              type="text"
+              name="displayname_ar"
+              placeholder={`${$_("displayname_en")}...`}
+              bind:value={displayname.ar}
+            />
+          </FormGroup>
+        </div> -->
 
         <!-- <div class="row mt-3">
-      <FormGroup class="col-6">
-        <Label>{$_("description_en")}</Label>
-        <Input
-          type="text"
-          name="displayname_en"
-          placeholder={`${$_("description_en")}...`}
-          bind:value={description.en}
-        />
-      </FormGroup>
-      <FormGroup class="col-6">
-        <Label>{$_("description_ar")}</Label>
-        <Input
-          type="text"
-          name="displayname_ar"
-          placeholder={`${$_("description_ar")}...`}
-          bind:value={description.ar}
-        />
-      </FormGroup>
-    </div> -->
+          <FormGroup class="col-6">
+            <Label>{$_("description_en")}</Label>
+            <Input
+              type="text"
+              name="displayname_en"
+              placeholder={`${$_("description_en")}...`}
+              bind:value={description.en}
+            />
+          </FormGroup>
+          <FormGroup class="col-6">
+            <Label>{$_("description_ar")}</Label>
+            <Input
+              type="text"
+              name="displayname_ar"
+              placeholder={`${$_("description_ar")}...`}
+              bind:value={description.ar}
+            />
+          </FormGroup>
+        </div> -->
         <hr />
 
         {#if entryType === "content" && modalFlag === "create"}
