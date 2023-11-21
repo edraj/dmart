@@ -8,7 +8,9 @@
   "owner_shortname": "dmart",
   "subpaths": {
     "applications": [
-    "translations"
+    "translations",
+    "collections",
+    "configurations"
     ]
     },
     "resource_types": [
