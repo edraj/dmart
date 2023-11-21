@@ -1,15 +1,11 @@
-from models.core import Folder, PluginBase, Event, Schema
-from models.enums import ActionType, ResourceType
-from utils.db import clone
+from models.core import Folder, PluginBase, Event
+from models.enums import ResourceType
 from utils.redis_services import RedisServices
 from utils.repository import internal_save_model
-from utils.settings import settings
-from plugins.redis_db_update.plugin import Plugin as RedisUpdatePlugin
 from fastapi.logger import logger
 
 
 class Plugin(PluginBase):
-
     async def hook(self, data: Event):
         # Type narrowing for PyRight
         if (
@@ -48,7 +44,7 @@ class Plugin(PluginBase):
                     for_space=data.shortname,
                     # for_schemas=sys_schemas,
                     for_custom_indices=False,
-                    del_docs=False
+                    del_docs=False,
                 )
 
             # redis_update_plugin = RedisUpdatePlugin()
@@ -63,10 +59,7 @@ class Plugin(PluginBase):
             #         user_shortname=data.user_shortname
             #     ))
 
-            folders = [
-                (data.shortname, "/", "schema")
-            ]
-            
+            folders = [(data.shortname, "/", "schema")]
 
         for folder in folders:
             await internal_save_model(
@@ -76,7 +69,6 @@ class Plugin(PluginBase):
                 meta=Folder(
                     shortname=folder[2],
                     is_active=True,
-                    owner_shortname=data.user_shortname
-                )
+                    owner_shortname=data.user_shortname,
+                ),
             )
-            
