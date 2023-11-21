@@ -515,9 +515,7 @@
       }
     }
     else if (entryType === "folder") {
-        let body = {
-
-        }
+        let body = {}
       if (selectedSchema ===  "folder_rendering"){
           body["index_attributes"] = [];
       }
