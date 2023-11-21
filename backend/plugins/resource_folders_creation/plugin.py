@@ -30,38 +30,38 @@ class Plugin(PluginBase):
                 ("personal", f"people/{data.shortname}", "public"),
             ]
         elif data.resource_type == ResourceType.space:
-            sys_schemas = ["meta_schema", "folder_rendering"]
-            for schema_name in sys_schemas:
-                await clone(
-                    src_space=settings.management_space,
-                    src_subpath="schema",
-                    src_shortname=schema_name,
-                    dest_space=data.shortname,
-                    dest_subpath="schema",
-                    dest_shortname=schema_name,
-                    class_type=Schema,
-                    branch_name=data.branch_name
-                )
+            # sys_schemas = ["meta_schema", "folder_rendering"]
+            # for schema_name in sys_schemas:
+            #     await clone(
+            #         src_space=settings.management_space,
+            #         src_subpath="schema",
+            #         src_shortname=schema_name,
+            #         dest_space=data.shortname,
+            #         dest_subpath="schema",
+            #         dest_shortname=schema_name,
+            #         class_type=Schema,
+            #         branch_name=data.branch_name
+            #     )
 
             async with RedisServices() as redis_services:
                 await redis_services.create_indices(
                     for_space=data.shortname,
-                    for_schemas=sys_schemas,
+                    # for_schemas=sys_schemas,
                     for_custom_indices=False,
                     del_docs=False
                 )
 
-            redis_update_plugin = RedisUpdatePlugin()
-            for schema_name in sys_schemas:
-                await redis_update_plugin.hook(Event(
-                    space_name=data.shortname,
-                    branch_name=data.branch_name,
-                    subpath="schema",
-                    shortname=schema_name,
-                    action_type=ActionType.create,
-                    resource_type=ResourceType.schema,
-                    user_shortname=data.user_shortname
-                ))
+            # redis_update_plugin = RedisUpdatePlugin()
+            # for schema_name in sys_schemas:
+            #     await redis_update_plugin.hook(Event(
+            #         space_name=data.shortname,
+            #         branch_name=data.branch_name,
+            #         subpath="schema",
+            #         shortname=schema_name,
+            #         action_type=ActionType.create,
+            #         resource_type=ResourceType.schema,
+            #         user_shortname=data.user_shortname
+            #     ))
 
             folders = [
                 (data.shortname, "/", "schema")
