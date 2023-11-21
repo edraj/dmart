@@ -1,30 +1,22 @@
 <script lang="ts">
   import Icon from "../Icon.svelte";
   import {
-    upload_with_payload,
-    request,
-    get_attachment_url,
-    query,
-    QueryType,
-    RequestType,
-    ContentType,
-    ResourceType,
-    ResourceAttachementType,
-    ApiResponse,
+      ApiResponse,
+      ContentType,
+      get_attachment_url,
+      query,
+      QueryType,
+      request,
+      RequestType,
+      ResourceAttachementType,
+      ResourceType,
+      upload_with_payload,
   } from "@/dmart";
-  import { showToast, Level } from "@/utils/toast";
+  import {Level, showToast} from "@/utils/toast";
   import Media from "./Media.svelte";
-  import {
-    Button,
-    Input,
-    Label,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    ModalHeader,
-  } from "sveltestrap";
-  import { JSONEditor, JSONContent, Mode } from "svelte-jsoneditor";
-  import { jsonToFile } from "@/utils/jsonToFile";
+  import {Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader,} from "sveltestrap";
+  import {JSONContent, JSONEditor, Mode} from "svelte-jsoneditor";
+  import {jsonToFile} from "@/utils/jsonToFile";
 
   export let attachments: Array<any> = [];
   
@@ -108,7 +100,6 @@
   let contentType: ContentType = ContentType.image;
   async function upload() {
     let response: ApiResponse;
-
     if (resourceType == ResourceAttachementType.comment) {
       const request_dict = {
         space_name,
@@ -143,7 +134,8 @@
           ? jsonToFile(payloadContent)
           : payloadFiles[0]
       );
-    } else if (
+    }
+    else if (
       [
         ContentType.json,
         ContentType.text,
@@ -151,7 +143,7 @@
         ContentType,
       ].includes(contentType)
     ) {
-      const request_dict = {
+        const request_dict = {
         space_name,
         request_type: RequestType.create,
         records: [
@@ -186,6 +178,14 @@
       showToast(Level.warn);
     }
   }
+$: {
+      switch (resourceType){
+          case ResourceAttachementType.media: contentType = ContentType.image; break;
+          case ResourceAttachementType.comment: contentType = ContentType.text; break;
+          case ResourceAttachementType.json: contentType = ContentType.json; break;
+      }
+}
+
 </script>
 
 <Modal
@@ -203,17 +203,17 @@
       <Label>Attachement Type</Label>
       <Input type="select" bind:value={resourceType}>
         {#each Object.values(ResourceAttachementType) as type}
-          {#if type != ResourceAttachementType.alteration && type != ResourceAttachementType.relationship}
+          {#if type !== ResourceAttachementType.alteration && type !== ResourceAttachementType.relationship}
             <option value={type}>{type}</option>
           {/if}
         {/each}
       </Input>
       {#key resourceType}
-        {#if resourceType == ResourceAttachementType.media}
+        {#if resourceType === ResourceAttachementType.media}
           <Label>Content Type</Label>
           <Input type="select" bind:value={contentType}>
             {#each Object.values(ContentType) as type}
-              {#if type != ContentType.json}
+              {#if type !== ContentType.json}
                 <option value={type}>{type}</option>
               {/if}
             {/each}
@@ -222,8 +222,8 @@
       {/key}
       <hr />
       {#key resourceType}
-        {#if resourceType == ResourceAttachementType.media}
-          {#if contentType != ContentType.text && contentType != ContentType.html}
+        {#if resourceType === ResourceAttachementType.media}
+          {#if contentType !== ContentType.text && contentType !== ContentType.html}
             <Label>Payload File</Label>
             <Input
               accept="image/png, image/jpeg"
@@ -233,7 +233,7 @@
           {:else}
             <Input type={"textarea"} bind:value={payloadData} />
           {/if}
-        {:else if resourceType == ResourceAttachementType.json}
+        {:else if resourceType === ResourceAttachementType.json}
           <Input bind:value={selectedSchema} type="select">
             <option value={""}>{"None"}</option>
             {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
@@ -244,8 +244,8 @@
           </Input>
           <br />
 
-          <JSONEditor mode={Mode.text} bind:content={payloadContent} />
-        {:else if resourceType == ResourceAttachementType.comment}
+          <JSONEditor bind:content={payloadContent} />
+        {:else if resourceType === ResourceAttachementType.comment}
           <Input type={"textarea"} bind:value={payloadData} />
         {:else}
           <b> TBD ... show custom fields for resource type : {resourceType} </b>
