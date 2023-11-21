@@ -58,8 +58,7 @@
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
   import { generateUUID } from "@/utils/uuid";
   import downloadFile from "@/utils/downloadFile";
-  import { encode } from "plantuml-encoder";
-  import { startjsonForPlantUML } from "@/utils/plantUML";
+  import {schemaVisualizationEncoder} from "@/utils/plantUML";
   import SchemaForm from "svelte-jsonschema-form";
   import {goto} from "@roxi/routify";
   // import { SchemaForm } from "svelte-schemaform"
@@ -139,7 +138,8 @@
       }
       contentContent.json = cpy?.payload?.body ?? {};
       contentContent = structuredClone(contentContent);
-    } else {
+    }
+    else {
       contentContent = cpy?.payload?.body;
     }
     delete cpy?.payload?.body;
@@ -168,7 +168,11 @@
       };
     }
 
-    checkWorkflowsSubpath();
+    await checkWorkflowsSubpath();
+
+    if (entry?.payload?.schema_shortname) {
+        await get_schema();
+    }
   });
 
   onDestroy(() => {
@@ -332,7 +336,7 @@
   async function get_schema() {
     if (entry.payload && entry.payload.schema_shortname) {
       try {
-        const schema_data: ResponseEntry = await retrieve_entry(
+        const schema_data: ResponseEntry | null = await retrieve_entry(
           ResourceType.schema,
           space_name,
           "/schema",
@@ -340,32 +344,25 @@
           true,
           false
         );
+        if (schema_data === null){
+            schema = {};
+            return;
+        }
 
         if (schema_data?.payload?.body) {
           schema = schema_data.payload.body;
           cleanUpSchema(schema.properties);
           validator = createAjvValidator({ schema });
-          // DRAFT7 SAMPLE \\
-          // const ajv = new Ajv();
-          // addFormats(ajv);
-          // console.log({ schema });
-          // validator = (json) => {
-          //   // delete schema["$id"];
-          //   const validateAjv = ajv.compile(schema);
-          //   validateAjv(json);
-          //   const ajvErrors = validateAjv.errors || [];
-          //   return ajvErrors
-          //     .map(improveAjvError)
-          //     .map((error) => normalizeAjvError(json, error));
-          // };
         } else {
           schema = {};
         }
-      } catch (x) {
+      }
+      catch (x) {
         showToast(Level.warn, "Schema loading failed");
         schema = {};
       }
-    } else {
+    }
+    else {
       schema = {};
     }
   }
@@ -407,22 +404,11 @@
     return fullSubpath.endsWith("/schema") ? ResourceType.schema : resourceType;
   }
 
-  // let displayname = {
-  //   en: "",
-  //   ar: "",
-  // };
-  // let description = {
-  //   en: "",
-  //   ar: "",
-  // };
   async function handleSubmit(event: Event) {
     event.preventDefault();
 
     let response: any;
-    let request_body: any = {
-      // displayname,
-      // description,
-    };
+    let request_body: any = {};
     if (new_resource_type === "schema") {
       let body = content.json
         ? structuredClone(content.json)
@@ -440,7 +426,6 @@
             shortname: contentShortname === "" ? "auto" : contentShortname,
             subpath,
             attributes: {
-              ...request_body,
               is_active: true,
               payload: {
                 content_type: "json",
@@ -452,7 +437,8 @@
         ],
       };
       response = await request(request_body);
-    } else if (entryType === "content") {
+    }
+    else if (entryType === "content") {
       if (
         [null, "json", "text", "html", "markdown"].includes(selectedContentType)
       ) {
@@ -527,7 +513,14 @@
           payloadFiles[0]
         );
       }
-    } else if (entryType === "folder") {
+    }
+    else if (entryType === "folder") {
+        let body = {
+
+        }
+      if (selectedSchema ===  "folder_rendering"){
+          body["index_attributes"] = [];
+      }
       request_body = {
         space_name,
         request_type: RequestType.create,
@@ -537,7 +530,11 @@
             shortname: contentShortname === "" ? "auto" : contentShortname,
             subpath,
             attributes: {
-              ...request_body,
+              payload: {
+                  content_type: "json",
+                  schema_shortname: selectedSchema,
+                  body
+              },
               is_active: true,
             },
           },
@@ -551,14 +548,9 @@
       contentShortname = "";
       isModalOpen = false;
       refresh = !refresh;
-    } else {
-      showToast(Level.warn);
     }
-  }
-
-  $: {
-    if (schema === null && entry?.payload?.schema_shortname) {
-      get_schema();
+    else {
+      showToast(Level.warn);
     }
   }
 
@@ -636,69 +628,13 @@
     downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
   }
 
-  function schemaVisualizationParser(properties) {
-    let output: any = {};
-
-    for (const key in properties) {
-      const property = properties[key];
-
-      if (property.type === "object" && property.properties) {
-        output[key] = schemaVisualizationParser(property.properties);
-      } else if (property.properties && property.properties.code) {
-        output[key] = property.properties.code.type;
-      } else {
-        output[key] = property.type;
-
-        if (property.type === "array") {
-          output[key] += " of " + property?.items?.type || "unknown";
-          if (property?.items?.enum) {
-            output[key] = { type: output[key], enum: property.items.enum };
-          }
-        }
-
-        if (property.pattern) {
-          output[key] += `/pattern\\n${property.pattern}`;
-        }
-      }
-    }
-
-    return output;
-  }
-
-  function schemaVisualizationEncoder() {
-    if (typeof entry.payload.body === "object") {
-      try {
-        const content = `${startjsonForPlantUML}\n${JSON.stringify(
-          schemaVisualizationParser(entry.payload.body.properties),
-          null,
-          2
-        )}\n@endjson`;
-
-        const currentDiagram = {
-          name: "",
-          content,
-          encodedContent: function () {
-            return encode(this.content);
-          },
-        };
-        return currentDiagram.encodedContent();
-      } catch (error) {
-        return {
-          name: "",
-          content: `${startjsonForPlantUML}\n{"error": "something is wrong with the schema"}\n@endjson`,
-          encodedContent: function () {
-            return encode(this.content);
-          },
-        }.encodedContent();
-      }
-    }
-  }
-
   let oldSelectedSchema = "old";
   let schemaForm: SchemaForm;
   let uischema = {};
   $: {
-    if (oldSelectedSchema !== selectedSchema) {
+    console.log({oldSelectedSchema});
+    console.log({selectedSchema});
+    if (oldSelectedSchema !== selectedSchema && selectedSchema !== '') {
       (async () => {
         const _selectedSchemaContent = await retrieve_entry(
           ResourceType.schema,
@@ -718,6 +654,18 @@
     isModalOpen = !isModalOpen;
     contentShortname = "";
   };
+
+  function setSchemaItems(schemas): Array<string> {
+    if (schemas === null){
+        return [];
+    }
+    const _schemas = schemas.records.map((e) => e.shortname);
+    if (entryType === "folder"){
+      return _schemas.filter((e) => ["meta_schema", "folder_rendering"].includes(e));
+    } else {
+      return _schemas.filter((e) => !["meta_schema", "folder_rendering"].includes(e));
+    }
+  }
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
@@ -765,20 +713,6 @@
                   {/each}
                 </Input>
               {/if}
-              {#if subpath !== "workflows"}
-                <Label class="mt-3">Schema</Label>
-                <Input bind:value={selectedSchema} type="select">
-                  <option value={null}>{"None"}</option>
-                  {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
-                    {#each schemas.records
-                      .map((e) => e.shortname)
-                      .filter((e) => !["meta_schema", "folder_rendering"].includes(e)) as schema}
-                      <option value={schema}>{schema}</option>
-                    {/each}
-                  {/await}
-                </Input>
-              {/if}
-
               {#if new_resource_type === "ticket"}
                 <Label class="mt-3">Workflow Shortname</Label>
                 <Input
@@ -790,57 +724,28 @@
           {/if}
         {/if}
 
+        {#if subpath !== "workflows"}
+          <Label class="mt-3">Schema</Label>
+          <Input bind:value={selectedSchema} type="select">
+            <option value={null}>{"None"}</option>
+            {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
+              {#each setSchemaItems(schemas) as schema}
+                <option value={schema}>{schema}</option>
+              {/each}
+            {/await}
+          </Input>
+        {/if}
+
         <Label class="mt-3">Shortname</Label>
         <Input
           placeholder="Shortname..."
           bind:value={contentShortname}
           required
         />
-        <!-- 
-        <div class="row mt-3">
-          <FormGroup class="col-6">
-            <Label>{$_("displayname_en")}</Label>
-            <Input
-              type="text"
-              name="displayname_en"
-              placeholder={`${$_("displayname_en")}...`}
-              bind:value={displayname.en}
-            />
-          </FormGroup>
-          <FormGroup class="col-6">
-            <Label>{$_("displayname_ar")}</Label>
-            <Input
-              type="text"
-              name="displayname_ar"
-              placeholder={`${$_("displayname_en")}...`}
-              bind:value={displayname.ar}
-            />
-          </FormGroup>
-        </div> -->
 
-        <!-- <div class="row mt-3">
-          <FormGroup class="col-6">
-            <Label>{$_("description_en")}</Label>
-            <Input
-              type="text"
-              name="displayname_en"
-              placeholder={`${$_("description_en")}...`}
-              bind:value={description.en}
-            />
-          </FormGroup>
-          <FormGroup class="col-6">
-            <Label>{$_("description_ar")}</Label>
-            <Input
-              type="text"
-              name="displayname_ar"
-              placeholder={`${$_("description_ar")}...`}
-              bind:value={description.ar}
-            />
-          </FormGroup>
-        </div> -->
         <hr />
 
-        {#if entryType === "content" && modalFlag === "create"}
+        {#if modalFlag === "create"}
           {#if new_resource_type === "schema"}
             <SchemaEditor bind:content bind:items={itemsSchemaContent} />
             <Row>
@@ -1058,14 +963,6 @@
             title={$_("create_entry")}
             class="justify-contnet-center text-center py-0 px-1"
             on:click={() => {
-              // displayname = {
-              //   en: "",
-              //   ar: "",
-              // };
-              // description = {
-              //   en: "",
-              //   ar: "",
-              // };
               entryType = "content";
               isModalOpen = true;
             }}
@@ -1080,14 +977,6 @@
               title={$_("create_folder")}
               class="justify-contnet-center text-center py-0 px-1"
               on:click={() => {
-                // displayname = {
-                //   en: "",
-                //   ar: "",
-                // };
-                // description = {
-                //   en: "",
-                //   ar: "",
-                // };
                 entryType = "folder";
                 new_resource_type = ResourceType.folder;
                 isModalOpen = true;
@@ -1240,17 +1129,17 @@
         {/if}
       </div>
     </div>
-    {#if schema}
+    {#if schema && contentContent?.json}
       <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
         <div class="d-flex justify-content-end my-1">
           <Button on:click={handleSave}>Save</Button>
         </div>
         <div class="px-1 pb-1 h-100">
-          <SchemaForm
-            bind:ref={schemaFormRef}
-            {schema}
-            bind:data={contentContent.json}
-          />
+<!--          <SchemaForm-->
+<!--            bind:ref={schemaFormRef}-->
+<!--            {schema}-->
+<!--            bind:data={contentContent.json}-->
+<!--          />-->
         </div>
       </div>
     {/if}
@@ -1264,12 +1153,12 @@
         <div class="preview">
           <a
             href={"https://www.plantuml.com/plantuml/svg/" +
-              schemaVisualizationEncoder()}
+              schemaVisualizationEncoder(entry)}
             download="{entry.shortname}.svg"
           >
             <img
               src={"https://www.plantuml.com/plantuml/svg/" +
-                schemaVisualizationEncoder()}
+                schemaVisualizationEncoder(entry)}
               alt={entry.shortname}
             />
           </a>
