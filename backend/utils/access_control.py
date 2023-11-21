@@ -449,7 +449,7 @@ class AccessControl:
         if not user_search["data"]:
             return None
         data = json.loads(user_search["data"][0])
-        if "shortname" in data and data["shortname"] and isinstance (data["shortname"], str): 
+        if data.get("shortname") and isinstance (data["shortname"], str): 
             return data["shortname"]
         else:
             return None
