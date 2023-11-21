@@ -3,3 +3,6 @@ typer
 prompt_toolkit
 pydantic
 pydantic[email]
+prompt_toolkit
+pydantic_settings
+echo requests
