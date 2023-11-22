@@ -1,0 +1,8 @@
+{
+  "resource_type": "media",
+  "subpath": "content/buyer_123",
+  "shortname": "logo",
+  "attributes": {
+    "is_active": true
+  }
+}
