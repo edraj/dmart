@@ -11,7 +11,9 @@
       "/"
     ],
     "applications": [
-      "/translations"
+      "/translations",
+      "/configurations",
+      "/collections"
     ]
   },
   "resource_types": [
@@ -24,6 +26,7 @@
     "folder",
     "media",
     "user",
+    "json",
     "comment"
   ],
   "actions": [

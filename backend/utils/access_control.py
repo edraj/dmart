@@ -3,7 +3,6 @@ import re
 from redis.commands.search.field import TextField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
-from redis.commands.search.result import Result
 from models.core import ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
 from utils.helpers import flatten_dict
@@ -30,6 +29,8 @@ class AccessControl:
         }
 
         for module_name, module_value in management_modules.items():
+            self_module = getattr(self, module_name)
+            self_module = {}
             path = management_path / module_name
             entries_glob = ".dm/*/meta.*.json"
             for one in path.glob(entries_glob):
@@ -46,9 +47,8 @@ class AccessControl:
                         "anonymous",
                         management_branch,
                     )
-                    module = getattr(self, module_name)
                     if resource_obj.is_active:
-                        module[shortname] = resource_obj  # store in redis doc
+                        self_module[shortname] = resource_obj  # store in redis doc
                 except Exception as ex:
                     print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
                     raise ex
@@ -93,11 +93,11 @@ class AccessControl:
     async def delete_user_permissions_map_in_redis(self) -> None:
         async with RedisServices() as redis_services:
             search_query = Query("*").no_content()
-            docs = await redis_services.client.\
+            docs: dict = await redis_services.client.\
                 ft("user_permission").\
                 search(search_query) # type: ignore
-            if docs and isinstance(docs, Result): 
-                keys = [doc.id for doc in docs.docs]
+            if docs and len(docs.get("results", [])):
+                keys = [doc["id"] for doc in docs["results"]]
                 if len(keys) > 0:
                     await redis_services.del_keys(keys)
 
@@ -449,7 +449,7 @@ class AccessControl:
         if not user_search["data"]:
             return None
         data = json.loads(user_search["data"][0])
-        if "shortname" in data and data["shortname"] and isinstance (data["shortname"], str): 
+        if data.get("shortname") and isinstance (data["shortname"], str): 
             return data["shortname"]
         else:
             return None
