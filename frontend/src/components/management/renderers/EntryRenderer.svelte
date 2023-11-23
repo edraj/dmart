@@ -3,17 +3,17 @@
   import Attachments from "../Attachments.svelte";
   import { onDestroy, onMount } from "svelte";
   import {
-    QueryType,
-    RequestType,
-    ResourceType,
-    ResponseEntry,
-    Status,
-    query,
-    request,
-    retrieve_entry,
-    ContentType,
-    upload_with_payload,
-    csv,
+      QueryType,
+      RequestType,
+      ResourceType,
+      ResponseEntry,
+      Status,
+      query,
+      request,
+      retrieve_entry,
+      ContentType,
+      upload_with_payload,
+      csv, space,
   } from "@/dmart";
   import {
     Form,
@@ -568,21 +568,39 @@
       targetSubpath = subpath;
     }
 
-    const request_body = {
-      space_name,
-      request_type: RequestType.delete,
-      records: [
-        {
-          resource_type,
-          shortname: entry.shortname,
-          subpath: targetSubpath || "/",
-          branch_name: "master",
-          attributes: {},
-        },
-      ],
-    };
-    const response = await request(request_body);
-    if (response.status === "success") {
+    let response: any = {};
+    if (targetSubpath !== "/"){
+      const request_body = {
+        space_name,
+        request_type: RequestType.delete,
+        records: [
+          {
+            resource_type,
+            shortname: entry.shortname,
+            subpath: targetSubpath || "/",
+            branch_name: "master",
+            attributes: {},
+          },
+        ],
+      };
+      response = await request(request_body);
+    } else {
+      const request_body = {
+          space_name,
+          request_type: RequestType.delete,
+          records: [
+              {
+                  resource_type: ResourceType.space,
+                  subpath: "/",
+                  shortname: entry.shortname,
+                  attributes: {},
+              },
+          ],
+      };
+      response = await space(request_body);
+    }
+
+    if (response?.status === "success") {
       showToast(Level.info);
       // await spaces.refresh();
       refresh_spaces.refresh();
