@@ -15,7 +15,7 @@
   import {Level, showToast} from "@/utils/toast";
   import Media from "./Media.svelte";
   import {Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader,} from "sveltestrap";
-  import {JSONContent, JSONEditor, Mode} from "svelte-jsoneditor";
+  import {JSONEditor, Mode} from "svelte-jsoneditor";
   import {jsonToFile} from "@/utils/jsonToFile";
 
   export let attachments: Array<any> = [];
@@ -93,7 +93,7 @@
 
   let payloadFiles: FileList;
 
-  let payloadContent: JSONContent = { json: { name: "test" } };
+  let payloadContent: any = { json: {}, text: undefined  };
   let payloadData: string;
   let selectedSchema: string;
   let resourceType: ResourceAttachementType = ResourceAttachementType.media;
@@ -117,7 +117,8 @@
         ],
       };
       response = await request(request_dict);
-    } else if (
+    }
+    else if (
       [
         ContentType.image,
         ContentType.pdf,
@@ -143,6 +144,10 @@
         ContentType,
       ].includes(contentType)
     ) {
+        payloadContent
+        let _payloadContent = payloadContent.json
+            ? structuredClone(payloadContent.json)
+            : JSON.parse(payloadContent.text ?? '{}');
         const request_dict = {
         space_name,
         request_type: RequestType.create,
@@ -160,7 +165,7 @@
                     : null,
                 body:
                   resourceType == ResourceAttachementType.json
-                    ? payloadContent.json
+                    ? _payloadContent
                     : payloadData,
               },
             },
@@ -174,7 +179,8 @@
       showToast(Level.info);
       openCreateAttachemntModal = false;
       location.reload();
-    } else {
+    }
+    else {
       showToast(Level.warn);
     }
   }
@@ -184,6 +190,11 @@ $: {
           case ResourceAttachementType.comment: contentType = ContentType.text; break;
           case ResourceAttachementType.json: contentType = ContentType.json; break;
       }
+}
+
+function handleOnChange(x,y){
+    console.log({x})
+    console.log({y})
 }
 
 </script>
@@ -244,7 +255,7 @@ $: {
           </Input>
           <br />
 
-          <JSONEditor bind:content={payloadContent} />
+          <JSONEditor onChange={handleOnChange} bind:content={payloadContent} />
         {:else if resourceType === ResourceAttachementType.comment}
           <Input type={"textarea"} bind:value={payloadData} />
         {:else}
