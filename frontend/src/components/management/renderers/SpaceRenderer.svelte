@@ -309,7 +309,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"list" == tab_option}
+        active={"list" === tab_option}
         title={$_("list")}
         on:click={() => (tab_option = "list")}
       >
@@ -321,7 +321,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"view" == tab_option}
+        active={"view" === tab_option}
         title={$_("view")}
         on:click={() => (tab_option = "view")}
       >
@@ -332,7 +332,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"edit" == tab_option}
+        active={"edit" === tab_option}
         title={$_("edit")}
         on:click={() => (tab_option = "edit")}
       >
@@ -352,21 +352,33 @@
         <Icon name="trash" />
       </Button>
     </ButtonGroup>
-    <ButtonGroup>
-      <Button
-        outline
-        color="success"
-        size="sm"
-        title={$_("create")}
-        class="justify-contnet-center text-center py-0 px-1"
-        on:click={() => {
-          isModalOpen = true;
-          entryType = "folder";
-        }}
-      >
-        <Icon name="folder-plus" />
-      </Button>
-    </ButtonGroup>
+    <Button
+            outline
+            color="success"
+            size="sm"
+            title={$_("create_entry")}
+            class="justify-contnet-center text-center py-0 px-1"
+            on:click={() => {
+              entryType = "content";
+              isModalOpen = true;
+            }}
+    >
+      <Icon name="file-plus" />
+    </Button>
+    <Button
+            outline
+            color="success"
+            size="sm"
+            title={$_("create_folder")}
+            class="justify-contnet-center text-center py-0 px-1"
+            on:click={() => {
+                entryType = "folder";
+                new_resource_type = ResourceType.folder;
+                isModalOpen = true;
+              }}
+    >
+      <Icon name="folder-plus" />
+    </Button>
   </Nav>
 </div>
 <div

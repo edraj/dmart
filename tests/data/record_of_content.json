@@ -1,0 +1,8 @@
+{
+  "resource_type": "content",
+  "subpath": "content",
+  "shortname": "buyer_123",
+  "attributes": {
+    "is_active": true
+  }
+}

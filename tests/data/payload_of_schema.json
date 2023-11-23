@@ -1,0 +1,16 @@
+{
+  "title": "My nice schema",
+  "description": "A schema that explains how things work",
+  "type": "object",
+  "properties": {
+    "price": {
+      "type": "number"
+    },
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

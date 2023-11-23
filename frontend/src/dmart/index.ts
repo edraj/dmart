@@ -388,17 +388,21 @@ export type ApiQueryResponse = ApiResponse & {
 };
 
 export async function query(query: QueryRequest): Promise<ApiQueryResponse> {
-  if (query.type != QueryType.spaces) {
-    query.sort_type = query.sort_type || SortyType.ascending;
-    query.sort_by = query.sort_by || "created_at";
+  try {
+    if (query.type != QueryType.spaces) {
+      query.sort_type = query.sort_type || SortyType.ascending;
+      query.sort_by = query.sort_by || "created_at";
+    }
+    query.subpath = query.subpath.replace(/\/+/g, "/");
+    const { data } = await axios.post<ApiQueryResponse>(
+        website.backend + "/managed/query",
+        query,
+        { headers , timeout: 3000 }
+    );
+    return data;
+  } catch (e) {
+    return null;
   }
-  query.subpath = query.subpath.replace(/\/+/g, "/");
-  const { data } = await axios.post<ApiQueryResponse>(
-    website.backend + "/managed/query",
-    query,
-    { headers }
-  );
-  return data;
 }
 
 export async function csv(query: any): Promise<ApiQueryResponse> {
@@ -451,7 +455,7 @@ export async function retrieve_entry(
   retrieve_json_payload: boolean = false,
   retrieve_attachments: boolean = false,
   validate_schema: boolean = true
-): Promise<ResponseEntry> {
+): Promise<ResponseEntry|null> {
   try {
     if (!subpath || subpath == "/") subpath = "__root__";
     const { data } = await axios.get<ResponseEntry>(
