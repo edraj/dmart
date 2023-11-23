@@ -961,7 +961,7 @@ class RedisServices(object):
 
         try:
             aggr_res = await ft_index.aggregate(aggr_request) # type: ignore
-            if isinstance(aggr_res.get("results"), list):
+            if aggr_res.get("results") and isinstance(aggr_res["results"], list):
                 return aggr_res["results"]
         except Exception:
             pass
