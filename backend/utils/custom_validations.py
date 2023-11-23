@@ -136,7 +136,9 @@ async def validate_uniqueness(
                     " @"
                     + redis_column
                     + ":{"
-                    + "|".join(entry_dict_flattened[unique_key])
+                    + "|".join([
+                        item.translate(redis_escape_chars).replace("\\\\", "\\") for item in entry_dict_flattened[unique_key]
+                    ])
                     + "}"
                 )
             elif isinstance(entry_dict_flattened[unique_key], (str, bool)):  # booleans are indexed as TextField
