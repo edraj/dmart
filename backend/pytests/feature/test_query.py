@@ -1,5 +1,5 @@
 import pytest
-from base_test import (
+from pytests.base_test import (
     client,
     DEMO_SPACE,
     DEMO_SUBPATH,

@@ -1,0 +1,6 @@
+"""Path hack to allow tests to use /backend modules."""
+
+import sys
+
+sys.path.append(f"./")
+sys.path.append(f"../")
