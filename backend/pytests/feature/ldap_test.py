@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 import pytest
 from base_test import (
     assert_code_and_status_success,
@@ -34,6 +33,8 @@ if (
     or not settings.ldap_pass
 ):
     ldap_active = False
+
+ldap_conn : Connection | None = None
 
 try:
     ldap_conn = Connection(
@@ -147,7 +148,9 @@ def ldap_get_first_entry(shortname: str) -> dict:
         attributes=["cn", "gn"],
     )
 
-    for entry in ldap_conn.response:
-        return entry
+    if ldap_conn.response: 
+        for entry in ldap_conn.response:
+            if isinstance(entry, dict):
+                return entry
 
     return {"dn": "", "attributes": {}}

@@ -1,5 +1,5 @@
 import pytest
-from base_test import (
+from pytests.base_test import (
     assert_code_and_status_success,
     assert_resource_created,
     assert_resource_deleted,

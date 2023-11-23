@@ -1,5 +1,5 @@
 import pytest
-from base_test import (
+from pytests.base_test import (
     assert_bad_request,
     assert_code_and_status_success,
     assert_resource_created,
@@ -30,23 +30,23 @@ def test_retrieve_content_folder():
     retrieve_content_folder()
 
 
-schema_record_path = "data/record_of_schema.json"
+schema_record_path = "pytests/data/record_of_schema.json"
 schema_shortname = "test_schema"
-schema_payload_path = "data/payload_of_schema.json"
+schema_payload_path = "pytests/data/payload_of_schema.json"
 
 text_entry_shortname: str = "text_stuff"
 json_entry_shortname: str = "json_stuff"
-json_entry_uuid: str = None
+json_entry_uuid: str = ""
 
-content_record_path = "data/record_of_content.json"
+content_record_path = "pytests/data/record_of_content.json"
 content_shortname = "buyer_123"
-content_payload_path = "data/payload_of_content.json"
+content_payload_path = "pytests/data/payload_of_content.json"
 
-media_record_path = "data/record_of_media.json"
+media_record_path = "pytests/data/record_of_media.json"
 media_shortname = "logo.jpeg"
-media_payload_path = "data/logo.jpeg"
+media_payload_path = "pytests/data/logo.jpeg"
 
-resources_csv_path = "data/resources.csv"
+resources_csv_path = "pytests/data/resources.csv"
 
 
 @pytest.mark.run(order=2)
