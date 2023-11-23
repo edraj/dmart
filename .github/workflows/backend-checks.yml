@@ -44,7 +44,7 @@ jobs:
     - name: Test with pytest
       run: |
         source $HOME/venv/bin/activate
-        cd backend; pytest
+        cd tests; pytest
     - name: Start dmart service and run curl.sh
       run: |
         export XDG_RUNTIME_DIR="/run/user/$UID"
