@@ -3,17 +3,17 @@
   import Attachments from "../Attachments.svelte";
   import { onDestroy, onMount } from "svelte";
   import {
-    QueryType,
-    RequestType,
-    ResourceType,
-    ResponseEntry,
-    Status,
-    query,
-    request,
-    retrieve_entry,
-    ContentType,
-    upload_with_payload,
-    csv,
+      QueryType,
+      RequestType,
+      ResourceType,
+      ResponseEntry,
+      Status,
+      query,
+      request,
+      retrieve_entry,
+      ContentType,
+      upload_with_payload,
+      csv, space,
   } from "@/dmart";
   import {
     Form,
@@ -28,6 +28,8 @@
     Nav,
     ButtonGroup,
     Row,
+    TabContent,
+    TabPane
   } from "sveltestrap";
   import Icon from "../../Icon.svelte";
   import { _ } from "@/i18n";
@@ -404,18 +406,28 @@
     return fullSubpath.endsWith("/schema") ? ResourceType.schema : resourceType;
   }
 
+  let schemaContent = {json:{}, text: undefined};
+  let isSchemaEntryInForm = true;
   async function handleSubmit(event: Event) {
     event.preventDefault();
 
     let response: any;
     let request_body: any = {};
     if (new_resource_type === "schema") {
-      let body = content.json
-        ? structuredClone(content.json)
-        : JSON.parse(content.text);
-      body = transformToProperBodyRequest(body);
-      body = body[0];
-      delete body.name;
+        let body = null;
+      if (isSchemaEntryInForm){
+          body = content.json
+              ? structuredClone(content.json)
+              : JSON.parse(content.text);
+          body = transformToProperBodyRequest(body);
+          body = body[0];
+          delete body.name;
+      } else {
+          body = schemaContent.json
+              ? structuredClone(schemaContent.json)
+              : JSON.parse(schemaContent.text);
+          schemaContent = {json:{}, text: undefined};
+      }
 
       request_body = {
         space_name,
@@ -515,9 +527,7 @@
       }
     }
     else if (entryType === "folder") {
-        let body = {
-
-        }
+        let body = {}
       if (selectedSchema ===  "folder_rendering"){
           body["index_attributes"] = [];
       }
@@ -570,21 +580,39 @@
       targetSubpath = subpath;
     }
 
-    const request_body = {
-      space_name,
-      request_type: RequestType.delete,
-      records: [
-        {
-          resource_type,
-          shortname: entry.shortname,
-          subpath: targetSubpath || "/",
-          branch_name: "master",
-          attributes: {},
-        },
-      ],
-    };
-    const response = await request(request_body);
-    if (response.status === "success") {
+    let response: any = {};
+    if (targetSubpath !== "/"){
+      const request_body = {
+        space_name,
+        request_type: RequestType.delete,
+        records: [
+          {
+            resource_type,
+            shortname: entry.shortname,
+            subpath: targetSubpath || "/",
+            branch_name: "master",
+            attributes: {},
+          },
+        ],
+      };
+      response = await request(request_body);
+    } else {
+      const request_body = {
+          space_name,
+          request_type: RequestType.delete,
+          records: [
+              {
+                  resource_type: ResourceType.space,
+                  subpath: "/",
+                  shortname: entry.shortname,
+                  attributes: {},
+              },
+          ],
+      };
+      response = await space(request_body);
+    }
+
+    if (response?.status === "success") {
       showToast(Level.info);
       // await spaces.refresh();
       refresh_spaces.refresh();
@@ -742,12 +770,20 @@
           bind:value={contentShortname}
           required
         />
-
         <hr />
-
         {#if modalFlag === "create"}
           {#if new_resource_type === "schema"}
-            <SchemaEditor bind:content bind:items={itemsSchemaContent} />
+            <TabContent on:tab={(e) => (isSchemaEntryInForm = e.detail==="form")}>
+              <TabPane tabId="form" tab="Forms" active>
+                <SchemaEditor bind:content bind:items={itemsSchemaContent} />
+              </TabPane>
+              <TabPane tabId="editor" tab="Editor">
+                <JSONEditor
+                  mode={Mode.text}
+                  bind:content={schemaContent}
+                />
+              </TabPane>
+            </TabContent>
             <Row>
               {#if errorContent}
                 <h3 class="mt-3">Error:</h3>

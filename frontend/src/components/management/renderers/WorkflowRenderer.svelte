@@ -512,6 +512,10 @@
   }
 
   function jsonTOplantUML(data) {
+    if (data.states === null){
+        return "@startuml\n" + "@enduml";
+    }
+
     let result = "@startuml\n";
 
     result += `title "${data.name}"\n`;

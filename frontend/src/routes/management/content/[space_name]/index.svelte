@@ -8,7 +8,9 @@
 
 {#key refresh}
 {#if $params.space_name}
-  {#await retrieve_entry(ResourceType.space, $params.space_name, "__root__", $params.space_name, false, false) then entry}
+  {#await retrieve_entry(ResourceType.space, $params.space_name, "__root__", $params.space_name, false, false)}
+  <p>Loading...</p>
+  {:then entry}
     <EntryRenderer
       {entry}
       resource_type={ResourceType.folder}
