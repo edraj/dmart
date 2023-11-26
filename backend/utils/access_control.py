@@ -93,7 +93,7 @@ class AccessControl:
     async def delete_user_permissions_map_in_redis(self) -> None:
         async with RedisServices() as redis_services:
             search_query = Query("*").no_content()
-            docs = await redis_services.client.\
+            docs: dict = await redis_services.client.\
                 ft("user_permission").\
                 search(search_query) # type: ignore
             if docs and len(docs.get("results", [])):
@@ -449,7 +449,7 @@ class AccessControl:
         if not user_search["data"]:
             return None
         data = json.loads(user_search["data"][0])
-        if "shortname" in data and data["shortname"] and isinstance (data["shortname"], str): 
+        if data.get("shortname") and isinstance (data["shortname"], str): 
             return data["shortname"]
         else:
             return None

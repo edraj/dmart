@@ -663,14 +663,10 @@ async def serve_query(
             for idx, row in enumerate(rows):
                 record = core.Record(
                     resource_type=ResourceType.content,
-                    shortname=idx+1,
+                    shortname=str(idx+1),
                     subpath=query.subpath,
-                    attributes={}
+                    attributes=row["extra_attributes"]
                 )
-                row_attributes: dict[str, str] = {}
-                for i in range(0, len(row), 2):
-                    row_attributes[row[i]] = row[i+1]
-                record.attributes = row_attributes
                 records.append(record)
                 
     if query.jq_filter:

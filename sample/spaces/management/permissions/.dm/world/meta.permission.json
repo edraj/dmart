@@ -8,7 +8,11 @@
   "owner_shortname": "dmart",
   "subpaths": {
     "test": ["/"],
-    "applications": ["/translations", "/configurations"]
+    "applications": [
+      "/translations",
+      "/configurations",
+      "/collections"
+    ]
   },
   "resource_types": [
     "media",
@@ -20,7 +24,9 @@
     "comment",
     "group",
     "user",
-    "schema"
+    "schema",
+    "json",
+    "comment"
   ],
   "actions": ["view", "query"],
   "conditions": ["is_active"],

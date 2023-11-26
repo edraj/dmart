@@ -46,7 +46,9 @@ class PluginManager:
 
     async def load_plugins(self, app: FastAPI, capture_body):
         # Load core plugins
-        path = Path("plugins")
+        current = os.path.dirname(os.path.realpath(__file__))
+        parent = os.path.dirname(current)
+        path = Path(f"{parent}/plugins")
         if path.is_dir():
             await self.load_path_plugins(path, app, capture_body)
 
