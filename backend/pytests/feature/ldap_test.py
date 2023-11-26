@@ -1,6 +1,6 @@
 import json
 import pytest
-from base_test import (
+from pytests.base_test import (
     assert_code_and_status_success,
     set_superman_cookie,
     client,
