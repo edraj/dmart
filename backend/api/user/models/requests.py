@@ -44,7 +44,7 @@ class SendOTPRequest(BaseModel):
             500,
             Error(
                 type="OTP",
-                code=102,
+                code=103,
                 message="Something went wrong",
             ),
         )

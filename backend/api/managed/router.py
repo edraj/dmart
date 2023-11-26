@@ -104,7 +104,8 @@ async def generate_csv_from_report_saved_query(
     writer.writeheader()
     writer.writerows(json_data)
 
-    response = StreamingResponse(iter([v_path.getvalue()]), media_type="text/csv")
+    response = StreamingResponse(
+        iter([v_path.getvalue()]), media_type="text/csv")
     response.headers[
         "Content-Disposition"
     ] = f"attachment; filename={space_name}_{record.subpath}.csv"
@@ -162,7 +163,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     folder_views = folder_payload.get("csv_columns", [])
     if not folder_views:
         folder_views = folder_payload.get("index_attributes", [])
-        
+
     keys: list = [i["name"] for i in folder_views]
     keys_existence = dict(zip(keys, [False for _ in range(len(keys))]))
     search_res, _ = await repository.redis_query_search(query, redis_query_policies)
@@ -218,7 +219,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                                     new_keys.add(f"{column_title}.{k}")
                             else:
                                 new_row[column_title] = item
-                                
+
                             list_new_rows.append(new_row)
                         # Add first items's attribute to the existing rows
                         if isinstance(attribute_val[0], dict):
@@ -229,11 +230,11 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                         else:
                             row[column_title] = attribute_val[0]
                     rows += list_new_rows
-                            
-                            
+
                 elif attribute_val and not isinstance(attribute_val, list):
                     new_col = attribute_val if column_key not in timestamp_fields else\
-                        datetime.fromtimestamp(attribute_val).strftime('%Y-%m-%d %H:%M:%S')
+                        datetime.fromtimestamp(attribute_val).strftime(
+                            '%Y-%m-%d %H:%M:%S')
                     for row in rows:
                         row[column_title] = new_col
             json_data += rows
@@ -262,17 +263,17 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
             attributes={"message": "The records are empty"},
         )
 
-
     keys = [key for key in keys if keys_existence[key]]
     v_path = StringIO()
-    
+
     list_deprecated_keys = list(deprecated_keys)
-    keys = list(filter(lambda item:item not in list_deprecated_keys, keys))
+    keys = list(filter(lambda item: item not in list_deprecated_keys, keys))
     writer = csv.DictWriter(v_path, fieldnames=(keys + list(new_keys)))
     writer.writeheader()
     writer.writerows(json_data)
 
-    response = StreamingResponse(iter([v_path.getvalue()]), media_type="text/csv")
+    response = StreamingResponse(
+        iter([v_path.getvalue()]), media_type="text/csv")
     response.headers[
         "Content-Disposition"
     ] = f"attachment; filename={query.space_name}_{query.subpath}.csv"
@@ -408,7 +409,7 @@ async def serve_space(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=202,
+                        code=212,
                         message="Space name provided is empty or invalid [2]",
                     ),
                 )
@@ -433,7 +434,7 @@ async def serve_space(
 
             async with RedisServices() as redis_services:
                 x = await redis_services.list_indices()
-                if x :
+                if x:
                     indices: list[str] = x
                     for index in indices:
                         if index.startswith(f"{request.space_name}:"):
@@ -521,7 +522,7 @@ async def serve_request(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=202,
+                code=212,
                 message="Space name provided is empty or invalid [3]",
             ),
         )
@@ -588,7 +589,8 @@ async def serve_request(
                         )
 
                     resource_cls = getattr(
-                        sys.modules["models.core"], camel_case(record.resource_type)
+                        sys.modules["models.core"], camel_case(
+                            record.resource_type)
                     )
 
                     shortname_exists = repository.is_entry_exist(
@@ -597,7 +599,8 @@ async def serve_request(
                         shortname=record.shortname,
                         resource_type=record.resource_type,
                         branch_name=record.branch_name,
-                        schema_shortname=record.attributes.get("schema_shortname", None)
+                        schema_shortname=record.attributes.get(
+                            "schema_shortname", None)
                     )
                     if shortname_exists and record.shortname != settings.auto_uuid_rule:
                         raise api.Exception(
@@ -665,7 +668,7 @@ async def serve_request(
                                     message=languages[
                                         resource_obj.language
                                     ]["invitation_message"].replace(
-                                        "{link}", 
+                                        "{link}",
                                         await repository.url_shortner(inv_link)
                                     ),
                                 )
@@ -693,7 +696,6 @@ async def serve_request(
                                     ),
                                     subject=generate_subject("activation"),
                                 )
-                        
 
                     if separate_payload_data is not None and isinstance(
                         separate_payload_data, dict
@@ -759,7 +761,8 @@ async def serve_request(
                 )
 
                 resource_cls = getattr(
-                    sys.modules["models.core"], camel_case(record.resource_type)
+                    sys.modules["models.core"], camel_case(
+                        record.resource_type)
                 )
                 schema_shortname = record.attributes.get("payload", {}).get(
                     "schema_shortname"
@@ -797,7 +800,8 @@ async def serve_request(
 
                 # GET PAYLOAD DATA
                 old_resource_payload_body = {}
-                old_version_flattend = flatten_dict(old_resource_obj.model_dump())
+                old_version_flattend = flatten_dict(
+                    old_resource_obj.model_dump())
                 if (
                     old_resource_obj.payload
                     and old_resource_obj.payload.content_type == ContentType.json
@@ -818,7 +822,8 @@ async def serve_request(
 
                     old_version_flattend.pop("payload.body", None)
                     old_version_flattend.update(
-                        flatten_dict({"payload.body": old_resource_payload_body})
+                        flatten_dict(
+                            {"payload.body": old_resource_payload_body})
                     )
                 # GENERATE NEW RESOURCE OBJECT
                 resource_obj = old_resource_obj
@@ -833,7 +838,8 @@ async def serve_request(
                 new_version_flattend = flatten_dict(resource_obj.model_dump())
                 if new_resource_payload_data:
                     new_version_flattend.update(
-                        flatten_dict({"payload.body": new_resource_payload_data})
+                        flatten_dict(
+                            {"payload.body": new_resource_payload_data})
                     )
 
                 await validate_uniqueness(
@@ -853,12 +859,12 @@ async def serve_request(
                         schema_shortname=resource_obj.payload.schema_shortname,
                     )
 
-                updated_attributes_flattend=list(
+                updated_attributes_flattend = list(
                     flatten_dict(record.attributes).keys()
                 )
                 if request.request_type == RequestType.r_replace:
                     updated_attributes_flattend = (
-                        list(old_version_flattend.keys()) + 
+                        list(old_version_flattend.keys()) +
                         list(new_version_flattend.keys())
                     )
                 history_diff = await db.update(
@@ -880,9 +886,9 @@ async def serve_request(
                         new_resource_payload_data,
                         record.branch_name,
                     )
-                    
-                if(
-                    isinstance(resource_obj, core.User) and 
+
+                if (
+                    isinstance(resource_obj, core.User) and
                     record.attributes.get("is_active") is False
                 ):
                     await remove_redis_session_key(record.shortname)
@@ -926,7 +932,8 @@ async def serve_request(
                 )
 
                 resource_cls = getattr(
-                    sys.modules["models.core"], camel_case(record.resource_type)
+                    sys.modules["models.core"], camel_case(
+                        record.resource_type)
                 )
                 schema_shortname = record.attributes.get("payload", {}).get(
                     "schema_shortname"
@@ -996,7 +1003,7 @@ async def serve_request(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
                             type="move",
-                            code=202,
+                            code=213,
                             message="Please provide a destination path or a new shortname",
                         ),
                     )
@@ -1012,7 +1019,7 @@ async def serve_request(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
                             type="move",
-                            code=202,
+                            code=222,
                             message="Please provide a source path and a src shortname",
                         ),
                     )
@@ -1026,12 +1033,14 @@ async def serve_request(
                         action_type=core.ActionType.move,
                         resource_type=record.resource_type,
                         user_shortname=owner_shortname,
-                        attributes={"dest_subpath": record.attributes["dest_subpath"]},
+                        attributes={
+                            "dest_subpath": record.attributes["dest_subpath"]},
                     )
                 )
 
                 resource_cls = getattr(
-                    sys.modules["models.core"], camel_case(record.resource_type)
+                    sys.modules["models.core"], camel_case(
+                        record.resource_type)
                 )
                 resource_obj = await db.load(
                     space_name=request.space_name,
@@ -1226,7 +1235,8 @@ async def update_state(
 
             old_version_flattend = flatten_dict(ticket_obj.model_dump())
             old_version_flattend.pop("payload.body", None)
-            old_version_flattend.update(flatten_dict({"payload.body": ticket_obj}))
+            old_version_flattend.update(
+                flatten_dict({"payload.body": ticket_obj}))
 
             ticket_obj.state = response["message"]
             ticket_obj.is_open = check_open_state(
@@ -1250,7 +1260,8 @@ async def update_state(
 
             new_version_flattend = flatten_dict(ticket_obj.model_dump())
             new_version_flattend.pop("payload.body", None)
-            new_version_flattend.update(flatten_dict({"payload.body": ticket_obj}))
+            new_version_flattend.update(
+                flatten_dict({"payload.body": ticket_obj}))
 
             if comment:
                 time = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -1310,7 +1321,8 @@ async def update_state(
 
     raise api.Exception(
         status.HTTP_400_BAD_REQUEST,
-        error=api.Error(type="ticket", code=221, message="Workflow body not found"),
+        error=api.Error(type="ticket", code=221,
+                        message="Workflow body not found"),
     )
 
 
@@ -1495,7 +1507,8 @@ async def create_or_update_resource_with_payload(
         record = await set_init_state_from_record(
             record, record.branch_name, owner_shortname, space_name
         )
-    resource_obj = core.Meta.from_record(record=record, owner_shortname=owner_shortname)
+    resource_obj = core.Meta.from_record(
+        record=record, owner_shortname=owner_shortname)
     if record.resource_type == ResourceType.ticket:
         record = await set_init_state_from_record(
             record, record.branch_name, owner_shortname, space_name
@@ -1522,7 +1535,7 @@ async def create_or_update_resource_with_payload(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="attachment",
-                code=217,
+                code=219,
                 message="Only resources of type 'attachment' or 'content' are allowed",
             ),
         )
@@ -1598,7 +1611,7 @@ async def import_resources_from_csv(
         schema_content = json.load(schema_file)
     schema_content = resolve_schema_references(schema_content)
 
-    data_types_mapper : dict[str, Callable] = {
+    data_types_mapper: dict[str, Callable] = {
         "integer": int,
         "number": float,
         "string": str,
@@ -1607,7 +1620,8 @@ async def import_resources_from_csv(
         "array": json.loads,
     }
 
-    resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
+    resource_cls = getattr(
+        sys.modules["models.core"], camel_case(resource_type))
     meta_class_attributes = resource_cls.model_fields
     failed_shortnames: list = []
     success_count = 0
@@ -1631,7 +1645,8 @@ async def import_resources_from_csv(
                     case 2:
                         if keys_list[0].strip() not in meta_object:
                             meta_object[keys_list[0].strip()] = {}
-                        meta_object[keys_list[0].strip()][keys_list[1].strip()] = value
+                        meta_object[keys_list[0].strip(
+                        )][keys_list[1].strip()] = value
                 continue
 
             current_schema_property = schema_content
@@ -1666,12 +1681,14 @@ async def import_resources_from_csv(
                 case 2:
                     if keys_list[0].strip() not in payload_object:
                         payload_object[keys_list[0].strip()] = {}
-                    payload_object[keys_list[0].strip()][keys_list[1].strip()] = value
+                    payload_object[keys_list[0].strip(
+                    )][keys_list[1].strip()] = value
                 case 3:
                     if keys_list[0].strip() not in payload_object:
                         payload_object[keys_list[0].strip()] = {}
                     if keys_list[1].strip() not in payload_object[keys_list[0].strip()]:
-                        payload_object[keys_list[0].strip()][keys_list[1].strip()] = {}
+                        payload_object[keys_list[0].strip(
+                        )][keys_list[1].strip()] = {}
                     payload_object[keys_list[0].strip()][keys_list[1].strip()][
                         keys_list[2].strip()
                     ] = value
@@ -1748,7 +1765,8 @@ async def retrieve_entry_meta(
         )
     )
 
-    resource_class = getattr(sys.modules["models.core"], camel_case(resource_type))
+    resource_class = getattr(
+        sys.modules["models.core"], camel_case(resource_type))
     meta: core.Meta = await db.load(
         space_name=space_name,
         subpath=subpath,
@@ -1934,7 +1952,8 @@ async def get_space_report(
     if space_name not in spaces and space_name != "all":
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="media", code=221, message="Invalid space name"),
+            error=api.Error(type="media", code=221,
+                            message="Invalid space name"),
         )
     if health_type not in ["soft", "hard"]:
         raise api.Exception(
@@ -1944,7 +1963,8 @@ async def get_space_report(
             ),
         )
 
-    os.system(f"./health_check.py -t {health_type} -b {branch_name} -s {space_name} &")
+    os.system(
+        f"./health_check.py -t {health_type} -b {branch_name} -s {space_name} &")
     return api.Response(
         status=api.Status.success,
     )
@@ -1974,7 +1994,7 @@ async def lock_entry(
                 type="db", code=12, message="requested object is not found"
             ),
         )
-        
+
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
@@ -2039,7 +2059,7 @@ async def lock_entry(
         ["lock_type"],
         core.Content,
     )
-    
+
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
@@ -2051,7 +2071,7 @@ async def lock_entry(
             user_shortname=logged_in_user,
         )
     )
-    
+
     return api.Response(
         status=api.Status.success,
         attributes={
@@ -2083,7 +2103,7 @@ async def cancel_lock(
                 message="Lock does not exist or you have no access",
             ),
         )
-        
+
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
@@ -2111,7 +2131,7 @@ async def cancel_lock(
         ["lock_type"],
         core.Content,
     )
-    
+
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
@@ -2123,7 +2143,7 @@ async def cancel_lock(
             user_shortname=logged_in_user,
         )
     )
-    
+
     return api.Response(
         status=api.Status.success,
         attributes={"message": "Entry unlocked successfully"},
@@ -2182,7 +2202,8 @@ async def execute(
         query_dict.pop("query_subpath")
 
     for param, value in record.attributes.items():
-        query_dict["search"] = query_dict["search"].replace(f"${param}", str(value))
+        query_dict["search"] = query_dict["search"].replace(
+            f"${param}", str(value))
 
     query_dict["search"] = res_sub(
         r"@\w*\:({|\()?\$\w*(}|\))?", "", query_dict["search"]
@@ -2199,7 +2220,6 @@ async def execute(
 
     if "to_date" in record.attributes:
         query_dict["to_date"] = record.attributes["to_date"]
-
 
     return await query_entries(
         query=api.Query(**query_dict), user_shortname=logged_in_user
@@ -2256,7 +2276,8 @@ async def apply_alteration(
 
     response = await serve_request(
         request=api.Request(
-            space_name=space_name, request_type=RequestType.update, records=[record]
+            space_name=space_name, request_type=RequestType.update, records=[
+                record]
         ),
         owner_shortname=logged_in_user,
     )
