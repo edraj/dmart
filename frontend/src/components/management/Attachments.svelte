@@ -19,14 +19,15 @@
   import {jsonToFile} from "@/utils/jsonToFile";
 
   export let attachments: Array<any> = [];
-  
+
   export let space_name: string;
   export let subpath: string;
   export let parent_shortname: string;
 
   // exp rt let forceRefresh;
   let shortname = "auto";
-
+  let isModalInUpdateMode = false;
+  let isModalInMetaUpdateMode = false;
   let openViewAttachmentModal = false;
   function toggleViewAttachmentModal() {
     openViewAttachmentModal = !openViewAttachmentModal;
@@ -41,16 +42,22 @@
     json: {},
     text: undefined,
   };
-  function handleView(attachemntTitle: string) {
-    content = {
-      json: attachments.filter((e) => e.shortname === attachemntTitle)[0],
-      text: undefined,
-    };
+  function handleView(attachmentShortname: string) {
+    for (const attachmentGroup of attachments) {
+        for (const attachment of attachmentGroup) {
+            if (attachment.shortname === attachmentShortname) {
+                content = {
+                    json: attachment,
+                    text: undefined,
+                };
+            }
+        }
+    }
     openViewAttachmentModal = true;
   }
 
   function getFileExtension(filename: string) {
-    var ext = /^.+\.([^.]+)$/.exec(filename);
+    let ext = /^.+\.([^.]+)$/.exec(filename);
     return ext == null ? "" : ext[1];
   }
 
@@ -60,8 +67,7 @@
     resource_type: ResourceType;
   }) {
     if (
-      confirm(`Are you sure want to delete ${item.shortname} attachment`) ===
-      false
+      confirm(`Are you sure want to delete ${item.shortname} attachment`) === false
     ) {
       return;
     }
@@ -86,7 +92,8 @@
       );
       openCreateAttachemntModal = false;
       location.reload();
-    } else {
+    }
+    else {
       showToast(Level.warn);
     }
   }
@@ -99,17 +106,25 @@
   let resourceType: ResourceAttachementType = ResourceAttachementType.media;
   let contentType: ContentType = ContentType.image;
   async function upload() {
+      if (isModalInUpdateMode){
+          if (trueResourceType !== null){
+              resourceType = trueResourceType;
+              trueResourceType = null;
+          }
+      }
+
     let response: ApiResponse;
     if (resourceType == ResourceAttachementType.comment) {
       const request_dict = {
         space_name,
-        request_type: RequestType.create,
+        request_type: isModalInUpdateMode ? RequestType.update : RequestType.create,
         records: [
           {
             resource_type: ResourceType.comment,
             shortname: shortname,
             subpath: `${subpath}/${parent_shortname}`,
             attributes: {
+              is_active: true,
               state: "xxx",
               body: payloadData,
             },
@@ -144,19 +159,19 @@
         ContentType,
       ].includes(contentType)
     ) {
-        payloadContent
         let _payloadContent = payloadContent.json
             ? structuredClone(payloadContent.json)
             : JSON.parse(payloadContent.text ?? '{}');
         const request_dict = {
         space_name,
-        request_type: RequestType.create,
+        request_type: isModalInUpdateMode ? RequestType.update : RequestType.create,
         records: [
           {
             resource_type: ResourceType[resourceType],
             shortname: shortname,
             subpath: `${subpath}/${parent_shortname}`,
             attributes: {
+              is_active: true,
               payload: {
                 content_type: contentType,
                 schema_shortname:
@@ -183,8 +198,52 @@
     else {
       showToast(Level.warn);
     }
+
+    isModalInMetaUpdateMode = false;
   }
-$: {
+
+  async function updateMeta(){
+      if (isModalInUpdateMode){
+          if (trueResourceType !== null){
+              resourceType = trueResourceType;
+              trueResourceType = null;
+          }
+      }
+
+      let _payloadContent = payloadContent.json
+          ? structuredClone(payloadContent.json)
+          : JSON.parse(payloadContent.text ?? '{}');
+      const request_dict = {
+          space_name,
+          request_type: RequestType.update,
+          records: [
+              {
+                  resource_type: ResourceType[resourceType],
+                  shortname: shortname,
+                  subpath: `${subpath}/${parent_shortname}`,
+                  attributes: {
+                      is_active: true,
+                      payload: {
+                          content_type: contentType,
+                          schema_shortname:selectedSchema,
+                          body: _payloadContent,
+                      },
+                  },
+              },
+          ],
+      };
+      const response = await request(request_dict);
+      if (response.status === "success") {
+          showToast(Level.info);
+          openCreateAttachemntModal = false;
+          location.reload();
+      }
+      else {
+          showToast(Level.warn);
+      }
+  }
+
+  $: {
       switch (resourceType){
           case ResourceAttachementType.media: contentType = ContentType.image; break;
           case ResourceAttachementType.comment: contentType = ContentType.text; break;
@@ -192,11 +251,37 @@ $: {
       }
 }
 
-function handleOnChange(x,y){
-    console.log({x})
-    console.log({y})
-}
+let trueResourceType = null;
+function handleMetaEditModal(attachment) {
+    const _attachment = structuredClone(attachment);
+    delete _attachment?.payload?.body;
+    trueResourceType = _attachment.resource_type
+    shortname = _attachment.shortname;
+    resourceType = ResourceAttachementType.json;
+    payloadContent = {json: _attachment}
 
+    isModalInMetaUpdateMode = true;
+    openCreateAttachemntModal = true;
+    isModalInUpdateMode = true;
+}
+function handleContentEditModal(attachment) {
+    const _attachment = structuredClone(attachment);
+    shortname = _attachment.shortname;
+    resourceType = _attachment.resource_type;
+
+    if (attachment.resource_type === ResourceAttachementType.json){
+        payloadContent = {json: _attachment.attributes.payload.body}
+    }
+    else if (attachment.resource_type === ResourceAttachementType.comment){
+        payloadData = _attachment.attributes.body;
+    }
+    else {
+        payloadContent = _attachment.attributes.payload.body;
+    }
+
+    openCreateAttachemntModal = true;
+    isModalInUpdateMode = true;
+}
 </script>
 
 <Modal
@@ -205,14 +290,16 @@ function handleOnChange(x,y){
   size={"lg"}
 >
   <ModalHeader toggle={toggleCreateAttachemntModal}>
-    <h3>Add attachment</h3>
+    <h3>
+      {isModalInUpdateMode ? "Update attachment" : "Add attachment"}
+    </h3>
   </ModalHeader>
   <ModalBody>
     <div class="d-flex flex-column">
       <Label>Attachment shortname</Label>
-      <Input accept="image/png, image/jpeg" bind:value={shortname} />
+      <Input accept="image/png, image/jpeg" bind:value={shortname} disabled={isModalInUpdateMode}/>
       <Label>Attachement Type</Label>
-      <Input type="select" bind:value={resourceType}>
+      <Input type="select" bind:value={resourceType} disabled={isModalInUpdateMode}>
         {#each Object.values(ResourceAttachementType) as type}
           {#if type !== ResourceAttachementType.alteration && type !== ResourceAttachementType.relationship}
             <option value={type}>{type}</option>
@@ -222,7 +309,7 @@ function handleOnChange(x,y){
       {#key resourceType}
         {#if resourceType === ResourceAttachementType.media}
           <Label>Content Type</Label>
-          <Input type="select" bind:value={contentType}>
+          <Input type="select" bind:value={contentType} disabled={isModalInUpdateMode}>
             {#each Object.values(ContentType) as type}
               {#if type !== ContentType.json}
                 <option value={type}>{type}</option>
@@ -245,17 +332,16 @@ function handleOnChange(x,y){
             <Input type={"textarea"} bind:value={payloadData} />
           {/if}
         {:else if resourceType === ResourceAttachementType.json}
-          <Input bind:value={selectedSchema} type="select">
+          <Label>Schema</Label>
+          <Input class="mb-3" bind:value={selectedSchema} type="select" disabled={isModalInUpdateMode}>
             <option value={""}>{"None"}</option>
-            {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
+            {#await query({ space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 }) then schemas}
               {#each schemas.records.map((e) => e.shortname) as schema}
                 <option value={schema}>{schema}</option>
               {/each}
             {/await}
           </Input>
-          <br />
-
-          <JSONEditor onChange={handleOnChange} bind:content={payloadContent} />
+          <JSONEditor bind:content={payloadContent} />
         {:else if resourceType === ResourceAttachementType.comment}
           <Input type={"textarea"} bind:value={payloadData} />
         {:else}
@@ -270,7 +356,9 @@ function handleOnChange(x,y){
       color="secondary"
       on:click={() => (openCreateAttachemntModal = false)}>close</Button
     >
-    <Button type="button" color="primary" on:click={upload}>Upload</Button>
+    <Button type="button" color="primary" on:click={isModalInMetaUpdateMode?updateMeta:upload}>
+      {isModalInUpdateMode ? "Update" : "Upload"}
+    </Button>
   </ModalFooter>
 </Modal>
 
@@ -299,7 +387,10 @@ function handleOnChange(x,y){
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="d-flex justify-content-end mx-2 flex-row">
-  <div on:click={() => (openCreateAttachemntModal = true)}>
+  <div on:click={() => {
+    openCreateAttachemntModal = true;
+    isModalInUpdateMode = false;
+  }}>
     <Icon style="cursor: pointer;" name="plus-square" />
   </div>
 </div>
@@ -344,6 +435,30 @@ function handleOnChange(x,y){
           >
             <Icon name="eyeglasses" color="grey" />
           </div>
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <div
+            class="mx-1"
+            style="cursor: pointer;"
+            on:click={() => {
+             handleMetaEditModal(attachment);
+            }}
+          ><Icon name="code-slash" /></div>
+          {#if [
+              ResourceType.json,
+              ResourceType.content,
+              ResourceType.comment,
+          ].includes(attachment.resource_type)}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div
+              class="mx-1"
+              style="cursor: pointer;"
+              on:click={() => {
+                handleContentEditModal(attachment);
+              }}
+            ><Icon name="pencil" /></div>
+          {/if}
         </div>
       </div>
       <div class="d-flex col justify-content-center">
