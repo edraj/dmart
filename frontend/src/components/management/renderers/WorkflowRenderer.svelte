@@ -46,8 +46,6 @@
   import history_cols from "@/stores/management/list_cols_history.json";
   import refresh_spaces from "@/stores/management/refresh_spaces";
   import { website } from "@/config";
-  import HtmlEditor from "../editors/HtmlEditor.svelte";
-  import MarkdownEditor from "../editors/MarkdownEditor.svelte";
   import { isDeepEqual, removeEmpty } from "@/utils/compare";
   import metaContentSchema from "@/validations/meta.content.json";
   import SchemaEditor, {
@@ -512,9 +510,7 @@
   }
 
   function jsonTOplantUML(data) {
-      console.log({states:data.states})
     if (data.states) {
-
         let result = "@startuml\n";
 
         result += `title "${data.name}"\n`;
@@ -673,8 +669,6 @@
             {/if}
             {#if selectedContentType === "json"}
               <JSONEditor mode={Mode.text} bind:content={entryContent} />
-              <!-- onChange={handleChange}
-                {validator} -->
             {/if}
           {/if}
           <hr />
@@ -735,7 +729,7 @@
           color="success"
           size="sm"
           class="justify-content-center text-center py-0 px-1"
-          active={"list" == tab_option}
+          active={"list" === tab_option}
           title={$_("list")}
           on:click={() => (tab_option = "list")}
         >
@@ -748,7 +742,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"view" == tab_option}
+        active={"view" === tab_option}
         title={$_("view")}
         on:click={() => (tab_option = "view")}
       >
@@ -761,7 +755,7 @@
           color="success"
           size="sm"
           class="justify-content-center text-center py-0 px-1"
-          active={"edit_meta" == tab_option}
+          active={"edit_meta" === tab_option}
           title={$_("edit") + " meta"}
           on:click={() => (tab_option = "edit_meta")}
         >
@@ -773,7 +767,7 @@
             color="success"
             size="sm"
             class="justify-content-center text-center py-0 px-1"
-            active={"edit_content" == tab_option}
+            active={"edit_content" === tab_option}
             title={$_("edit") + " payload"}
             on:click={() => (tab_option = "edit_content")}
           >
@@ -799,7 +793,7 @@
             color="success"
             size="sm"
             class="justify-content-center text-center py-0 px-1"
-            active={"workflow" == tab_option}
+            active={"workflow" === tab_option}
             title={$_("edit") + " payload"}
             on:click={() => (tab_option = "workflow")}
           >
@@ -813,7 +807,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"attachments" == tab_option}
+        active={"attachments" === tab_option}
         title={$_("attachments")}
         on:click={() => (tab_option = "attachments")}
       >
@@ -824,7 +818,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"history" == tab_option}
+        active={"history" === tab_option}
         title={$_("history")}
         on:click={() => (tab_option = "history")}
       >
