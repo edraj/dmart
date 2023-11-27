@@ -18,6 +18,50 @@ class Request(BaseModel):
     space_name: str = Field(..., pattern=regex.SPACENAME)
     request_type: RequestType
     records: list[core.Record]
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "space_name": "data",
+                    "request_type": "create",
+                    "records": [
+                        {
+                            "resource_type": "content",
+                            "shortname": "auto",
+                            "subpath": "/users",
+                            "attributes": {
+                                "is_active": True,
+                                "slug": None,
+                                "displayname": {
+                                    "en": "name en",
+                                    "ar": "name ar",
+                                    "kd": "name kd"
+                                },
+                                "description": {
+                                    "en": "desc en",
+                                    "ar": "desc ar",
+                                    "kd": "desc kd"
+                                },
+                                "tags": [],
+                                "payload": {
+                                    "content_type": "json",
+                                    "schema_shortname": "user",
+                                    "body": {
+                                        "email": "myname@gmail.com",
+                                        "first_name": "John",
+                                        "language": "en",
+                                        "last_name": "Doo",
+                                        "mobile": "7999311703"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    }
 
 class RedisReducer(BaseModel):
     reducer_name: str
@@ -63,6 +107,35 @@ class Query(BaseModel):
         BaseModel.__init__(self, **data)
         if self.limit == -1:
             self.limit = settings.max_query_limit 
+            
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "type": "search",
+                    "space_name": "acme",
+                    "subpath": "/users",
+                    "filter_types": [
+                    ],
+                    "retrieve_attachments": True,
+                    "retrieve_json_payload": True,
+                    "validate_schema": True,
+                    "filter_shortnames": [],
+                    "filter_tags": [],
+                    "filter_schema_names": ["user"],
+                    "search": "@first_name:joh*",
+                    "limit": 10,
+                    "offset": 0,
+                    "exclude_fields": [],
+                    "include_fields": [],
+                    "from_date": None,
+                    "to_date": None,
+                    "sort_type": "ascending",
+                    "sort_by": "created_at"
+                }
+            ]
+        }
+    }
 
 
 class Error(BaseModel):

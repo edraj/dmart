@@ -1112,12 +1112,12 @@ async def serve_request(
 )
 async def update_state(
     logged_in_user=Depends(JWTBearer()),
-    space_name: str = Path(..., pattern=regex.SPACENAME),
-    subpath: str = Path(..., pattern=regex.SUBPATH),
-    shortname: str = Path(..., pattern=regex.SHORTNAME),
-    action: str = Path(...),
-    resolution: str | None = Body(None, embed=True),
-    comment: str | None = Body(None, embed=True),
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+    shortname: str = Path(..., pattern=regex.SHORTNAME, examples=["unique_shortname"]),
+    action: str = Path(..., examples=["approve"]),
+    resolution: str | None = Body(None, embed=True, examples=["Ticket state resolution"]),
+    comment: str | None = Body(None, embed=True, examples=["Nice ticket"]),
     branch_name: str | None = settings.default_branch,
 ) -> api.Response:
     spaces = await get_spaces()
@@ -1324,11 +1324,11 @@ async def update_state(
 )
 async def retrieve_entry_or_attachment_payload(
     resource_type: ResourceType,
-    space_name: str = Path(..., pattern=regex.SPACENAME),
-    subpath: str = Path(..., pattern=regex.SUBPATH),
-    shortname: str = Path(..., pattern=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+    shortname: str = Path(..., pattern=regex.SHORTNAME, examples=["unique_shortname"]),
     schema_shortname: str | None = None,
-    ext: str = Path(..., pattern=regex.EXT),
+    ext: str = Path(..., pattern=regex.EXT, examples=["png"]),
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
@@ -1416,7 +1416,7 @@ async def retrieve_entry_or_attachment_payload(
 async def create_or_update_resource_with_payload(
     payload_file: UploadFile,
     request_record: UploadFile,
-    space_name: str = Form(...),
+    space_name: str = Form(..., examples=["data"]),
     owner_shortname=Depends(JWTBearer()),
 ):
     # NOTE We currently make no distinction between create and update.
@@ -1579,9 +1579,9 @@ async def create_or_update_resource_with_payload(
 async def import_resources_from_csv(
     resources_file: UploadFile,
     resource_type: ResourceType,
-    space_name: str = Path(..., pattern=regex.SPACENAME),
-    subpath: str = Path(..., pattern=regex.SUBPATH),
-    schema_shortname: str = Path(..., pattern=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+    schema_shortname: str = Path(..., pattern=regex.SHORTNAME, examples=["model_schema"]),
     owner_shortname=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ):
@@ -1724,9 +1724,9 @@ async def import_resources_from_csv(
 )
 async def retrieve_entry_meta(
     resource_type: ResourceType,
-    space_name: str = Path(..., pattern=regex.SPACENAME),
-    subpath: str = Path(..., pattern=regex.SUBPATH),
-    shortname: str = Path(..., pattern=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+    shortname: str = Path(..., pattern=regex.SHORTNAME, examples=["unique_shortname"]),
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
     validate_schema: bool = True,
@@ -1919,8 +1919,8 @@ async def get_entry_by_slug(
 
 @router.get("/health/{health_type}/{space_name}", response_model_exclude_none=True)
 async def get_space_report(
-    space_name: str,
-    health_type: str,
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    health_type: str = Path(..., examples=["soft", "hard"]),
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ):
