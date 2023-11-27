@@ -302,7 +302,8 @@
         ],
       };
       response = await request(request_body);
-    } else if (entryType === "folder") {
+    }
+    else if (entryType === "folder") {
       const request_body = {
         space_name,
         request_type: RequestType.create,
@@ -321,12 +322,9 @@
     }
     if (response.status === "success") {
       showToast(Level.info);
-      contentShortname = "";
-      isModalOpen = false;
-
-      oldContentMeta = structuredClone(contentMeta);
-      oldContent = structuredClone(contentContent);
-    } else {
+      window.location.reload();
+    }
+    else {
       showToast(Level.warn);
     }
   }
@@ -400,7 +398,7 @@
 
     if (response.status === "success") {
       showToast(Level.info);
-      refresh = {};
+      window.location.reload();
     } else {
       showToast(Level.warn, response.error.message);
     }
