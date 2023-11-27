@@ -216,7 +216,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             if not invitation_token:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
-                    api.Error(type="jwtauth", code=12,
+                    api.Error(type="jwtauth", code=125,
                               message="Invalid invitation"),
                 )
 
@@ -738,7 +738,7 @@ async def otp_request(
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
             type="request",
-            code=401,
+            code=413,
             message="mismatch with the information provided",
         ),
     )

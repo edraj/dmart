@@ -18,7 +18,7 @@ def decode_jwt(token: str) -> dict[str, Any]:
     except Exception:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="jwtauth", code=12, message="Invalid Token [1]"),
+            api.Error(type="jwtauth", code=27, message="Invalid Token [1]"),
         )
     if (
         not decoded_token
@@ -27,12 +27,12 @@ def decode_jwt(token: str) -> dict[str, Any]:
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="jwtauth", code=12, message="Invalid Token [2]"),
+            api.Error(type="jwtauth", code=27, message="Invalid Token [2]"),
         )
     if decoded_token["expires"] <= time():
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="jwtauth", code=13, message="Expired Token"),
+            api.Error(type="jwtauth", code=28, message="Expired Token"),
         )
 
     if isinstance(decoded_token["data"], dict):

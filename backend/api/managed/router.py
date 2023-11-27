@@ -409,7 +409,7 @@ async def serve_space(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=212,
+                        code=203,
                         message="Space name provided is empty or invalid [2]",
                     ),
                 )
@@ -1107,7 +1107,7 @@ async def serve_request(
             status_code=400,
             error=api.Error(
                 type="request",
-                code=400,
+                code=102,
                 message="Something went wrong",
                 info=[{"successfull": records, "failed": failed_records}],
             ),
@@ -1135,7 +1135,7 @@ async def update_state(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=202,
+                code=203,
                 message="Space name provided is empty or invalid [4]",
             ),
         )
@@ -1439,7 +1439,7 @@ async def create_or_update_resource_with_payload(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=202,
+                code=203,
                 message="Space name provided is empty or invalid [5]",
             ),
         )
@@ -1945,7 +1945,7 @@ async def get_space_report(
     if logged_in_user != "dmart":
         raise api.Exception(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            error=api.Error(type="access", code=401, message="Not allowed"),
+            error=api.Error(type="access", code=405, message="Not allowed"),
         )
 
     spaces = await get_spaces()
@@ -1991,7 +1991,7 @@ async def lock_entry(
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
             error=api.Error(
-                type="db", code=12, message="requested object is not found"
+                type="db", code=17, message="requested object is not found"
             ),
         )
 

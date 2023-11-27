@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
-from pydantic import  ValidationError
+from pydantic import ValidationError
 from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
@@ -42,6 +42,7 @@ from api.info.router import router as info
 
 from utils.redis_services import RedisServices
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up")
@@ -68,7 +69,6 @@ async def lifespan(app: FastAPI):
     await RedisServices.POOL.aclose()
     await RedisServices.POOL.disconnect(True)
     print('{"stage":"shutting down"}')
-
 
 
 app = FastAPI(
@@ -153,6 +153,7 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
 
 app.add_middleware(CustomRequestMiddleware)
 
+
 @app.middleware("http")
 async def middle(request: Request, call_next):
     """Wrapper function to manage errors and logging"""
@@ -229,7 +230,7 @@ async def middle(request: Request, call_next):
             content={
                 "status": "failed",
                 "error": {
-                    "code": 400,
+                    "code": 422,
                     "message": "Validation error [3]",
                     "info": [{
                         "loc": list(e.path),
@@ -270,11 +271,11 @@ async def middle(request: Request, call_next):
     referer = request.headers.get(
         "referer",
         request.headers.get("origin",
-        request.headers.get("x-forwarded-proto", "http")
-        + "://"
-        + request.headers.get(
-            "x-forwarded-host", f"{settings.listening_host}:{settings.listening_port}"
-        )),
+                            request.headers.get("x-forwarded-proto", "http")
+                            + "://"
+                            + request.headers.get(
+                                "x-forwarded-host", f"{settings.listening_host}:{settings.listening_port}"
+                            )),
     )
     origin = urlparse(referer)
     response.headers[
@@ -322,11 +323,11 @@ async def middle(request: Request, call_next):
 
     if exception_data is not None:
         extra["props"]["exception"] = exception_data
-    if (hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict) 
-        and isinstance(extra["props"]["request"], dict)):
+    if (hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict)
+            and isinstance(extra["props"]["request"], dict)):
         extra["props"]["request"]["body"] = request.state.request_body
-    if (response_body and isinstance(extra, dict) and isinstance(extra["props"], dict) 
-        and isinstance(extra["props"]["response"], dict)):
+    if (response_body and isinstance(extra, dict) and isinstance(extra["props"], dict)
+            and isinstance(extra["props"]["response"], dict)):
         extra["props"]["response"]["body"] = response_body
 
     if response.status_code >= 400 and response.status_code < 500:
@@ -344,6 +345,8 @@ app.add_middleware(
     header_name='X-Correlation-ID',
     update_request_header=False,
 )
+
+
 @app.get("/", include_in_schema=False)
 async def root():
     """Dummy api end point"""
@@ -361,7 +364,8 @@ async def space_backup(key: str):
     if not key or key != "ABC":
         return api.Response(
             status=api.Status.failed,
-            error=api.Error(type="git", code=555, message="Api key is invalid"),
+            error=api.Error(type="git", code=555,
+                            message="Api key is invalid"),
         )
 
     import subprocess
@@ -418,8 +422,9 @@ async def catchall() -> None:
             type="catchall", code=230, message="Requested method or path is invalid"
         ),
     )
-    
+
 load_langs()
+
 
 async def main():
     config = Config()
