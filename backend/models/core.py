@@ -103,6 +103,44 @@ class Record(BaseModel):
             self.shortname == other.shortname and
             self.subpath == other.subpath
         )
+        
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "resource_type": "content",
+                    "shortname": "auto",
+                    "subpath": "/users",
+                    "attributes": {
+                        "is_active": True,
+                        "slug": None,
+                        "displayname": {
+                            "en": "name en",
+                            "ar": "name ar",
+                            "kd": "name kd"
+                        },
+                        "description": {
+                            "en": "desc en",
+                            "ar": "desc ar",
+                            "kd": "desc kd"
+                        },
+                        "tags": [],
+                        "payload": {
+                            "content_type": "json",
+                            "schema_shortname": "user",
+                            "body": {
+                                "email": "myname@gmail.com",
+                                "first_name": "John",
+                                "language": "en",
+                                "last_name": "Doo",
+                                "mobile": "7999311703"
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
 
 
 class Translation(Resource):
