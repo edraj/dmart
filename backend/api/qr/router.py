@@ -18,9 +18,9 @@ router = APIRouter()
 @router.get("/generate/{resource_type}/{space_name}/{subpath:path}/{shortname}")
 async def generate_qr_user_profile(
     resource_type: ResourceType = Path(...),
-    space_name: str = Path(..., pattern=regex.SPACENAME),
-    subpath: str = Path(..., pattern=regex.SUBPATH),
-    shortname: str = Path(..., pattern=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+    shortname: str = Path(..., pattern=regex.SHORTNAME, examples=["unique_shortname"]),
     logged_in_user=Depends(JWTBearer()),
 ) -> StreamingResponse:
     data : str | dict = await retrieve_entry_meta(
@@ -56,9 +56,9 @@ async def generate_qr_user_profile(
 @router.post("/validate")
 async def validate_qr_user_profile(
     resource_type: ResourceType = Body(...),
-    space_name: str = Body(..., pattern=regex.SPACENAME),
-    subpath: str = Body(..., pattern=regex.SUBPATH),
-    shortname: str = Body(..., pattern=regex.SHORTNAME),
+    space_name: str = Body(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Body(..., pattern=regex.SUBPATH, examples=["/content"]),
+    shortname: str = Body(..., pattern=regex.SHORTNAME, examples=["unique_shortname"]),
     logged_in_user=Depends(JWTBearer()),
     qr_data: str = Body(..., embed=True),
 ):
