@@ -4,7 +4,7 @@ from pytests.base_test import (
     DEMO_SPACE,
     DEMO_SUBPATH,
 )
-from test_resource_and_attachment import json_entry_shortname
+from pytests.feature.test_resource_and_attachment import json_entry_shortname
 from fastapi import status
 from models.enums import RequestType
 
