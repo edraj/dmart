@@ -445,7 +445,7 @@ async def serve_space(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(
                     type="request",
-                    code=401,
+                    code=412,
                     message="Not allowed request",
                 ),
             )
@@ -2099,7 +2099,7 @@ async def cancel_lock(
             status_code=status.HTTP_403_FORBIDDEN,
             error=api.Error(
                 type="lock",
-                code=30,
+                code=31,
                 message="Lock does not exist or you have no access",
             ),
         )

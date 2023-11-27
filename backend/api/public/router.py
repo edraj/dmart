@@ -351,7 +351,7 @@ async def create_entry(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=401,
+                code=402,
                 message="Not allowed schema_shortname",
             ),
         )

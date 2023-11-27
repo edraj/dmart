@@ -46,7 +46,7 @@ class JWTBearer(HTTPBearer):
         super(JWTBearer, self).__init__(auto_error=auto_error)
 
     async def __call__(self, request: Request) -> str | None:  # type: ignore
-        user_shortname : str | None = None
+        user_shortname: str | None = None
         try:
             # Handle token received in Auth header
             credentials: Optional[HTTPAuthorizationCredentials] = await super(
@@ -67,7 +67,8 @@ class JWTBearer(HTTPBearer):
             if not user_shortname:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
-                    api.Error(type="jwtauth", code=13, message="Not authenticated [1]"),
+                    api.Error(type="jwtauth", code=13,
+                              message="Not authenticated [1]"),
                 )
 
             async with RedisServices() as redis:
@@ -78,7 +79,7 @@ class JWTBearer(HTTPBearer):
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(
-                            type="jwtauth", code=11, message="Not authenticated [2]"
+                            type="jwtauth", code=13, message="Not authenticated [2]"
                         ),
                     )
                 # Update the session with a new TTL
