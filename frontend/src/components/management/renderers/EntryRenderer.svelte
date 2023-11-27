@@ -3,17 +3,17 @@
   import Attachments from "../Attachments.svelte";
   import { onDestroy, onMount } from "svelte";
   import {
-      QueryType,
-      RequestType,
-      ResourceType,
-      ResponseEntry,
-      Status,
-      query,
-      request,
-      retrieve_entry,
-      ContentType,
-      upload_with_payload,
-      csv, space,
+    QueryType,
+    RequestType,
+    ResourceType,
+    ResponseEntry,
+    Status,
+    query,
+    request,
+    retrieve_entry,
+    ContentType,
+    upload_with_payload,
+    csv, space,
   } from "@/dmart";
   import {
     Form,
@@ -92,6 +92,7 @@
 
   let contentContent: any = null;
   let validator: Validator = createAjvValidator({ schema: {} });
+  let validatorContent: Validator = createAjvValidator({ schema: {} });
   let entryContent: any;
 
   const resourceTypes = [ResourceType.content];
@@ -114,7 +115,7 @@
   ];
 
   let selectedSchemaContent: any = {};
-  let selectedSchemaData = {};
+  let selectedSchemaData: any = {};
 
   async function checkWorkflowsSubpath() {
     const chk = await retrieve_entry(
@@ -350,7 +351,6 @@
             schema = {};
             return;
         }
-
         if (schema_data?.payload?.body) {
           schema = schema_data.payload.body;
           cleanUpSchema(schema.properties);
@@ -408,6 +408,7 @@
 
   let schemaContent = {json:{}, text: undefined};
   let isSchemaEntryInForm = true;
+  let isContentEntryInForm = true;
   async function handleSubmit(event: Event) {
     event.preventDefault();
 
@@ -456,21 +457,25 @@
       ) {
         let body: any;
         if (selectedContentType === "json") {
-          if (
-            selectedSchemaContent != null &&
-            selectedSchemaData &&
-            Object.keys(selectedSchemaData).length !== 0
-          ) {
-            if (!schemaFormRef.reportValidity()) {
-              return;
+            if (isContentEntryInForm){
+                if (
+                    selectedSchemaContent != null &&
+                    selectedSchemaData &&
+                    Object.keys(selectedSchemaData).length !== 0
+                ) {
+                    if (!schemaFormRef.reportValidity()) {
+                        return;
+                    }
+                    body = selectedSchemaData;
+                }
             }
-            body = selectedSchemaData;
-          } else {
-            body = entryContent.json
-              ? structuredClone(entryContent.json)
-              : JSON.parse(entryContent.text);
-          }
-        } else {
+            else {
+                body = entryContent.json
+                    ? structuredClone(entryContent.json)
+                    : JSON.parse(entryContent.text);
+            }
+        }
+        else {
           body = entryContent;
         }
 
@@ -660,8 +665,6 @@
   let schemaForm: SchemaForm;
   let uischema = {};
   $: {
-    console.log({oldSelectedSchema});
-    console.log({selectedSchema});
     if (oldSelectedSchema !== selectedSchema && selectedSchema !== '') {
       (async () => {
         const _selectedSchemaContent = await retrieve_entry(
@@ -673,6 +676,8 @@
         );
         selectedSchemaContent = _selectedSchemaContent?.payload?.body ?? {};
         delete selectedSchemaContent.required;
+        cleanUpSchema(selectedSchemaContent.properties);
+        validatorContent = createAjvValidator({ schema:  selectedSchemaContent });
         oldSelectedSchema = selectedSchema;
       })();
     }
@@ -705,9 +710,7 @@
 >
   <ModalHeader toggle={modalToggle}>
     Creating an {new_resource_type} under
-    <span class="text-success">{space_name}</span>/<span class="text-primary"
-      >{subpath}</span
-    >
+    <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>
   </ModalHeader>
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
@@ -726,7 +729,6 @@
                 {/each}
               </Input>
             {/if}
-
             {#if new_resource_type !== "schema"}
               {#if !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) ) && new_resource_type !== "ticket"}
                 <Label for="content_type" class="mt-3">Content type</Label>
@@ -800,15 +802,26 @@
               />
             {/if}
             {#if selectedContentType === "json"}
-              {#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}
                 <Label class="mt-3">Payload</Label>
-                <SchemaForm
-                  bind:ref={schemaFormRef}
-                  schema={selectedSchemaContent}
-                  bind:data={selectedSchemaData}
-                />
+                <TabContent on:tab={(e) => (isContentEntryInForm = e.detail==="form")}>
+                  {#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}
+                  <TabPane tabId="form" tab="Form" active>
+                    <SchemaForm
+                      bind:ref={schemaFormRef}
+                      schema={selectedSchemaContent}
+                      bind:data={selectedSchemaData}
+                    />
+                  </TabPane>
+                 {/if}
+                  <TabPane tabId="editor" tab="Editor">
+                    <JSONEditor
+                      mode={Mode.text}
+                      bind:content={entryContent}
+                      bind:validator={validatorContent}
+                    />
+                  </TabPane>
+                </TabContent>
               {/if}
-            {/if}
             {#if selectedContentType === "text"}
               <Label class="mt-3">Payload</Label>
               <Input type="textarea" bind:value={entryContent} />
