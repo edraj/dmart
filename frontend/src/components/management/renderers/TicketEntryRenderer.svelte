@@ -36,8 +36,8 @@
     createAjvValidator,
   } from "svelte-jsoneditor";
   import { status_line } from "@/stores/management/status_line";
-  import { timeAgo } from "../../../utils/timeago";
-  import { showToast, Level } from "../../../utils/toast";
+  import { timeAgo } from "@/utils/timeago";
+  import { showToast, Level } from "@/utils/toast";
   import { faSave } from "@fortawesome/free-regular-svg-icons";
   import history_cols from "@/stores/management/list_cols_history.json";
   import metaTicketSchema from "@/validations/meta.ticket.json";
@@ -148,7 +148,7 @@
         },
       ],
     });
-    if (response.status == Status.success) {
+    if (response.status === Status.success) {
       showToast(Level.info);
       oldContentMeta = structuredClone(contentMeta);
       oldContent = structuredClone(contentContent);
@@ -172,7 +172,7 @@
             },
           ],
         });
-        if (response.status == Status.success) {
+        if (response.status === Status.success) {
           showToast(Level.info);
           if (entry?.payload?.schema_shortname) {
             $goto(
@@ -259,7 +259,7 @@
       };
 
       const schema_data = await query(query_schema);
-      if (schema_data.status == "success" && schema_data.records.length > 0) {
+      if (schema_data.status === "success" && schema_data.records.length > 0) {
         schema = schema_data.records[0].attributes["payload"].body;
         cleanUpSchema(schema.properties);
         validator = createAjvValidator({ schema });
@@ -302,7 +302,8 @@
         ],
       };
       response = await request(request_body);
-    } else if (entryType === "folder") {
+    }
+    else if (entryType === "folder") {
       const request_body = {
         space_name,
         request_type: RequestType.create,
@@ -321,12 +322,9 @@
     }
     if (response.status === "success") {
       showToast(Level.info);
-      contentShortname = "";
-      isModalOpen = false;
-
-      oldContentMeta = structuredClone(contentMeta);
-      oldContent = structuredClone(contentContent);
-    } else {
+      window.location.reload();
+    }
+    else {
       showToast(Level.warn);
     }
   }
@@ -384,6 +382,7 @@
   }
 
   let ticket_status = null;
+  let ticket_action = null;
   let resolution = null;
   let comment;
   async function handleTicketSubmit(e) {
@@ -392,14 +391,14 @@
       space_name,
       subpath,
       entry.shortname,
-      ticket_status,
+      ticket_action,
       resolution,
       comment
     );
 
     if (response.status === "success") {
       showToast(Level.info);
-      refresh = {};
+      window.location.reload();
     } else {
       showToast(Level.warn, response.error.message);
     }
@@ -408,6 +407,30 @@
     isModalOpen = !isModalOpen;
     contentShortname = "";
   };
+
+  let ticketPayload = null;
+  async function get_ticket_payload() {
+      ticketPayload = await get_payload(ResourceType.content, space_name, "workflows", entry.workflow_shortname)
+      return ticketPayload;
+  }
+
+  let ticketStates = [];
+  $:{
+      if (ticketPayload){
+          ticketStates = ticketPayload.states.filter((e) => e.state === entry.state)[0]?.next;
+      }
+  }
+
+  let ticketResolutions = [];
+  $:{
+      if (ticketStates.length){
+          ticketResolutions = ticketPayload.states.filter((e) => e.state === ticket_status)[0]?.resolutions ?? [];
+      }
+  }
+
+  $:{
+      ticket_action = ticketStates?.filter((e) => e.state === ticket_status)[0]?.action ?? null;
+  }
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
@@ -496,7 +519,7 @@
           color="success"
           size="sm"
           class="justify-content-center text-center py-0 px-1"
-          active={"list" == tab_option}
+          active={"list" === tab_option}
           title={$_("list")}
           on:click={() => (tab_option = "list")}
         >
@@ -509,7 +532,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"view" == tab_option}
+        active={"view" === tab_option}
         title={$_("view")}
         on:click={() => (tab_option = "view")}
       >
@@ -522,7 +545,7 @@
           color="success"
           size="sm"
           class="justify-content-center text-center py-0 px-1"
-          active={"edit_meta" == tab_option}
+          active={"edit_meta" === tab_option}
           title={$_("edit") + " meta"}
           on:click={() => (tab_option = "edit_meta")}
         >
@@ -533,7 +556,7 @@
           color="success"
           size="sm"
           class="justify-content-center text-center py-0 px-1"
-          active={"edit_content" == tab_option}
+          active={"edit_content" === tab_option}
           title={$_("edit") + " payload"}
           on:click={() => (tab_option = "edit_content")}
         >
@@ -559,7 +582,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"attachments" == tab_option}
+        active={"attachments" === tab_option}
         title={$_("attachments")}
         on:click={() => (tab_option = "attachments")}
       >
@@ -570,7 +593,7 @@
         color="success"
         size="sm"
         class="justify-content-center text-center py-0 px-1"
-        active={"history" == tab_option}
+        active={"history" === tab_option}
         title={$_("history")}
         on:click={() => (tab_option = "history")}
       >
@@ -656,7 +679,7 @@
         style="text-align: left; direction: ltr; overflow: hidden auto;"
       >
         <Form class="px-5 mb-5" on:submit={handleTicketSubmit}>
-          {#await get_payload(ResourceType.content, space_name, "workflows", entry.workflow_shortname) then payload}
+          {#await get_ticket_payload() then payload}
             <FormGroup>
               <Label>State</Label>
               <!-- on:change={handleInputChange} -->
@@ -668,30 +691,30 @@
                 bind:value={ticket_status}
               >
                 <option value={null}>Select next state</option>
-                {#each payload.states
-                  .filter((e) => e.state === entry.state)[0]
-                  ?.next.map((e) => e.action) as state}
+                {#each ticketStates.map((e) => e.state) as state}
                   <option value={state}>{state}</option>
                 {/each}
               </Input>
             </FormGroup>
-            {#if payload.states.filter((e) => e.name === entry.state).length !== 0 && payload.states.filter((e) => e.name === entry.state)[0]?.resolutions.length !== 0}
-              <FormGroup>
-                <Label>Resolution</Label>
-                <Input
-                  class="w-25"
-                  type="select"
-                  name="resolution"
-                  placeholder="Resolution..."
-                  bind:value={resolution}
-                >
-                  <option value={null}>Select resolution</option>
-                  {#each payload.states.filter((e) => e.name === entry.state)[0]?.resolutions ?? [] as resolution}
-                    <option value={resolution}>{resolution}</option>
-                  {/each}
-                </Input>
-              </FormGroup>
-            {/if}
+            {#key ticket_status}
+              {#if ticketResolutions.length !== 0}
+                <FormGroup>
+                  <Label>Resolution</Label>
+                  <Input
+                    class="w-25"
+                    type="select"
+                    name="resolution"
+                    placeholder="Resolution..."
+                    bind:value={resolution}
+                  >
+                    <option value={null}>Select resolution</option>
+                    {#each ticketResolutions as resolution}
+                      <option value={resolution}>{resolution}</option>
+                    {/each}
+                  </Input>
+                </FormGroup>
+              {/if}
+            {/key}
           {/await}
           <FormGroup>
             <Label>Comment</Label>

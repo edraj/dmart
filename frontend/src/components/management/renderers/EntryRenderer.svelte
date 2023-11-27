@@ -269,35 +269,14 @@
         });
         if (response.status == Status.success) {
           showToast(Level.info);
-          if (entry?.payload?.schema_shortname) {
-            $goto(
-              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
-              {
-                space_name: space_name,
-                subpath,
-                shortname: data.shortname,
-                resource_type,
-                payload_type: entry?.payload?.content_type,
-                schema_name: entry.payload.schema_shortname,
-              }
-            );
-          } else {
-            $goto(
-              "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
-              {
-                space_name: space_name,
-                subpath,
-                shortname: data.shortname,
-                resource_type,
-              }
-            );
-          }
+          window.location.reload();
         } else {
           errorContent = response;
           showToast(Level.warn);
         }
       }
-    } else {
+    }
+    else {
       errorContent = response;
       showToast(Level.warn);
     }
