@@ -418,7 +418,7 @@
     }
   }
 
-  $: user &&
+  $: user && contentMeta &&
     (() => {
       const meta = contentMeta.json
         ? structuredClone(contentMeta.json)
@@ -432,7 +432,6 @@
       contentMeta = structuredClone(contentMeta);
     })();
 
-
   const toggleModal = () => {
     isModalOpen = !isModalOpen;
     contentShortname = "";
@@ -440,6 +439,10 @@
 
   $: {
     contentContent = structuredClone(contentContent);
+  }
+
+  $: {
+      console.log({contentMeta})
   }
 </script>
 
@@ -800,7 +803,6 @@
             >Save</Button
           >
         </Form>
-
         <JSONEditor
           bind:content={contentMeta}
           onRenderMenu={handleRenderMenu}
@@ -819,6 +821,7 @@
           style="text-align: left; direction: ltr; overflow: hidden auto;"
         >
           <JSONEditor
+            mode={Mode.text}
             bind:content={contentContent}
             onRenderMenu={handleRenderMenu}
             bind:validator={validatorContent}
