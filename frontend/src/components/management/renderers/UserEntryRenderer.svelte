@@ -119,10 +119,6 @@
   let schemaFormRef;
   let errorContent = null;
   async function handleSave() {
-      if (!schemaFormRef.reportValidity()) {
-          return;
-      }
-
     errorContent = null;
     const meta = contentMeta.json
       ? structuredClone(contentMeta.json)

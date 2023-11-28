@@ -54,7 +54,6 @@
   export let subpath: string;
   export let resource_type: ResourceType;
   export let schema_name: string | undefined = null;
-  export let refresh;
 
   const canUpdate = checkAccess("update", space_name, subpath, resource_type);
   const canDelete = checkAccess("delete", space_name, subpath, resource_type);

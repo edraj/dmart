@@ -457,8 +457,26 @@
         else {
           body = entryContent;
         }
-
-        request_body = {
+        if (new_resource_type === ResourceType.role){
+            request_body = {
+                space_name,
+                request_type: RequestType.create,
+                records: [
+                    {
+                        resource_type: ResourceType.role,
+                        shortname: contentShortname === "" ? "auto" : contentShortname,
+                        subpath,
+                        attributes: {
+                            ...body,
+                        },
+                    },
+                ],
+            };
+        } else {
+          if (workflowShortname){
+              request_body = {...request_body, workflow_shortname:workflowShortname}
+          }
+          request_body = {
           space_name,
           request_type: RequestType.create,
           records: [
@@ -468,13 +486,13 @@
               subpath,
               attributes: {
                 ...request_body,
-                workflow_shortname: workflowShortname,
                 is_active: true,
               },
             },
           ],
         };
-        if (new_resource_type === "ticket") {
+        }
+        if (new_resource_type === ResourceType.ticket) {
           request_body.records[0].attributes.workflow_shortname =
             workflowShortname;
           selectedContentType = ContentType.json;
@@ -489,14 +507,17 @@
           const content_type = selectedContentType
             ? selectedContentType
             : "json";
-          request_body.records[0].attributes.payload = {
-            content_type,
-            schema_shortname,
-            body,
-          };
+          if (request_body.records[0].attributes){
+              request_body.records[0].attributes.payload = {
+                  content_type,
+                  schema_shortname,
+                  body,
+              };
+          }
         }
         response = await request(request_body);
-      } else if (
+      }
+      else if (
         ["image", "python", "pdf", "audio", "video"].includes(
           selectedContentType
         )
