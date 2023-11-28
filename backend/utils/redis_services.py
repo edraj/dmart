@@ -17,6 +17,7 @@ from datetime import datetime
 from redis.commands.search import Search, aggregation
 from redis.commands.search.query import Query
 from utils.helpers import branch_path, camel_case, resolve_schema_references
+from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
 import models.api as api
 from fastapi import status
@@ -788,7 +789,7 @@ class RedisServices(object):
                         status_code=status.HTTP_403_FORBIDDEN,
                         error=api.Error(
                             type="lock",
-                            code=30,
+                            code=InternalErrorCode.LOCKED_ENTRY,
                             message=f"Entry is already locked by {lock_payload['owner_shortname']}",
                         ),
                     )

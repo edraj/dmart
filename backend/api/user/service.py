@@ -51,7 +51,7 @@ async def send_otp(msisdn: str, language: str):
 
     if status != 200:
         raise Exception(
-            status, Error(type="otp", code=100, message="OTP issue", info=[json])
+            status, Error(type="otp", code=InterruptedError.OTP_ISSUE, message="OTP issue", info=[json])
         )
 
     return json.get("data")
