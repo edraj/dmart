@@ -408,7 +408,7 @@ async def serve_query(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="request",
-                        codes=InternalErrorCode.NOT_ALLOWED,
+                        code=InternalErrorCode.NOT_ALLOWED,
                         message="You don't have permission to this action [16]",
                     ),
                 )
