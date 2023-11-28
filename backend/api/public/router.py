@@ -6,6 +6,7 @@ import utils.db as db
 import models.api as api
 from utils.helpers import branch_path, camel_case
 from utils.custom_validations import validate_payload_with_schema
+from utils.internal_error_code import InternalErrorCode
 import utils.regex as regex
 import models.core as core
 from fastapi.responses import FileResponse
@@ -106,7 +107,7 @@ async def retrieve_entry_meta(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=221, message="Request object is not available"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 
@@ -124,7 +125,7 @@ async def retrieve_entry_meta(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [14]",
             ),
         )
@@ -234,7 +235,7 @@ async def retrieve_entry_or_attachment_payload(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=220, message="Request object is not available"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 
@@ -252,7 +253,7 @@ async def retrieve_entry_or_attachment_payload(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [15]",
             ),
         )
@@ -349,7 +350,7 @@ async def create_entry(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="Not allowed schema_shortname",
             ),
         )
@@ -367,7 +368,7 @@ async def create_entry(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [13]",
             ),
         )
@@ -449,7 +450,7 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=220, message="Request object is not available"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 

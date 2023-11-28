@@ -10,6 +10,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic.fields import Field
 from models.enums import ContentType, Language, ResourceType
 from utils.access_control import access_control
+from utils.internal_error_code import InternalErrorCode
 from utils.jwt import sign_jwt
 from utils.plugin_manager import plugin_manager
 from utils.spaces import get_spaces
@@ -407,7 +408,7 @@ async def serve_query(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="request",
-                        code=401,
+                        code=InternalErrorCode.NOT_ALLOWED,
                         message="You don't have permission to this action [16]",
                     ),
                 )
@@ -509,7 +510,7 @@ async def serve_query(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="request",
-                        code=401,
+                        code=InternalErrorCode.NOT_ALLOWED,
                         message="You don't have permission to this action [17]",
                     ),
                 )
@@ -519,7 +520,7 @@ async def serve_query(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=408,
+                        code=InternalErrorCode.MISSING_DATA,
                         message="filter_shortnames is missing",
                     ),
                 )
@@ -798,7 +799,7 @@ async def redis_query_aggregate(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="query", code=250, message="only one argument is allowed in filter_schema_names"
+                type="query", code=InternalErrorCode.INVALID_STANDALONE_DATA, message="only one argument is allowed in filter_schema_names"
             ),
         )
 
@@ -1568,7 +1569,7 @@ async def get_entry_by_var(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=221, message="Requested object not found"
+                type="media", code=InternalErrorCode.MISSING_DATA, message="Requested object not found"
             ),
         )
 
@@ -1586,7 +1587,7 @@ async def get_entry_by_var(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [12]",
             ),
         )

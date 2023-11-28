@@ -4,6 +4,7 @@ from models.enums import LockAction
 from utils.helpers import arr_remove_common, branch_path, snake_case
 from datetime import datetime
 from models.enums import ContentType, ResourceType
+from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
 from utils.redis_services import RedisServices
 from utils.settings import settings
@@ -231,7 +232,7 @@ async def load(
             status_code=status.HTTP_404_NOT_FOUND,
             error=api.Error(
                 type="db",
-                code=12,
+                code=InternalErrorCode.OBJECT_NOT_FOUND,
                 message=f"Requested object not found @{space_name}/{subpath}/{shortname} {class_type=} {schema_shortname=}",
             ),
         )
@@ -293,7 +294,7 @@ async def create(
     if (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=30, message="already exists"),
+            error=api.Error(type="create", code=InternalErrorCode.SHORTNAME_ALREADY_EXIST, message="already exists"),
         )
 
     if not path.is_dir():
@@ -315,7 +316,7 @@ async def save_payload(
     if not (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=30, message="metadata is missing"),
+            error=api.Error(type="create", code=InternalErrorCode.MISSING_DATA, message="metadata is missing"),
         )
 
     async with aiofiles.open(payload_file_path / payload_filename, "wb") as file:
@@ -351,7 +352,7 @@ async def save_payload_from_json(
     if not (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=30, message="metadata is missing"),
+            error=api.Error(type="create", code=InternalErrorCode.MISSING_DATA, message="metadata is missing"),
         )
 
     async with aiofiles.open(payload_file_path / payload_filename, "w") as file:
@@ -381,7 +382,7 @@ async def update(
     if not (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
-            error=api.Error(type="update", code=30, message="does not exist"),
+            error=api.Error(type="update", code=InternalErrorCode.OBJECT_NOT_FOUND, message="does not exist"),
         )
     async with RedisServices() as redis_services:
         if await redis_services.is_entry_locked(
@@ -389,7 +390,7 @@ async def update(
         ):
             raise api.Exception(
                 status_code=status.HTTP_403_FORBIDDEN,
-                error=api.Error(type="update", code=30, message="This entry is locked"),
+                error=api.Error(type="update", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
             )
         elif await redis_services.get_lock_doc(
             space_name, branch_name, subpath, meta.shortname
@@ -661,7 +662,7 @@ async def delete(
     if not path.is_dir() or not (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
-            error=api.Error(type="delete", code=30, message="does not exist"),
+            error=api.Error(type="delete", code=InternalErrorCode.OBJECT_NOT_FOUND, message="does not exist"),
         )
     async with RedisServices() as redis_services:
         if await redis_services.is_entry_locked(
@@ -669,7 +670,7 @@ async def delete(
         ):
             raise api.Exception(
                 status_code=status.HTTP_403_FORBIDDEN,
-                error=api.Error(type="delete", code=30, message="This entry is locked"),
+                error=api.Error(type="delete", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
             )
         else:
             # if the current can release the lock that means he is the right user

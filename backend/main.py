@@ -41,6 +41,7 @@ from api.user.router import router as user
 from api.info.router import router as info
 
 from utils.redis_services import RedisServices
+from utils.internal_error_code import InternalErrorCode
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -146,7 +147,7 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
     raise api.Exception(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         error=api.Error(
-            code=422, type="validation", message="Validation error [1]", info=err
+            code=InternalErrorCode.UNPROCESSABLE_ENTITY, type="validation", message="Validation error [1]", info=err
         ),
     )
 
@@ -229,7 +230,7 @@ async def middle(request: Request, call_next):
             content={
                 "status": "failed",
                 "error": {
-                    "code": 400,
+                    "code": 422,
                     "message": "Validation error [3]",
                     "info": [{
                         "loc": list(e.path),
@@ -361,7 +362,7 @@ async def space_backup(key: str):
     if not key or key != "ABC":
         return api.Response(
             status=api.Status.failed,
-            error=api.Error(type="git", code=555, message="Api key is invalid"),
+            error=api.Error(type="git", code=InternalErrorCode.INVALID_APP_KEY, message="Api key is invalid"),
         )
 
     import subprocess
@@ -415,7 +416,7 @@ async def catchall() -> None:
     raise api.Exception(
         status_code=status.HTTP_404_NOT_FOUND,
         error=api.Error(
-            type="catchall", code=230, message="Requested method or path is invalid"
+            type="catchall", code=InternalErrorCode.INVALID_ROUTE, message="Requested method or path is invalid"
         ),
     )
     

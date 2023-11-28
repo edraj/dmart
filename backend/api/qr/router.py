@@ -2,6 +2,7 @@ from time import time
 from fastapi import APIRouter, Depends, Path, Body, status
 from fastapi.responses import StreamingResponse
 from api.managed.router import retrieve_entry_meta
+from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer
 from io import BytesIO
 import segno
@@ -39,7 +40,7 @@ async def generate_qr_user_profile(
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            api.Error(type="qr", code=14, message="QR cannot be generated"),
+            api.Error(type="qr", code=InternalErrorCode.QR_ERROR, message="QR cannot be generated"),
         )
     m = hmac.new(settings.jwt_secret.encode(), digestmod=hashlib.blake2s)
     data = f"{resource_type}/{space_name}/{subpath}/{shortname}"
@@ -74,7 +75,7 @@ async def validate_qr_user_profile(
     if int(req_date) + 60 < int(time()):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            api.Error(type="qr", code=15, message="QR did expire"),
+            api.Error(type="qr", code=InternalErrorCode.QR_EXPIRED, message="QR did expire"),
         )
     data = f"{resource_type}/{space_name}/{subpath}/{shortname}"
     m = hmac.new(settings.jwt_secret.encode(), digestmod=hashlib.blake2s)
@@ -86,5 +87,5 @@ async def validate_qr_user_profile(
     else:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            api.Error(type="qr", code=16, message="Invalid data passed"),
+            api.Error(type="qr", code=InternalErrorCode.QR_INVALID, message="Invalid data passed"),
         )

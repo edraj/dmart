@@ -3,6 +3,7 @@ from time import time
 from typing import Optional, Any
 from fastapi import Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from utils.internal_error_code import InternalErrorCode
 
 from utils.settings import settings
 from utils.redis_services import RedisServices
@@ -18,7 +19,7 @@ def decode_jwt(token: str) -> dict[str, Any]:
     except Exception:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="jwtauth", code=12, message="Invalid Token [1]"),
+            api.Error(type="jwtauth", code=InternalErrorCode.INVALID_TOKEN, message="Invalid Token [1]"),
         )
     if (
         not decoded_token
@@ -27,12 +28,12 @@ def decode_jwt(token: str) -> dict[str, Any]:
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="jwtauth", code=12, message="Invalid Token [2]"),
+            api.Error(type="jwtauth", code=InternalErrorCode.INVALID_TOKEN, message="Invalid Token [2]"),
         )
     if decoded_token["expires"] <= time():
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="jwtauth", code=13, message="Expired Token"),
+            api.Error(type="jwtauth", code=InternalErrorCode.EXPIRED_TOKEN, message="Expired Token"),
         )
 
     if isinstance(decoded_token["data"], dict):
@@ -67,7 +68,7 @@ class JWTBearer(HTTPBearer):
             if not user_shortname:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
-                    api.Error(type="jwtauth", code=13, message="Not authenticated [1]"),
+                    api.Error(type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [1]"),
                 )
 
             async with RedisServices() as redis:
@@ -78,7 +79,7 @@ class JWTBearer(HTTPBearer):
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(
-                            type="jwtauth", code=11, message="Not authenticated [2]"
+                            type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [2]"
                         ),
                     )
                 # Update the session with a new TTL
