@@ -13,6 +13,7 @@ import utils.db as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
+from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, sign_jwt, decode_jwt, set_redis_session_key
 from typing import Any
 from utils.settings import settings
@@ -215,7 +216,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             if not invitation_token:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
-                    api.Error(type="jwtauth", code=12, message="Invalid invitation"),
+                    api.Error(type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
                 )
 
             data = decode_jwt(request.invitation)
@@ -225,7 +226,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="jwtauth",
-                        code=12,
+                        code=InternalErrorCode.INVALID_INVITATION,
                         message="Invalid invitation or data provided",
                     ),
                 )
@@ -247,7 +248,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="jwtauth",
-                        code=12,
+                        code=InternalErrorCode.INVALID_INVITATION,
                         message="Invalid invitation or data provided",
                     ),
                 )
@@ -270,7 +271,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="jwtauth",
-                        code=15,
+                        code=InternalErrorCode.INVALID_PASSWORD_RULES,
                         message="password dose not match required rules",
                     ),
                 )
@@ -278,7 +279,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 raise api.Exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     api.Error(
-                        type="request", code=422, message="Invalid identifier [2]"
+                        type="request", code=InternalErrorCode.UNPROCESSABLE_ENTITY, message="Invalid identifier [2]"
                     ),
                 )
 
@@ -295,7 +296,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(
                             type="auth",
-                            code=10,
+                            code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
                             message="Invalid username or password [1]",
                         ),
                     )
@@ -364,7 +365,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             return api.Response(status=api.Status.success, records=[record])
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="auth", code=14, message="Invalid username or password [2]"),
+            api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password [2]"),
         )
     except api.Exception as e:
         if e.error.type == "db":
@@ -372,7 +373,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(
                     type="auth",
-                    code=14,
+                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
                     message="Invalid username or password [3]",
                     info=[{"details": str(e)}],
                 ),
@@ -488,7 +489,7 @@ async def update_profile(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="jwtauth",
-                code=14,
+                code=InternalErrorCode.INVALID_PASSWORD_RULES,
                 message="password dose not match required rules",
             ),
         )
@@ -521,7 +522,7 @@ async def update_profile(
         ):
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="request", code=19, message="Credential does not match"),
+                api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA, message="Credential does not match"),
             )
 
     # if "force_password_change" in profile.attributes:
@@ -550,7 +551,7 @@ async def update_profile(
         if result is None or result != profile.attributes["confirmation"]:
             raise Exception(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
-                api.Error(type="request", code=422, message="Invalid confirmation code [1]"),
+                api.Error(type="request", code=InternalErrorCode.UNPROCESSABLE_ENTITY, message="Invalid confirmation code [1]"),
             )
 
         if profile_user.email:
@@ -732,7 +733,7 @@ async def otp_request(
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
             type="request",
-            code=401,
+            code=InternalErrorCode.UNMATCHED_DATA,
             message="mismatch with the information provided",
         ),
     )
@@ -763,7 +764,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
             type="request",
-            code=401,
+            code=InternalErrorCode.NOT_ALLOWED,
             message="mismatch with the information provided",
         ),
     )
@@ -775,7 +776,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="auth",
-                code=19,
+                code=InternalErrorCode.USERNAME_NOT_EXIST,
                 message="This username does not exist",
             ),
         )
@@ -885,7 +886,7 @@ async def confirm_otp(
                 status.HTTP_400_BAD_REQUEST,
                 Error(
                     type="OTP",
-                    code=308,
+                    code=InternalErrorCode.OTP_EXPIRED,
                     message="Expired OTP",
                 ),
             )
@@ -895,7 +896,7 @@ async def confirm_otp(
                 status.HTTP_400_BAD_REQUEST,
                 Error(
                     type="OTP",
-                    code=307,
+                    code=InternalErrorCode.OTP_INVALID,
                     message="Invalid OTP",
                 ),
             )
@@ -926,10 +927,10 @@ async def confirm_otp(
                 status.HTTP_400_BAD_REQUEST,
                 Error(
                     type="OTP",
-                    code=104,
+                    code=InternalErrorCode.OTP_FAILED,
                     message=response.error.message
                     if response.error
-                    else "Iternal error",
+                    else "Internal error",
                 ),
             )
 
@@ -962,7 +963,7 @@ async def user_reset(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action",
             ),
         )
@@ -1039,5 +1040,5 @@ async def validate_password(
     else:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="jwtauth", code=14, message="Password dose not match"),
+            api.Error(type="jwtauth", code=InternalErrorCode.PASSWORD_NOT_VALIDATED, message="Password dose not match"),
         )
