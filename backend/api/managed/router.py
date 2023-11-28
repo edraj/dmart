@@ -1311,7 +1311,7 @@ async def update_state(
 
     raise api.Exception(
         status.HTTP_400_BAD_REQUEST,
-        error=api.Error(type="ticket", code=InternalErrorCode.OBJECT_MISSING_DATA, message="Workflow body not found"),
+        error=api.Error(type="ticket", code=InternalErrorCode.MISSING_DATA, message="Workflow body not found"),
     )
 
 
@@ -2062,7 +2062,7 @@ async def lock_entry(
             user_shortname=logged_in_user,
         )
     )
-    
+
     return api.Response(
         status=api.Status.success,
         attributes={
