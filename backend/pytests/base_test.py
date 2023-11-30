@@ -21,9 +21,6 @@ for line in file.readlines():
     if line.strip().startswith("export ALIBABA"):
         alibaba = json.loads(str(line.strip().split("'")[1]))
 
-print("XXXXX superman", superman)
-print("XXXXX alibaba", alibaba)
-
 MANAGEMENT_SPACE: str = f"{settings.management_space}"
 USERS_SUBPATH: str = "users"
 DEMO_SPACE: str = "test"
