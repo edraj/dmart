@@ -457,13 +457,13 @@
         else {
           body = entryContent;
         }
-        if (new_resource_type === ResourceType.role){
+        if (new_resource_type === ResourceType.role || new_resource_type === ResourceType.permission){
             request_body = {
                 space_name,
                 request_type: RequestType.create,
                 records: [
                     {
-                        resource_type: ResourceType.role,
+                        resource_type: new_resource_type,
                         shortname: contentShortname === "" ? "auto" : contentShortname,
                         subpath,
                         attributes: {
@@ -497,7 +497,10 @@
             workflowShortname;
           selectedContentType = ContentType.json;
         }
-        if (selectedContentType !== null && new_resource_type !== ResourceType.role) {
+        if (selectedContentType !== null
+            && new_resource_type !== ResourceType.role
+            && new_resource_type !== ResourceType.permission
+        ) {
           const schema_shortname =
             subpath === "workflows"
               ? "workflow"

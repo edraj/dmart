@@ -804,6 +804,7 @@
           >
         </Form>
         <JSONEditor
+          mode={Mode.text}
           bind:content={contentMeta}
           onRenderMenu={handleRenderMenu}
           bind:validator={validatorMeta}
