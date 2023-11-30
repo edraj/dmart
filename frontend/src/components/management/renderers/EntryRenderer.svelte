@@ -497,7 +497,7 @@
             workflowShortname;
           selectedContentType = ContentType.json;
         }
-        if (selectedContentType !== null) {
+        if (selectedContentType !== null && new_resource_type !== ResourceType.role) {
           const schema_shortname =
             subpath === "workflows"
               ? "workflow"
