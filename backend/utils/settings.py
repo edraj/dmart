@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     google_application_credentials: str = ""
     default_branch: str = "master"
     management_space_branch: str = "master"
-    is_registrable: bool = False
+    is_registrable: bool = True
     all_spaces_mw: str = (
         "__all_spaces__"  # magic word used in access control refers to any space
     )
