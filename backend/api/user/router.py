@@ -139,7 +139,7 @@ if settings.is_registrable:
         user = core.User.from_record(record=record, owner_shortname=record.shortname)
         await validate_uniqueness(MANAGEMENT_SPACE, record)
 
-        separate_payload_data = {}
+        separate_payload_data: str | dict[str, Any] = {}
         if "payload" in record.attributes and "body" in record.attributes["payload"]:
             schema_shortname = getattr(user.payload, "schema_shortname", None)
             user.payload = core.Payload(
