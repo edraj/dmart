@@ -174,8 +174,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     async with RedisServices() as redis_services:
         for redis_document in search_res:
             redis_doc_dict = json.loads(redis_document)
-            if "json" in redis_doc_dict:
-                redis_doc_dict = json.loads(redis_doc_dict["json"])
             if (
                 redis_doc_dict.get("payload_doc_id")
                 and query.retrieve_json_payload
