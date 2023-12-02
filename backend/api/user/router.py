@@ -38,7 +38,7 @@ from .models.requests import (
 )
 import utils.regex as rgx
 from languages.loader import languages
-
+from uuid import uuid4
 
 router = APIRouter()
 
@@ -135,6 +135,10 @@ if settings.is_registrable:
                 user_shortname=record.shortname,
             )
         )
+
+        if record.shortname == settings.auto_uuid_rule:
+            record.uuid = uuid4()
+            record.shortname = str(record.uuid)[:8]
 
         user = core.User.from_record(record=record, owner_shortname=record.shortname)
         await validate_uniqueness(MANAGEMENT_SPACE, record)
