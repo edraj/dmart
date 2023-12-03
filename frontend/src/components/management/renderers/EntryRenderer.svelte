@@ -468,6 +468,7 @@
                         subpath,
                         attributes: {
                             ...body,
+                            is_active: true
                         },
                     },
                 ],
@@ -648,7 +649,29 @@
       entryContent = "";
     }
   }
-
+  $: {
+      if (new_resource_type === ResourceType.permission) {
+          entryContent = {
+              json: {
+                  "subpaths": {},
+                  "resource_types": [],
+                  "actions": [],
+                  "conditions": [],
+                  "restricted_fields": [],
+                  "allowed_fields_values": {}
+              },
+              text: undefined
+          };
+      }
+      else if (new_resource_type === ResourceType.role) {
+          entryContent = {
+              json: {
+                  "permissions": [],
+              },
+              text: undefined
+          };
+      }
+  }
   async function handleDownload() {
     const body = {
       space_name,
@@ -805,7 +828,13 @@
               />
             {/if}
             {#if selectedContentType === "json"}
-                <Label class="mt-3">Payload</Label>
+                <Label class="mt-3">{
+                    new_resource_type === ResourceType.permission
+                        ? "Permission definition"
+                        : new_resource_type === ResourceType.role
+                            ? "Role definition"
+                            : "Payload"
+                }</Label>
                 <TabContent on:tab={(e) => (isContentEntryInForm = e.detail==="form")}>
                   {#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}
                   <TabPane tabId="form" tab="Form" active>
@@ -816,7 +845,7 @@
                     />
                   </TabPane>
                  {/if}
-                  <TabPane tabId="editor" tab="Editor">
+                  <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>
                     <JSONEditor
                       mode={Mode.text}
                       bind:content={entryContent}
