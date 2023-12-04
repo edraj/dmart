@@ -735,7 +735,7 @@
   size={new_resource_type === "schema" ? "xl" : "lg"}
 >
   <ModalHeader toggle={modalToggle}>
-    Creating an {new_resource_type} under
+    Creating a {new_resource_type} under
     <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>
   </ModalHeader>
   <Form on:submit={async (e) => await handleSubmit(e)}>
