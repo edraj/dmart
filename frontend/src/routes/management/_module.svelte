@@ -10,6 +10,9 @@
     // import { useRegisterSW } from "virtual:pwa-register/svelte";
     import Offline from "@/components/Offline.svelte";
     import TopLoadingBar from "@/components/management/TopLoadingBar.svelte";
+    import { fly } from "svelte/transition";
+    import { isNetworkError } from "@/stores/management/error_network";
+    import { onMount } from "svelte";
 
     let isOffline = false;
 
@@ -28,14 +31,26 @@
       needRefresh.set(false);
     }*/
 
+    let _isNetworkError = false;
+    onMount(()=>{
+        isNetworkError.subscribe((v)=>{
+            _isNetworkError = v;
+        });
+    });
+
     let window_height: number;
     let header_height: number;
-
 </script>
 
 <svelte:window bind:innerHeight={window_height}/>
 
 <TopLoadingBar/>
+
+{#if _isNetworkError}
+    <div class="d-flex justify-content-center bg-danger text-white" transition:fly>
+        <p class="pt-3 fs-5">Unable to connect to the server.</p>
+    </div>
+{/if}
 
 {#if isOffline}
     <div class="container-fluid d-flex align-items-start py-3 h-100">
