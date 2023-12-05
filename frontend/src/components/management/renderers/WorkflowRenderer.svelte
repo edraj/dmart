@@ -588,7 +588,7 @@
     <ModalBody>
       <FormGroup>
         <h4>
-          Creating an entry under <span class="text-success">{space_name}</span
+          Creating a entry under <span class="text-success">{space_name}</span
           >/<span class="text-primary">{subpath}</span>
         </h4>
         {#if modalFlag === "create"}

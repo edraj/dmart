@@ -104,6 +104,17 @@ class AccessControl:
     def generate_user_permission_doc_id(self, user_shortname: str):
         return f"users_permissions_{user_shortname}"
 
+
+    async def is_user_verified(self, user_shortname: str | None, identifier: str | None):
+        async with RedisServices() as redis_services:
+            user: dict = await redis_services.get_doc_by_id(f"management:master:meta:users/{user_shortname}")
+            if identifier == "msisdn":
+                return user.get("is_msisdn_verified", True)
+            if identifier == "email":
+                return user.get("is_email_verified", True)
+            return False
+
+
     async def get_user_permissions(self, user_shortname: str) -> dict:
         async with RedisServices() as redis_services:
             user_permissions : dict = await redis_services.get_doc_by_id(self.generate_user_permission_doc_id(user_shortname))

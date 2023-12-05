@@ -79,7 +79,9 @@
   export let refresh = {};
 
   const canUpdate = checkAccess("update", space_name, subpath, resource_type);
-  const canDelete = checkAccess("delete", space_name, subpath, resource_type);
+  const canDelete = checkAccess("delete", space_name, subpath, resource_type) && !(
+      space_name==="management" && subpath==="/"
+  );
 
   let tab_option = resource_type === ResourceType.folder ? "list" : "view";
   let content = { json: entry, text: undefined };
@@ -735,7 +737,7 @@
   size={new_resource_type === "schema" ? "xl" : "lg"}
 >
   <ModalHeader toggle={modalToggle}>
-    Creating an {new_resource_type} under
+    Creating a {new_resource_type} under
     <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>
   </ModalHeader>
   <Form on:submit={async (e) => await handleSubmit(e)}>
