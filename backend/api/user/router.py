@@ -295,6 +295,15 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 key, value = list(identifier.items())[0]
                 if isinstance(value, str) and isinstance(key, str):
                     shortname = await access_control.get_user_by_criteria(key, value)
+                    if not (await access_control.is_user_verified(shortname, key)):
+                        raise api.Exception(
+                            status.HTTP_401_UNAUTHORIZED,
+                            api.Error(
+                                type="auth",
+                                code=InternalErrorCode.USER_ISNT_VERIFIED,
+                                message="This user is not verified",
+                            ),
+                        )
                 else: 
                     shortname = None
                 if shortname is None:

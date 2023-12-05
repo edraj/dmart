@@ -1,21 +1,25 @@
-import { Level, showToast } from "@/utils/toast.js";
-import {
-  isLoading,
-  isLoadingIsOkStat,
-} from "@/components/management/TopLoadingBar.svelte";
+import {Level, showToast} from "@/utils/toast.js";
+import {isLoading, isLoadingIsOkStat,} from "@/components/management/TopLoadingBar.svelte";
 
 import axios from "axios";
-import { signout } from "@/stores/user";
-import { website } from "../config.js";
+import {signout} from "@/stores/user";
+import {website} from "@/config";
+import {isNetworkError} from "@/stores/management/error_network";
 
 axios.defaults.withCredentials = true;
 
 axios.interceptors.request.use(
   function (config) {
+    if (config?.data?.space_name === "management" && config?.data?.request_type==="delete") {
+      showToast(Level.warn, "Cannot delete management space");
+      throw new axios.Cancel('Cannot delete management space');
+    }
+    isNetworkError.set(false);
     isLoading.update((n) => n + 1);
     return config;
   },
   function (error) {
+    isNetworkError.set(false);
     isLoading.update((n) => n - 1);
     isLoadingIsOkStat.set(false);
     return Promise.reject(error);
@@ -30,6 +34,14 @@ axios.interceptors.response.use(
     return response;
   },
   async function (error) {
+    if (error.name === "CanceledError"){
+      return Promise.reject(error);
+    }
+
+    if (error.code === "ERR_NETWORK"){
+      isNetworkError.set(true);
+    }
+
     if (
       !error?.request?.responseURL.includes("/profile") &&
       error?.response?.data?.error?.type === "jwtauth"
