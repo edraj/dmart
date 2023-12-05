@@ -350,8 +350,8 @@ async def create_entry(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=InternalErrorCode.NOT_ALLOWED,
-                message="Not allowed schema_shortname",
+                code=InternalErrorCode.MISSING_DATA,
+                message="You don't have permission to this action, mismatch with the information provided",
             ),
         )
 

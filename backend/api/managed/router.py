@@ -443,8 +443,8 @@ async def serve_space(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(
                     type="request",
-                    code=InternalErrorCode.NOT_ALLOWED,
-                    message="Not allowed request",
+                    code=InternalErrorCode.MISSING_DATA,
+                    message="You don't have permission to this action, mismatch with the information provided",
                 ),
             )
 
@@ -1928,8 +1928,8 @@ async def get_space_report(
             status_code=status.HTTP_401_UNAUTHORIZED,
             error=api.Error(
                 type="access", 
-                code=InternalErrorCode.NOT_ALLOWED, 
-                message="Not allowed"
+                code=InternalErrorCode.MISSING_DATA, 
+                message="You don't have permission to this action, mismatch with the information provided"
             ),
         )
 
