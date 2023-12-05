@@ -402,6 +402,15 @@ async def serve_space(
             )
 
         case api.RequestType.delete:
+            if request.space_name == "management":
+                raise api.Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    api.Error(
+                        type="request",
+                        code=InternalErrorCode.INVALID_SPACE_NAME,
+                        message="Cannot delete management space",
+                    ),
+                )
             if request.space_name not in spaces:
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
