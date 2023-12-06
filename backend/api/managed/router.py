@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from starlette.responses import StreamingResponse
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.custom_validations import validate_uniqueness
+from utils.internal_error_code import InternalErrorCode
 from utils.ticket_sys_utils import (
     set_init_state_from_request,
     set_init_state_from_record,
@@ -78,7 +79,7 @@ async def generate_csv_from_report_saved_query(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=220, message="Requested object not found"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Requested object not found"
             ),
         )
 
@@ -172,9 +173,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     deprecated_keys: set = set()
     async with RedisServices() as redis_services:
         for redis_document in search_res:
-            redis_doc_dict = redis_document.__dict__
-            if "json" in redis_doc_dict:
-                redis_doc_dict = json.loads(redis_doc_dict["json"])
+            redis_doc_dict = json.loads(redis_document)
             if (
                 redis_doc_dict.get("payload_doc_id")
                 and query.retrieve_json_payload
@@ -294,7 +293,7 @@ async def serve_space(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=203,
+                        code=InternalErrorCode.INVALID_SPACE_NAME,
                         message="Space name provided already existed [1]",
                     ),
                 )
@@ -311,7 +310,7 @@ async def serve_space(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="request",
-                        code=401,
+                        code=InternalErrorCode.NOT_ALLOWED,
                         message="You don't have permission to this action [1]",
                     ),
                 )
@@ -348,7 +347,7 @@ async def serve_space(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=203,
+                        code=InternalErrorCode.INVALID_SPACE_NAME,
                         message="Space name provided is empty or invalid [6]",
                     ),
                 )
@@ -364,7 +363,7 @@ async def serve_space(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="request",
-                        code=401,
+                        code=InternalErrorCode.NOT_ALLOWED,
                         message="You don't have permission to this action [2]",
                     ),
                 )
@@ -403,12 +402,21 @@ async def serve_space(
             )
 
         case api.RequestType.delete:
+            if request.space_name == "management":
+                raise api.Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    api.Error(
+                        type="request",
+                        code=InternalErrorCode.INVALID_SPACE_NAME,
+                        message="Cannot delete management space",
+                    ),
+                )
             if request.space_name not in spaces:
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=202,
+                        code=InternalErrorCode.INVALID_SPACE_NAME,
                         message="Space name provided is empty or invalid [2]",
                     ),
                 )
@@ -424,7 +432,7 @@ async def serve_space(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="request",
-                        code=401,
+                        code=InternalErrorCode.NOT_ALLOWED,
                         message="You don't have permission to this action [3]",
                     ),
                 )
@@ -444,7 +452,7 @@ async def serve_space(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(
                     type="request",
-                    code=401,
+                    code=InternalErrorCode.NOT_ALLOWED,
                     message="Not allowed request",
                 ),
             )
@@ -521,7 +529,7 @@ async def serve_request(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=202,
+                code=InternalErrorCode.INVALID_SPACE_NAME,
                 message="Space name provided is empty or invalid [3]",
             ),
         )
@@ -530,7 +538,7 @@ async def serve_request(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=202,
+                code=InternalErrorCode.MISSING_DATA,
                 message="Request records cannot be empty",
             ),
         )
@@ -577,7 +585,7 @@ async def serve_request(
                             status.HTTP_401_UNAUTHORIZED,
                             api.Error(
                                 type="request",
-                                code=401,
+                                code=InternalErrorCode.NOT_ALLOWED,
                                 message="You don't have permission to this action [4]",
                             ),
                         )
@@ -604,7 +612,7 @@ async def serve_request(
                             status.HTTP_400_BAD_REQUEST,
                             api.Error(
                                 type="request",
-                                code=400,
+                                code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
                                 message=f"This shortname {record.shortname} already exists",
                             ),
                         )
@@ -693,7 +701,7 @@ async def serve_request(
                                     ),
                                     subject=generate_subject("activation"),
                                 )
-                        
+
 
                     if separate_payload_data is not None and isinstance(
                         separate_payload_data, dict
@@ -790,7 +798,7 @@ async def serve_request(
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(
                             type="request",
-                            code=401,
+                            code=InternalErrorCode.NOT_ALLOWED,
                             message="You don't have permission to this action [5]",
                         ),
                     )
@@ -954,7 +962,7 @@ async def serve_request(
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(
                             type="request",
-                            code=401,
+                            code=InternalErrorCode.NOT_ALLOWED,
                             message="You don't have permission to this action [6]",
                         ),
                     )
@@ -996,7 +1004,7 @@ async def serve_request(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
                             type="move",
-                            code=202,
+                            code=InternalErrorCode.MISSING_DATA,
                             message="Please provide a destination path or a new shortname",
                         ),
                     )
@@ -1012,7 +1020,7 @@ async def serve_request(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
                             type="move",
-                            code=202,
+                            code=InternalErrorCode.MISSING_DATA,
                             message="Please provide a source path and a src shortname",
                         ),
                     )
@@ -1061,7 +1069,7 @@ async def serve_request(
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(
                             type="request",
-                            code=401,
+                            code=InternalErrorCode.NOT_ALLOWED,
                             message="You don't have permission to this action [7]",
                         ),
                     )
@@ -1098,7 +1106,7 @@ async def serve_request(
             status_code=400,
             error=api.Error(
                 type="request",
-                code=400,
+                code=InternalErrorCode.INVALID_DATA,
                 message="Something went wrong",
                 info=[{"successfull": records, "failed": failed_records}],
             ),
@@ -1112,12 +1120,12 @@ async def serve_request(
 )
 async def update_state(
     logged_in_user=Depends(JWTBearer()),
-    space_name: str = Path(..., pattern=regex.SPACENAME),
-    subpath: str = Path(..., pattern=regex.SUBPATH),
-    shortname: str = Path(..., pattern=regex.SHORTNAME),
-    action: str = Path(...),
-    resolution: str | None = Body(None, embed=True),
-    comment: str | None = Body(None, embed=True),
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+    shortname: str = Path(..., pattern=regex.SHORTNAME, examples=["unique_shortname"]),
+    action: str = Path(..., examples=["approve"]),
+    resolution: str | None = Body(None, embed=True, examples=["Ticket state resolution"]),
+    comment: str | None = Body(None, embed=True, examples=["Nice ticket"]),
     branch_name: str | None = settings.default_branch,
 ) -> api.Response:
     spaces = await get_spaces()
@@ -1126,7 +1134,7 @@ async def update_state(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=202,
+                code=InternalErrorCode.INVALID_SPACE_NAME,
                 message="Space name provided is empty or invalid [4]",
             ),
         )
@@ -1157,7 +1165,7 @@ async def update_state(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=220, message="Requested object not found"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Requested object not found"
             ),
         )
 
@@ -1176,7 +1184,7 @@ async def update_state(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [8]",
             ),
         )
@@ -1206,7 +1214,7 @@ async def update_state(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     error=api.Error(
                         type="transition",
-                        code=299,
+                        code=InternalErrorCode.TICKET_ALREADY_CLOSED,
                         message="Ticket is already in closed",
                     ),
                 )
@@ -1219,7 +1227,7 @@ async def update_state(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     error=api.Error(
                         type="transition",
-                        code=300,
+                        code=InternalErrorCode.INVALID_TICKET_STATUS,
                         message=response["message"],
                     ),
                 )
@@ -1242,7 +1250,7 @@ async def update_state(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         error=api.Error(
                             type="transition",
-                            code=301,
+                            code=InternalErrorCode.INVALID_TICKET_STATUS,
                             message=post_response["message"],
                         ),
                     )
@@ -1310,7 +1318,7 @@ async def update_state(
 
     raise api.Exception(
         status.HTTP_400_BAD_REQUEST,
-        error=api.Error(type="ticket", code=221, message="Workflow body not found"),
+        error=api.Error(type="ticket", code=InternalErrorCode.MISSING_DATA, message="Workflow body not found"),
     )
 
 
@@ -1324,11 +1332,11 @@ async def update_state(
 )
 async def retrieve_entry_or_attachment_payload(
     resource_type: ResourceType,
-    space_name: str = Path(..., pattern=regex.SPACENAME),
-    subpath: str = Path(..., pattern=regex.SUBPATH),
-    shortname: str = Path(..., pattern=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+    shortname: str = Path(..., pattern=regex.SHORTNAME, examples=["unique_shortname"]),
     schema_shortname: str | None = None,
-    ext: str = Path(..., pattern=regex.EXT),
+    ext: str = Path(..., pattern=regex.EXT, examples=["png"]),
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
@@ -1362,7 +1370,7 @@ async def retrieve_entry_or_attachment_payload(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=220, message="Requested object not found"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Requested object not found"
             ),
         )
 
@@ -1381,7 +1389,7 @@ async def retrieve_entry_or_attachment_payload(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [9]",
             ),
         )
@@ -1416,7 +1424,7 @@ async def retrieve_entry_or_attachment_payload(
 async def create_or_update_resource_with_payload(
     payload_file: UploadFile,
     request_record: UploadFile,
-    space_name: str = Form(...),
+    space_name: str = Form(..., examples=["data"]),
     owner_shortname=Depends(JWTBearer()),
 ):
     # NOTE We currently make no distinction between create and update.
@@ -1427,7 +1435,7 @@ async def create_or_update_resource_with_payload(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=202,
+                code=InternalErrorCode.INVALID_SPACE_NAME,
                 message="Space name provided is empty or invalid [5]",
             ),
         )
@@ -1449,7 +1457,7 @@ async def create_or_update_resource_with_payload(
             status.HTTP_406_NOT_ACCEPTABLE,
             api.Error(
                 type="attachment",
-                code=217,
+                code=InternalErrorCode.NOT_SUPPORTED_TYPE,
                 message="The file type is not supported",
             ),
         )
@@ -1482,7 +1490,7 @@ async def create_or_update_resource_with_payload(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [10]",
             ),
         )
@@ -1522,7 +1530,7 @@ async def create_or_update_resource_with_payload(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="attachment",
-                code=217,
+                code=InternalErrorCode.NOT_SUPPORTED_TYPE,
                 message="Only resources of type 'attachment' or 'content' are allowed",
             ),
         )
@@ -1579,9 +1587,9 @@ async def create_or_update_resource_with_payload(
 async def import_resources_from_csv(
     resources_file: UploadFile,
     resource_type: ResourceType,
-    space_name: str = Path(..., pattern=regex.SPACENAME),
-    subpath: str = Path(..., pattern=regex.SUBPATH),
-    schema_shortname: str = Path(..., pattern=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+    schema_shortname: str = Path(..., pattern=regex.SHORTNAME, examples=["model_schema"]),
     owner_shortname=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ):
@@ -1724,9 +1732,9 @@ async def import_resources_from_csv(
 )
 async def retrieve_entry_meta(
     resource_type: ResourceType,
-    space_name: str = Path(..., pattern=regex.SPACENAME),
-    subpath: str = Path(..., pattern=regex.SUBPATH),
-    shortname: str = Path(..., pattern=regex.SHORTNAME),
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+    shortname: str = Path(..., pattern=regex.SHORTNAME, examples=["unique_shortname"]),
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
     validate_schema: bool = True,
@@ -1761,7 +1769,7 @@ async def retrieve_entry_meta(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=221, message="Requested object not found"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Requested object not found"
             ),
         )
 
@@ -1780,7 +1788,7 @@ async def retrieve_entry_meta(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [11]",
             ),
         )
@@ -1896,7 +1904,7 @@ async def get_entry_by_slug(
 #                 status.HTTP_401_UNAUTHORIZED,
 #                 api.Error(
 #                     type="request",
-#                     code=401,
+#                     code=InternalErrorCode.NOT_ALLOWED,
 #                     message="You don't have permission to this action [12]",
 #                 ),
 #             )
@@ -1919,28 +1927,38 @@ async def get_entry_by_slug(
 
 @router.get("/health/{health_type}/{space_name}", response_model_exclude_none=True)
 async def get_space_report(
-    space_name: str,
-    health_type: str,
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    health_type: str = Path(..., examples=["soft", "hard"]),
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ):
     if logged_in_user != "dmart":
         raise api.Exception(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            error=api.Error(type="access", code=401, message="Not allowed"),
+            error=api.Error(
+                type="access", 
+                code=InternalErrorCode.NOT_ALLOWED, 
+                message="Not allowed"
+            ),
         )
 
     spaces = await get_spaces()
     if space_name not in spaces and space_name != "all":
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="media", code=221, message="Invalid space name"),
+            error=api.Error(
+                type="media", 
+                code=InternalErrorCode.INVALID_SPACE_NAME, 
+                message="Invalid space name"
+            ),
         )
     if health_type not in ["soft", "hard"]:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=221, message="Invalid health check type"
+                type="media", 
+                code=InternalErrorCode.INVALID_DATA, 
+                message="Invalid health check type"
             ),
         )
 
@@ -1971,10 +1989,10 @@ async def lock_entry(
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
             error=api.Error(
-                type="db", code=12, message="requested object is not found"
+                type="db", code=InternalErrorCode.DIR_NOT_FOUND, message="requested object is not found"
             ),
         )
-        
+
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
@@ -2051,7 +2069,7 @@ async def lock_entry(
             user_shortname=logged_in_user,
         )
     )
-    
+
     return api.Response(
         status=api.Status.success,
         attributes={
@@ -2079,11 +2097,11 @@ async def cancel_lock(
             status_code=status.HTTP_403_FORBIDDEN,
             error=api.Error(
                 type="lock",
-                code=30,
+                code=InternalErrorCode.LOCK_UNAVAILABLE,
                 message="Lock does not exist or you have no access",
             ),
         )
-        
+
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
@@ -2163,7 +2181,7 @@ async def execute(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=220, message="Request object is not available"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 

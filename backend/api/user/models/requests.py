@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Dict
 from pydantic import BaseModel, Field
+from utils.internal_error_code import InternalErrorCode
 import utils.regex as rgx
 from models.api import Exception, Error
 
@@ -20,7 +21,7 @@ class SendOTPRequest(BaseModel):
                 422,
                 Error(
                     type="OTP",
-                    code=100,
+                    code=InternalErrorCode.MISSING_DATA,
                     message="One of these [email, msisdn] should be set!",
                 ),
             )
@@ -30,7 +31,7 @@ class SendOTPRequest(BaseModel):
                 422,
                 Error(
                     type="OTP",
-                    code=101,
+                    code=InternalErrorCode.INVALID_STANDALONE_DATA,
                     message="Too many input has been passed",
                 ),
             )
@@ -44,11 +45,20 @@ class SendOTPRequest(BaseModel):
             500,
             Error(
                 type="OTP",
-                code=102,
+                code=InternalErrorCode.OTP_ISSUE,
                 message="Something went wrong",
             ),
         )
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "msisdn": "7777778110"
+                }
+            ]
+        }
+    }
 
 class PasswordResetRequest(BaseModel):
     msisdn: str | None = Field(None, pattern=rgx.MSISDN)
@@ -60,7 +70,7 @@ class PasswordResetRequest(BaseModel):
                 422,
                 Error(
                     type="OTP",
-                    code=100,
+                    code=InternalErrorCode.MISSING_DATA,
                     message="One of these [email, msisdn] should be set!",
                 ),
             )
@@ -70,7 +80,7 @@ class PasswordResetRequest(BaseModel):
                 422,
                 Error(
                     type="OTP",
-                    code=101,
+                    code=InternalErrorCode.INVALID_STANDALONE_DATA,
                     message="Too many input has been passed",
                 ),
             )
@@ -84,15 +94,32 @@ class PasswordResetRequest(BaseModel):
             500,
             Error(
                 type="password_reset",
-                code=102,
+                code=InternalErrorCode.PASSWORD_RESET_ERROR,
                 message="Something went wrong",
             ),
         )
 
-
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "msisdn": "7777778110"
+                }
+            ]
+        }
+    }
 class ConfirmOTPRequest(SendOTPRequest, BaseModel):
     code: str = Field(..., pattern=rgx.OTP_CODE)
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "code": "84293201"
+                }
+            ]
+        }
+    }
 
 class UserLoginRequest(BaseModel):
     shortname: str | None = Field(None, pattern=rgx.SHORTNAME)
@@ -118,3 +145,14 @@ class UserLoginRequest(BaseModel):
             return {"email": self.email}
 
         return None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "shortname": "john_doo",
+                    "password": "my_secure_password_@_93301"
+                }
+            ]
+        }
+    }

@@ -1,6 +1,7 @@
 """ Session Apis """
 import json
 import re
+from pathlib import Path
 import aiofiles
 from utils.generate_email import generate_subject
 from utils.generate_email import generate_email_from_template
@@ -13,6 +14,7 @@ import utils.db as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
+from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, sign_jwt, decode_jwt, set_redis_session_key
 from typing import Any
 from utils.settings import settings
@@ -36,7 +38,7 @@ from .models.requests import (
 )
 import utils.regex as rgx
 from languages.loader import languages
-
+from uuid import uuid4
 
 router = APIRouter()
 
@@ -50,9 +52,9 @@ USERS_SUBPATH: str = "users"
 )
 async def check_existing_user_fields(
     _=Depends(JWTBearer()),
-    shortname: str | None = Query(default=None, pattern=rgx.SHORTNAME),
-    msisdn: str | None = Query(default=None, pattern=rgx.EXTENDED_MSISDN),
-    email: str | None = Query(default=None, pattern=rgx.EMAIL),
+    shortname: str | None = Query(default=None, pattern=rgx.SHORTNAME, examples=["john_doo"]),
+    msisdn: str | None = Query(default=None, pattern=rgx.EXTENDED_MSISDN, examples=["7777778110"]),
+    email: str | None = Query(default=None, pattern=rgx.EMAIL, examples=["john_doo@mail.com"]),
 ):
     unique_fields = {"shortname": shortname, "msisdn": msisdn, "email_unescaped": email}
 
@@ -85,112 +87,117 @@ async def check_existing_user_fields(
     return api.Response(status=api.Status.success, attributes={"unique": True})
 
 
-# @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
-# async def create_user(record: core.Record) -> api.Response:
-#     """Register a new user by invitation"""
-#     if not record.attributes:
-#         raise api.Exception(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             error=api.Error(type="create", code=50, message="Empty attributes"),
-#         )
+if settings.is_registrable:
+    @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
+    async def create_user(record: core.Record) -> api.Response:
+        """Register a new user by invitation"""
+        if not record.attributes:
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(type="create", code=50, message="Empty attributes"),
+            )
 
-#     if "invitation" not in record.attributes:
-#         # TBD validate invitation (simply it is a jwt signed token )
-#         # jwt-signed shortname, email and expiration time
-#         raise api.Exception(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             error=api.Error(
-#                 type="create", code=50, message="bad or missign invitation token"
-#             ),
-#         )
+        if "invitation" not in record.attributes:
+            # TBD validate invitation (simply it is a jwt signed token )
+            # jwt-signed shortname, email and expiration time
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="create", code=50, message="bad or missign invitation token"
+                ),
+            )
 
-#     # TBD : Raise error if user already eists.
+        # TBD : Raise error if user already eists.
 
-#     if "password" not in record.attributes:
-#         raise api.Exception(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             error=api.Error(type="create", code=50, message="empty password"),
-#         )
-#     if not re.match(rgx.PASSWORD, record.attributes["password"]):
-#         raise api.Exception(
-#             status.HTTP_401_UNAUTHORIZED,
-#             api.Error(
-#                 type="jwtauth",
-#                 code=14,
-#                 message="password dose not match required rules",
-#             ),
-#         )
+        if "password" not in record.attributes:
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(type="create", code=50, message="empty password"),
+            )
+        if not re.match(rgx.PASSWORD, record.attributes["password"]):
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="jwtauth",
+                    code=14,
+                    message="password dose not match required rules",
+                ),
+            )
 
-#     await plugin_manager.before_action(
-#         core.Event(
-#             space_name=MANAGEMENT_SPACE,
-#             branch_name=MANAGEMENT_BRANCH,
-#             subpath=USERS_SUBPATH,
-#             shortname=record.shortname,
-#             action_type=core.ActionType.create,
-#             resource_type=ResourceType.user,
-#             user_shortname=record.shortname,
-#         )
-#     )
+        await plugin_manager.before_action(
+            core.Event(
+                space_name=MANAGEMENT_SPACE,
+                branch_name=MANAGEMENT_BRANCH,
+                subpath=USERS_SUBPATH,
+                shortname=record.shortname,
+                action_type=core.ActionType.create,
+                resource_type=ResourceType.user,
+                user_shortname=record.shortname,
+            )
+        )
 
-#     user = core.User.from_record(record=record, owner_shortname=record.shortname)
-#     await validate_uniqueness(MANAGEMENT_SPACE, record)
+        if record.shortname == settings.auto_uuid_rule:
+            record.uuid = uuid4()
+            record.shortname = str(record.uuid)[:8]
 
-#     separate_payload_data = {}
-#     if "payload" in record.attributes and "body" in record.attributes["payload"]:
-#         schema_shortname = getattr(user.payload, "schema_shortname", None)
-#         user.payload = core.Payload(
-#             content_type=ContentType.json,
-#             schema_shortname=schema_shortname,
-#             body="",
-#         )
-#         if user.payload:
-#             separate_payload_data = user.payload.body
-#             user.payload.body = record.shortname + ".json"
+        user = core.User.from_record(record=record, owner_shortname=record.shortname)
+        await validate_uniqueness(MANAGEMENT_SPACE, record)
 
-#         if user.payload and separate_payload_data:
-#             if not isinstance(separate_payload_data, str) and not isinstance(
-#                 separate_payload_data, Path
-#             ):
-#                 if user.payload.schema_shortname:
-#                     await validate_payload_with_schema(
-#                         payload_data=separate_payload_data,
-#                         space_name=MANAGEMENT_SPACE,
-#                         branch_name=MANAGEMENT_BRANCH,
-#                         schema_shortname=user.payload.schema_shortname,
-#                     )
+        separate_payload_data: str | dict[str, Any] = {}
+        if "payload" in record.attributes and "body" in record.attributes["payload"]:
+            schema_shortname = getattr(user.payload, "schema_shortname", None)
+            user.payload = core.Payload(
+                content_type=ContentType.json,
+                schema_shortname=schema_shortname,
+                body="",
+            )
+            if user.payload:
+                separate_payload_data = user.payload.body
+                user.payload.body = record.shortname + ".json"
 
-#     await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user, MANAGEMENT_BRANCH)
+            if user.payload and separate_payload_data:
+                if not isinstance(separate_payload_data, str) and not isinstance(
+                    separate_payload_data, Path
+                ):
+                    if user.payload.schema_shortname:
+                        await validate_payload_with_schema(
+                            payload_data=separate_payload_data,
+                            space_name=MANAGEMENT_SPACE,
+                            branch_name=MANAGEMENT_BRANCH,
+                            schema_shortname=user.payload.schema_shortname,
+                        )
 
-#     if separate_payload_data and isinstance(separate_payload_data, dict):
-#         await db.save_payload_from_json(
-#             MANAGEMENT_SPACE,
-#             USERS_SUBPATH,
-#             user,
-#             separate_payload_data,
-#             MANAGEMENT_BRANCH,
-#         )
-#     async with RedisServices() as redis_services:
-#         await redis_services.save_meta_doc(
-#             space_name=MANAGEMENT_SPACE,
-#             branch_name=MANAGEMENT_BRANCH,
-#             subpath=USERS_SUBPATH,
-#             meta=user,
-#         )
+        await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user, MANAGEMENT_BRANCH)
 
-#     await plugin_manager.after_action(
-#         core.Event(
-#             space_name=MANAGEMENT_SPACE,
-#             branch_name=MANAGEMENT_BRANCH,
-#             subpath=USERS_SUBPATH,
-#             shortname=record.shortname,
-#             action_type=core.ActionType.create,
-#             resource_type=ResourceType.user,
-#             user_shortname=record.shortname,
-#         )
-#     )
+        if separate_payload_data and isinstance(separate_payload_data, dict):
+            await db.save_payload_from_json(
+                MANAGEMENT_SPACE,
+                USERS_SUBPATH,
+                user,
+                separate_payload_data,
+                MANAGEMENT_BRANCH,
+            )
+        async with RedisServices() as redis_services:
+            await redis_services.save_meta_doc(
+                space_name=MANAGEMENT_SPACE,
+                branch_name=MANAGEMENT_BRANCH,
+                subpath=USERS_SUBPATH,
+                meta=user,
+            )
 
-#     return api.Response(status=api.Status.success)
+        await plugin_manager.after_action(
+            core.Event(
+                space_name=MANAGEMENT_SPACE,
+                branch_name=MANAGEMENT_BRANCH,
+                subpath=USERS_SUBPATH,
+                shortname=record.shortname,
+                action_type=core.ActionType.create,
+                resource_type=ResourceType.user,
+                user_shortname=record.shortname,
+            )
+        )
+
+        return api.Response(status=api.Status.success)
 
 
 @router.post(
@@ -215,7 +222,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             if not invitation_token:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
-                    api.Error(type="jwtauth", code=12, message="Invalid invitation"),
+                    api.Error(type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
                 )
 
             data = decode_jwt(request.invitation)
@@ -225,7 +232,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="jwtauth",
-                        code=12,
+                        code=InternalErrorCode.INVALID_INVITATION,
                         message="Invalid invitation or data provided",
                     ),
                 )
@@ -247,7 +254,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="jwtauth",
-                        code=12,
+                        code=InternalErrorCode.INVALID_INVITATION,
                         message="Invalid invitation or data provided",
                     ),
                 )
@@ -270,7 +277,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="jwtauth",
-                        code=15,
+                        code=InternalErrorCode.INVALID_PASSWORD_RULES,
                         message="password dose not match required rules",
                     ),
                 )
@@ -278,7 +285,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 raise api.Exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     api.Error(
-                        type="request", code=422, message="Invalid identifier [2]"
+                        type="request", code=InternalErrorCode.UNPROCESSABLE_ENTITY, message="Invalid identifier [2]"
                     ),
                 )
 
@@ -288,6 +295,15 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 key, value = list(identifier.items())[0]
                 if isinstance(value, str) and isinstance(key, str):
                     shortname = await access_control.get_user_by_criteria(key, value)
+                    if not (await access_control.is_user_verified(shortname, key)):
+                        raise api.Exception(
+                            status.HTTP_401_UNAUTHORIZED,
+                            api.Error(
+                                type="auth",
+                                code=InternalErrorCode.USER_ISNT_VERIFIED,
+                                message="This user is not verified",
+                            ),
+                        )
                 else: 
                     shortname = None
                 if shortname is None:
@@ -295,7 +311,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(
                             type="auth",
-                            code=10,
+                            code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
                             message="Invalid username or password [1]",
                         ),
                     )
@@ -364,7 +380,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             return api.Response(status=api.Status.success, records=[record])
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="auth", code=14, message="Invalid username or password [2]"),
+            api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password [2]"),
         )
     except api.Exception as e:
         if e.error.type == "db":
@@ -372,7 +388,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(
                     type="auth",
-                    code=14,
+                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
                     message="Invalid username or password [3]",
                     info=[{"details": str(e)}],
                 ),
@@ -488,7 +504,7 @@ async def update_profile(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="jwtauth",
-                code=14,
+                code=InternalErrorCode.INVALID_PASSWORD_RULES,
                 message="password dose not match required rules",
             ),
         )
@@ -521,7 +537,7 @@ async def update_profile(
         ):
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="request", code=19, message="Credential does not match"),
+                api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA, message="Credential does not match"),
             )
 
     # if "force_password_change" in profile.attributes:
@@ -550,7 +566,7 @@ async def update_profile(
         if result is None or result != profile.attributes["confirmation"]:
             raise Exception(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
-                api.Error(type="request", code=422, message="Invalid confirmation code [1]"),
+                api.Error(type="request", code=InternalErrorCode.UNPROCESSABLE_ENTITY, message="Invalid confirmation code [1]"),
             )
 
         if profile_user.email:
@@ -732,7 +748,7 @@ async def otp_request(
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
             type="request",
-            code=401,
+            code=InternalErrorCode.UNMATCHED_DATA,
             message="mismatch with the information provided",
         ),
     )
@@ -763,7 +779,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
             type="request",
-            code=401,
+            code=InternalErrorCode.NOT_ALLOWED,
             message="mismatch with the information provided",
         ),
     )
@@ -775,7 +791,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="auth",
-                code=19,
+                code=InternalErrorCode.USERNAME_NOT_EXIST,
                 message="This username does not exist",
             ),
         )
@@ -885,7 +901,7 @@ async def confirm_otp(
                 status.HTTP_400_BAD_REQUEST,
                 Error(
                     type="OTP",
-                    code=308,
+                    code=InternalErrorCode.OTP_EXPIRED,
                     message="Expired OTP",
                 ),
             )
@@ -895,7 +911,7 @@ async def confirm_otp(
                 status.HTTP_400_BAD_REQUEST,
                 Error(
                     type="OTP",
-                    code=307,
+                    code=InternalErrorCode.OTP_INVALID,
                     message="Invalid OTP",
                 ),
             )
@@ -926,17 +942,17 @@ async def confirm_otp(
                 status.HTTP_400_BAD_REQUEST,
                 Error(
                     type="OTP",
-                    code=104,
+                    code=InternalErrorCode.OTP_FAILED,
                     message=response.error.message
                     if response.error
-                    else "Iternal error",
+                    else "Internal error",
                 ),
             )
 
 
 @router.post("/reset", response_model=api.Response, response_model_exclude_none=True)
 async def user_reset(
-    shortname: str = Body(..., pattern=rgx.SHORTNAME, embed=True),
+    shortname: str = Body(..., pattern=rgx.SHORTNAME, embed=True, examples=["john_doo"]),
     logged_user=Depends(JWTBearer()),
 ) -> api.Response:
 
@@ -962,7 +978,7 @@ async def user_reset(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action",
             ),
         )
@@ -1039,5 +1055,5 @@ async def validate_password(
     else:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="jwtauth", code=14, message="Password dose not match"),
+            api.Error(type="jwtauth", code=InternalErrorCode.PASSWORD_NOT_VALIDATED, message="Password dose not match"),
         )

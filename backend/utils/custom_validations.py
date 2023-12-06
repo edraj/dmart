@@ -4,6 +4,7 @@ from fastapi import status
 from models.core import Record
 from models.enums import RequestType
 from utils.helpers import branch_path, flatten_dict, flatten_list_of_dicts_in_dict
+from utils.internal_error_code import InternalErrorCode
 from utils.redis_services import RedisServices
 from models.api import Exception as API_Exception, Error as API_Error
 from utils.settings import settings
@@ -24,7 +25,7 @@ async def validate_payload_with_schema(
             status.HTTP_400_BAD_REQUEST,
             API_Error(
                 type="request",
-                code=406,
+                code=InternalErrorCode.INVALID_DATA,
                 message="Invalid payload.body",
             ),
         )
@@ -136,7 +137,9 @@ async def validate_uniqueness(
                     " @"
                     + redis_column
                     + ":{"
-                    + "|".join(entry_dict_flattened[unique_key])
+                    + "|".join([
+                        item.translate(redis_escape_chars).replace("\\\\", "\\") for item in entry_dict_flattened[unique_key]
+                    ])
                     + "}"
                 )
             elif isinstance(entry_dict_flattened[unique_key], (str, bool)):  # booleans are indexed as TextField
@@ -199,7 +202,7 @@ async def validate_uniqueness(
                 status.HTTP_400_BAD_REQUEST,
                 API_Error(
                     type="request",
-                    code=415,
+                    code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
                     message=f"Entry should have unique values on the following fields: {', '.join(composite_unique_keys)}",
                 ),
             )

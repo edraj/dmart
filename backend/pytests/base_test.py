@@ -1,4 +1,3 @@
-import pathmagic
 import json
 from fastapi.testclient import TestClient
 from main import app
@@ -15,13 +14,12 @@ client = TestClient(app)
 superman = {}
 alibaba = {}
 
-file = open("../backend/login_creds.sh", "r")
+file = open("./login_creds.sh", "r")
 for line in file.readlines():
     if line.strip().startswith("export SUPERMAN"):
         superman = json.loads(str(line.strip().split("'")[1]))
     if line.strip().startswith("export ALIBABA"):
         alibaba = json.loads(str(line.strip().split("'")[1]))
-
 
 MANAGEMENT_SPACE: str = f"{settings.management_space}"
 USERS_SUBPATH: str = "users"
@@ -37,6 +35,7 @@ def set_superman_cookie():
         "/user/login",
         json={"shortname": superman["shortname"], "password": superman["password"]},
     )
+    print(response)
     client.cookies.set("auth_token", response.cookies["auth_token"])
 
 

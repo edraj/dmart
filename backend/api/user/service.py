@@ -5,6 +5,7 @@ import urllib.parse
 import time
 from models.api import Error, Exception
 from utils.async_request import AsyncRequest
+from utils.internal_error_code import InternalErrorCode
 from utils.redis_services import RedisServices
 from utils.settings import settings
 from fastapi.logger import logger
@@ -51,7 +52,7 @@ async def send_otp(msisdn: str, language: str):
 
     if status != 200:
         raise Exception(
-            status, Error(type="otp", code=100, message="OTP issue", info=[json])
+            status, Error(type="otp", code=InternalErrorCode.OTP_ISSUE, message="OTP issue", info=[json])
         )
 
     return json.get("data")
