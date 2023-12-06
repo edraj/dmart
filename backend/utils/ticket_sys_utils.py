@@ -3,6 +3,7 @@ from fastapi import status
 import utils.db as db
 import models.core as core
 from utils.access_control import access_control
+from utils.internal_error_code import InternalErrorCode
 
 
 async def set_init_state_from_request(ticket: api.Request, branch_name, logged_in_user):
@@ -49,7 +50,7 @@ async def set_init_state_from_request(ticket: api.Request, branch_name, logged_i
         status.HTTP_400_BAD_REQUEST,
         api.Error(
             type="request",
-            code=409,
+            code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
             message="This shortname already exists",
         ),
     )
@@ -88,7 +89,7 @@ async def set_init_state_from_record(
         status.HTTP_400_BAD_REQUEST,
         api.Error(
             type="request",
-            code=400,
+            code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
             message="This shortname already exists",
         ),
     )

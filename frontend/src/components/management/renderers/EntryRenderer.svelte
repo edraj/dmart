@@ -79,7 +79,9 @@
   export let refresh = {};
 
   const canUpdate = checkAccess("update", space_name, subpath, resource_type);
-  const canDelete = checkAccess("delete", space_name, subpath, resource_type);
+  const canDelete = checkAccess("delete", space_name, subpath, resource_type) && !(
+      space_name==="management" && subpath==="/"
+  );
 
   let tab_option = resource_type === ResourceType.folder ? "list" : "view";
   let content = { json: entry, text: undefined };
