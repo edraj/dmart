@@ -79,7 +79,7 @@ async def generate_csv_from_report_saved_query(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Requested object not found"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 
@@ -293,7 +293,7 @@ async def serve_space(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=InternalErrorCode.INVALID_SPACE_NAME,
+                        code=InternalErrorCode.ALREADY_EXIST_SPACE_NAME,
                         message="Space name provided already existed [1]",
                     ),
                 )
@@ -995,7 +995,7 @@ async def serve_request(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
                             type="move",
-                            code=InternalErrorCode.MISSING_DATA,
+                            code=InternalErrorCode.MISSING_DESTINATION_OR_SHORTNAME,
                             message="Please provide a destination path or a new shortname",
                         ),
                     )
@@ -1156,7 +1156,7 @@ async def update_state(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Requested object not found"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 
@@ -1309,7 +1309,11 @@ async def update_state(
 
     raise api.Exception(
         status.HTTP_400_BAD_REQUEST,
-        error=api.Error(type="ticket", code=InternalErrorCode.MISSING_DATA, message="Workflow body not found"),
+        error=api.Error(
+            type="ticket", 
+            code=InternalErrorCode.WORKFLOW_BODY_NOT_FOUND, 
+            message="Workflow body not found"
+        ),
     )
 
 
@@ -1361,7 +1365,7 @@ async def retrieve_entry_or_attachment_payload(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Requested object not found"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 
@@ -1760,7 +1764,7 @@ async def retrieve_entry_meta(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Requested object not found"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 
