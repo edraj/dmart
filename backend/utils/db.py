@@ -233,7 +233,7 @@ async def load(
             error=api.Error(
                 type="db",
                 code=InternalErrorCode.OBJECT_NOT_FOUND,
-                message=f"Requested object not found @{space_name}/{subpath}/{shortname} {class_type=} {schema_shortname=}",
+                message=f"Request object is not available @{space_name}/{subpath}/{shortname} {class_type=} {schema_shortname=}",
             ),
         )
 
@@ -259,7 +259,7 @@ def load_resource_payload(
         return {}
         # raise api.Exception(
         #     status_code=status.HTTP_404_NOT_FOUND,
-        #     error=api.Error(type="db", code=12, message="requested object not found"),
+        #     error=api.Error(type="db", code=12, message="Request object is not available"),
         # )
     return json.loads(path.read_bytes())
 
@@ -316,7 +316,7 @@ async def save_payload(
     if not (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=InternalErrorCode.MISSING_DATA, message="metadata is missing"),
+            error=api.Error(type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
         )
 
     async with aiofiles.open(payload_file_path / payload_filename, "wb") as file:
@@ -352,7 +352,7 @@ async def save_payload_from_json(
     if not (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=InternalErrorCode.MISSING_DATA, message="metadata is missing"),
+            error=api.Error(type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
         )
 
     async with aiofiles.open(payload_file_path / payload_filename, "w") as file:
