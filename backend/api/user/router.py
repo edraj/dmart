@@ -272,15 +272,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             ):
                 user_updates["is_msisdn_verified"] = True
         else:
-            if request.password and not re.match(rgx.PASSWORD, request.password):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="jwtauth",
-                        code=InternalErrorCode.INVALID_PASSWORD_RULES,
-                        message="password dose not match required rules",
-                    ),
-                )
             if identifier is None:
                 raise api.Exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,

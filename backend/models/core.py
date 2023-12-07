@@ -457,8 +457,9 @@ class Event(BaseModel):
 
 class PluginBase(ABC):
     @abstractmethod
-    def hook(self, data: Event):
+    async def hook(self, data: Event) -> None:
         pass
+    
 
 
 class EventFilter(BaseModel):

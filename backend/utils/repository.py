@@ -520,7 +520,7 @@ async def serve_query(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=InternalErrorCode.MISSING_DATA,
+                        code=InternalErrorCode.MISSING_FILTER_SHORTNAMES,
                         message="filter_shortnames is missing",
                     ),
                 )
@@ -717,6 +717,7 @@ async def get_entry_attachments(
     attachments_iterator = os.scandir(attachments_path)
     attachments_dict: dict[str, list] = {}
     for attachment_entry in attachments_iterator:
+        # TODO: Filter types on the parent attachment type folder layer
         if not attachment_entry.is_dir():
             continue
 
@@ -1569,7 +1570,7 @@ async def get_entry_by_var(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.MISSING_DATA, message="Requested object not found"
+                type="media", code=InternalErrorCode.MISSING_DATA, message="Request object is not available"
             ),
         )
 
