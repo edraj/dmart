@@ -16,7 +16,7 @@ class FirebaseNotifier(Notifier):
     async def send(
         self, 
         data: NotificationData
-    ):
+    ) -> bool:
         self._init_connection()
         # Receiver should be user.firebase_token
         if "firebase_token" not in data.receiver:
@@ -52,5 +52,6 @@ class FirebaseNotifier(Notifier):
             webpush=web_push,
             data={**data.deep_link, "id": data.entry_id}
         )
-        return messaging.send(message, app=self._firebase_app)
+        messaging.send(message, app=self._firebase_app)
+        return True
 

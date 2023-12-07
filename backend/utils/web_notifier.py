@@ -12,9 +12,9 @@ class WebNotifier(Notifier):
     async def send(
         self, 
         data: NotificationData
-    ):
+    ) -> bool:
         if not settings.websocket_url:
-            return
+            return False
         user_lang = lang_code(data.receiver.get("language", "ar"))
         async with AsyncRequest() as client:
             await client.post(
@@ -24,4 +24,6 @@ class WebNotifier(Notifier):
                     "description": data.body.__getattribute__(user_lang),
                 }
             )
+        
+        return True
 
