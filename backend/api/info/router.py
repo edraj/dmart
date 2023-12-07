@@ -42,7 +42,11 @@ async def get_settings(shortname=Depends(JWTBearer())) -> api.Response:
     if shortname != 'dmart': 
         raise api.Exception(
             status_code=status.HTTP_401_UNAUTHORIZED, 
-            error=api.Error(type="access", code=InternalErrorCode.NOT_ALLOWED, message="Not allowed")
+            error=api.Error(
+                type="access", 
+                code=InternalErrorCode.MISSING_DATA, 
+                message="You don't have permission to this action, mismatch with the information provided"
+            )
         )
     return api.Response(status=api.Status.success, attributes=settings.model_dump())
 

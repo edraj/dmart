@@ -86,7 +86,7 @@ class Plugin(PluginBase):
                 search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
             )
         if not matching_notification_requests.get("data", {}):
-            return True
+            return
 
         # 2- get list of subscribed users
         notification_subscribers = [entry["owner_shortname"]]

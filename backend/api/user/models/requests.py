@@ -21,7 +21,7 @@ class SendOTPRequest(BaseModel):
                 422,
                 Error(
                     type="OTP",
-                    code=InternalErrorCode.MISSING_DATA,
+                    code=InternalErrorCode.EMAIL_OR_MSISDN_REQUIRED,
                     message="One of these [email, msisdn] should be set!",
                 ),
             )
@@ -70,7 +70,7 @@ class PasswordResetRequest(BaseModel):
                 422,
                 Error(
                     type="OTP",
-                    code=InternalErrorCode.MISSING_DATA,
+                    code=InternalErrorCode.EMAIL_OR_MSISDN_REQUIRED,
                     message="One of these [email, msisdn] should be set!",
                 ),
             )
