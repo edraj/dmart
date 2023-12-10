@@ -136,10 +136,6 @@ if settings.is_registrable:
             )
         )
 
-        if record.shortname == settings.auto_uuid_rule:
-            record.uuid = uuid4()
-            record.shortname = str(record.uuid)[:8]
-
         user = core.User.from_record(record=record, owner_shortname=record.shortname)
         await validate_uniqueness(MANAGEMENT_SPACE, record)
 
