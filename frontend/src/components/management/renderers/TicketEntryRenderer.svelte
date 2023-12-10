@@ -201,6 +201,8 @@
           showToast(Level.warn);
         }
       }
+
+        window.location.reload();
     } else {
       errorContent = response;
       showToast(Level.warn);

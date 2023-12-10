@@ -1,68 +1,61 @@
 <script lang="ts">
   import HistoryListView from "./../HistoryListView.svelte";
   import Attachments from "../Attachments.svelte";
-  import { onDestroy, onMount } from "svelte";
+  import {onDestroy, onMount} from "svelte";
   import {
+    ContentType,
+    csv,
+    query,
     QueryType,
+    request,
     RequestType,
     ResourceType,
     ResponseEntry,
-    Status,
-    query,
-    request,
     retrieve_entry,
-    ContentType,
+    space,
+    Status,
     upload_with_payload,
-    csv, space,
-  } from "@/dmart";
-  import {
+} from "@/dmart";
+import {
+    Button,
+    ButtonGroup,
     Form,
     FormGroup,
-    Button,
+    Input,
+    Label,
     Modal,
-    ModalHeader,
     ModalBody,
     ModalFooter,
-    Label,
-    Input,
+    ModalHeader,
     Nav,
-    ButtonGroup,
     Row,
     TabContent,
     TabPane
   } from "sveltestrap";
   import Icon from "../../Icon.svelte";
-  import { _ } from "@/i18n";
+  import {_} from "@/i18n";
   import ListView from "../ListView.svelte";
   import Prism from "@/components/Prism.svelte";
-  import {
-    JSONEditor,
-    Mode,
-    Validator,
-    createAjvValidator,
-  } from "svelte-jsoneditor";
-  import { status_line } from "@/stores/management/status_line";
-  import { authToken } from "@/stores/management/auth";
-  import { timeAgo } from "@/utils/timeago";
-  import { showToast, Level } from "@/utils/toast";
-  import { faSave } from "@fortawesome/free-regular-svg-icons";
+  import {createAjvValidator, JSONEditor, Mode, Validator,} from "svelte-jsoneditor";
+  import {status_line} from "@/stores/management/status_line";
+  import {authToken} from "@/stores/management/auth";
+  import {timeAgo} from "@/utils/timeago";
+  import {Level, showToast} from "@/utils/toast";
+  import {faSave} from "@fortawesome/free-regular-svg-icons";
   import refresh_spaces from "@/stores/management/refresh_spaces";
-  import { website } from "@/config";
+  import {website} from "@/config";
   import HtmlEditor from "../editors/HtmlEditor.svelte";
   import MarkdownEditor from "../editors/MarkdownEditor.svelte";
-  import { isDeepEqual, removeEmpty } from "@/utils/compare";
+  import {isDeepEqual, removeEmpty} from "@/utils/compare";
   import metaContentSchema from "@/validations/meta.content.json";
-  import SchemaEditor, {
-    transformToProperBodyRequest,
-  } from "../editors/SchemaEditor.svelte";
+  import SchemaEditor, {transformToProperBodyRequest,} from "../editors/SchemaEditor.svelte";
   import checkAccess from "@/utils/checkAccess";
-  import { fade } from "svelte/transition";
+  import {fade} from "svelte/transition";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
-  import { generateUUID } from "@/utils/uuid";
+  import {generateUUID} from "@/utils/uuid";
   import downloadFile from "@/utils/downloadFile";
   import {schemaVisualizationEncoder} from "@/utils/plantUML";
   import SchemaForm from "svelte-jsonschema-form";
-  import {goto} from "@roxi/routify";
   // import { SchemaForm } from "svelte-schemaform"
   // import { SchemaForm } from "@restspace/svelte-schema-form";
   // import './assets/layout.css';
@@ -233,19 +226,29 @@
     subpath = subpath == "__root__" || subpath == "" ? "/" : subpath;
 
     const request_data = {
-      space_name: space_name,
-      request_type: RequestType.replace,
-      records: [
-        {
-          resource_type,
-          shortname: entry.shortname,
-          subpath,
-          attributes: data,
-        },
-      ],
+        space_name: space_name,
+        request_type: RequestType.replace,
+        records: [
+            {
+                resource_type,
+                shortname: entry.shortname,
+                subpath,
+                attributes: data,
+            },
+        ],
     };
 
-    const response = await request(request_data);
+    let response;
+    if (subpath==='/'){
+        request_data.request_type = RequestType.update;
+        request_data.records[0].resource_type = ResourceType.space;
+        response = await space(request_data);
+    }
+    else {
+        response = await request(request_data);
+    }
+
+
     if (response.status == Status.success) {
       showToast(Level.info);
       oldContentMeta = structuredClone(contentMeta);
@@ -277,6 +280,7 @@
           showToast(Level.warn);
         }
       }
+      window.location.reload();
     }
     else {
       errorContent = response;
@@ -722,7 +726,7 @@
     }
     const _schemas = schemas.records.map((e) => e.shortname);
     if (entryType === "folder"){
-      return _schemas.filter((e) => ["meta_schema", "folder_rendering"].includes(e));
+      return ["folder_rendering", ..._schemas]
     } else {
       return _schemas.filter((e) => !["meta_schema", "folder_rendering"].includes(e));
     }
