@@ -10,7 +10,9 @@ axios.defaults.withCredentials = true;
 
 axios.interceptors.request.use(
   function (config) {
-    if (config?.data?.space_name === "management" && config?.data?.request_type==="delete") {
+    if (config.url.includes("/managed/space")
+        && config?.data?.space_name === "management"
+        && config?.data?.request_type==="delete") {
       showToast(Level.warn, "Cannot delete management space");
       throw new axios.Cancel('Cannot delete management space');
     }
