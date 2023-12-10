@@ -38,7 +38,6 @@ from .models.requests import (
 )
 import utils.regex as rgx
 from languages.loader import languages
-from uuid import uuid4
 
 router = APIRouter()
 
