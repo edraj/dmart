@@ -29,9 +29,6 @@
     "allowed_fields_values": {
       "type": "object"
     },
-    "attachments": {
-      "type": "string"
-    },
     "subpaths": {
       "type": "object"
     },
@@ -92,7 +89,7 @@
       "items": {
         "type": "string"
       }
-    },  
+    },
     "payload": {
       "type": "object",
       "properties": {
@@ -113,6 +110,57 @@
         }
       },
       "required": ["content_type"]
+    },
+    "root_registration_signature": {
+      "type": "string"
+    },
+    "primary_website": {
+      "type": "string"
+    },
+    "indexing_enabled": {
+      "type": "boolean"
+    },
+    "capture_misses": {
+      "type": "boolean"
+    },
+    "check_health": {
+      "type": "boolean"
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "icon": {
+      "type": "string"
+    },
+    "mirrors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "hide_folders": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "active_plugins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "branches": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "attachments": {
+      "type": "object"
     }
   },
   "required": [

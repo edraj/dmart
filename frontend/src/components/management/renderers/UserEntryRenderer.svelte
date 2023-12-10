@@ -440,10 +440,6 @@
   $: {
     contentContent = structuredClone(contentContent);
   }
-
-  $: {
-      console.log({contentMeta})
-  }
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
