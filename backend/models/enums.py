@@ -62,6 +62,16 @@ class ResourceType(StrEnum):
     notification = "notification"
 
 
+class AttachmentType(StrEnum):
+    reaction = "reaction"
+    share = "share"
+    json = "json"
+    reply = "reply"
+    comment = "comment"
+    lock = "lock"
+    media = "media"
+    alteration = "alteration"
+
 class ContentType(StrEnum):
     text = "text"
     markdown = "markdown"
@@ -203,3 +213,11 @@ class RedisReducerName(StrEnum):
             "random_sample": reducers.random_sample,
         }
         return map[red]
+
+
+class ReactionType(StrEnum):
+    like = "like"
+    love = "love"
+    care = "care"
+    laughing = "laughing"
+    sad = "sad"
