@@ -188,12 +188,19 @@ class Meta(Resource):
 
     @staticmethod
     def from_record(record: Record, owner_shortname: str):
+        if record.shortname == settings.auto_uuid_rule:
+            record.uuid = uuid4()
+            record.shortname = str(record.uuid)[:8]
+            record.attributes["uuid"] = record.uuid
+            
         meta_class = getattr(
             sys.modules["models.core"], camel_case(record.resource_type)
         )
+            
         if issubclass(meta_class, User) and "password" in record.attributes:
             hashed_pass = password_hashing.hash_password(record.attributes["password"])
             record.attributes["password"] = hashed_pass
+            
         record.attributes["owner_shortname"] = owner_shortname
         record.attributes["shortname"] = record.shortname
         meta_obj = meta_class(**remove_none(record.attributes)) #type: ignore
