@@ -765,7 +765,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
             type="request",
-            code=InternalErrorCode.NOT_ALLOWED,
+            code=InternalErrorCode.UNMATCHED_DATA,
             message="mismatch with the information provided",
         ),
     )
