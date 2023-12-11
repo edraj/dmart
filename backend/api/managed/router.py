@@ -3,7 +3,6 @@ import csv
 from datetime import datetime
 import hashlib
 import os
-from uuid import uuid4
 from re import sub as res_sub
 from fastapi import APIRouter, Body, Depends, UploadFile, Path, Form, status
 from fastapi.responses import FileResponse
@@ -626,11 +625,6 @@ async def serve_request(
                         resource_obj.created_at = datetime.now()
                         resource_obj.updated_at = datetime.now()
                     body_shortname = record.shortname
-                    if resource_obj.shortname == settings.auto_uuid_rule:
-                        resource_obj.uuid = uuid4()
-                        resource_obj.shortname = str(resource_obj.uuid)[:8]
-                        record.shortname = str(resource_obj.uuid)[:8]
-                        body_shortname = resource_obj.shortname
 
                     separate_payload_data = None
                     if (
@@ -1539,12 +1533,7 @@ async def create_or_update_resource_with_payload(
             ),
         )
 
-    if resource_obj.shortname == settings.auto_uuid_rule:
-        resource_obj.uuid = uuid4()
-        resource_obj.shortname = str(resource_obj.uuid)[:8]
-        resource_obj.payload.body = (
-            f"{str(resource_obj.uuid)[:8]}." + payload_filename.split(".")[1]
-        )
+    resource_obj.payload.body = f"{resource_obj.shortname}." + payload_filename.split(".")[1]
 
     if (
         resource_content_type == ContentType.json

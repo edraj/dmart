@@ -1,7 +1,7 @@
 from re import sub as res_sub
 from uuid import uuid4
 from fastapi import APIRouter, Request, Path, status, Depends
-from models.enums import ContentType, ResourceType, TaskType
+from models.enums import AttachmentType, ContentType, ResourceType, TaskType
 import utils.db as db
 import models.api as api
 from utils.helpers import branch_path, camel_case
@@ -429,6 +429,72 @@ async def create_entry(
 
     return api.Response(status=api.Status.success)
 
+
+@router.post("/attach/{space_name}")
+async def create_attachment(
+    space_name: str,
+    record: core.Record,
+    branch_name: str | None = settings.default_branch,
+):
+    if record.resource_type not in AttachmentType.__members__:
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="You don't have permission to this action [14]",
+            ),
+        )
+        
+    if not await access_control.check_access(
+        user_shortname="anonymous",
+        space_name=space_name,
+        subpath=record.subpath,
+        resource_type=record.resource_type,
+        action_type=core.ActionType.create,
+        record_attributes=record.attributes,
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="You don't have permission to this action [15]",
+            ),
+        )
+
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=record.subpath,
+            action_type=core.ActionType.create,
+            resource_type=record.resource_type,
+            user_shortname="anonymous",
+        )
+    )
+    
+    attachment_obj = core.Meta.from_record(
+        record=record, owner_shortname="anonymous"
+    )
+    
+
+    await db.save(space_name, record.subpath, attachment_obj, branch_name)
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=record.subpath,
+            shortname=attachment_obj.shortname,
+            action_type=core.ActionType.create,
+            resource_type=record.resource_type,
+            user_shortname="anonymous",
+            attributes={}
+        )
+    )
+
+    return api.Response(status=api.Status.success)
 
 @router.post("/excute/{task_type}/{space_name}")
 async def excute(space_name: str, task_type: TaskType, record: core.Record):
