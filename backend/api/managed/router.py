@@ -451,7 +451,7 @@ async def serve_space(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(
                     type="request",
-                    code=InternalErrorCode.MISSING_DATA,
+                    code=InternalErrorCode.UNMATCHED_DATA,
                     message="mismatch with the information provided",
                 ),
             )
