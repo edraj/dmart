@@ -151,7 +151,7 @@ class Translation(Resource):
 
 class Locator(Resource):
     uuid: UUID | None = None
-    property_domain: str | None = None
+    domain: str | None = None
     type: ResourceType
     space_name: str
     branch_name: str | None = Field(
@@ -342,7 +342,7 @@ class Group(Meta):
 
 
 class Attachment(Meta):
-    owner_locator: Locator | None = None
+    author_locator: Locator | None = None
 
 
 class Json(Attachment):
