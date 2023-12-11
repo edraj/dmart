@@ -351,7 +351,7 @@ async def create_entry(
             api.Error(
                 type="request",
                 code=InternalErrorCode.MISSING_DATA,
-                message="You don't have permission to this action, mismatch with the information provided",
+                message="Selected location is not allowed",
             ),
         )
 

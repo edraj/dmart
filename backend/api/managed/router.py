@@ -451,8 +451,8 @@ async def serve_space(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(
                     type="request",
-                    code=InternalErrorCode.MISSING_DATA,
-                    message="You don't have permission to this action, mismatch with the information provided",
+                    code=InternalErrorCode.UNMATCHED_DATA,
+                    message="mismatch with the information provided",
                 ),
             )
 
@@ -1931,7 +1931,7 @@ async def get_space_report(
             error=api.Error(
                 type="access", 
                 code=InternalErrorCode.MISSING_DATA, 
-                message="You don't have permission to this action, mismatch with the information provided"
+                message="Your account is not allowed to do this action"
             ),
         )
 
