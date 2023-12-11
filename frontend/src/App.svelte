@@ -24,9 +24,10 @@
 
 <script lang="ts">
   import { setupI18n, dir } from "./i18n";
+  import refresh_spaces from "@/stores/management/refresh_spaces";
 
   setupI18n();
-  $: { document.dir = $dir; }
+  $: { document.dir = $dir; refresh_spaces.refresh(); }
 </script>
 
 
