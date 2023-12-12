@@ -1,62 +1,64 @@
 <script lang="ts">
-  import HistoryListView from "./../HistoryListView.svelte";
-  import Attachments from "../Attachments.svelte";
-  import {onDestroy, onMount} from "svelte";
-  import {
-    ContentType,
-    csv,
-    query,
-    QueryType,
-    request,
-    RequestType,
-    ResourceType,
-    ResponseEntry,
-    retrieve_entry,
-    space,
-    Status,
-    upload_with_payload,
-} from "@/dmart";
-import {
-    Button,
-    ButtonGroup,
-    Form,
-    FormGroup,
-    Input,
-    Label,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    ModalHeader,
-    Nav,
-    Row,
-    TabContent,
-    TabPane
-  } from "sveltestrap";
-  import Icon from "../../Icon.svelte";
-  import {_} from "@/i18n";
-  import ListView from "../ListView.svelte";
-  import Prism from "@/components/Prism.svelte";
-  import {createAjvValidator, JSONEditor, Mode, Validator,} from "svelte-jsoneditor";
-  import {status_line} from "@/stores/management/status_line";
-  import {authToken} from "@/stores/management/auth";
-  import {timeAgo} from "@/utils/timeago";
-  import {Level, showToast} from "@/utils/toast";
-  import {faSave} from "@fortawesome/free-regular-svg-icons";
-  import refresh_spaces from "@/stores/management/refresh_spaces";
-  import {website} from "@/config";
-  import HtmlEditor from "../editors/HtmlEditor.svelte";
-  import MarkdownEditor from "../editors/MarkdownEditor.svelte";
-  import {isDeepEqual, removeEmpty} from "@/utils/compare";
-  import metaContentSchema from "@/validations/meta.content.json";
-  import SchemaEditor, {transformToProperBodyRequest,} from "../editors/SchemaEditor.svelte";
-  import checkAccess from "@/utils/checkAccess";
-  import {fade} from "svelte/transition";
-  import BreadCrumbLite from "../BreadCrumbLite.svelte";
-  import {generateUUID} from "@/utils/uuid";
-  import downloadFile from "@/utils/downloadFile";
-  import {schemaVisualizationEncoder} from "@/utils/plantUML";
-  import SchemaForm from "svelte-jsonschema-form";
-  // import { SchemaForm } from "svelte-schemaform"
+    import HistoryListView from "./../HistoryListView.svelte";
+    import Attachments from "../Attachments.svelte";
+    import {onDestroy, onMount} from "svelte";
+    import {
+        check_existing,
+        ContentType,
+        create_user,
+        csv, passwordRegExp, passwordWrongExp,
+        query,
+        QueryType,
+        request,
+        RequestType,
+        ResourceType,
+        ResponseEntry,
+        retrieve_entry,
+        space,
+        Status,
+        upload_with_payload,
+    } from "@/dmart";
+    import {
+        Button,
+        ButtonGroup,
+        Form,
+        FormGroup,
+        Input,
+        Label,
+        Modal,
+        ModalBody,
+        ModalFooter,
+        ModalHeader,
+        Nav,
+        Row,
+        TabContent,
+        TabPane
+    } from "sveltestrap";
+    import Icon from "../../Icon.svelte";
+    import {_} from "@/i18n";
+    import ListView from "../ListView.svelte";
+    import Prism from "@/components/Prism.svelte";
+    import {createAjvValidator, JSONEditor, Mode, Validator,} from "svelte-jsoneditor";
+    import {status_line} from "@/stores/management/status_line";
+    import {authToken} from "@/stores/management/auth";
+    import {timeAgo} from "@/utils/timeago";
+    import {Level, showToast} from "@/utils/toast";
+    import {faSave} from "@fortawesome/free-regular-svg-icons";
+    import refresh_spaces from "@/stores/management/refresh_spaces";
+    import {website} from "@/config";
+    import HtmlEditor from "../editors/HtmlEditor.svelte";
+    import MarkdownEditor from "../editors/MarkdownEditor.svelte";
+    import {isDeepEqual, removeEmpty} from "@/utils/compare";
+    import metaContentSchema from "@/validations/meta.content.json";
+    import SchemaEditor, {transformToProperBodyRequest,} from "../editors/SchemaEditor.svelte";
+    import checkAccess from "@/utils/checkAccess";
+    import {fade} from "svelte/transition";
+    import BreadCrumbLite from "../BreadCrumbLite.svelte";
+    import {generateUUID} from "@/utils/uuid";
+    import downloadFile from "@/utils/downloadFile";
+    import {schemaVisualizationEncoder} from "@/utils/plantUML";
+    import SchemaForm from "svelte-jsonschema-form";
+    // import { SchemaForm } from "svelte-schemaform"
   // import { SchemaForm } from "@restspace/svelte-schema-form";
   // import './assets/layout.css';
   // import './assets/basic-skin.css';
@@ -408,7 +410,8 @@ import {
           body = transformToProperBodyRequest(body);
           body = body[0];
           delete body.name;
-      } else {
+      }
+      else {
           body = schemaContent.json
               ? structuredClone(schemaContent.json)
               : JSON.parse(schemaContent.text);
@@ -435,6 +438,46 @@ import {
         ],
       };
       response = await request(request_body);
+    }
+    else if (new_resource_type === ResourceType.user){
+        let body = entryContent.json
+            ? structuredClone(entryContent.json)
+            : JSON.parse(entryContent.text);
+
+        if(new_resource_type===ResourceType.user){
+            if (body.password===null){
+                showToast(Level.warn, "Password must be provided");
+                return;
+            }
+
+            if (!passwordRegExp.test(body.attributes.password)){
+                showToast(Level.warn, passwordWrongExp);
+                return;
+            }
+
+            const shortnameStatus: any = await check_existing("shortname",contentShortname);
+            if (!shortnameStatus.attributes.unique){
+                showToast(Level.warn,"Shortname already exists!");
+                return;
+            }
+
+            const emailStatus: any = await check_existing("email",body.attributes.email);
+            if (!emailStatus.attributes.unique){
+                showToast(Level.warn,"Email already exists!");
+                return;
+            }
+
+            const msisdnStatus: any = await check_existing("msisdn",body.attributes.msisdn);
+            if (!msisdnStatus.attributes.unique){
+                showToast(Level.warn,"MSISDN already exists!");
+                return;
+            }
+
+            if (!body.shortname){
+                body.shortname = contentShortname;
+            }
+            response = await create_user(body);
+        }
     }
     else if (entryType === "content") {
       if (
@@ -479,7 +522,8 @@ import {
                     },
                 ],
             };
-        } else {
+        }
+        else {
           if (workflowShortname){
               request_body = {...request_body, workflow_shortname:workflowShortname}
           }
