@@ -118,7 +118,8 @@
         (async () => {
           subpaths = [];
           tempSubpaths = [];
-          const _subpaths = await get_children(spacename, subpath);
+            console.log({spacename, subpath})
+          const _subpaths = await get_children(spacename, "/");
           await buildSubpaths("", _subpaths);
 
           subpaths = [...tempSubpaths.reverse()];
