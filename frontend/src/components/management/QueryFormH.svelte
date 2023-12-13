@@ -56,7 +56,7 @@
       retrieve_attachments,
       retrieve_json_payload,
     } = record;
-    console.log({queryType})
+
     if (!spacename || !subpath || !queryType){
         formData = null;
         return;
@@ -106,7 +106,6 @@
       await _subpaths.records.map(async (_subpath) => {
         if (_subpath.resource_type === "folder") {
           const _subpaths = await get_children(spacename, _subpath.shortname);
-          // console.log({r: _subpaths});
           await buildSubpaths(`${base}/${_subpath.shortname}`, _subpaths);
           tempSubpaths.push(`${base}/${_subpath.shortname}`);
         }
@@ -120,7 +119,6 @@
           subpaths = [];
           tempSubpaths = [];
           const _subpaths = await get_children(spacename, subpath);
-          console.log({m: _subpaths});
           await buildSubpaths("", _subpaths);
 
           subpaths = [...tempSubpaths.reverse()];
