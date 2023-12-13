@@ -6,6 +6,9 @@
   export let rows = [];
 
   function value(path: string, data : [], type : string) {
+   if (data===null){
+       return "";
+   }
     if (path.length == 1 && path[0].length > 0 && path[0] in data) {
       if (type == "number") return $number(data[path[0]]);
       else if (type == "json")
