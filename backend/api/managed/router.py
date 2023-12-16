@@ -407,7 +407,7 @@ async def serve_space(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="request",
-                        code=InternalErrorCode.INVALID_SPACE_NAME,
+                        code=InternalErrorCode.CANNT_DELETE,
                         message="Cannot delete management space",
                     ),
                 )
@@ -1021,7 +1021,7 @@ async def serve_request(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
                             type="move",
-                            code=InternalErrorCode.MISSING_DATA,
+                            code=InternalErrorCode.PROVID_SOURCE_PATH,
                             message="Please provide a source path and a src shortname",
                         ),
                     )
@@ -1543,7 +1543,7 @@ async def create_or_update_resource_with_payload(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="attachment",
-                code=InternalErrorCode.NOT_SUPPORTED_TYPE,
+                code=InternalErrorCode.SOME_SUPPORTED_TYPE,
                 message="Only resources of type 'attachment' or 'content' are allowed",
             ),
         )
@@ -1953,8 +1953,8 @@ async def get_space_report(
             status_code=status.HTTP_401_UNAUTHORIZED,
             error=api.Error(
                 type="access",
-                code=InternalErrorCode.MISSING_DATA,
-                message="Your account is not allowed to do this action"
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="You don't have permission to this action"
             ),
         )
 
@@ -1965,7 +1965,7 @@ async def get_space_report(
             error=api.Error(
                 type="media",
                 code=InternalErrorCode.INVALID_SPACE_NAME,
-                message="Invalid space name"
+                message="Space name provided is empty or invalid"
             ),
         )
     if health_type not in ["soft", "hard"]:
@@ -2198,7 +2198,7 @@ async def execute(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not Found"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 
