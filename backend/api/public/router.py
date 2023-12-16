@@ -94,7 +94,8 @@ async def retrieve_entry_meta(
         )
     )
 
-    resource_class = getattr(sys.modules["models.core"], camel_case(resource_type))
+    resource_class = getattr(
+        sys.modules["models.core"], camel_case(resource_type))
     meta = await db.load(
         space_name=space_name,
         subpath=subpath,
@@ -107,7 +108,7 @@ async def retrieve_entry_meta(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not found"
             ),
         )
 
@@ -143,13 +144,12 @@ async def retrieve_entry_meta(
             retrieve_json_payload=retrieve_json_payload
         )
 
-
-    if (not retrieve_json_payload or 
-        not meta.payload or 
-        not meta.payload.body or 
-        not isinstance(meta.payload.body, str) or 
-        meta.payload.content_type != ContentType.json
-    ):
+    if (not retrieve_json_payload or
+            not meta.payload or
+            not meta.payload.body or
+            not isinstance(meta.payload.body, str) or
+            meta.payload.content_type != ContentType.json
+            ):
         # TODO
         # include locked before returning the dictionary
         return {
@@ -218,7 +218,8 @@ async def retrieve_entry_or_attachment_payload(
         )
     )
 
-    resource_class = getattr(sys.modules["models.core"], camel_case(resource_type))
+    resource_class = getattr(
+        sys.modules["models.core"], camel_case(resource_type))
     meta = await db.load(
         space_name=space_name,
         subpath=subpath,
@@ -235,7 +236,7 @@ async def retrieve_entry_or_attachment_payload(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not found"
             ),
         )
 
@@ -259,7 +260,8 @@ async def retrieve_entry_or_attachment_payload(
         )
     # TODO check security labels for pubblic access
     # assert meta.is_active
-    payload_path = db.payload_path(space_name, subpath, resource_class, branch_name)
+    payload_path = db.payload_path(
+        space_name, subpath, resource_class, branch_name)
 
     await plugin_manager.after_action(
         core.Event(
@@ -445,7 +447,7 @@ async def create_attachment(
                 message="You don't have permission to this action [14]",
             ),
         )
-        
+
     if not await access_control.check_access(
         user_shortname="anonymous",
         space_name=space_name,
@@ -473,11 +475,10 @@ async def create_attachment(
             user_shortname="anonymous",
         )
     )
-    
+
     attachment_obj = core.Meta.from_record(
         record=record, owner_shortname="anonymous"
     )
-    
 
     await db.save(space_name, record.subpath, attachment_obj, branch_name)
 
@@ -495,6 +496,7 @@ async def create_attachment(
     )
 
     return api.Response(status=api.Status.success)
+
 
 @router.post("/excute/{task_type}/{space_name}")
 async def excute(space_name: str, task_type: TaskType, record: core.Record):
@@ -516,7 +518,7 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not found"
             ),
         )
 
@@ -529,7 +531,8 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
     )
 
     for param, value in record.attributes.items():
-        query_dict["search"] = query_dict["search"].replace(f"${param}", str(value))
+        query_dict["search"] = query_dict["search"].replace(
+            f"${param}", str(value))
 
     query_dict["search"] = res_sub(
         r"@\w*\:({|\()?\$\w*(}|\))?", "", query_dict["search"]
@@ -544,12 +547,13 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
     query_dict["subpath"] = query_dict["query_subpath"]
     query_dict.pop("query_subpath")
     filter_shortnames = record.attributes.get("filter_shortnames", [])
-    query_dict["filter_shortnames"] = filter_shortnames if isinstance(filter_shortnames, list) else []
+    query_dict["filter_shortnames"] = filter_shortnames if isinstance(
+        filter_shortnames, list) else []
 
     return await query_entries(api.Query(**query_dict))
 
 
-@router.get("/byuuid/{uuid}",response_model_exclude_none=True)
+@router.get("/byuuid/{uuid}", response_model_exclude_none=True)
 async def get_entry_by_uuid(
     uuid: str,
     retrieve_json_payload: bool = False,
@@ -563,7 +567,8 @@ async def get_entry_by_uuid(
         retrieve_attachments,
     )
 
-@router.get("/byslug/{slug}",response_model_exclude_none=True)
+
+@router.get("/byslug/{slug}", response_model_exclude_none=True)
 async def get_entry_by_slug(
     slug: str,
     retrieve_json_payload: bool = False,
