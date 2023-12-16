@@ -236,7 +236,7 @@ async def retrieve_entry_or_attachment_payload(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not found"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 
@@ -352,7 +352,7 @@ async def create_entry(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=InternalErrorCode.MISSING_DATA,
+                code=InternalErrorCode.NOT_ALLOWED_LOCATION,
                 message="Selected location is not allowed",
             ),
         )
@@ -518,7 +518,7 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not found"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 

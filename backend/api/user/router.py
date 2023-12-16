@@ -499,8 +499,8 @@ async def update_profile(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="jwtauth",
-                code=InternalErrorCode.INVALID_PASSWORD_RULES,
-                message="password dose not match required rules",
+                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                message="Invalid username or password",
             ),
         )
     await plugin_manager.before_action(
