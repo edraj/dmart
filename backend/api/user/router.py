@@ -533,7 +533,7 @@ async def update_profile(
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA,
-                          message="Credential does not match"),
+                          message="mismatch with the information provided"),
             )
 
     # if "force_password_change" in profile.attributes:
