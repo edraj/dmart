@@ -1,21 +1,27 @@
-import { Level, showToast } from "@/utils/toast.js";
-import {
-  isLoading,
-  isLoadingIsOkStat,
-} from "@/components/management/TopLoadingBar.svelte";
+import {Level, showToast} from "@/utils/toast.js";
+import {isLoading, isLoadingIsOkStat,} from "@/components/management/TopLoadingBar.svelte";
 
 import axios from "axios";
-import { signout } from "@/stores/user";
-import { website } from "../config.js";
+import {signout} from "@/stores/user";
+import {website} from "@/config";
+import {isNetworkError} from "@/stores/management/error_network";
 
 axios.defaults.withCredentials = true;
 
 axios.interceptors.request.use(
   function (config) {
+    if (config.url.includes("/managed/space")
+        && config?.data?.space_name === "management"
+        && config?.data?.request_type==="delete") {
+      showToast(Level.warn, "Cannot delete management space");
+      throw new axios.Cancel('Cannot delete management space');
+    }
+    isNetworkError.set(false);
     isLoading.update((n) => n + 1);
     return config;
   },
   function (error) {
+    isNetworkError.set(false);
     isLoading.update((n) => n - 1);
     isLoadingIsOkStat.set(false);
     return Promise.reject(error);
@@ -30,6 +36,14 @@ axios.interceptors.response.use(
     return response;
   },
   async function (error) {
+    if (error.name === "CanceledError"){
+      return Promise.reject(error);
+    }
+
+    if (error.code === "ERR_NETWORK"){
+      isNetworkError.set(true);
+    }
+
     if (
       !error?.request?.responseURL.includes("/profile") &&
       error?.response?.data?.error?.type === "jwtauth"
@@ -53,6 +67,9 @@ axios.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export const passwordRegExp = /^(?=.*[0-9\u0660-\u0669])(?=.*[A-Z\u0621-\u064A])[a-zA-Z\u0621-\u064A0-9\u0660-\u0669_#@%*!?$^-]{8,24}$/;
+export const passwordWrongExp: string = "Password didn't match the rules: >= 8 chars that are Alphanumeric mix cap/small with _#@%*!?$^-"
 
 export enum Status {
   success = "success",
@@ -360,6 +377,45 @@ export async function logout() {
     { headers }
   );
   return data;
+}
+
+export async function create_user(request: any) {
+  try {
+    const { data } = await axios.post<ActionResponse>(
+        website.backend + "/user/create",
+        request,
+        { headers }
+    );
+    return data;
+  } catch (error) {
+    return error.response.data;
+  }
+}
+
+export async function update_user(request: any) {
+  try {
+    const { data } = await axios.post<ActionResponse>(
+        website.backend + "/user/profile",
+        request,
+        { headers }
+    );
+    return data;
+  } catch (error) {
+    return error.response.data;
+  }
+}
+
+export async function check_existing(prop: string, value: string) {
+  try {
+    const { data } = await axios.get<ResponseEntry>(
+        website.backend +
+        `/user/check-existing?${prop}=${value}`,
+        { headers }
+    );
+    return data;
+  } catch (error) {
+    return null;
+  }
 }
 
 export async function get_profile() {

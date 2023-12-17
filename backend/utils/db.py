@@ -49,7 +49,6 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
             if query.include_fields is None:
                 query.include_fields = []
 
-
             # Gel all matching entries
             meta_path = path / ".dm"
             if not meta_path.is_dir():
@@ -59,7 +58,6 @@ def locators_query(query: api.Query) -> tuple[int, list[core.Locator]]:
             for entry in path_iterator:
                 if not entry.is_dir():
                     continue
-
 
                 subpath_iterator = os.scandir(entry)
                 for one in subpath_iterator:
@@ -250,10 +248,11 @@ def load_resource_payload(
     class_type: Type[MetaChild],
     branch_name: str | None = settings.default_branch,
     schema_shortname: str | None = None,
-) :
+):
     """Load a Meta class payload file"""
 
-    path = payload_path(space_name, subpath, class_type, branch_name, schema_shortname)
+    path = payload_path(space_name, subpath, class_type,
+                        branch_name, schema_shortname)
     path /= filename
     if not path.is_file():
         return {}
@@ -294,7 +293,8 @@ async def create(
     if (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=InternalErrorCode.SHORTNAME_ALREADY_EXIST, message="already exists"),
+            error=api.Error(
+                type="create", code=InternalErrorCode.SHORTNAME_ALREADY_EXIST, message="already exists"),
         )
 
     if not path.is_dir():
@@ -310,13 +310,15 @@ async def save_payload(
     path, filename = metapath(
         space_name, subpath, meta.shortname, meta.__class__, branch_name
     )
-    payload_file_path = payload_path(space_name, subpath, meta.__class__, branch_name)
+    payload_file_path = payload_path(
+        space_name, subpath, meta.__class__, branch_name)
     payload_filename = meta.shortname + Path(attachment.filename).suffix
 
     if not (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
+            error=api.Error(
+                type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
         )
 
     async with aiofiles.open(payload_file_path / payload_filename, "wb") as file:
@@ -352,7 +354,8 @@ async def save_payload_from_json(
     if not (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
+            error=api.Error(
+                type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
         )
 
     async with aiofiles.open(payload_file_path / payload_filename, "w") as file:
@@ -382,7 +385,8 @@ async def update(
     if not (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
-            error=api.Error(type="update", code=InternalErrorCode.OBJECT_NOT_FOUND, message="does not exist"),
+            error=api.Error(type="update", code=InternalErrorCode.OBJECT_NOT_FOUND,
+                            message="Request object is not available"),
         )
     async with RedisServices() as redis_services:
         if await redis_services.is_entry_locked(
@@ -390,7 +394,8 @@ async def update(
         ):
             raise api.Exception(
                 status_code=status.HTTP_403_FORBIDDEN,
-                error=api.Error(type="update", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
+                error=api.Error(
+                    type="update", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
             )
         elif await redis_services.get_lock_doc(
             space_name, branch_name, subpath, meta.shortname
@@ -476,7 +481,8 @@ async def store_entry_diff(
         request_headers=get_request_data().get('request_headers', {}),
         diff=history_diff,
     )
-    history_path = settings.spaces_folder / space_name / branch_path(branch_name)
+    history_path = settings.spaces_folder / \
+        space_name / branch_path(branch_name)
 
     if subpath == "/" and resource_type == core.Space:
         history_path = Path(f"{history_path}/.dm")
@@ -487,7 +493,8 @@ async def store_entry_diff(
             if subpath == "/":
                 history_path = Path(f"{history_path}/.dm/{shortname}")
             else:
-                history_path = Path(f"{history_path}/{subpath}/.dm/{shortname}")
+                history_path = Path(
+                    f"{history_path}/{subpath}/.dm/{shortname}")
 
     if not os.path.exists(history_path):
         os.makedirs(history_path)
@@ -554,7 +561,8 @@ async def move(
             payload_path(space_name, src_subpath, meta.__class__, branch_name)
             / meta.payload.body
         )
-        meta.payload.body = meta.shortname + "." + meta.payload.body.split(".")[-1]
+        meta.payload.body = meta.shortname + \
+            "." + meta.payload.body.split(".")[-1]
         dist_payload_file_path = (
             payload_path(
                 space_name, dest_subpath or src_subpath, meta.__class__, branch_name
@@ -572,6 +580,7 @@ async def move(
     if src_path.is_dir() and len(os.listdir(src_path)) == 0:
         os.removedirs(src_path)
 
+
 async def clone(
     src_space: str,
     dest_space: str,
@@ -579,7 +588,7 @@ async def clone(
     src_shortname: str,
     dest_subpath: str,
     dest_shortname: str,
-    class_type: Type[MetaChild], 
+    class_type: Type[MetaChild],
     branch_name: str | None = settings.default_branch,
 ):
 
@@ -662,7 +671,8 @@ async def delete(
     if not path.is_dir() or not (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
-            error=api.Error(type="delete", code=InternalErrorCode.OBJECT_NOT_FOUND, message="does not exist"),
+            error=api.Error(
+                type="delete", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"),
         )
     async with RedisServices() as redis_services:
         if await redis_services.is_entry_locked(
@@ -670,7 +680,8 @@ async def delete(
         ):
             raise api.Exception(
                 status_code=status.HTTP_403_FORBIDDEN,
-                error=api.Error(type="delete", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
+                error=api.Error(
+                    type="delete", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
             )
         else:
             # if the current can release the lock that means he is the right user
@@ -693,7 +704,7 @@ async def delete(
     history_path = f"{settings.spaces_folder}/{space_name}/{branch_path(branch_name)}" +\
         f"{subpath}/.dm/{meta.shortname}"
 
-    if(
+    if (
         path.is_dir()
         and (
             not isinstance(meta, core.Attachment)

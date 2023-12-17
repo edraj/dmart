@@ -19,6 +19,8 @@
   import sections from "@/stores/management/sections.json";
   import { fly } from "svelte/transition";
   import { isSlowNetwork } from "@/stores/management/slow_network";
+  import { onMount } from "svelte";
+
 
   let search_value = "";
   function handleSearch(e) {
@@ -37,11 +39,12 @@
     isOnline = navigator.onLine;
   }
   let _isSlowNetwork = false;
-  $: {
-    isSlowNetwork.subscribe((v)=>{
-      _isSlowNetwork = v;
-    })
-  }
+
+  onMount(()=>{
+      isSlowNetwork.subscribe((v)=>{
+        _isSlowNetwork = v;
+      });
+  });
 </script>
 
 <svelte:window on:online={handleNetStatus} on:offline={handleNetStatus} />
