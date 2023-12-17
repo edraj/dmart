@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import sys
 from uuid import uuid4
-import jq # type: ignore
+import jq  # type: ignore
 from fastapi.encoders import jsonable_encoder
 from pydantic.fields import Field
 from models.enums import ContentType, Language, ResourceType
@@ -115,7 +115,7 @@ async def serve_query(
                         else "",
                         reverse=(query.sort_type == api.SortType.descending),
                     )
-                res_data = res_data[query.offset : (query.limit + query.offset)]
+                res_data = res_data[query.offset: (query.limit + query.offset)]
 
             async with RedisServices() as redis_services:
                 for redis_doc_dict in res_data:
@@ -199,7 +199,8 @@ async def serve_query(
                                 continue
 
                             resource_class = getattr(
-                                sys.modules["models.core"], camel_case(resource_name)
+                                sys.modules["models.core"], camel_case(
+                                    resource_name)
                             )
 
                             async with aiofiles.open(one, "r") as meta_file:
@@ -343,7 +344,8 @@ async def serve_query(
                     if len(records) >= query.limit or total < query.offset:
                         continue
 
-                    folder_obj = core.Folder.model_validate_json(subfolder_meta.read_text())
+                    folder_obj = core.Folder.model_validate_json(
+                        subfolder_meta.read_text())
                     folder_record = folder_obj.to_record(
                         query.subpath,
                         shortname,
@@ -386,13 +388,15 @@ async def serve_query(
                 if query.sort_by in core.Record.model_fields:
                     records = sorted(
                         records,
-                        key=lambda record: record.__getattribute__(str(query.sort_by)),
+                        key=lambda record: record.__getattribute__(
+                            str(query.sort_by)),
                         reverse=sort_reverse,
                     )
                 else:
                     records = sorted(
                         records,
-                        key=lambda record: record.attributes[str(query.sort_by)],
+                        key=lambda record: record.attributes[str(
+                            query.sort_by)],
                         reverse=sort_reverse,
                     )
 
@@ -425,8 +429,8 @@ async def serve_query(
             async with RedisServices() as redis_services:
                 query.sort_by = "tags"
                 query.aggregation_data = api.RedisAggregate(
-                    group_by = ["@tags"],
-                    reducers = [
+                    group_by=["@tags"],
+                    reducers=[
                         api.RedisReducer(
                             reducer_name="count",
                             alias="freq"
@@ -449,9 +453,9 @@ async def serve_query(
 
         case api.QueryType.random:
             query.aggregation_data = api.RedisAggregate(
-                load = ["@__key"],
-                group_by = ["@resource_type"],
-                reducers = [
+                load=["@__key"],
+                group_by=["@resource_type"],
+                reducers=[
                     api.RedisReducer(
                         reducer_name="random_sample",
                         alias="id",
@@ -565,7 +569,8 @@ async def serve_query(
             if trimmed_subpath[0] == "/":
                 trimmed_subpath = trimmed_subpath[1:]
 
-            path = Path(f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl")
+            path = Path(
+                f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl")
             if path.is_file():
                 result = []
                 if query.search:
@@ -641,7 +646,8 @@ async def serve_query(
                     if not await access_control.check_access(
                         user_shortname=logged_in_user,
                         space_name=query.space_name,
-                        subpath=action_obj.get("resource", {}).get("subpath", "/"),
+                        subpath=action_obj.get(
+                            "resource", {}).get("subpath", "/"),
                         resource_type=action_obj["resource"]["type"],
                         action_type=core.ActionType(action_obj["request"]),
                     ):
@@ -669,7 +675,7 @@ async def serve_query(
                     attributes=row["extra_attributes"]
                 )
                 records.append(record)
-                
+
     if query.jq_filter:
         records = (
             jq.compile(query.jq_filter)
@@ -743,7 +749,8 @@ async def get_entry_attachments(
                 try:
                     resource_obj = resource_class.model_validate_json(await meta_file.read())
                 except Exception as e:
-                    raise Exception(f"Bad attachment ... {attachments_file=}") from e
+                    raise Exception(
+                        f"Bad attachment ... {attachments_file=}") from e
 
             resource_record_obj = resource_obj.to_record(
                 subpath, attach_shortname, include_fields, branch_name
@@ -767,7 +774,8 @@ async def get_entry_attachments(
                     )
 
             if attach_resource_name in attachments_dict:
-                attachments_dict[attach_resource_name].append(resource_record_obj)
+                attachments_dict[attach_resource_name].append(
+                    resource_record_obj)
             else:
                 attachments_dict[attach_resource_name] = [resource_record_obj]
         attachments_files.close()
@@ -939,11 +947,12 @@ def is_entry_exist(
     """
     if subpath[0] == "/":
         subpath = f".{subpath}"
-        
-    payload_file = settings.spaces_folder / space_name / branch_path(branch_name) / subpath / f"{shortname}.json"
+
+    payload_file = settings.spaces_folder / space_name / \
+        branch_path(branch_name) / subpath / f"{shortname}.json"
     if payload_file.is_file():
         return True
-        
+
     for r_type in ResourceType:
         # Spaces compared with each others only
         if r_type == ResourceType.space and r_type != resource_type:
@@ -953,10 +962,11 @@ def is_entry_exist(
         )
         if not resource_cls:
             continue
-        meta_path, meta_file = db.metapath(space_name, subpath, shortname, resource_cls, branch_name, schema_shortname)
+        meta_path, meta_file = db.metapath(
+            space_name, subpath, shortname, resource_cls, branch_name, schema_shortname)
         if (meta_path/meta_file).is_file():
             return True
-        
+
     return False
 
 
@@ -969,7 +979,8 @@ async def get_resource_obj_or_none(
     resource_type: str,
     user_shortname: str,
 ):
-    resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
+    resource_cls = getattr(
+        sys.modules["models.core"], camel_case(resource_type))
     try:
         return await db.load(
             space_name=space_name,
@@ -991,7 +1002,8 @@ def get_payload_obj_or_none(
     filename: str,
     resource_type: str,
 ):
-    resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
+    resource_cls = getattr(
+        sys.modules["models.core"], camel_case(resource_type))
     try:
         return db.load_resource_payload(
             space_name=space_name,
@@ -1074,7 +1086,7 @@ async def validate_subpath_data(
         folder_name = "/".join(subpath.split("/")[folder_name_index:])
         if not folder_meta.is_file():
             meta_folders_health.append(
-                str(folder_meta)[len(str(settings.spaces_folder)) :]
+                str(folder_meta)[len(str(settings.spaces_folder)):]
             )
             continue
 
@@ -1096,7 +1108,8 @@ async def validate_subpath_data(
                 payload_path = "/"
                 subpath_parts = subpath.split("/")
                 if len(subpath_parts) > (len(spaces_path_parts) + 2):
-                    payload_path = "/".join(subpath_parts[folder_name_index:-1])
+                    payload_path = "/".join(
+                        subpath_parts[folder_name_index:-1])
                 folder_meta_payload = db.load_resource_payload(
                     space_name,
                     payload_path,
@@ -1149,7 +1162,8 @@ async def validate_subpath_data(
                         >= max_invalid_size
                     ):
                         break
-                    folders_report[folder_name]["invalid_entries"].append(issue)
+                    folders_report[folder_name]["invalid_entries"].append(
+                        issue)
                 continue
 
             entry_shortname = entry_match.group(1)
@@ -1184,7 +1198,8 @@ async def validate_subpath_data(
                     entry_meta_obj.payload
                     and entry_meta_obj.payload.content_type == ContentType.image
                 ):
-                    payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
+                    payload_file_path = Path(
+                        f"{subpath}/{entry_meta_obj.payload.body}")
                     if (
                         not payload_file_path.is_file()
                         or not bool(
@@ -1210,7 +1225,8 @@ async def validate_subpath_data(
                     and isinstance(entry_meta_obj.payload.body, str)
                     and entry_meta_obj.payload.content_type == ContentType.json
                 ):
-                    payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
+                    payload_file_path = Path(
+                        f"{subpath}/{entry_meta_obj.payload.body}")
                     if not entry_meta_obj.payload.body.endswith(
                         ".json"
                     ) or not os.access(payload_file_path, os.W_OK):
@@ -1260,7 +1276,8 @@ async def validate_subpath_data(
                 if not entry_meta_obj:
                     issue_type = "meta"
                 else:
-                    uuid = str(entry_meta_obj.uuid) if entry_meta_obj.uuid else ""
+                    uuid = str(
+                        entry_meta_obj.uuid) if entry_meta_obj.uuid else ""
 
                 issue = {
                     "issues": [issue_type],
@@ -1278,7 +1295,8 @@ async def validate_subpath_data(
                         >= max_invalid_size
                     ):
                         break
-                    folders_report[folder_name]["invalid_entries"].append(issue)
+                    folders_report[folder_name]["invalid_entries"].append(
+                        issue)
 
         if not folders_report.get(folder_name, {}):
             del folders_report[folder_name]
@@ -1396,7 +1414,8 @@ async def generate_payload_string(
 
     # Generate direct payload string
     payload_values = set(flatten_all(payload).values())
-    payload_string += ",".join([str(i) for i in payload_values if i is not None])
+    payload_string += ",".join([str(i)
+                               for i in payload_values if i is not None])
 
     # Generate attachments payload string
     attachments: dict[str, list] = await get_entry_attachments(
@@ -1442,7 +1461,8 @@ async def get_record_from_redis_doc(
     retrieve_attachments: bool = False,
     validate_schema: bool = False,
     filter_types: list | None = None,
-    branch_name: str = Field(default=settings.default_branch, pattern=regex.SHORTNAME),
+    branch_name: str = Field(
+        default=settings.default_branch, pattern=regex.SHORTNAME),
 ) -> core.Record:
     meta_doc_content = {}
     payload_doc_content = {}
@@ -1532,7 +1552,7 @@ async def get_record_from_redis_doc(
     if isinstance(resource_base_record, core.Record):
         return resource_base_record
     else:
-        return core.Record() 
+        return core.Record()
 
 
 async def get_entry_by_var(
@@ -1570,7 +1590,7 @@ async def get_entry_by_var(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.MISSING_DATA, message="Request object is not available"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 
@@ -1653,10 +1673,10 @@ async def store_user_invitation_token(user: core.User, channel: str) -> str | No
         invitation_value = f"{channel}:{user.msisdn}"
     elif channel == "EMAIL" and user.email:
         invitation_value = f"{channel}:{user.email}"
-        
+
     if not invitation_value:
         return None
-    
+
     invitation_token = sign_jwt(
         {"shortname": user.shortname, "channel": channel},
         settings.jwt_access_expires,
@@ -1666,7 +1686,7 @@ async def store_user_invitation_token(user: core.User, channel: str) -> str | No
             f"users:login:invitation:{invitation_token}",
             invitation_value
         )
-        
+
     return core.User.invitation_url_template()\
         .replace("{url}", settings.invitation_link)\
         .replace("{token}", invitation_token)\

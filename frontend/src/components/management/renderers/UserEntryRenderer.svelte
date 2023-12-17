@@ -3,23 +3,18 @@
   import Attachments from "../Attachments.svelte";
   import { onDestroy, onMount } from "svelte";
   import {
-    ActionResponse,
-    QueryType,
-    RequestType,
-    ResourceType,
-    ResponseEntry,
-    Status,
-    query,
-    request,
+      QueryType,
+      RequestType,
+      ResourceType,
+      ResponseEntry,
+      Status,
+      query,
+      request, check_existing, passwordRegExp, passwordWrongExp,
   } from "@/dmart";
   import {
     Form,
     FormGroup,
     Button,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    ModalHeader,
     Label,
     Input,
     Nav,
@@ -48,7 +43,6 @@
   import { toast } from "@zerodevx/svelte-toast";
   import ToastActionComponent from "@/components/management/ToastActionComponent.svelte";
   import { goto } from "@roxi/routify";
-  import HtmlEditor from "@/components/management/editors/HtmlEditor.svelte";
   import SchemaForm from "svelte-jsonschema-form";
 
   let header_height: number;
@@ -63,8 +57,6 @@
   const canDelete = checkAccess("delete", space_name, subpath, resource_type);
 
   let tab_option = resource_type === ResourceType.folder ? "list" : "view";
-  let content = { json: entry || {}, text: undefined };
-  let entryContent = { json: {} || {}, text: undefined };
 
   let contentMeta: any = { json: {}, text: undefined };
   let validatorMeta: Validator = createAjvValidator({ schema: metaUserSchema });
@@ -120,6 +112,9 @@
   let errorContent = null;
   async function handleSave() {
     errorContent = null;
+    const oldMeta = oldContentMeta.json
+        ? structuredClone(oldContentMeta.json)
+        : JSON.parse(oldContentMeta.text);
     const meta = contentMeta.json
       ? structuredClone(contentMeta.json)
       : JSON.parse(contentMeta.text);
@@ -127,8 +122,29 @@
       ? structuredClone(contentContent.json)
       : JSON.parse(contentContent.text);
 
+      if (oldMeta.email !==  meta.email){
+          const emailStatus: any = await check_existing("email", user.email);
+          if (!emailStatus.attributes.unique){
+              showToast(Level.warn,"Email already exists!");
+              return;
+          }
+      }
+
+      if (oldMeta.msisdn !==  meta.msisdn){
+          const msisdnStatus: any = await check_existing("msisdn", user.msisdn);
+          if (!msisdnStatus.attributes.unique){
+              showToast(Level.warn,"MSISDN already exists!");
+              return;
+          }
+      }
+
     if (meta.password.startsWith("$2b$12$") || meta.password == "") {
       delete meta.password;
+    } else {
+      if (!passwordRegExp.test(meta.password)){
+          showToast(Level.warn, passwordWrongExp);
+          return;
+      }
     }
     const attributes = {
       ...meta,
@@ -270,68 +286,6 @@
     }
   }
 
-  let isModalOpen = false;
-  let modalFlag = "create";
-  let entryType = "folder";
-  let contentShortname = "";
-  let selectedSchema = "";
-
-  async function handleSubmit(e: Event) {
-    e.preventDefault();
-    let response: ActionResponse;
-    if (entryType === "content") {
-      const body = entryContent.json
-        ? structuredClone(entryContent.json)
-        : JSON.parse(entryContent.text);
-      if (body.password.startsWith("$2b$12$")) {
-        delete body.password;
-      }
-      const request_body = {
-        space_name,
-        request_type: RequestType.create,
-        records: [
-          {
-            resource_type: ResourceType.content,
-            shortname: contentShortname === "" ? "auto" : contentShortname,
-            subpath,
-            attributes: {
-              is_active: true,
-              payload: {
-                content_type: "json",
-                schema_shortname: selectedSchema ? selectedSchema : "",
-                body,
-              },
-            },
-          },
-        ],
-      };
-      response = await request(request_body);
-    } else if (entryType === "folder") {
-      const request_body = {
-        space_name,
-        request_type: RequestType.create,
-        records: [
-          {
-            resource_type: ResourceType.folder,
-            shortname: contentShortname === "" ? "auto" : contentShortname,
-            subpath,
-            attributes: {
-              is_active: true,
-            },
-          },
-        ],
-      };
-      response = await request(request_body);
-    }
-    if (response.status === "success") {
-      showToast(Level.info);
-      contentShortname = "";
-      isModalOpen = false;
-    } else {
-      showToast(Level.warn);
-    }
-  }
-
   $: {
     if (
       schema === null &&
@@ -392,9 +346,33 @@
 
   async function handleUserSubmit(e) {
     e.preventDefault();
+    const oldMeta = oldContentMeta.json
+        ? structuredClone(oldContentMeta.json)
+        : JSON.parse(oldContentMeta.text);
+
+    if (oldMeta.email !==  user.email){
+        const emailStatus: any = await check_existing("email", user.email);
+        if (!emailStatus.attributes.unique){
+            showToast(Level.warn,"Email already exists!");
+            return;
+        }
+    }
+
+    if (oldMeta.msisdn !==  user.msisdn){
+        const msisdnStatus: any = await check_existing("msisdn", user.msisdn);
+        if (!msisdnStatus.attributes.unique){
+            showToast(Level.warn,"MSISDN already exists!");
+            return;
+        }
+    }
 
     if (user.password === "") {
       delete user.password;
+    } else {
+      if (!passwordRegExp.test(user.password)){
+          showToast(Level.warn, passwordWrongExp);
+          return;
+      }
     }
 
     const response = await request({
@@ -420,96 +398,27 @@
 
   $: user && contentMeta &&
     (() => {
-      const meta = contentMeta.json
-        ? structuredClone(contentMeta.json)
-        : JSON.parse(contentMeta.text);
+      if (contentMeta.text){
+          contentMeta.json = JSON.parse(contentMeta.text);
+          contentMeta.text = undefined;
+      }
+      const meta = structuredClone(contentMeta.json);
 
       contentMeta.json = { ...meta, ...user };
       meta.displayname = {
         ...meta.displayname,
         ...user.displayname,
       };
+      contentMeta.text = undefined;
       contentMeta = structuredClone(contentMeta);
     })();
-
-  const toggleModal = () => {
-    isModalOpen = !isModalOpen;
-    contentShortname = "";
-  };
 
   $: {
     contentContent = structuredClone(contentContent);
   }
-
-  $: {
-      console.log({contentMeta})
-  }
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
-
-<Modal isOpen={isModalOpen} toggle={toggleModal} size={"lg"}>
-  <ModalHeader toggle={toggleModal} />
-  <Form on:submit={async (e) => await handleSubmit(e)}>
-    <ModalBody>
-      <FormGroup>
-        {#if modalFlag === "create"}
-          <Label class="mt-3">Schema</Label>
-          <Input bind:value={selectedSchema} type="select">
-            <option value={""}>{"None"}</option>
-            {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
-              {#each schemas.records.map((e) => e.shortname) as schema}
-                <option value={schema}>{schema}</option>
-              {/each}
-            {/await}
-          </Input>
-        {/if}
-        {#if entryType === "content" && modalFlag === "create"}
-          <Label class="mt-3">Shortname</Label>
-          <Input placeholder="Shortname..." bind:value={contentShortname} />
-          <hr />
-
-          <Label class="mt-3">Content</Label>
-          <JSONEditor mode={Mode.text} bind:content={entryContent} />
-          <!-- onChange={handleChange}
-                {validator} -->
-
-          <hr />
-
-          <!-- <Label>Schema</Label>
-              <ContentJsonEditor
-                bind:self={refJsonEditor}
-                content={contentSchema}
-                readOnly={true}
-                mode={Mode.tree}
-              /> -->
-        {/if}
-        {#if entryType === "folder"}
-          <Label class="mt-3">Shortname</Label>
-          <Input
-            placeholder="Shortname..."
-            bind:value={contentShortname}
-            required
-          />
-          {#if modalFlag === "update"}
-            <Label class="mt-3">Content</Label>
-          {/if}
-        {/if}
-      </FormGroup>
-    </ModalBody>
-    <ModalFooter>
-      <Button
-        type="button"
-        color="secondary"
-        on:click={() => {
-          isModalOpen = false;
-          contentShortname = "";
-        }}>cancel</Button
-      >
-      <Button type="submit" color="primary">Submit</Button>
-    </ModalFooter>
-  </Form>
-</Modal>
 
 <div
   bind:clientHeight={header_height}
@@ -629,34 +538,6 @@
         </Button>
       {/if}
     </ButtonGroup>
-    {#if resource_type === ResourceType.folder}
-      <ButtonGroup>
-        <Button
-          outline
-          color="success"
-          size="sm"
-          title={$_("create")}
-          class="justify-contnet-center text-center py-0 px-1"
-          on:click={() => {
-            isModalOpen = true;
-            entryType = "content";
-          }}
-          ><Icon name="file-plus" />
-        </Button>
-        <Button
-          outline
-          color="success"
-          size="sm"
-          title={$_("create")}
-          class="justify-contnet-center text-center py-0 px-1"
-          on:click={() => {
-            isModalOpen = true;
-            entryType = "folder";
-          }}
-          ><Icon name="folder-plus" />
-        </Button>
-      </ButtonGroup>
-    {/if}
   </Nav>
 </div>
 <div
@@ -804,6 +685,7 @@
           >
         </Form>
         <JSONEditor
+          mode={Mode.text}
           bind:content={contentMeta}
           onRenderMenu={handleRenderMenu}
           bind:validator={validatorMeta}

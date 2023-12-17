@@ -1,69 +1,64 @@
 <script lang="ts">
-  import HistoryListView from "./../HistoryListView.svelte";
-  import Attachments from "../Attachments.svelte";
-  import { onDestroy, onMount } from "svelte";
-  import {
-    QueryType,
-    RequestType,
-    ResourceType,
-    ResponseEntry,
-    Status,
-    query,
-    request,
-    retrieve_entry,
-    ContentType,
-    upload_with_payload,
-    csv, space,
-  } from "@/dmart";
-  import {
-    Form,
-    FormGroup,
-    Button,
-    Modal,
-    ModalHeader,
-    ModalBody,
-    ModalFooter,
-    Label,
-    Input,
-    Nav,
-    ButtonGroup,
-    Row,
-    TabContent,
-    TabPane
-  } from "sveltestrap";
-  import Icon from "../../Icon.svelte";
-  import { _ } from "@/i18n";
-  import ListView from "../ListView.svelte";
-  import Prism from "@/components/Prism.svelte";
-  import {
-    JSONEditor,
-    Mode,
-    Validator,
-    createAjvValidator,
-  } from "svelte-jsoneditor";
-  import { status_line } from "@/stores/management/status_line";
-  import { authToken } from "@/stores/management/auth";
-  import { timeAgo } from "@/utils/timeago";
-  import { showToast, Level } from "@/utils/toast";
-  import { faSave } from "@fortawesome/free-regular-svg-icons";
-  import refresh_spaces from "@/stores/management/refresh_spaces";
-  import { website } from "@/config";
-  import HtmlEditor from "../editors/HtmlEditor.svelte";
-  import MarkdownEditor from "../editors/MarkdownEditor.svelte";
-  import { isDeepEqual, removeEmpty } from "@/utils/compare";
-  import metaContentSchema from "@/validations/meta.content.json";
-  import SchemaEditor, {
-    transformToProperBodyRequest,
-  } from "../editors/SchemaEditor.svelte";
-  import checkAccess from "@/utils/checkAccess";
-  import { fade } from "svelte/transition";
-  import BreadCrumbLite from "../BreadCrumbLite.svelte";
-  import { generateUUID } from "@/utils/uuid";
-  import downloadFile from "@/utils/downloadFile";
-  import {schemaVisualizationEncoder} from "@/utils/plantUML";
-  import SchemaForm from "svelte-jsonschema-form";
-  import {goto} from "@roxi/routify";
-  // import { SchemaForm } from "svelte-schemaform"
+    import HistoryListView from "./../HistoryListView.svelte";
+    import Attachments from "../Attachments.svelte";
+    import {onDestroy, onMount} from "svelte";
+    import {
+        check_existing,
+        ContentType,
+        create_user,
+        csv, passwordRegExp, passwordWrongExp,
+        query,
+        QueryType,
+        request,
+        RequestType,
+        ResourceType,
+        ResponseEntry,
+        retrieve_entry,
+        space,
+        Status,
+        upload_with_payload,
+    } from "@/dmart";
+    import {
+        Button,
+        ButtonGroup,
+        Form,
+        FormGroup,
+        Input,
+        Label,
+        Modal,
+        ModalBody,
+        ModalFooter,
+        ModalHeader,
+        Nav,
+        Row,
+        TabContent,
+        TabPane
+    } from "sveltestrap";
+    import Icon from "../../Icon.svelte";
+    import {_} from "@/i18n";
+    import ListView from "../ListView.svelte";
+    import Prism from "@/components/Prism.svelte";
+    import {createAjvValidator, JSONEditor, Mode, Validator,} from "svelte-jsoneditor";
+    import {status_line} from "@/stores/management/status_line";
+    import {authToken} from "@/stores/management/auth";
+    import {timeAgo} from "@/utils/timeago";
+    import {Level, showToast} from "@/utils/toast";
+    import {faSave} from "@fortawesome/free-regular-svg-icons";
+    import refresh_spaces from "@/stores/management/refresh_spaces";
+    import {website} from "@/config";
+    import HtmlEditor from "../editors/HtmlEditor.svelte";
+    import MarkdownEditor from "../editors/MarkdownEditor.svelte";
+    import {isDeepEqual, removeEmpty} from "@/utils/compare";
+    import metaContentSchema from "@/validations/meta.content.json";
+    import SchemaEditor, {transformToProperBodyRequest,} from "../editors/SchemaEditor.svelte";
+    import checkAccess from "@/utils/checkAccess";
+    import {fade} from "svelte/transition";
+    import BreadCrumbLite from "../BreadCrumbLite.svelte";
+    import {generateUUID} from "@/utils/uuid";
+    import downloadFile from "@/utils/downloadFile";
+    import {schemaVisualizationEncoder} from "@/utils/plantUML";
+    import SchemaForm from "svelte-jsonschema-form";
+    // import { SchemaForm } from "svelte-schemaform"
   // import { SchemaForm } from "@restspace/svelte-schema-form";
   // import './assets/layout.css';
   // import './assets/basic-skin.css';
@@ -79,7 +74,9 @@
   export let refresh = {};
 
   const canUpdate = checkAccess("update", space_name, subpath, resource_type);
-  const canDelete = checkAccess("delete", space_name, subpath, resource_type);
+  const canDelete = checkAccess("delete", space_name, subpath, resource_type) && !(
+      space_name==="management" && subpath==="/"
+  );
 
   let tab_option = resource_type === ResourceType.folder ? "list" : "view";
   let content = { json: entry, text: undefined };
@@ -231,19 +228,29 @@
     subpath = subpath == "__root__" || subpath == "" ? "/" : subpath;
 
     const request_data = {
-      space_name: space_name,
-      request_type: RequestType.replace,
-      records: [
-        {
-          resource_type,
-          shortname: entry.shortname,
-          subpath,
-          attributes: data,
-        },
-      ],
+        space_name: space_name,
+        request_type: RequestType.replace,
+        records: [
+            {
+                resource_type,
+                shortname: entry.shortname,
+                subpath,
+                attributes: data,
+            },
+        ],
     };
 
-    const response = await request(request_data);
+    let response;
+    if (subpath==='/'){
+        request_data.request_type = RequestType.update;
+        request_data.records[0].resource_type = ResourceType.space;
+        response = await space(request_data);
+    }
+    else {
+        response = await request(request_data);
+    }
+
+
     if (response.status == Status.success) {
       showToast(Level.info);
       oldContentMeta = structuredClone(contentMeta);
@@ -275,6 +282,7 @@
           showToast(Level.warn);
         }
       }
+      window.location.reload();
     }
     else {
       errorContent = response;
@@ -402,7 +410,8 @@
           body = transformToProperBodyRequest(body);
           body = body[0];
           delete body.name;
-      } else {
+      }
+      else {
           body = schemaContent.json
               ? structuredClone(schemaContent.json)
               : JSON.parse(schemaContent.text);
@@ -429,6 +438,46 @@
         ],
       };
       response = await request(request_body);
+    }
+    else if (new_resource_type === ResourceType.user){
+        let body = entryContent.json
+            ? structuredClone(entryContent.json)
+            : JSON.parse(entryContent.text);
+
+        if(new_resource_type===ResourceType.user){
+            if (body.password===null){
+                showToast(Level.warn, "Password must be provided");
+                return;
+            }
+
+            if (!passwordRegExp.test(body.attributes.password)){
+                showToast(Level.warn, passwordWrongExp);
+                return;
+            }
+
+            const shortnameStatus: any = await check_existing("shortname",contentShortname);
+            if (!shortnameStatus.attributes.unique){
+                showToast(Level.warn,"Shortname already exists!");
+                return;
+            }
+
+            const emailStatus: any = await check_existing("email",body.attributes.email);
+            if (!emailStatus.attributes.unique){
+                showToast(Level.warn,"Email already exists!");
+                return;
+            }
+
+            const msisdnStatus: any = await check_existing("msisdn",body.attributes.msisdn);
+            if (!msisdnStatus.attributes.unique){
+                showToast(Level.warn,"MSISDN already exists!");
+                return;
+            }
+
+            if (!body.shortname){
+                body.shortname = contentShortname;
+            }
+            response = await create_user(body);
+        }
     }
     else if (entryType === "content") {
       if (
@@ -457,22 +506,24 @@
         else {
           body = entryContent;
         }
-        if (new_resource_type === ResourceType.role){
+        if (new_resource_type === ResourceType.role || new_resource_type === ResourceType.permission){
             request_body = {
                 space_name,
                 request_type: RequestType.create,
                 records: [
                     {
-                        resource_type: ResourceType.role,
+                        resource_type: new_resource_type,
                         shortname: contentShortname === "" ? "auto" : contentShortname,
                         subpath,
                         attributes: {
                             ...body,
+                            is_active: true
                         },
                     },
                 ],
             };
-        } else {
+        }
+        else {
           if (workflowShortname){
               request_body = {...request_body, workflow_shortname:workflowShortname}
           }
@@ -497,7 +548,10 @@
             workflowShortname;
           selectedContentType = ContentType.json;
         }
-        if (selectedContentType !== null) {
+        if (selectedContentType !== null
+            && new_resource_type !== ResourceType.role
+            && new_resource_type !== ResourceType.permission
+        ) {
           const schema_shortname =
             subpath === "workflows"
               ? "workflow"
@@ -645,7 +699,29 @@
       entryContent = "";
     }
   }
-
+  $: {
+      if (new_resource_type === ResourceType.permission) {
+          entryContent = {
+              json: {
+                  "subpaths": {},
+                  "resource_types": [],
+                  "actions": [],
+                  "conditions": [],
+                  "restricted_fields": [],
+                  "allowed_fields_values": {}
+              },
+              text: undefined
+          };
+      }
+      else if (new_resource_type === ResourceType.role) {
+          entryContent = {
+              json: {
+                  "permissions": [],
+              },
+              text: undefined
+          };
+      }
+  }
   async function handleDownload() {
     const body = {
       space_name,
@@ -694,7 +770,7 @@
     }
     const _schemas = schemas.records.map((e) => e.shortname);
     if (entryType === "folder"){
-      return _schemas.filter((e) => ["meta_schema", "folder_rendering"].includes(e));
+      return ["folder_rendering", ..._schemas]
     } else {
       return _schemas.filter((e) => !["meta_schema", "folder_rendering"].includes(e));
     }
@@ -709,7 +785,7 @@
   size={new_resource_type === "schema" ? "xl" : "lg"}
 >
   <ModalHeader toggle={modalToggle}>
-    Creating an {new_resource_type} under
+    Creating a {new_resource_type} under
     <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>
   </ModalHeader>
   <Form on:submit={async (e) => await handleSubmit(e)}>
@@ -802,7 +878,13 @@
               />
             {/if}
             {#if selectedContentType === "json"}
-                <Label class="mt-3">Payload</Label>
+                <Label class="mt-3">{
+                    new_resource_type === ResourceType.permission
+                        ? "Permission definition"
+                        : new_resource_type === ResourceType.role
+                            ? "Role definition"
+                            : "Payload"
+                }</Label>
                 <TabContent on:tab={(e) => (isContentEntryInForm = e.detail==="form")}>
                   {#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}
                   <TabPane tabId="form" tab="Form" active>
@@ -813,7 +895,7 @@
                     />
                   </TabPane>
                  {/if}
-                  <TabPane tabId="editor" tab="Editor">
+                  <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>
                     <JSONEditor
                       mode={Mode.text}
                       bind:content={entryContent}
