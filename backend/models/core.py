@@ -37,7 +37,8 @@ import utils.password_hashing as password_hashing
 
 
 class Resource(BaseModel):
-    model_config = ConfigDict(use_enum_values = True, arbitrary_types_allowed = True)
+    model_config = ConfigDict(use_enum_values=True, arbitrary_types_allowed=True)
+
 
 class Payload(Resource):
     content_type: ContentType
@@ -48,35 +49,32 @@ class Payload(Resource):
     checksum: str | None = None
     body: str | dict[str, Any]
 
-
     def update(
-        self, 
-        payload: dict, 
-        old_body: dict | None = None,
-        replace: bool = False
+        self, payload: dict, old_body: dict | None = None, replace: bool = False
     ) -> dict | None:
         self.content_type = payload["content_type"]
 
         if self.content_type == ContentType.json:
             if old_body and not replace:
-                separate_payload_body = dict(remove_none(deep_update(
-                    old_body,
-                    payload["body"],
-                )))
+                separate_payload_body = dict(
+                    remove_none(
+                        deep_update(
+                            old_body,
+                            payload["body"],
+                        )
+                    )
+                )
             else:
                 separate_payload_body = payload["body"]
-                
+
             if "schema_shortname" in payload:
                 self.schema_shortname = payload["schema_shortname"]
-            
+
             return separate_payload_body
 
         else:
             self.body = payload["body"]
             return None
-
-
-
 
 
 class Record(BaseModel):
@@ -89,7 +87,7 @@ class Record(BaseModel):
     subpath: str = Field(pattern=regex.SUBPATH)
     attributes: dict[str, Any]
     attachments: dict[ResourceType, list[Any]] | None = None
-    
+
     def __init__(self, **data):
         BaseModel.__init__(self, **data)
         if self.subpath != "/":
@@ -100,11 +98,11 @@ class Record(BaseModel):
 
     def __eq__(self, other):
         return (
-            isinstance(other, Record) and 
-            self.shortname == other.shortname and
-            self.subpath == other.subpath
+            isinstance(other, Record)
+            and self.shortname == other.shortname
+            and self.subpath == other.subpath
         )
-        
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -118,12 +116,12 @@ class Record(BaseModel):
                         "displayname": {
                             "en": "name en",
                             "ar": "name ar",
-                            "kd": "name kd"
+                            "kd": "name kd",
                         },
                         "description": {
                             "en": "desc en",
                             "ar": "desc ar",
-                            "kd": "desc kd"
+                            "kd": "desc kd",
                         },
                         "tags": [],
                         "payload": {
@@ -134,10 +132,10 @@ class Record(BaseModel):
                                 "first_name": "John",
                                 "language": "en",
                                 "last_name": "Doo",
-                                "mobile": "7999311703"
-                            }
-                        }
-                    }
+                                "mobile": "7999311703",
+                            },
+                        },
+                    },
                 }
             ]
         }
@@ -148,6 +146,7 @@ class Translation(Resource):
     en: str | None = None
     ar: str | None = None
     kd: str | None = None
+
 
 class Locator(Resource):
     uuid: UUID | None = None
@@ -170,7 +169,6 @@ class Relationship(Resource):
     attributes: dict[str, Any]
 
 
-
 class Meta(Resource):
     uuid: UUID = Field(default_factory=uuid4)
     shortname: str = Field(pattern=regex.SHORTNAME)
@@ -184,9 +182,9 @@ class Meta(Resource):
     owner_shortname: str
     owner_group_shortname: str | None = None
     payload: Payload | None = None
-    relationships : list[Relationship] | None = None
+    relationships: list[Relationship] | None = None
 
-    model_config = ConfigDict(validate_assignment = True)
+    model_config = ConfigDict(validate_assignment=True)
 
     @staticmethod
     def from_record(record: Record, owner_shortname: str):
@@ -194,18 +192,18 @@ class Meta(Resource):
             record.uuid = uuid4()
             record.shortname = str(record.uuid)[:8]
             record.attributes["uuid"] = record.uuid
-            
+
         meta_class = getattr(
             sys.modules["models.core"], camel_case(record.resource_type)
         )
-            
+
         if issubclass(meta_class, User) and "password" in record.attributes:
             hashed_pass = password_hashing.hash_password(record.attributes["password"])
             record.attributes["password"] = hashed_pass
-            
+
         record.attributes["owner_shortname"] = owner_shortname
         record.attributes["shortname"] = record.shortname
-        meta_obj = meta_class(**remove_none(record.attributes)) #type: ignore
+        meta_obj = meta_class(**remove_none(record.attributes))  # type: ignore
         return meta_obj
 
     @staticmethod
@@ -222,10 +220,7 @@ class Meta(Resource):
         return meta_obj
 
     def update_from_record(
-        self, 
-        record: Record, 
-        old_body: dict | None = None,
-        replace: bool = False
+        self, record: Record, old_body: dict | None = None, replace: bool = False
     ) -> dict | None:
         restricted_fields = [
             "uuid",
@@ -245,24 +240,21 @@ class Meta(Resource):
                     continue
 
                 self.__setattr__(field_name, record.attributes[field_name])
-        
-        if(
-            not self.payload and 
-            "payload" in record.attributes and
-            "content_type" in record.attributes["payload"]
+
+        if (
+            not self.payload
+            and "payload" in record.attributes
+            and "content_type" in record.attributes["payload"]
         ):
             self.payload = Payload(
                 content_type=record.attributes["payload"]["content_type"],
                 schema_shortname=record.attributes["payload"].get("schema_shortname"),
-                body=f"{record.shortname}.json"
+                body=f"{record.shortname}.json",
             )
-            
-            
+
         if self.payload and "payload" in record.attributes:
             return self.payload.update(
-                payload=record.attributes["payload"],
-                old_body=old_body,
-                replace=replace
+                payload=record.attributes["payload"], old_body=old_body, replace=replace
             )
         return None
 
@@ -331,10 +323,12 @@ class User(Actor):
     groups: list[str] = []
     firebase_token: str | None = None
     language: Language = Language.ar
-    
+
     @staticmethod
     def invitation_url_template() -> str:
-        return "{url}/auth/invitation?invitation={token}&lang={lang}&user-type={user_type}"
+        return (
+            "{url}/auth/invitation?invitation={token}&lang={lang}&user-type={user_type}"
+        )
 
 
 class Group(Meta):
@@ -348,14 +342,26 @@ class Attachment(Meta):
 class Json(Attachment):
     pass
 
+
+class Jsonl(Attachment):
+    pass
+
+
+class Csv(Attachment):
+    pass
+
+
 class Share(Attachment):
     pass
+
 
 class Reaction(Attachment):
     type: ReactionType
 
+
 class Reply(Attachment):
     pass
+
 
 class Comment(Attachment):
     body: str
@@ -368,7 +374,6 @@ class Lock(Attachment):
 
 class Media(Attachment):
     pass
-
 
 
 class Alteration(Attachment):
@@ -447,8 +452,10 @@ class Ticket(Meta):
     collaborators: dict[str, str] | None = None  # list[Collabolator] | None = None
     resolution_reason: str | None = None
 
+
 class Post(Content):
     pass
+
 
 class Event(BaseModel):
     space_name: str
@@ -468,7 +475,6 @@ class PluginBase(ABC):
     @abstractmethod
     async def hook(self, data: Event) -> None:
         pass
-    
 
 
 class EventFilter(BaseModel):
