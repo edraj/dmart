@@ -51,11 +51,15 @@ USERS_SUBPATH: str = "users"
 )
 async def check_existing_user_fields(
     _=Depends(JWTBearer()),
-    shortname: str | None = Query(default=None, pattern=rgx.SHORTNAME, examples=["john_doo"]),
-    msisdn: str | None = Query(default=None, pattern=rgx.EXTENDED_MSISDN, examples=["7777778110"]),
-    email: str | None = Query(default=None, pattern=rgx.EMAIL, examples=["john_doo@mail.com"]),
+    shortname: str | None = Query(
+        default=None, pattern=rgx.SHORTNAME, examples=["john_doo"]),
+    msisdn: str | None = Query(
+        default=None, pattern=rgx.EXTENDED_MSISDN, examples=["7777778110"]),
+    email: str | None = Query(default=None, pattern=rgx.EMAIL, examples=[
+                              "john_doo@mail.com"]),
 ):
-    unique_fields = {"shortname": shortname, "msisdn": msisdn, "email_unescaped": email}
+    unique_fields = {"shortname": shortname,
+                     "msisdn": msisdn, "email_unescaped": email}
 
     search_str = f"@subpath:{USERS_SUBPATH}"
     redis_escape_chars = str.maketrans(
@@ -93,7 +97,8 @@ if settings.is_registrable:
         if not record.attributes:
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                error=api.Error(type="create", code=50, message="Empty attributes"),
+                error=api.Error(type="create", code=50,
+                                message="Empty attributes"),
             )
 
         if "invitation" not in record.attributes:
@@ -111,7 +116,8 @@ if settings.is_registrable:
         if "password" not in record.attributes:
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                error=api.Error(type="create", code=50, message="empty password"),
+                error=api.Error(type="create", code=50,
+                                message="empty password"),
             )
         if not re.match(rgx.PASSWORD, record.attributes["password"]):
             raise api.Exception(
@@ -135,7 +141,8 @@ if settings.is_registrable:
             )
         )
 
-        user = core.User.from_record(record=record, owner_shortname=record.shortname)
+        user = core.User.from_record(
+            record=record, owner_shortname=record.shortname)
         await validate_uniqueness(MANAGEMENT_SPACE, record)
 
         separate_payload_data: str | dict[str, Any] = {}
@@ -203,9 +210,9 @@ if settings.is_registrable:
 async def login(response: Response, request: UserLoginRequest) -> api.Response:
     """Login and generate refresh token"""
 
-    shortname : str | None = None
+    shortname: str | None = None
     user = None
-    user_updates : dict[str, Any] = {}
+    user_updates: dict[str, Any] = {}
     identifier = request.check_fields()
     try:
         if request.invitation:
@@ -217,7 +224,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             if not invitation_token:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
-                    api.Error(type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
+                    api.Error(
+                        type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
                 )
 
             data = decode_jwt(request.invitation)
@@ -271,7 +279,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 raise api.Exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     api.Error(
-                        type="request", code=InternalErrorCode.UNPROCESSABLE_ENTITY, message="Invalid identifier [2]"
+                        type="request", code=InternalErrorCode.INVALID_IDENTIFIER, message="Invalid identifier [2]"
                     ),
                 )
 
@@ -290,7 +298,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                                 message="This user is not verified",
                             ),
                         )
-                else: 
+                else:
                     shortname = None
                 if shortname is None:
                     raise api.Exception(
@@ -366,7 +374,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             return api.Response(status=api.Status.success, records=[record])
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password [2]"),
+            api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                      message="Invalid username or password [2]"),
         )
     except api.Exception as e:
         if e.error.type == "db":
@@ -490,8 +499,8 @@ async def update_profile(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="jwtauth",
-                code=InternalErrorCode.INVALID_PASSWORD_RULES,
-                message="password dose not match required rules",
+                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                message="Invalid username or password",
             ),
         )
     await plugin_manager.before_action(
@@ -523,7 +532,8 @@ async def update_profile(
         ):
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA, message="Credential does not match"),
+                api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA,
+                          message="mismatch with the information provided"),
             )
 
     # if "force_password_change" in profile.attributes:
@@ -552,7 +562,8 @@ async def update_profile(
         if result is None or result != profile.attributes["confirmation"]:
             raise Exception(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
-                api.Error(type="request", code=InternalErrorCode.UNPROCESSABLE_ENTITY, message="Invalid confirmation code [1]"),
+                api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
+                          message="Invalid confirmation code [1]"),
             )
 
         if profile_user.email:
@@ -645,7 +656,8 @@ async def logout(
     response: Response,
     shortname=Depends(JWTBearer()),
 ) -> api.Response:
-    response.set_cookie(value="", max_age=0, key="auth_token", httponly=True, secure=True, samesite="none")
+    response.set_cookie(value="", max_age=0, key="auth_token",
+                        httponly=True, secure=True, samesite="none")
 
     user = await db.load(
         space_name=MANAGEMENT_SPACE,
@@ -664,7 +676,7 @@ async def logout(
             updates={
                 "firebase_token": None
             }
-            
+
         )
 
     return api.Response(status=api.Status.success, records=[])
@@ -852,7 +864,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
         )
         if not token:
             raise exception
-            
+
         shortened_link = await repository.url_shortner(token)
         await send_email(
             from_address=settings.email_sender,
@@ -938,7 +950,8 @@ async def confirm_otp(
 
 @router.post("/reset", response_model=api.Response, response_model_exclude_none=True)
 async def user_reset(
-    shortname: str = Body(..., pattern=rgx.SHORTNAME, embed=True, examples=["john_doo"]),
+    shortname: str = Body(..., pattern=rgx.SHORTNAME,
+                          embed=True, examples=["john_doo"]),
     logged_user=Depends(JWTBearer()),
 ) -> api.Response:
 
@@ -968,7 +981,7 @@ async def user_reset(
                 message="You don't have permission to this action",
             ),
         )
-        
+
     if not user.force_password_change:
         await repository.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
@@ -977,10 +990,10 @@ async def user_reset(
             meta=user,
             updates={"force_password_change": True}
         )
-        
+
     sms_link = None
     email_link = None
-        
+
     if user.msisdn and not user.is_msisdn_verified:
         token = await repository.store_user_invitation_token(
             user, "SMS"
@@ -992,7 +1005,7 @@ async def user_reset(
                 message=languages[
                     user.language
                 ]["invitation_message"].replace(
-                    "{link}", 
+                    "{link}",
                     sms_link
                 ),
             )
@@ -1016,10 +1029,9 @@ async def user_reset(
                 ),
                 subject=generate_subject("activation"),
             )
-        
 
     return api.Response(
-        status=api.Status.success, 
+        status=api.Status.success,
         attributes={"sms_sent": bool(sms_link), "email_sent": bool(email_link)}
     )
 
@@ -1041,5 +1053,6 @@ async def validate_password(
     else:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="jwtauth", code=InternalErrorCode.PASSWORD_NOT_VALIDATED, message="Password dose not match"),
+            api.Error(type="jwtauth", code=InternalErrorCode.PASSWORD_NOT_VALIDATED,
+                      message="Password dose not match"),
         )
