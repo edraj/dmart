@@ -5,7 +5,7 @@ import hashlib
 import os
 from uuid import uuid4
 from re import sub as res_sub
-from fastapi import APIRouter, Body, Depends, UploadFile, Path, Form, status
+from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, status
 from fastapi.responses import FileResponse
 from starlette.responses import StreamingResponse
 from utils.generate_email import generate_email_from_template, generate_subject
@@ -1732,6 +1732,7 @@ async def retrieve_entry_meta(
     shortname: str = Path(..., pattern=regex.SHORTNAME, examples=["unique_shortname"]),
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
+    filter_attachments_types: list = Query(default=[], examples=["media", "comment", "json"]),
     validate_schema: bool = True,
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
@@ -1799,6 +1800,7 @@ async def retrieve_entry_meta(
             attachments_path=entry_path,
             branch_name=branch_name,
             retrieve_json_payload=retrieve_json_payload,
+            filter_types=filter_attachments_types,
         )
 
     if (

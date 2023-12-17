@@ -1,6 +1,6 @@
 from re import sub as res_sub
 from uuid import uuid4
-from fastapi import APIRouter, Request, Path, status, Depends
+from fastapi import APIRouter, Query, Request, Path, status, Depends
 from models.enums import ContentType, ResourceType, TaskType
 import utils.db as db
 import models.api as api
@@ -76,6 +76,7 @@ async def retrieve_entry_meta(
     shortname: str = Path(..., pattern=regex.SHORTNAME),
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
+    filter_attachments_types: list = Query(default=[], examples=["media", "comment", "json"]),
     branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
 
@@ -140,7 +141,8 @@ async def retrieve_entry_meta(
             subpath=subpath,
             attachments_path=entry_path,
             branch_name=branch_name,
-            retrieve_json_payload=retrieve_json_payload
+            retrieve_json_payload=retrieve_json_payload,
+            filter_types=filter_attachments_types
         )
 
 
