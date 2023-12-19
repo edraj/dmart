@@ -21,7 +21,6 @@
     ListGroupItem,
   } from "sveltestrap";
   import Icon from "../../Icon.svelte";
-  import { _ } from "@/i18n";
   import Folder from "../Folder.svelte";
   import { Level, showToast } from "@/utils/toast";
   import refresh_spaces from "@/stores/management/refresh_spaces";
@@ -29,9 +28,9 @@
   let expanded: string;
   function displayname(space_entry: ApiResponseRecord): string {
     let lang = null;
-    if (typeof localStorage !== 'undefined')
-      lang = JSON.parse(localStorage.getItem("preferred_locale"));
-    if (space_entry?.attributes?.displayname && lang in space_entry?.attributes?.displayname) {
+    if (typeof localStorage !== 'undefined') {
+        lang = JSON.parse(localStorage.getItem("preferred_locale"));
+    }if (space_entry?.attributes?.displayname && lang in space_entry?.attributes?.displayname) {
       return (
         space_entry?.attributes?.displayname[lang] ?? space_entry.shortname
       );
@@ -130,7 +129,7 @@
           {#await get_children( space.shortname, "/", 10, 0, [ResourceType.folder] )}
             <!--h4> Loading {space.shortname} </h4-->
           {:then children_data}
-            {#each children_data.records as folder}
+            {#each (children_data?.records ?? []) as folder}
               <Folder {folder} space_name={space.shortname} />
             {/each}
           {:catch error}
