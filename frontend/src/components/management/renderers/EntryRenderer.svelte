@@ -1,6 +1,4 @@
 <script lang="ts">
-  import HistoryListView from "./../HistoryListView.svelte";
-  import Attachments from "../Attachments.svelte";
   import {onDestroy, onMount} from "svelte";
   import {
       check_existing,
@@ -60,10 +58,8 @@
   import SchemaForm from "svelte-jsonschema-form";
   import Table from "@/components/management/Table.svelte";
   import Table2Cols from "@/components/management/Table2Cols.svelte";
-  // import { SchemaForm } from "svelte-schemaform"
-  // import { SchemaForm } from "@restspace/svelte-schema-form";
-  // import './assets/layout.css';
-  // import './assets/basic-skin.css';
+  import Attachments from "@/components/management/Attachments.svelte";
+  import HistoryListView from "@/components/management/HistoryListView.svelte";
 
   let header_height: number;
 
@@ -740,8 +736,6 @@
   }
 
   let oldSelectedSchema = "old";
-  let schemaForm: SchemaForm;
-  let uischema = {};
   $: {
     if (oldSelectedSchema !== selectedSchema && selectedSchema !== '') {
       (async () => {
@@ -756,8 +750,8 @@
         delete selectedSchemaContent.required;
         cleanUpSchema(selectedSchemaContent.properties);
         validatorContent = createAjvValidator({ schema:  selectedSchemaContent });
-        oldSelectedSchema = selectedSchema;
       })();
+      oldSelectedSchema = selectedSchema;
     }
   }
 
@@ -870,6 +864,7 @@
                 <Prism bind:code={errorContent} />
               {/if}
             </Row>
+
           {:else if selectedContentType}
             {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
               <Label class="mt-3">Payload</Label>
