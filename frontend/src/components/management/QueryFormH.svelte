@@ -118,7 +118,6 @@
         (async () => {
           subpaths = [];
           tempSubpaths = [];
-            console.log({spacename, subpath})
           const _subpaths = await get_children(spacename, "/");
           await buildSubpaths("", _subpaths);
 
@@ -144,7 +143,7 @@
       space_name,
       subpath,
       type: "search",
-      search: search,
+      search: search || "",
       retrieve_json_payload: true,
       branch_name: "master",
       filter_types: resource_type ? [resource_type] : [],
