@@ -18,7 +18,7 @@ from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, sign_jwt, decode_jwt, set_redis_session_key
-from typing import Annotated, Any
+from typing import Any
 from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
