@@ -13,14 +13,14 @@ class Settings(BaseSettings):
     app_url: str = ""
     public_app_url: str = ""
     app_name: str = "dmart"
-    websocket_url: str = ""  # http://127.0.0.1:8484"
+    websocket_url: str = "" # http://127.0.0.1:8484"
     websocket_port: int = 8484
     base_path: str = ""
     debug_enabled: bool = True
-    log_handlers: list[str] = ["console", "file"]
+    log_handlers: list[str] = ['console', 'file']
     log_file: str = "../logs/dmart.ljson.log"
     ws_log_file: str = "../logs/websocket.ljson.log"
-    jwt_secret: str = "".join(random.sample(string.ascii_letters + string.digits, 12))
+    jwt_secret: str = "".join(random.sample(string.ascii_letters + string.digits,12))
     jwt_algorithm: str = "HS256"
     jwt_access_expires: int = 30 * 86400  # 30 days
     listening_host: str = "0.0.0.0"
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     current_user_mw: str = (
         "__current_user__"  # used in access control refers to current logged-in user
     )
-    root_subpath_mw: str = "__root__"
+    root_subpath_mw : str = "__root__"
     email_sender: str = "dmart@dmart.com"
 
     otp_token_ttl: int = 60 * 5
