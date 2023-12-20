@@ -1,67 +1,65 @@
 <script lang="ts">
-    import HistoryListView from "./../HistoryListView.svelte";
-    import Attachments from "../Attachments.svelte";
-    import {onDestroy, onMount} from "svelte";
-    import {
-        check_existing,
-        ContentType,
-        create_user,
-        csv, passwordRegExp, passwordWrongExp,
-        query,
-        QueryType,
-        request,
-        RequestType,
-        ResourceType,
-        ResponseEntry,
-        retrieve_entry,
-        space,
-        Status,
-        upload_with_payload,
-    } from "@/dmart";
-    import {
-        Button,
-        ButtonGroup,
-        Form,
-        FormGroup,
-        Input,
-        Label,
-        Modal,
-        ModalBody,
-        ModalFooter,
-        ModalHeader,
-        Nav,
-        Row,
-        TabContent,
-        TabPane
-    } from "sveltestrap";
-    import Icon from "../../Icon.svelte";
-    import {_} from "@/i18n";
-    import ListView from "../ListView.svelte";
-    import Prism from "@/components/Prism.svelte";
-    import {createAjvValidator, JSONEditor, Mode, Validator,} from "svelte-jsoneditor";
-    import {status_line} from "@/stores/management/status_line";
-    import {authToken} from "@/stores/management/auth";
-    import {timeAgo} from "@/utils/timeago";
-    import {Level, showToast} from "@/utils/toast";
-    import {faSave} from "@fortawesome/free-regular-svg-icons";
-    import refresh_spaces from "@/stores/management/refresh_spaces";
-    import {website} from "@/config";
-    import HtmlEditor from "../editors/HtmlEditor.svelte";
-    import MarkdownEditor from "../editors/MarkdownEditor.svelte";
-    import {isDeepEqual, removeEmpty} from "@/utils/compare";
-    import metaContentSchema from "@/validations/meta.content.json";
-    import SchemaEditor, {transformToProperBodyRequest,} from "../editors/SchemaEditor.svelte";
-    import checkAccess from "@/utils/checkAccess";
-    import {fade} from "svelte/transition";
-    import BreadCrumbLite from "../BreadCrumbLite.svelte";
-    import {generateUUID} from "@/utils/uuid";
-    import downloadFile from "@/utils/downloadFile";
-    import {schemaVisualizationEncoder} from "@/utils/plantUML";
-    import SchemaForm from "svelte-jsonschema-form";
-    // import { SchemaForm } from "svelte-schemaform"
-  // import { SchemaForm } from "@restspace/svelte-schema-form";
-  // import './assets/layout.css';
-  // import './assets/basic-skin.css';
+  import {onDestroy, onMount} from "svelte";
+  import {
+      check_existing,
+      ContentType,
+      create_user,
+      csv, passwordRegExp, passwordWrongExp,
+      query,
+      QueryType,
+      request,
+      RequestType,
+      ResourceType,
+      ResponseEntry,
+      retrieve_entry,
+      space,
+      Status,
+      upload_with_payload,
+  } from "@/dmart";
+  import {
+      Button,
+      ButtonGroup,
+      Form,
+      FormGroup,
+      Input,
+      Label,
+      Modal,
+      ModalBody,
+      ModalFooter,
+      ModalHeader,
+      Nav,
+      Row,
+      TabContent,
+      TabPane
+  } from "sveltestrap";
+  import Icon from "../../Icon.svelte";
+  import {_} from "@/i18n";
+  import ListView from "../ListView.svelte";
+  import Prism from "@/components/Prism.svelte";
+  import {createAjvValidator, JSONEditor, Mode, Validator,} from "svelte-jsoneditor";
+  import {status_line} from "@/stores/management/status_line";
+  import {authToken} from "@/stores/management/auth";
+  import {timeAgo} from "@/utils/timeago";
+  import {Level, showToast} from "@/utils/toast";
+  import {faSave} from "@fortawesome/free-regular-svg-icons";
+  import refresh_spaces from "@/stores/management/refresh_spaces";
+  import {website} from "@/config";
+  import HtmlEditor from "../editors/HtmlEditor.svelte";
+  import MarkdownEditor from "../editors/MarkdownEditor.svelte";
+  import {isDeepEqual, removeEmpty} from "@/utils/compare";
+  import metaContentSchema from "@/validations/meta.content.json";
+  import SchemaEditor, {transformToProperBodyRequest,} from "../editors/SchemaEditor.svelte";
+  import checkAccess from "@/utils/checkAccess";
+  import {fade} from "svelte/transition";
+  import BreadCrumbLite from "../BreadCrumbLite.svelte";
+  import {generateUUID} from "@/utils/uuid";
+  import downloadFile from "@/utils/downloadFile";
+  import {schemaVisualizationEncoder} from "@/utils/plantUML";
+  import SchemaForm from "svelte-jsonschema-form";
+  import Table from "@/components/management/Table.svelte";
+  import Table2Cols from "@/components/management/Table2Cols.svelte";
+  import Attachments from "@/components/management/Attachments.svelte";
+  import HistoryListView from "@/components/management/HistoryListView.svelte";
 
   let header_height: number;
 
@@ -738,8 +736,6 @@
   }
 
   let oldSelectedSchema = "old";
-  let schemaForm: SchemaForm;
-  let uischema = {};
   $: {
     if (oldSelectedSchema !== selectedSchema && selectedSchema !== '') {
       (async () => {
@@ -754,8 +750,8 @@
         delete selectedSchemaContent.required;
         cleanUpSchema(selectedSchemaContent.properties);
         validatorContent = createAjvValidator({ schema:  selectedSchemaContent });
-        oldSelectedSchema = selectedSchema;
       })();
+      oldSelectedSchema = selectedSchema;
     }
   }
 
@@ -868,6 +864,7 @@
                 <Prism bind:code={errorContent} />
               {/if}
             </Row>
+
           {:else if selectedContentType}
             {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
               <Label class="mt-3">Payload</Label>
@@ -1157,7 +1154,10 @@
       class="px-1 pb-1 h-100"
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
-      <Prism code={entry} />
+      <TabContent>
+        <TabPane tabId="table" tab="Table" active><Table2Cols {entry} /></TabPane>
+        <TabPane tabId="form" tab="Raw"><Prism code={entry} /></TabPane>
+      </TabContent>
     </div>
   </div>
   <div class="tab-pane" class:active={tab_option === "edit_meta"}>
