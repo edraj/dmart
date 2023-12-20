@@ -2,7 +2,9 @@
 import json
 import re
 from pathlib import Path
+from uuid import uuid4
 import aiofiles
+from utils.async_request import AsyncRequest
 from utils.generate_email import generate_subject
 from utils.generate_email import generate_email_from_template
 from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
@@ -16,13 +18,14 @@ from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, sign_jwt, decode_jwt, set_redis_session_key
-from typing import Any
+from typing import Annotated, Any
 from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
 from utils.redis_services import RedisServices
 from models.api import Error, Exception, Status
+from utils.social_sso import get_facebook_sso, get_google_sso
 from .service import (
     gen_alphanumeric,
     send_email,
@@ -38,6 +41,9 @@ from .models.requests import (
 )
 import utils.regex as rgx
 from languages.loader import languages
+from fastapi_sso.sso.google import GoogleSSO
+from fastapi_sso.sso.facebook import FacebookSSO
+from fastapi_sso.sso.base import SSOBase
 
 router = APIRouter()
 
@@ -328,38 +334,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 )
             )
         ):
-            access_token = sign_jwt(
-                {"username": shortname}, settings.jwt_access_expires
-            )
-            await set_redis_session_key(shortname)
-            response.set_cookie(
-                value=access_token,
-                max_age=settings.jwt_access_expires,
-                key="auth_token", httponly=True, secure=True, samesite="none"
-            )
-            record = core.Record(
-                resource_type=core.ResourceType.user,
-                subpath="users",
-                shortname=shortname,
-                attributes={
-                    "access_token": access_token,
-                    "type": user.type,
-                },
-            )
-            if user.displayname:
-                record.attributes["displayname"] = user.displayname
+            record = await process_user_login(user, response, user_updates, request.firebase_token)
 
-            if request.firebase_token:
-                user_updates["firebase_token"] = request.firebase_token
-
-            await repository.internal_sys_update_model(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                branch_name=MANAGEMENT_BRANCH,
-                meta=user,
-                updates=user_updates,
-                sync_redis=False
-            )
             await plugin_manager.after_action(
                 core.Event(
                     space_name=MANAGEMENT_SPACE,
@@ -1056,3 +1032,130 @@ async def validate_password(
             api.Error(type="jwtauth", code=InternalErrorCode.PASSWORD_NOT_VALIDATED,
                       message="Password dose not match"),
         )
+
+
+
+async def process_user_login(
+    user: core.User, 
+    response: Response,
+    user_updates: dict = {}, 
+    firebase_token: str | None = None
+) -> core.Record:
+    access_token = sign_jwt(
+        {"username": user.shortname}, settings.jwt_access_expires
+    )
+    await set_redis_session_key(user.shortname)
+    response.set_cookie(
+        value=access_token,
+        max_age=settings.jwt_access_expires,
+        key="auth_token",
+        httponly=True,
+        secure=True,
+        samesite="none",
+    )
+    record = core.Record(
+        resource_type=core.ResourceType.user,
+        subpath="users",
+        shortname=user.shortname,
+        attributes={
+            "access_token": access_token,
+            "type": user.type,
+        },
+    )
+    if user.displayname:
+        record.attributes["displayname"] = user.displayname
+
+    if firebase_token:
+        user_updates["firebase_token"] = firebase_token
+
+    if user_updates:
+        await repository.internal_sys_update_model(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            branch_name=MANAGEMENT_BRANCH,
+            meta=user,
+            updates=user_updates,
+            sync_redis=False,
+        )
+        
+    return record
+
+if settings.social_login_allowed:
+
+    @router.post("/google/login")
+    async def google_profile(
+        response: Response,
+        access_token: str = Body(default=...),
+        firebase_token: str = Body(default=None),
+        google_sso: GoogleSSO = Depends(get_google_sso),
+    ):
+        user_model = await social_login(access_token, google_sso, "google")
+
+        record = await process_user_login(
+            user=user_model,
+            response=response,
+            firebase_token=firebase_token
+        )
+
+        return api.Response(status=api.Status.success, records=[record])
+
+    @router.post("/facebook/login")
+    async def facebook_login(
+        response: Response,
+        access_token: str = Body(default=...),
+        firebase_token: str = Body(default=None),
+        facebook_sso: FacebookSSO = Depends(get_facebook_sso),
+    ):
+        user_model = await social_login(access_token, facebook_sso, "facebook")
+
+        record = await process_user_login(
+            user=user_model,
+            response=response,
+            firebase_token=firebase_token
+        )
+
+        return api.Response(status=api.Status.success, records=[record])
+
+
+    async def social_login(access_token: str, sso: SSOBase, provider: str) -> core.User:
+        async with AsyncRequest() as session:
+            user_profile_endpoint = await sso.userinfo_endpoint
+            response = await session.get(
+                user_profile_endpoint, headers={"Authorization": f"Bearer {access_token}"}
+            )
+            if response.status != 200:
+                raise api.Exception(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    error=api.Error(type="auth", code=InternalErrorCode.INVALID_DATA, message="Invalid access token"),
+                )
+            content = await response.json()
+            provider_user = await sso.openid_from_response(content)
+            
+            
+        async with RedisServices() as redis_man:
+            redis_search_res = await redis_man.search(
+                space_name=MANAGEMENT_SPACE,
+                branch_name=MANAGEMENT_BRANCH,
+                search=f"@{provider}_id:{provider_user.id}",
+                limit=1,
+                offset=0,
+                filters={},
+            )
+
+        if not redis_search_res or redis_search_res["total"] == 0:
+            uuid = uuid4()
+            shortname = str(uuid)[:8]
+            user_model = core.User(
+                shortname=shortname,
+                displayname=core.Translation(
+                    en=f"{provider_user.first_name} provider_user.last_name"
+                ),
+                email=provider_user.email,
+                is_email_verified=True,
+                social_avatar_url=provider_user.picture,
+            )
+            setattr(user_model, f"{provider}_id", provider_user.id)
+
+            await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user_model, MANAGEMENT_BRANCH)
+
+        return user_model
