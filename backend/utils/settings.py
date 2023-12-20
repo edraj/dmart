@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     default_branch: str = "master"
     management_space_branch: str = "master"
     is_registrable: bool = True
+    social_login_allowed: bool = True
     all_spaces_mw: str = (
         "__all_spaces__"  # magic word used in access control refers to any space
     )
@@ -63,6 +64,15 @@ class Settings(BaseSettings):
     max_query_limit: int = 10000
     session_inactivity_ttl: int = 60 * 10
 
-    model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", "config.env"), env_file_encoding = "utf-8")
+    google_client_id: str = ""
+    google_client_secret: str = ""
+
+    facebook_client_id: str = ""
+    facebook_client_secret: str = ""
+
+    model_config = SettingsConfigDict(
+        env_file=os.getenv("BACKEND_ENV", "config.env"), env_file_encoding="utf-8"
+    )
+
 
 settings = Settings()

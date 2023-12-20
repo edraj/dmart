@@ -19,3 +19,4 @@ segno
 jinja2
 asgi-correlation-id
 pydantic-settings
+fastapi-sso >= 0.9.1
