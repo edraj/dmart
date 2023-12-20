@@ -412,7 +412,7 @@
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
       <TabContent>
-        <TabPane tabId="table" tab="Table" active><Table2Cols {current_space} /></TabPane>
+        <TabPane tabId="table" tab="Table" active><Table2Cols entry={current_space} /></TabPane>
         <TabPane tabId="form" tab="Raw">
           <Prism code={current_space} />
         </TabPane>
