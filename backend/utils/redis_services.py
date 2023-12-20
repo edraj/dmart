@@ -205,6 +205,7 @@ class RedisServices(object):
                 "is_msisdn_verified",
                 "type",
                 "force_password_change",
+                "social_avatar_url"
             ],
         },
         {

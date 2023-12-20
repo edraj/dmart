@@ -323,6 +323,9 @@ class User(Actor):
     groups: list[str] = []
     firebase_token: str | None = None
     language: Language = Language.ar
+    google_id: str | None = None
+    facebook_id: str | None = None
+    social_avatar_url: str | None = None
 
     @staticmethod
     def invitation_url_template() -> str:
