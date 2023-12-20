@@ -1120,6 +1120,11 @@ if settings.social_login_allowed:
     async def social_login(access_token: str, sso: SSOBase, provider: str) -> core.User:
         async with AsyncRequest() as session:
             user_profile_endpoint = await sso.userinfo_endpoint
+            if not user_profile_endpoint:
+                raise api.Exception(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    error=api.Error(type="auth", code=InternalErrorCode.INVALID_DATA, message="Misconfigured provider"),
+                )
             response = await session.get(
                 user_profile_endpoint, headers={"Authorization": f"Bearer {access_token}"}
             )
@@ -1147,6 +1152,7 @@ if settings.social_login_allowed:
             shortname = str(uuid)[:8]
             user_model = core.User(
                 shortname=shortname,
+                owner_shortname=shortname,
                 displayname=core.Translation(
                     en=f"{provider_user.first_name} provider_user.last_name"
                 ),
@@ -1158,4 +1164,14 @@ if settings.social_login_allowed:
 
             await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user_model, MANAGEMENT_BRANCH)
 
+        else:
+            redis_doc_dict = json.loads(redis_search_res["data"][0])
+            user_record = await repository.get_record_from_redis_doc(
+                space_name=MANAGEMENT_SPACE,
+                branch_name=MANAGEMENT_BRANCH,
+                doc=redis_doc_dict,
+                retrieve_json_payload=True
+            )
+            user_model = core.User.from_record(user_record, owner_shortname=redis_doc_dict.get("owner_shortname"))
+            
         return user_model
