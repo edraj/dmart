@@ -545,7 +545,7 @@ export async function upload_with_payload(
     attributes: { is_active: true },
   };
   if (content_type){
-    request_record_body.content_type = content_type;
+    request_record_body.attributes.content_type = content_type;
   }
 
   const request_record = new Blob(
