@@ -1451,11 +1451,18 @@ async def create_or_update_resource_with_payload(
                 message="Space name provided is empty or invalid [5]",
             ),
         )
+    record = core.Record.model_validate_json(request_record.file.read())
+    print(f"{record=}")
     payload_filename = payload_file.filename or ""
     if payload_filename.endswith(".json"):
         resource_content_type = ContentType.json
     elif payload_file.content_type == "application/pdf":
         resource_content_type = ContentType.pdf
+    elif payload_file.content_type == "application/octet-stream":
+        if record.attributes.get("content_type") == "jsonl":
+            resource_content_type = ContentType.jsonl
+        elif record.attributes.get("content_type") == "csv":
+            resource_content_type = ContentType.csv
     elif payload_file.content_type == "text/markdown":
         resource_content_type = ContentType.markdown
     elif payload_file.content_type and "image/" in payload_file.content_type:
@@ -1474,7 +1481,7 @@ async def create_or_update_resource_with_payload(
             ),
         )
 
-    record = core.Record.model_validate_json(request_record.file.read())
+
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
