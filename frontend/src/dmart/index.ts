@@ -274,6 +274,8 @@ export enum ContentType {
   pdf = "pdf",
   audio = "audio",
   video = "video",
+  jsonl = "jsonl",
+  csv = "csv",
 }
 
 type Payload = {
@@ -532,17 +534,23 @@ export async function upload_with_payload(
   space_name: string,
   subpath: string,
   resource_type: ResourceType,
+  content_type: ContentType,
   shortname: string,
   payload_file: File
 ): Promise<ApiResponse> {
+  const request_record_body:any = {
+    resource_type,
+    subpath,
+    shortname,
+    attributes: { is_active: true },
+  };
+  if (content_type){
+    request_record_body.content_type = content_type;
+  }
+
   const request_record = new Blob(
     [
-      JSON.stringify({
-        resource_type,
-        subpath,
-        shortname,
-        attributes: { is_active: true },
-      }),
+      JSON.stringify(request_record_body),
     ],
     { type: "application/json" }
   );
