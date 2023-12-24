@@ -84,6 +84,7 @@ class ContentType(StrEnum):
     video = "video"
     jsonl = "jsonl"
     csv = "csv"
+    sqlite = "sqlite"
 
     @staticmethod
     def inline_types() -> list:

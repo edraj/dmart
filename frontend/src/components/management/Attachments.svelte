@@ -141,6 +141,7 @@
                 ContentType.video,
                 ContentType.jsonl,
                 ContentType.csv,
+                ContentType.sqlite,
             ].includes(contentType)
         ) {
             response = await upload_with_payload(
@@ -332,6 +333,12 @@
                     bind:files={payloadFiles}
                     type="file"
                     accept=".csv" />
+          {:else if contentType === ContentType.sqlite}
+            <Label>SQLite File</Label>
+            <Input
+              bind:files={payloadFiles}
+              type="file"
+              accept=".sqlite,.sqlite3,.db,.db3,.s3db,.sl3" />
           {:else if contentType !== ContentType.text && contentType !== ContentType.html}
             <Label>Payload File</Label>
             <Input
