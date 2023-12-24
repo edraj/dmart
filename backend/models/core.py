@@ -552,3 +552,19 @@ class Notification(Meta):
             priority=notification_req["priority"],
             entry=entry_locator,
         )
+
+
+class DataAsset(Meta):
+    pass
+
+class CSV(DataAsset):
+    pass
+
+class SQLLite(DataAsset):
+    pass
+
+class JSONL(DataAsset):
+    pass
+
+class Parquet(DataAsset):
+    pass
