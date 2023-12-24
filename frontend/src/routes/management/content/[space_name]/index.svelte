@@ -13,7 +13,7 @@
   {:then entry}
     <EntryRenderer
       {entry}
-      resource_type={ResourceType.folder}
+      resource_type={ResourceType.space}
       space_name={$params.space_name}
       subpath={'/'}
       bind:refresh

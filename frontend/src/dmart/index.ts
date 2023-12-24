@@ -283,7 +283,7 @@ type Payload = {
   content_type: ContentType;
   schema_shortname?: string;
   checksum: string;
-  body: string | Record<string, any>;
+  body: string | Record<string, any> | any;
   last_validated: string;
   validation_status: "valid" | "invalid";
 };

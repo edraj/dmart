@@ -15,6 +15,7 @@
   import { goto } from "@roxi/routify";
   import { fade } from "svelte/transition";
   import { isDeepEqual } from "@/utils/compare";
+  import { folderRenderingColsToListCols } from "@/utils/columnsUtils";
   import {
     Modal,
     ModalBody,
@@ -30,8 +31,18 @@
   export let subpath: string;
   export let shortname: string = null;
   export let type: QueryType = QueryType.search;
-  export let columns: any = cols;
+  export let columns: any = null;
+  export let folderColumns: any = null;
   export let is_clickable = true;
+
+  if (columns !== null && folderColumns !== null){
+      throw new Error('columns and folderColumns cannot co-exist!');
+  }
+  if (folderColumns === null || folderColumns.length === 0) {
+      columns = cols;
+  } else {
+      columns = folderRenderingColsToListCols(folderColumns);
+  }
 
   let total: number = 0;
   const { sortBy, sortOrder, page } = $params;
@@ -46,14 +57,13 @@
   });
 
   function value(path: string, data, type) {
-    if (data===null) {
+    if (data === null) {
       return "not_applicable";
     }
-    if (path.length == 1 && path[0].length > 0 && path[0] in data) {
+    if (path.length == 1 && path[0].length > 0 && typeof(data) === "object" && path[0] in data) {
       if (type == "json") return JSON.stringify(data[path[0]], undefined, 1);
       else return data[path[0]];
     }
-
     if (path.length > 1 && path[0].length > 0 && path[0] in data) {
       return value(path.slice(1), data[path[0]], type);
     }
@@ -113,6 +123,7 @@
         (objectDatatable.numberActivePage - 1),
       search: $search,
       ...requestExtra,
+      retrieve_json_payload: true
     });
 
     old_search = $search;
@@ -222,7 +233,7 @@
 
   $: {
     if (
-      old_search != $search &&
+      old_search !== $search &&
       type !== QueryType.history &&
       objectDatatable
     ) {
@@ -331,9 +342,7 @@
             <tr>
               {#each Object.keys(columns) as col}
                 <th>
-                  <Sort bind:propDatatable={objectDatatable} propColumn={col}
-                    >{columns[col].title}</Sort
-                  >
+                  <Sort bind:propDatatable={objectDatatable} propColumn={col}>{columns[col].title}</Sort>
                 </th>
               {/each}
             </tr>
