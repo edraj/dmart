@@ -16,7 +16,7 @@
     <br />
     <p style="margin: 0px"><b>Body:</b>{attributes.body}</p>
   </div>
-{:else if content_type.includes("json")}
+{:else if ["json", "jsonl"].includes(content_type)}
   <JSONEditor mode={Mode.text} content={{ json: body, text: undefined }} readOnly={true} />
 {:else if content_type.includes("image")}
   <img src={url} alt={displayname} class="mw-100 border" />
