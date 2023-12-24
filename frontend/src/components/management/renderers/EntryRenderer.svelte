@@ -60,6 +60,7 @@
   import Table2Cols from "@/components/management/Table2Cols.svelte";
   import Attachments from "@/components/management/Attachments.svelte";
   import HistoryListView from "@/components/management/HistoryListView.svelte";
+  import {marked} from "marked";
 
   let header_height: number;
 
@@ -578,6 +579,7 @@
           space_name,
           subpath,
           ResourceType[new_resource_type],
+          null,
           contentShortname === "" ? "auto" : contentShortname,
           payloadFiles[0]
         );
@@ -810,7 +812,12 @@
                   type="select"
                 >
                   <option value={null}>{"None"}</option>
-                  {#each Object.values(ContentType) as type}
+                  {#each [
+                      ContentType.json,
+                      ContentType.text,
+                      ContentType.markdown,
+                      ContentType.html,
+                  ] as type}
                     <option value={type}>{type}</option>
                   {/each}
                 </Input>
@@ -1155,7 +1162,23 @@
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
       <TabContent>
-        <TabPane tabId="table" tab="Table" active><Table2Cols {entry} /></TabPane>
+        {#if resource_type === ResourceType.content
+          && entry?.payload?.content_type
+          && entry?.payload?.body
+        }
+          <TabPane tabId="content" tab="Content" active class="p-3">
+            {#if entry.payload.content_type === ContentType.html}
+              {@html entry.payload.body}
+            {:else if entry.payload.content_type === ContentType.text}
+              <textarea value={entry.payload.body.toString()} disabled/>
+            {:else if entry.payload.content_type === ContentType.markdown}
+              {@html marked(entry.payload.body.toString())}
+            {:else if entry.payload.content_type === ContentType.json}
+              <Prism code={entry.payload.body} />
+            {/if}
+          </TabPane>
+        {/if}
+        <TabPane tabId="table" tab="Table"><Table2Cols {entry} /></TabPane>
         <TabPane tabId="form" tab="Raw"><Prism code={entry} /></TabPane>
       </TabContent>
     </div>
