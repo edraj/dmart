@@ -13,17 +13,17 @@
     request,
   } from "@/dmart";
   import {
-    Form,
-    FormGroup,
-    Button,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    ModalHeader,
-    Label,
-    Input,
-    Nav,
-    ButtonGroup,
+      Form,
+      FormGroup,
+      Button,
+      Modal,
+      ModalBody,
+      ModalFooter,
+      ModalHeader,
+      Label,
+      Input,
+      Nav,
+      ButtonGroup, TabContent, TabPane,
   } from "sveltestrap";
   import Icon from "@/components/Icon.svelte";
   import { _ } from "../../../i18n";
@@ -47,6 +47,7 @@
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
   import { goto } from "@roxi/routify";
   import SchemaForm from "svelte-jsonschema-form";
+  import Table2Cols from "@/components/management/Table2Cols.svelte";
 
   let header_height: number;
   export let entry: ResponseEntry;
@@ -670,7 +671,12 @@
       class="px-1 pb-1 h-100"
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
-      <Prism code={entry} />
+      <TabContent>
+        <TabPane tabId="table" tab="Table" active><Table2Cols {entry} /></TabPane>
+        <TabPane tabId="form" tab="Raw">
+          <Prism code={entry} />
+        </TabPane>
+      </TabContent>
     </div>
   </div>
   <div class="tab-pane" class:active={tab_option === "edit_meta"}>

@@ -72,6 +72,7 @@ class AttachmentType(StrEnum):
     media = "media"
     alteration = "alteration"
 
+
 class ContentType(StrEnum):
     text = "text"
     markdown = "markdown"

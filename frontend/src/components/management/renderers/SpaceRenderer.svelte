@@ -12,17 +12,17 @@
     space,
   } from "@/dmart";
   import {
-    Form,
-    FormGroup,
-    Button,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    ModalHeader,
-    Label,
-    Input,
-    Nav,
-    ButtonGroup,
+      Form,
+      FormGroup,
+      Button,
+      Modal,
+      ModalBody,
+      ModalFooter,
+      ModalHeader,
+      Label,
+      Input,
+      Nav,
+      ButtonGroup, TabContent, TabPane,
   } from "sveltestrap";
   import Icon from "../../Icon.svelte";
   import { _ } from "@/i18n";
@@ -35,6 +35,7 @@
   import { faSave } from "@fortawesome/free-regular-svg-icons";
   import refresh_spaces from "@/stores/management/refresh_spaces";
   import { isDeepEqual, removeEmpty } from "@/utils/compare";
+  import Table2Cols from "@/components/management/Table2Cols.svelte";
   // import { search } from "../_stores/triggers";
 
   let header_height: number;
@@ -410,7 +411,12 @@
       class="px-1 pb-1 h-100"
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
-      <Prism code={current_space} />
+      <TabContent>
+        <TabPane tabId="table" tab="Table" active><Table2Cols entry={current_space} /></TabPane>
+        <TabPane tabId="form" tab="Raw">
+          <Prism code={current_space} />
+        </TabPane>
+      </TabContent>
     </div>
   </div>
   <div class="tab-pane" class:active={tab_option === "edit"}>

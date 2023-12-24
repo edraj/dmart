@@ -6,6 +6,7 @@
   export let item;
   export let refresh;
   export let parentRefresh;
+  export let root = false;
 
   const types = ["string", "number", "array", "object", "boolean", "integer"];
 
@@ -24,6 +25,9 @@
     refresh();
   }
   function handleDeleteParent() {
+    if (root){
+      return;
+    }
     parent = parent.filter((e) => e.id !== item.id);
     parentRefresh(parent);
   }
@@ -37,10 +41,7 @@
 </script>
 
 <Row class="my-3">
-  <Col sm={2}
-    ><Input type="text" placeholder="name...." bind:value={item.name} /></Col
-  >
-  <Col sm={3}
+  <Col sm={4}
     ><Input type="text" placeholder="title...." bind:value={item.title} /></Col
   >
   <Col sm={3}
@@ -50,19 +51,23 @@
       bind:value={item.description}
     /></Col
   >
-  <Col sm={2}
+  <Col sm={3}
     ><Input type="select" bind:value={item.type}>
       {#each types as type}
         <option value={type}>{type}</option>
       {/each}
     </Input></Col
   >
-  <Col class="align-self-center" sm={1}
-    ><Icon name="plus-square-fill" onclick={() => handleAddChildren()} /></Col
-  >
-  <Col class="align-self-center" sm={1}
-    ><Icon name="trash-fill" onclick={() => handleDeleteParent()} /></Col
-  >
+  {#if ["array", "object"].includes(item.type)}
+    <Col class="align-self-center" sm={1}
+      ><Icon name="plus-square-fill" onclick={() => handleAddChildren()} /></Col
+    >
+  {/if}
+  {#if !root}
+    <Col class="align-self-center" sm={1}
+      ><Icon name="trash-fill" onclick={() => handleDeleteParent()} /></Col
+    >
+  {/if}
 </Row>
 <div style="padding-left: 8px">
   {#if item.properties}
