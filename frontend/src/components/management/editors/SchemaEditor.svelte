@@ -105,6 +105,7 @@
           parent={items}
           refresh={handleRefresh}
           parentRefresh={handleParentRefresh}
+          root={true}
         />
       {/each}
     {/key}
