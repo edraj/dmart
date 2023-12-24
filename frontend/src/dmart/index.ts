@@ -276,6 +276,7 @@ export enum ContentType {
   video = "video",
   jsonl = "jsonl",
   csv = "csv",
+  sqlite = "sqlite",
 }
 
 type Payload = {
@@ -534,7 +535,7 @@ export async function upload_with_payload(
   space_name: string,
   subpath: string,
   resource_type: ResourceType,
-  content_type: ContentType,
+  content_type: ContentType = null,
   shortname: string,
   payload_file: File
 ): Promise<ApiResponse> {
