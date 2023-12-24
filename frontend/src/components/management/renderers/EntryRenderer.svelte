@@ -579,6 +579,7 @@
           space_name,
           subpath,
           ResourceType[new_resource_type],
+          null,
           contentShortname === "" ? "auto" : contentShortname,
           payloadFiles[0]
         );

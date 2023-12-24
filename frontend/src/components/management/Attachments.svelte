@@ -147,6 +147,7 @@
                 space_name,
                 subpath + "/" + parent_shortname,
                 ResourceType[resourceType],
+                contentType,
                 shortname,
                 ResourceType[resourceType] === ResourceType.json
                     ? jsonToFile(payloadContent)
