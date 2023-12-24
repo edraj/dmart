@@ -82,6 +82,8 @@ class ContentType(StrEnum):
     pdf = "pdf"
     audio = "audio"
     video = "video"
+    jsonl = "jsonl"
+    csv = "csv"
 
     @staticmethod
     def inline_types() -> list:
