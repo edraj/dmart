@@ -4,7 +4,9 @@
       check_existing,
       ContentType,
       create_user,
-      csv, passwordRegExp, passwordWrongExp,
+      csv,
+      passwordRegExp,
+      passwordWrongExp,
       query,
       QueryType,
       request,
@@ -56,7 +58,6 @@
   import downloadFile from "@/utils/downloadFile";
   import {schemaVisualizationEncoder} from "@/utils/plantUML";
   import SchemaForm from "svelte-jsonschema-form";
-  import Table from "@/components/management/Table.svelte";
   import Table2Cols from "@/components/management/Table2Cols.svelte";
   import Attachments from "@/components/management/Attachments.svelte";
   import HistoryListView from "@/components/management/HistoryListView.svelte";
@@ -77,7 +78,7 @@
       space_name==="management" && subpath==="/"
   );
 
-  let tab_option = resource_type === ResourceType.folder ? "list" : "view";
+  let tab_option = (resource_type === ResourceType.folder || resource_type === ResourceType.space) ? "list" : "view";
   let content = { json: entry, text: undefined };
 
   let contentMeta = { json: {}, text: undefined };
@@ -94,8 +95,9 @@
   const resourceTypes = [ResourceType.content];
 
   let ws = null;
-  if ("websocket" in website)
-    ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+  if ("websocket" in website) {
+      ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+  }
 
   function isOpen(ws: any) {
     return ws != null && ws.readyState === ws.OPEN;
@@ -191,7 +193,6 @@
   );
 
   let errorContent = null;
-
   let schemaFormRef;
   async function handleSave(e: Event) {
     e.preventDefault();
@@ -218,13 +219,12 @@
         data.payload.body = contentContent;
       }
     }
-
     if (resource_type === ResourceType.folder) {
       const arr = subpath.split("/");
       arr[arr.length - 1] = "";
       subpath = arr.join("/");
     }
-    subpath = subpath == "__root__" || subpath == "" ? "/" : subpath;
+    subpath = subpath === "__root__" || subpath === "" ? "/" : subpath;
 
     const request_data = {
         space_name: space_name,
@@ -240,7 +240,7 @@
     };
 
     let response;
-    if (subpath==='/'){
+    if (resource_type === ResourceType.space){
         request_data.request_type = RequestType.update;
         request_data.records[0].resource_type = ResourceType.space;
         response = await space(request_data);
@@ -773,6 +773,11 @@
       return _schemas.filter((e) => !["meta_schema", "folder_rendering"].includes(e));
     }
   }
+
+  const isContentPreviewable: boolean = resource_type === ResourceType.content
+      && !!entry?.payload?.content_type
+      && !!entry?.payload?.body;
+
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
@@ -960,7 +965,7 @@
     />
     <ButtonGroup size="sm" class="ms-auto align-items-center">
       <span class="ps-2 pe-1"> {$_("views")} </span>
-      {#if resource_type === ResourceType.folder}
+      {#if [ResourceType.folder, ResourceType.space].includes(resource_type)}
         <Button
           outline
           color="success"
@@ -1143,7 +1148,7 @@
   transition:fade={{ delay: 25 }}
 >
   <div class="tab-pane" class:active={tab_option === "list"}>
-    <ListView {space_name} {subpath} />
+    <ListView {space_name} {subpath} folderColumns={entry?.payload?.body?.index_attributes ?? null} />
   </div>
   <div class="tab-pane" class:active={tab_option === "source"}>
     <!--JSONEditor json={entry} /-->
@@ -1152,8 +1157,8 @@
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
       <pre>
-{JSON.stringify(entry, undefined, 1)}
-</pre>
+        {JSON.stringify(entry, undefined, 1)}
+      </pre>
     </div>
   </div>
   <div class="tab-pane" class:active={tab_option === "view"}>
@@ -1162,11 +1167,8 @@
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
       <TabContent>
-        {#if resource_type === ResourceType.content
-          && entry?.payload?.content_type
-          && entry?.payload?.body
-        }
-          <TabPane tabId="content" tab="Content" active class="p-3">
+        {#if isContentPreviewable}
+          <TabPane tabId="content" tab="Content" class="p-3" active>
             {#if entry.payload.content_type === ContentType.html}
               {@html entry.payload.body}
             {:else if entry.payload.content_type === ContentType.text}
@@ -1178,7 +1180,7 @@
             {/if}
           </TabPane>
         {/if}
-        <TabPane tabId="table" tab="Table"><Table2Cols {entry} /></TabPane>
+        <TabPane tabId="table" tab="Table" active={!isContentPreviewable}><Table2Cols {entry} /></TabPane>
         <TabPane tabId="form" tab="Raw"><Prism code={entry} /></TabPane>
       </TabContent>
     </div>
