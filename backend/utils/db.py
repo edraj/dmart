@@ -698,7 +698,7 @@ async def delete(
             payload_file_path = payload_path(
                 space_name, subpath, meta.__class__, branch_name
             ) / str(meta.payload.body)
-            if payload_file_path.is_file():
+            if payload_file_path.exists() and payload_file_path.is_file():
                 os.remove(payload_file_path)
 
     history_path = f"{settings.spaces_folder}/{space_name}/{branch_path(branch_name)}" +\
