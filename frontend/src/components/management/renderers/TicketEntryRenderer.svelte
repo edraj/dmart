@@ -48,6 +48,7 @@
   import { goto } from "@roxi/routify";
   import SchemaForm from "svelte-jsonschema-form";
   import Table2Cols from "@/components/management/Table2Cols.svelte";
+  import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
 
   let header_height: number;
   export let entry: ResponseEntry;
@@ -235,12 +236,6 @@
     ]);
   }
 
-  function cleanUpSchema(obj) {
-    for (let prop in obj) {
-      if (prop === "comment") delete obj[prop];
-      else if (typeof obj[prop] === "object") cleanUpSchema(obj[prop]);
-    }
-  }
   let schema = null;
   async function get_schema() {
     const payload = await get_payload(
