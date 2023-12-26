@@ -48,9 +48,7 @@
   import { website } from "@/config";
   import { isDeepEqual, removeEmpty } from "@/utils/compare";
   import metaContentSchema from "@/validations/meta.content.json";
-  import SchemaEditor, {
-    transformToProperBodyRequest,
-  } from "../editors/SchemaEditor.svelte";
+  import SchemaEditor from "../editors/SchemaEditor.svelte";
   import checkAccess from "@/utils/checkAccess";
   import { fade } from "svelte/transition";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
@@ -60,6 +58,9 @@
   import { goto } from "@roxi/routify";
   import SchemaForm from "svelte-jsonschema-form";
   import Table2Cols from "@/components/management/Table2Cols.svelte";
+  import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
+  import {transformToProperBodyRequest} from "@/utils/editors/schemaEditorUtils";
+  import {jsonTOplantUML} from "@/utils/renderer/workflowRendererUtils";
 
   let header_height: number;
 
@@ -267,12 +268,6 @@
     ]);
   }
 
-  function cleanUpSchema(obj: Object) {
-    for (let prop in obj) {
-      if (prop === "comment") delete obj[prop];
-      else if (typeof obj[prop] === "object") cleanUpSchema(obj[prop]);
-    }
-  }
   let schema = null;
   async function get_schema() {
     if (entry.payload && entry.payload.schema_shortname) {
@@ -491,55 +486,6 @@
     }
   }
 
-  function jsonTOplantUML(data) {
-    if (data.states) {
-        let result = "@startuml\n";
-
-        result += `title "${data.name}"\n`;
-        data.states.map((state) => {
-            result += `state "${state.state}"\n`;
-
-            if (state.next) {
-                state.next.map((n) => {
-                    result += `${state.state} --> ${n.state}\n`;
-                    result += "note on link\n";
-                    result += `action: ${n.action}\n`;
-                    result += "roles:\n";
-                    n.roles.map((role) => {
-                        result += `* ${role}\n`;
-                    });
-                    result += "end note\n";
-                });
-            } else {
-                result += `${state.state} --> [*]\n`;
-            }
-        });
-
-        data.states.map((state) => {
-            if (state.resolutions) {
-                result += `note left of "${state.state}"\nResolutions:\n`;
-                state.resolutions.map((resolution) => {
-                    result += `* ${resolution}\n`;
-                });
-                result += "end note\n";
-            }
-        });
-
-        data.initial_state.map((state) => {
-            result += `[*] --> ${state.name}\n`;
-            result += "note on link\naction: create\nroles:\n";
-            state.roles.map((role) => {
-                result += `* ${role}\n`;
-            });
-            result += "end note\n";
-        });
-
-        result += "@enduml";
-        return result;
-    } else {
-      return "@startuml\n" + "@enduml";
-    }
-  }
 
   let currentDiagram = {
     name: "",

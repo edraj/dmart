@@ -19,14 +19,13 @@
   import { _ } from "@/i18n";
   import { isDeepEqual, removeEmpty } from "@/utils/compare";
   import history_cols from "@/stores/management/list_cols_history.json";
-  import SchemaEditor, {
-    transformToProperBodyRequest,
-  } from "../editors/SchemaEditor.svelte";
+  import SchemaEditor from "../editors/SchemaEditor.svelte";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
   import { generateUUID } from "@/utils/uuid";
   import { onMount } from "svelte";
-  import { goto } from "@roxi/routify";
   import Table2Cols from "@/components/management/Table2Cols.svelte";
+  import {transformToProperBodyRequest} from "@/utils/editors/schemaEditorUtils";
+  import {transformEntryToRender} from "@/utils/renderer/schemaEntryRenderer";
 
   let header_height: number;
 
@@ -46,13 +45,25 @@
     text: undefined,
   };
   let oldContent = { json: {}, text: undefined };
+  let selected_space;
+  let spaces = [];
   onMount(async () => {
     const cpy = JSON.parse(JSON.stringify(entry));
     delete cpy?.payload?.body;
     contentMeta.json = cpy;
     contentMeta = structuredClone(contentMeta);
     oldContentMeta = structuredClone(contentMeta);
+
+    spaces = (await get_spaces()).records;
+    selected_space = space_name;
+
+    if (entry !== null) {
+        const _items = entry.payload.body as any;
+        items[0] = transformEntryToRender(_items);
+        items[0].name = "root";
+    }
   });
+
   let items: any = [
     {
       id: generateUUID(),
@@ -62,45 +73,6 @@
       description: "",
     },
   ];
-
-  let selected_space;
-  let spaces = [];
-  onMount(() => {
-    (async () => {
-      spaces = (await get_spaces()).records;
-      selected_space = space_name;
-    })();
-
-    if (entry !== null) {
-      const _items = entry.payload.body as any;
-      items[0] = transformEntryToRender(_items);
-      items[0].name = "root";
-    }
-  });
-
-  function transformEntryToRender(entries) {
-    if (entries.properties) {
-      const properties = [];
-      Object.keys(entries.properties).forEach((entry) => {
-        const id = generateUUID();
-        if (entries?.properties[entry]?.properties) {
-          properties.push({
-            id,
-            name: entry,
-            ...transformEntryToRender(entries.properties[entry]),
-          });
-        } else {
-          properties.push({
-            id,
-            name: entry,
-            ...entries.properties[entry],
-          });
-        }
-      });
-      entries.properties = properties;
-    }
-    return entries;
-  }
 
   function handleRenderMenu(items: any, _context: any) {
     items = items.filter(

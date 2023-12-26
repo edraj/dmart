@@ -30,13 +30,12 @@
   import Prism from "../../Prism.svelte";
   import { JSONEditor, Mode } from "svelte-jsoneditor";
   import { status_line } from "@/stores/management/status_line";
-  // import { timeAgo } from "@/utils/timeago";
   import { showToast, Level } from "@/utils/toast";
   import { faSave } from "@fortawesome/free-regular-svg-icons";
   import refresh_spaces from "@/stores/management/refresh_spaces";
   import { isDeepEqual, removeEmpty } from "@/utils/compare";
   import Table2Cols from "@/components/management/Table2Cols.svelte";
-  // import { search } from "../_stores/triggers";
+
 
   let header_height: number;
   export let space_name: string;
