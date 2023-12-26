@@ -50,11 +50,10 @@
   import MarkdownEditor from "../editors/MarkdownEditor.svelte";
   import {isDeepEqual, removeEmpty} from "@/utils/compare";
   import metaContentSchema from "@/validations/meta.content.json";
-  import SchemaEditor, {transformToProperBodyRequest,} from "../editors/SchemaEditor.svelte";
+  import SchemaEditor from "@/components/management/editors/SchemaEditor2.svelte";
   import checkAccess from "@/utils/checkAccess";
   import {fade} from "svelte/transition";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
-  import {generateUUID} from "@/utils/uuid";
   import downloadFile from "@/utils/downloadFile";
   import {schemaVisualizationEncoder} from "@/utils/plantUML";
   import SchemaForm from "svelte-jsonschema-form";
@@ -62,6 +61,7 @@
   import Attachments from "@/components/management/Attachments.svelte";
   import HistoryListView from "@/components/management/HistoryListView.svelte";
   import {marked} from "marked";
+  import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
 
   let header_height: number;
 
@@ -314,13 +314,6 @@
     ]);
   }
 
-  function cleanUpSchema(obj: Object) {
-    for (let prop in obj) {
-      if (prop === "comment") delete obj[prop];
-      else if (typeof obj[prop] === "object") cleanUpSchema(obj[prop]);
-    }
-  }
-
   let schema = null;
   async function get_schema() {
     if (entry.payload && entry.payload.schema_shortname) {
@@ -367,16 +360,6 @@
   );
   let payloadFiles: FileList;
 
-  let itemsSchemaContent: any = [
-    {
-      id: generateUUID(),
-      name: "root",
-      type: "object",
-      title: "title",
-      description: "",
-    },
-  ];
-
   function resolveResourceType(resourceType: ResourceType) {
     const fullSubpath = `${space_name}/${subpath}`;
     switch (fullSubpath) {
@@ -403,12 +386,9 @@
     if (new_resource_type === "schema") {
         let body = null;
       if (isSchemaEntryInForm){
-          body = content.json
-              ? structuredClone(content.json)
-              : JSON.parse(content.text);
-          body = transformToProperBodyRequest(body);
-          body = body[0];
-          delete body.name;
+          body = schemaContent.json
+              ? structuredClone(schemaContent.json)
+              : JSON.parse(schemaContent.text);
       }
       else {
           body = schemaContent.json
@@ -722,6 +702,7 @@
           };
       }
   }
+
   async function handleDownload() {
     const body = {
       space_name,
@@ -861,7 +842,7 @@
           {#if new_resource_type === "schema"}
             <TabContent on:tab={(e) => (isSchemaEntryInForm = e.detail==="form")}>
               <TabPane tabId="form" tab="Forms" active>
-                <SchemaEditor bind:content bind:items={itemsSchemaContent} />
+                <SchemaEditor bind:content={schemaContent} />
               </TabPane>
               <TabPane tabId="editor" tab="Editor">
                 <JSONEditor
@@ -876,7 +857,6 @@
                 <Prism bind:code={errorContent} />
               {/if}
             </Row>
-
           {:else if selectedContentType}
             {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
               <Label class="mt-3">Payload</Label>
@@ -1290,13 +1270,17 @@
         <div class="d-flex justify-content-end my-1">
           <Button on:click={handleSave}>Save</Button>
         </div>
-        <div class="px-1 pb-1 h-100">
-<!--          <SchemaForm-->
-<!--            bind:ref={schemaFormRef}-->
-<!--            {schema}-->
-<!--            bind:data={contentContent.json}-->
-<!--          />-->
-        </div>
+        {#if resource_type === ResourceType.schema}
+          <SchemaEditor bind:content={contentContent} />
+        {:else}
+          <div class="px-1 pb-1 h-100">
+            <SchemaForm
+              bind:ref={schemaFormRef}
+              {schema}
+              bind:data={contentContent.json}
+            />
+          </div>
+        {/if}
       </div>
     {/if}
   {/if}
