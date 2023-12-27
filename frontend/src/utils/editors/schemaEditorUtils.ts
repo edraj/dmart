@@ -36,45 +36,7 @@ export function convertArrayToObject(arr) {
     return obj;
 }
 
-
-export function setProperPropsForObjectOfTypeArray(obj) {
-    for (let prop in obj) {
-        if (typeof obj[prop] === "object") {
-            setProperPropsForObjectOfTypeArray(obj[prop]);
-            if (obj[prop].type === "array") {
-                const object = (obj[prop].properties ?? []).reduce((acc, current) => {
-                    const key = current.name;
-                    delete current.name;
-                    acc[key] = {...current};
-                    return acc;
-                }, {});
-                obj[prop].items.properties = {
-                    ...object,
-                };
-
-                delete obj[prop].properties;
-            }
-        }
-    }
-    return obj;
-}
-export function addItemsToArrays(obj) {
-    for (let prop in obj) {
-        if (typeof obj[prop] === "object") {
-            addItemsToArrays(obj[prop]);
-            if (obj[prop].type === "array") {
-                obj[prop].items = {
-                    type: "object",
-                    properties: [],
-                };
-            }
-        }
-    }
-    return obj;
-}
-
 // JSON -> FORM
-
 export function transformFromProperBodyRequest(obj: any) {
     if (!obj || typeof obj !== "object") {
         return obj;
@@ -95,7 +57,6 @@ export function transformFromProperBodyRequest(obj: any) {
             result.properties = convertObjectToArray(result.properties);
         }
     }
-
     return result;
 }
 
@@ -109,6 +70,12 @@ export function convertObjectToArray(obj) {
     for (const key in obj) {
         if (key !== "id" && obj.hasOwnProperty(key)) {
             const item = { name: key, ...obj[key] };
+            if (item.title === undefined){
+                item.title = "";
+            }
+            if (item.description === undefined){
+                item.description = "";
+            }
             arr.push(item);
         }
     }

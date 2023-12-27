@@ -13,15 +13,29 @@
   const types = ["string", "number", "array", "object", "boolean", "integer"];
 
   function handleAddChildren() {
-    item.properties = [
-      {
-        id: generateUUID(),
-        name: "",
-        type: "string",
-        title: "",
-        description: "",
-      },
-    ];
+    if (item.type==="array"){
+        item.items.properties = [
+            ...(item?.items.properties ?? []),
+            {
+                id: generateUUID(),
+                name: "",
+                type: "string",
+                title: "",
+                description: "",
+            },
+        ];
+    } else {
+        item.properties = [
+            ...(item?.properties ?? []),
+            {
+                id: generateUUID(),
+                name: "",
+                type: "string",
+                title: "",
+                description: "",
+            },
+        ];
+    }
 
     refresh();
   }
@@ -29,6 +43,7 @@
     if (root){
       return;
     }
+
     parent = parent.filter((e) => e.id !== item.id);
     parentRefresh(parent);
   }
@@ -162,8 +177,8 @@
       </Row>
       <Row class="my-1 mx-1">
         <Input type="checkbox" label="Is required?"
-               on:change={handleRequired}
-               checked={isRequired} />
+           on:change={handleRequired}
+           checked={isRequired} />
       </Row>
     {/if}
   </Row>
@@ -172,10 +187,21 @@
       {#key item.properties}
         {#each item.properties as prop}
           <svelte:self
-            parent={item.properties}
-            item={prop}
-            {refresh}
-            parentRefresh={handleParentRefresh}
+              parent={item.properties}
+              item={prop}
+              {refresh}
+              parentRefresh={handleParentRefresh}
+          />
+        {/each}
+      {/key}
+    {:else if item.items}
+      {#key item.items.properties}
+        {#each item.items.properties as prop}
+          <svelte:self
+                  parent={item.properties}
+                  item={prop}
+                  {refresh}
+                  parentRefresh={handleParentRefresh}
           />
         {/each}
       {/key}
