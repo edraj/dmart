@@ -62,11 +62,12 @@
   import HistoryListView from "@/components/management/HistoryListView.svelte";
   import {marked} from "marked";
   import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
+  import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
+  import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
 
   let header_height: number;
 
   export let entry: ResponseEntry;
-
   export let space_name: string;
   export let subpath: string;
   export let resource_type: ResourceType;
@@ -212,6 +213,13 @@
         const y = contentContent.json
           ? structuredClone(contentContent.json)
           : JSON.parse(contentContent.text);
+
+          if (new_resource_type === "schema") {
+              if (isSchemaEntryInForm){
+                  delete y.name;
+              }
+          }
+
         if (data.payload) {
           data.payload.body = y;
         }
@@ -248,7 +256,6 @@
     else {
         response = await request(request_data);
     }
-
 
     if (response.status == Status.success) {
       showToast(Level.info);
@@ -389,6 +396,7 @@
           body = schemaContent.json
               ? structuredClone(schemaContent.json)
               : JSON.parse(schemaContent.text);
+          delete body.name;
       }
       else {
           body = schemaContent.json
@@ -1258,7 +1266,6 @@
             onRenderMenu={handleRenderMenu}
           />
         {/if}
-
         {#if errorContent}
           <h3 class="mt-3">Error:</h3>
           <Prism bind:code={errorContent} />
@@ -1272,6 +1279,10 @@
         </div>
         {#if resource_type === ResourceType.schema}
           <SchemaEditor bind:content={contentContent} />
+        {:else if resource_type === ResourceType.content && schema_name === "configuration"}
+          <ConfigEditor entries={contentContent.json.items} />
+        {:else if resource_type === ResourceType.content && schema_name === "translation"}
+          <TranslationEditor bind:entries={contentContent.json.items} columns={Object.keys(schema.properties.items.items.properties)} />
         {:else}
           <div class="px-1 pb-1 h-100">
             <SchemaForm
