@@ -1081,7 +1081,7 @@
         <Icon name="cloud-download" />
       </Button>
     </ButtonGroup>
-    {#if resource_type === ResourceType.folder}
+    {#if [ResourceType.space, ResourceType.folder].includes(resource_type)}
       <ButtonGroup>
         {#if subpath !== "health_check"}
           <Button
