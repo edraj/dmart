@@ -14,8 +14,11 @@
 
   function handleAddChildren() {
     if (item.type==="array"){
+        if (item?.items === undefined){
+            item.items = {}
+        }
         item.items.properties = [
-            ...(item?.items.properties ?? []),
+            ...(item?.items?.properties ?? []),
             {
                 id: generateUUID(),
                 name: "",
@@ -43,7 +46,6 @@
     if (root){
       return;
     }
-
     parent = parent.filter((e) => e.id !== item.id);
     parentRefresh(parent);
   }
