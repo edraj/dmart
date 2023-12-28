@@ -2,7 +2,6 @@
   import { Col, Row } from "sveltestrap";
   import JsonSchemaChild from "./JsonSchemaChild.svelte";
   import { JSONEditor, Mode } from "svelte-jsoneditor";
-  import { addItemsToArrays, setProperPropsForObjectOfTypeArray } from "@/utils/editors/schemaEditorUtils";
 
   export let content;
   export let items;
@@ -14,9 +13,6 @@
       delete content.text;
       content.json = {
         ...x,
-        ...setProperPropsForObjectOfTypeArray(
-          addItemsToArrays(JSON.parse(JSON.stringify(items)))
-        ),
       };
       self.set(content);
     }
