@@ -579,7 +579,7 @@
           <hr />
 
           {#if new_resource_type === "schema"}
-            <SchemaEditor bind:content bind:items={itemsSchemaContent} />
+            <SchemaEditor bind:content />
             <Row>
               {#if errorContent}
                 <h3 class="mt-3">Error:</h3>

@@ -50,7 +50,7 @@
   import MarkdownEditor from "../editors/MarkdownEditor.svelte";
   import {isDeepEqual, removeEmpty} from "@/utils/compare";
   import metaContentSchema from "@/validations/meta.content.json";
-  import SchemaEditor from "@/components/management/editors/SchemaEditor2.svelte";
+  import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
   import checkAccess from "@/utils/checkAccess";
   import {fade} from "svelte/transition";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
