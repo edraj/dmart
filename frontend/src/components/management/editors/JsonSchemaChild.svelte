@@ -93,7 +93,7 @@
         }
       } else {
           if (parent.required){
-              parent.required = parent.required.filter(prop => prop !== item.name)
+              parent.required = parent.required.filter(prop => prop !== item.name);
           }
       }
       parentRefresh(parent);
@@ -157,7 +157,7 @@
           <Col class="mt-2" sm="12">
             <Label>Enum (male,female)</Label>
             <Input type="text"
-                   on:change={(e)=>{item.enum=e.target.value.split(",")}} />
+                 on:change={(e)=>{item.enum=e.target.value.split(",")}} />
           </Col>
           <Col class="mt-2" sm="12">
             <Label>Pattern</Label>
@@ -187,23 +187,23 @@
   <div class="px-2 py-1">
     {#if item.properties}
       {#key item.properties}
-        {#each item.properties as prop}
+        {#each (item?.properties ?? []) as prop}
           <svelte:self
-              parent={item.properties}
-              item={prop}
-              {refresh}
-              parentRefresh={handleParentRefresh}
+            parent={item.properties}
+            item={prop}
+            {refresh}
+            parentRefresh={handleParentRefresh}
           />
         {/each}
       {/key}
     {:else if item.items}
       {#key item.items.properties}
-        {#each item.items.properties as prop}
+        {#each (item?.items?.properties ?? []) as prop}
           <svelte:self
-                  parent={item.properties}
-                  item={prop}
-                  {refresh}
-                  parentRefresh={handleParentRefresh}
+            parent={item.properties}
+            item={prop}
+            {refresh}
+            parentRefresh={handleParentRefresh}
           />
         {/each}
       {/key}
