@@ -33,6 +33,8 @@
   export let type: QueryType = QueryType.search;
   export let columns: any = null;
   export let folderColumns: any = null;
+  export let sort_by: any = null;
+  export let sort_order: any = null;
   export let is_clickable = true;
 
   if (columns !== null && folderColumns !== null){
@@ -46,13 +48,17 @@
 
   let total: number = 0;
   const { sortBy, sortOrder, page } = $params;
+  let sort = {
+      sort_by: (sortBy ?? sort_by) || "shortname",
+      sort_order: (sortOrder ?? sort_order) || "ascending",
+  };
   let objectDatatable = functionCreateDatatable({
     parData: [],
     parSearchableColumns: Object.keys(columns),
     parRowsPerPage: (typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage") as `${number}`) || "15",
     parSearchString: "",
-    parSortBy: sortBy || "shortname",
-    parSortOrder: sortOrder || "ascending",
+    parSortBy: (sortBy ?? sort_by) || "shortname",
+    parSortOrder: (sortOrder ?? sort_order) || "ascending",
     parActivePage: Number(page) || 1,
   });
 
@@ -78,10 +84,6 @@
     parseInt(typeof localStorage !==  'undefined' && localStorage.getItem("rowPerPage")) || 15;
   let paginationBottomInfoFrom = 0;
   let paginationBottomInfoTo = 0;
-  let sort = {
-    sort_by: sortBy || "shortname",
-    sort_type: sortOrder || "ascending",
-  };
 
   function setQueryParam(pair: any) {
     const urlSearchParams = new URLSearchParams(window.location.search);
@@ -137,15 +139,15 @@
         setNumberOfPages();
       }
     }
-    if (resp.status === "success") {
+    // if (resp.status === "success") {
       // api_status = "success";
       // status_line.set(
       //   `<small>Loaded: <strong>${objectDatatable.numberRowsPerPage} of ${total}</strong><br/>Api: <strong>${api_status}</strong></small>`
       // );
-    } else {
+    // } else {
       // api_status = resp.error.message || "Unknown error";
       // status_line.set(`api: ${api_status}`);
-    }
+    // }
   }
 
   let modalData: any = {};
@@ -237,7 +239,7 @@
       type !== QueryType.history &&
       objectDatatable
     ) {
-      objectDatatable.stringSortBy = "shortname";
+      // objectDatatable.stringSortBy = "shortname";
       fetchPageRecords(true);
     }
   }
@@ -262,12 +264,12 @@
       if (
         !isDeepEqual(sort, {
           sort_by: objectDatatable.stringSortBy,
-          sort_type: objectDatatable.stringSortOrder,
+          sort_order: objectDatatable.stringSortOrder,
         })
       ) {
         const x = {
           sort_by: objectDatatable.stringSortBy.toString(),
-          sort_type: objectDatatable.stringSortOrder,
+          sort_order: objectDatatable.stringSortOrder,
         };
         setQueryParam({
           sortBy: objectDatatable.stringSortBy.toString(),
