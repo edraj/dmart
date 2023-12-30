@@ -327,7 +327,7 @@
             color="success"
             size="sm"
             class="justify-content-center text-center py-0 px-1"
-            active={"view" == tab_option}
+            active={"view" === tab_option}
             title={$_("view")}
             on:click={() => (tab_option = "view")}
           >
@@ -340,7 +340,7 @@
               color="success"
               size="sm"
               class="justify-content-center text-center py-0 px-1"
-              active={"edit_meta" == tab_option}
+              active={"edit_meta" === tab_option}
               title={$_("edit") + " meta"}
               on:click={() => (tab_option = "edit_meta")}
             >
@@ -352,7 +352,7 @@
                 color="success"
                 size="sm"
                 class="justify-content-center text-center py-0 px-1"
-                active={"edit_content" == tab_option}
+                active={"edit_content" === tab_option}
                 title={$_("edit") + " payload"}
                 on:click={() => (tab_option = "edit_content")}
               >
@@ -363,7 +363,7 @@
                 color="success"
                 size="sm"
                 class="justify-content-center text-center py-0 px-1"
-                active={"api_call" == tab_option}
+                active={"api_call" === tab_option}
                 title={$_("edit") + " payload"}
                 on:click={() => (tab_option = "api_call")}
               >
@@ -377,7 +377,7 @@
             color="success"
             size="sm"
             class="justify-content-center text-center py-0 px-1"
-            active={"attachments" == tab_option}
+            active={"attachments" === tab_option}
             title={$_("attachments")}
             on:click={() => (tab_option = "attachments")}
           >
@@ -388,7 +388,7 @@
             color="success"
             size="sm"
             class="justify-content-center text-center py-0 px-1"
-            active={"history" == tab_option}
+            active={"history" === tab_option}
             title={$_("history")}
             on:click={() => (tab_option = "history")}
           >

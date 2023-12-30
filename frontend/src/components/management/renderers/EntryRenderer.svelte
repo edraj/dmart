@@ -50,7 +50,7 @@
   import MarkdownEditor from "../editors/MarkdownEditor.svelte";
   import {isDeepEqual, removeEmpty} from "@/utils/compare";
   import metaContentSchema from "@/validations/meta.content.json";
-  import SchemaEditor from "@/components/management/editors/SchemaEditor2.svelte";
+  import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
   import checkAccess from "@/utils/checkAccess";
   import {fade} from "svelte/transition";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
@@ -93,7 +93,7 @@
   let validatorContent: Validator = createAjvValidator({ schema: {} });
   let entryContent: any;
 
-  const resourceTypes = [ResourceType.content];
+  let resourceTypes = [ResourceType.content];
 
   let ws = null;
   if ("websocket" in website) {
@@ -129,6 +129,11 @@
     if (chk) {
       resourceTypes.push(ResourceType.ticket);
     }
+    if (entry?.payload?.body?.content_resource_types){
+        const content_resource_types = entry?.payload?.body?.content_resource_types
+        resourceTypes = resourceTypes.filter((e) => content_resource_types.includes(e));
+    }
+
   }
 
   let isNeedRefresh = false;
@@ -151,7 +156,7 @@
     contentMeta = structuredClone(contentMeta);
     oldContentMeta = structuredClone(contentMeta);
 
-    if (ws != null) {
+    if (ws != null && !!entry?.payload?.body?.stream) {
       ws.onopen = () => {
         ws.send(
           JSON.stringify({
@@ -431,7 +436,7 @@
             ? structuredClone(entryContent.json)
             : JSON.parse(entryContent.text);
 
-        if(new_resource_type===ResourceType.user){
+        if(new_resource_type === ResourceType.user){
             if (body.password===null){
                 showToast(Level.warn, "Password must be provided");
                 return;
@@ -755,12 +760,17 @@
     if (schemas === null){
         return [];
     }
+    let result;
     const _schemas = schemas.records.map((e) => e.shortname);
     if (entryType === "folder"){
-      return ["folder_rendering", ..._schemas]
+        result = ["folder_rendering", ..._schemas];
     } else {
-      return _schemas.filter((e) => !["meta_schema", "folder_rendering"].includes(e));
+        result = _schemas.filter((e) => !["meta_schema", "folder_rendering"].includes(e));
     }
+    if (entry?.payload?.body?.content_schema_shortnames){
+        result = result.filter((e) => entry?.payload?.body?.content_schema_shortnames.includes(e));
+    }
+    return result;
   }
 
   const isContentPreviewable: boolean = resource_type === ResourceType.content
@@ -1114,18 +1124,20 @@
             </Button>
           {/if}
         {/if}
-        <Button
-          outline={!isNeedRefresh}
-          color={isNeedRefresh ? "danger" : "success"}
-          size="sm"
-          title={$_("refresh")}
-          class="justify-contnet-center text-center py-0 px-1"
-          on:click={() => {
-            refresh = !refresh;
-          }}
-        >
-          <Icon name="arrow-clockwise" />
-        </Button>
+        {#if !!entry?.payload?.body?.stream}
+          <Button
+            outline={!isNeedRefresh}
+            color={isNeedRefresh ? "danger" : "success"}
+            size="sm"
+            title={$_("refresh")}
+            class="justify-contnet-center text-center py-0 px-1"
+            on:click={() => {
+              refresh = !refresh;
+            }}
+          >
+            <Icon name="arrow-clockwise" />
+          </Button>
+        {/if}
       </ButtonGroup>
     {/if}
   </Nav>
@@ -1136,7 +1148,12 @@
   transition:fade={{ delay: 25 }}
 >
   <div class="tab-pane" class:active={tab_option === "list"}>
-    <ListView {space_name} {subpath} folderColumns={entry?.payload?.body?.index_attributes ?? null} />
+    <ListView {space_name} {subpath}
+              folderColumns={entry?.payload?.body?.index_attributes ?? null}
+              sort_by={entry?.payload?.body?.sort_by ?? null}
+              sort_order={entry?.payload?.body?.sort_order ?? null}
+
+    />
   </div>
   <div class="tab-pane" class:active={tab_option === "source"}>
     <!--JSONEditor json={entry} /-->
