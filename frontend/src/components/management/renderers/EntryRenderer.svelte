@@ -1361,7 +1361,6 @@
   span {
     color: dimgrey;
   }
-
   :global(.X) {
     transform: translate(-50%, -15%) !important;
     left: 50%;
