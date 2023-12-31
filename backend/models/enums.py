@@ -85,7 +85,7 @@ class ContentType(StrEnum):
     video = "video"
     csv = "csv"
     jsonl = "jsonl"
-    sqllite = "sqllite"
+    sqlite = "sqlite"
     parquet = "parquet"
 
     @staticmethod

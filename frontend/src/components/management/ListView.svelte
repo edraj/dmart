@@ -15,6 +15,7 @@
   import { goto } from "@roxi/routify";
   import { fade } from "svelte/transition";
   import { isDeepEqual } from "@/utils/compare";
+  import { folderRenderingColsToListCols } from "@/utils/columnsUtils";
   import {
     Modal,
     ModalBody,
@@ -30,30 +31,45 @@
   export let subpath: string;
   export let shortname: string = null;
   export let type: QueryType = QueryType.search;
-  export let columns: any = cols;
+  export let columns: any = null;
+  export let folderColumns: any = null;
+  export let sort_by: any = null;
+  export let sort_order: any = null;
   export let is_clickable = true;
+
+  if (columns !== null && folderColumns !== null){
+      throw new Error('columns and folderColumns cannot co-exist!');
+  }
+  if (folderColumns === null || folderColumns.length === 0) {
+      columns = cols;
+  } else {
+      columns = folderRenderingColsToListCols(folderColumns);
+  }
 
   let total: number = 0;
   const { sortBy, sortOrder, page } = $params;
+  let sort = {
+      sort_by: (sortBy ?? sort_by) || "shortname",
+      sort_order: (sortOrder ?? sort_order) || "ascending",
+  };
   let objectDatatable = functionCreateDatatable({
     parData: [],
     parSearchableColumns: Object.keys(columns),
     parRowsPerPage: (typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage") as `${number}`) || "15",
     parSearchString: "",
-    parSortBy: sortBy || "shortname",
-    parSortOrder: sortOrder || "ascending",
+    parSortBy: (sortBy ?? sort_by) || "shortname",
+    parSortOrder: (sortOrder ?? sort_order) || "ascending",
     parActivePage: Number(page) || 1,
   });
 
   function value(path: string, data, type) {
-    if (data===null) {
+    if (data === null) {
       return "not_applicable";
     }
-    if (path.length == 1 && path[0].length > 0 && path[0] in data) {
+    if (path.length == 1 && path[0].length > 0 && typeof(data) === "object" && path[0] in data) {
       if (type == "json") return JSON.stringify(data[path[0]], undefined, 1);
       else return data[path[0]];
     }
-
     if (path.length > 1 && path[0].length > 0 && path[0] in data) {
       return value(path.slice(1), data[path[0]], type);
     }
@@ -68,10 +84,6 @@
     parseInt(typeof localStorage !==  'undefined' && localStorage.getItem("rowPerPage")) || 15;
   let paginationBottomInfoFrom = 0;
   let paginationBottomInfoTo = 0;
-  let sort = {
-    sort_by: sortBy || "shortname",
-    sort_type: sortOrder || "ascending",
-  };
 
   function setQueryParam(pair: any) {
     const urlSearchParams = new URLSearchParams(window.location.search);
@@ -113,6 +125,7 @@
         (objectDatatable.numberActivePage - 1),
       search: $search,
       ...requestExtra,
+      retrieve_json_payload: true
     });
 
     old_search = $search;
@@ -126,15 +139,15 @@
         setNumberOfPages();
       }
     }
-    if (resp.status === "success") {
+    // if (resp.status === "success") {
       // api_status = "success";
       // status_line.set(
       //   `<small>Loaded: <strong>${objectDatatable.numberRowsPerPage} of ${total}</strong><br/>Api: <strong>${api_status}</strong></small>`
       // );
-    } else {
+    // } else {
       // api_status = resp.error.message || "Unknown error";
       // status_line.set(`api: ${api_status}`);
-    }
+    // }
   }
 
   let modalData: any = {};
@@ -222,11 +235,11 @@
 
   $: {
     if (
-      old_search != $search &&
+      old_search !== $search &&
       type !== QueryType.history &&
       objectDatatable
     ) {
-      objectDatatable.stringSortBy = "shortname";
+      // objectDatatable.stringSortBy = "shortname";
       fetchPageRecords(true);
     }
   }
@@ -251,12 +264,12 @@
       if (
         !isDeepEqual(sort, {
           sort_by: objectDatatable.stringSortBy,
-          sort_type: objectDatatable.stringSortOrder,
+          sort_order: objectDatatable.stringSortOrder,
         })
       ) {
         const x = {
           sort_by: objectDatatable.stringSortBy.toString(),
-          sort_type: objectDatatable.stringSortOrder,
+          sort_order: objectDatatable.stringSortOrder,
         };
         setQueryParam({
           sortBy: objectDatatable.stringSortBy.toString(),
@@ -331,9 +344,7 @@
             <tr>
               {#each Object.keys(columns) as col}
                 <th>
-                  <Sort bind:propDatatable={objectDatatable} propColumn={col}
-                    >{columns[col].title}</Sort
-                  >
+                  <Sort bind:propDatatable={objectDatatable} propColumn={col}>{columns[col].title}</Sort>
                 </th>
               {/each}
             </tr>
