@@ -425,9 +425,16 @@
       }
   }
 
-  $:{
+  $: {
       ticket_action = ticketStates?.filter((e) => e.state === ticket_status)[0]?.action ?? null;
   }
+
+  $: {
+      if (ticket_status){
+          resolution = null;
+      }
+  }
+
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
