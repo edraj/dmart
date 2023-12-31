@@ -200,7 +200,7 @@
       {#key item.items.properties}
         {#each (item?.items?.properties ?? []) as prop}
           <svelte:self
-            parent={item.properties}
+            parent={item.items.properties}
             item={prop}
             {refresh}
             parentRefresh={handleParentRefresh}
