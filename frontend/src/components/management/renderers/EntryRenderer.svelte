@@ -4,7 +4,9 @@
       check_existing,
       ContentType,
       create_user,
-      csv, passwordRegExp, passwordWrongExp,
+      csv,
+      passwordRegExp,
+      passwordWrongExp,
       query,
       QueryType,
       request,
@@ -48,24 +50,24 @@
   import MarkdownEditor from "../editors/MarkdownEditor.svelte";
   import {isDeepEqual, removeEmpty} from "@/utils/compare";
   import metaContentSchema from "@/validations/meta.content.json";
-  import SchemaEditor, {transformToProperBodyRequest,} from "../editors/SchemaEditor.svelte";
+  import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
   import checkAccess from "@/utils/checkAccess";
   import {fade} from "svelte/transition";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
-  import {generateUUID} from "@/utils/uuid";
   import downloadFile from "@/utils/downloadFile";
   import {schemaVisualizationEncoder} from "@/utils/plantUML";
   import SchemaForm from "svelte-jsonschema-form";
-  import Table from "@/components/management/Table.svelte";
   import Table2Cols from "@/components/management/Table2Cols.svelte";
   import Attachments from "@/components/management/Attachments.svelte";
   import HistoryListView from "@/components/management/HistoryListView.svelte";
   import {marked} from "marked";
+  import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
+  import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
+  import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
 
   let header_height: number;
 
   export let entry: ResponseEntry;
-
   export let space_name: string;
   export let subpath: string;
   export let resource_type: ResourceType;
@@ -77,7 +79,7 @@
       space_name==="management" && subpath==="/"
   );
 
-  let tab_option = resource_type === ResourceType.folder ? "list" : "view";
+  let tab_option = (resource_type === ResourceType.folder || resource_type === ResourceType.space) ? "list" : "view";
   let content = { json: entry, text: undefined };
 
   let contentMeta = { json: {}, text: undefined };
@@ -91,11 +93,12 @@
   let validatorContent: Validator = createAjvValidator({ schema: {} });
   let entryContent: any;
 
-  const resourceTypes = [ResourceType.content];
+  let resourceTypes = [ResourceType.content];
 
   let ws = null;
-  if ("websocket" in website)
-    ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+  if ("websocket" in website) {
+      ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+  }
 
   function isOpen(ws: any) {
     return ws != null && ws.readyState === ws.OPEN;
@@ -126,6 +129,11 @@
     if (chk) {
       resourceTypes.push(ResourceType.ticket);
     }
+    if (entry?.payload?.body?.content_resource_types){
+        const content_resource_types = entry?.payload?.body?.content_resource_types
+        resourceTypes = resourceTypes.filter((e) => content_resource_types.includes(e));
+    }
+
   }
 
   let isNeedRefresh = false;
@@ -148,7 +156,7 @@
     contentMeta = structuredClone(contentMeta);
     oldContentMeta = structuredClone(contentMeta);
 
-    if (ws != null) {
+    if (ws != null && !!entry?.payload?.body?.stream) {
       ws.onopen = () => {
         ws.send(
           JSON.stringify({
@@ -191,7 +199,6 @@
   );
 
   let errorContent = null;
-
   let schemaFormRef;
   async function handleSave(e: Event) {
     e.preventDefault();
@@ -211,6 +218,13 @@
         const y = contentContent.json
           ? structuredClone(contentContent.json)
           : JSON.parse(contentContent.text);
+
+          if (new_resource_type === "schema") {
+              if (isSchemaEntryInForm){
+                  delete y.name;
+              }
+          }
+
         if (data.payload) {
           data.payload.body = y;
         }
@@ -218,13 +232,12 @@
         data.payload.body = contentContent;
       }
     }
-
     if (resource_type === ResourceType.folder) {
       const arr = subpath.split("/");
       arr[arr.length - 1] = "";
       subpath = arr.join("/");
     }
-    subpath = subpath == "__root__" || subpath == "" ? "/" : subpath;
+    subpath = subpath === "__root__" || subpath === "" ? "/" : subpath;
 
     const request_data = {
         space_name: space_name,
@@ -240,7 +253,7 @@
     };
 
     let response;
-    if (subpath==='/'){
+    if (resource_type === ResourceType.space){
         request_data.request_type = RequestType.update;
         request_data.records[0].resource_type = ResourceType.space;
         response = await space(request_data);
@@ -248,7 +261,6 @@
     else {
         response = await request(request_data);
     }
-
 
     if (response.status == Status.success) {
       showToast(Level.info);
@@ -314,13 +326,6 @@
     ]);
   }
 
-  function cleanUpSchema(obj: Object) {
-    for (let prop in obj) {
-      if (prop === "comment") delete obj[prop];
-      else if (typeof obj[prop] === "object") cleanUpSchema(obj[prop]);
-    }
-  }
-
   let schema = null;
   async function get_schema() {
     if (entry.payload && entry.payload.schema_shortname) {
@@ -367,16 +372,6 @@
   );
   let payloadFiles: FileList;
 
-  let itemsSchemaContent: any = [
-    {
-      id: generateUUID(),
-      name: "root",
-      type: "object",
-      title: "title",
-      description: "",
-    },
-  ];
-
   function resolveResourceType(resourceType: ResourceType) {
     const fullSubpath = `${space_name}/${subpath}`;
     switch (fullSubpath) {
@@ -403,11 +398,9 @@
     if (new_resource_type === "schema") {
         let body = null;
       if (isSchemaEntryInForm){
-          body = content.json
-              ? structuredClone(content.json)
-              : JSON.parse(content.text);
-          body = transformToProperBodyRequest(body);
-          body = body[0];
+          body = schemaContent.json
+              ? structuredClone(schemaContent.json)
+              : JSON.parse(schemaContent.text);
           delete body.name;
       }
       else {
@@ -443,7 +436,7 @@
             ? structuredClone(entryContent.json)
             : JSON.parse(entryContent.text);
 
-        if(new_resource_type===ResourceType.user){
+        if(new_resource_type === ResourceType.user){
             if (body.password===null){
                 showToast(Level.warn, "Password must be provided");
                 return;
@@ -722,6 +715,7 @@
           };
       }
   }
+
   async function handleDownload() {
     const body = {
       space_name,
@@ -766,13 +760,23 @@
     if (schemas === null){
         return [];
     }
+    let result;
     const _schemas = schemas.records.map((e) => e.shortname);
     if (entryType === "folder"){
-      return ["folder_rendering", ..._schemas]
+        result = ["folder_rendering", ..._schemas];
     } else {
-      return _schemas.filter((e) => !["meta_schema", "folder_rendering"].includes(e));
+        result = _schemas.filter((e) => !["meta_schema", "folder_rendering"].includes(e));
     }
+    if (entry?.payload?.body?.content_schema_shortnames){
+        result = result.filter((e) => entry?.payload?.body?.content_schema_shortnames.includes(e));
+    }
+    return result;
   }
+
+  const isContentPreviewable: boolean = resource_type === ResourceType.content
+      && !!entry?.payload?.content_type
+      && !!entry?.payload?.body;
+
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
@@ -856,7 +860,7 @@
           {#if new_resource_type === "schema"}
             <TabContent on:tab={(e) => (isSchemaEntryInForm = e.detail==="form")}>
               <TabPane tabId="form" tab="Forms" active>
-                <SchemaEditor bind:content bind:items={itemsSchemaContent} />
+                <SchemaEditor bind:content={schemaContent} />
               </TabPane>
               <TabPane tabId="editor" tab="Editor">
                 <JSONEditor
@@ -871,7 +875,6 @@
                 <Prism bind:code={errorContent} />
               {/if}
             </Row>
-
           {:else if selectedContentType}
             {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
               <Label class="mt-3">Payload</Label>
@@ -960,7 +963,7 @@
     />
     <ButtonGroup size="sm" class="ms-auto align-items-center">
       <span class="ps-2 pe-1"> {$_("views")} </span>
-      {#if resource_type === ResourceType.folder}
+      {#if [ResourceType.folder, ResourceType.space].includes(resource_type)}
         <Button
           outline
           color="success"
@@ -1088,7 +1091,7 @@
         <Icon name="cloud-download" />
       </Button>
     </ButtonGroup>
-    {#if resource_type === ResourceType.folder}
+    {#if [ResourceType.space, ResourceType.folder].includes(resource_type)}
       <ButtonGroup>
         {#if subpath !== "health_check"}
           <Button
@@ -1121,18 +1124,20 @@
             </Button>
           {/if}
         {/if}
-        <Button
-          outline={!isNeedRefresh}
-          color={isNeedRefresh ? "danger" : "success"}
-          size="sm"
-          title={$_("refresh")}
-          class="justify-contnet-center text-center py-0 px-1"
-          on:click={() => {
-            refresh = !refresh;
-          }}
-        >
-          <Icon name="arrow-clockwise" />
-        </Button>
+        {#if !!entry?.payload?.body?.stream}
+          <Button
+            outline={!isNeedRefresh}
+            color={isNeedRefresh ? "danger" : "success"}
+            size="sm"
+            title={$_("refresh")}
+            class="justify-contnet-center text-center py-0 px-1"
+            on:click={() => {
+              refresh = !refresh;
+            }}
+          >
+            <Icon name="arrow-clockwise" />
+          </Button>
+        {/if}
       </ButtonGroup>
     {/if}
   </Nav>
@@ -1143,7 +1148,12 @@
   transition:fade={{ delay: 25 }}
 >
   <div class="tab-pane" class:active={tab_option === "list"}>
-    <ListView {space_name} {subpath} />
+    <ListView {space_name} {subpath}
+              folderColumns={entry?.payload?.body?.index_attributes ?? null}
+              sort_by={entry?.payload?.body?.sort_by ?? null}
+              sort_order={entry?.payload?.body?.sort_order ?? null}
+
+    />
   </div>
   <div class="tab-pane" class:active={tab_option === "source"}>
     <!--JSONEditor json={entry} /-->
@@ -1152,8 +1162,8 @@
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
       <pre>
-{JSON.stringify(entry, undefined, 1)}
-</pre>
+        {JSON.stringify(entry, undefined, 1)}
+      </pre>
     </div>
   </div>
   <div class="tab-pane" class:active={tab_option === "view"}>
@@ -1162,11 +1172,8 @@
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
       <TabContent>
-        {#if resource_type === ResourceType.content
-          && entry?.payload?.content_type
-          && entry?.payload?.body
-        }
-          <TabPane tabId="content" tab="Content" active class="p-3">
+        {#if isContentPreviewable}
+          <TabPane tabId="content" tab="Content" class="p-3" active>
             {#if entry.payload.content_type === ContentType.html}
               {@html entry.payload.body}
             {:else if entry.payload.content_type === ContentType.text}
@@ -1178,7 +1185,7 @@
             {/if}
           </TabPane>
         {/if}
-        <TabPane tabId="table" tab="Table"><Table2Cols {entry} /></TabPane>
+        <TabPane tabId="table" tab="Table" active={!isContentPreviewable}><Table2Cols {entry} /></TabPane>
         <TabPane tabId="form" tab="Raw"><Prism code={entry} /></TabPane>
       </TabContent>
     </div>
@@ -1276,7 +1283,6 @@
             onRenderMenu={handleRenderMenu}
           />
         {/if}
-
         {#if errorContent}
           <h3 class="mt-3">Error:</h3>
           <Prism bind:code={errorContent} />
@@ -1288,13 +1294,21 @@
         <div class="d-flex justify-content-end my-1">
           <Button on:click={handleSave}>Save</Button>
         </div>
-        <div class="px-1 pb-1 h-100">
-<!--          <SchemaForm-->
-<!--            bind:ref={schemaFormRef}-->
-<!--            {schema}-->
-<!--            bind:data={contentContent.json}-->
-<!--          />-->
-        </div>
+        {#if resource_type === ResourceType.schema}
+          <SchemaEditor bind:content={contentContent} />
+        {:else if resource_type === ResourceType.content && schema_name === "configuration"}
+          <ConfigEditor entries={contentContent.json.items} />
+        {:else if resource_type === ResourceType.content && schema_name === "translation"}
+          <TranslationEditor bind:entries={contentContent.json.items} columns={Object.keys(schema.properties.items.items.properties)} />
+        {:else}
+          <div class="px-1 pb-1 h-100">
+            <SchemaForm
+              bind:ref={schemaFormRef}
+              {schema}
+              bind:data={contentContent.json}
+            />
+          </div>
+        {/if}
       </div>
     {/if}
   {/if}

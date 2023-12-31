@@ -141,6 +141,7 @@
                 ContentType.video,
                 ContentType.jsonl,
                 ContentType.csv,
+                ContentType.sqlite,
             ].includes(contentType)
         ) {
             response = await upload_with_payload(
@@ -332,6 +333,12 @@
                     bind:files={payloadFiles}
                     type="file"
                     accept=".csv" />
+          {:else if contentType === ContentType.sqlite}
+            <Label>SQLite File</Label>
+            <Input
+              bind:files={payloadFiles}
+              type="file"
+              accept=".sqlite,.sqlite3,.db,.db3,.s3db,.sl3" />
           {:else if contentType !== ContentType.text && contentType !== ContentType.html}
             <Label>Payload File</Label>
             <Input
@@ -412,9 +419,9 @@
     <div class="col">
       <div class="row mb-2">
         <a
-                class="col-11"
-                style="font-size: 1.25em;"
-                href={get_attachment_url(
+          class="col-11"
+          style="font-size: 1.25em;"
+          href={get_attachment_url(
             attachment.resource_type,
             space_name,
             subpath,
@@ -422,9 +429,7 @@
             attachment.shortname,
             getFileExtension(attachment.attributes?.payload?.body)
           )}
-        >
-          {attachment.shortname}</a
-        >
+        >{attachment.shortname}</a>
         <div class="col-1 d-flex justify-content-between">
           <!-- svelte-ignore a11y-click-events-have-key-events -->
           <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -438,9 +443,9 @@
           <!-- svelte-ignore a11y-click-events-have-key-events -->
           <!-- svelte-ignore a11y-no-static-element-interactions -->
           <div
-                  class="mx-1"
-                  style="cursor: pointer;"
-                  on:click={() => {
+            class="mx-1"
+            style="cursor: pointer;"
+            on:click={() => {
               handleView(attachment.shortname);
             }}
           >
@@ -449,10 +454,10 @@
           <!-- svelte-ignore a11y-click-events-have-key-events -->
           <!-- svelte-ignore a11y-no-static-element-interactions -->
           <div
-                  class="mx-1"
-                  style="cursor: pointer;"
-                  on:click={() => {
-             handleMetaEditModal(attachment);
+            class="mx-1"
+            style="cursor: pointer;"
+            on:click={() => {
+              handleMetaEditModal(attachment);
             }}
           ><Icon name="code-slash" /></div>
           {#if [

@@ -1452,16 +1452,19 @@ async def create_or_update_resource_with_payload(
             ),
         )
     record = core.Record.model_validate_json(request_record.file.read())
+
     payload_filename = payload_file.filename or ""
     if payload_filename.endswith(".json"):
         resource_content_type = ContentType.json
     elif payload_file.content_type == "application/pdf":
         resource_content_type = ContentType.pdf
+    elif payload_file.content_type == "text/csv":
+        resource_content_type = ContentType.csv
     elif payload_file.content_type == "application/octet-stream":
         if record.attributes.get("content_type") == "jsonl":
             resource_content_type = ContentType.jsonl
-        elif record.attributes.get("content_type") == "csv":
-            resource_content_type = ContentType.csv
+        elif record.attributes.get("content_type") == "sqlite":
+            resource_content_type = ContentType.sqlite
         else:
             resource_content_type = ContentType.text
     elif payload_file.content_type == "text/markdown":
