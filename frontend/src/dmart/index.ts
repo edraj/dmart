@@ -434,6 +434,10 @@ export async function get_profile() {
         "permissions",
         JSON.stringify(data.records[0].attributes.permissions)
       );
+      localStorage.setItem(
+        "roles",
+        JSON.stringify(data.records[0].attributes.roles)
+      );
     }
     return data;
   } catch (error) {
