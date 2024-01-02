@@ -44,5 +44,6 @@
     </object>
   </div>
 {:else}
-  <a href={url} title={displayname}>link {displayname}</a>
+  <a href={url} title={displayname}
+     target="_blank" rel="noopener noreferrer">link {displayname}</a>
 {/if}
