@@ -60,6 +60,17 @@ class ResourceType(StrEnum):
     share = "share"
     plugin_wrapper = "plugin_wrapper"
     notification = "notification"
+    csv = "csv"
+    jsonl = "jsonl"
+    sqlite = "sqlite"
+    parquet = "parquet"
+
+
+class DataAssetType(StrEnum):
+    csv = "csv"
+    jsonl = "jsonl"
+    sqlite = "sqlite"
+    parquet = "parquet"
 
 
 class AttachmentType(StrEnum):
