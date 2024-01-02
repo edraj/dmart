@@ -2355,21 +2355,21 @@ async def data_asset(
     if resource_type == DataAssetType.sqlite:
         conn: duckdb.DuckDBPyConnection = duckdb.connect(str(file_path))
     else:
-        conn: duckdb.DuckDBPyConnection = duckdb.connect(":default:")
+        conn = duckdb.connect(":default:")
         
         # Load the file into the in-memory DB as a table named `file`
         match resource_type:
             case DataAssetType.csv:
-                file: duckdb.DuckDBPyRelation = conn.read_csv(str(file_path))
+                file: duckdb.DuckDBPyRelation = conn.read_csv(str(file_path)) # type: ignore  # noqa
             case DataAssetType.jsonl:
-                file: duckdb.DuckDBPyRelation = conn.read_json(str(file_path))
+                file = conn.read_json(str(file_path)) # type: ignore  # noqa
             case DataAssetType.parquet:
-                file: duckdb.DuckDBPyRelation = conn.read_parquet(str(file_path))
+                file = conn.read_parquet(str(file_path)) # type: ignore  # noqa
 
-    data: duckdb.DuckDBPyRelation = conn.sql(query)
+    data: duckdb.DuckDBPyRelation = conn.sql(query=query) # type: ignore
 
 
-    data.write_csv(file_name="my_temp_file_from_duckdb.csv")
+    data.write_csv(file_name="my_temp_file_from_duckdb.csv") # type: ignore
     with open("my_temp_file_from_duckdb.csv", "r") as csv_file:
         response = StreamingResponse(iter(csv_file.read()), media_type="text/csv")
         response.headers["Content-Disposition"] = "attachment; filename=data.csv"
