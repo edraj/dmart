@@ -429,6 +429,7 @@
             attachment.shortname,
             getFileExtension(attachment.attributes?.payload?.body)
           )}
+          target="_blank" rel="noopener noreferrer"
         >{attachment.shortname}</a>
         <div class="col-1 d-flex justify-content-between">
           <!-- svelte-ignore a11y-click-events-have-key-events -->
