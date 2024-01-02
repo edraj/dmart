@@ -24,6 +24,7 @@ from models.enums import (
     RequestType,
     ResourceType,
     LockAction,
+    DataAssetType,
     TaskType,
 )
 import utils.db as db
@@ -53,7 +54,9 @@ from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
 from languages.loader import languages
 from typing import Callable
+import duckdb
 
+from pathlib import Path as FilePath
 
 router = APIRouter()
 
@@ -2317,4 +2320,59 @@ async def apply_alteration(
         branch_name=on_entry.branch_name,
         user_shortname=logged_in_user,
     )
+    return response
+
+
+
+@router.get("/data-asset/{resource_type}/{space_name}/{subpath:path}/{file_name}")
+async def data_asset(
+    resource_type: DataAssetType,
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+    file_name: str = Path(..., pattern=regex.FILENAME, examples=["data.csv"]),
+    query: str = Query(..., examples=["select * from"]),
+    _=Depends(JWTBearer()),
+    branch_name: str | None = settings.default_branch,
+):
+    file_path: FilePath = db.payload_path(
+        space_name=space_name,
+        subpath=subpath,
+        class_type=getattr(sys.modules["models.core"], camel_case(resource_type)),
+        branch_name=branch_name,
+    )
+    file_path /= file_name
+
+    if not file_path.is_file():
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="media",
+                code=InternalErrorCode.OBJECT_NOT_FOUND,
+                message="Request object is not available",
+            ),
+        )
+
+    if resource_type == DataAssetType.sqlite:
+        conn: duckdb.DuckDBPyConnection = duckdb.connect(str(file_path))
+    else:
+        conn: duckdb.DuckDBPyConnection = duckdb.connect(":default:")
+        
+        # Load the file into the in-memory DB as a table named `file`
+        match resource_type:
+            case DataAssetType.csv:
+                file: duckdb.DuckDBPyRelation = conn.read_csv(str(file_path))
+            case DataAssetType.jsonl:
+                file: duckdb.DuckDBPyRelation = conn.read_json(str(file_path))
+            case DataAssetType.parquet:
+                file: duckdb.DuckDBPyRelation = conn.read_parquet(str(file_path))
+
+    data: duckdb.DuckDBPyRelation = conn.sql(query)
+
+
+    data.write_csv(file_name="my_temp_file_from_duckdb.csv")
+    with open("my_temp_file_from_duckdb.csv", "r") as csv_file:
+        response = StreamingResponse(iter(csv_file.read()), media_type="text/csv")
+        response.headers["Content-Disposition"] = "attachment; filename=data.csv"
+    os.remove("my_temp_file_from_duckdb.csv")
+
     return response

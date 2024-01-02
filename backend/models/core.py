@@ -554,17 +554,21 @@ class Notification(Meta):
         )
 
 
-class DataAsset(Meta):
+class DataAsset(Attachment):
     pass
+
 
 class CSV(DataAsset):
     pass
 
-class SQLLite(DataAsset):
+
+class Sqlite(DataAsset):
     pass
+
 
 class JSONL(DataAsset):
     pass
+
 
 class Parquet(DataAsset):
     pass
