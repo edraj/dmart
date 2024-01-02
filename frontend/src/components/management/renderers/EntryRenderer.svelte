@@ -1080,16 +1080,18 @@
           <Icon name="trash" />
         </Button>
       {/if}
-      <Button
-        outline
-        color="success"
-        size="sm"
-        title={$_("download")}
-        on:click={handleDownload}
-        class="justify-content-center text-center py-0 px-1"
-      >
-        <Icon name="cloud-download" />
-      </Button>
+      {#if !!entry?.payload?.body?.allow_csv}
+        <Button
+          outline
+          color="success"
+          size="sm"
+          title={$_("download")}
+          on:click={handleDownload}
+          class="justify-content-center text-center py-0 px-1"
+        >
+          <Icon name="cloud-download" />
+        </Button>
+      {/if}
     </ButtonGroup>
     {#if [ResourceType.space, ResourceType.folder].includes(resource_type)}
       <ButtonGroup>
