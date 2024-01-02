@@ -19,6 +19,15 @@ export function transformToProperBodyRequest(obj: any) {
             obj.properties = convertArrayToObject(obj.properties);
         }
     }
+    if (obj.type === "array"){
+        if (obj.items) {
+            if (Object.keys(obj.items.properties).length === 1) {
+                obj.items.type = obj.items.properties[Object.keys(obj.items.properties)[0]].type;
+            } else {
+                obj.items.type = "object";
+            }
+        }
+    }
     return obj;
 }
 

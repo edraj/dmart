@@ -6,7 +6,6 @@
     transformToProperBodyRequest
   } from "@/utils/editors/schemaEditorUtils";
   import {generateUUID} from "@/utils/uuid";
-  import {onMount} from "svelte";
   // import {JSONEditor, Mode} from "svelte-jsoneditor";
   // import Prism from "@/components/Prism.svelte";
 
@@ -28,14 +27,34 @@
       items = [_items];
   }
 
+  const cleanUpProps = [
+      "minimum", "maximum", "minLength", "maxLength",
+      "minItems", "maxItems", "uniqueItems", "pattern",
+      "isRequired",
+  ];
+  function cleanUp(content) {
+        for (let prop in content) {
+            if (content.hasOwnProperty(prop)) {
+                if (typeof content[prop] === 'object' && content[prop] !== null) {
+                    cleanUp(content[prop]);
+                    if (Object.keys(content[prop]).length === 0) {
+                        delete content[prop];
+                    }
+                } else if (cleanUpProps.includes(prop) && content[prop] === '') {
+                   delete content[prop];
+                }
+            }
+        }
+  }
 
   // let self;
   function handleRefresh() {
     // if (self) {
       content.json = structuredClone(items)[0];
+      cleanUp(content.json);
       transformToProperBodyRequest(content.json);
       content = structuredClone(content);
-      // self.set(content);
+    //   self.set(content);
     // }
   }
 
