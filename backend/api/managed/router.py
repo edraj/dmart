@@ -1437,7 +1437,8 @@ async def create_or_update_resource_with_payload(
     payload_file: UploadFile,
     request_record: UploadFile,
     space_name: str = Form(..., examples=["data"]),
-    owner_shortname=Depends(JWTBearer()),
+    sha: str | None = Form(default=None, examples=["data"]),
+    owner_shortname: str =Depends(JWTBearer()),
 ):
     # NOTE We currently make no distinction between create and update.
     # in such case update should contain all the data every time.
@@ -1521,6 +1522,15 @@ async def create_or_update_resource_with_payload(
     sha1 = hashlib.sha1()
     sha1.update(payload_file.file.read())
     checksum = sha1.hexdigest()
+    if sha and sha != checksum:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.INVALID_DATA,
+                message="The provided file doesn't match the sha",
+            ),
+        )
     await payload_file.seek(0)
     if record.resource_type == ResourceType.ticket:
         record = await set_init_state_from_record(
