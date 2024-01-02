@@ -59,6 +59,7 @@
 
   const canUpdate = checkAccess("update", space_name, subpath, resource_type);
   const canDelete = checkAccess("delete", space_name, subpath, resource_type);
+  const userRoles = JSON.parse(localStorage.getItem("roles"));
 
   let tab_option = resource_type === ResourceType.folder ? "list" : "view";
   let content = { json: entry, text: undefined };
@@ -414,8 +415,8 @@
   let ticketStates = [];
   $:{
       if (ticketPayload){
-          ticketStates = ticketPayload.states.filter((e) => e.state === entry.state)[0]?.next;
-      }
+        ticketStates = ticketPayload.states.filter((e) => e.state === entry.state)[0]?.next;
+     }
   }
 
   let ticketResolutions = [];
@@ -700,8 +701,8 @@
                 bind:value={ticket_status}
               >
                 <option value={null}>Select next state</option>
-                {#each ticketStates.map((e) => e.state) as state}
-                  <option value={state}>{state}</option>
+                {#each ticketStates.map((e) => e) as e}
+                  <option value={e.state} disabled={e.roles.some((el) => userRoles.includes(el))}>{e.state}</option>
                 {/each}
               </Input>
             </FormGroup>
