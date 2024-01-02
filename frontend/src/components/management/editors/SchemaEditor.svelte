@@ -54,7 +54,7 @@
       cleanUp(content.json);
       transformToProperBodyRequest(content.json);
       content = structuredClone(content);
-      // self.set(content);
+    //   self.set(content);
     // }
   }
 
