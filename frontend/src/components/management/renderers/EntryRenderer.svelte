@@ -215,6 +215,11 @@
     let data: any = structuredClone(x);
     if (entry?.payload) {
       if (entry?.payload?.content_type === "json") {
+        if (tab_option === "edit_content_form"){
+            if (!schemaFormRef.reportValidity()) {
+                return;
+            }
+        }
         const y = contentContent.json
           ? structuredClone(contentContent.json)
           : JSON.parse(contentContent.text);
