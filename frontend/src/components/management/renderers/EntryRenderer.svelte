@@ -480,10 +480,9 @@
             if (isContentEntryInForm){
                 if (
                     selectedSchemaContent != null &&
-                    selectedSchemaData &&
-                    Object.keys(selectedSchemaData).length !== 0
+                    selectedSchemaData
                 ) {
-                    if (!schemaFormRef.reportValidity()) {
+                   if (!schemaFormRef.reportValidity()) {
                         return;
                     }
                     body = selectedSchemaData;
@@ -561,6 +560,7 @@
               };
           }
         }
+        return;
         response = await request(request_body);
       }
       else if (
@@ -743,7 +743,7 @@
           true
         );
         selectedSchemaContent = _selectedSchemaContent?.payload?.body ?? {};
-        delete selectedSchemaContent.required;
+        // delete selectedSchemaContent.required;
         cleanUpSchema(selectedSchemaContent.properties);
         validatorContent = createAjvValidator({ schema:  selectedSchemaContent });
       })();
