@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import re
 import sys
+from typing import Any
 from uuid import uuid4
 import jq  # type: ignore
 from fastapi.encoders import jsonable_encoder
@@ -1039,9 +1040,9 @@ async def validate_subpath_data(
     subpath: str,
     branch_name: str | None,
     user_shortname: str,
-    invalid_folders: list,
-    folders_report: dict[str, dict],
-    meta_folders_health: list,
+    invalid_folders: list[str],
+    folders_report: dict[str, dict[str, Any]],
+    meta_folders_health: list[str],
     max_invalid_size: int,
 ):
     """
@@ -1127,8 +1128,7 @@ async def validate_subpath_data(
         except Exception:
             invalid_folders.append(folder_name)
 
-        if folder_name not in folders_report:
-            folders_report[folder_name] = {}
+        folders_report.setdefault(folder_name, {})
 
         # VALIDATE FOLDER ENTRIES
         folder_entries = os.scandir(folder.path)
@@ -1170,93 +1170,32 @@ async def validate_subpath_data(
             entry_resource_type = entry_match.group(2)
 
             if folder_name == "schema" and entry_shortname == "meta_schema":
-                if not folders_report[folder_name]:
-                    folders_report[folder_name]["valid_entries"] = 0
+                folders_report[folder_name].setdefault("valid_entries", 0)
                 folders_report[folder_name]["valid_entries"] += 1
                 continue
 
             entry_meta_obj = None
-            payload_file_content = None
             try:
-                resource_class = getattr(
-                    sys.modules["models.core"], camel_case(entry_resource_type)
-                )
-                entry_meta_obj = await db.load(
+                await health_check_entry(
                     space_name=space_name,
                     subpath=folder_name,
                     shortname=entry_shortname,
-                    class_type=resource_class,
+                    resource_type=entry_resource_type,
                     user_shortname=user_shortname,
                     branch_name=branch_name,
                 )
-                if entry_meta_obj.shortname != entry_shortname:
-                    raise Exception(
-                        "the shortname which got from the folder path doesn't match the shortname in the meta file."
-                    )
-                payload_file_path = None
-                if (
-                    entry_meta_obj.payload
-                    and entry_meta_obj.payload.content_type == ContentType.image
-                ):
-                    payload_file_path = Path(
-                        f"{subpath}/{entry_meta_obj.payload.body}")
-                    if (
-                        not payload_file_path.is_file()
-                        or not bool(
-                            re.match(
-                                regex.IMG_EXT,
-                                entry_meta_obj.payload.body.split(".")[-1],
-                            )
-                        )
-                        or not os.access(payload_file_path, os.R_OK)
-                        or not os.access(payload_file_path, os.W_OK)
-                    ):
-                        if payload_file_path:
-                            raise Exception(
-                                f"can't access this payload {str(payload_file_path)[len(str(settings.spaces_folder)):]}"
-                            )
-                        else:
-                            raise Exception(
-                                f"can't access this payload {str(subpath)[len(str(settings.spaces_folder)):]}"
-                                f"/{entry_meta_obj.shortname}"
-                            )
-                elif (
-                    entry_meta_obj.payload
-                    and isinstance(entry_meta_obj.payload.body, str)
-                    and entry_meta_obj.payload.content_type == ContentType.json
-                ):
-                    payload_file_path = Path(
-                        f"{subpath}/{entry_meta_obj.payload.body}")
-                    if not entry_meta_obj.payload.body.endswith(
-                        ".json"
-                    ) or not os.access(payload_file_path, os.W_OK):
-                        raise Exception(
-                            f"can't access this payload {str(payload_file_path)[len(str(settings.spaces_folder)):]}"
-                        )
-                    payload_file_content = db.load_resource_payload(
-                        space_name,
-                        folder_name,
-                        entry_meta_obj.payload.body,
-                        resource_class,
-                        branch_name,
-                    )
-                    if entry_meta_obj.payload.schema_shortname:
-                        await validate_payload_with_schema(
-                            payload_data=payload_file_content,
-                            space_name=space_name,
-                            branch_name=branch_name or settings.default_branch,
-                            schema_shortname=entry_meta_obj.payload.schema_shortname,
-                        )
-
+                    
                 # VALIDATE ENTRY ATTACHMENTS
                 attachments_path = f"{folder.path}/{entry_shortname}"
                 attachment_folders = os.scandir(attachments_path)
                 for attachment_folder in attachment_folders:
+                    # i.e. attachment_folder = attachments.media
                     if attachment_folder.is_file():
                         continue
 
                     attachment_folder_files = os.scandir(attachment_folder)
                     for attachment_folder_file in attachment_folder_files:
+                        # i.e. attachment_folder_file = meta.*.json or *.png
                         if (
                             not attachment_folder_file.is_file()
                             or not os.access(attachment_folder_file.path, os.W_OK)
@@ -1265,6 +1204,21 @@ async def validate_subpath_data(
                             raise Exception(
                                 f"can't access this attachment {attachment_folder_file.path[len(str(settings.spaces_folder)):]}"
                             )
+                        
+                        attachment_match = regex.ATTACHMENT_PATTERN.search(attachment_folder_file.path)
+                        if not attachment_match:
+                            # if it's the media file not its meta json file
+                            continue
+                        attachment_shortname = attachment_match.group(2)
+                        attachment_resource_type = attachment_match.group(1)
+                        await health_check_entry(
+                            space_name=space_name,
+                            subpath=f"{folder_name}/{entry_shortname}",
+                            shortname=attachment_shortname,
+                            resource_type=attachment_resource_type,
+                            user_shortname=user_shortname,
+                            branch_name=branch_name,
+                        )
 
                 if "valid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["valid_entries"] = 1
@@ -1300,6 +1254,92 @@ async def validate_subpath_data(
 
         if not folders_report.get(folder_name, {}):
             del folders_report[folder_name]
+
+
+async def health_check_entry(
+    space_name: str, 
+    subpath: str, 
+    resource_type: str,
+    shortname: str,
+    user_shortname: str,
+    branch_name: str | None = None
+):
+    resource_class = getattr(
+        sys.modules["models.core"], camel_case(resource_type)
+    )
+    entry_meta_obj = await db.load(
+        space_name=space_name,
+        subpath=subpath,
+        shortname=shortname,
+        class_type=resource_class,
+        user_shortname=user_shortname,
+        branch_name=branch_name,
+    )
+    if entry_meta_obj.shortname != shortname:
+        raise Exception(
+            "the shortname which got from the folder path doesn't match the shortname in the meta file."
+        )
+    payload_file_path = None
+    if (
+        entry_meta_obj.payload
+        and entry_meta_obj.payload.content_type == ContentType.image
+    ):
+        payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
+        if (
+            not payload_file_path.is_file()
+            or not bool(
+                re.match(
+                    regex.IMG_EXT,
+                    entry_meta_obj.payload.body.split(".")[-1],
+                )
+            )
+            or not os.access(payload_file_path, os.R_OK)
+            or not os.access(payload_file_path, os.W_OK)
+        ):
+            if payload_file_path:
+                raise Exception(
+                    f"can't access this payload {payload_file_path}"
+                )
+            else:
+                raise Exception(
+                    f"can't access this payload {subpath}"
+                    f"/{entry_meta_obj.shortname}"
+                )
+    elif (
+        entry_meta_obj.payload
+        and isinstance(entry_meta_obj.payload.body, str)
+        and entry_meta_obj.payload.content_type == ContentType.json
+    ):
+        payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
+        if not entry_meta_obj.payload.body.endswith(
+            ".json"
+        ) or not os.access(payload_file_path, os.W_OK):
+            raise Exception(
+                f"can't access this payload {payload_file_path}"
+            )
+        payload_file_content = db.load_resource_payload(
+            space_name,
+            subpath,
+            entry_meta_obj.payload.body,
+            resource_class,
+            branch_name,
+        )
+        if entry_meta_obj.payload.schema_shortname:
+            await validate_payload_with_schema(
+                payload_data=payload_file_content,
+                space_name=space_name,
+                branch_name=branch_name or settings.default_branch,
+                schema_shortname=entry_meta_obj.payload.schema_shortname,
+            )
+
+    if(
+        entry_meta_obj.payload.checksum and 
+        entry_meta_obj.payload.client_checksum and 
+        entry_meta_obj.payload.checksum != entry_meta_obj.payload.client_checksum
+    ): 
+        raise Exception(
+            f"payload.checksum not equal payload.client_checksum {subpath}/{entry_meta_obj.shortname}"
+        )
 
 
 async def internal_sys_update_model(
