@@ -458,21 +458,36 @@
                 return;
             }
 
-            const emailStatus: any = await check_existing("email",body.attributes.email);
-            if (!emailStatus.attributes.unique){
-                showToast(Level.warn,"Email already exists!");
-                return;
+            if (body.attributes.email) {
+                const emailStatus: any = await check_existing("email", body.attributes.email);
+                if (!emailStatus.attributes.unique) {
+                    showToast(Level.warn, "Email already exists!");
+                    return;
+                }
+            } else {
+                delete body.attributes.email;
             }
 
-            const msisdnStatus: any = await check_existing("msisdn",body.attributes.msisdn);
-            if (!msisdnStatus.attributes.unique){
-                showToast(Level.warn,"MSISDN already exists!");
-                return;
+            if (body.attributes.msisdn) {
+                const msisdnStatus: any = await check_existing("msisdn", body.attributes.msisdn);
+                if (!msisdnStatus.attributes.unique) {
+                    showToast(Level.warn, "MSISDN already exists!");
+                    return;
+                }
+            } else {
+                delete body.attributes.msisdn;
             }
 
             if (!body.shortname){
                 body.shortname = contentShortname;
             }
+            if (body.attributes.is_active === undefined){
+                body.attributes.is_active = true;
+            }
+            if (body.attributes.invitation === undefined){
+                body.attributes.invitation = "sysadmin";
+            }
+
             response = await create_user(body);
         }
     }
@@ -697,6 +712,24 @@
     }
   }
   $: {
+      if (new_resource_type === ResourceType.user){
+          entryContent = {
+              json: {
+                "resource_type": "user",
+                "subpath": "users",
+                "attributes": {
+                    "displayname": {
+                        "en": "",
+                        "ar": ""
+                    },
+                    "email": "",
+                    "msisdn": "",
+                    "password": ""
+                }
+            },
+            text: undefined
+          }
+      }
       if (new_resource_type === ResourceType.permission) {
           entryContent = {
               json: {

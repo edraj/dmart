@@ -445,9 +445,9 @@
           <!-- svelte-ignore a11y-click-events-have-key-events -->
           <!-- svelte-ignore a11y-no-static-element-interactions -->
           <div
-                  class="mx-1"
-                  style="cursor: pointer;"
-                  on:click={async () => await handleDelete(attachment)}
+            class="mx-1"
+            style="cursor: pointer;"
+            on:click={async () => await handleDelete(attachment)}
           >
             <Icon name="trash" color="red" />
           </div>
