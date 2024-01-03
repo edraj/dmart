@@ -98,8 +98,8 @@ class ContentType(StrEnum):
     audio = "audio"
     video = "video"
     csv = "csv"
-    jsonl = "jsonl"
     parquet = "parquet"
+    jsonl = "jsonl"
     sqlite = "sqlite"
 
     @staticmethod
