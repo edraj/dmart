@@ -43,6 +43,7 @@ class ResourceType(StrEnum):
     acl = "acl"
     comment = "comment"
     media = "media"
+    data_asset = "data_asset"
     locator = "locator"
     relationship = "relationship"
     alteration = "alteration"
@@ -60,6 +61,17 @@ class ResourceType(StrEnum):
     share = "share"
     plugin_wrapper = "plugin_wrapper"
     notification = "notification"
+    csv = "csv"
+    jsonl = "jsonl"
+    sqlite = "sqlite"
+    parquet = "parquet"
+
+
+class DataAssetType(StrEnum):
+    csv = "csv"
+    jsonl = "jsonl"
+    sqlite = "sqlite"
+    parquet = "parquet"
 
 
 class AttachmentType(StrEnum):
@@ -70,7 +82,10 @@ class AttachmentType(StrEnum):
     comment = "comment"
     lock = "lock"
     media = "media"
+    data_asset = "data_asset"
+    relationship = "relationship"
     alteration = "alteration"
+
 
 class ContentType(StrEnum):
     text = "text"
@@ -82,8 +97,9 @@ class ContentType(StrEnum):
     pdf = "pdf"
     audio = "audio"
     video = "video"
-    jsonl = "jsonl"
     csv = "csv"
+    jsonl = "jsonl"
+    parquet = "parquet"
     sqlite = "sqlite"
 
     @staticmethod
