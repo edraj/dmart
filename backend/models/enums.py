@@ -43,6 +43,7 @@ class ResourceType(StrEnum):
     acl = "acl"
     comment = "comment"
     media = "media"
+    data_asset = "data_asset"
     locator = "locator"
     relationship = "relationship"
     alteration = "alteration"
@@ -81,6 +82,8 @@ class AttachmentType(StrEnum):
     comment = "comment"
     lock = "lock"
     media = "media"
+    data_asset = "data_asset"
+    relationship = "relationship"
     alteration = "alteration"
 
 
@@ -95,9 +98,9 @@ class ContentType(StrEnum):
     audio = "audio"
     video = "video"
     csv = "csv"
+    parquet = "parquet"
     jsonl = "jsonl"
     sqlite = "sqlite"
-    parquet = "parquet"
 
     @staticmethod
     def inline_types() -> list:
