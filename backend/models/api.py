@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 from builtins import Exception as PyException
 from models.enums import (
+    DataAssetType,
     QueryType,
     ResourceType,
     SortType,
@@ -160,3 +161,12 @@ class Exception(PyException):
         super().__init__(status_code)
         self.status_code = status_code
         self.error = error
+
+
+class DataAssetQuery(BaseModel):
+    space_name: str = Field(..., pattern=regex.SPACENAME)
+    subpath: str = Field(..., pattern=regex.SUBPATH)
+    resource_type: DataAssetType
+    shortname: str = Field(..., pattern=regex.SHORTNAME, examples=["data_csv"])
+    branch_name: str = Field(default=settings.default_branch, pattern=regex.SHORTNAME)
+    query_string: str = Field(..., examples=["SELECT * FROM file"])

@@ -1,9 +1,10 @@
 import json
+from typing import Any
 import aiofiles
 from fastapi import status
 from models.core import Record
 from models.enums import RequestType
-from utils.helpers import branch_path, flatten_dict, flatten_list_of_dicts_in_dict
+from utils.helpers import branch_path, csv_file_to_json, flatten_dict, flatten_list_of_dicts_in_dict
 from utils.internal_error_code import InternalErrorCode
 from utils.redis_services import RedisServices
 from models.api import Exception as API_Exception, Error as API_Error
@@ -36,9 +37,6 @@ async def validate_payload_with_schema(
         schema_shortname=f"{schema_shortname}.json",
     )
 
-    if not schema_path.is_file():
-        raise Exception(f"Invalid schema path, {schema_path=} is not a file")
-
     schema = json.loads(FSPath(schema_path).read_text())
 
     if not isinstance(payload_data, dict):
@@ -63,13 +61,19 @@ def get_schema_path(space_name: str, branch_name: str | None, schema_shortname: 
     if schema_path.is_file():
         return schema_path
 
-    return (
+    schema_path = (
         settings.spaces_folder / 
         space_name / 
         branch_path(branch_name) / 
         "schema" /
         schema_shortname
     )
+    
+    if not schema_path.is_file():
+        raise Exception(f"Invalid schema path, {schema_path=} is not a file")
+    
+    return schema_path
+    
 
 
 async def validate_uniqueness(
@@ -206,3 +210,44 @@ async def validate_uniqueness(
                     message=f"Entry should have unique values on the following fields: {', '.join(composite_unique_keys)}",
                 ),
             )
+
+
+async def validate_jsonl_with_schema(
+    file_path: FSPath,
+    space_name: str,
+    schema_shortname: str,
+    branch_name: str | None = settings.default_branch,
+) -> None:
+
+    schema_path = get_schema_path(
+        space_name=space_name,
+        branch_name=branch_name,
+        schema_shortname=f"{schema_shortname}.json",
+    )
+
+    schema = json.loads(FSPath(schema_path).read_text())
+
+    async with aiofiles.open(file_path, "r") as file:
+        lines = await file.readlines()
+        for line in lines:
+            Draft7Validator(schema).validate(line)
+            
+            
+async def validate_csv_with_schema(
+    file_path: FSPath,
+    space_name: str,
+    schema_shortname: str,
+    branch_name: str | None = settings.default_branch,
+) -> None:
+
+    schema_path = get_schema_path(
+        space_name=space_name,
+        branch_name=branch_name,
+        schema_shortname=f"{schema_shortname}.json",
+    )
+
+    schema = json.loads(FSPath(schema_path).read_text())
+
+    jsonl: list[dict[str, Any]] = await csv_file_to_json(file_path)
+    for json_item in jsonl:
+        Draft7Validator(schema).validate(json_item)
