@@ -565,7 +565,6 @@
               };
           }
         }
-        return;
         response = await request(request_body);
       }
       else if (
