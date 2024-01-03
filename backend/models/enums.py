@@ -60,6 +60,17 @@ class ResourceType(StrEnum):
     share = "share"
     plugin_wrapper = "plugin_wrapper"
     notification = "notification"
+    csv = "csv"
+    jsonl = "jsonl"
+    sqlite = "sqlite"
+    parquet = "parquet"
+
+
+class DataAssetType(StrEnum):
+    csv = "csv"
+    jsonl = "jsonl"
+    sqlite = "sqlite"
+    parquet = "parquet"
 
 
 class AttachmentType(StrEnum):
@@ -72,6 +83,7 @@ class AttachmentType(StrEnum):
     media = "media"
     alteration = "alteration"
 
+
 class ContentType(StrEnum):
     text = "text"
     markdown = "markdown"
@@ -82,9 +94,10 @@ class ContentType(StrEnum):
     pdf = "pdf"
     audio = "audio"
     video = "video"
-    jsonl = "jsonl"
     csv = "csv"
+    jsonl = "jsonl"
     sqlite = "sqlite"
+    parquet = "parquet"
 
     @staticmethod
     def inline_types() -> list:
