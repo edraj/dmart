@@ -2324,13 +2324,13 @@ async def apply_alteration(
 
 
 
-@router.get("/data-asset/{resource_type}/{space_name}/{subpath:path}/{file_name}")
+@router.post("/data-asset/{resource_type}/{space_name}/{subpath:path}/{file_name}")
 async def data_asset(
     resource_type: DataAssetType,
     space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
     subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
     file_name: str = Path(..., pattern=regex.FILENAME, examples=["data.csv"]),
-    query: str = Query(..., examples=["select * from"]),
+    query: str = Body(..., examples=["select * from file"]),
     _=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ):
