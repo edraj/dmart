@@ -342,15 +342,27 @@ class Attachment(Meta):
     author_locator: Locator | None = None
 
 
+class DataAsset(Attachment):
+    pass
+
+
 class Json(Attachment):
     pass
 
 
-class Jsonl(Attachment):
+class Jsonl(DataAsset):
     pass
 
 
-class Csv(Attachment):
+class Parquet(DataAsset):
+    pass
+
+
+class Sqlite(DataAsset):
+    pass
+
+
+class Csv(DataAsset):
     pass
 
 
