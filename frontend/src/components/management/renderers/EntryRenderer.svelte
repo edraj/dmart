@@ -215,6 +215,11 @@
     let data: any = structuredClone(x);
     if (entry?.payload) {
       if (entry?.payload?.content_type === "json") {
+        if (tab_option === "edit_content_form"){
+            if (!schemaFormRef.reportValidity()) {
+                return;
+            }
+        }
         const y = contentContent.json
           ? structuredClone(contentContent.json)
           : JSON.parse(contentContent.text);
@@ -480,10 +485,9 @@
             if (isContentEntryInForm){
                 if (
                     selectedSchemaContent != null &&
-                    selectedSchemaData &&
-                    Object.keys(selectedSchemaData).length !== 0
+                    selectedSchemaData
                 ) {
-                    if (!schemaFormRef.reportValidity()) {
+                   if (!schemaFormRef.reportValidity()) {
                         return;
                     }
                     body = selectedSchemaData;
@@ -743,7 +747,7 @@
           true
         );
         selectedSchemaContent = _selectedSchemaContent?.payload?.body ?? {};
-        delete selectedSchemaContent.required;
+        // delete selectedSchemaContent.required;
         cleanUpSchema(selectedSchemaContent.properties);
         validatorContent = createAjvValidator({ schema:  selectedSchemaContent });
       })();
@@ -1080,16 +1084,18 @@
           <Icon name="trash" />
         </Button>
       {/if}
-      <Button
-        outline
-        color="success"
-        size="sm"
-        title={$_("download")}
-        on:click={handleDownload}
-        class="justify-content-center text-center py-0 px-1"
-      >
-        <Icon name="cloud-download" />
-      </Button>
+      {#if !!entry?.payload?.body?.allow_csv}
+        <Button
+          outline
+          color="success"
+          size="sm"
+          title={$_("download")}
+          on:click={handleDownload}
+          class="justify-content-center text-center py-0 px-1"
+        >
+          <Icon name="cloud-download" />
+        </Button>
+      {/if}
     </ButtonGroup>
     {#if [ResourceType.space, ResourceType.folder].includes(resource_type)}
       <ButtonGroup>
@@ -1361,7 +1367,6 @@
   span {
     color: dimgrey;
   }
-
   :global(.X) {
     transform: translate(-50%, -15%) !important;
     left: 50%;

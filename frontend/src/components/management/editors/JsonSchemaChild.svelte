@@ -136,7 +136,7 @@
     {/if}
     {#if isDisplayFilter}
       <Row class="my-3 mx-1">
-        {#if item.type === "number" || item.type === "integer"}
+        {#if item.type === "integer"}
           <Col sm="6">
             <Label>Minimum</Label>
             <Input type="number" label="Minimum" bind:value={item.minimum} />
@@ -144,6 +144,15 @@
           <Col class="mt-2" sm="6">
             <Label>Maximum</Label>
             <Input type="number" label="Maximum" bind:value={item.maximum} />
+          </Col>
+          {:else if item.type === "number"}
+          <Col sm="6">
+            <Label>Minimum</Label>
+            <Input type="number" label="Minimum" bind:value={item.minimum} step="any" />
+          </Col>
+          <Col class="mt-2" sm="6">
+            <Label>Maximum</Label>
+            <Input type="number" label="Maximum" bind:value={item.maximum} step="any" />
           </Col>
         {:else if item.type === "string"}
           <Col sm="6">
@@ -200,7 +209,7 @@
       {#key item.items.properties}
         {#each (item?.items?.properties ?? []) as prop}
           <svelte:self
-            parent={item.properties}
+            parent={item.items.properties}
             item={prop}
             {refresh}
             parentRefresh={handleParentRefresh}
