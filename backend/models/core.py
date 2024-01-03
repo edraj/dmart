@@ -565,22 +565,3 @@ class Notification(Meta):
             entry=entry_locator,
         )
 
-
-class DataAsset(Attachment):
-    pass
-
-
-class CSV(DataAsset):
-    pass
-
-
-class Sqlite(DataAsset):
-    pass
-
-
-class JSONL(DataAsset):
-    pass
-
-
-class Parquet(DataAsset):
-    pass
