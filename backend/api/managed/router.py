@@ -2360,7 +2360,7 @@ async def data_asset(
             error=api.Error(
                 type="db",
                 code=InternalErrorCode.INVALID_DATA,
-                message=f"Request object does't have the the correct payload body",
+                message="Request object does't have the the correct payload body",
             ),
         )
     file_path /= meta.payload.body
