@@ -232,7 +232,7 @@ export enum RequestType {
   move = "move",
 }
 
-export enum ResourceAttachementType {
+export enum ResourceAttachmentType {
   json = "json",
   comment = "comment",
   media = "media",
