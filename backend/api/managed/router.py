@@ -8,7 +8,7 @@ from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, sta
 from fastapi.responses import FileResponse
 from starlette.responses import StreamingResponse
 from utils.generate_email import generate_email_from_template, generate_subject
-from utils.custom_validations import validate_uniqueness
+from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema, validate_uniqueness
 from utils.internal_error_code import InternalErrorCode
 from utils.ticket_sys_utils import (
     set_init_state_from_request,
@@ -1112,7 +1112,7 @@ async def serve_request(
             status_code=400,
             error=api.Error(
                 type="request",
-                code=InternalErrorCode.SOMETHIGN_WRONG,
+                code=InternalErrorCode.SOMETHING_WRONG,
                 message="Something went wrong",
                 info=[{"successfull": records, "failed": failed_records}],
             ),
@@ -2334,23 +2334,36 @@ async def apply_alteration(
 
 
 
-@router.post("/data-asset/{resource_type}/{space_name}/{subpath:path}/{file_name}")
+@router.post("/data-asset")
 async def data_asset(
-    resource_type: DataAssetType,
-    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
-    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
-    file_name: str = Path(..., pattern=regex.FILENAME, examples=["data.csv"]),
-    query: str = Body(..., examples=["select * from file"]),
+    query: api.DataAssetQuery,
     _=Depends(JWTBearer()),
-    branch_name: str | None = settings.default_branch,
 ):
-    file_path: FilePath = db.payload_path(
-        space_name=space_name,
-        subpath=subpath,
-        class_type=getattr(sys.modules["models.core"], camel_case(resource_type)),
-        branch_name=branch_name,
+    class_type = getattr(sys.modules["models.core"], camel_case(query.resource_type))
+    meta: core.DataAsset = await db.load(
+        space_name=query.space_name,
+        subpath=query.subpath,
+        shortname=query.shortname,
+        class_type=class_type,
+        branch_name=query.branch_name
     )
-    file_path /= file_name
+    
+    file_path: FilePath = db.payload_path(
+        space_name=query.space_name,
+        subpath=query.subpath,
+        class_type=class_type,
+        branch_name=query.branch_name,
+    )
+    if not isinstance(meta.payload, core.Payload) or not isinstance(meta.payload.body, str):
+        raise api.Exception(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error=api.Error(
+                type="db",
+                code=InternalErrorCode.INVALID_DATA,
+                message=f"Request object does't have the the correct payload body",
+            ),
+        )
+    file_path /= meta.payload.body
 
     if not file_path.is_file():
         raise api.Exception(
@@ -2362,21 +2375,35 @@ async def data_asset(
             ),
         )
 
-    if resource_type == DataAssetType.sqlite:
+    if query.resource_type == DataAssetType.sqlite:
         conn: duckdb.DuckDBPyConnection = duckdb.connect(str(file_path))
     else:
         conn = duckdb.connect(":default:")
         
         # Load the file into the in-memory DB as a table named `file`
-        match resource_type:
+        match query.resource_type:
             case DataAssetType.csv:
+                if meta.payload.schema_shortname:
+                    await validate_csv_with_schema(
+                        file_path=file_path, 
+                        space_name=query.space_name,
+                        schema_shortname=meta.payload.schema_shortname
+                    )
                 file: duckdb.DuckDBPyRelation = conn.read_csv(str(file_path)) # type: ignore  # noqa
             case DataAssetType.jsonl:
-                file = conn.read_json(str(file_path)) # type: ignore  # noqa
+                if meta.payload.schema_shortname:
+                    await validate_jsonl_with_schema(
+                        file_path=file_path, 
+                        space_name=query.space_name,
+                        schema_shortname=meta.payload.schema_shortname
+                    )
+                file = conn.read_json(
+                    str(file_path), 
+                    format='auto'
+                ) # type: ignore  # noqa
             case DataAssetType.parquet:
                 file = conn.read_parquet(str(file_path)) # type: ignore  # noqa
-
-    data: duckdb.DuckDBPyRelation = conn.sql(query=query) # type: ignore
+    data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string) # type: ignore
 
 
     data.write_csv(file_name="my_temp_file_from_duckdb.csv") # type: ignore

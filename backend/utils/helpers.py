@@ -1,6 +1,9 @@
 from copy import deepcopy
+import csv
 from datetime import datetime
+from pathlib import Path
 from re import sub as re_sub
+import aiofiles
 from jsonschema.validators import _RefResolver as RefResolver #type: ignore
 # TBD from referencing import Registry, Resource
 # TBD import referencing.jsonschema
@@ -299,3 +302,17 @@ def pp(*args, **kwargs):
     print(print_str)
         
     
+
+
+async def csv_file_to_json(csv_file_path: Path)-> list[dict[str, Any]]:
+     
+    data: list[dict[str, Any]] = []
+     
+    async with aiofiles.open(csv_file_path, mode="r", encoding="utf-8", newline="") as csvf:
+        contents = await csvf.readlines()
+        csvReader = csv.DictReader(contents)
+         
+        for row in csvReader:
+            data.append(row)
+ 
+    return data
