@@ -46,6 +46,7 @@ class Payload(Resource):
         None  # FIXME change to proper content type static hashmap
     )
     schema_shortname: str | None = None
+    client_checksum: str | None = None
     checksum: str | None = None
     body: str | dict[str, Any]
 

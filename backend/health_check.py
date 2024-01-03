@@ -248,6 +248,14 @@ async def soft_health_check(
                                 Draft7Validator(schema_dict).validate(payload_doc_content)
                             else:
                                 continue
+                        if(
+                            meta.payload.checksum and 
+                            meta.payload.client_checksum and 
+                            meta.payload.checksum != meta.payload.client_checksum
+                        ): 
+                            raise Exception(
+                                f"payload.checksum not equal payload.client_checksum {subpath}/{meta.shortname}"
+                            )
                         if folders_report[subpath].get('valid_entries'):
                             folders_report[subpath]['valid_entries'] += 1
                         else:
