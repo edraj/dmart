@@ -702,7 +702,7 @@
               >
                 <option value={null}>Select next state</option>
                 {#each ticketStates.map((e) => e) as e}
-                  <option value={e.state} disabled={e.roles.some((el) => userRoles.includes(el))}>{e.state}</option>
+                  <option value={e.state} disabled={!e.roles.some((el) => userRoles.includes(el))}>{e.state}</option>
                 {/each}
               </Input>
             </FormGroup>
