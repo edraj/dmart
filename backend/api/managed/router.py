@@ -1548,6 +1548,7 @@ async def create_or_update_resource_with_payload(
     resource_obj.payload = core.Payload(
         content_type=resource_content_type,
         checksum=checksum,
+        client_checksum=sha,
         schema_shortname="meta_schema"
         if record.resource_type == ResourceType.schema
         else (
