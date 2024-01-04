@@ -2340,70 +2340,95 @@ async def data_asset(
     query: api.DataAssetQuery,
     _=Depends(JWTBearer()),
 ):
-    class_type = getattr(sys.modules["models.core"], camel_case(query.resource_type))
-    meta: core.DataAsset = await db.load(
-        space_name=query.space_name,
-        subpath=query.subpath,
-        shortname=query.shortname,
-        class_type=class_type,
-        branch_name=query.branch_name
-    )
-    
-    file_path: FilePath = db.payload_path(
-        space_name=query.space_name,
-        subpath=query.subpath,
-        class_type=class_type,
+    attachments: dict[str, list[core.Record]] = await repository.get_entry_attachments(
+        subpath=f"{query.subpath}/{query.shortname}",
         branch_name=query.branch_name,
+        attachments_path=(
+            settings.spaces_folder
+            / f"{query.space_name}/{branch_path(query.branch_name)}/{query.subpath}/.dm/{query.shortname}"
+        ),
+        filter_types=[query.data_asset_type],
+        filter_shortnames=query.filter_data_assets
     )
-    if not isinstance(meta.payload, core.Payload) or not isinstance(meta.payload.body, str):
-        raise api.Exception(
-            status_code=status.HTTP_404_NOT_FOUND,
-            error=api.Error(
-                type="db",
-                code=InternalErrorCode.INVALID_DATA,
-                message="Request object does't have the the correct payload body",
-            ),
+    files_paths: list[FilePath] = []
+    for attachment in attachments.get(query.data_asset_type, []):
+        file_path: FilePath = db.payload_path(
+            space_name=query.space_name,
+            subpath=f"{query.subpath}/{query.shortname}",
+            class_type=getattr(sys.modules["models.core"], camel_case(query.data_asset_type)),
+            branch_name=query.branch_name,
         )
-    file_path /= meta.payload.body
+        if(
+            not isinstance(attachment.attributes.get("payload"), core.Payload) 
+            or not isinstance(attachment.attributes["payload"].body, str)
+            or not (file_path/attachment.attributes["payload"].body).is_file()
+        ):
+            raise api.Exception(
+                status_code=status.HTTP_404_NOT_FOUND,
+                error=api.Error(
+                    type="db",
+                    code=InternalErrorCode.INVALID_DATA,
+                    message=f"Invalid data asset file found at {attachment.subpath}/{attachment.shortname}",
+                ),
+            )
+            
+        file_path /= attachment.attributes["payload"].body
+        if(
+            attachment.attributes["payload"].schema_shortname 
+            and attachment.resource_type == DataAssetType.csv
+        ):
+            await validate_csv_with_schema(
+                file_path=file_path, 
+                space_name=query.space_name,
+                schema_shortname=attachment.attributes["payload"].schema_shortname
+            )
+        if(
+            attachment.attributes["payload"].schema_shortname 
+            and attachment.resource_type == DataAssetType.jsonl
+        ):
+            await validate_jsonl_with_schema(
+                file_path=file_path, 
+                space_name=query.space_name,
+                schema_shortname=attachment.attributes["payload"].schema_shortname
+            )
+        files_paths.append(file_path)
 
-    if not file_path.is_file():
+    if not files_paths:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="media",
+            api.Error(
+                type="request",
                 code=InternalErrorCode.OBJECT_NOT_FOUND,
-                message="Request object is not available",
+                message="No data asset attachments found for this entry",
             ),
         )
-
-    if query.resource_type == DataAssetType.sqlite:
-        conn: duckdb.DuckDBPyConnection = duckdb.connect(str(file_path))
+        
+    if query.data_asset_type == DataAssetType.sqlite:
+        conn: duckdb.DuckDBPyConnection = duckdb.connect(str(files_paths[0]))
     else:
         conn = duckdb.connect(":default:")
-        
-        # Load the file into the in-memory DB as a table named `file`
-        match query.resource_type:
-            case DataAssetType.csv:
-                if meta.payload.schema_shortname:
-                    await validate_csv_with_schema(
-                        file_path=file_path, 
-                        space_name=query.space_name,
-                        schema_shortname=meta.payload.schema_shortname
-                    )
-                file: duckdb.DuckDBPyRelation = conn.read_csv(str(file_path)) # type: ignore  # noqa
-            case DataAssetType.jsonl:
-                if meta.payload.schema_shortname:
-                    await validate_jsonl_with_schema(
-                        file_path=file_path, 
-                        space_name=query.space_name,
-                        schema_shortname=meta.payload.schema_shortname
-                    )
-                file = conn.read_json(
-                    str(file_path), 
-                    format='auto'
-                ) # type: ignore  # noqa
-            case DataAssetType.parquet:
-                file = conn.read_parquet(str(file_path)) # type: ignore  # noqa
+        for idx, file_path in enumerate(files_paths):
+            # Load the file into the in-memory DB
+            match query.data_asset_type:
+                case DataAssetType.csv:
+                    globals().setdefault(
+                        attachments[query.data_asset_type][idx].shortname, 
+                        conn.read_csv(str(file_path))
+                    ) # type: ignore  # noqa
+                case DataAssetType.jsonl:
+                    globals().setdefault(
+                        attachments[query.data_asset_type][idx].shortname, 
+                        conn.read_json(
+                            str(file_path), 
+                            format='auto'
+                        )
+                    ) # type: ignore  # noqa
+                case DataAssetType.parquet:
+                    globals().setdefault(
+                        attachments[query.data_asset_type][idx].shortname, 
+                        conn.read_parquet(str(file_path))
+                    ) # type: ignore  # noqa
+                    
     data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string) # type: ignore
 
 
