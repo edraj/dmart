@@ -61,7 +61,7 @@
   import Attachments from "@/components/management/Attachments.svelte";
   import HistoryListView from "@/components/management/HistoryListView.svelte";
   import {marked} from "marked";
-  import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
+  import {cleanUpSchema, generateObjectFromSchema} from "@/utils/renderer/rendererUtils";
   import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
   import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
 
@@ -114,7 +114,7 @@
   ];
 
   let selectedSchemaContent: any = {};
-  let selectedSchemaData: any = {};
+  let selectedSchemaData: any = {json:{}, text: undefined};
 
   async function checkWorkflowsSubpath() {
     const chk = await retrieve_entry(
@@ -488,6 +488,9 @@
                 body.attributes.invitation = "sysadmin";
             }
 
+            body.subpath = "users";
+            body.resource_type = "user";
+
             response = await create_user(body);
         }
     }
@@ -500,12 +503,12 @@
             if (isContentEntryInForm){
                 if (
                     selectedSchemaContent != null &&
-                    selectedSchemaData
+                    selectedSchemaData.json
                 ) {
                    if (!schemaFormRef.reportValidity()) {
                         return;
                     }
-                    body = selectedSchemaData;
+                    body = selectedSchemaData.json;
                 }
             }
             else {
@@ -715,8 +718,6 @@
       if (new_resource_type === ResourceType.user){
           entryContent = {
               json: {
-                "resource_type": "user",
-                "subpath": "users",
                 "attributes": {
                     "displayname": {
                         "en": "",
@@ -724,7 +725,8 @@
                     },
                     "email": "",
                     "msisdn": "",
-                    "password": ""
+                    "password": "",
+                    "roles": []
                 }
             },
             text: undefined
@@ -783,6 +785,7 @@
         // delete selectedSchemaContent.required;
         cleanUpSchema(selectedSchemaContent.properties);
         validatorContent = createAjvValidator({ schema:  selectedSchemaContent });
+        entryContent.json = generateObjectFromSchema(structuredClone(selectedSchemaContent));
       })();
       oldSelectedSchema = selectedSchema;
     }
@@ -814,6 +817,35 @@
       && !!entry?.payload?.content_type
       && !!entry?.payload?.body;
 
+  $: {
+    if (!isDeepEqual(entryContent, selectedSchemaData)){
+      const _entryContent = entryContent.json
+          ? structuredClone(entryContent.json)
+          : JSON.parse(entryContent.text);
+      const _selectedSchemaData = selectedSchemaData.json
+          ? structuredClone(selectedSchemaData.json)
+          : JSON.parse(selectedSchemaData.text);
+
+      if(!isContentEntryInForm){
+        entryContent = {
+            json: {
+              ..._entryContent,
+              ..._selectedSchemaData,
+            },
+            text: undefined
+        };
+      }
+      else {
+        // selectedSchemaData = {
+        //     json: {
+        //       ..._selectedSchemaData,
+        //       ..._entryContent,
+        //     },
+        //     text: undefined
+        // };
+      }
+    }
+  }
 </script>
 
 <svelte:window on:beforeunload={beforeUnload} />
@@ -901,7 +933,6 @@
               </TabPane>
               <TabPane tabId="editor" tab="Editor">
                 <JSONEditor
-                  mode={Mode.text}
                   bind:content={schemaContent}
                 />
               </TabPane>
@@ -932,16 +963,17 @@
                 <TabContent on:tab={(e) => (isContentEntryInForm = e.detail==="form")}>
                   {#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}
                   <TabPane tabId="form" tab="Form" active>
+                    ssssss
                     <SchemaForm
                       bind:ref={schemaFormRef}
                       schema={selectedSchemaContent}
-                      bind:data={selectedSchemaData}
+                      bind:data={selectedSchemaData.json}
                     />
                   </TabPane>
                  {/if}
                   <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>
+                    ddddddd
                     <JSONEditor
-                      mode={Mode.text}
                       bind:content={entryContent}
                       bind:validator={validatorContent}
                     />
@@ -1236,7 +1268,6 @@
         style="text-align: left; direction: ltr; overflow: hidden auto;"
       >
         <JSONEditor
-          mode={Mode.text}
           bind:content={contentMeta}
           bind:validator={validatorMeta}
           onRenderMenu={handleRenderMenu}
@@ -1316,7 +1347,6 @@
         {/if}
         {#if entry.payload.content_type === "json" && typeof contentContent === "object" && contentContent !== null}
           <JSONEditor
-            mode={Mode.text}
             bind:content={contentContent}
             bind:validator
             onRenderMenu={handleRenderMenu}

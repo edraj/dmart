@@ -77,6 +77,7 @@
           refresh={handleRefresh}
           parentRefresh={handleParentRefresh}
           root={true}
+          level={1}
         />
       {/each}
   </Col>
