@@ -21,7 +21,7 @@ export function transformToProperBodyRequest(obj: any) {
     }
     if (obj.type === "array"){
         if (obj.items) {
-            if (Object.keys(obj.items.properties).length === 1) {
+            if (Object.keys(obj?.items?.properties ?? []).length === 1) {
                 obj.items.type = obj.items.properties[Object.keys(obj.items.properties)[0]].type;
             } else {
                 obj.items.type = "object";
