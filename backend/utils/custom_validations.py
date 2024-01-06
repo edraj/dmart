@@ -100,11 +100,14 @@ async def validate_uniqueness(
     if not isinstance(folder_meta.get("unique_fields", None), list):
         return True
 
-    entry_dict_flattened = flatten_list_of_dicts_in_dict(
+    entry_dict_flattened: dict[Any, Any] = flatten_list_of_dicts_in_dict(
         flatten_dict(record.attributes)
     )
     redis_escape_chars = str.maketrans(
         {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
+    )
+    redis_replace_chars : dict[int, str] = str.maketrans(
+        {".": r".", "@": r".", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
     # Go over each composite unique array of fields and make sure there's no entry with those values
     for composite_unique_keys in folder_meta["unique_fields"]:
@@ -113,16 +116,16 @@ async def validate_uniqueness(
             base_unique_key = unique_key
             if unique_key.endswith("_unescaped"):
                 unique_key = unique_key.replace("_unescaped", "") 
-            if unique_key not in entry_dict_flattened:
+            if unique_key.endswith("_replace_specials"):
+                unique_key = unique_key.replace("_replace_specials", "") 
+            if not entry_dict_flattened.get(unique_key, None) :
                 continue
 
             redis_column = unique_key.split("payload.body.")[-1].replace(".", "_")
 
             # construct redis search string
             if(
-                base_unique_key.endswith("_unescaped") and
-                unique_key in entry_dict_flattened and
-                entry_dict_flattened[unique_key] is not None
+                base_unique_key.endswith("_unescaped")
             ):
                 redis_search_str += (
                     " @"
@@ -132,8 +135,19 @@ async def validate_uniqueness(
                     .translate(redis_escape_chars)
                     .replace("\\\\", "\\")
                     + "}"
-
                 )
+            elif(
+                base_unique_key.endswith("_replace_specials") or unique_key.endswith('email')
+            ):
+                redis_search_str += (
+                    " @"
+                    + redis_column
+                    + ":"
+                    + entry_dict_flattened[unique_key]
+                    .translate(redis_replace_chars)
+                    .replace("\\\\", "\\")
+                )
+                
             elif(
                 isinstance(entry_dict_flattened[unique_key], list)
             ):
