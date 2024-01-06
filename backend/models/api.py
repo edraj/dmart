@@ -1,5 +1,5 @@
 import models.core as core
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from datetime import datetime
 from typing import Any
 from builtins import Exception as PyException
@@ -9,7 +9,7 @@ from models.enums import (
     ResourceType,
     SortType,
     Status,
-    RequestType
+    RequestType,
 )
 import utils.regex as regex
 from utils.settings import settings
@@ -19,7 +19,7 @@ class Request(BaseModel):
     space_name: str = Field(..., pattern=regex.SPACENAME)
     request_type: RequestType
     records: list[core.Record]
-    
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -37,12 +37,12 @@ class Request(BaseModel):
                                 "displayname": {
                                     "en": "name en",
                                     "ar": "name ar",
-                                    "kd": "name kd"
+                                    "kd": "name kd",
                                 },
                                 "description": {
                                     "en": "desc en",
                                     "ar": "desc ar",
-                                    "kd": "desc kd"
+                                    "kd": "desc kd",
                                 },
                                 "tags": [],
                                 "payload": {
@@ -53,28 +53,29 @@ class Request(BaseModel):
                                         "first_name": "John",
                                         "language": "en",
                                         "last_name": "Doo",
-                                        "mobile": "7999311703"
-                                    }
-                                }
-                            }
+                                        "mobile": "7999311703",
+                                    },
+                                },
+                            },
                         }
-                    ]
+                    ],
                 }
             ]
         }
     }
 
+
 class RedisReducer(BaseModel):
     reducer_name: str
     alias: str | None = None
     args: list = []
-    
-    
+
+
 class RedisAggregate(BaseModel):
     group_by: list[str] = []
     reducers: list[RedisReducer] = []
     load: list = []
-    
+
 
 class Query(BaseModel):
     __pydantic_extra__ = None
@@ -85,7 +86,9 @@ class Query(BaseModel):
     branch_name: str = Field(default=settings.default_branch, pattern=regex.SHORTNAME)
     filter_types: list[ResourceType] | None = None
     filter_schema_names: list[str] = ["meta"]
-    filter_shortnames: list[str] | None = [] # Field( pattern=regex.SHORTNAME, default_factory=list)
+    filter_shortnames: list[
+        str
+    ] | None = []  # Field( pattern=regex.SHORTNAME, default_factory=list)
     filter_tags: list[str] | None = None
     search: str | None = None
     from_date: datetime | None = None
@@ -102,13 +105,13 @@ class Query(BaseModel):
     limit: int = 10
     offset: int = 0
     aggregation_data: RedisAggregate | None = None
-    
+
     # Replace -1 limit by settings.max_query_limit
     def __init__(self, **data):
         BaseModel.__init__(self, **data)
         if self.limit == -1:
-            self.limit = settings.max_query_limit 
-            
+            self.limit = settings.max_query_limit
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -116,8 +119,7 @@ class Query(BaseModel):
                     "type": "search",
                     "space_name": "acme",
                     "subpath": "/users",
-                    "filter_types": [
-                    ],
+                    "filter_types": [],
                     "retrieve_attachments": True,
                     "retrieve_json_payload": True,
                     "validate_schema": True,
@@ -132,7 +134,7 @@ class Query(BaseModel):
                     "from_date": None,
                     "to_date": None,
                     "sort_type": "ascending",
-                    "sort_by": "created_at"
+                    "sort_by": "created_at",
                 }
             ]
         }
@@ -166,7 +168,22 @@ class Exception(PyException):
 class DataAssetQuery(BaseModel):
     space_name: str = Field(..., pattern=regex.SPACENAME)
     subpath: str = Field(..., pattern=regex.SUBPATH)
-    resource_type: DataAssetType
+    resource_type: ResourceType
     shortname: str = Field(..., pattern=regex.SHORTNAME, examples=["data_csv"])
+    filter_data_assets: list[str] | None = Field(default=None, examples=["csv_chunk_3"])
+    data_asset_type: DataAssetType
     branch_name: str = Field(default=settings.default_branch, pattern=regex.SHORTNAME)
     query_string: str = Field(..., examples=["SELECT * FROM file"])
+
+    @field_validator("data_asset_type")
+    @classmethod
+    def validate_sqlite(cls, v: DataAssetType, info: ValidationInfo):
+        if (
+            v == DataAssetType.sqlite
+            and len(info.data.get("filter_data_assets", [])) != 1
+        ):
+            raise ValueError(
+                "filter_data_assets must include only one item in case of data_asset_type is sqlite"
+            )
+            
+        return v
