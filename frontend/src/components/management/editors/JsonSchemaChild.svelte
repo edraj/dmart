@@ -7,6 +7,7 @@
   export let refresh;
   export let parentRefresh;
   export let root = false;
+  export let level = 1;
 
   $: isRequired = !!parent?.required?.includes(item.name);
 
@@ -102,19 +103,21 @@
   let isDisplayFilter = false;
 </script>
 
-<Card>
+<div class={
+  (["object", "array"].includes(item.type) ? "card " : "my-1") + (level%2===0 ? "stripe" : "unstripe")
+}>
   <Row class="my-3 mx-1">
     <Col sm={2}>
-      <Input type="text" placeholder="title...." bind:value={item.name} />
+      <Input type="text" placeholder="Key..." bind:value={item.name} required disabled={root}/>
     </Col>
     <Col sm={2}>
-      <Input type="text" placeholder="title...." bind:value={item.title} />
+      <Input type="text" placeholder="Title..." bind:value={item.title} />
     </Col>
     <Col sm={3}>
-      <Input  type="text"  placeholder="description...."  bind:value={item.description} />
+      <Input  type="text"  placeholder="Description..."  bind:value={item.description} />
     </Col>
     <Col sm={2}>
-      <Input type="select" bind:value={item.type}>
+      <Input type="select" bind:value={item.type} disabled={root}>
         {#each types as type}
           <option value={type}>{type}</option>
         {/each}
@@ -202,6 +205,7 @@
             item={prop}
             {refresh}
             parentRefresh={handleParentRefresh}
+            level={level+1}
           />
         {/each}
       {/key}
@@ -213,9 +217,19 @@
             item={prop}
             {refresh}
             parentRefresh={handleParentRefresh}
+            level={level+1}
           />
         {/each}
       {/key}
     {/if}
   </div>
-</Card>
+</div>
+
+<style>
+    .stripe {
+        background-color: #e9e9e9;
+    }
+    .unstripe {
+        background-color: white;
+    }
+</style>
