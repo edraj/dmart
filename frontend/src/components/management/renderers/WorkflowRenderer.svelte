@@ -89,9 +89,7 @@
   let entryContent: any;
 
   let ws = null;
-  if ("websocket" in website) {
-    ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
-  }
+
   function isOpen(ws: any) {
     return ws != null && ws.readyState === ws.OPEN;
   }
@@ -114,7 +112,11 @@
     contentMeta = structuredClone(contentMeta);
     oldContentMeta = structuredClone(contentMeta);
 
-    if (ws != null) {
+    if (!!entry?.payload?.body?.stream) {
+      if ("websocket" in website) {
+          ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+      }
+
       ws.onopen = () => {
         ws.send(
           JSON.stringify({
@@ -825,7 +827,11 @@
   transition:fade={{ delay: 25 }}
 >
   <div class="tab-pane" class:active={tab_option === "list"}>
-    <ListView {space_name} {subpath} />
+    <ListView {space_name} {subpath}
+              folderColumns={entry?.payload?.body?.index_attributes ?? null}
+              sort_by={entry?.payload?.body?.sort_by ?? null}
+              sort_order={entry?.payload?.body?.sort_order ?? null}
+    />
   </div>
   <div class="tab-pane" class:active={tab_option === "source"}>
     <!--JSONEditor json={entry} /-->
