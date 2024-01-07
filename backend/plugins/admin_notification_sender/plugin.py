@@ -74,7 +74,6 @@ class Plugin(PluginBase):
         notification_manager = NotificationManager()
         formatted_req = await self.prepare_request(notification_dict)
         for receiver in set(receivers_shortnames):
-
             if not formatted_req["push_only"]:
                 notification_obj = await Notification.from_request(notification_dict)
                 await internal_save_model(
@@ -107,7 +106,8 @@ class Plugin(PluginBase):
     async def prepare_request(self, notification_dict) -> dict:
         # Get Notification Request Images
         attachments_path = (
-            settings.spaces_folder / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}/"
+            settings.spaces_folder
+            / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}/"
             f"{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
         notification_attachments = await get_entry_attachments(
@@ -118,7 +118,7 @@ class Plugin(PluginBase):
         notification_images = {
             "en": notification_attachments.get("media", {}).get("en"),
             "ar": notification_attachments.get("media", {}).get("ar"),
-            "kd": notification_attachments.get("media", {}).get("kd"),
+            "ku": notification_attachments.get("media", {}).get("ku"),
         }
 
         return {

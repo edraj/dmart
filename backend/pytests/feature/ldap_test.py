@@ -34,7 +34,7 @@ if (
 ):
     ldap_active = False
 
-ldap_conn : Connection | None = None
+ldap_conn: Connection | None = None
 
 try:
     ldap_conn = Connection(
@@ -96,7 +96,7 @@ def test_ldap_user_updated():
                     "displayname": {
                         "en": "En User",
                         "ar": "Ar User",
-                        "kd": "Kd User",
+                        "ku": "Ku User",
                     }
                 },
             }
@@ -109,7 +109,7 @@ def test_ldap_user_updated():
     ldap_entry = ldap_get_first_entry("ldap_user_100100")
     assert (
         ldap_entry.get("attributes", {}).get("givenName", [])[0]
-        == "en='En User' ar='Ar User' kd='Kd User'"
+        == "en='En User' ar='Ar User' ku='Ku User'"
     )
 
 
@@ -148,7 +148,7 @@ def ldap_get_first_entry(shortname: str) -> dict:
         attributes=["cn", "gn"],
     )
 
-    if ldap_conn.response: 
+    if ldap_conn.response:
         for entry in ldap_conn.response:
             if isinstance(entry, dict):
                 return entry
