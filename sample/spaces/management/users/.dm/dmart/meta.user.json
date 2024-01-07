@@ -1,1 +1,26 @@
-{"uuid": "96175d0d-32db-43e5-974e-f5f813185a94", "shortname": "dmart", "is_active": true, "displayname": {"en": "Dmart Manager", "ar": "\u0627\u0644\u0645\u064f\u062f\u064a\u0631", "kd": ""}, "tags": [], "created_at": "2023-01-03T11:39:02.536583", "updated_at": "2023-08-17T16:17:50.474580", "owner_shortname": "dmart", "password": "$2b$12$IteZnkSIceSKbjq.Imy..O.Vq09oTpKrYtJjbJnkP3n3suIJESbzq", "email": "dmart@dmart.com", "msisdn": "7809812340", "is_email_verified": true, "is_msisdn_verified": true, "force_password_change": false, "type": "web", "roles": ["super_admin"], "groups": [], "language": "arabic"}
+{
+  "uuid": "96175d0d-32db-43e5-974e-f5f813185a94",
+  "shortname": "dmart",
+  "is_active": true,
+  "displayname": {
+    "en": "Dmart Manager",
+    "ar": "\u0627\u0644\u0645\u064f\u062f\u064a\u0631",
+    "ku": ""
+  },
+  "tags": [],
+  "created_at": "2023-01-03T11:39:02.536583",
+  "updated_at": "2023-08-17T16:17:50.474580",
+  "owner_shortname": "dmart",
+  "password": "$2b$12$Q52JQygVQgeBeg6x4KuE6.FQHFkdLCZem3RAQ3QC1wb0FYloDCVRe",
+  "email": "dmart@dmart.com",
+  "msisdn": "7809812340",
+  "is_email_verified": true,
+  "is_msisdn_verified": true,
+  "force_password_change": false,
+  "type": "web",
+  "roles": [
+    "super_admin"
+  ],
+  "groups": [],
+  "language": "arabic"
+}

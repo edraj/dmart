@@ -18,7 +18,7 @@ class RequestType(StrEnum):
 class Language(StrEnum):
     ar = "arabic"
     en = "english"
-    kd = "kurdish"
+    ku = "kurdish"
     fr = "french"
     tr = "trukish"
 
@@ -27,7 +27,7 @@ class Language(StrEnum):
         codes = {
             "arabic": "ar",
             "english": "en",
-            "kurdish": "kd",
+            "kurdish": "ku",
             "french": "fr",
             "trukish": "tr",
         }
