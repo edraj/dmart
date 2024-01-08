@@ -238,6 +238,10 @@ export enum ResourceAttachmentType {
   media = "media",
   relationship = "relationship",
   alteration = "alteration",
+  csv = "csv",
+  parquet = "parquet",
+  jsonl = "jsonl",
+  sqlite = "sqlite",
 }
 
 export enum ResourceType {
@@ -262,6 +266,10 @@ export enum ResourceType {
   post = "post",
   plugin_wrapper = "plugin_wrapper",
   notification = "notification",
+  jsonl = "jsonl",
+  csv = "csv",
+  sqlite = "sqlite",
+  parquet = "parquet",
 }
 
 export enum ContentType {
@@ -277,6 +285,17 @@ export enum ContentType {
   jsonl = "jsonl",
   csv = "csv",
   sqlite = "sqlite",
+  parquet = "parquet",
+}
+export enum ContentTypeMedia {
+  text = "text",
+  html = "html",
+  markdown = "markdown",
+  image = "image",
+  python = "python",
+  pdf = "pdf",
+  audio = "audio",
+  video = "video",
 }
 
 type Payload = {
@@ -574,6 +593,38 @@ export async function upload_with_payload(
   );
 
   return data;
+}
+
+
+export async function fetchDataAsset(
+    resourceType: string,  // Replace with actual type if needed
+    spaceName: string,
+    subpath: string,
+    shortname: string,
+    query_stringquery_string?: string,
+    branch_name?: string
+) {
+  try {
+    const endpoint = "/managed/data-asset";
+    const url = `${website.backend}${endpoint}`;
+    const { data } = await axios.post(
+        url,
+        {
+          space_name: spaceName,
+          resource_type: resourceType,
+          data_asset_type: resourceType,
+          subpath,
+          shortname,
+          query_string: "SELECT * FROM file",
+          branch_name
+        },
+        { headers }
+    );
+
+    return data;
+  } catch (error) {
+    return error;
+  }
 }
 
 export async function get_spaces(): Promise<ApiResponse> {

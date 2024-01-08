@@ -202,7 +202,8 @@
   );
 
   let errorContent = null;
-  let schemaFormRef;
+  let schemaFormRefModal;
+  let schemaFormRefContent;
   async function handleSave(e: Event) {
     e.preventDefault();
     // if (!isSchemaValidated) {
@@ -219,7 +220,7 @@
     if (entry?.payload) {
       if (entry?.payload?.content_type === "json") {
         if (tab_option === "edit_content_form"){
-            if (!schemaFormRef.reportValidity()) {
+            if (schemaFormRefContent && !schemaFormRefContent.reportValidity()) {
                 return;
             }
         }
@@ -508,7 +509,7 @@
                     selectedSchemaContent != null &&
                     selectedSchemaData.json
                 ) {
-                   if (!schemaFormRef.reportValidity()) {
+                   if (!schemaFormRefModal.reportValidity()) {
                         return;
                     }
                     body = selectedSchemaData.json;
@@ -966,16 +967,14 @@
                 <TabContent on:tab={(e) => (isContentEntryInForm = e.detail==="form")}>
                   {#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}
                   <TabPane tabId="form" tab="Form" active>
-                    ssssss
                     <SchemaForm
-                      bind:ref={schemaFormRef}
+                      bind:ref={schemaFormRefModal}
                       schema={selectedSchemaContent}
                       bind:data={selectedSchemaData.json}
                     />
                   </TabPane>
                  {/if}
                   <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>
-                    ddddddd
                     <JSONEditor
                       bind:content={entryContent}
                       bind:validator={validatorContent}
@@ -1374,7 +1373,7 @@
         {:else}
           <div class="px-1 pb-1 h-100">
             <SchemaForm
-              bind:ref={schemaFormRef}
+              bind:ref={schemaFormRefContent}
               {schema}
               bind:data={contentContent.json}
             />
