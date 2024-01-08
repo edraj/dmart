@@ -51,6 +51,8 @@
   }
 
   function handleParentRefresh(newParent) {
+    console.log({D: newParent})
+    console.log({DD: item})
     if (newParent.required){
         item.required = newParent.required;
     }
