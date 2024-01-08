@@ -11,10 +11,12 @@ export function jsonTOplantUML(data) {
                     result += `${state.state} --> ${n.state}\n`;
                     result += "note on link\n";
                     result += `action: ${n.action}\n`;
-                    result += "roles:\n";
-                    n.roles.map((role) => {
-                        result += `* ${role}\n`;
-                    });
+                    if(n.roles){
+                        result += "roles:\n";
+                        n.roles.map((role) => {
+                            result += `* ${role}\n`;
+                        });
+                    }
                     result += "end note\n";
                 });
             } else {
