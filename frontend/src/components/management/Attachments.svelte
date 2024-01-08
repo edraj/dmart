@@ -3,6 +3,8 @@
     import {
         ApiResponse,
         ContentType,
+        ContentTypeMedia,
+        fetchDataAsset,
         get_attachment_url,
         query,
         QueryType,
@@ -17,6 +19,8 @@
     import {Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader,} from "sveltestrap";
     import {JSONEditor, Mode} from "svelte-jsoneditor";
     import {jsonToFile} from "@/utils/jsonToFile";
+    import Prism from "@/components/Prism.svelte";
+    import {parseCSV, parseJSONL} from "@/utils/attachements";
 
     export let attachments: Array<any> = [];
 
@@ -125,13 +129,28 @@
         }
         else if (
             [
+              ResourceAttachmentType.csv,
+              ResourceAttachmentType.jsonl,
+              ResourceAttachmentType.sqlite,
+              ResourceAttachmentType.parquet,
+            ].includes(resourceType)) {
+            response = await upload_with_payload(
+                space_name,
+                subpath + "/" + parent_shortname,
+                ResourceType[resourceType],
+                ContentType[resourceType],
+                shortname,
+                ResourceType[resourceType] === ResourceType.json
+                    ? jsonToFile(payloadContent)
+                    : payloadFiles[0]
+            );
+        }
+        else if (
+            [
                 ContentType.image,
                 ContentType.pdf,
                 ContentType.audio,
                 ContentType.video,
-                ContentType.jsonl,
-                ContentType.csv,
-                ContentType.sqlite,
             ].includes(contentType)
         ) {
             response = await upload_with_payload(
@@ -322,7 +341,7 @@
         {#if resourceType === ResourceAttachmentType.media}
           <Label>Content Type</Label>
           <Input type="select" bind:value={contentType} disabled={isModalInUpdateMode}>
-            {#each Object.values(ContentType).filter(type => type !== ContentType.json) as type}
+            {#each Object.values(ContentTypeMedia) as type}
               <option value={type}>{type}</option>
             {/each}
           </Input>
@@ -331,26 +350,8 @@
       <hr />
       {#key resourceType}
         {#if resourceType === ResourceAttachmentType.media}
-          {#if contentType === ContentType.jsonl}
-            <Label>JSONL File</Label>
-            <Input
-              bind:files={payloadFiles}
-              type="file"
-              accept=".jsonl" />
-          {:else if contentType === ContentType.csv}
-            <Label>CSV File</Label>
-            <Input
-              bind:files={payloadFiles}
-              type="file"
-              accept=".csv" />
-          {:else if contentType === ContentType.sqlite}
-            <Label>SQLite File</Label>
-            <Input
-              bind:files={payloadFiles}
-              type="file"
-              accept=".sqlite,.sqlite3,.db,.db3,.s3db,.sl3" />
-          {:else if contentType === ContentType.image}
-            <Label>Payload File</Label>
+          {#if contentType === ContentType.image}
+            <Label>Image File</Label>
             <Input
                 accept="image/png, image/jpeg"
                 bind:files={payloadFiles}
@@ -372,6 +373,29 @@
           <JSONEditor bind:content={payloadContent} />
         {:else if resourceType === ResourceAttachmentType.comment}
           <Input type={"textarea"} bind:value={payloadData} />
+        {:else if resourceType === ResourceAttachmentType.csv}
+          <Label>CSV File</Label>
+          <Input
+            bind:files={payloadFiles}
+            type="file"
+            accept=".csv" />
+        {:else if resourceType === ResourceAttachmentType.jsonl}
+        <Label>JSONL File</Label>
+        <Input
+            bind:files={payloadFiles}
+            type="file"
+            accept=".jsonl" />
+        {:else if resourceType === ResourceAttachmentType.sqlite}
+          <Label>SQLite File</Label>
+          <Input
+            bind:files={payloadFiles}
+            type="file"
+            accept=".sqlite,.sqlite3,.db,.db3,.s3db,.sl3" />
+        {:else if resourceType === ResourceAttachmentType.parquet}
+          <Input
+            bind:files={payloadFiles}
+            type="file"
+            accept=".parquet" />
         {:else}
           <b> TBD ... show custom fields for resource type : {resourceType} </b>
         {/if}
@@ -489,8 +513,58 @@
         </div>
       </div>
       <div class="d-flex col justify-content-center">
+        {#if [
+            ResourceType.csv,
+            ResourceType.jsonl,
+            ResourceType.sqlite,
+            ResourceType.parquet,
+        ].includes(attachment.resource_type)}
+          {#await fetchDataAsset(
+              attachment.resource_type,
+              space_name,
+              subpath,
+              parent_shortname
+          )}
+          loading...
+          {:then response}
+            {#if attachment.resource_type===ResourceType.csv}
+              {#await parseCSV(response)}
+                Parsing...
+              {:then { headers, rows } }
+                <table class="table table-striped table-sm">
+                  <thead>
+                  <tr>
+                    {#each headers as header}
+                      <th>{header}</th>
+                    {/each}
+                  </tr>
+                  </thead>
+                  <tbody>
+                  {#each rows as row}
+                    <tr>
+                      {#each headers as header}
+                        <td>{row[header]}</td>
+                      {/each}
+                    </tr>
+                  {/each}
+                  </tbody>
+                </table>
+              {/await}
+
+            {:else if attachment.resource_type===ResourceType.jsonl}
+              <div class="d-flex row" style=" max-height: 50vh;overflow-y: scroll;">
+                {#each parseJSONL(response) as item}
+                  <Prism code={item} />
+                {/each}
+              </div>
+            {:else}
+              <Prism code={response} />
+            {/if}
+
+          {/await}
+          {:else}
         <Media
-          resource_type={attachment.resource_type}
+          resource_type={ResourceType[attachment.resource_type]}
           attributes={attachment.attributes}
           displayname={attachment.shortname}
           url={get_attachment_url(
@@ -502,6 +576,7 @@
             getFileExtension(attachment.attributes?.payload?.body)
         )}
         />
+        {/if}
       </div>
     </div>
     <hr />
