@@ -1,22 +1,23 @@
 <script lang="ts">
   import { JSONEditor, Mode } from "svelte-jsoneditor";
+  import { ResourceType } from "@/dmart";
 
   export let attributes: any = {};
-  export let resource_type: string;
+  export let resource_type: ResourceType;
   export let url: string;
   export let displayname: string = undefined;
   let content_type: string = attributes?.payload?.content_type || "";
   let body: any = attributes?.payload?.body;
-
+1
 </script>
 
-{#if resource_type === "comment"}
+{#if resource_type === ResourceType.comment}
   <div>
     <p style="margin: 0px"><b>State:</b>{attributes.state}</p>
     <br />
     <p style="margin: 0px"><b>Body:</b>{attributes.body}</p>
   </div>
-{:else if ["json", "jsonl"].includes(content_type)}
+{:else if content_type.includes("json")}
   <JSONEditor mode={Mode.text} content={{ json: body, text: undefined }} readOnly={true} />
 {:else if content_type.includes("image")}
   <img src={url} alt={displayname} class="mw-100 border" />
