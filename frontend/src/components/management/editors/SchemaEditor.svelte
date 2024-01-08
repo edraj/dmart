@@ -54,12 +54,12 @@
       cleanUp(content.json);
       transformToProperBodyRequest(content.json);
       content = structuredClone(content);
-    //   self.set(content);
+      // self.set(content);
     // }
   }
 
   function handleParentRefresh(newParent) {
-    items = [...newParent];
+    items = structuredClone(newParent);
   }
 </script>
 
@@ -70,15 +70,15 @@
 <!--    <JSONEditor mode={Mode.text} bind:this={self} bind:content />-->
 <!--  </Col>-->
 <!--  <Col sm={6}>-->
-      {#each items as item}
-        <JsonSchemaChild
-          item={item}
-          parent={items}
-          refresh={handleRefresh}
-          parentRefresh={handleParentRefresh}
-          root={true}
-          level={1}
-        />
-      {/each}
+    {#each items as item}
+      <JsonSchemaChild
+        item={item}
+        parent={items}
+        refresh={handleRefresh}
+        parentRefresh={handleParentRefresh}
+        root={true}
+        level={1}
+      />
+    {/each}
   </Col>
 </Row>
