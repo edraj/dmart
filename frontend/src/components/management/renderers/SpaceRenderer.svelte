@@ -88,10 +88,6 @@
   }
 
   function handleRenderMenu(items: Array<any>, context) {
-    items = items.filter(
-      (item) => !["tree", "text", "table"].includes(item.text)
-    );
-
     const separator = {
       separator: true,
     };
