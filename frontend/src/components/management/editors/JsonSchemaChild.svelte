@@ -40,7 +40,6 @@
             },
         ];
     }
-
     refresh();
   }
   function handleDeleteParent() {
@@ -55,10 +54,16 @@
     if (newParent.required){
         item.required = newParent.required;
     }
-    item.properties = newParent;
+
+    if(item.type==="array"){
+        item.items.properties = newParent;
+    } else {
+        item.properties = newParent;
+    }
+
+    // parentRefresh(parent);
   }
 
-  $: parent && refresh();
   $: item && refresh();
 
   let oldType = item.type.toString();

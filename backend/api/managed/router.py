@@ -1469,6 +1469,8 @@ async def create_or_update_resource_with_payload(
             resource_content_type = ContentType.jsonl
         elif record.attributes.get("content_type") == "sqlite":
             resource_content_type = ContentType.sqlite
+        elif record.attributes.get("content_type") == "parquet":
+            resource_content_type = ContentType.parquet
         else:
             resource_content_type = ContentType.text
     elif payload_file.content_type == "text/markdown":
