@@ -2361,7 +2361,7 @@ async def data_asset(
             branch_name=query.branch_name,
         )
         if(
-            not isinstance(attachment.attributes.get("payload"), core.Payload) 
+            not isinstance(attachment.attributes.get("payload"), core.Payload)
             or not isinstance(attachment.attributes["payload"].body, str)
             or not (file_path/attachment.attributes["payload"].body).is_file()
         ):
@@ -2373,23 +2373,23 @@ async def data_asset(
                     message=f"Invalid data asset file found at {attachment.subpath}/{attachment.shortname}",
                 ),
             )
-            
+
         file_path /= attachment.attributes["payload"].body
         if(
-            attachment.attributes["payload"].schema_shortname 
+            attachment.attributes["payload"].schema_shortname
             and attachment.resource_type == DataAssetType.csv
         ):
             await validate_csv_with_schema(
-                file_path=file_path, 
+                file_path=file_path,
                 space_name=query.space_name,
                 schema_shortname=attachment.attributes["payload"].schema_shortname
             )
         if(
-            attachment.attributes["payload"].schema_shortname 
+            attachment.attributes["payload"].schema_shortname
             and attachment.resource_type == DataAssetType.jsonl
         ):
             await validate_jsonl_with_schema(
-                file_path=file_path, 
+                file_path=file_path,
                 space_name=query.space_name,
                 schema_shortname=attachment.attributes["payload"].schema_shortname
             )
@@ -2404,7 +2404,7 @@ async def data_asset(
                 message="No data asset attachments found for this entry",
             ),
         )
-        
+
     if query.data_asset_type == DataAssetType.sqlite:
         conn: duckdb.DuckDBPyConnection = duckdb.connect(str(files_paths[0]))
     else:
@@ -2414,23 +2414,23 @@ async def data_asset(
             match query.data_asset_type:
                 case DataAssetType.csv:
                     globals().setdefault(
-                        attachments[query.data_asset_type][idx].shortname, 
+                        attachments[query.data_asset_type][idx].shortname,
                         conn.read_csv(str(file_path))
                     ) # type: ignore  # noqa
                 case DataAssetType.jsonl:
                     globals().setdefault(
-                        attachments[query.data_asset_type][idx].shortname, 
+                        attachments[query.data_asset_type][idx].shortname,
                         conn.read_json(
-                            str(file_path), 
+                            str(file_path),
                             format='auto'
                         )
                     ) # type: ignore  # noqa
                 case DataAssetType.parquet:
                     globals().setdefault(
-                        attachments[query.data_asset_type][idx].shortname, 
+                        attachments[query.data_asset_type][idx].shortname,
                         conn.read_parquet(str(file_path))
                     ) # type: ignore  # noqa
-                    
+
     data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string) # type: ignore
 
 
@@ -2439,5 +2439,97 @@ async def data_asset(
         response = StreamingResponse(iter(csv_file.read()), media_type="text/csv")
         response.headers["Content-Disposition"] = "attachment; filename=data.csv"
     os.remove("my_temp_file_from_duckdb.csv")
+
+    return response
+
+@router.get("/data-asset")
+async def data_asset_single(
+        resource_type: ResourceType,
+        space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+        subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+        shortname: str = Path(..., pattern=regex.SHORTNAME,
+                              examples=["unique_shortname"]),
+        schema_shortname: str | None = None,
+        ext: str = Path(..., pattern=regex.EXT, examples=["png"]),
+        logged_in_user=Depends(JWTBearer()),
+        branch_name: str | None = settings.default_branch,
+) -> FileResponse:
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.view,
+            resource_type=resource_type,
+            user_shortname=logged_in_user,
+        )
+    )
+
+    cls = getattr(sys.modules["models.core"], camel_case(resource_type))
+    meta: core.Meta = await db.load(
+        space_name=space_name,
+        subpath=subpath,
+        shortname=shortname,
+        class_type=cls,
+        user_shortname=logged_in_user,
+        branch_name=branch_name,
+        schema_shortname=schema_shortname,
+    )
+    if (
+            meta.payload is None
+            or meta.payload.body is None
+            or meta.payload.body != f"{shortname}.{ext}"
+    ):
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+            ),
+        )
+
+    if not await access_control.check_access(
+            user_shortname=logged_in_user,
+            space_name=space_name,
+            subpath=subpath,
+            resource_type=resource_type,
+            action_type=core.ActionType.view,
+            resource_is_active=meta.is_active,
+            resource_owner_shortname=meta.owner_shortname,
+            resource_owner_group=meta.owner_group_shortname,
+            entry_shortname=meta.shortname
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="You don't have permission to this action [9]",
+            ),
+        )
+
+    payload_path = db.payload_path(
+        space_name=space_name,
+        subpath=subpath,
+        class_type=cls,
+        branch_name=branch_name,
+        schema_shortname=schema_shortname,
+    )
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.view,
+            resource_type=resource_type,
+            user_shortname=logged_in_user,
+        )
+    )
+
+    with open(payload_path / str(meta.payload.body), "r") as csv_file:
+        media = "text/csv" if resource_type == ResourceType.csv else "text/plain"
+        response = StreamingResponse(iter(csv_file.read()), media=media)
+        response.headers["Content-Disposition"] = "attachment; filename=data.csv"
 
     return response
