@@ -2453,7 +2453,7 @@ async def data_asset_single(
         ext: str = Path(..., pattern=regex.EXT, examples=["png"]),
         logged_in_user=Depends(JWTBearer()),
         branch_name: str | None = settings.default_branch,
-) -> FileResponse:
+) -> StreamingResponse:
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
