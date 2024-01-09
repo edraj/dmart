@@ -655,7 +655,7 @@
     }
 
     let response: any = {};
-    if (targetSubpath !== "/"){
+    if (targetSubpath !== "/" || entry.payload){
       const request_body = {
         space_name,
         request_type: RequestType.delete,
