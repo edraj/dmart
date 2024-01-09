@@ -67,7 +67,7 @@ router = APIRouter()
     response_model_exclude_none=True,
 )
 async def generate_csv_from_report_saved_query(
-    space_name: str, record: core.Record, user_shortname=Depends(JWTBearer())
+        space_name: str, record: core.Record, user_shortname=Depends(JWTBearer())
 ):
     records = (
         await execute(
@@ -178,8 +178,8 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         for redis_document in search_res:
             redis_doc_dict = json.loads(redis_document)
             if (
-                redis_doc_dict.get("payload_doc_id")
-                and query.retrieve_json_payload
+                    redis_doc_dict.get("payload_doc_id")
+                    and query.retrieve_json_payload
             ):
                 payload_doc_content = await redis_services.get_payload_doc(
                     redis_doc_dict["payload_doc_id"], redis_doc_dict["resource_type"]
@@ -233,7 +233,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
                     rows += list_new_rows
 
                 elif attribute_val and not isinstance(attribute_val, list):
-                    new_col = attribute_val if column_key not in timestamp_fields else\
+                    new_col = attribute_val if column_key not in timestamp_fields else \
                         datetime.fromtimestamp(attribute_val).strftime(
                             '%Y-%m-%d %H:%M:%S')
                     for row in rows:
@@ -284,7 +284,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
 @router.post("/space", response_model=api.Response, response_model_exclude_none=True)
 async def serve_space(
-    request: api.Request, owner_shortname=Depends(JWTBearer())
+        request: api.Request, owner_shortname=Depends(JWTBearer())
 ) -> api.Response:
     spaces = await get_spaces()
     record = request.records[0]
@@ -302,12 +302,12 @@ async def serve_space(
                 )
 
             if not await access_control.check_access(
-                user_shortname=owner_shortname,
-                space_name=settings.all_spaces_mw,
-                subpath="/",
-                resource_type=ResourceType.space,
-                action_type=core.ActionType.create,
-                record_attributes=record.attributes,
+                    user_shortname=owner_shortname,
+                    space_name=settings.all_spaces_mw,
+                    subpath="/",
+                    resource_type=ResourceType.space,
+                    action_type=core.ActionType.create,
+                    record_attributes=record.attributes,
             ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -341,8 +341,8 @@ async def serve_space(
             try:
                 space = core.Space.from_record(record, owner_shortname)
                 if (
-                    request.space_name not in spaces
-                    or request.space_name != record.shortname
+                        request.space_name not in spaces
+                        or request.space_name != record.shortname
                 ):
                     raise Exception
             except Exception:
@@ -355,12 +355,12 @@ async def serve_space(
                     ),
                 )
             if not await access_control.check_access(
-                user_shortname=owner_shortname,
-                space_name=settings.all_spaces_mw,
-                subpath="/",
-                resource_type=ResourceType.space,
-                action_type=core.ActionType.update,
-                record_attributes=record.attributes,
+                    user_shortname=owner_shortname,
+                    space_name=settings.all_spaces_mw,
+                    subpath="/",
+                    resource_type=ResourceType.space,
+                    action_type=core.ActionType.update,
+                    record_attributes=record.attributes,
             ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -425,11 +425,11 @@ async def serve_space(
                 )
 
             if not await access_control.check_access(
-                user_shortname=owner_shortname,
-                space_name=settings.all_spaces_mw,
-                subpath="/",
-                resource_type=ResourceType.space,
-                action_type=core.ActionType.delete,
+                    user_shortname=owner_shortname,
+                    space_name=settings.all_spaces_mw,
+                    subpath="/",
+                    resource_type=ResourceType.space,
+                    action_type=core.ActionType.delete,
             ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -482,7 +482,7 @@ async def serve_space(
 
 @router.post("/query", response_model=api.Response, response_model_exclude_none=True)
 async def query_entries(
-    query: api.Query, user_shortname=Depends(JWTBearer())
+        query: api.Query, user_shortname=Depends(JWTBearer())
 ) -> api.Response:
     await plugin_manager.before_action(
         core.Event(
@@ -521,10 +521,10 @@ async def query_entries(
 
 @router.post("/request", response_model=api.Response, response_model_exclude_none=True)
 async def serve_request(
-    request: api.Request,
-    token=Depends(GetJWTToken()),
-    owner_shortname=Depends(JWTBearer()),
-    is_internal: bool = False,
+        request: api.Request,
+        token=Depends(GetJWTToken()),
+        owner_shortname=Depends(JWTBearer()),
+        is_internal: bool = False,
 ) -> api.Response:
     spaces = await get_spaces()
     if request.space_name not in spaces:
@@ -556,9 +556,9 @@ async def serve_request(
                 try:
                     schema_shortname: str | None = None
                     if (
-                        "payload" in record.attributes
-                        and isinstance(record.attributes.get("payload", None), dict)
-                        and "schema_shortname" in record.attributes["payload"]
+                            "payload" in record.attributes
+                            and isinstance(record.attributes.get("payload", None), dict)
+                            and "schema_shortname" in record.attributes["payload"]
                     ):
                         schema_shortname = record.attributes["payload"][
                             "schema_shortname"
@@ -577,12 +577,12 @@ async def serve_request(
                     )
 
                     if not await access_control.check_access(
-                        user_shortname=owner_shortname,
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        resource_type=record.resource_type,
-                        action_type=core.ActionType.create,
-                        record_attributes=record.attributes,
+                            user_shortname=owner_shortname,
+                            space_name=request.space_name,
+                            subpath=record.subpath,
+                            resource_type=record.resource_type,
+                            action_type=core.ActionType.create,
+                            record_attributes=record.attributes,
                     ):
                         raise api.Exception(
                             status.HTTP_401_UNAUTHORIZED,
@@ -634,18 +634,18 @@ async def serve_request(
 
                     separate_payload_data = None
                     if (
-                        resource_obj.payload
-                        and resource_obj.payload.content_type == ContentType.json
-                        and resource_obj.payload.body is not None
+                            resource_obj.payload
+                            and resource_obj.payload.content_type == ContentType.json
+                            and resource_obj.payload.body is not None
                     ):
                         separate_payload_data = resource_obj.payload.body
                         resource_obj.payload.body = body_shortname + ".json"
 
                     if (
-                        resource_obj.payload
-                        and resource_obj.payload.content_type == ContentType.json
-                        and resource_obj.payload.schema_shortname
-                        and isinstance(separate_payload_data, dict)
+                            resource_obj.payload
+                            and resource_obj.payload.content_type == ContentType.json
+                            and resource_obj.payload.schema_shortname
+                            and isinstance(separate_payload_data, dict)
                     ):
                         await validate_payload_with_schema(
                             payload_data=separate_payload_data,
@@ -703,7 +703,7 @@ async def serve_request(
                                 )
 
                     if separate_payload_data is not None and isinstance(
-                        separate_payload_data, dict
+                            separate_payload_data, dict
                     ):
                         await db.save_payload_from_json(
                             request.space_name,
@@ -784,15 +784,15 @@ async def serve_request(
 
                 # CHECK PERMISSION
                 if not await access_control.check_access(
-                    user_shortname=owner_shortname,
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    resource_type=record.resource_type,
-                    action_type=core.ActionType.update,
-                    resource_is_active=old_resource_obj.is_active,
-                    resource_owner_shortname=old_resource_obj.owner_shortname,
-                    resource_owner_group=old_resource_obj.owner_group_shortname,
-                    record_attributes=record.attributes,
+                        user_shortname=owner_shortname,
+                        space_name=request.space_name,
+                        subpath=record.subpath,
+                        resource_type=record.resource_type,
+                        action_type=core.ActionType.update,
+                        resource_is_active=old_resource_obj.is_active,
+                        resource_owner_shortname=old_resource_obj.owner_shortname,
+                        resource_owner_group=old_resource_obj.owner_group_shortname,
+                        record_attributes=record.attributes,
                 ):
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
@@ -808,9 +808,9 @@ async def serve_request(
                 old_version_flattend = flatten_dict(
                     old_resource_obj.model_dump())
                 if (
-                    old_resource_obj.payload
-                    and old_resource_obj.payload.content_type == ContentType.json
-                    and isinstance(old_resource_obj.payload.body, str)
+                        old_resource_obj.payload
+                        and old_resource_obj.payload.content_type == ContentType.json
+                        and isinstance(old_resource_obj.payload.body, str)
                 ):
                     try:
                         old_resource_payload_body = db.load_resource_payload(
@@ -852,10 +852,10 @@ async def serve_request(
                 )
                 # VALIDATE SEPARATE PAYLOAD BODY
                 if (
-                    resource_obj.payload
-                    and resource_obj.payload.content_type == ContentType.json
-                    and resource_obj.payload.schema_shortname
-                    and new_resource_payload_data is not None
+                        resource_obj.payload
+                        and resource_obj.payload.content_type == ContentType.json
+                        and resource_obj.payload.schema_shortname
+                        and new_resource_payload_data is not None
                 ):
                     await validate_payload_with_schema(
                         payload_data=new_resource_payload_data,
@@ -869,8 +869,8 @@ async def serve_request(
                 )
                 if request.request_type == RequestType.r_replace:
                     updated_attributes_flattend = (
-                        list(old_version_flattend.keys()) +
-                        list(new_version_flattend.keys())
+                            list(old_version_flattend.keys()) +
+                            list(new_version_flattend.keys())
                     )
                 history_diff = await db.update(
                     space_name=request.space_name,
@@ -893,8 +893,8 @@ async def serve_request(
                     )
 
                 if (
-                    isinstance(resource_obj, core.User) and
-                    record.attributes.get("is_active") is False
+                        isinstance(resource_obj, core.User) and
+                        record.attributes.get("is_active") is False
                 ):
                     await remove_redis_session_key(record.shortname)
 
@@ -953,14 +953,14 @@ async def serve_request(
                     schema_shortname=schema_shortname,
                 )
                 if not await access_control.check_access(
-                    user_shortname=owner_shortname,
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    resource_type=record.resource_type,
-                    action_type=core.ActionType.delete,
-                    resource_is_active=resource_obj.is_active,
-                    resource_owner_shortname=resource_obj.owner_shortname,
-                    resource_owner_group=resource_obj.owner_group_shortname,
+                        user_shortname=owner_shortname,
+                        space_name=request.space_name,
+                        subpath=record.subpath,
+                        resource_type=record.resource_type,
+                        action_type=core.ActionType.delete,
+                        resource_is_active=resource_obj.is_active,
+                        resource_owner_shortname=resource_obj.owner_shortname,
+                        resource_owner_group=resource_obj.owner_group_shortname,
                 ):
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
@@ -998,11 +998,11 @@ async def serve_request(
                 if record.subpath[0] != "/":
                     record.subpath = f"/{record.subpath}"
                 if (
-                    "dest_subpath" not in record.attributes
-                    or not record.attributes["dest_subpath"]
+                        "dest_subpath" not in record.attributes
+                        or not record.attributes["dest_subpath"]
                 ) and (
-                    "dest_shortname" not in record.attributes
-                    or not record.attributes["dest_shortname"]
+                        "dest_shortname" not in record.attributes
+                        or not record.attributes["dest_shortname"]
                 ):
                     raise api.Exception(
                         status.HTTP_400_BAD_REQUEST,
@@ -1014,11 +1014,11 @@ async def serve_request(
                     )
 
                 if (
-                    "src_subpath" not in record.attributes
-                    or not record.attributes["src_subpath"]
+                        "src_subpath" not in record.attributes
+                        or not record.attributes["src_subpath"]
                 ) or (
-                    "src_shortname" not in record.attributes
-                    or not record.attributes["src_shortname"]
+                        "src_shortname" not in record.attributes
+                        or not record.attributes["src_shortname"]
                 ):
                     raise api.Exception(
                         status.HTTP_400_BAD_REQUEST,
@@ -1056,14 +1056,14 @@ async def serve_request(
                     branch_name=record.branch_name,
                 )
                 if not await access_control.check_access(
-                    user_shortname=owner_shortname,
-                    space_name=request.space_name,
-                    subpath=record.attributes["src_subpath"],
-                    resource_type=record.resource_type,
-                    action_type=core.ActionType.delete,
-                    resource_is_active=resource_obj.is_active,
-                    resource_owner_shortname=resource_obj.owner_shortname,
-                    resource_owner_group=resource_obj.owner_group_shortname,
+                        user_shortname=owner_shortname,
+                        space_name=request.space_name,
+                        subpath=record.attributes["src_subpath"],
+                        resource_type=record.resource_type,
+                        action_type=core.ActionType.delete,
+                        resource_is_active=resource_obj.is_active,
+                        resource_owner_shortname=resource_obj.owner_shortname,
+                        resource_owner_group=resource_obj.owner_group_shortname,
                 ) or not await access_control.check_access(
                     user_shortname=owner_shortname,
                     space_name=request.space_name,
@@ -1125,16 +1125,16 @@ async def serve_request(
     response_model_exclude_none=True,
 )
 async def update_state(
-    logged_in_user=Depends(JWTBearer()),
-    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
-    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
-    shortname: str = Path(..., pattern=regex.SHORTNAME,
-                          examples=["unique_shortname"]),
-    action: str = Path(..., examples=["approve"]),
-    resolution: str | None = Body(None, embed=True, examples=[
-                                  "Ticket state resolution"]),
-    comment: str | None = Body(None, embed=True, examples=["Nice ticket"]),
-    branch_name: str | None = settings.default_branch,
+        logged_in_user=Depends(JWTBearer()),
+        space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+        subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+        shortname: str = Path(..., pattern=regex.SHORTNAME,
+                              examples=["unique_shortname"]),
+        action: str = Path(..., examples=["approve"]),
+        resolution: str | None = Body(None, embed=True, examples=[
+            "Ticket state resolution"]),
+        comment: str | None = Body(None, embed=True, examples=["Nice ticket"]),
+        branch_name: str | None = settings.default_branch,
 ) -> api.Response:
     spaces = await get_spaces()
     if space_name not in spaces:
@@ -1178,15 +1178,15 @@ async def update_state(
         )
 
     if not await access_control.check_access(
-        user_shortname=logged_in_user,
-        space_name=space_name,
-        subpath=subpath,
-        resource_type=ResourceType.ticket,
-        action_type=core.ActionType.update,
-        resource_is_active=ticket_obj.is_active,
-        resource_owner_shortname=ticket_obj.owner_shortname,
-        resource_owner_group=ticket_obj.owner_group_shortname,
-        record_attributes={"state": "", "resolution_reason": ""},
+            user_shortname=logged_in_user,
+            space_name=space_name,
+            subpath=subpath,
+            resource_type=ResourceType.ticket,
+            action_type=core.ActionType.update,
+            resource_is_active=ticket_obj.is_active,
+            resource_owner_shortname=ticket_obj.owner_shortname,
+            resource_owner_group=ticket_obj.owner_group_shortname,
+            record_attributes={"state": "", "resolution_reason": ""},
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -1207,8 +1207,8 @@ async def update_state(
         )
 
         if (
-            workflows_data.payload is not None
-            and workflows_data.payload.body is not None
+                workflows_data.payload is not None
+                and workflows_data.payload.body is not None
         ):
             workflows_payload = db.load_resource_payload(
                 space_name=space_name,
@@ -1345,15 +1345,15 @@ async def update_state(
     response_model_exclude_none=True,
 )
 async def retrieve_entry_or_attachment_payload(
-    resource_type: ResourceType,
-    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
-    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
-    shortname: str = Path(..., pattern=regex.SHORTNAME,
-                          examples=["unique_shortname"]),
-    schema_shortname: str | None = None,
-    ext: str = Path(..., pattern=regex.EXT, examples=["png"]),
-    logged_in_user=Depends(JWTBearer()),
-    branch_name: str | None = settings.default_branch,
+        resource_type: ResourceType,
+        space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+        subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+        shortname: str = Path(..., pattern=regex.SHORTNAME,
+                              examples=["unique_shortname"]),
+        schema_shortname: str | None = None,
+        ext: str = Path(..., pattern=regex.EXT, examples=["png"]),
+        logged_in_user=Depends(JWTBearer()),
+        branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
     await plugin_manager.before_action(
         core.Event(
@@ -1378,9 +1378,9 @@ async def retrieve_entry_or_attachment_payload(
         schema_shortname=schema_shortname,
     )
     if (
-        meta.payload is None
-        or meta.payload.body is None
-        or meta.payload.body != f"{shortname}.{ext}"
+            meta.payload is None
+            or meta.payload.body is None
+            or meta.payload.body != f"{shortname}.{ext}"
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -1390,15 +1390,15 @@ async def retrieve_entry_or_attachment_payload(
         )
 
     if not await access_control.check_access(
-        user_shortname=logged_in_user,
-        space_name=space_name,
-        subpath=subpath,
-        resource_type=resource_type,
-        action_type=core.ActionType.view,
-        resource_is_active=meta.is_active,
-        resource_owner_shortname=meta.owner_shortname,
-        resource_owner_group=meta.owner_group_shortname,
-        entry_shortname=meta.shortname
+            user_shortname=logged_in_user,
+            space_name=space_name,
+            subpath=subpath,
+            resource_type=resource_type,
+            action_type=core.ActionType.view,
+            resource_is_active=meta.is_active,
+            resource_owner_shortname=meta.owner_shortname,
+            resource_owner_group=meta.owner_group_shortname,
+            entry_shortname=meta.shortname
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -1437,11 +1437,11 @@ async def retrieve_entry_or_attachment_payload(
     response_model_exclude_none=True,
 )
 async def create_or_update_resource_with_payload(
-    payload_file: UploadFile,
-    request_record: UploadFile,
-    space_name: str = Form(..., examples=["data"]),
-    sha: str | None = Form(default=None, examples=["data"]),
-    owner_shortname: str =Depends(JWTBearer()),
+        payload_file: UploadFile,
+        request_record: UploadFile,
+        space_name: str = Form(..., examples=["data"]),
+        sha: str | None = Form(default=None, examples=["data"]),
+        owner_shortname: str = Depends(JWTBearer()),
 ):
     # NOTE We currently make no distinction between create and update.
     # in such case update should contain all the data every time.
@@ -1491,7 +1491,6 @@ async def create_or_update_resource_with_payload(
             ),
         )
 
-
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
@@ -1508,12 +1507,12 @@ async def create_or_update_resource_with_payload(
     )
 
     if not await access_control.check_access(
-        user_shortname=owner_shortname,
-        space_name=space_name,
-        subpath=record.subpath,
-        resource_type=record.resource_type,
-        action_type=core.ActionType.create,
-        record_attributes=record.attributes,
+            user_shortname=owner_shortname,
+            space_name=space_name,
+            subpath=record.subpath,
+            resource_type=record.resource_type,
+            action_type=core.ActionType.create,
+            record_attributes=record.attributes,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -1561,10 +1560,10 @@ async def create_or_update_resource_with_payload(
         body=f"{record.shortname}." + payload_filename.split(".")[1],
     )
     if (
-        not isinstance(resource_obj, core.Attachment)
-        and not isinstance(resource_obj, core.Content)
-        and not isinstance(resource_obj, core.Ticket)
-        and not isinstance(resource_obj, core.Schema)
+            not isinstance(resource_obj, core.Attachment)
+            and not isinstance(resource_obj, core.Content)
+            and not isinstance(resource_obj, core.Ticket)
+            and not isinstance(resource_obj, core.Schema)
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -1576,11 +1575,11 @@ async def create_or_update_resource_with_payload(
         )
 
     resource_obj.payload.body = f"{resource_obj.shortname}." + \
-        payload_filename.split(".")[1]
+                                payload_filename.split(".")[1]
 
     if (
-        resource_content_type == ContentType.json
-        and resource_obj.payload.schema_shortname
+            resource_content_type == ContentType.json
+            and resource_obj.payload.schema_shortname
     ):
         await validate_payload_with_schema(
             payload_data=payload_file,
@@ -1621,14 +1620,14 @@ async def create_or_update_resource_with_payload(
     response_model_exclude_none=True,
 )
 async def import_resources_from_csv(
-    resources_file: UploadFile,
-    resource_type: ResourceType,
-    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
-    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
-    schema_shortname: str = Path(..., pattern=regex.SHORTNAME, examples=[
-                                 "model_schema"]),
-    owner_shortname=Depends(JWTBearer()),
-    branch_name: str | None = settings.default_branch,
+        resources_file: UploadFile,
+        resource_type: ResourceType,
+        space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+        subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+        schema_shortname: str = Path(..., pattern=regex.SHORTNAME, examples=[
+            "model_schema"]),
+        owner_shortname=Depends(JWTBearer()),
+        branch_name: str | None = settings.default_branch,
 ):
     contents = await resources_file.read()
     decoded = contents.decode()
@@ -1636,8 +1635,8 @@ async def import_resources_from_csv(
     csv_reader = csv.DictReader(buffer)
 
     schema_path = (
-        db.payload_path(space_name, "schema", core.Schema, branch_name)
-        / f"{schema_shortname}.json"
+            db.payload_path(space_name, "schema", core.Schema, branch_name)
+            / f"{schema_shortname}.json"
     )
     with open(schema_path) as schema_file:
         schema_content = json.load(schema_file)
@@ -1686,8 +1685,8 @@ async def import_resources_from_csv(
                 if "oneOf" in current_schema_property:
                     for oneOf_item in current_schema_property["oneOf"]:
                         if (
-                            "properties" in oneOf_item
-                            and item.strip() in oneOf_item["properties"]
+                                "properties" in oneOf_item
+                                and item.strip() in oneOf_item["properties"]
                         ):
                             current_schema_property = oneOf_item["properties"][
                                 item.strip()
@@ -1772,17 +1771,17 @@ async def import_resources_from_csv(
     response_model_exclude_none=True,
 )
 async def retrieve_entry_meta(
-    resource_type: ResourceType,
-    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
-    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
-    shortname: str = Path(..., pattern=regex.SHORTNAME,
-                          examples=["unique_shortname"]),
-    retrieve_json_payload: bool = False,
-    retrieve_attachments: bool = False,
-    filter_attachments_types: list = Query(default=[], examples=["media", "comment", "json"]),
-    validate_schema: bool = True,
-    logged_in_user=Depends(JWTBearer()),
-    branch_name: str | None = settings.default_branch,
+        resource_type: ResourceType,
+        space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+        subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+        shortname: str = Path(..., pattern=regex.SHORTNAME,
+                              examples=["unique_shortname"]),
+        retrieve_json_payload: bool = False,
+        retrieve_attachments: bool = False,
+        filter_attachments_types: list = Query(default=[], examples=["media", "comment", "json"]),
+        validate_schema: bool = True,
+        logged_in_user=Depends(JWTBearer()),
+        branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
     if subpath == settings.root_subpath_mw:
         subpath = "/"
@@ -1818,15 +1817,15 @@ async def retrieve_entry_meta(
         )
 
     if not await access_control.check_access(
-        user_shortname=logged_in_user,
-        space_name=space_name,
-        subpath=subpath,
-        resource_type=resource_type,
-        action_type=core.ActionType.view,
-        resource_is_active=meta.is_active,
-        resource_owner_shortname=meta.owner_shortname,
-        resource_owner_group=meta.owner_group_shortname,
-        entry_shortname=meta.shortname
+            user_shortname=logged_in_user,
+            space_name=space_name,
+            subpath=subpath,
+            resource_type=resource_type,
+            action_type=core.ActionType.view,
+            resource_is_active=meta.is_active,
+            resource_owner_shortname=meta.owner_shortname,
+            resource_owner_group=meta.owner_group_shortname,
+            entry_shortname=meta.shortname
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -1839,8 +1838,8 @@ async def retrieve_entry_meta(
 
     attachments = {}
     entry_path = (
-        settings.spaces_folder
-        / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
+            settings.spaces_folder
+            / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
     )
     if retrieve_attachments:
         attachments = await repository.get_entry_attachments(
@@ -1852,11 +1851,11 @@ async def retrieve_entry_meta(
         )
 
     if (
-        not retrieve_json_payload
-        or not meta.payload
-        or not meta.payload.body
-        or not isinstance(meta.payload.body, str)
-        or meta.payload.content_type != ContentType.json
+            not retrieve_json_payload
+            or not meta.payload
+            or not meta.payload.body
+            or not isinstance(meta.payload.body, str)
+            or meta.payload.content_type != ContentType.json
     ):
         # TODO
         # include locked before returning the dictionary
@@ -1897,10 +1896,10 @@ async def retrieve_entry_meta(
 
 @router.get("/byuuid/{uuid}", response_model_exclude_none=True)
 async def get_entry_by_uuid(
-    uuid: str,
-    retrieve_json_payload: bool = False,
-    retrieve_attachments: bool = False,
-    logged_in_user=Depends(JWTBearer()),
+        uuid: str,
+        retrieve_json_payload: bool = False,
+        retrieve_attachments: bool = False,
+        logged_in_user=Depends(JWTBearer()),
 ):
     return await repository.get_entry_by_var(
         "uuid",
@@ -1913,10 +1912,10 @@ async def get_entry_by_uuid(
 
 @router.get("/byslug/{slug}", response_model_exclude_none=True)
 async def get_entry_by_slug(
-    slug: str,
-    retrieve_json_payload: bool = False,
-    retrieve_attachments: bool = False,
-    logged_in_user=Depends(JWTBearer()),
+        slug: str,
+        retrieve_json_payload: bool = False,
+        retrieve_attachments: bool = False,
+        logged_in_user=Depends(JWTBearer()),
 ):
     return await repository.get_entry_by_var(
         "slug",
@@ -1972,10 +1971,10 @@ async def get_entry_by_slug(
 
 @router.get("/health/{health_type}/{space_name}", response_model_exclude_none=True)
 async def get_space_report(
-    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
-    health_type: str = Path(..., examples=["soft", "hard"]),
-    logged_in_user=Depends(JWTBearer()),
-    branch_name: str | None = settings.default_branch,
+        space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+        health_type: str = Path(..., examples=["soft", "hard"]),
+        logged_in_user=Depends(JWTBearer()),
+        branch_name: str | None = settings.default_branch,
 ):
     if logged_in_user != "dmart":
         raise api.Exception(
@@ -2016,20 +2015,20 @@ async def get_space_report(
 
 @router.put("/lock/{resource_type}/{space_name}/{subpath:path}/{shortname}")
 async def lock_entry(
-    space_name: str = Path(..., pattern=regex.SPACENAME),
-    subpath: str = Path(..., pattern=regex.SUBPATH),
-    shortname: str = Path(..., pattern=regex.SHORTNAME),
-    branch_name: str | None = settings.default_branch,
-    resource_type: ResourceType | None = ResourceType.ticket,
-    logged_in_user=Depends(JWTBearer()),
+        space_name: str = Path(..., pattern=regex.SPACENAME),
+        subpath: str = Path(..., pattern=regex.SUBPATH),
+        shortname: str = Path(..., pattern=regex.SHORTNAME),
+        branch_name: str | None = settings.default_branch,
+        resource_type: ResourceType | None = ResourceType.ticket,
+        logged_in_user=Depends(JWTBearer()),
 ):
     folder_meta_path = (
-        settings.spaces_folder
-        / space_name
-        / branch_path(branch_name)
-        / subpath
-        / ".dm"
-        / shortname
+            settings.spaces_folder
+            / space_name
+            / branch_path(branch_name)
+            / subpath
+            / ".dm"
+            / shortname
     )
     if not folder_meta_path.is_dir():
         raise api.Exception(
@@ -2127,11 +2126,11 @@ async def lock_entry(
 
 @router.delete("/lock/{space_name}/{subpath:path}/{shortname}")
 async def cancel_lock(
-    space_name: str = Path(..., pattern=regex.SPACENAME),
-    subpath: str = Path(..., pattern=regex.SUBPATH),
-    shortname: str = Path(..., pattern=regex.SHORTNAME),
-    branch_name: str | None = settings.default_branch,
-    logged_in_user=Depends(JWTBearer()),
+        space_name: str = Path(..., pattern=regex.SPACENAME),
+        subpath: str = Path(..., pattern=regex.SUBPATH),
+        shortname: str = Path(..., pattern=regex.SHORTNAME),
+        branch_name: str | None = settings.default_branch,
+        logged_in_user=Depends(JWTBearer()),
 ):
     async with RedisServices() as redis_services:
         lock_payload = await redis_services.get_lock_doc(
@@ -2203,11 +2202,11 @@ async def reload_security_data(_=Depends(JWTBearer())):
 
 @router.post("/excute/{task_type}/{space_name}")
 async def execute(
-    space_name: str,
-    task_type: TaskType,
-    record: core.Record,
-    branch_name: str | None = settings.default_branch,
-    logged_in_user=Depends(JWTBearer()),
+        space_name: str,
+        task_type: TaskType,
+        record: core.Record,
+        branch_name: str | None = settings.default_branch,
+        logged_in_user=Depends(JWTBearer()),
 ):
     task_type = task_type
     meta = await db.load(
@@ -2220,9 +2219,9 @@ async def execute(
     )
 
     if (
-        meta.payload is None
-        or not isinstance(meta.payload.body, str)
-        or not str(meta.payload.body).endswith(".json")
+            meta.payload is None
+            or not isinstance(meta.payload.body, str)
+            or not str(meta.payload.body).endswith(".json")
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -2275,7 +2274,7 @@ async def execute(
     response_model_exclude_none=True,
 )
 async def shoting_url(
-    token: str,
+        token: str,
 ):
     async with RedisServices() as redis_services:
         if url := await redis_services.get(f"short/{token}"):
@@ -2288,10 +2287,10 @@ async def shoting_url(
     "/apply-alteration/{space_name}/{alteration_name}", response_model_exclude_none=True
 )
 async def apply_alteration(
-    space_name: str,
-    alteration_name: str,
-    on_entry: core.Record,
-    logged_in_user=Depends(JWTBearer()),
+        space_name: str,
+        alteration_name: str,
+        on_entry: core.Record,
+        logged_in_user=Depends(JWTBearer()),
 ):
     alteration_meta = await db.load(
         space_name=space_name,
@@ -2336,18 +2335,17 @@ async def apply_alteration(
     return response
 
 
-
 @router.post("/data-asset")
 async def data_asset(
-    query: api.DataAssetQuery,
-    _=Depends(JWTBearer()),
+        query: api.DataAssetQuery,
+        _=Depends(JWTBearer()),
 ):
     attachments: dict[str, list[core.Record]] = await repository.get_entry_attachments(
         subpath=f"{query.subpath}/{query.shortname}",
         branch_name=query.branch_name,
         attachments_path=(
-            settings.spaces_folder
-            / f"{query.space_name}/{branch_path(query.branch_name)}/{query.subpath}/.dm/{query.shortname}"
+                settings.spaces_folder
+                / f"{query.space_name}/{branch_path(query.branch_name)}/{query.subpath}/.dm/{query.shortname}"
         ),
         filter_types=[query.data_asset_type],
         filter_shortnames=query.filter_data_assets
@@ -2360,10 +2358,10 @@ async def data_asset(
             class_type=getattr(sys.modules["models.core"], camel_case(query.data_asset_type)),
             branch_name=query.branch_name,
         )
-        if(
-            not isinstance(attachment.attributes.get("payload"), core.Payload) 
-            or not isinstance(attachment.attributes["payload"].body, str)
-            or not (file_path/attachment.attributes["payload"].body).is_file()
+        if (
+                not isinstance(attachment.attributes.get("payload"), core.Payload)
+                or not isinstance(attachment.attributes["payload"].body, str)
+                or not (file_path / attachment.attributes["payload"].body).is_file()
         ):
             raise api.Exception(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -2373,23 +2371,23 @@ async def data_asset(
                     message=f"Invalid data asset file found at {attachment.subpath}/{attachment.shortname}",
                 ),
             )
-            
+
         file_path /= attachment.attributes["payload"].body
-        if(
-            attachment.attributes["payload"].schema_shortname 
-            and attachment.resource_type == DataAssetType.csv
+        if (
+                attachment.attributes["payload"].schema_shortname
+                and attachment.resource_type == DataAssetType.csv
         ):
             await validate_csv_with_schema(
-                file_path=file_path, 
+                file_path=file_path,
                 space_name=query.space_name,
                 schema_shortname=attachment.attributes["payload"].schema_shortname
             )
-        if(
-            attachment.attributes["payload"].schema_shortname 
-            and attachment.resource_type == DataAssetType.jsonl
+        if (
+                attachment.attributes["payload"].schema_shortname
+                and attachment.resource_type == DataAssetType.jsonl
         ):
             await validate_jsonl_with_schema(
-                file_path=file_path, 
+                file_path=file_path,
                 space_name=query.space_name,
                 schema_shortname=attachment.attributes["payload"].schema_shortname
             )
@@ -2404,7 +2402,7 @@ async def data_asset(
                 message="No data asset attachments found for this entry",
             ),
         )
-        
+
     if query.data_asset_type == DataAssetType.sqlite:
         conn: duckdb.DuckDBPyConnection = duckdb.connect(str(files_paths[0]))
     else:
@@ -2414,30 +2412,122 @@ async def data_asset(
             match query.data_asset_type:
                 case DataAssetType.csv:
                     globals().setdefault(
-                        attachments[query.data_asset_type][idx].shortname, 
+                        attachments[query.data_asset_type][idx].shortname,
                         conn.read_csv(str(file_path))
-                    ) # type: ignore  # noqa
+                    )  # type: ignore  # noqa
                 case DataAssetType.jsonl:
                     globals().setdefault(
-                        attachments[query.data_asset_type][idx].shortname, 
+                        attachments[query.data_asset_type][idx].shortname,
                         conn.read_json(
-                            str(file_path), 
+                            str(file_path),
                             format='auto'
                         )
-                    ) # type: ignore  # noqa
+                    )  # type: ignore  # noqa
                 case DataAssetType.parquet:
                     globals().setdefault(
-                        attachments[query.data_asset_type][idx].shortname, 
+                        attachments[query.data_asset_type][idx].shortname,
                         conn.read_parquet(str(file_path))
-                    ) # type: ignore  # noqa
-                    
-    data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string) # type: ignore
+                    )  # type: ignore  # noqa
 
+    data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)  # type: ignore
 
-    data.write_csv(file_name="my_temp_file_from_duckdb.csv") # type: ignore
+    data.write_csv(file_name="my_temp_file_from_duckdb.csv")  # type: ignore
     with open("my_temp_file_from_duckdb.csv", "r") as csv_file:
         response = StreamingResponse(iter(csv_file.read()), media_type="text/csv")
         response.headers["Content-Disposition"] = "attachment; filename=data.csv"
     os.remove("my_temp_file_from_duckdb.csv")
+
+    return response
+
+
+@router.get("/data-asset")
+async def data_asset_single(
+        resource_type: ResourceType,
+        space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+        subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+        shortname: str = Path(..., pattern=regex.SHORTNAME,
+                              examples=["unique_shortname"]),
+        schema_shortname: str | None = None,
+        ext: str = Path(..., pattern=regex.EXT, examples=["png"]),
+        logged_in_user=Depends(JWTBearer()),
+        branch_name: str | None = settings.default_branch,
+) -> StreamingResponse:
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.view,
+            resource_type=resource_type,
+            user_shortname=logged_in_user,
+        )
+    )
+
+    cls = getattr(sys.modules["models.core"], camel_case(resource_type))
+    meta: core.Meta = await db.load(
+        space_name=space_name,
+        subpath=subpath,
+        shortname=shortname,
+        class_type=cls,
+        user_shortname=logged_in_user,
+        branch_name=branch_name,
+        schema_shortname=schema_shortname,
+    )
+    if (
+            meta.payload is None
+            or meta.payload.body is None
+            or meta.payload.body != f"{shortname}.{ext}"
+    ):
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+            ),
+        )
+
+    if not await access_control.check_access(
+            user_shortname=logged_in_user,
+            space_name=space_name,
+            subpath=subpath,
+            resource_type=resource_type,
+            action_type=core.ActionType.view,
+            resource_is_active=meta.is_active,
+            resource_owner_shortname=meta.owner_shortname,
+            resource_owner_group=meta.owner_group_shortname,
+            entry_shortname=meta.shortname
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="You don't have permission to this action [9]",
+            ),
+        )
+
+    payload_path = db.payload_path(
+        space_name=space_name,
+        subpath=subpath,
+        class_type=cls,
+        branch_name=branch_name,
+        schema_shortname=schema_shortname,
+    )
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+            action_type=core.ActionType.view,
+            resource_type=resource_type,
+            user_shortname=logged_in_user,
+        )
+    )
+
+    with open(payload_path / str(meta.payload.body), "r") as csv_file:
+        media = "text/csv" if resource_type == ResourceType.csv else "text/plain"
+        response = StreamingResponse(iter(csv_file.read()), media_type=media)
+        response.headers["Content-Disposition"] = "attachment; filename=data.csv"
 
     return response

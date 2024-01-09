@@ -4,7 +4,7 @@
         ApiResponse,
         ContentType,
         ContentTypeMedia,
-        fetchDataAsset,
+        get_attachment_content,
         get_attachment_url,
         query,
         QueryType,
@@ -516,14 +516,13 @@
         {#if [
             ResourceType.csv,
             ResourceType.jsonl,
-            ResourceType.sqlite,
             ResourceType.parquet,
         ].includes(attachment.resource_type)}
-          {#await fetchDataAsset(
+          {#await get_attachment_content(
               attachment.resource_type,
               space_name,
-              subpath,
-              parent_shortname
+              `${subpath}/${parent_shortname}`,
+              attachment.attributes?.payload?.body
           )}
           loading...
           {:then response}
