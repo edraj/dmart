@@ -693,6 +693,20 @@ export async function get_attachment_content(
   );
   return data;
 }
+export async function get_payload(
+    resource_type: string,
+    space_name: string,
+    subpath: string,
+    shortname: string,
+    ext: string = ".json"
+) {
+  const { data } = await axios.get<any>(
+      website.backend +
+      `/managed/payload/${resource_type}/${space_name}/${subpath}/${shortname}${ext}`,
+      { headers }
+  );
+  return data;
+}
 export async function get_payload_content(
     resource_type: string,
     space_name: string,
