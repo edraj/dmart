@@ -30,7 +30,6 @@ class AccessControl:
 
         for module_name, module_value in management_modules.items():
             self_module = getattr(self, module_name)
-            self_module = {}
             path = management_path / module_name
             entries_glob = ".dm/*/meta.*.json"
             for one in path.glob(entries_glob):
