@@ -236,6 +236,7 @@ class RedisReducerName(StrEnum):
 
 class ReactionType(StrEnum):
     like = "like"
+    dislike = "dislike"
     love = "love"
     care = "care"
     laughing = "laughing"
