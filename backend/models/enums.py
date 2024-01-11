@@ -64,6 +64,7 @@ class ResourceType(StrEnum):
     csv = "csv"
     jsonl = "jsonl"
     sqlite = "sqlite"
+    duckdb = "duckdb"
     parquet = "parquet"
 
 
@@ -71,6 +72,7 @@ class DataAssetType(StrEnum):
     csv = "csv"
     jsonl = "jsonl"
     sqlite = "sqlite"
+    duckdb = "duckdb"
     parquet = "parquet"
 
 
@@ -100,6 +102,7 @@ class ContentType(StrEnum):
     csv = "csv"
     parquet = "parquet"
     jsonl = "jsonl"
+    duckdb = "duckdb"
     sqlite = "sqlite"
 
     @staticmethod
@@ -236,6 +239,7 @@ class RedisReducerName(StrEnum):
 
 class ReactionType(StrEnum):
     like = "like"
+    dislike = "dislike"
     love = "love"
     care = "care"
     laughing = "laughing"
