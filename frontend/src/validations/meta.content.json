@@ -163,6 +163,12 @@
     },
     "attachments": {
       "type": "object"
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
     }
   },
   "required": [

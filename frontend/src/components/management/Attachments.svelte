@@ -290,6 +290,23 @@
         openCreateAttachemntModal = true;
         isModalInUpdateMode = true;
     }
+
+    function handleRenderMenu(items: any, _context: any) {
+        items = items.filter(
+            (item) => !["tree", "text", "table"].includes(item.text)
+        );
+        const separator = {
+            separator: true,
+        };
+
+        const itemsWithoutSpace = items.slice(0, items.length - 2);
+        return itemsWithoutSpace.concat([
+            separator,
+            {
+                space: true,
+            },
+        ]);
+    }
 </script>
 
 <Modal
@@ -300,6 +317,7 @@
   <ModalHeader />
   <ModalBody>
     <JSONEditor
+      onRenderMenu={handleRenderMenu}
       mode={Mode.text}
       bind:content={payloadContent}
     />
@@ -370,7 +388,8 @@
               {/each}
             {/await}
           </Input>
-          <JSONEditor bind:content={payloadContent} />
+          <JSONEditor onRenderMenu={handleRenderMenu}
+            mode={Mode.text} bind:content={payloadContent} />
         {:else if resourceType === ResourceAttachmentType.comment}
           <Input type={"textarea"} bind:value={payloadData} />
         {:else if resourceType === ResourceAttachmentType.csv}
@@ -422,6 +441,7 @@
   <ModalHeader />
   <ModalBody>
     <JSONEditor
+        onRenderMenu={handleRenderMenu}
         mode={Mode.text}
         {content}
         readOnly={true}
@@ -463,7 +483,7 @@
             attachment.shortname,
             getFileExtension(attachment.attributes?.payload?.body)
           )}
-          target="_blank" rel="noopener noreferrer"
+          target="_blank" rel="noopener noreferrer" download
         >{attachment.shortname}</a>
         <div class="col-1 d-flex justify-content-between">
           <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -549,17 +569,17 @@
                   </tbody>
                 </table>
               {/await}
-
             {:else if attachment.resource_type===ResourceType.jsonl}
               <div class="d-flex row" style=" max-height: 50vh;overflow-y: scroll;">
                 {#each parseJSONL(response) as item}
                   <Prism code={item} />
                 {/each}
               </div>
+            {:else if attachment.resource_type===ResourceType.parquet}
+              <pre>{@html response}</pre>
             {:else}
               <Prism code={response} />
             {/if}
-
           {/await}
           {:else}
         <Media

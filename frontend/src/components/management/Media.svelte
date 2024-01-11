@@ -8,7 +8,23 @@
   export let displayname: string = undefined;
   let content_type: string = attributes?.payload?.content_type || "";
   let body: any = attributes?.payload?.body;
-1
+
+  function handleRenderMenu(items: any, _context: any) {
+      items = items.filter(
+          (item) => !["tree", "text", "table"].includes(item.text)
+      );
+      const separator = {
+          separator: true,
+      };
+
+      const itemsWithoutSpace = items.slice(0, items.length - 2);
+      return itemsWithoutSpace.concat([
+          separator,
+          {
+              space: true,
+          },
+      ]);
+  }
 </script>
 
 {#if resource_type === ResourceType.comment}
@@ -18,7 +34,7 @@
     <p style="margin: 0px"><b>Body:</b>{attributes.body}</p>
   </div>
 {:else if content_type.includes("json")}
-  <JSONEditor mode={Mode.text} content={{ json: body, text: undefined }} readOnly={true} />
+  <JSONEditor onRenderMenu={handleRenderMenu} mode={Mode.text} content={{ json: body, text: undefined }} readOnly={true} />
 {:else if content_type.includes("image")}
   <img src={url} alt={displayname} class="mw-100 border" />
 {:else if content_type.includes("audio")}
@@ -46,5 +62,5 @@
   </div>
 {:else}
   <a href={url} title={displayname}
-     target="_blank" rel="noopener noreferrer">link {displayname}</a>
+     target="_blank" rel="noopener noreferrer" download>link {displayname}</a>
 {/if}

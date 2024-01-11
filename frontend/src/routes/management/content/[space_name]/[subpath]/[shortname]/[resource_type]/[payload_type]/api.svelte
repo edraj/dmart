@@ -192,6 +192,9 @@
     ]);
   }
   function handleRenderMenu(items: any, _context: any) {
+    items = items.filter(
+        (item) => !["tree", "text", "table"].includes(item.text)
+    );
     const separator = {
       separator: true,
     };
@@ -490,8 +493,8 @@
             <Row>
               <Col
                 ><b> Request </b><JSONEditor
-                  mode={Mode.text}
                   onRenderMenu={handleRenderMenu}
+                  mode={Mode.text}
                   bind:this={request_je}
                   content={{ json: entry.payload.body || {} }}
                 /></Col
@@ -499,8 +502,8 @@
               <Col
                 ><b> Response </b>
                 <JSONEditor
-                  mode={Mode.text}
                   onRenderMenu={handleRenderMenu}
+                  mode={Mode.text}
                   bind:this={response_je}
                   content={{ text: "{}" }}
                   readOnly={true}
