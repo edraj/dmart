@@ -738,7 +738,30 @@
           selectedSchemaContent = meta
           entryContent.json = generateObjectFromSchema(meta)
       } else {
-          const meta = structuredClone($metadata);
+          let meta: any = structuredClone($metadata);
+          if (selectedSchema==="workflow"){
+              meta.properties = {
+                  ...meta.properties,
+                  "is_open": {
+                      "type": "boolean"
+                  },
+                  "workflow_shortname": {
+                      "type": "string"
+                  },
+                  "state": {
+                      "type": "string"
+                  },
+                  "reporter": {
+                      "type": "string"
+                  },
+                  "resolution_reason": {
+                      "type": "string"
+                  },
+                  "receiver": {
+                      "type": "string"
+                  }
+              }
+          }
           selectedSchemaContent = meta ?? {};
           baseEntryContent = generateObjectFromSchema(meta ?? {});
           entryContent.json = baseEntryContent;

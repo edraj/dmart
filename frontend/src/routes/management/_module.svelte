@@ -44,6 +44,12 @@
             delete data.properties.shortname
             delete data.properties.created_at
             delete data.properties.updated_at
+            delete data.properties.is_open
+            delete data.properties.workflow_shortname
+            delete data.properties.state
+            delete data.properties.reporter
+            delete data.properties.resolution_reason
+            delete data.properties.receiver
             metadata.set(data);
         })();
     });
