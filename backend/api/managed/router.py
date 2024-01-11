@@ -2387,7 +2387,7 @@ async def data_asset(
             ),
         )
 
-    if query.data_asset_type == DataAssetType.sqlite:
+    if query.data_asset_type in [DataAssetType.sqlite, DataAssetType.duckdb]:
         conn: duckdb.DuckDBPyConnection = duckdb.connect(str(files_paths[0]))
     else:
         conn = duckdb.connect(":default:")
