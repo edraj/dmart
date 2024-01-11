@@ -997,35 +997,19 @@ async def serve_request(
             for record in request.records:
                 if record.subpath[0] != "/":
                     record.subpath = f"/{record.subpath}"
-                if (
-                        "dest_subpath" not in record.attributes
-                        or not record.attributes["dest_subpath"]
-                ) and (
-                        "dest_shortname" not in record.attributes
-                        or not record.attributes["dest_shortname"]
-                ):
-                    raise api.Exception(
-                        status.HTTP_400_BAD_REQUEST,
-                        api.Error(
-                            type="move",
-                            code=InternalErrorCode.MISSING_DESTINATION_OR_SHORTNAME,
-                            message="Please provide a destination path or a new shortname",
-                        ),
-                    )
 
                 if (
-                        "src_subpath" not in record.attributes
-                        or not record.attributes["src_subpath"]
-                ) or (
-                        "src_shortname" not in record.attributes
-                        or not record.attributes["src_shortname"]
+                    not record.attributes.get("src_subpath")
+                    or not record.attributes.get("src_shortname")
+                    or not record.attributes.get("dest_subpath")
+                    or not record.attributes.get("dest_shortname")
                 ):
                     raise api.Exception(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
                             type="move",
                             code=InternalErrorCode.PROVID_SOURCE_PATH,
-                            message="Please provide a source path and a src shortname",
+                            message="Please provide a source and destination path and a src shortname",
                         ),
                     )
 

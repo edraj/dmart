@@ -530,7 +530,11 @@ async def move(
     """
 
     src_path, src_filename = metapath(
-        space_name, src_subpath, src_shortname, meta.__class__, branch_name
+        space_name, 
+        src_subpath, 
+        src_shortname, 
+        meta.__class__, 
+        branch_name
     )
     dest_path, dest_filename = metapath(
         space_name,
@@ -548,8 +552,14 @@ async def move(
     if dest_shortname:
         meta.shortname = dest_shortname
         meta_updated = True
+    
+    if src_path.parts[-1] == ".dm":
+        src_path = Path("/".join(src_path.parts[:-1]))
 
-    os.rename(src=src_path / src_filename, dst=dest_path / dest_filename)
+    if dest_path.parts[-1] == ".dm":
+        dest_path = Path("/".join(dest_path.parts[:-1]))
+    
+    os.rename(src=src_path , dst=dest_path )
 
     # Move payload file with the meta file
     if (
@@ -577,9 +587,16 @@ async def move(
             await opened_file.write(meta.model_dump_json(exclude_none=True))
 
     # Delete Src path if empty
-    if src_path.is_dir() and len(os.listdir(src_path)) == 0:
-        os.removedirs(src_path)
+    if src_path.parent.is_dir():
+        delete_empty(src_path)
 
+def delete_empty(path: Path):
+    if path.is_dir() and len(os.listdir(path)) == 0:
+        os.removedirs(path)
+        
+    if path.parent.is_dir() and len(os.listdir(path.parent)) == 0:
+        delete_empty(path.parent)
+    
 
 async def clone(
     src_space: str,
