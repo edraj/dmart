@@ -213,6 +213,9 @@
   }
 
   function handleRenderMenu(items, context) {
+    items = items.filter(
+        (item) => !["tree", "text", "table"].includes(item.text)
+    );
     const separator = {
       separator: true,
     };
@@ -458,7 +461,10 @@
           <hr />
 
           <Label class="mt-3">Content</Label>
-          <JSONEditor mode={Mode.text} bind:content={entryContent} />
+          <JSONEditor
+            onRenderMenu={handleRenderMenu}
+            mode={Mode.text}
+            bind:content={entryContent} />
           <!-- onChange={handleChange}
                 {validator} -->
 
@@ -737,9 +743,9 @@
         </Form>
 
         <JSONEditor
-          mode={Mode.text}
           bind:content={contentMeta}
           onRenderMenu={handleRenderMenu}
+          mode={Mode.text}
           bind:validator={validatorMeta}
         />
         {#if errorContent}
@@ -752,10 +758,10 @@
   <div class="tab-pane" class:active={tab_option === "edit_content"}>
     {#if tab_option === "edit_content"}
       <JSONEditor
-        mode={Mode.text}
         bind:content={contentContent}
         bind:validator
         onRenderMenu={handleRenderMenu}
+        mode={Mode.text}
       />
       {#if errorContent}
         <h3 class="mt-3">Error:</h3>
