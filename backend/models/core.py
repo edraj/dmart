@@ -363,6 +363,9 @@ class Sqlite(DataAsset):
     pass
 
 
+class Duckdb(DataAsset):
+    pass
+
 class Csv(DataAsset):
     pass
 
