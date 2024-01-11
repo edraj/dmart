@@ -207,6 +207,9 @@
   }
 
   function handleRenderMenu(items, context) {
+    items = items.filter(
+        (item) => !["tree", "text", "table"].includes(item.text)
+    );
     const separator = {
       separator: true,
     };
@@ -682,9 +685,9 @@
           >
         </Form>
         <JSONEditor
-          mode={Mode.text}
           bind:content={contentMeta}
           onRenderMenu={handleRenderMenu}
+          mode={Mode.text}
           bind:validator={validatorMeta}
         />
         {#if errorContent}
@@ -700,9 +703,9 @@
           style="text-align: left; direction: ltr; overflow: hidden auto;"
         >
           <JSONEditor
-            mode={Mode.text}
             bind:content={contentContent}
             onRenderMenu={handleRenderMenu}
+            mode={Mode.text}
             bind:validator={validatorContent}
           />
 

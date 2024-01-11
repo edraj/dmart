@@ -6,13 +6,14 @@
     import Login from "@/components/Login.svelte";
     import Header from "@/components/management/Header.svelte";
     import Sidebar from "@/components/management/Sidebar.svelte";
-    import {get_profile} from "@/dmart";
+    import {get_profile, ResourceType, retrieve_entry} from "@/dmart";
     // import { useRegisterSW } from "virtual:pwa-register/svelte";
     import Offline from "@/components/Offline.svelte";
     import TopLoadingBar from "@/components/management/TopLoadingBar.svelte";
     import { fly } from "svelte/transition";
     import { isNetworkError } from "@/stores/management/error_network";
     import { onMount } from "svelte";
+    import {metadata} from "@/stores/management/metadata";
 
     let isOffline = false;
 
@@ -36,6 +37,21 @@
         isNetworkError.subscribe((v)=>{
             _isNetworkError = v;
         });
+        (async()=>{
+            let data: any = await retrieve_entry(ResourceType.schema,"management","schema","metafile",true,false,true);
+            data = data?.payload?.body ?? {};
+            delete data.properties.uuid
+            delete data.properties.shortname
+            delete data.properties.created_at
+            delete data.properties.updated_at
+            delete data.properties.is_open
+            delete data.properties.workflow_shortname
+            delete data.properties.state
+            delete data.properties.reporter
+            delete data.properties.resolution_reason
+            delete data.properties.receiver
+            metadata.set(data);
+        })();
     });
 
     let window_height: number;
