@@ -246,6 +246,9 @@
   }
 
   function handleRenderMenu(items: any, _context: any) {
+    items = items.filter(
+        (item) => !["tree", "text", "table"].includes(item.text)
+    );
     const separator = {
       separator: true,
     };
@@ -594,7 +597,8 @@
               />
             {/if}
             {#if selectedContentType === "json"}
-              <JSONEditor mode={Mode.text} bind:content={entryContent} />
+              <JSONEditor onRenderMenu={handleRenderMenu}
+                  mode={Mode.text} bind:content={entryContent} />
             {/if}
           {/if}
           <hr />
@@ -860,9 +864,9 @@
         style="text-align: left; direction: ltr; overflow: hidden auto;"
       >
         <JSONEditor
-          mode={Mode.text}
           bind:content={contentMeta}
           onRenderMenu={handleRenderMenu}
+          mode={Mode.text}
           bind:validator={validatorMeta}
         />
         {#if errorContent}
@@ -880,10 +884,10 @@
       >
         {#if entry.payload.content_type === "json" && typeof contentContent === "object" && contentContent !== null}
           <JSONEditor
-            mode={Mode.text}
             bind:content={contentContent}
             bind:validator
             onRenderMenu={handleRenderMenu}
+            mode={Mode.text}
           />
         {/if}
 

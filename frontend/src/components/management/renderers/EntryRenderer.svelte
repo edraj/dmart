@@ -64,6 +64,10 @@
   import {cleanUpSchema, generateObjectFromSchema} from "@/utils/renderer/rendererUtils";
   import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
   import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
+  import {metadata} from "@/stores/management/metadata";
+  import metaUserSchema from "@/validations/meta.user.json";
+  import metaRoleSchema from "@/validations/meta.role.json";
+  import metaPermissionSchema from "@/validations/meta.permission.json";
 
   let header_height: number;
 
@@ -311,6 +315,10 @@
   }
 
   function handleRenderMenu(items: any, _context: any) {
+    items = items.filter(
+        (item) => !["tree", "text", "table"].includes(item.text)
+    );
+
     const separator = {
       separator: true,
     };
@@ -401,7 +409,7 @@
     let response: any;
     let request_body: any = {};
     if (new_resource_type === "schema") {
-        let body = null;
+      let body = null;
       if (isSchemaEntryInForm){
           body = schemaContent.json
               ? structuredClone(schemaContent.json)
@@ -415,6 +423,13 @@
           schemaContent = {json:{}, text: undefined};
       }
 
+      if (body.payload){
+          body.payload = {
+              content_type: "json",
+              schema_shortname: "meta_schema",
+              body: body.payload,
+          };
+      }
       request_body = {
         space_name,
         request_type: RequestType.create,
@@ -423,14 +438,7 @@
             resource_type: ResourceType.schema,
             shortname: contentShortname === "" ? "auto" : contentShortname,
             subpath,
-            attributes: {
-              is_active: true,
-              payload: {
-                content_type: "json",
-                schema_shortname: "meta_schema",
-                body,
-              },
-            },
+            attributes: body,
           },
         ],
       };
@@ -507,8 +515,8 @@
                 ) {
                    if (!schemaFormRefModal.reportValidity()) {
                         return;
-                    }
-                    body = selectedSchemaData.json;
+                   }
+                   body = selectedSchemaData.json;
                 }
             }
             else {
@@ -520,6 +528,7 @@
         else {
           body = entryContent;
         }
+
         if (new_resource_type === ResourceType.role || new_resource_type === ResourceType.permission){
             request_body = {
                 space_name,
@@ -529,10 +538,7 @@
                         resource_type: new_resource_type,
                         shortname: contentShortname === "" ? "auto" : contentShortname,
                         subpath,
-                        attributes: {
-                            ...body,
-                            is_active: true
-                        },
+                        attributes: body,
                     },
                 ],
             };
@@ -541,21 +547,19 @@
           if (workflowShortname){
               request_body = {...request_body, workflow_shortname:workflowShortname}
           }
+
           request_body = {
-          space_name,
-          request_type: RequestType.create,
-          records: [
-            {
-              resource_type: new_resource_type,
-              shortname: contentShortname === "" ? "auto" : contentShortname,
-              subpath,
-              attributes: {
-                ...request_body,
-                is_active: true,
+            space_name,
+            request_type: RequestType.create,
+            records: [
+              {
+                resource_type: new_resource_type,
+                shortname: contentShortname === "" ? "auto" : contentShortname,
+                subpath,
+                attributes: request_body,
               },
-            },
-          ],
-        };
+            ],
+          };
         }
         if (new_resource_type === ResourceType.ticket) {
           request_body.records[0].attributes.workflow_shortname =
@@ -566,20 +570,12 @@
             && new_resource_type !== ResourceType.role
             && new_resource_type !== ResourceType.permission
         ) {
-          const schema_shortname =
-            subpath === "workflows"
-              ? "workflow"
-              : selectedSchema
-              ? selectedSchema
-              : "";
-          const content_type = selectedContentType
-            ? selectedContentType
-            : "json";
-          if (request_body.records[0].attributes){
-              request_body.records[0].attributes.payload = {
-                  content_type,
-                  schema_shortname,
-                  body,
+          request_body.records[0].attributes = body;
+          if (body.payload){
+              body.payload = {
+                  content_type: "json",
+                  schema_shortname: selectedSchema,
+                  body: body.payload,
               };
           }
         }
@@ -601,9 +597,16 @@
       }
     }
     else if (entryType === "folder") {
-        let body = {}
-      if (selectedSchema ===  "folder_rendering"){
+      let body = {}
+      if (selectedSchema === "folder_rendering"){
           body["index_attributes"] = [];
+      }
+      if (body){
+          body = {
+              content_type: "json",
+              schema_shortname: selectedSchema,
+              body: body,
+          };
       }
       request_body = {
         space_name,
@@ -613,14 +616,7 @@
             resource_type: ResourceType.folder,
             shortname: contentShortname === "" ? "auto" : contentShortname,
             subpath,
-            attributes: {
-              payload: {
-                  content_type: "json",
-                  schema_shortname: selectedSchema,
-                  body
-              },
-              is_active: true,
-            },
+            attributes: body,
           },
         ],
       };
@@ -706,7 +702,7 @@
       }
     }
   }
-
+  let baseEntryContent;
   $: {
     if (selectedContentType === "json") {
       entryContent = { json: {} || {}, text: undefined };
@@ -716,42 +712,36 @@
   }
   $: {
       if (new_resource_type === ResourceType.user){
-          entryContent = {
-              json: {
-                "attributes": {
-                    "displayname": {
-                        "en": "",
-                        "ar": ""
-                    },
-                    "email": "",
-                    "msisdn": "",
-                    "password": "",
-                    "roles": []
-                }
-            },
-            text: undefined
-          }
+          const meta = metaUserSchema;
+          delete meta.properties.uuid
+          delete meta.properties.shortname
+          delete meta.properties.created_at
+          delete meta.properties.updated_at
+          selectedSchemaContent = meta
+          entryContent.json = generateObjectFromSchema(meta)
       }
-      if (new_resource_type === ResourceType.permission) {
-          entryContent = {
-              json: {
-                  "subpaths": {},
-                  "resource_types": [],
-                  "actions": [],
-                  "conditions": [],
-                  "restricted_fields": [],
-                  "allowed_fields_values": {}
-              },
-              text: undefined
-          };
+      else if (new_resource_type === ResourceType.permission) {
+          const meta = metaPermissionSchema;
+          delete meta.properties.uuid
+          delete meta.properties.shortname
+          delete meta.properties.created_at
+          delete meta.properties.updated_at
+          selectedSchemaContent = meta
+          entryContent.json = generateObjectFromSchema(meta)
       }
       else if (new_resource_type === ResourceType.role) {
-          entryContent = {
-              json: {
-                  "permissions": [],
-              },
-              text: undefined
-          };
+          const meta = metaRoleSchema;
+          delete meta.properties.uuid
+          delete meta.properties.shortname
+          delete meta.properties.created_at
+          delete meta.properties.updated_at
+          selectedSchemaContent = meta
+          entryContent.json = generateObjectFromSchema(meta)
+      } else {
+          const meta = structuredClone($metadata);
+          selectedSchemaContent = meta ?? {};
+          baseEntryContent = generateObjectFromSchema(meta ?? {});
+          entryContent.json = baseEntryContent;
       }
   }
 
@@ -781,11 +771,11 @@
           selectedSchema,
           true
         );
-        selectedSchemaContent = _selectedSchemaContent?.payload?.body ?? {};
-        // delete selectedSchemaContent.required;
+        selectedSchemaContent.properties.payload = _selectedSchemaContent?.payload?.body ?? {};
         cleanUpSchema(selectedSchemaContent.properties);
         validatorContent = createAjvValidator({ schema:  selectedSchemaContent });
-        entryContent.json = generateObjectFromSchema(structuredClone(selectedSchemaContent));
+        const body = generateObjectFromSchema(structuredClone(selectedSchemaContent));
+        entryContent.json.payload.body = body ?? {};
       })();
       oldSelectedSchema = selectedSchema;
     }
@@ -818,33 +808,33 @@
       && !!entry?.payload?.body;
 
   $: {
-    if (!isDeepEqual(entryContent, selectedSchemaData)){
-      const _entryContent = entryContent.json
-          ? structuredClone(entryContent.json)
-          : JSON.parse(entryContent.text);
-      const _selectedSchemaData = selectedSchemaData.json
-          ? structuredClone(selectedSchemaData.json)
-          : JSON.parse(selectedSchemaData.text);
+      if (!isDeepEqual(entryContent, selectedSchemaData)) {
+          const _entryContent = entryContent.json
+              ? structuredClone(entryContent.json)
+              : JSON.parse(entryContent.text);
+          const _selectedSchemaData = selectedSchemaData.json
+              ? structuredClone(selectedSchemaData.json)
+              : JSON.parse(selectedSchemaData.text);
 
-      if(!isContentEntryInForm){
-        entryContent = {
-            json: {
-              ..._entryContent,
-              ..._selectedSchemaData,
-            },
-            text: undefined
-        };
+          if (Object.keys(_selectedSchemaData?.json ?? {}).length){
+            if (!isContentEntryInForm) {
+                entryContent = {
+                    json: {
+                      ..._entryContent,
+                      ..._selectedSchemaData,
+                    },
+                    text: undefined
+                };
+            }
+            else {
+                // selectedSchemaData.json = {
+                //     ..._selectedSchemaData,
+                //     ..._entryContent,
+                // };
+                // selectedSchemaData.text = undefined;
+            }
+          }
       }
-      else {
-        // selectedSchemaData = {
-        //     json: {
-        //       ..._selectedSchemaData,
-        //       ..._entryContent,
-        //     },
-        //     text: undefined
-        // };
-      }
-    }
   }
 </script>
 
@@ -934,6 +924,8 @@
               <TabPane tabId="editor" tab="Editor">
                 <JSONEditor
                   bind:content={schemaContent}
+                  onRenderMenu={handleRenderMenu}
+                  mode={Mode.text}
                 />
               </TabPane>
             </TabContent>
@@ -974,6 +966,8 @@
                     <JSONEditor
                       bind:content={entryContent}
                       bind:validator={validatorContent}
+                      onRenderMenu={handleRenderMenu}
+                      mode={Mode.text}
                     />
                   </TabPane>
                 </TabContent>
@@ -1268,6 +1262,7 @@
           bind:content={contentMeta}
           bind:validator={validatorMeta}
           onRenderMenu={handleRenderMenu}
+          mode={Mode.text}
         />
         {#if errorContent}
           <h3 class="mt-3">Error:</h3>
@@ -1347,6 +1342,7 @@
             bind:content={contentContent}
             bind:validator
             onRenderMenu={handleRenderMenu}
+            mode={Mode.text}
           />
         {/if}
         {#if errorContent}
