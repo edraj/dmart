@@ -1,0 +1,45 @@
+{
+  "type": "object",
+  "properties": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "shortname": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "tags": {
+      "type": "array",
+      "items": {}
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "owner_shortname": {
+      "type": "string"
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "uuid",
+    "shortname",
+    "is_active",
+    "created_at",
+    "updated_at",
+    "owner_shortname",
+    "permissions"
+  ]
+}

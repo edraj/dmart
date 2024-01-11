@@ -75,6 +75,10 @@
   ];
 
   function handleRenderMenu(items: any, _context: any) {
+    items = items.filter(
+        (item) => !["tree", "text", "table"].includes(item.text)
+    );
+
     const separator = {
       separator: true,
     };
@@ -391,9 +395,9 @@
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
       <JSONEditor
-        mode={Mode.text}
         bind:content={contentMeta}
         onRenderMenu={handleRenderMenu}
+        mode={Mode.text}
       />
       {#if errorContent}
         <h3 class="mt-3">Error:</h3>
