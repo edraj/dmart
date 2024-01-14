@@ -557,7 +557,11 @@ async def move(
     if dest_path.parts[-1] == ".dm":
         dest_path = Path("/".join(dest_path.parts[:-1]))
         
-    if len(os.listdir(dest_path)):
+    # # Create dest dir if not exist
+    # if not os.path.isdir(dest_path):
+    #     os.makedirs(dest_path)
+    
+    if dest_path.is_dir() and len(os.listdir(dest_path)):
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
             error=api.Error(
@@ -566,9 +570,7 @@ async def move(
                 message="The destination folder is not empty",
             ),
         )
-    # Create dest dir if not exist
-    if not os.path.isdir(dest_path):
-        os.makedirs(dest_path)
+        
     os.rename(src=src_path , dst=dest_path )
 
     # Move payload file with the meta file
