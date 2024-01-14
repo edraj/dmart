@@ -36,7 +36,8 @@ def set_superman_cookie():
         json={"shortname": superman["shortname"], "password": superman["password"]},
     )
     print(response)
-    client.cookies.set("auth_token", response.cookies.get("auth_token", ""))
+    if auth_token := response.cookies.get("auth_token"):
+        client.cookies.set("auth_token", auth_token)
 
 
 def set_alibaba_cookie():
@@ -44,7 +45,8 @@ def set_alibaba_cookie():
         "/user/login",
         json={"shortname": superman["shortname"], "password": superman["password"]},
     )
-    client.cookies.set("auth_token", response.cookies.get("auth_token", ""))
+    if auth_token := response.cookies.get("auth_token"):
+        client.cookies.set("auth_token", auth_token)
 
 
 def init_test_db() -> None:
