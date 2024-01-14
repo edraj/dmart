@@ -1,7 +1,6 @@
 export async function parseCSV(data) {
     const lines = data.trim().split('\n');
     lines.shift()
-    console.log({lines})
     const headers = lines[0].split(',');
 
     const rows = lines.slice(1).map(line => {
@@ -11,7 +10,6 @@ export async function parseCSV(data) {
             return obj;
         }, {});
     });
-    console.log({headers})
     return { headers, rows };
 }
 

@@ -409,18 +409,12 @@
     let response: any;
     let request_body: any = {};
     if (new_resource_type === "schema") {
-      let body = null;
+      let body = schemaContent.json
+          ? structuredClone(schemaContent.json)
+          : JSON.parse(schemaContent.text);
+
       if (isSchemaEntryInForm){
-          body = schemaContent.json
-              ? structuredClone(schemaContent.json)
-              : JSON.parse(schemaContent.text);
           delete body.name;
-      }
-      else {
-          body = schemaContent.json
-              ? structuredClone(schemaContent.json)
-              : JSON.parse(schemaContent.text);
-          schemaContent = {json:{}, text: undefined};
       }
 
       if (body.payload){
@@ -597,17 +591,29 @@
       }
     }
     else if (entryType === "folder") {
-      let body = {}
+      let body: any = {}
+      if (isContentEntryInForm){
+          body = selectedSchemaData.json
+              ? structuredClone(selectedSchemaData.json)
+              : JSON.parse(selectedSchemaData.text);
+      } else {
+          body = entryContent.json
+              ? structuredClone(entryContent.json)
+              : JSON.parse(entryContent.text);
+      }
       if (selectedSchema === "folder_rendering"){
           body["index_attributes"] = [];
       }
-      if (body){
-          body = {
-              content_type: "json",
-              schema_shortname: selectedSchema,
-              body: body,
-          };
-      }
+
+      body = {
+        ...body,
+        payload: {
+          content_type: "json",
+          schema_shortname: selectedSchema,
+          body: body.payload
+        }
+      };
+
       request_body = {
         space_name,
         request_type: RequestType.create,
@@ -787,13 +793,25 @@
   $: {
     if (oldSelectedSchema !== selectedSchema && selectedSchema !== '') {
       (async () => {
-        const _selectedSchemaContent = await retrieve_entry(
-          ResourceType.schema,
-          space_name,
-          "schema",
-          selectedSchema,
-          true
-        );
+        let _selectedSchemaContent;
+        if (["folder_rendering"].includes(selectedSchema)){
+            _selectedSchemaContent = await retrieve_entry(
+                ResourceType.schema,
+                "management",
+                "schema",
+                selectedSchema,
+                true
+            );
+        } else {
+            _selectedSchemaContent = await retrieve_entry(
+                ResourceType.schema,
+                space_name,
+                "schema",
+                selectedSchema,
+                true
+            );
+        }
+
         selectedSchemaContent.properties.payload = _selectedSchemaContent?.payload?.body ?? {};
         cleanUpSchema(selectedSchemaContent.properties);
         validatorContent = createAjvValidator({ schema:  selectedSchemaContent });
@@ -1434,6 +1452,7 @@
   </div>
   <div class="tab-pane" class:active={tab_option === "attachments"}>
     <Attachments
+      {resource_type}
       {space_name}
       {subpath}
       parent_shortname={entry.shortname}
