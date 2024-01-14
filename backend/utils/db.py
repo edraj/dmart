@@ -545,8 +545,8 @@ async def move(
     )
 
     # Create dest dir if not exist
-    if not os.path.isdir(dest_path):
-        os.makedirs(dest_path)
+    # if not os.path.isdir(dest_path):
+    #     os.makedirs(dest_path)
 
     meta_updated = False
     if dest_shortname:
