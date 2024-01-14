@@ -8,7 +8,7 @@ from models import core
 from models.enums import ContentType, ResourceType
 from utils.redis_services import RedisServices
 from fastapi.logger import logger
-
+from create_index import main as reload_redis
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
@@ -116,6 +116,12 @@ class Plugin(PluginBase):
                     )
 
             elif data.action_type == ActionType.move:
+                if data.resource_type == ResourceType.folder:
+                    await reload_redis(
+                        for_space=data.space_name
+                    )
+                    return
+                
                 await redis_services.move_meta_doc(
                     data.space_name,
                     data.branch_name,
