@@ -4,6 +4,7 @@
         ApiResponse,
         ContentType,
         ContentTypeMedia,
+        fetchDataAsset,
         get_attachment_content,
         get_attachment_url,
         query,
@@ -21,12 +22,28 @@
     import {jsonToFile} from "@/utils/jsonToFile";
     import Prism from "@/components/Prism.svelte";
     import {parseCSV, parseJSONL} from "@/utils/attachements";
+    import {onMount} from "svelte";
 
     export let attachments: Array<any> = [];
-
+    export let resource_type: string;
     export let space_name: string;
     export let subpath: string;
     export let parent_shortname: string;
+
+    let dataAssets = []
+    onMount(()=>{
+        const currentResourceTypes = []
+        for (const attachment of attachments) {
+            currentResourceTypes.push(attachment[0].resource_type);
+        }
+        (async()=>{
+            dataAssets = await Promise.all(currentResourceTypes.map(async (item) => {
+                return await fetchDataAsset(resource_type, item, space_name,subpath,parent_shortname);
+            }));
+            console.log({dataAssets})
+        })();
+        console.log({currentResourceTypes});
+    })
 
     // exp rt let forceRefresh;
     let shortname = "auto";
