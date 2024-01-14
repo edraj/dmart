@@ -335,6 +335,8 @@ class RedisServices(object):
             if (
                 property["type"] == "array"
                 and property.get("items", {}).get("type", None) == "object"
+                and "items" in property
+                and "properties" in property["items"]
             ):
                 for property_key, property_value in property["items"][
                     "properties"

@@ -5,4 +5,4 @@ pydantic
 pydantic[email]
 prompt_toolkit
 pydantic_settings
-echo requests
+requests
