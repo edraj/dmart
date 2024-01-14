@@ -544,9 +544,7 @@ async def move(
         branch_name,
     )
 
-    # Create dest dir if not exist
-    # if not os.path.isdir(dest_path):
-    #     os.makedirs(dest_path)
+    
 
     meta_updated = False
     if dest_shortname:
@@ -568,6 +566,9 @@ async def move(
                 message="The destination folder is not empty",
             ),
         )
+    # Create dest dir if not exist
+    if not os.path.isdir(dest_path):
+        os.makedirs(dest_path)
     os.rename(src=src_path , dst=dest_path )
 
     # Move payload file with the meta file
