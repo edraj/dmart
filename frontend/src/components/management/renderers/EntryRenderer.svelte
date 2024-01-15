@@ -439,17 +439,23 @@
       response = await request(request_body);
     }
     else if (new_resource_type === ResourceType.user){
-        let body = entryContent.json
-            ? structuredClone(entryContent.json)
-            : JSON.parse(entryContent.text);
+        if (!schemaFormRefModal.reportValidity()) {
+            return;
+        }
+
+        let body;
+        if (isContentEntryInForm){
+            body = selectedSchemaData.json
+                ? structuredClone(selectedSchemaData.json)
+                : JSON.parse(selectedSchemaData.text);
+        } else {
+            body = entryContent.json
+                ? structuredClone(entryContent.json)
+                : JSON.parse(entryContent.text);
+        }
 
         if(new_resource_type === ResourceType.user){
-            if (body.password===null){
-                showToast(Level.warn, "Password must be provided");
-                return;
-            }
-
-            if (!passwordRegExp.test(body.attributes.password)){
+            if (body?.password===null){
                 showToast(Level.warn, passwordWrongExp);
                 return;
             }
@@ -1130,7 +1136,7 @@
           {/if}
         {/if}
 
-        {#if resource_type === ResourceType.schema}
+        {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
           <Button
             outline
             color="success"
@@ -1415,24 +1421,39 @@
       </div>
     {/if}
   {/if}
-  {#if resource_type === ResourceType.schema}
+  {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
     <div class="tab-pane" class:active={tab_option === "visualization"}>
       <div
         class="px-1 pb-1 h-100"
         style="text-align: left; direction: ltr; overflow: hidden auto;"
       >
         <div class="preview">
-          <a
-            href={"https://www.plantuml.com/plantuml/svg/" +
-              schemaVisualizationEncoder(entry)}
-            download="{entry.shortname}.svg"
-          >
-            <img
-              src={"https://www.plantuml.com/plantuml/svg/" +
-                schemaVisualizationEncoder(entry)}
-              alt={entry.shortname}
-            />
-          </a>
+          {JSON.stringify(["meta_schema"].includes(entry.shortname))}
+          {#if ["meta_schema"].includes(entry.shortname)}
+            <a
+              href={"https://www.plantuml.com/plantuml/svg/" +
+              schemaVisualizationEncoder(entry.payload.body)}
+              download="{entry.shortname}.svg"
+            >
+              <img
+                src={"https://www.plantuml.com/plantuml/svg/" +
+                schemaVisualizationEncoder(entry.payload.body)}
+                alt={entry.shortname}
+              />
+            </a>
+          {:else}
+            <a
+              href={"https://www.plantuml.com/plantuml/svg/" +
+              schemaVisualizationEncoder(entry.payload.body.properties)}
+              download="{entry.shortname}.svg"
+            >
+              <img
+                src={"https://www.plantuml.com/plantuml/svg/" +
+                schemaVisualizationEncoder(entry.payload.body.properties)}
+                alt={entry.shortname}
+              />
+            </a>
+          {/if}
         </div>
       </div>
     </div>
