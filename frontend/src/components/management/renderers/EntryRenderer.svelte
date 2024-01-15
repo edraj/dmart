@@ -409,18 +409,12 @@
     let response: any;
     let request_body: any = {};
     if (new_resource_type === "schema") {
-      let body = null;
+      let body = schemaContent.json
+          ? structuredClone(schemaContent.json)
+          : JSON.parse(schemaContent.text);
+
       if (isSchemaEntryInForm){
-          body = schemaContent.json
-              ? structuredClone(schemaContent.json)
-              : JSON.parse(schemaContent.text);
           delete body.name;
-      }
-      else {
-          body = schemaContent.json
-              ? structuredClone(schemaContent.json)
-              : JSON.parse(schemaContent.text);
-          schemaContent = {json:{}, text: undefined};
       }
 
       if (body.payload){
@@ -445,62 +439,71 @@
       response = await request(request_body);
     }
     else if (new_resource_type === ResourceType.user){
-        let body = entryContent.json
-            ? structuredClone(entryContent.json)
-            : JSON.parse(entryContent.text);
-
-        if(new_resource_type === ResourceType.user){
-            if (body.password===null){
-                showToast(Level.warn, "Password must be provided");
-                return;
-            }
-
-            if (!passwordRegExp.test(body.attributes.password)){
-                showToast(Level.warn, passwordWrongExp);
-                return;
-            }
-
-            const shortnameStatus: any = await check_existing("shortname",contentShortname);
-            if (!shortnameStatus.attributes.unique){
-                showToast(Level.warn,"Shortname already exists!");
-                return;
-            }
-
-            if (body.attributes.email) {
-                const emailStatus: any = await check_existing("email", body.attributes.email);
-                if (!emailStatus.attributes.unique) {
-                    showToast(Level.warn, "Email already exists!");
-                    return;
-                }
-            } else {
-                delete body.attributes.email;
-            }
-
-            if (body.attributes.msisdn) {
-                const msisdnStatus: any = await check_existing("msisdn", body.attributes.msisdn);
-                if (!msisdnStatus.attributes.unique) {
-                    showToast(Level.warn, "MSISDN already exists!");
-                    return;
-                }
-            } else {
-                delete body.attributes.msisdn;
-            }
-
-            if (!body.shortname){
-                body.shortname = contentShortname;
-            }
-            if (body.attributes.is_active === undefined){
-                body.attributes.is_active = true;
-            }
-            if (body.attributes.invitation === undefined){
-                body.attributes.invitation = "sysadmin";
-            }
-
-            body.subpath = "users";
-            body.resource_type = "user";
-
-            response = await create_user(body);
+        if (!schemaFormRefModal.reportValidity()) {
+            return;
         }
+
+        let body;
+        if (isContentEntryInForm){
+            body = selectedSchemaData.json
+                ? structuredClone(selectedSchemaData.json)
+                : JSON.parse(selectedSchemaData.text);
+            body = {
+                attributes: body
+            }
+        } else {
+            body = entryContent.json
+                ? structuredClone(entryContent.json)
+                : JSON.parse(entryContent.text);
+        }
+
+
+        if (body.attributes?.password===null){
+            showToast(Level.warn, passwordWrongExp);
+            return;
+        }
+
+        const shortnameStatus: any = await check_existing("shortname",contentShortname);
+        if (!shortnameStatus.attributes.unique){
+            showToast(Level.warn,"Shortname already exists!");
+            return;
+        }
+
+        if (body.attributes.email) {
+            const emailStatus: any = await check_existing("email", body.attributes.email);
+            if (!emailStatus.attributes.unique) {
+                showToast(Level.warn, "Email already exists!");
+                return;
+            }
+        } else {
+            delete body.attributes.email;
+        }
+
+        if (body.attributes.msisdn) {
+            const msisdnStatus: any = await check_existing("msisdn", body.attributes.msisdn);
+            if (!msisdnStatus.attributes.unique) {
+                showToast(Level.warn, "MSISDN already exists!");
+                return;
+            }
+        } else {
+            delete body.attributes.msisdn;
+        }
+
+        if (!body.shortname){
+            body.shortname = contentShortname;
+        }
+        if (body.attributes.is_active === undefined){
+            body.attributes.is_active = true;
+        }
+        if (body.attributes.invitation === undefined){
+            body.attributes.invitation = "sysadmin";
+        }
+
+        body.subpath = "users";
+        body.resource_type = "user";
+
+        response = await create_user(body);
+
     }
     else if (entryType === "content") {
       if (
@@ -597,17 +600,29 @@
       }
     }
     else if (entryType === "folder") {
-      let body = {}
+      let body: any = {}
+      if (isContentEntryInForm){
+          body = selectedSchemaData.json
+              ? structuredClone(selectedSchemaData.json)
+              : JSON.parse(selectedSchemaData.text);
+      } else {
+          body = entryContent.json
+              ? structuredClone(entryContent.json)
+              : JSON.parse(entryContent.text);
+      }
       if (selectedSchema === "folder_rendering"){
           body["index_attributes"] = [];
       }
-      if (body){
-          body = {
-              content_type: "json",
-              schema_shortname: selectedSchema,
-              body: body,
-          };
-      }
+
+      body = {
+        ...body,
+        payload: {
+          content_type: "json",
+          schema_shortname: selectedSchema,
+          body: body.payload
+        }
+      };
+
       request_body = {
         space_name,
         request_type: RequestType.create,
@@ -787,13 +802,25 @@
   $: {
     if (oldSelectedSchema !== selectedSchema && selectedSchema !== '') {
       (async () => {
-        const _selectedSchemaContent = await retrieve_entry(
-          ResourceType.schema,
-          space_name,
-          "schema",
-          selectedSchema,
-          true
-        );
+        let _selectedSchemaContent;
+        if (["folder_rendering"].includes(selectedSchema)){
+            _selectedSchemaContent = await retrieve_entry(
+                ResourceType.schema,
+                "management",
+                "schema",
+                selectedSchema,
+                true
+            );
+        } else {
+            _selectedSchemaContent = await retrieve_entry(
+                ResourceType.schema,
+                space_name,
+                "schema",
+                selectedSchema,
+                true
+            );
+        }
+
         selectedSchemaContent.properties.payload = _selectedSchemaContent?.payload?.body ?? {};
         cleanUpSchema(selectedSchemaContent.properties);
         validatorContent = createAjvValidator({ schema:  selectedSchemaContent });
@@ -1112,7 +1139,7 @@
           {/if}
         {/if}
 
-        {#if resource_type === ResourceType.schema}
+        {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
           <Button
             outline
             color="success"
@@ -1270,7 +1297,7 @@
             {/if}
           </TabPane>
         {/if}
-        <TabPane tabId="table" tab="Table" active={!isContentPreviewable}><Table2Cols {entry} /></TabPane>
+        <TabPane tabId="table" tab="Table" active={!isContentPreviewable}><Table2Cols entry={{"Resource type": resource_type,...entry}} /></TabPane>
         <TabPane tabId="form" tab="Raw"><Prism code={entry} /></TabPane>
       </TabContent>
     </div>
@@ -1397,24 +1424,39 @@
       </div>
     {/if}
   {/if}
-  {#if resource_type === ResourceType.schema}
+  {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
     <div class="tab-pane" class:active={tab_option === "visualization"}>
       <div
         class="px-1 pb-1 h-100"
         style="text-align: left; direction: ltr; overflow: hidden auto;"
       >
         <div class="preview">
-          <a
-            href={"https://www.plantuml.com/plantuml/svg/" +
-              schemaVisualizationEncoder(entry)}
-            download="{entry.shortname}.svg"
-          >
-            <img
-              src={"https://www.plantuml.com/plantuml/svg/" +
-                schemaVisualizationEncoder(entry)}
-              alt={entry.shortname}
-            />
-          </a>
+          {JSON.stringify(["meta_schema"].includes(entry.shortname))}
+          {#if ["meta_schema"].includes(entry.shortname)}
+            <a
+              href={"https://www.plantuml.com/plantuml/svg/" +
+              schemaVisualizationEncoder(entry.payload.body)}
+              download="{entry.shortname}.svg"
+            >
+              <img
+                src={"https://www.plantuml.com/plantuml/svg/" +
+                schemaVisualizationEncoder(entry.payload.body)}
+                alt={entry.shortname}
+              />
+            </a>
+          {:else}
+            <a
+              href={"https://www.plantuml.com/plantuml/svg/" +
+              schemaVisualizationEncoder(entry.payload.body.properties)}
+              download="{entry.shortname}.svg"
+            >
+              <img
+                src={"https://www.plantuml.com/plantuml/svg/" +
+                schemaVisualizationEncoder(entry.payload.body.properties)}
+                alt={entry.shortname}
+              />
+            </a>
+          {/if}
         </div>
       </div>
     </div>
@@ -1434,6 +1476,7 @@
   </div>
   <div class="tab-pane" class:active={tab_option === "attachments"}>
     <Attachments
+      {resource_type}
       {space_name}
       {subpath}
       parent_shortname={entry.shortname}

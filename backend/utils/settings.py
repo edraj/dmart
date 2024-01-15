@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     jwt_secret: str = "".join(random.sample(string.ascii_letters + string.digits,12))
     jwt_algorithm: str = "HS256"
     jwt_access_expires: int = 30 * 86400  # 30 days
-    listening_host: str = "0.0.0.0"
+    listening_host: str = "192.168.1.178"
     listening_port: int = 8282
     redis_host: str = "127.0.0.1"
     redis_password: str = ""
