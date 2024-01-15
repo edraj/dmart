@@ -13,7 +13,18 @@ export async function parseCSV(data) {
     return { headers, rows };
 }
 
+function pyTOjs(string){
+    const r = string.replaceAll(": True", ": true")
+        .replaceAll(": False", ": false").trim();
+    if (r.endsWith(",")){
+        return r.substring(0, r.length - 1);
+    }
+    return r;
+}
+
 export function parseJSONL(data) {
-    const lines = data.trim().split('\n');
-    return lines.map(line => JSON.parse(line));
+    // console.log({data})
+    const lines = data.split('\n');
+    // console.log({lines: lines.filter(Boolean)})
+    return lines.filter(Boolean).map(line => JSON.parse(pyTOjs(line)));
 }
