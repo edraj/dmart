@@ -448,59 +448,62 @@
             body = selectedSchemaData.json
                 ? structuredClone(selectedSchemaData.json)
                 : JSON.parse(selectedSchemaData.text);
+            body = {
+                attributes: body
+            }
         } else {
             body = entryContent.json
                 ? structuredClone(entryContent.json)
                 : JSON.parse(entryContent.text);
         }
 
-        if(new_resource_type === ResourceType.user){
-            if (body?.password===null){
-                showToast(Level.warn, passwordWrongExp);
-                return;
-            }
 
-            const shortnameStatus: any = await check_existing("shortname",contentShortname);
-            if (!shortnameStatus.attributes.unique){
-                showToast(Level.warn,"Shortname already exists!");
-                return;
-            }
-
-            if (body.attributes.email) {
-                const emailStatus: any = await check_existing("email", body.attributes.email);
-                if (!emailStatus.attributes.unique) {
-                    showToast(Level.warn, "Email already exists!");
-                    return;
-                }
-            } else {
-                delete body.attributes.email;
-            }
-
-            if (body.attributes.msisdn) {
-                const msisdnStatus: any = await check_existing("msisdn", body.attributes.msisdn);
-                if (!msisdnStatus.attributes.unique) {
-                    showToast(Level.warn, "MSISDN already exists!");
-                    return;
-                }
-            } else {
-                delete body.attributes.msisdn;
-            }
-
-            if (!body.shortname){
-                body.shortname = contentShortname;
-            }
-            if (body.attributes.is_active === undefined){
-                body.attributes.is_active = true;
-            }
-            if (body.attributes.invitation === undefined){
-                body.attributes.invitation = "sysadmin";
-            }
-
-            body.subpath = "users";
-            body.resource_type = "user";
-
-            response = await create_user(body);
+        if (body.attributes?.password===null){
+            showToast(Level.warn, passwordWrongExp);
+            return;
         }
+
+        const shortnameStatus: any = await check_existing("shortname",contentShortname);
+        if (!shortnameStatus.attributes.unique){
+            showToast(Level.warn,"Shortname already exists!");
+            return;
+        }
+
+        if (body.attributes.email) {
+            const emailStatus: any = await check_existing("email", body.attributes.email);
+            if (!emailStatus.attributes.unique) {
+                showToast(Level.warn, "Email already exists!");
+                return;
+            }
+        } else {
+            delete body.attributes.email;
+        }
+
+        if (body.attributes.msisdn) {
+            const msisdnStatus: any = await check_existing("msisdn", body.attributes.msisdn);
+            if (!msisdnStatus.attributes.unique) {
+                showToast(Level.warn, "MSISDN already exists!");
+                return;
+            }
+        } else {
+            delete body.attributes.msisdn;
+        }
+
+        if (!body.shortname){
+            body.shortname = contentShortname;
+        }
+        if (body.attributes.is_active === undefined){
+            body.attributes.is_active = true;
+        }
+        if (body.attributes.invitation === undefined){
+            body.attributes.invitation = "sysadmin";
+        }
+
+        body.subpath = "users";
+        body.resource_type = "user";
+
+        response = await create_user(body);
+
     }
     else if (entryType === "content") {
       if (
