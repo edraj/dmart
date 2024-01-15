@@ -1294,7 +1294,7 @@
             {/if}
           </TabPane>
         {/if}
-        <TabPane tabId="table" tab="Table" active={!isContentPreviewable}><Table2Cols {entry} /></TabPane>
+        <TabPane tabId="table" tab="Table" active={!isContentPreviewable}><Table2Cols entry={{"Resource type": resource_type,...entry}} /></TabPane>
         <TabPane tabId="form" tab="Raw"><Prism code={entry} /></TabPane>
       </TabContent>
     </div>
