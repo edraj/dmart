@@ -40,9 +40,7 @@
             dataAssets = await Promise.all(currentResourceTypes.map(async (item) => {
                 return await fetchDataAsset(resource_type, item, space_name,subpath,parent_shortname);
             }));
-            console.log({dataAssets})
         })();
-        console.log({currentResourceTypes});
     })
 
     // exp rt let forceRefresh;
@@ -392,6 +390,27 @@
                 bind:files={payloadFiles}
                 type="file"
             />
+          {:else if contentType === ContentType.pdf}
+            <Label>PDF File</Label>
+            <Input
+              accept="application/pdf"
+              bind:files={payloadFiles}
+              type="file"
+            />
+          {:else if contentType === ContentType.audio}
+            <Label>Audio File</Label>
+            <Input
+              accept="audio/*"
+              bind:files={payloadFiles}
+              type="file"
+            />
+          {:else if contentType === ContentType.python}
+            <Label>Python File</Label>
+            <Input
+              accept=".py"
+              bind:files={payloadFiles}
+              type="file"
+            />
           {:else}
             <Input type={"textarea"} bind:value={payloadData} />
           {/if}
@@ -428,6 +447,7 @@
             type="file"
             accept=".sqlite,.sqlite3,.db,.db3,.s3db,.sl3" />
         {:else if resourceType === ResourceAttachmentType.parquet}
+          <Label>Parquet File</Label>
           <Input
             bind:files={payloadFiles}
             type="file"
