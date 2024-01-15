@@ -528,6 +528,7 @@
       <div class="tab-pane" class:active={tab_option === "attachments"}>
         <Attachments
           {space_name}
+          {resource_type}
           {subpath}
           parent_shortname={entry.shortname}
           attachments={Object.values(entry.attachments)}
