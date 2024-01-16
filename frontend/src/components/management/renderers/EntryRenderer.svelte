@@ -420,13 +420,6 @@
           delete body.name;
       }
 
-      if (body.payload){
-          body.payload = {
-              content_type: "json",
-              schema_shortname: "meta_schema",
-              body: body.payload,
-          };
-      }
       request_body = {
         space_name,
         request_type: RequestType.create,
@@ -435,7 +428,14 @@
             resource_type: ResourceType.schema,
             shortname: contentShortname === "" ? "auto" : contentShortname,
             subpath,
-            attributes: body,
+            attributes: {
+                is_active: true,
+                payload: {
+                  content_type: "json",
+                  schema_shortname: "meta_schema",
+                  body: body,
+               }
+            },
           },
         ],
       };
