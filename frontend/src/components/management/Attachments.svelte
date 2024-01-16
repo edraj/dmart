@@ -17,12 +17,12 @@
     } from "@/dmart";
     import {Level, showToast} from "@/utils/toast";
     import Media from "./Media.svelte";
-    import {Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader,} from "sveltestrap";
+    import {Button, Col, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader,} from "sveltestrap";
     import {JSONEditor, Mode} from "svelte-jsoneditor";
     import {jsonToFile} from "@/utils/jsonToFile";
     import Prism from "@/components/Prism.svelte";
     import {parseCSV, parseJSONL} from "@/utils/attachements";
-    import {onMount} from "svelte";
+    import {AxiosError} from "axios";
 
     export let attachments: Array<any> = [];
     export let resource_type: string;
@@ -30,18 +30,19 @@
     export let subpath: string;
     export let parent_shortname: string;
 
-    let dataAssets = []
-    onMount(()=>{
-        const currentResourceTypes = []
-        for (const attachment of attachments) {
-            currentResourceTypes.push(attachment[0].resource_type);
+    async function fetchDataAssetsForAttachments(){
+        for (const attachment of attachments.flat(1)) {
+            if (["csv", "parquet", "jsonl"].includes(attachment.resource_type)){
+                attachment.dataAsset = await fetchDataAsset(resource_type, attachment.resource_type, space_name,subpath,parent_shortname,`SELECT * FROM '${attachment.shortname}'`);
+            } else if (attachment.resource_type === "sqlite") {
+                const tables = await fetchDataAsset(resource_type, attachment.resource_type, space_name,subpath,parent_shortname,"SELECT * FROM temp.information_schema.tables",[attachment.shortname]);
+                attachment.dataAsset = (await Promise.all(tables.map(async (table) => {
+                    const r = await fetchDataAsset(resource_type, attachment.resource_type, space_name, subpath, parent_shortname, `SELECT * FROM '${table.table_name}' LIMIT 10`, [attachment.shortname]);
+                    return r instanceof AxiosError ? null : {table_name: table.table_name, rows: r};
+                }))).filter(item => item !== null);
+            }
         }
-        (async()=>{
-            dataAssets = await Promise.all(currentResourceTypes.map(async (item) => {
-                return await fetchDataAsset(resource_type, item, space_name,subpath,parent_shortname);
-            }));
-        })();
-    })
+    }
 
     // exp rt let forceRefresh;
     let shortname = "auto";
@@ -504,137 +505,194 @@
   </div>
 </div>
 
-<div class="d-flex justify-content-center flex-column px-5">
-  {#each attachments.flat(1) as attachment}
-    <hr />
-    <div class="col">
-      <div class="row mb-2">
-        <a
-          class="col-11"
-          style="font-size: 1.25em;"
-          href={get_attachment_url(
-            attachment.resource_type,
-            space_name,
-            subpath,
-            parent_shortname,
-            attachment.shortname,
-            getFileExtension(attachment.attributes?.payload?.body)
-          )}
-          target="_blank" rel="noopener noreferrer" download
-        >{attachment.shortname}</a>
-        <div class="col-1 d-flex justify-content-between">
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <!-- svelte-ignore a11y-no-static-element-interactions -->
-          <div
-            class="mx-1"
-            style="cursor: pointer;"
-            on:click={async () => await handleDelete(attachment)}
-          >
-            <Icon name="trash" color="red" />
-          </div>
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <!-- svelte-ignore a11y-no-static-element-interactions -->
-          <div
-            class="mx-1"
-            style="cursor: pointer;"
-            on:click={() => {
-              handleView(attachment);
-            }}
-          >
-            <Icon name="eyeglasses" color="grey" />
-          </div>
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <!-- svelte-ignore a11y-no-static-element-interactions -->
-          <div
-            class="mx-1"
-            style="cursor: pointer;"
-            on:click={() => {
-              handleMetaEditModal(attachment);
-            }}
-          ><Icon name="code-slash" /></div>
-          {#if [
-              ResourceType.json,
-              ResourceType.content,
-              ResourceType.comment,
-          ].includes(attachment.resource_type)}
+{#await fetchDataAssetsForAttachments()}
+  Loading...
+{:then _}
+  <div class="d-flex justify-content-center flex-column px-5">
+    {#each attachments.flat(1) as attachment}
+      <hr />
+      <div class="col">
+        <div class="row mb-2">
+          <a
+            class="col-11"
+            style="font-size: 1.25em;"
+            href={get_attachment_url(
+              attachment.resource_type,
+              space_name,
+              subpath,
+              parent_shortname,
+              attachment.shortname,
+              getFileExtension(attachment.attributes?.payload?.body)
+            )}
+            target="_blank" rel="noopener noreferrer" download
+          >{attachment.shortname}</a>
+          <div class="col-1 d-flex justify-content-between">
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div
+              class="mx-1"
+              style="cursor: pointer;"
+              on:click={async () => await handleDelete(attachment)}
+            >
+              <Icon name="trash" color="red" />
+            </div>
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div
+              class="mx-1"
+              style="cursor: pointer;"
+              on:click={() => {
+              handleView(attachment);
+            }}
+            >
+              <Icon name="eyeglasses" color="grey" />
+            </div>
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div
+              class="mx-1"
+              style="cursor: pointer;"
+              on:click={() => {
+              handleMetaEditModal(attachment);
+            }}
+            ><Icon name="code-slash" /></div>
+            {#if [
+                ResourceType.json,
+                ResourceType.content,
+                ResourceType.comment,
+            ].includes(attachment.resource_type)}
+              <!-- svelte-ignore a11y-click-events-have-key-events -->
+              <!-- svelte-ignore a11y-no-static-element-interactions -->
+              <div
                 class="mx-1"
                 style="cursor: pointer;"
                 on:click={() => {
                 handleContentEditModal(attachment);
               }}
-            ><Icon name="pencil" /></div>
+              ><Icon name="pencil" /></div>
+            {/if}
+          </div>
+        </div>
+        <div class="d-flex col" style="overflow: auto;max-height: 80vh;max-width: 80vw;">
+          {#if attachment}
+            {#if [
+                ResourceType.csv,
+                ResourceType.jsonl,
+                ResourceType.parquet,
+                ResourceType.sqlite,
+            ].includes(attachment.resource_type)}
+                {#if [ResourceType.parquet, ResourceType.csv].includes(attachment.resource_type)}
+                  <table class="table table-striped table-sm">
+                    <thead>
+                    <tr>
+                      {#each Object.keys(attachment.dataAsset[0]) as header (header)}
+                        <th>{header}</th>
+                      {/each}
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {#each attachment.dataAsset as item }
+                      <tr>
+                        {#each Object.keys(attachment.dataAsset[0]) as key (key)}
+                          <td>
+                            {item[key]}
+                          </td>
+                        {/each}
+                      </tr>
+                    {/each}
+                    </tbody>
+                  </table>
+                {:else if attachment.resource_type === ResourceType.sqlite}
+                  <Col>
+                  {#each attachment.dataAsset ?? [] as dataAsset}
+                      <h3>{dataAsset.table_name}</h3>
+                      <table class="table table-striped table-sm">
+                        <thead>
+                        <tr>
+                          {#each Object.keys(dataAsset.rows[0]) as header (header)}
+                            <th>{header}</th>
+                          {/each}
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {#each dataAsset.rows as item }
+                          <tr>
+                            {#each Object.keys(dataAsset.rows[0]) as key (key)}
+                              <td>
+                                {item[key]}
+                              </td>
+                            {/each}
+                          </tr>
+                        {/each}
+                        </tbody>
+                      </table>
+                  {/each}
+                  </Col>
+                {/if}
+              {:else}
+                {#await get_attachment_content(
+                    attachment.resource_type,
+                    space_name,
+                    `${subpath}/${parent_shortname}`,
+                    attachment.attributes?.payload?.body
+                )}
+                  loading...
+                {:then response}
+                  {#if attachment.resource_type===ResourceType.csv}
+                    {#await parseCSV(response)}
+                      Parsing...
+                    {:then { headers, rows } }
+                      <table class="table table-striped table-sm">
+                        <thead>
+                        <tr>
+                          {#each headers as header}
+                            <th>{header}</th>
+                          {/each}
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {#each rows as row}
+                          <tr>
+                            {#each headers as header}
+                              <td>{row[header]}</td>
+                            {/each}
+                          </tr>
+                        {/each}
+                        </tbody>
+                      </table>
+                    {/await}
+
+                  {:else if attachment.resource_type===ResourceType.jsonl}
+                    <div class="d-flex row" style=" max-height: 50vh;overflow-y: scroll;">
+                      {#each parseJSONL(response) as item}
+                        <Prism code={item} />
+                      {/each}
+                    </div>
+                  {:else if attachment.resource_type===ResourceType.parquet}
+                    <pre>{@html response}</pre>
+                  {:else}
+                    <Prism code={response} />
+                  {/if}
+                {/await}
+              {/if}
+            {:else}
+              <Media
+              resource_type={ResourceType[attachment.resource_type]}
+              attributes={attachment.attributes}
+              displayname={attachment.shortname}
+              url={get_attachment_url(
+                attachment.resource_type,
+                space_name,
+                subpath,
+                parent_shortname,
+                attachment.shortname,
+                getFileExtension(attachment.attributes?.payload?.body)
+              )}
+              />
           {/if}
         </div>
       </div>
-      <div class="d-flex col justify-content-center">
-        {#if [
-            ResourceType.csv,
-            ResourceType.jsonl,
-            ResourceType.parquet,
-        ].includes(attachment.resource_type)}
-          {#await get_attachment_content(
-              attachment.resource_type,
-              space_name,
-              `${subpath}/${parent_shortname}`,
-              attachment.attributes?.payload?.body
-          )}
-          loading...
-          {:then response}
-            {#if attachment.resource_type===ResourceType.csv}
-              {#await parseCSV(response)}
-                Parsing...
-              {:then { headers, rows } }
-                <table class="table table-striped table-sm">
-                  <thead>
-                  <tr>
-                    {#each headers as header}
-                      <th>{header}</th>
-                    {/each}
-                  </tr>
-                  </thead>
-                  <tbody>
-                  {#each rows as row}
-                    <tr>
-                      {#each headers as header}
-                        <td>{row[header]}</td>
-                      {/each}
-                    </tr>
-                  {/each}
-                  </tbody>
-                </table>
-              {/await}
-            {:else if attachment.resource_type===ResourceType.jsonl}
-              <div class="d-flex row" style=" max-height: 50vh;overflow-y: scroll;">
-                {#each parseJSONL(response) as item}
-                  <Prism code={item} />
-                {/each}
-              </div>
-            {:else if attachment.resource_type===ResourceType.parquet}
-              <pre>{@html response}</pre>
-            {:else}
-              <Prism code={response} />
-            {/if}
-          {/await}
-          {:else}
-        <Media
-          resource_type={ResourceType[attachment.resource_type]}
-          attributes={attachment.attributes}
-          displayname={attachment.shortname}
-          url={get_attachment_url(
-            attachment.resource_type,
-            space_name,
-            subpath,
-            parent_shortname,
-            attachment.shortname,
-            getFileExtension(attachment.attributes?.payload?.body)
-        )}
-        />
-        {/if}
-      </div>
-    </div>
-    <hr />
-  {/each}
-</div>
+      <hr />
+    {/each}
+  </div>
+{/await}

@@ -603,6 +603,7 @@ export async function fetchDataAsset(
     subpath: string,
     shortname: string,
     query_string?: string,
+    filter_data_assets?: string[],
     branch_name?: string
 ) {
   try {
@@ -616,8 +617,9 @@ export async function fetchDataAsset(
           data_asset_type: dataAssetType,
           subpath,
           shortname,
-          query_string: "SELECT * FROM file",
-          branch_name
+          query_string: query_string ?? "SELECT * FROM file",
+          filter_data_assets,
+          branch_name,
         },
         { headers }
     );
