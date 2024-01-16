@@ -598,10 +598,11 @@ export async function upload_with_payload(
 
 export async function fetchDataAsset(
     resourceType: string,  // Replace with actual type if needed
+    dataAssetType: string,  // Replace with actual type if needed
     spaceName: string,
     subpath: string,
     shortname: string,
-    query_stringquery_string?: string,
+    query_string?: string,
     branch_name?: string
 ) {
   try {
@@ -612,7 +613,7 @@ export async function fetchDataAsset(
         {
           space_name: spaceName,
           resource_type: resourceType,
-          data_asset_type: resourceType,
+          data_asset_type: dataAssetType,
           subpath,
           shortname,
           query_string: "SELECT * FROM file",

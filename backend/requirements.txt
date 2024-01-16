@@ -20,4 +20,4 @@ jinja2
 asgi-correlation-id
 pydantic-settings
 fastapi-sso >= 0.9.1
-duckdb
+duckdb >= 0.9.3.dev2533

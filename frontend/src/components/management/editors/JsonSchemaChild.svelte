@@ -66,7 +66,7 @@
 
   $: item && refresh();
 
-  let oldType = item.type.toString();
+  let oldType = item?.type?.toString();
   $: {
     if (item.type !== oldType) {
       if (oldType==="number" || oldType==="integer"){

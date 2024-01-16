@@ -560,7 +560,7 @@
       style="text-align: left; direction: ltr; overflow: hidden auto;"
     >
       <TabContent>
-        <TabPane tabId="table" tab="Table" active><Table2Cols {entry} /></TabPane>
+        <TabPane tabId="table" tab="Table" active><Table2Cols entry={{"Resource type": resource_type,...entry}} /></TabPane>
         <TabPane tabId="form" tab="Raw">
           <Prism code={entry} />
         </TabPane>
@@ -746,6 +746,7 @@
   <div class="tab-pane" class:active={tab_option === "attachments"}>
     <Attachments
       {space_name}
+      {resource_type}
       {subpath}
       parent_shortname={entry.shortname}
       attachments={Object.values(entry.attachments)}

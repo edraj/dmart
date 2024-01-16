@@ -1,0 +1,146 @@
+
+
+attributetype ( 1.1.2.1.1
+  NAME 'isActive'
+  DESC 'Account activation status : true = active, false = disabled'
+  EQUALITY booleanMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.7
+  SINGLE-VALUE
+ )
+
+attributetype ( 1.1.2.1.2
+  NAME 'mailAlias'
+  DESC 'Email alias, another name by which the user can receive emails to'
+  SUP mail
+ )
+
+attributetype ( 1.1.2.1.3
+  NAME 'mailForward'
+  DESC 'Email forward'
+  SUP mail
+ )
+
+attributetype ( 1.1.2.1.4
+  NAME 'authorizedService'
+  DESC 'Allowed service name'
+  EQUALITY caseIgnoreMatch
+  ORDERING caseIgnoreOrderingMatch
+  SUBSTR caseIgnoreSubstringsMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+ ) 
+
+# validation must be removed when the email or mobile are changed.
+attributetype ( 1.1.2.1.5 
+  NAME 'validation' 
+  DESC 'Validation of user'
+  EQUALITY caseIgnoreMatch
+  ORDERING caseIgnoreOrderingMatch
+  SUBSTR caseIgnoreSubstringsMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 
+ )
+
+attributetype ( 1.1.2.1.6 
+	NAME 'changePasswordRequired' 
+	EQUALITY booleanMatch 
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.7 
+	SINGLE-VALUE 
+ )
+ 
+attributetype ( 1.1.2.1.7 
+  NAME ( 'dob' 'dateOfBirth' )
+  DESC 'Date of Birth'
+  EQUALITY generalizedTimeMatch 
+  ORDERING generalizedTimeOrderingMatch 
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 
+  SINGLE-VALUE 
+ )
+
+attributetype ( 1.1.2.1.13 
+  NAME ( 'lastLogin' )
+  DESC 'last log in'
+  EQUALITY generalizedTimeMatch 
+  ORDERING generalizedTimeOrderingMatch 
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 
+  SINGLE-VALUE 
+ )
+
+
+
+# attributetype ( 1.1.2.1.7 
+# NAME 'dateOfBirth'
+#  DESC 'Date of Birth'
+#  EQUALITY integerMatch
+#  SYNTAX 1.3.6.1.4.1.1466.115.121.1.27 
+#  SINGLE-VALUE 
+#  )
+  
+  
+attributetype ( 1.1.2.1.8 
+  NAME 'secretQuestion'
+  DESC 'Secret Question, 128 bytes'
+  EQUALITY caseIgnoreMatch
+  SUBSTR caseIgnoreSubstringsMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{128} 
+  SINGLE-VALUE 
+ )
+
+attributetype ( 1.1.2.1.9 
+  NAME 'secretAnswer'
+  DESC 'Secret Question, 128 bytes'
+  EQUALITY caseIgnoreMatch
+  SUBSTR caseIgnoreSubstringsMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{128} 
+  SINGLE-VALUE 
+ )
+
+attributetype ( 1.1.2.1.10 
+  NAME 'cityName'
+  EQUALITY caseIgnoreMatch 
+  ORDERING caseIgnoreOrderingMatch 
+  SUBSTR caseIgnoreSubstringsMatch 
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 
+  SINGLE-VALUE 
+ )
+ 
+attributetype ( 1.1.2.1.11 
+  NAME 'gender' 
+  EQUALITY booleanMatch 
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.7 
+  SINGLE-VALUE 
+ )
+
+
+attributetype ( 1.1.2.1.12 
+  NAME 'memberEmail' 
+  SUP   mail
+ )
+
+objectclass (1.1.2.2.1
+  NAME 'dmartPerson'
+  DESC 'dmart Person'
+  SUP  inetOrgPerson
+  STRUCTURAL
+  MUST ( commonName )
+  MAY ( surname $ givenName $ countryName $ telephoneNumber $ homeTelephoneNumber $ 
+        mobileTelephoneNumber $ displayName $ mail $ description $ postalAddress $ 
+        streetAddress $ labeledURI $ jpegPhoto $ preferredLanguage $
+        organizationName $ homePostalAddress $ cityName $ dateOfBirth $ gender ) 
+  )
+  
+objectclass ( 1.1.2.2.2
+  NAME 'dmartUser'
+  DESC 'dmart User'
+  SUP dmartPerson 
+  STRUCTURAL
+  MUST ( userPassword )
+  MAY ( mailAlias $ mailForward $ authorizedService $ isActive $ title $ validation $ changePasswordRequired $ secretQuestion $ secretAnswer $ lastLogin )
+ )
+
+objectclass ( 1.1.2.2.3
+  NAME 'dmartGroup'
+  DESC 'dmart Group'
+  STRUCTURAL
+  MUST ( cn )
+  MAY  ( isActive $ mailAlias $ mailForward $ memberEmail $ description ) 
+ )
+ 
