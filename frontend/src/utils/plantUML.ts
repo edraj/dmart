@@ -32,30 +32,27 @@ function schemaVisualizationParser(properties) {
 }
 
 export function schemaVisualizationEncoder(entry) {
-    if (typeof entry.payload.body === "object") {
-        try {
-            const content = `${startjsonForPlantUML}\n${JSON.stringify(
-                schemaVisualizationParser(entry.payload.body.properties),
-                null,
-                2
-            )}\n@endjson`;
-
-            const currentDiagram = {
-                name: "",
-                content,
-                encodedContent: function () {
-                    return encode(this.content);
-                },
-            };
-            return currentDiagram.encodedContent();
-        } catch (error) {
-            return {
-                name: "",
-                content: `${startjsonForPlantUML}\n{"error": "something is wrong with the schema"}\n@endjson`,
-                encodedContent: function () {
-                    return encode(this.content);
-                },
-            }.encodedContent();
-        }
+    try {
+        const content = `${startjsonForPlantUML}\n${JSON.stringify(
+            schemaVisualizationParser(entry),
+            null,
+            2
+        )}\n@endjson`;
+        const currentDiagram = {
+            name: "",
+            content,
+            encodedContent: function () {
+                return encode(this.content);
+            },
+        };
+        return currentDiagram.encodedContent();
+    } catch (error) {
+        return {
+            name: "",
+            content: `${startjsonForPlantUML}\n{"error": "something is wrong with the schema"}\n@endjson`,
+            encodedContent: function () {
+                return encode(this.content);
+            },
+        }.encodedContent();
     }
 }

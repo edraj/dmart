@@ -4,6 +4,7 @@
         ApiResponse,
         ContentType,
         ContentTypeMedia,
+        fetchDataAsset,
         get_attachment_content,
         get_attachment_url,
         query,
@@ -21,12 +22,26 @@
     import {jsonToFile} from "@/utils/jsonToFile";
     import Prism from "@/components/Prism.svelte";
     import {parseCSV, parseJSONL} from "@/utils/attachements";
+    import {onMount} from "svelte";
 
     export let attachments: Array<any> = [];
-
+    export let resource_type: string;
     export let space_name: string;
     export let subpath: string;
     export let parent_shortname: string;
+
+    let dataAssets = []
+    onMount(()=>{
+        const currentResourceTypes = []
+        for (const attachment of attachments) {
+            currentResourceTypes.push(attachment[0].resource_type);
+        }
+        (async()=>{
+            dataAssets = await Promise.all(currentResourceTypes.map(async (item) => {
+                return await fetchDataAsset(resource_type, item, space_name,subpath,parent_shortname);
+            }));
+        })();
+    })
 
     // exp rt let forceRefresh;
     let shortname = "auto";
@@ -375,6 +390,27 @@
                 bind:files={payloadFiles}
                 type="file"
             />
+          {:else if contentType === ContentType.pdf}
+            <Label>PDF File</Label>
+            <Input
+              accept="application/pdf"
+              bind:files={payloadFiles}
+              type="file"
+            />
+          {:else if contentType === ContentType.audio}
+            <Label>Audio File</Label>
+            <Input
+              accept="audio/*"
+              bind:files={payloadFiles}
+              type="file"
+            />
+          {:else if contentType === ContentType.python}
+            <Label>Python File</Label>
+            <Input
+              accept=".py"
+              bind:files={payloadFiles}
+              type="file"
+            />
           {:else}
             <Input type={"textarea"} bind:value={payloadData} />
           {/if}
@@ -411,6 +447,7 @@
             type="file"
             accept=".sqlite,.sqlite3,.db,.db3,.s3db,.sl3" />
         {:else if resourceType === ResourceAttachmentType.parquet}
+          <Label>Parquet File</Label>
           <Input
             bind:files={payloadFiles}
             type="file"
