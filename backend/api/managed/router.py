@@ -39,6 +39,7 @@ import utils.repository as repository
 from utils.helpers import (
     branch_path,
     camel_case,
+    csv_file_to_json,
     flatten_dict,
     resolve_schema_references,
 )
@@ -2323,7 +2324,7 @@ async def apply_alteration(
 async def data_asset(
         query: api.DataAssetQuery,
         _=Depends(JWTBearer()),
-):
+):    
     attachments: dict[str, list[core.Record]] = await repository.get_entry_attachments(
         subpath=f"{query.subpath}/{query.shortname}",
         branch_name=query.branch_name,
@@ -2416,12 +2417,10 @@ async def data_asset(
     data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)  # type: ignore
 
     data.write_csv(file_name="my_temp_file_from_duckdb.csv")  # type: ignore
-    with open("my_temp_file_from_duckdb.csv", "r") as csv_file:
-        response = StreamingResponse(iter(csv_file.read()), media_type="text/csv")
-        response.headers["Content-Disposition"] = "attachment; filename=data.csv"
+    data_objects = await csv_file_to_json("my_temp_file_from_duckdb.csv")
     os.remove("my_temp_file_from_duckdb.csv")
 
-    return response
+    return data_objects
 
 
 @router.get("/data-asset")
