@@ -2417,7 +2417,7 @@ async def data_asset(
     data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)  # type: ignore
 
     data.write_csv(file_name="my_temp_file_from_duckdb.csv")  # type: ignore
-    data_objects = await csv_file_to_json("my_temp_file_from_duckdb.csv")
+    data_objects: list[dict[str, Any]] = await csv_file_to_json(FilePath("my_temp_file_from_duckdb.csv"))
     os.remove("my_temp_file_from_duckdb.csv")
 
     return data_objects
