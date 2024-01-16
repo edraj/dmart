@@ -4,6 +4,7 @@ from datetime import datetime
 import hashlib
 import os
 from re import sub as res_sub
+from time import time
 from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, status
 from fastapi.responses import FileResponse
 from starlette.responses import StreamingResponse
@@ -2416,9 +2417,10 @@ async def data_asset(
 
     data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)  # type: ignore
 
-    data.write_csv(file_name="my_temp_file_from_duckdb.csv")  # type: ignore
-    data_objects: list[dict[str, Any]] = await csv_file_to_json(FilePath("my_temp_file_from_duckdb.csv"))
-    os.remove("my_temp_file_from_duckdb.csv")
+    temp_file = f"temp_file_from_duckdb_{int(round(time() * 1000))}.csv"
+    data.write_csv(file_name=temp_file)  # type: ignore
+    data_objects: list[dict[str, Any]] = await csv_file_to_json(FilePath(temp_file))
+    os.remove(temp_file)
 
     return data_objects
 
