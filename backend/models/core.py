@@ -117,12 +117,12 @@ class Record(BaseModel):
                         "displayname": {
                             "en": "name en",
                             "ar": "name ar",
-                            "kd": "name kd",
+                            "ku": "name ku",
                         },
                         "description": {
                             "en": "desc en",
                             "ar": "desc ar",
-                            "kd": "desc kd",
+                            "ku": "desc ku",
                         },
                         "tags": [],
                         "payload": {
@@ -146,7 +146,7 @@ class Record(BaseModel):
 class Translation(Resource):
     en: str | None = None
     ar: str | None = None
-    kd: str | None = None
+    ku: str | None = None
 
 
 class Locator(Resource):
@@ -568,4 +568,3 @@ class Notification(Meta):
             priority=notification_req["priority"],
             entry=entry_locator,
         )
-

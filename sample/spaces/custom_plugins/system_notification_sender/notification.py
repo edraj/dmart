@@ -39,7 +39,7 @@ async def send_notification(
     if isinstance(notification_dict["description"], Translation):
         notification_dict["description"] = notification_dict["description"].dict()
 
-    for locale in ["ar", "en", "kd"]:
+    for locale in ["ar", "en", "ku"]:
         notification_dict["displayname"][locale] = translate_message_vars(
             notification_dict["displayname"][locale], entry, locale
         )
