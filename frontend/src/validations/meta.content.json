@@ -65,7 +65,7 @@
         "ar": {
           "type": "string"
         },
-        "kd": {
+        "ku": {
           "type": "string"
         }
       }
@@ -79,7 +79,7 @@
         "ar": {
           "type": "string"
         },
-        "kd": {
+        "ku": {
           "type": "string"
         }
       }
@@ -109,7 +109,9 @@
           "type": "string"
         }
       },
-      "required": ["content_type"]
+      "required": [
+        "content_type"
+      ]
     },
     "root_registration_signature": {
       "type": "string"

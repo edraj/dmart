@@ -544,11 +544,10 @@ async def move(
         branch_name,
     )
 
-    # Create dest dir if not exist
-    if not os.path.isdir(dest_path):
-        os.makedirs(dest_path)
+    
 
     meta_updated = False
+    shown_dest_path = dest_path
     if dest_shortname:
         meta.shortname = dest_shortname
         meta_updated = True
@@ -557,9 +556,23 @@ async def move(
         src_path = Path("/".join(src_path.parts[:-1]))
 
     if dest_path.parts[-1] == ".dm":
-        dest_path = Path("/".join(dest_path.parts[:-1]))
+        shown_dest_path = Path("/".join(dest_path.parts[:-1]))
+        
+    # # Create dest dir if not exist
+    # if not os.path.isdir(dest_path):
+    #     os.makedirs(dest_path)
     
-    os.rename(src=src_path , dst=dest_path )
+    if shown_dest_path.is_dir() and len(os.listdir(shown_dest_path)):
+        raise api.Exception(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error=api.Error(
+                type="move",
+                code=InternalErrorCode.NOT_ALLOWED_LOCATION,
+                message="The destination folder is not empty",
+            ),
+        )
+        
+    os.rename(src=src_path , dst=shown_dest_path )
 
     # Move payload file with the meta file
     if (

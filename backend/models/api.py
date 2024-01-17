@@ -37,12 +37,12 @@ class Request(BaseModel):
                                 "displayname": {
                                     "en": "name en",
                                     "ar": "name ar",
-                                    "kd": "name kd",
+                                    "ku": "name ku",
                                 },
                                 "description": {
                                     "en": "desc en",
                                     "ar": "desc ar",
-                                    "kd": "desc kd",
+                                    "ku": "desc ku",
                                 },
                                 "tags": [],
                                 "payload": {
@@ -185,5 +185,5 @@ class DataAssetQuery(BaseModel):
             raise ValueError(
                 "filter_data_assets must include only one item in case of data_asset_type is sqlite"
             )
-            
+
         return v

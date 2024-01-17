@@ -21,15 +21,15 @@ function switchLocale(_locale: string) {
   locale.set(_locale);
 }
 
-function getPreferredLocale() : string {
-  let  preferred_locale = '"ar"';
+function getPreferredLocale(): string {
+  let preferred_locale = '"ar"';
   if (typeof localStorage !== 'undefined')
     preferred_locale = localStorage.getItem("preferred_locale");
   if (typeof preferred_locale === "string") {
     return JSON.parse(preferred_locale);
   }
 
-  let fallback : string = "";
+  let fallback: string = "";
   let _locale = getLocaleFromNavigator();
   let _locale_found = false;
 
@@ -53,14 +53,14 @@ function getPreferredLocale() : string {
     _locale = "en";
   }
 
-  if(typeof localStorage !== 'undefined')
+  if (typeof localStorage !== 'undefined')
     localStorage.setItem("preferred_locale", JSON.stringify(_locale));
   return _locale;
 }
 
 function setupI18n() {
 
-  let _locale : string = getPreferredLocale();
+  let _locale: string = getPreferredLocale();
 
   if (!(_locale in l17ns) && website.default_language) {
     _locale = website.default_language;
@@ -72,7 +72,7 @@ function setupI18n() {
   });
 }
 
-const rtl = ["ar", "fa", "ur", "kd"]; // Arabic, Farsi, Urdu, Kurdish
+const rtl = ["ar", "fa", "ur", "ku"]; // Arabic, Farsi, Urdu, Kurdish
 
 const dir = derived(locale, $locale => rtl.indexOf($locale ? $locale : "") >= 0 ? 'rtl' : 'ltr');
 const isLocaleLoaded = derived(locale, $locale => typeof $locale === 'string');

@@ -22,9 +22,6 @@ from fastapi.logger import logger
 from utils.db import load, load_resource_payload
 
 
-
-
-
 class Plugin(PluginBase):
     async def hook(self, data: Event):
         """
@@ -36,11 +33,11 @@ class Plugin(PluginBase):
         """
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
-           logger.warning(
-               "data.shortname is None and str is required at system_notification_sender"
-           )
-           return
-            
+            logger.warning(
+                "data.shortname is None and str is required at system_notification_sender"
+            )
+            return
+
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"].model_dump()
         else:
@@ -101,18 +98,19 @@ class Plugin(PluginBase):
 
         if data.user_shortname in notification_subscribers:
             notification_subscribers.remove(data.user_shortname)
-            
+
         users_objects: dict[str, dict] = {}
         for subscriber in notification_subscribers:
             async with RedisServices() as redis:
-                users_objects[subscriber] = await redis.get_doc_by_id(redis.generate_doc_id(
-                    settings.management_space,
-                    settings.management_space_branch,
-                    "meta",
-                    subscriber,
-                    settings.users_subpath
-                ))
-            
+                users_objects[subscriber] = await redis.get_doc_by_id(
+                    redis.generate_doc_id(
+                        settings.management_space,
+                        settings.management_space_branch,
+                        "meta",
+                        subscriber,
+                        settings.users_subpath,
+                    )
+                )
 
         # 3- send the notification
         notification_manager = NotificationManager()
@@ -127,7 +125,6 @@ class Plugin(PluginBase):
 
             formatted_req = await self.prepare_request(notification_dict, entry)
             for receiver in set(notification_subscribers):
-
                 if not formatted_req["push_only"]:
                     notification_obj = await Notification.from_request(
                         notification_dict, entry
@@ -153,7 +150,7 @@ class Plugin(PluginBase):
                     )
 
     async def prepare_request(self, notification_dict: dict, entry: dict) -> dict:
-        for locale in ["ar", "en", "kd"]:
+        for locale in ["ar", "en", "ku"]:
             notification_dict["displayname"][locale] = replace_message_vars(
                 notification_dict["displayname"][locale], entry, locale
             )
@@ -162,7 +159,8 @@ class Plugin(PluginBase):
             )
         # Get Notification Request Images
         attachments_path = (
-            settings.spaces_folder / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}"
+            settings.spaces_folder
+            / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}"
             f"/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
         notification_attachments = await get_entry_attachments(
@@ -173,7 +171,7 @@ class Plugin(PluginBase):
         notification_images = {
             "en": notification_attachments.get("media", {}).get("en"),
             "ar": notification_attachments.get("media", {}).get("ar"),
-            "kd": notification_attachments.get("media", {}).get("kd"),
+            "ku": notification_attachments.get("media", {}).get("ku"),
         }
 
         return {

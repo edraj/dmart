@@ -2,7 +2,7 @@
   "uuid": "99416138-a1fe-4fea-bb97-72ce30a5e2bf",
   "shortname": "create_log",
   "is_active": true,
-  "displayname": {"en":"create log", "ar":"create log", "kd":"create log"},
+  "displayname": {"en":"create log", "ar":"create log", "ku":"create log"},
   "tags": [],
   "created_at": "2023-01-11T10:21:33.912450",
   "updated_at": "2023-01-11T10:21:33.912459",

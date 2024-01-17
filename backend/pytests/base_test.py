@@ -35,15 +35,18 @@ def set_superman_cookie():
         "/user/login",
         json={"shortname": superman["shortname"], "password": superman["password"]},
     )
-    print(response)
+    print(f"\n {response.json() = } \n creds: {superman = } \n")
+    assert response.status_code == status.HTTP_200_OK
     client.cookies.set("auth_token", response.cookies["auth_token"])
 
 
 def set_alibaba_cookie():
     response = client.post(
         "/user/login",
-        json={"shortname": superman["shortname"], "password": superman["password"]},
+        json={"shortname": alibaba["shortname"], "password": alibaba["password"]},
     )
+    print(f"\n {response.json() = } \n creds: {alibaba = } \n")
+    assert response.status_code == status.HTTP_200_OK
     client.cookies.set("auth_token", response.cookies["auth_token"])
 
 

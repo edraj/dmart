@@ -146,7 +146,7 @@ async def serve_query(
                             )
 
                     resource_base_record.attributes = alter_dict_keys(
-                        jsonable_encoder(resource_base_record.attributes),
+                        jsonable_encoder(resource_base_record.attributes, exclude_none=True),
                         query.include_fields,
                         query.exclude_fields,
                     )
