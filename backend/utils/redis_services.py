@@ -322,7 +322,7 @@ class RedisServices(object):
             "number": NumericField,
             "array": TagField,
         }
-        if not isinstance(property, dict):
+        if not isinstance(property, dict) or key_chain.endswith("."):
             return redis_schema_definition
 
         if "type" in property and property["type"] != "object":
