@@ -560,16 +560,20 @@ export async function upload_with_payload(
   resource_type: ResourceType,
   content_type: ContentType = null,
   shortname: string,
-  payload_file: File
+  payload_file: File,
+  schema_shortname?: string
 ): Promise<ApiResponse> {
   const request_record_body:any = {
     resource_type,
     subpath,
     shortname,
-    attributes: { is_active: true },
+    attributes: { is_active: true, payload: {body:{}} },
   };
   if (content_type){
-    request_record_body.attributes.content_type = content_type;
+      request_record_body.attributes.payload.content_type = content_type;
+  }
+  if (schema_shortname){
+      request_record_body.attributes.payload.schema_shortname = schema_shortname;
   }
 
   const request_record = new Blob(
