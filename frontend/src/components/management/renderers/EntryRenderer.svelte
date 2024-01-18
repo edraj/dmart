@@ -958,7 +958,7 @@
           {/if}
         {/if}
 
-        {#if subpath !== "workflows"}
+        {#if !["workflows", "schema"].includes(subpath) }
           <Label class="mt-3">Schema</Label>
           <Input bind:value={selectedSchema} type="select">
             <option value={null}>{"None"}</option>
