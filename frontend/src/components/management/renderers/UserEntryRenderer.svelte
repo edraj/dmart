@@ -46,6 +46,7 @@
   import SchemaForm from "svelte-jsonschema-form";
   import Table2Cols from "@/components/management/Table2Cols.svelte";
   import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
+  import {REGEX} from "@/utils/regex";
 
   let header_height: number;
   export let entry: ResponseEntry;
@@ -614,7 +615,7 @@
                 placeholder="password..."
                 minlength={8}
                 maxlength={24}
-                pattern={"^(?=.*d)(?=.*[A-Z])[a-zA-Zd_#@%*-!?$^]{8,24}$"}
+                pattern={REGEX.PASSWORD}
                 autocomplete="off"
               />
             </FormGroup>
