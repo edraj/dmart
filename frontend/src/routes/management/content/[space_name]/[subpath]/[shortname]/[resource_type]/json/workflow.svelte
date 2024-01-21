@@ -1,7 +1,7 @@
 <script lang="ts">
     import { params } from "@roxi/routify";
     import { retrieve_entry, ResourceType } from "@/dmart";
-    import WorkflowRenderer from "@/components/management/renderers/WorkflowRenderer.svelte";
+    import EntryRenderer from "@/components/management/renderers/EntryRenderer.svelte";
   
     const resource_type: ResourceType = ResourceType[$params.resource_type];
   </script>
@@ -10,12 +10,11 @@
     {#await retrieve_entry(resource_type, $params.space_name, $params.subpath.replaceAll("-", "/"), $params.shortname, true, true)}
       <h6>Loading ... @{$params.space_name}/{$params.subpath}</h6>
     {:then entry}
-      <WorkflowRenderer
+      <EntryRenderer
         {entry}
         {resource_type}
         space_name={$params.space_name}
         subpath={$params.subpath?.replaceAll("-", "/")}
-        schema_name={$params.schema_name}
       />
     {:catch error}
       <p style="color: red">{error.message}</p>
