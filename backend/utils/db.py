@@ -547,7 +547,7 @@ async def move(
     
 
     meta_updated = False
-    shown_dest_path = dest_path
+    dest_path_without_dm = dest_path
     if dest_shortname:
         meta.shortname = dest_shortname
         meta_updated = True
@@ -556,13 +556,11 @@ async def move(
         src_path = Path("/".join(src_path.parts[:-1]))
 
     if dest_path.parts[-1] == ".dm":
-        shown_dest_path = Path("/".join(dest_path.parts[:-1]))
+        dest_path_without_dm = Path("/".join(dest_path.parts[:-1]))
         
-    # # Create dest dir if not exist
-    # if not os.path.isdir(dest_path):
-    #     os.makedirs(dest_path)
     
-    if shown_dest_path.is_dir() and len(os.listdir(shown_dest_path)):
+    
+    if dest_path_without_dm.is_dir() and len(os.listdir(dest_path_without_dm)):
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
             error=api.Error(
@@ -572,7 +570,16 @@ async def move(
             ),
         )
         
-    os.rename(src=src_path , dst=shown_dest_path )
+    # Create dest dir if there's a change in the subpath AND the shortname 
+    # and the subpath shortname folder doesn't exist,
+    if(
+        src_shortname != dest_shortname
+        and src_subpath != dest_subpath
+        and not os.path.isdir(dest_path_without_dm)
+    ):
+        os.makedirs(dest_path_without_dm)
+        
+    os.rename(src=src_path , dst=dest_path_without_dm )
 
     # Move payload file with the meta file
     if (

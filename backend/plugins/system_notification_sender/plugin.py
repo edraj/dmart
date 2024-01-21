@@ -38,7 +38,7 @@ class Plugin(PluginBase):
             )
             return
 
-        if data.action_type == ActionType.delete:
+        if data.action_type == ActionType.delete and data.attributes.get("entry"):
             entry = data.attributes["entry"].model_dump()
         else:
             entry = (

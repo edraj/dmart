@@ -30,7 +30,12 @@
     "role",
     "post",
     "folder",
-    "ticket"
+    "ticket",
+    "jsonl",
+    "csv",
+    "sqlite",
+    "parquet",
+    "duckdb"
   ],
   "actions": [
     "delete",
