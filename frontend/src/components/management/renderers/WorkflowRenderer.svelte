@@ -36,9 +36,6 @@
 
 
 <style>
-  span {
-    color: dimgrey;
-  }
   .preview {
     width: 100%;
     text-align: center;
