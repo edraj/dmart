@@ -4,6 +4,7 @@ from datetime import datetime
 import hashlib
 import os
 from re import sub as res_sub
+from time import time
 from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, status
 from fastapi.responses import FileResponse
 from starlette.responses import StreamingResponse
@@ -39,6 +40,7 @@ import utils.repository as repository
 from utils.helpers import (
     branch_path,
     camel_case,
+    csv_file_to_json,
     flatten_dict,
     resolve_schema_references,
 )
@@ -2323,7 +2325,7 @@ async def apply_alteration(
 async def data_asset(
         query: api.DataAssetQuery,
         _=Depends(JWTBearer()),
-):
+):    
     attachments: dict[str, list[core.Record]] = await repository.get_entry_attachments(
         subpath=f"{query.subpath}/{query.shortname}",
         branch_name=query.branch_name,
@@ -2415,13 +2417,12 @@ async def data_asset(
 
     data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)  # type: ignore
 
-    data.write_csv(file_name="my_temp_file_from_duckdb.csv")  # type: ignore
-    with open("my_temp_file_from_duckdb.csv", "r") as csv_file:
-        response = StreamingResponse(iter(csv_file.read()), media_type="text/csv")
-        response.headers["Content-Disposition"] = "attachment; filename=data.csv"
-    os.remove("my_temp_file_from_duckdb.csv")
+    temp_file = f"temp_file_from_duckdb_{int(round(time() * 1000))}.csv"
+    data.write_csv(file_name=temp_file)  # type: ignore
+    data_objects: list[dict[str, Any]] = await csv_file_to_json(FilePath(temp_file))
+    os.remove(temp_file)
 
-    return response
+    return data_objects
 
 
 @router.get("/data-asset")

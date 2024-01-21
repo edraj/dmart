@@ -180,7 +180,10 @@ class DataAssetQuery(BaseModel):
     def validate_sqlite(cls, v: DataAssetType, info: ValidationInfo):
         if (
             v == DataAssetType.sqlite
-            and len(info.data.get("filter_data_assets", [])) != 1
+            and (
+                not info.data.get("filter_data_assets")
+                or len(info.data.get("filter_data_assets", [])) != 1
+            )
         ):
             raise ValueError(
                 "filter_data_assets must include only one item in case of data_asset_type is sqlite"
