@@ -11,6 +11,7 @@
   } from "sveltestrap";
   import { signin } from "@/stores/user";
   import { _ } from "@/i18n";
+  import {REGEX} from "@/utils/regex";
 
   let username: string;
   let password: string;
@@ -47,6 +48,9 @@
           type="password"
           name="password"
           bind:value={password}
+          minlength={8}
+          maxlength={24}
+          pattern={REGEX.PASSWORD}
           required
         />
       </FormGroup>
