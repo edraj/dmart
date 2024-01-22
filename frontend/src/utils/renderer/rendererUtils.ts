@@ -21,7 +21,7 @@ export function generateObjectFromSchema(schema){
                 }
             } else if (propertySchema.type === 'array' && propertySchema.items) {
                 generatedObject[property] = [generateObjectFromSchema(propertySchema.items)];
-                if( generatedObject[property] === undefined){
+                if( generatedObject[property][0] === undefined){
                     generatedObject[property] = [];
                 }
             } else {
@@ -34,7 +34,6 @@ export function generateObjectFromSchema(schema){
                 } else if (propertySchema.type === 'boolean') {
                     generatedObject[property] = true;
                 } else {
-
                     generatedObject[property] = null;
                 }
             }
