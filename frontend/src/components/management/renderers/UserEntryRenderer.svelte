@@ -28,6 +28,7 @@
     export let entry: ResponseEntry;
   export let space_name: string;
   export let subpath: string;
+  export let errorContent: any;
 
   const resource_type: ResourceType = ResourceType.user;
 
