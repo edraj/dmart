@@ -1,6 +1,5 @@
 <script lang="ts">
   import EntryRenderer from "@/components/management/renderers/EntryRenderer.svelte";
-  import SchemaEntryRenderer from "@/components/management/renderers/SchemaEntryRenderer.svelte";
   import { ResourceType, retrieve_entry } from "@/dmart";
   import { params } from "@roxi/routify";
   const resource_type: ResourceType = ResourceType[$params.resource_type];
@@ -16,11 +15,6 @@
     subpath={$params.subpath?.replaceAll("-", "/")}
     schema_name={$params.schema_name}
   />
-  <!-- <SchemaEntryRenderer
-    {entry}
-    space_name={$params.space_name}
-    shortname={$params.shortname}
-  /> -->
 {:catch error}
   <p style="color: red">{error.message}</p>
 {/await}

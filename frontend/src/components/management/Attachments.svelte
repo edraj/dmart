@@ -33,7 +33,10 @@
     async function fetchDataAssetsForAttachments(){
         for (const attachment of attachments.flat(1)) {
             if (["csv", "parquet", "jsonl"].includes(attachment.resource_type)){
-                attachment.dataAsset = await fetchDataAsset(resource_type, attachment.resource_type, space_name,subpath,parent_shortname,`SELECT * FROM '${attachment.shortname}'`);
+                const r = await fetchDataAsset(resource_type, attachment.resource_type, space_name,subpath,parent_shortname,`SELECT * FROM '${attachment.shortname}'`);
+                if (!(r instanceof AxiosError)){
+                    attachment.dataAsset = r;
+                }
             } else if (attachment.resource_type === "sqlite") {
                 const tables = await fetchDataAsset(resource_type, attachment.resource_type, space_name,subpath,parent_shortname,"SELECT * FROM temp.information_schema.tables",[attachment.shortname]);
                 attachment.dataAsset = (await Promise.all(tables.map(async (table) => {
@@ -158,7 +161,8 @@
                 shortname,
                 ResourceType[resourceType] === ResourceType.json
                     ? jsonToFile(payloadContent)
-                    : payloadFiles[0]
+                    : payloadFiles[0],
+                resourceType === ResourceAttachmentType.csv ? selectedSchema: null
             );
         }
         else if (
@@ -323,6 +327,14 @@
             },
         ]);
     }
+
+    function setSchemaItems(schemas): Array<string> {
+        if (schemas === null){
+            return [];
+        }
+        const _schemas = schemas.records.map((e) => e.shortname);
+        return _schemas.filter((e) => !["meta_schema", "folder_rendering"].includes(e));
+    }
 </script>
 
 <Modal
@@ -430,7 +442,17 @@
         {:else if resourceType === ResourceAttachmentType.comment}
           <Input type={"textarea"} bind:value={payloadData} />
         {:else if resourceType === ResourceAttachmentType.csv}
-          <Label>CSV File</Label>
+
+          <Label>Schema</Label>
+          <Input bind:value={selectedSchema} type="select">
+            <option value={null}>{"None"}</option>
+            {#await query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 } ) then schemas}
+              {#each setSchemaItems(schemas) as schema}
+                <option value={schema}>{schema}</option>
+              {/each}
+            {/await}
+          </Input>
+          <Label class="mt-3">CSV File</Label>
           <Input
             bind:files={payloadFiles}
             type="file"
@@ -581,53 +603,57 @@
                 ResourceType.parquet,
                 ResourceType.sqlite,
             ].includes(attachment.resource_type)}
-                {#if [ResourceType.parquet, ResourceType.csv].includes(attachment.resource_type)}
-                  <table class="table table-striped table-sm">
-                    <thead>
-                    <tr>
-                      {#each Object.keys(attachment.dataAsset[0]) as header (header)}
-                        <th>{header}</th>
-                      {/each}
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {#each attachment.dataAsset as item }
+                {#if (attachment.dataAsset)}
+                  {#if [ResourceType.parquet, ResourceType.csv].includes(attachment.resource_type)}
+                    <table class="table table-striped table-sm">
+                      <thead>
                       <tr>
-                        {#each Object.keys(attachment.dataAsset[0]) as key (key)}
-                          <td>
-                            {item[key]}
-                          </td>
+                        {#each Object.keys(attachment.dataAsset[0]) as header (header)}
+                          <th>{header}</th>
                         {/each}
                       </tr>
-                    {/each}
-                    </tbody>
-                  </table>
-                {:else if attachment.resource_type === ResourceType.sqlite}
-                  <Col>
-                  {#each attachment.dataAsset ?? [] as dataAsset}
-                      <h3>{dataAsset.table_name}</h3>
-                      <table class="table table-striped table-sm">
-                        <thead>
+                      </thead>
+                      <tbody>
+                      {#each attachment.dataAsset as item}
                         <tr>
-                          {#each Object.keys(dataAsset.rows[0]) as header (header)}
-                            <th>{header}</th>
+                          {#each Object.keys(attachment.dataAsset[0]) as key (key)}
+                            <td>
+                              {item[key]}
+                            </td>
                           {/each}
                         </tr>
-                        </thead>
-                        <tbody>
-                        {#each dataAsset.rows as item }
+                      {/each}
+                      </tbody>
+                    </table>
+                  {:else if attachment.resource_type === ResourceType.sqlite}
+                    <Col>
+                    {#each attachment.dataAsset ?? [] as dataAsset}
+                        <h3>{dataAsset.table_name}</h3>
+                        <table class="table table-striped table-sm">
+                          <thead>
                           <tr>
-                            {#each Object.keys(dataAsset.rows[0]) as key (key)}
-                              <td>
-                                {item[key]}
-                              </td>
+                            {#each Object.keys(dataAsset.rows[0]) as header (header)}
+                              <th>{header}</th>
                             {/each}
                           </tr>
-                        {/each}
-                        </tbody>
-                      </table>
-                  {/each}
-                  </Col>
+                          </thead>
+                          <tbody>
+                          {#each dataAsset.rows as item }
+                            <tr>
+                              {#each Object.keys(dataAsset.rows[0]) as key (key)}
+                                <td>
+                                  {item[key]}
+                                </td>
+                              {/each}
+                            </tr>
+                          {/each}
+                          </tbody>
+                        </table>
+                    {/each}
+                    </Col>
+                  {:else if attachment.resource_type === ResourceType.jsonl}
+                    <Prism code={attachment.dataAsset} />
+                  {/if}
                 {/if}
               {:else}
                 {#await get_attachment_content(
