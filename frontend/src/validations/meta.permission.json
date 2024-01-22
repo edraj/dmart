@@ -2,8 +2,7 @@
   "type": "object",
   "properties": {
     "uuid": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "shortname": {
       "type": "string"
@@ -16,12 +15,10 @@
       "items": {}
     },
     "created_at": {
-      "type": "string",
-      "format": "date-time"
+      "type": "string"
     },
     "updated_at": {
-      "type": "string",
-      "format": "date-time"
+      "type": "string"
     },
     "owner_shortname": {
       "type": "string"
