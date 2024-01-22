@@ -140,7 +140,9 @@
 
   let payloadFiles: FileList;
   // editors
+  let jseModalMetaRef;
   let jseModalMeta: any = { text: "{}" };
+  let jseModalContentRef;
   let jseModalContent: any = { text: "{}" };
 
   let allowedResourceTypes = [ResourceType.content];
@@ -435,11 +437,15 @@
           response = await request(request_body);
       }
       else if (new_resource_type === ResourceType.user){
+          if (jseModalContentRef?.validate()?.validationErrors){
+              return
+          }
+
           // if (!schemaFormRefModal.reportValidity()) {
           //     return;
           // }
 
-          let body;
+          let body: any;
           // if (isContentEntryInForm){
           //     body = selectedSchemaData.json
           //         ? structuredClone(selectedSchemaData.json)
@@ -454,11 +460,11 @@
           // }
 
 
-          if (body.attributes?.password===null){
+          if (!body?.password){
               showToast(Level.warn, "Password must be provided!");
               return;
           } else {
-              if (!passwordRegExp.test(body.attributes?.password)){
+              if (!passwordRegExp.test(body?.password)){
                   showToast(Level.warn, passwordWrongExp);
                   return;
               }
@@ -470,41 +476,46 @@
               return;
           }
 
-          if (body.attributes.email) {
+          if (body.email) {
               const emailStatus: any = await check_existing("email", body.attributes.email);
               if (!emailStatus.attributes.unique) {
                   showToast(Level.warn, "Email already exists!");
                   return;
               }
           } else {
-              delete body.attributes.email;
+              delete body.email;
           }
 
-          if (body.attributes.msisdn) {
+          if (body.msisdn) {
               const msisdnStatus: any = await check_existing("msisdn", body.attributes.msisdn);
               if (!msisdnStatus.attributes.unique) {
                   showToast(Level.warn, "MSISDN already exists!");
                   return;
               }
           } else {
-              delete body.attributes.msisdn;
+              delete body.msisdn;
           }
 
-          if (!body.shortname){
-              body.shortname = contentShortname;
+          if (body.is_active === undefined){
+              body.is_active = true;
           }
-          if (body.attributes.is_active === undefined){
-              body.attributes.is_active = true;
+          if (body.invitation === undefined){
+              body.invitation = "sysadmin";
           }
-          if (body.attributes.invitation === undefined){
-              body.attributes.invitation = "sysadmin";
+          if (!!body.type === false){
+              body.type = "web";
+          }
+          if (!!body.language === false){
+              delete body.language;
           }
 
-          body.subpath = "users";
-          body.resource_type = "user";
-
-          response = await create_user(body);
-
+          const request = {
+              shortname: contentShortname,
+              resource_type: "user",
+              subpath: "users",
+              attributes: body
+          }
+          response = await create_user(request);
       }
       else if (entryType === "content") {
           if (
@@ -512,6 +523,9 @@
           ) {
               let body: any;
               if (selectedContentType === "json") {
+                  if (jseModalContentRef?.validate()?.validationErrors){
+                      return
+                  }
                   // if (isContentEntryInForm){
                   //     if (
                   //         selectedSchemaContent != null &&
@@ -743,11 +757,12 @@
   function setPrepModalContentPayloadFromLocalSchema(){
       let meta: any = {};
       if (new_resource_type === ResourceType.user) {
-          meta = metaUserSchema;
+          meta = structuredClone(metaUserSchema);
           delete meta.properties.uuid
           delete meta.properties.shortname
           delete meta.properties.created_at
           delete meta.properties.updated_at
+          delete meta.properties.payload
           // selectedSchemaContent = meta
           jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
           // jseContentRef.set({text: generateObjectFromSchema(meta)})
@@ -769,6 +784,7 @@
           delete meta.properties.uuid
           delete meta.properties.shortname
           delete meta.properties.created_at
+          delete meta.properties.updated_at
           delete meta.properties.updated_at
           meta.required = meta.required.filter(item => !["uuid", "shortname", "created_at", "updated_at"].includes(item))
           // jseContent.json = generateObjectFromSchema(meta)
@@ -803,9 +819,22 @@
         showToast(Level.warn, `Can't load the schema ${selectedSchema} !`);
         return
     }
-    const _schema = schemaContent.payload.body;
+    let _schema = schemaContent.payload.body;
+    if (new_resource_type === ResourceType.user){
+        const _metaUserSchema = structuredClone(metaUserSchema);
+        delete _metaUserSchema.properties.uuid
+        delete _metaUserSchema.properties.shortname
+        delete _metaUserSchema.properties.created_at
+        delete _metaUserSchema.properties.updated_at
+        delete _metaUserSchema.properties.payload.properties.last_validated
+        delete _metaUserSchema.properties.payload.properties.validation_status
+        _metaUserSchema.properties.payload.properties.body = _schema;
+        _schema = _metaUserSchema;
+    }
     validatorModalContent = createAjvValidator({ schema:  _schema });
-    const body = generateObjectFromSchema(structuredClone(_schema));
+    const body: any = generateObjectFromSchema(structuredClone(_schema));
+    body.payload.content_type = "json";
+    body.payload.schema_shortname = selectedSchema;
     jseModalContent = {text: JSON.stringify(body,null,2)};
     oldSelectedSchema = selectedSchema;
   }
@@ -984,6 +1013,7 @@
 <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
 
             <JSONEditor
+              bind:this={jseModalContentRef}
               bind:content={jseModalContent}
               bind:validator={validatorModalContent}
               onRenderMenu={handleRenderMenu}
