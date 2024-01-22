@@ -1356,7 +1356,7 @@
         {#if (resource_type===ResourceType.ticket)}
           <TicketEntryRenderer {space_name} {subpath} bind:entry />
         {:else if (resource_type===ResourceType.user)}
-          <UserEntryRenderer {space_name} {subpath} bind:entry />
+          <UserEntryRenderer {space_name} {subpath} bind:entry  bind:errorContent/>
         {/if}
         <JSONEditor
           bind:this={jseMetaRef}
