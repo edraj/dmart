@@ -77,6 +77,7 @@
   import ContentEditor from "@/components/management/ContentEditor.svelte";
   import TicketEntryRenderer from "@/components/management/renderers/TicketEntryRenderer.svelte";
   import WorkflowRenderer from "@/components/management/renderers/WorkflowRenderer.svelte";
+  import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
 
     // props
   export let entry: ResponseEntry;
@@ -107,9 +108,7 @@
   // editors
   //// meta
   let jseMeta: any = { text: "{}" };
-  let validatorMeta: Validator = createAjvValidator({
-      schema: metaContentSchema,
-  });
+  let validatorMeta: Validator = setMetaValidator();
   let oldJSEMeta = structuredClone(jseMeta);
   /// content (payload)
   let jseContent: any = { text: "{}" };
@@ -147,7 +146,18 @@
   let jseModalContent: any = { text: "{}" };
 
   let allowedResourceTypes = [ResourceType.content];
-
+  function setMetaValidator(): Validator {
+      let schema = {}
+      switch (resource_type){
+          case ResourceType.user: schema=metaUserSchema; break;
+          case ResourceType.permission: schema=metaPermissionSchema; break;
+          case ResourceType.role: schema=metaRoleSchema; break;
+          default: schema=structuredClone($metadata); break;
+      }
+      return createAjvValidator({
+          schema: schema,
+      });
+  }
   onMount(async () => {
       const cpy = structuredClone(entry);
       if (entry?.payload) {
@@ -824,7 +834,7 @@
               //     text: JSON.stringify(generateObjectFromSchema(meta ?? {}),null,2)
               // })
           }
-          console.log({jseModalContent})
+
           jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
           if (meta.required) {
               meta.required = meta.required.filter(item => !["uuid", "shortname", "created_at", "updated_at"].includes(item))
@@ -1346,7 +1356,7 @@
         {#if (resource_type===ResourceType.ticket)}
           <TicketEntryRenderer {space_name} {subpath} bind:entry />
         {:else if (resource_type===ResourceType.user)}
-          <TicketEntryRenderer {space_name} {subpath} bind:entry />
+          <UserEntryRenderer {space_name} {subpath} bind:entry />
         {/if}
         <JSONEditor
           bind:this={jseMetaRef}
