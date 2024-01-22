@@ -1,41 +1,36 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
-  import {
-      QueryType,
-      RequestType,
-      ResourceType,
-      ResponseEntry,
-      Status,
-      query,
-      request, check_existing, passwordRegExp, passwordWrongExp,
-  } from "@/dmart";
-  import {
-    Form,
-    FormGroup,
-    Button,
-    Label,
-    Input,
-  } from "sveltestrap";
-  import {
-    createAjvValidator,
-    Validator,
-  } from "svelte-jsoneditor";
-  import { status_line } from "@/stores/management/status_line";
-  import { showToast, Level } from "@/utils/toast";
-  import "bootstrap";
-  import { isDeepEqual, removeEmpty } from "@/utils/compare";
-  import metaUserSchema from "@/validations/meta.user.json";
-  import { toast } from "@zerodevx/svelte-toast";
-  import ToastActionComponent from "@/components/management/ToastActionComponent.svelte";
-  import { goto } from "@roxi/routify";
-  import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
-  import {REGEX} from "@/utils/regex";
+    import {onDestroy, onMount} from "svelte";
+    import {
+        check_existing,
+        passwordRegExp,
+        passwordWrongExp,
+        query,
+        QueryType,
+        request,
+        RequestType,
+        ResourceType,
+        ResponseEntry,
+        Status,
+    } from "@/dmart";
+    import {Button, Form, FormGroup, Input, Label,} from "sveltestrap";
+    import {createAjvValidator, Validator,} from "svelte-jsoneditor";
+    import {status_line} from "@/stores/management/status_line";
+    import {Level, showToast} from "@/utils/toast";
+    import "bootstrap";
+    import {isDeepEqual, removeEmpty} from "@/utils/compare";
+    import metaUserSchema from "@/validations/meta.user.json";
+    import {toast} from "@zerodevx/svelte-toast";
+    import ToastActionComponent from "@/components/management/ToastActionComponent.svelte";
+    import {goto} from "@roxi/routify";
+    import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
+    import {REGEX} from "@/utils/regex";
 
-  export let entry: ResponseEntry;
+    export let entry: ResponseEntry;
   export let space_name: string;
   export let subpath: string;
-  export let resource_type: ResourceType;
-  export let errorContent: any;
+
+  const resource_type: ResourceType = ResourceType.user;
+
 
   let contentMeta: any = { json: {}, text: undefined };
   let validatorMeta: Validator = createAjvValidator({ schema: metaUserSchema });
