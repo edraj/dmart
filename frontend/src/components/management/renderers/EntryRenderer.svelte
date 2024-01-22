@@ -1,83 +1,80 @@
 <script lang="ts">
-  import {onDestroy, onMount} from "svelte";
-  import {
-      check_existing,
-      ContentType,
-      create_user,
-      csv,
-      passwordRegExp,
-      passwordWrongExp,
-      query,
-      QueryType,
-      request,
-      RequestType,
-      ResourceType,
-      ResponseEntry,
-      retrieve_entry,
-      space,
-      Status,
-      upload_with_payload,
-  } from "@/dmart";
-  import {
-      Alert,
-      Button,
-      ButtonGroup,
-      Form,
-      FormGroup,
-      Input,
-      Label,
-      Modal,
-      ModalBody,
-      ModalFooter,
-      ModalHeader,
-      Nav,
-      Row,
-      TabContent,
-      TabPane
-  } from "sveltestrap";
-  import Icon from "../../Icon.svelte";
-  import {_} from "@/i18n";
-  import ListView from "../ListView.svelte";
-  import Prism from "@/components/Prism.svelte";
-  import {createAjvValidator, JSONEditor, Mode, Validator} from "svelte-jsoneditor";
-  import {status_line} from "@/stores/management/status_line";
-  import {authToken} from "@/stores/management/auth";
-  import {timeAgo} from "@/utils/timeago";
-  import {Level, showToast} from "@/utils/toast";
-  import {faSave} from "@fortawesome/free-regular-svg-icons";
-  import refresh_spaces from "@/stores/management/refresh_spaces";
-  import {website} from "@/config";
-  import HtmlEditor from "../editors/HtmlEditor.svelte";
-  import MarkdownEditor from "../editors/MarkdownEditor.svelte";
-  import metaContentSchema from "@/validations/meta.content.json";
-  import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
-  import checkAccess from "@/utils/checkAccess";
-  import {fade} from "svelte/transition";
-  import BreadCrumbLite from "../BreadCrumbLite.svelte";
-  import downloadFile from "@/utils/downloadFile";
-  import {schemaVisualizationEncoder} from "@/utils/plantUML";
-  import SchemaForm from "svelte-jsonschema-form";
-  import Table2Cols from "@/components/management/Table2Cols.svelte";
-  import Attachments from "@/components/management/Attachments.svelte";
-  import HistoryListView from "@/components/management/HistoryListView.svelte";
-  import {marked} from "marked";
-  import {
-      generateObjectFromSchema,
-      get_schema,
-      managementEntities,
-      resolveResourceType
-  } from "@/utils/renderer/rendererUtils";
-  import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
-  import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
-  import {metadata} from "@/stores/management/metadata";
-  import metaUserSchema from "@/validations/meta.user.json";
-  import metaRoleSchema from "@/validations/meta.role.json";
-  import metaPermissionSchema from "@/validations/meta.permission.json";
-  import PlantUML from "@/components/management/PlantUML.svelte";
-  import ContentEditor from "@/components/management/ContentEditor.svelte";
-  import TicketEntryRenderer from "@/components/management/renderers/TicketEntryRenderer.svelte";
-  import WorkflowRenderer from "@/components/management/renderers/WorkflowRenderer.svelte";
-  import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
+    import {onDestroy, onMount} from "svelte";
+    import {
+        check_existing,
+        ContentType,
+        create_user,
+        csv,
+        passwordRegExp,
+        passwordWrongExp,
+        query,
+        QueryType,
+        request,
+        RequestType,
+        ResourceType,
+        ResponseEntry,
+        retrieve_entry,
+        space,
+        Status,
+        upload_with_payload,
+    } from "@/dmart";
+    import {
+        Alert,
+        Button,
+        ButtonGroup,
+        Form,
+        FormGroup,
+        Input,
+        Label,
+        Modal,
+        ModalBody,
+        ModalFooter,
+        ModalHeader,
+        Nav,
+        Row,
+        TabContent,
+        TabPane
+    } from "sveltestrap";
+    import Icon from "../../Icon.svelte";
+    import {_} from "@/i18n";
+    import ListView from "../ListView.svelte";
+    import Prism from "@/components/Prism.svelte";
+    import {createAjvValidator, JSONEditor, Mode, Validator} from "svelte-jsoneditor";
+    import {status_line} from "@/stores/management/status_line";
+    import {authToken} from "@/stores/management/auth";
+    import {timeAgo} from "@/utils/timeago";
+    import {Level, showToast} from "@/utils/toast";
+    import {faSave} from "@fortawesome/free-regular-svg-icons";
+    import refresh_spaces from "@/stores/management/refresh_spaces";
+    import {website} from "@/config";
+    import HtmlEditor from "../editors/HtmlEditor.svelte";
+    import MarkdownEditor from "../editors/MarkdownEditor.svelte";
+    import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
+    import checkAccess from "@/utils/checkAccess";
+    import {fade} from "svelte/transition";
+    import BreadCrumbLite from "../BreadCrumbLite.svelte";
+    import downloadFile from "@/utils/downloadFile";
+    import SchemaForm from "svelte-jsonschema-form";
+    import Table2Cols from "@/components/management/Table2Cols.svelte";
+    import Attachments from "@/components/management/Attachments.svelte";
+    import HistoryListView from "@/components/management/HistoryListView.svelte";
+    import {marked} from "marked";
+    import {
+        generateObjectFromSchema,
+        managementEntities,
+        resolveResourceType
+    } from "@/utils/renderer/rendererUtils";
+    import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
+    import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
+    import {metadata} from "@/stores/management/metadata";
+    import metaUserSchema from "@/validations/meta.user.json";
+    import metaRoleSchema from "@/validations/meta.role.json";
+    import metaPermissionSchema from "@/validations/meta.permission.json";
+    import PlantUML from "@/components/management/PlantUML.svelte";
+    import ContentEditor from "@/components/management/ContentEditor.svelte";
+    import TicketEntryRenderer from "@/components/management/renderers/TicketEntryRenderer.svelte";
+    import WorkflowRenderer from "@/components/management/renderers/WorkflowRenderer.svelte";
+    import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
 
     // props
   export let entry: ResponseEntry;
@@ -112,6 +109,7 @@
   let oldJSEMeta = structuredClone(jseMeta);
   /// content (payload)
   let jseContent: any = { text: "{}" };
+  let validatorModalContent: Validator = createAjvValidator({ schema: {} });
   let validatorContent: Validator = createAjvValidator({ schema: {} });
   let oldJSEContent = { json: {}, text: undefined };
   /// schema
@@ -142,7 +140,9 @@
 
   let payloadFiles: FileList;
   // editors
+  let jseModalMetaRef;
   let jseModalMeta: any = { text: "{}" };
+  let jseModalContentRef;
   let jseModalContent: any = { text: "{}" };
 
   let allowedResourceTypes = [ResourceType.content];
@@ -162,9 +162,9 @@
       const cpy = structuredClone(entry);
       if (entry?.payload) {
           if (entry?.payload?.content_type === "json") {
-              jseContent = {
+              jseContentRef.set({
                   text: JSON.stringify(cpy?.payload?.body ?? {}, null, 2)
-              };
+              });
           } else {
               jseContent = cpy?.payload?.body;
           }
@@ -203,30 +203,25 @@
       await checkWorkflowsSubpath();
 
       if (entry?.payload?.schema_shortname) {
-          const _schema = await get_schema(space_name, entry?.payload?.schema_shortname);
+          const entrySchema = entry?.payload?.schema_shortname;
+          let _schema: any = null;
+
+          _schema = await retrieve_entry(
+              ResourceType.schema,
+              ["folder_rendering"].includes(entrySchema) ? "management" : space_name,
+              "schema",
+              entrySchema,
+              true
+          );
+
           if (_schema){
-              schema = _schema.schema;
-              validatorContent = _schema.validator;
+              schema = _schema.payload?.body;
+              validatorContent = createAjvValidator({schema});
+          }
+          else {
+              showToast(Level.warn, `Can't load the schema ${entry?.payload?.schema_shortname} !`);
           }
       }
-
-
-      if (selectedSchema==="workflow"){
-          const workflowSchema = await retrieve_entry(ResourceType.schema, space_name, "schema", "workflow", true, false);
-          // selectedSchemaContent.properties.payload = workflowSchema?.payload?.body ?? {};
-          // cleanUpSchema(selectedSchemaContent.properties);
-          validatorContent = createAjvValidator({ schema:  workflowSchema });
-          const body = generateObjectFromSchema(structuredClone(workflowSchema));
-          jseContent.json.payload.body = body ?? {};
-
-            // jseContentRef.set({
-            //     text: JSON.stringify({
-            //
-            //     },null,2)
-            // });
-          // selectedSchemaData = structuredClone(jseContent);
-      }
-
 
       status_line.set(
           `<small>Last updated: <strong>${timeAgo(
@@ -442,11 +437,15 @@
           response = await request(request_body);
       }
       else if (new_resource_type === ResourceType.user){
+          if (jseModalContentRef?.validate()?.validationErrors){
+              return
+          }
+
           // if (!schemaFormRefModal.reportValidity()) {
           //     return;
           // }
 
-          let body;
+          let body: any;
           // if (isContentEntryInForm){
           //     body = selectedSchemaData.json
           //         ? structuredClone(selectedSchemaData.json)
@@ -461,11 +460,11 @@
           // }
 
 
-          if (body.attributes?.password===null){
+          if (!body?.password){
               showToast(Level.warn, "Password must be provided!");
               return;
           } else {
-              if (!passwordRegExp.test(body.attributes?.password)){
+              if (!passwordRegExp.test(body?.password)){
                   showToast(Level.warn, passwordWrongExp);
                   return;
               }
@@ -477,41 +476,46 @@
               return;
           }
 
-          if (body.attributes.email) {
+          if (body.email) {
               const emailStatus: any = await check_existing("email", body.attributes.email);
               if (!emailStatus.attributes.unique) {
                   showToast(Level.warn, "Email already exists!");
                   return;
               }
           } else {
-              delete body.attributes.email;
+              delete body.email;
           }
 
-          if (body.attributes.msisdn) {
+          if (body.msisdn) {
               const msisdnStatus: any = await check_existing("msisdn", body.attributes.msisdn);
               if (!msisdnStatus.attributes.unique) {
                   showToast(Level.warn, "MSISDN already exists!");
                   return;
               }
           } else {
-              delete body.attributes.msisdn;
+              delete body.msisdn;
           }
 
-          if (!body.shortname){
-              body.shortname = contentShortname;
+          if (body.is_active === undefined){
+              body.is_active = true;
           }
-          if (body.attributes.is_active === undefined){
-              body.attributes.is_active = true;
+          if (body.invitation === undefined){
+              body.invitation = "sysadmin";
           }
-          if (body.attributes.invitation === undefined){
-              body.attributes.invitation = "sysadmin";
+          if (!!body.type === false){
+              body.type = "web";
+          }
+          if (!!body.language === false){
+              delete body.language;
           }
 
-          body.subpath = "users";
-          body.resource_type = "user";
-
-          response = await create_user(body);
-
+          const request = {
+              shortname: contentShortname,
+              resource_type: "user",
+              subpath: "users",
+              attributes: body
+          }
+          response = await create_user(request);
       }
       else if (entryType === "content") {
           if (
@@ -519,6 +523,9 @@
           ) {
               let body: any;
               if (selectedContentType === "json") {
+                  if (jseModalContentRef?.validate()?.validationErrors){
+                      return
+                  }
                   // if (isContentEntryInForm){
                   //     if (
                   //         selectedSchemaContent != null &&
@@ -747,6 +754,91 @@
       contentShortname = "";
   };
 
+  function setPrepModalContentPayloadFromLocalSchema(){
+      let meta: any = {};
+      if (new_resource_type === ResourceType.user) {
+          meta = structuredClone(metaUserSchema);
+          delete meta.properties.uuid
+          delete meta.properties.shortname
+          delete meta.properties.created_at
+          delete meta.properties.updated_at
+          delete meta.properties.payload
+          // selectedSchemaContent = meta
+          jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
+          // jseContentRef.set({text: generateObjectFromSchema(meta)})
+          validatorModalContent = createAjvValidator({schema: meta});
+      }
+      else if (new_resource_type === ResourceType.permission) {
+          meta = metaPermissionSchema;
+          delete meta.properties.uuid
+          delete meta.properties.shortname
+          delete meta.properties.created_at
+          delete meta.properties.updated_at
+          // selectedSchemaContent = meta
+          // jseContent.json = generateObjectFromSchema(meta)
+          jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
+          validatorModalContent = createAjvValidator({schema: meta});
+      }
+      else if (new_resource_type === ResourceType.role) {
+          meta = metaRoleSchema;
+          delete meta.properties.uuid
+          delete meta.properties.shortname
+          delete meta.properties.created_at
+          delete meta.properties.updated_at
+          delete meta.properties.updated_at
+          meta.required = meta.required.filter(item => !["uuid", "shortname", "created_at", "updated_at"].includes(item))
+          // jseContent.json = generateObjectFromSchema(meta)
+      }
+      else {
+          if (schema) {
+              jseModalContent = {text: JSON.stringify(generateObjectFromSchema(schema), null, 2)}
+              if (meta.required) {
+                  meta.required = meta.required.filter(item => !["uuid", "shortname", "created_at", "updated_at"].includes(item))
+              }
+              validatorModalContent = createAjvValidator({schema: schema});
+              old_new_resource_type = new_resource_type;
+          }
+      }
+
+  }
+  async function setPrepModalContentPayloadFromFetchedSchema() {
+    let schemaContent;
+    if (["folder_rendering"].includes(selectedSchema)) {
+        schemaContent = await retrieve_entry(
+            ResourceType.schema,
+            "management",
+            "schema",
+            selectedSchema,
+            true
+        );
+    }
+    else {
+        schemaContent = await retrieve_entry(ResourceType.schema, space_name, "schema", selectedSchema, true, false);
+    }
+    if (schemaContent === null) {
+        showToast(Level.warn, `Can't load the schema ${selectedSchema} !`);
+        return
+    }
+    let _schema = schemaContent.payload.body;
+    if (new_resource_type === ResourceType.user){
+        const _metaUserSchema = structuredClone(metaUserSchema);
+        delete _metaUserSchema.properties.uuid
+        delete _metaUserSchema.properties.shortname
+        delete _metaUserSchema.properties.created_at
+        delete _metaUserSchema.properties.updated_at
+        delete _metaUserSchema.properties.payload.properties.last_validated
+        delete _metaUserSchema.properties.payload.properties.validation_status
+        _metaUserSchema.properties.payload.properties.body = _schema;
+        _schema = _metaUserSchema;
+    }
+    validatorModalContent = createAjvValidator({ schema:  _schema });
+    const body: any = generateObjectFromSchema(structuredClone(_schema));
+    body.payload.content_type = "json";
+    body.payload.schema_shortname = selectedSchema;
+    jseModalContent = {text: JSON.stringify(body,null,2)};
+    oldSelectedSchema = selectedSchema;
+  }
+
   function setSchemaItems(schemas): Array<string> {
       if (schemas === null){
           return [];
@@ -771,121 +863,20 @@
           jseModalContent = "";
       }
   }
+
   let old_new_resource_type = ""
   $: {
       if (old_new_resource_type!==new_resource_type){
-          let meta: any = {};
-          if (new_resource_type === ResourceType.user) {
-              meta = metaUserSchema;
-              delete meta.properties.uuid
-              delete meta.properties.shortname
-              delete meta.properties.created_at
-              delete meta.properties.updated_at
-              // selectedSchemaContent = meta
-              jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
-              // jseContentRef.set({text: generateObjectFromSchema(meta)})
-              validatorContent = createAjvValidator({schema: meta});
-          } else if (new_resource_type === ResourceType.permission) {
-              meta = metaPermissionSchema;
-              delete meta.properties.uuid
-              delete meta.properties.shortname
-              delete meta.properties.created_at
-              delete meta.properties.updated_at
-              // selectedSchemaContent = meta
-              // jseContent.json = generateObjectFromSchema(meta)
-              jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
-              validatorContent = createAjvValidator({schema: meta});
-          } else if (new_resource_type === ResourceType.role) {
-              meta = metaRoleSchema;
-              delete meta.properties.uuid
-              delete meta.properties.shortname
-              delete meta.properties.created_at
-              delete meta.properties.updated_at
-              meta.required = meta.required.filter(item => !["uuid", "shortname", "created_at", "updated_at"].includes(item))
-              // jseContent.json = generateObjectFromSchema(meta)
-          } else {
-              meta = structuredClone($metadata);
-              if (resource_type === ResourceType.ticket) {
-                  meta.properties = {
-                      ...meta.properties,
-                      "is_open": {
-                          "type": "boolean"
-                      },
-                      "workflow_shortname": {
-                          "type": "string"
-                      },
-                      "state": {
-                          "type": "string"
-                      },
-                      "reporter": {
-                          "type": "string"
-                      },
-                      "resolution_reason": {
-                          "type": "string"
-                      },
-                      "receiver": {
-                          "type": "string"
-                      }
-                  }
-              }
-              // selectedSchemaContent = meta ?? {};
-              // jseMeta.text = JSON.stringify(generateObjectFromSchema(meta ?? {}),null,2)
-              // jseMetaRef.set({
-              //     text: JSON.stringify(generateObjectFromSchema(meta ?? {}),null,2)
-              // })
-          }
-
-          jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
-          if (meta.required) {
-              meta.required = meta.required.filter(item => !["uuid", "shortname", "created_at", "updated_at"].includes(item))
-          }
-          validatorContent = createAjvValidator({schema: meta});
-          old_new_resource_type = new_resource_type;
+        setPrepModalContentPayloadFromLocalSchema();
       }
   }
-  let oldSelectedSchema = "oolldd";
 
-  // $: {
-  //   // if (selectedSchema!=="workflow") {
-  //       if (oldSelectedSchema !== selectedSchema && selectedSchema !== '') {
-  //           (async () => {
-  //               let _selectedSchemaContent;
-  //               if (["folder_rendering"].includes(selectedSchema)) {
-  //                   _selectedSchemaContent = await retrieve_entry(
-  //                       ResourceType.schema,
-  //                       "management",
-  //                       "schema",
-  //                       selectedSchema,
-  //                       true
-  //                   );
-  //               }
-  //               else {
-  //                   _selectedSchemaContent = await retrieve_entry(
-  //                       ResourceType.schema,
-  //                       space_name,
-  //                       "schema",
-  //                       selectedSchema,
-  //                       true
-  //                   );
-  //               }
-  //               // selectedSchemaContent.properties.payload = _selectedSchemaContent?.payload?.body ?? {};
-  //               // cleanUpSchema(selectedSchemaContent.properties);
-  //               // validatorContent = createAjvValidator({schema: selectedSchemaContent});
-  //               // const body = generateObjectFromSchema(structuredClone(selectedSchemaContent));
-  //               // jseContent.json = undefined
-  //               // jseContent.text = JSON.stringify(generateObjectFromSchema(_selectedSchemaContent.payload.body) ?? {});
-  //               // jseContent.json = generateObjectFromSchema(_selectedSchemaContent.payload.body) ?? {};
-  //               // jseContent = structuredClone(jseContent);
-  //               jseModalContent = {text: "{}"}
-  //
-  //               // jseContentRef.set({
-  //               //     text: JSON.stringify(generateObjectFromSchema(_selectedSchemaContent.payload.body) ?? {}, null, 2)
-  //               // });
-  //           })();
-  //           oldSelectedSchema = selectedSchema;
-  //       }
-  //   // }
-  // }
+  let oldSelectedSchema = "oolldd";
+  $: {
+      if (selectedSchema && selectedSchema!==oldSelectedSchema){
+          setPrepModalContentPayloadFromFetchedSchema();
+      }
+  }
 
   function handleCreateEntryModal() {
       entryType = "content";
@@ -894,43 +885,9 @@
           space_name,
           subpath,
           allowedResourceTypes.length ? allowedResourceTypes[0] : ResourceType.content
-      )
-
-      jseModalContent = {
-          text: JSON.stringify({}, null, 2)
-      }
+      );
+      setPrepModalContentPayloadFromLocalSchema();
   }
-
-  // $: {
-      // if ( typeof(jseContent) === "object" && !isDeepEqual(jseContent, selectedSchemaData)) {
-      //     console.log({jseContent})
-      //     const _jseContent = jseContent.json
-      //         ? structuredClone(jseContent.json)
-      //         : JSON.parse(jseContent.text);
-      //     const _selectedSchemaData = selectedSchemaData.json
-      //         ? structuredClone(selectedSchemaData.json)
-      //         : JSON.parse(selectedSchemaData.text);
-      //
-      //     if (Object.keys(_selectedSchemaData?.json ?? {}).length){
-      //         // if (!isContentEntryInForm) {
-      //         //     jseContent = {
-      //         //         json: {
-      //         //             ..._jseContent,
-      //         //             ..._selectedSchemaData,
-      //         //         },
-      //         //         text: undefined
-      //         //     };
-      //         // }
-      //         // else {
-      //             // selectedSchemaData.json = {
-      //             //     ..._selectedSchemaData,
-      //             //     ..._jseContent,
-      //             // };
-      //             // selectedSchemaData.text = undefined;
-      //         // }
-      //     }
-      // }
-  // }
 </script>
 
 <!--<svelte:window on:beforeunload={beforeUnload} />-->
@@ -1056,9 +1013,9 @@
 <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
 
             <JSONEditor
-              bind:this={jseContentRef}
+              bind:this={jseModalContentRef}
               bind:content={jseModalContent}
-              bind:validator={validatorContent}
+              bind:validator={validatorModalContent}
               onRenderMenu={handleRenderMenu}
               mode={Mode.text}
             />
@@ -1439,6 +1396,7 @@
           {/if}
           {#if entry.payload.content_type === "json" && typeof jseContent === "object" && jseContent !== null}
             <JSONEditor
+              bind:this={jseContentRef}
               bind:content={jseContent}
               bind:validator={validatorContent}
               onRenderMenu={handleRenderMenu}
