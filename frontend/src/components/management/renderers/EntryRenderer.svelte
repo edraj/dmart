@@ -790,7 +790,7 @@
           validatorModalContent = createAjvValidator({schema: meta});
       }
       else if (new_resource_type === ResourceType.permission) {
-          meta = metaPermissionSchema;
+          meta = structuredClone(metaPermissionSchema);
           delete meta.properties.uuid
           delete meta.properties.shortname
           delete meta.properties.created_at
@@ -801,14 +801,15 @@
           validatorModalContent = createAjvValidator({schema: meta});
       }
       else if (new_resource_type === ResourceType.role) {
-          meta = metaRoleSchema;
+          meta = structuredClone(metaRoleSchema);
           delete meta.properties.uuid
           delete meta.properties.shortname
           delete meta.properties.created_at
           delete meta.properties.updated_at
           delete meta.properties.updated_at
-          meta.required = meta.required.filter(item => !["uuid", "shortname", "created_at", "updated_at"].includes(item))
           // jseContent.json = generateObjectFromSchema(meta)
+          jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
+          validatorModalContent = createAjvValidator({schema: meta});
       }
       else {
           if (schema) {
@@ -856,6 +857,7 @@
         const body: any = generateObjectFromSchema(structuredClone(_schema));
         body.payload.content_type = "json";
         body.payload.schema_shortname = selectedSchema;
+        jseModalContent = {text: JSON.stringify(body,null,2)};
     }
     else
     {
