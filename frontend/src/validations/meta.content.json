@@ -1,6 +1,5 @@
 {
   "type": "object",
-  "additionalProperties": false,
   "properties": {
     "conditions": {
       "type": "array",
@@ -51,9 +50,6 @@
       "type": "string"
     },
     "updated_at": {
-      "type": "string"
-    },
-    "owner_shortname": {
       "type": "string"
     },
     "displayname": {
@@ -170,14 +166,5 @@
         "type": "object"
       }
     }
-  },
-  "required": [
-    "uuid",
-    "shortname",
-    "is_active",
-    "tags",
-    "created_at",
-    "updated_at",
-    "owner_shortname"
-  ]
+  }
 }

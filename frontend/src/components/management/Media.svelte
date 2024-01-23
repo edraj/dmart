@@ -33,8 +33,6 @@
     <br />
     <p style="margin: 0px"><b>Body:</b>{attributes.body}</p>
   </div>
-{:else if content_type.includes("json")}
-  <JSONEditor onRenderMenu={handleRenderMenu} mode={Mode.text} content={{ json: body, text: undefined }} readOnly={true} />
 {:else if content_type.includes("image")}
   <img src={url} alt={displayname} class="mw-100 border" />
 {:else if content_type.includes("audio")}
