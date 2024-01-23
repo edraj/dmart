@@ -166,13 +166,5 @@
         "type": "object"
       }
     }
-  },
-  "required": [
-    "uuid",
-    "shortname",
-    "is_active",
-    "tags",
-    "created_at",
-    "updated_at"
-  ]
+  }
 }

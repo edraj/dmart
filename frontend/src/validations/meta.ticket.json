@@ -110,12 +110,6 @@
     }
   },
   "required": [
-    "uuid",
-    "shortname",
-    "is_active",
-    "tags",
-    "created_at",
-    "updated_at",
     "payload",
     "state",
     "is_open",
