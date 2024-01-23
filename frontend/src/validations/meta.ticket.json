@@ -23,9 +23,6 @@
     "updated_at": {
       "type": "string"
     },
-    "owner_shortname": {
-      "type": "string"
-    },
     "displayname": {
       "type": "object",
       "properties": {
@@ -120,7 +117,6 @@
     "tags",
     "created_at",
     "updated_at",
-    "owner_shortname",
     "payload",
     "state",
     "is_open",

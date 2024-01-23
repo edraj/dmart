@@ -53,9 +53,6 @@
     "updated_at": {
       "type": "string"
     },
-    "owner_shortname": {
-      "type": "string"
-    },
     "displayname": {
       "type": "object",
       "properties": {
@@ -177,7 +174,6 @@
     "is_active",
     "tags",
     "created_at",
-    "updated_at",
-    "owner_shortname"
+    "updated_at"
   ]
 }

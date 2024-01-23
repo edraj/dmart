@@ -51,9 +51,6 @@
     "updated_at": {
       "type": "string"
     },
-    "owner_shortname": {
-      "type": "string"
-    },
     "payload": {
       "type": "object",
       "properties": {
