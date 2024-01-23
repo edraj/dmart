@@ -830,12 +830,18 @@
         delete _metaUserSchema.properties.payload.properties.validation_status
         _metaUserSchema.properties.payload.properties.body = _schema;
         _schema = _metaUserSchema;
+
+        validatorModalContent = createAjvValidator({ schema:  _schema });
+        const body: any = generateObjectFromSchema(structuredClone(_schema));
+        body.payload.content_type = "json";
+        body.payload.schema_shortname = selectedSchema;
     }
-    validatorModalContent = createAjvValidator({ schema:  _schema });
-    const body: any = generateObjectFromSchema(structuredClone(_schema));
-    body.payload.content_type = "json";
-    body.payload.schema_shortname = selectedSchema;
-    jseModalContent = {text: JSON.stringify(body,null,2)};
+    else
+    {
+        validatorModalContent = createAjvValidator({ schema:  _schema });
+        const body: any = generateObjectFromSchema(structuredClone(_schema));
+        jseModalContent = {text: JSON.stringify(body,null,2)};
+    }
     oldSelectedSchema = selectedSchema;
   }
 
@@ -886,7 +892,13 @@
           subpath,
           allowedResourceTypes.length ? allowedResourceTypes[0] : ResourceType.content
       );
-      setPrepModalContentPayloadFromLocalSchema();
+      if ([ResourceType.user,ResourceType.permission,ResourceType.role].includes(new_resource_type)){
+          setPrepModalContentPayloadFromLocalSchema();
+      }
+      else if (selectedSchema) {
+          setPrepModalContentPayloadFromFetchedSchema();
+      }
+
   }
 </script>
 
