@@ -1,6 +1,5 @@
 {
   "type": "object",
-  "additionalProperties": false,
   "properties": {
     "conditions": {
       "type": "array",
