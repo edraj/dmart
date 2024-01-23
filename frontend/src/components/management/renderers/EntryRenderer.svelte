@@ -477,7 +477,7 @@
           }
 
           if (body.email) {
-              const emailStatus: any = await check_existing("email", body.attributes.email);
+              const emailStatus: any = await check_existing("email", body.email);
               if (!emailStatus.attributes.unique) {
                   showToast(Level.warn, "Email already exists!");
                   return;
@@ -487,7 +487,7 @@
           }
 
           if (body.msisdn) {
-              const msisdnStatus: any = await check_existing("msisdn", body.attributes.msisdn);
+              const msisdnStatus: any = await check_existing("msisdn", body.msisdn);
               if (!msisdnStatus.attributes.unique) {
                   showToast(Level.warn, "MSISDN already exists!");
                   return;
@@ -518,34 +518,28 @@
           response = await create_user(request);
       }
       else if (entryType === "content") {
-          if (
-              [null, "json", "text", "html", "markdown"].includes(selectedContentType)
-          ) {
+          if (selectedContentType === "json") {
               let body: any;
-              if (selectedContentType === "json") {
-                  if (jseModalContentRef?.validate()?.validationErrors){
-                      return
-                  }
-                  // if (isContentEntryInForm){
-                  //     if (
-                  //         selectedSchemaContent != null &&
-                  //         selectedSchemaData.json
-                  //     ) {
-                  //         // if (!schemaFormRefModal.reportValidity()) {
-                  //         //     return;
-                  //         // }
-                  //         body = selectedSchemaData.json;
-                  //     }
-                  // }
-                  // else {
-                      body = jseModalContent.json
-                          ? structuredClone(jseModalContent.json)
-                          : JSON.parse(jseModalContent.text);
-                  // }
+
+              if (jseModalContentRef?.validate()?.validationErrors){
+                  return
               }
-              else {
-                  body = jseModalContent;
-              }
+              // if (isContentEntryInForm){
+              //     if (
+              //         selectedSchemaContent != null &&
+              //         selectedSchemaData.json
+              //     ) {
+              //         // if (!schemaFormRefModal.reportValidity()) {
+              //         //     return;
+              //         // }
+              //         body = selectedSchemaData.json;
+              //     }
+              // }
+              // else {
+                  body = jseModalContent.json
+                      ? structuredClone(jseModalContent.json)
+                      : JSON.parse(jseModalContent.text);
+              // }
 
               if (new_resource_type === ResourceType.role || new_resource_type === ResourceType.permission){
                   request_body = {
@@ -602,6 +596,28 @@
 
               }
               response = await request(request_body);
+          } else if (
+              ["text", "html", "markdown"].includes(selectedContentType)
+          ) {
+              request_body = {
+                  space_name,
+                  request_type: RequestType.create,
+                  records: [
+                      {
+                          resource_type: new_resource_type,
+                          shortname: contentShortname === "" ? "auto" : contentShortname,
+                          subpath,
+                          attributes: {
+                              is_active: true,
+                              payload: {
+                                  content_type: selectedContentType,
+                                  body: jseModalContent,
+                              }
+                          },
+                      },
+                  ],
+              };
+              response = await request(request_body);
           }
           else if (
               ["image", "python", "pdf", "audio", "video"].includes(
@@ -629,7 +645,12 @@
                   ? structuredClone(jseModalContent.json)
                   : JSON.parse(jseModalContent.text);
           // }
-
+          if (!!body.query.type===false){
+              body.query.type = "search"
+          }
+          if (!!body.sort_type===false){
+              body.sort_type = "ascending"
+          }
           request_body = {
               space_name,
               request_type: RequestType.create,
@@ -769,7 +790,7 @@
           validatorModalContent = createAjvValidator({schema: meta});
       }
       else if (new_resource_type === ResourceType.permission) {
-          meta = metaPermissionSchema;
+          meta = structuredClone(metaPermissionSchema);
           delete meta.properties.uuid
           delete meta.properties.shortname
           delete meta.properties.created_at
@@ -780,14 +801,15 @@
           validatorModalContent = createAjvValidator({schema: meta});
       }
       else if (new_resource_type === ResourceType.role) {
-          meta = metaRoleSchema;
+          meta = structuredClone(metaRoleSchema);
           delete meta.properties.uuid
           delete meta.properties.shortname
           delete meta.properties.created_at
           delete meta.properties.updated_at
           delete meta.properties.updated_at
-          meta.required = meta.required.filter(item => !["uuid", "shortname", "created_at", "updated_at"].includes(item))
           // jseContent.json = generateObjectFromSchema(meta)
+          jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
+          validatorModalContent = createAjvValidator({schema: meta});
       }
       else {
           if (schema) {
@@ -835,6 +857,7 @@
         const body: any = generateObjectFromSchema(structuredClone(_schema));
         body.payload.content_type = "json";
         body.payload.schema_shortname = selectedSchema;
+        jseModalContent = {text: JSON.stringify(body,null,2)};
     }
     else
     {
@@ -1388,24 +1411,6 @@
               <p>For some reason PDF is not rendered here properly.</p>
             </object>
           {/if}
-          {#if entry.payload.content_type === "markdown"}
-            <div class="d-flex justify-content-end">
-              <Button on:click={handleSave}>Save</Button>
-            </div>
-            <MarkdownEditor bind:content={jseContent} />
-          {/if}
-          {#if entry.payload.content_type === "html"}
-            <div class="d-flex justify-content-end">
-              <Button on:click={handleSave}>Save</Button>
-            </div>
-            <HtmlEditor bind:content={jseContent} />
-          {/if}
-          {#if entry.payload.content_type === "text"}
-            <div class="d-flex justify-content-end">
-              <Button on:click={handleSave}>Save</Button>
-            </div>
-            <Input class="mt-3" type="textarea" bind:value={jseContent} />
-          {/if}
           {#if entry.payload.content_type === "json" && typeof jseContent === "object" && jseContent !== null}
             <JSONEditor
               bind:this={jseContentRef}
@@ -1420,7 +1425,6 @@
                            body={entry.payload.body}
                            bind:jseContent />
           {/if}
-
           {#if errorContent}
             <h3 class="mt-3">Error:</h3>
             <Prism bind:code={errorContent} />

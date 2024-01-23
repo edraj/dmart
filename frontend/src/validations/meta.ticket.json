@@ -1,6 +1,5 @@
 {
   "type": "object",
-  "additionalProperties": false,
   "properties": {
     "uuid": {
       "type": "string"
@@ -21,9 +20,6 @@
       "type": "string"
     },
     "updated_at": {
-      "type": "string"
-    },
-    "owner_shortname": {
       "type": "string"
     },
     "displayname": {
@@ -114,13 +110,6 @@
     }
   },
   "required": [
-    "uuid",
-    "shortname",
-    "is_active",
-    "tags",
-    "created_at",
-    "updated_at",
-    "owner_shortname",
     "payload",
     "state",
     "is_open",
