@@ -20,9 +20,6 @@
     "updated_at": {
       "type": "string"
     },
-    "owner_shortname": {
-      "type": "string"
-    },
     "subpaths": {
       "type": "object",
       "properties": {
@@ -74,7 +71,6 @@
     "is_active",
     "created_at",
     "updated_at",
-    "owner_shortname",
     "subpaths",
     "resource_types",
     "actions",

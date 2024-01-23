@@ -20,9 +20,6 @@
     "updated_at": {
       "type": "string"
     },
-    "owner_shortname": {
-      "type": "string"
-    },
     "permissions": {
       "type": "array",
       "items": {
@@ -36,7 +33,6 @@
     "is_active",
     "created_at",
     "updated_at",
-    "owner_shortname",
     "permissions"
   ]
 }
