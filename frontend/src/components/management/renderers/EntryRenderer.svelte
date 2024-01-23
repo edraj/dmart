@@ -477,7 +477,7 @@
           }
 
           if (body.email) {
-              const emailStatus: any = await check_existing("email", body.attributes.email);
+              const emailStatus: any = await check_existing("email", body.email);
               if (!emailStatus.attributes.unique) {
                   showToast(Level.warn, "Email already exists!");
                   return;
@@ -487,7 +487,7 @@
           }
 
           if (body.msisdn) {
-              const msisdnStatus: any = await check_existing("msisdn", body.attributes.msisdn);
+              const msisdnStatus: any = await check_existing("msisdn", body.msisdn);
               if (!msisdnStatus.attributes.unique) {
                   showToast(Level.warn, "MSISDN already exists!");
                   return;
