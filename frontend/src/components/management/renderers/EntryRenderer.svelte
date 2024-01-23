@@ -518,34 +518,28 @@
           response = await create_user(request);
       }
       else if (entryType === "content") {
-          if (
-              [null, "json", "text", "html", "markdown"].includes(selectedContentType)
-          ) {
+          if (selectedContentType === "json") {
               let body: any;
-              if (selectedContentType === "json") {
-                  if (jseModalContentRef?.validate()?.validationErrors){
-                      return
-                  }
-                  // if (isContentEntryInForm){
-                  //     if (
-                  //         selectedSchemaContent != null &&
-                  //         selectedSchemaData.json
-                  //     ) {
-                  //         // if (!schemaFormRefModal.reportValidity()) {
-                  //         //     return;
-                  //         // }
-                  //         body = selectedSchemaData.json;
-                  //     }
-                  // }
-                  // else {
-                      body = jseModalContent.json
-                          ? structuredClone(jseModalContent.json)
-                          : JSON.parse(jseModalContent.text);
-                  // }
+
+              if (jseModalContentRef?.validate()?.validationErrors){
+                  return
               }
-              else {
-                  body = jseModalContent;
-              }
+              // if (isContentEntryInForm){
+              //     if (
+              //         selectedSchemaContent != null &&
+              //         selectedSchemaData.json
+              //     ) {
+              //         // if (!schemaFormRefModal.reportValidity()) {
+              //         //     return;
+              //         // }
+              //         body = selectedSchemaData.json;
+              //     }
+              // }
+              // else {
+                  body = jseModalContent.json
+                      ? structuredClone(jseModalContent.json)
+                      : JSON.parse(jseModalContent.text);
+              // }
 
               if (new_resource_type === ResourceType.role || new_resource_type === ResourceType.permission){
                   request_body = {
@@ -601,6 +595,28 @@
                   };
 
               }
+              response = await request(request_body);
+          } else if (
+              ["text", "html", "markdown"].includes(selectedContentType)
+          ) {
+              request_body = {
+                  space_name,
+                  request_type: RequestType.create,
+                  records: [
+                      {
+                          resource_type: new_resource_type,
+                          shortname: contentShortname === "" ? "auto" : contentShortname,
+                          subpath,
+                          attributes: {
+                              is_active: true,
+                              payload: {
+                                  content_type: selectedContentType,
+                                  body: jseModalContent,
+                              }
+                          },
+                      },
+                  ],
+              };
               response = await request(request_body);
           }
           else if (
@@ -1393,24 +1409,6 @@
               <p>For some reason PDF is not rendered here properly.</p>
             </object>
           {/if}
-          {#if entry.payload.content_type === "markdown"}
-            <div class="d-flex justify-content-end">
-              <Button on:click={handleSave}>Save</Button>
-            </div>
-            <MarkdownEditor bind:content={jseContent} />
-          {/if}
-          {#if entry.payload.content_type === "html"}
-            <div class="d-flex justify-content-end">
-              <Button on:click={handleSave}>Save</Button>
-            </div>
-            <HtmlEditor bind:content={jseContent} />
-          {/if}
-          {#if entry.payload.content_type === "text"}
-            <div class="d-flex justify-content-end">
-              <Button on:click={handleSave}>Save</Button>
-            </div>
-            <Input class="mt-3" type="textarea" bind:value={jseContent} />
-          {/if}
           {#if entry.payload.content_type === "json" && typeof jseContent === "object" && jseContent !== null}
             <JSONEditor
               bind:this={jseContentRef}
@@ -1425,7 +1423,6 @@
                            body={entry.payload.body}
                            bind:jseContent />
           {/if}
-
           {#if errorContent}
             <h3 class="mt-3">Error:</h3>
             <Prism bind:code={errorContent} />
