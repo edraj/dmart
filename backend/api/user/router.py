@@ -157,7 +157,7 @@ if settings.is_registrable:
             user.payload = core.Payload(
                 content_type=ContentType.json,
                 schema_shortname=schema_shortname,
-                body="",
+                body=user.payload.body if hasattr(user.payload,"body") else "",
             )
             if user.payload:
                 separate_payload_data = user.payload.body
