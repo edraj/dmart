@@ -531,6 +531,7 @@ class AccessControl:
                 continue
             perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
             perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
+            perm_key = perm_key.strip("/")
             if (
                 core.ConditionType.is_active in permission["conditions"]
                 and core.ConditionType.own in permission["conditions"]
