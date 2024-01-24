@@ -59,8 +59,8 @@
   }
 
   let ticketResolutions = [];
-  $:{
-      if (ticketStates.length){
+  $:{    
+      if ((ticketStates??[]).length){
           ticketResolutions = ticketPayload.states.filter((e) => e.state === ticket_status)[0]?.resolutions ?? [];
       }
   }
@@ -80,6 +80,7 @@
 <Form class="px-5 mb-5" on:submit={handleTicketSubmit}>
   {#await get_ticket_payload() then _}
     <FormGroup>
+      {#if ticketStates}
       <Label>State</Label>
       <!-- on:change={handleInputChange} -->
       <Input
@@ -90,10 +91,11 @@
         bind:value={ticket_status}
       >
         <option value={null}>Select next state</option>
-        {#each ticketStates.map((e) => e) as e}
+        {#each ticketStates as e}
           <option value={e.state} disabled={!e.roles.some((el) => userRoles.includes(el))}>{e.state}</option>
         {/each}
       </Input>
+      {/if}
     </FormGroup>
     {#key ticket_status}
       {#if ticketResolutions.length !== 0}
