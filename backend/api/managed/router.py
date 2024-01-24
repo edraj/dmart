@@ -731,9 +731,11 @@ async def serve_request(
                             subpath=record.subpath,
                             shortname=resource_obj.shortname,
                             action_type=core.ActionType.create,
-                            schema_shortname=record.attributes.get("payload", {}).get(
+                            schema_shortname=record.attributes["payload"].get(
                                 "schema_shortname", None
-                            ),
+                            )
+                            if record.attributes.get("payload")
+                            else None,
                             resource_type=record.resource_type,
                             user_shortname=owner_shortname,
                             attributes=record.attributes,

@@ -590,12 +590,16 @@ class RedisServices(object):
         is_active: bool,
         owner_shortname: str,
         owner_group_shortname: str | None,
+        entry_shortname: str | None = None
     ) -> list:
-        subpath_parts = subpath.split("/")
+        subpath_parts = list(set(subpath.split("/")))
         if subpath[0] == "/":
             subpath_parts[0] = "/"
         else:
             subpath_parts.insert(0, "/")
+            
+        if resource_type == ResourceType.folder and entry_shortname:
+            subpath_parts.append(entry_shortname)
 
         query_policies: list = []
         full_subpath = ""
@@ -655,6 +659,7 @@ class RedisServices(object):
             meta.is_active,
             meta.owner_shortname,
             meta.owner_group_shortname,
+            meta.shortname,
         )
         meta_json["subpath"] = subpath
         meta_json["branch_name"] = branch_name
@@ -715,6 +720,7 @@ class RedisServices(object):
             meta.is_active,
             meta.owner_shortname,
             meta.owner_group_shortname,
+            meta.shortname,
         )
         if not payload["query_policies"]:
             print(
@@ -1139,4 +1145,4 @@ class RedisServices(object):
     async def list_indices(self):
         x = self.client.ft().execute_command("FT._LIST")
         if x and isinstance(x, Awaitable): 
-            return await x
+            return await x 
