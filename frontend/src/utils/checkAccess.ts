@@ -52,7 +52,7 @@ export default function checkAccess(
   resourceType: string
 ): boolean {
   let permissions = {};
-  if (typeof localStorage !== 'undefined')
+  if (typeof localStorage !== "undefined")
     permissions = JSON.parse(localStorage.getItem("permissions"));
 
   if (permissions === null || Object.keys(permissions).length === 0) {
@@ -83,11 +83,9 @@ export default function checkAccess(
   }
   resultArray.push("__all_subpaths__");
   resultArray.push("/");
-
   for (const _subpath of resultArray) {
     for (const scopedPermissionsKey of scopedPermissionsKeys) {
       const key = `${space}:${_subpath}:${resourceType}`;
-
       if (checkWithMagicWords(key, scopedPermissionsKey)) {
         if (
           permissions[scopedPermissionsKey] &&
@@ -97,6 +95,35 @@ export default function checkAccess(
         }
         break;
       }
+    }
+  }
+
+  return false;
+}
+
+export function checkAccessv2(
+  action: string,
+  space: string,
+  subpath: string,
+  resourceType: string
+) {
+  const keys = [
+    `${space}:__all_subpaths__:${resourceType}`,
+    `__all_spaces__:__all_subpaths__:${resourceType}`,
+    `${space}:${subpath}:${resourceType}`,
+  ];
+
+  let permissions = {};
+  if (typeof localStorage !== "undefined"){
+    permissions = JSON.parse(localStorage.getItem("permissions"));
+  }
+  if (permissions === null || Object.keys(permissions).length === 0) {
+    return false;
+  }
+  
+  for (const key of keys) {
+    if (permissions[key]) {
+      return permissions[key].allowed_actions.includes(action);
     }
   }
 

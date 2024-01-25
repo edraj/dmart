@@ -1262,6 +1262,7 @@ async def update_state(
                 time = datetime.now().strftime("%Y%m%d%H%M%S")
                 new_version_flattend["comment"] = comment
                 payload = {
+                    "content_type": "comment",
                     "body": comment,
                     "state": ticket_obj.state,
                 }
