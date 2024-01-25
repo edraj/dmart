@@ -50,7 +50,7 @@
     import HtmlEditor from "../editors/HtmlEditor.svelte";
     import MarkdownEditor from "../editors/MarkdownEditor.svelte";
     import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
-    import checkAccess from "@/utils/checkAccess";
+    import checkAccess, { checkAccessv2 } from "@/utils/checkAccess";
     import {fade} from "svelte/transition";
     import BreadCrumbLite from "../BreadCrumbLite.svelte";
     import downloadFile from "@/utils/downloadFile";
@@ -85,9 +85,12 @@
   export let refresh = {};
 
   // auth
-  const canCreate = checkAccess("create", space_name, subpath, resource_type);
-  const canUpdate = checkAccess("update", space_name, subpath, resource_type);
-  const canDelete = checkAccess("delete", space_name, subpath, resource_type) && !(
+  const canCreateFolder = checkAccessv2("create", space_name, subpath, ResourceType.folder);
+  const canCreateEntry = checkAccessv2("create", space_name, subpath, ResourceType.content)
+  || checkAccessv2("create", space_name, subpath, ResourceType.ticket)
+  || checkAccessv2("create", space_name, subpath, ResourceType.schema);
+  const canUpdate = checkAccessv2("update", space_name, subpath, resource_type);
+  const canDelete = checkAccessv2("delete", space_name, subpath, resource_type) && !(
       space_name==="management" && subpath==="/"
   );
 
@@ -675,7 +678,6 @@
                   },
               ],
           };
-
           response = await request(request_body);
       }
 
@@ -1225,7 +1227,7 @@
         </Button>
       </ButtonGroup>
       <ButtonGroup size="sm" class="align-items-center">
-        {#if canCreate || canDelete || !!entry?.payload?.body?.allow_csv}
+        {#if canCreateEntry || canCreateFolder || canDelete || !!entry?.payload?.body?.allow_csv}
           <span class="ps-2 pe-1"> {$_("actions")} </span>
         {/if}
         {#if canDelete}
@@ -1251,53 +1253,56 @@
           </Button>
         {/if}
       </ButtonGroup>
-      {#if canCreate && [ResourceType.space, ResourceType.folder].includes(resource_type)}
-        <ButtonGroup>
-          {#if subpath !== "health_check"}
+
+      <ButtonGroup>
+        {#if subpath !== "health_check"}
+          {#if canCreateEntry}
+            <Button
+            outline
+            color="success"
+            size="sm"
+            title={$_("create_entry")}
+            class="justify-contnet-center text-center py-0 px-1"
+            on:click={handleCreateEntryModal}
+          >
+            <Icon name="file-plus" />
+          </Button>
+          {/if}
+          {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) &&
+          !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
             <Button
               outline
               color="success"
               size="sm"
-              title={$_("create_entry")}
-              class="justify-contnet-center text-center py-0 px-1"
-              on:click={handleCreateEntryModal}
-            >
-              <Icon name="file-plus" />
-            </Button>
-            {#if !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
-              <Button
-                outline
-                color="success"
-                size="sm"
-                title={$_("create_folder")}
-                class="justify-contnet-center text-center py-0 px-1"
-                on:click={() => {
-                  entryType = "folder";
-                  new_resource_type = ResourceType.folder;
-                  selectedSchema = "folder_rendering"
-                  isModalOpen = true;
-                }}
-              >
-                <Icon name="folder-plus" />
-              </Button>
-            {/if}
-          {/if}
-          {#if !!entry?.payload?.body?.stream}
-            <Button
-              outline={!isNeedRefresh}
-              color={isNeedRefresh ? "danger" : "success"}
-              size="sm"
-              title={$_("refresh")}
+              title={$_("create_folder")}
               class="justify-contnet-center text-center py-0 px-1"
               on:click={() => {
-                refresh = !refresh;
+                entryType = "folder";
+                new_resource_type = ResourceType.folder;
+                selectedSchema = "folder_rendering"
+                isModalOpen = true;
               }}
             >
-              <Icon name="arrow-clockwise" />
+              <Icon name="folder-plus" />
             </Button>
           {/if}
-        </ButtonGroup>
-      {/if}
+        {/if}
+        {#if !!entry?.payload?.body?.stream}
+          <Button
+            outline={!isNeedRefresh}
+            color={isNeedRefresh ? "danger" : "success"}
+            size="sm"
+            title={$_("refresh")}
+            class="justify-contnet-center text-center py-0 px-1"
+            on:click={() => {
+              refresh = !refresh;
+            }}
+          >
+            <Icon name="arrow-clockwise" />
+          </Button>
+        {/if}
+      </ButtonGroup>
+
     </Nav>
   </div>
 
