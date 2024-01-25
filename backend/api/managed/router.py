@@ -1428,7 +1428,7 @@ async def create_or_update_resource_with_payload(
         payload_file: UploadFile,
         request_record: UploadFile,
         space_name: str = Form(..., examples=["data"]),
-        sha: str | None = Form(default=None, examples=["data"]),
+        sha: str | None = Form(None, examples=["data"]),
         owner_shortname: str = Depends(JWTBearer()),
 ):
     # NOTE We currently make no distinction between create and update.
@@ -1514,7 +1514,7 @@ async def create_or_update_resource_with_payload(
     sha1 = hashlib.sha1()
     sha1.update(payload_file.file.read())
     checksum = sha1.hexdigest()
-    if sha and sha != checksum:
+    if isinstance(sha, str) and sha != checksum:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
@@ -1537,7 +1537,7 @@ async def create_or_update_resource_with_payload(
     resource_obj.payload = core.Payload(
         content_type=resource_content_type,
         checksum=checksum,
-        client_checksum=sha,
+        client_checksum=sha if isinstance(sha, str) else None,
         schema_shortname="meta_schema"
         if record.resource_type == ResourceType.schema
         else (

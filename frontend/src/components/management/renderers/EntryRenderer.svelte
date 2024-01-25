@@ -85,6 +85,7 @@
   export let refresh = {};
 
   // auth
+  const canCreate = checkAccess("create", space_name, subpath, resource_type);
   const canUpdate = checkAccess("update", space_name, subpath, resource_type);
   const canDelete = checkAccess("delete", space_name, subpath, resource_type) && !(
       space_name==="management" && subpath==="/"
@@ -159,6 +160,7 @@
       });
   }
   onMount(async () => {
+    if (entry) {
       const cpy = structuredClone(entry);
       if (entry?.payload) {
           if (entry?.payload?.content_type === "json") {
@@ -173,8 +175,10 @@
       delete cpy?.attachments;
 
       // jseMeta.text = JSON.stringify(cpy,null,2)
-      jseMetaRef.set({text: JSON.stringify(cpy,null,2)})
-      oldJSEMeta = structuredClone(jseMeta);
+      if (jseMetaRef) {
+        jseMetaRef.set({text: JSON.stringify(cpy,null,2)})
+        oldJSEMeta = structuredClone(jseMeta);
+      }
 
       if (!!entry?.payload?.body?.stream) {
 
@@ -230,6 +234,7 @@
               Object.keys(entry.attachments).length
           }</strong></small>`
       );
+    }
   });
 
   onDestroy(() => {
@@ -1220,7 +1225,9 @@
         </Button>
       </ButtonGroup>
       <ButtonGroup size="sm" class="align-items-center">
-        <span class="ps-2 pe-1"> {$_("actions")} </span>
+        {#if canCreate || canDelete || !!entry?.payload?.body?.allow_csv}
+          <span class="ps-2 pe-1"> {$_("actions")} </span>
+        {/if}
         {#if canDelete}
           <Button
             outline
@@ -1244,7 +1251,7 @@
           </Button>
         {/if}
       </ButtonGroup>
-      {#if [ResourceType.space, ResourceType.folder].includes(resource_type)}
+      {#if canCreate && [ResourceType.space, ResourceType.folder].includes(resource_type)}
         <ButtonGroup>
           {#if subpath !== "health_check"}
             <Button

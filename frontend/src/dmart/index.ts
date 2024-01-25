@@ -550,7 +550,7 @@ export async function retrieve_entry(
     );
     return data;
   } catch (error) {
-    return null;
+    throw new Error(error.response.data.error.message)
   }
 }
 
@@ -734,16 +734,23 @@ export async function progress_ticket(
   subpath: string,
   shortname: string,
   action: string,
-  resolution: string,
-  comment: string
+  resolution?: string,
+  comment?: string
 ) {
   try {
+    const payload: any = {}
+    if(resolution){
+      payload.resolution = resolution;
+    }
+    if(comment){
+      payload.comment = comment;
+    }
     const { data } = await axios.put<
       ApiQueryResponse & { attributes: { folders_report: Object } }
     >(
       website.backend +
         `/managed/progress-ticket/${space_name}/${subpath}/${shortname}/${action}`,
-      { resolution, comment },
+        payload,
       { headers }
     );
     return data;

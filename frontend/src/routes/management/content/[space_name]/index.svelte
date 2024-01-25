@@ -2,6 +2,7 @@
   import { params } from "@roxi/routify";
   import { retrieve_entry, ResourceType } from "@/dmart";
   import EntryRenderer from "@/components/management/renderers/EntryRenderer.svelte";
+  import { Alert } from "sveltestrap";
 
   let refresh = false;
 </script>
@@ -20,7 +21,9 @@
     />
     <!--pre>{JSON.stringify(spaces.get($params.space_name), null, 2)}</pre-->
   {:catch error}
-    <p style="color: red">{error.message}</p>
+    <Alert color="danger text-center mt-5">
+      <h4 class="alert-heading text-capitalize">{error}</h4>
+    </Alert>
   {/await}
 {:else}
   <h4>For some reason ... params doesn't have the needed info</h4>

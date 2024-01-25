@@ -2,6 +2,7 @@
   import { params } from "@roxi/routify";
   import { retrieve_entry, ResourceType } from "@/dmart";
   import EntryRenderer from "@/components/management/renderers/EntryRenderer.svelte";
+  import { Alert } from "sveltestrap";
 </script>
 
 {#if $params.space_name && $params.subpath && $params.shortname}
@@ -16,7 +17,9 @@
       schema_name={$params.schema_name}
     />
   {:catch error}
-    <p style="color: red">{error.message}</p>
+    <Alert color="danger text-center mt-5">
+      <h4 class="alert-heading text-capitalize">{error}</h4>
+    </Alert>
   {/await}
 {:else}
   <h4>We shouldn't be here ...</h4>
