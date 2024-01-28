@@ -1,80 +1,82 @@
 <script lang="ts">
-    import {onDestroy, onMount} from "svelte";
-    import {
-        check_existing,
-        ContentType,
-        create_user,
-        csv,
-        passwordRegExp,
-        passwordWrongExp,
-        query,
-        QueryType,
-        request,
-        RequestType,
-        ResourceType,
-        ResponseEntry,
-        retrieve_entry,
-        space,
-        Status,
-        upload_with_payload,
-    } from "@/dmart";
-    import {
-        Alert,
-        Button,
-        ButtonGroup,
-        Form,
-        FormGroup,
-        Input,
-        Label,
-        Modal,
-        ModalBody,
-        ModalFooter,
-        ModalHeader,
-        Nav,
-        Row,
-        TabContent,
-        TabPane
-    } from "sveltestrap";
-    import Icon from "../../Icon.svelte";
-    import {_} from "@/i18n";
-    import ListView from "../ListView.svelte";
-    import Prism from "@/components/Prism.svelte";
-    import {createAjvValidator, JSONEditor, Mode, Validator} from "svelte-jsoneditor";
-    import {status_line} from "@/stores/management/status_line";
-    import {authToken} from "@/stores/management/auth";
-    import {timeAgo} from "@/utils/timeago";
-    import {Level, showToast} from "@/utils/toast";
-    import {faSave} from "@fortawesome/free-regular-svg-icons";
-    import refresh_spaces from "@/stores/management/refresh_spaces";
-    import {website} from "@/config";
-    import HtmlEditor from "../editors/HtmlEditor.svelte";
-    import MarkdownEditor from "../editors/MarkdownEditor.svelte";
-    import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
-    import checkAccess, { checkAccessv2 } from "@/utils/checkAccess";
-    import {fade} from "svelte/transition";
-    import BreadCrumbLite from "../BreadCrumbLite.svelte";
-    import downloadFile from "@/utils/downloadFile";
-    import SchemaForm from "svelte-jsonschema-form";
-    import Table2Cols from "@/components/management/Table2Cols.svelte";
-    import Attachments from "@/components/management/Attachments.svelte";
-    import HistoryListView from "@/components/management/HistoryListView.svelte";
-    import {marked} from "marked";
-    import {
-        generateObjectFromSchema,
-        managementEntities,
-        resolveResourceType
-    } from "@/utils/renderer/rendererUtils";
-    import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
-    import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
-    import {metadata} from "@/stores/management/metadata";
-    import metaUserSchema from "@/validations/meta.user.json";
-    import metaRoleSchema from "@/validations/meta.role.json";
-    import metaPermissionSchema from "@/validations/meta.permission.json";
-    import PlantUML from "@/components/management/PlantUML.svelte";
-    import ContentEditor from "@/components/management/ContentEditor.svelte";
-    import TicketEntryRenderer from "@/components/management/renderers/TicketEntryRenderer.svelte";
-    import WorkflowRenderer from "@/components/management/renderers/WorkflowRenderer.svelte";
-    import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
+  import {onDestroy, onMount} from "svelte";
+  import {
+    check_existing,
+    ContentType,
+    create_user,
+    csv,
+    passwordRegExp,
+    passwordWrongExp,
+    query,
+    QueryType,
+    request,
+    RequestType,
+    ResourceType,
+    ResponseEntry,
+    retrieve_entry,
+    space,
+    Status,
+    upload_with_payload,
+  } from "@/dmart";
+  import {
+    Alert,
+    Button,
+    ButtonGroup,
+    Form,
+    FormGroup,
+    Input,
+    Label,
+    Modal,
+    ModalBody,
+    ModalFooter,
+    ModalHeader,
+    Nav,
+    Row,
+    TabContent,
+    TabPane
+  } from "sveltestrap";
+  import Icon from "../../Icon.svelte";
+  import {_} from "@/i18n";
+  import ListView from "../ListView.svelte";
+  import Prism from "@/components/Prism.svelte";
+  import {createAjvValidator, JSONEditor, Mode, Validator} from "svelte-jsoneditor";
+  import {status_line} from "@/stores/management/status_line";
+  import {authToken} from "@/stores/management/auth";
+  import {timeAgo} from "@/utils/timeago";
+  import {Level, showToast} from "@/utils/toast";
+  import {faSave} from "@fortawesome/free-regular-svg-icons";
+  import refresh_spaces from "@/stores/management/refresh_spaces";
+  import {website} from "@/config";
+  import HtmlEditor from "../editors/HtmlEditor.svelte";
+  import MarkdownEditor from "../editors/MarkdownEditor.svelte";
+  import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
+  import checkAccess, { checkAccessv2 } from "@/utils/checkAccess";
+  import {fade} from "svelte/transition";
+  import BreadCrumbLite from "../BreadCrumbLite.svelte";
+  import downloadFile from "@/utils/downloadFile";
+  import SchemaForm from "svelte-jsonschema-form";
+  import Table2Cols from "@/components/management/Table2Cols.svelte";
+  import Attachments from "@/components/management/Attachments.svelte";
+  import HistoryListView from "@/components/management/HistoryListView.svelte";
+  import {marked} from "marked";
+  import {
+      generateObjectFromSchema,
+      managementEntities,
+      resolveResourceType
+  } from "@/utils/renderer/rendererUtils";
+  import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
+  import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
+  import {metadata} from "@/stores/management/metadata";
+  import metaUserSchema from "@/validations/meta.user.json";
+  import metaRoleSchema from "@/validations/meta.role.json";
+  import metaPermissionSchema from "@/validations/meta.permission.json";
+  import PlantUML from "@/components/management/PlantUML.svelte";
+  import ContentEditor from "@/components/management/ContentEditor.svelte";
+  import TicketEntryRenderer from "@/components/management/renderers/TicketEntryRenderer.svelte";
+  import WorkflowRenderer from "@/components/management/renderers/WorkflowRenderer.svelte";
+  import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
+  import PermissionForm from "./Forms/PermissionForm.svelte";
+  import RoleForm from "./Forms/RoleForm.svelte";
 
     // props
   export let entry: ResponseEntry;
@@ -148,6 +150,7 @@
   let jseModalMeta: any = { text: "{}" };
   let jseModalContentRef;
   let jseModalContent: any = { text: "{}" };
+  let formModalContent: any;
 
   let allowedResourceTypes = [ResourceType.content];
   function setMetaValidator(): Validator {
@@ -548,6 +551,17 @@
                       ? structuredClone(jseModalContent.json)
                       : JSON.parse(jseModalContent.text);
               // }
+
+              if (new_resource_type === ResourceType.role) {
+                body.permissions = formModalContent;
+              }
+
+              if (new_resource_type === ResourceType.permission) {
+                body = {
+                  ...body,
+                  ...formModalContent
+                }
+              }
 
               if (new_resource_type === ResourceType.role || new_resource_type === ResourceType.permission){
                   request_body = {
@@ -1054,13 +1068,20 @@
               <!--{/if}-->
 <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
 
-            <JSONEditor
-              bind:this={jseModalContentRef}
-              bind:content={jseModalContent}
-              bind:validator={validatorModalContent}
-              onRenderMenu={handleRenderMenu}
-              mode={Mode.text}
-            />
+            {#if new_resource_type === ResourceType.permission}
+              <PermissionForm bind:content={formModalContent} />
+            {:else if new_resource_type === ResourceType.role}
+              <RoleForm bind:content={formModalContent} />
+            {:else}
+              <JSONEditor
+                bind:this={jseModalContentRef}
+                bind:content={jseModalContent}
+                bind:validator={validatorModalContent}
+                onRenderMenu={handleRenderMenu}
+                mode={Mode.text}
+              />
+            {/if}
+            
               <!--                </TabPane>-->
 <!--              </TabContent>-->
           {/if}
