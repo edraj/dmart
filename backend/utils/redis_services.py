@@ -592,11 +592,8 @@ class RedisServices(object):
         owner_group_shortname: str | None,
         entry_shortname: str | None = None
     ) -> list:
-        subpath_parts = list(set(subpath.split("/")))
-        if subpath[0] == "/":
-            subpath_parts[0] = "/"
-        else:
-            subpath_parts.insert(0, "/")
+        subpath_parts = ["/"]
+        subpath_parts += subpath.strip("/").split("/")
             
         if resource_type == ResourceType.folder and entry_shortname:
             subpath_parts.append(entry_shortname)
