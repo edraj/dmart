@@ -43,8 +43,11 @@ def decode_jwt(token: str) -> dict[str, Any]:
 
 
 class JWTBearer(HTTPBearer):
-    def __init__(self, auto_error: bool = True):
+    is_required: bool = True
+
+    def __init__(self, auto_error: bool = True, is_required: bool = True):
         super(JWTBearer, self).__init__(auto_error=auto_error)
+        self.is_required = is_required
 
     async def __call__(self, request: Request) -> str | None:  # type: ignore
         user_shortname : str | None = None
@@ -65,7 +68,7 @@ class JWTBearer(HTTPBearer):
                 if decoded and "username" in decoded and decoded["username"]:
                     user_shortname = decoded["username"]
         finally:
-            if not user_shortname:
+            if not user_shortname and self.is_required:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [1]"),
@@ -75,7 +78,7 @@ class JWTBearer(HTTPBearer):
                 user_redis_session = await redis.get(
                     f"user_login_session:{user_shortname}"
                 )
-                if not user_redis_session:
+                if not user_redis_session and self.is_required:
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(

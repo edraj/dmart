@@ -98,7 +98,7 @@ async def check_existing_user_fields(
 
 if settings.is_registrable:
     @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
-    async def create_user(record: core.Record) -> api.Response:
+    async def create_user(record: core.Record, owner_shortname=Depends(JWTBearer(is_required=False))) -> api.Response:
         """Register a new user by invitation"""
         if not record.attributes:
             raise api.Exception(
@@ -148,7 +148,9 @@ if settings.is_registrable:
         )
 
         user = core.User.from_record(
-            record=record, owner_shortname=record.shortname)
+            record=record,
+            owner_shortname=record.shortname if owner_shortname is None else owner_shortname
+        )
         await validate_uniqueness(MANAGEMENT_SPACE, record)
 
         separate_payload_data: str | dict[str, Any] = {}
