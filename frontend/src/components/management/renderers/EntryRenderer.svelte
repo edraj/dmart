@@ -98,10 +98,7 @@
     subpath,
     ResourceType.folder
   );
-  const canCreateEntry =
-    checkAccessv2("create", space_name, subpath, ResourceType.content) ||
-    checkAccessv2("create", space_name, subpath, ResourceType.ticket) ||
-    checkAccessv2("create", space_name, subpath, ResourceType.schema);
+  let canCreateEntry = false;
   const canUpdate = checkAccessv2("update", space_name, subpath, resource_type);
   const canDelete =
     checkAccessv2("delete", space_name, subpath, resource_type) &&
@@ -260,6 +257,8 @@
         }
       }
 
+      canCreateEntry = allowedResourceTypes.map(r=>checkAccessv2("create", space_name, subpath, r)).some(item => item);
+
       status_line.set(
         `<small>Last updated: <strong>${timeAgo(
           new Date(entry.updated_at)
@@ -284,7 +283,8 @@
   }
 
   async function checkWorkflowsSubpath() {
-    const chk = await retrieve_entry(
+    try {
+      const chk = await retrieve_entry(
       ResourceType.folder,
       space_name,
       "/",
@@ -303,6 +303,7 @@
         content_resource_types.includes(e)
       );
     }
+    } catch (error) {}
   }
 
   async function handleSave(e: Event) {
