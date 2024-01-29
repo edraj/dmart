@@ -135,7 +135,7 @@
   let isModalOpen = false;
   let entryType = "folder";
   let isSchemaEntryInForm = true;
-  let isContentEntryInForm = true;
+  let isModalContentEntryInForm = true;
   /// content
   let schemaContent = {json:{}, text: undefined};
   let contentShortname = "";
@@ -457,7 +457,7 @@
           // }
 
           let body: any;
-          // if (isContentEntryInForm){
+          // if (isModalContentEntryInForm){
           //     body = selectedSchemaData.json
           //         ? structuredClone(selectedSchemaData.json)
           //         : JSON.parse(selectedSchemaData.text);
@@ -535,7 +535,7 @@
               if (jseModalContentRef?.validate()?.validationErrors){
                   return
               }
-              // if (isContentEntryInForm){
+              // if (isModalContentEntryInForm){
               //     if (
               //         selectedSchemaContent != null &&
               //         selectedSchemaData.json
@@ -552,14 +552,15 @@
                       : JSON.parse(jseModalContent.text);
               // }
 
-              if (new_resource_type === ResourceType.role) {
-                body.permissions = formModalContent;
-              }
-
-              if (new_resource_type === ResourceType.permission) {
-                body = {
-                  ...body,
-                  ...formModalContent
+              if (isModalContentEntryInForm) {
+                if (new_resource_type === ResourceType.role) {
+                  body.permissions = formModalContent;
+                }
+                if (new_resource_type === ResourceType.permission) {
+                  body = {
+                    ...body,
+                    ...formModalContent
+                  }
                 }
               }
 
@@ -658,7 +659,7 @@
       }
       else if (entryType === "folder") {
           let body: any = {}
-          // if (isContentEntryInForm){
+          // if (isModalContentEntryInForm){
           //     body = selectedSchemaData.json
           //         ? structuredClone(selectedSchemaData.json)
           //         : JSON.parse(selectedSchemaData.text);
@@ -1056,7 +1057,7 @@
                         : "Payload"
               }
             </Label>
-<!--              <TabContent on:tab={(e) => (isContentEntryInForm = e.detail==="form")}>-->
+<!--              <TabContent on:tab={(e) => (isModalContentEntryInForm = e.detail==="form")}>-->
               <!--{#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}-->
               <!--  <TabPane tabId="form" tab="Form" active>-->
               <!--    <SchemaForm-->
@@ -1067,23 +1068,24 @@
               <!--  </TabPane>-->
               <!--{/if}-->
 <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
-
-            {#if new_resource_type === ResourceType.permission}
-              <PermissionForm bind:content={formModalContent} />
-            {:else if new_resource_type === ResourceType.role}
-              <RoleForm bind:content={formModalContent} />
-            {:else}
-              <JSONEditor
-                bind:this={jseModalContentRef}
-                bind:content={jseModalContent}
-                bind:validator={validatorModalContent}
-                onRenderMenu={handleRenderMenu}
-                mode={Mode.text}
-              />
-            {/if}
-            
-              <!--                </TabPane>-->
-<!--              </TabContent>-->
+            <TabContent on:tab={(e) => (isModalContentEntryInForm = e.detail==="form")}>
+              <TabPane tabId="form" tab="Form" active>
+                {#if new_resource_type === ResourceType.permission}
+                  <PermissionForm bind:content={formModalContent} />
+                {:else if new_resource_type === ResourceType.role}
+                  <RoleForm bind:content={formModalContent} />
+                {/if}
+              </TabPane>
+              <TabPane tabId="editor" tab="Editor">
+                <JSONEditor
+                  bind:this={jseModalContentRef}
+                  bind:content={jseModalContent}
+                  bind:validator={validatorModalContent}
+                  onRenderMenu={handleRenderMenu}
+                  mode={Mode.text}
+                />
+              </TabPane>
+             </TabContent>
           {/if}
           {#if selectedContentType === "text"}
             <Label class="mt-3">Payload</Label>
