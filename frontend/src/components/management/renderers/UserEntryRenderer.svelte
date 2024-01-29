@@ -188,6 +188,11 @@
           return;
       }
     }
+    for (const key in user) {
+      if (user[key] == null) {
+        delete user[key];
+      }
+    }
 
     const response = await request({
       space_name: space_name,
