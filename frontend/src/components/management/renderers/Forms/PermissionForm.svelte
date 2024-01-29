@@ -164,11 +164,6 @@
         content.conditions = conditions.map((i) => i.value).filter((i) => i.length);
     } 
   }
-
-$: {
-    console.log({content});
-    
-}
 </script>
 
 <TabContent>
