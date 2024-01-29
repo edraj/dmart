@@ -343,8 +343,8 @@
         data.payload.body = jseContent;
       }
     }
-
-    if (resource_type === ResourceType.user && data.password.startsWith("$2b$12")) {
+    
+    if (resource_type === ResourceType.user && btoa(data.password.slice(0,6)) === 'JDJiJDEy') {
       delete data.password;
     }
 
