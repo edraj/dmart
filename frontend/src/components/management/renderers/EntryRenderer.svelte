@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {onDestroy, onMount} from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import {
     check_existing,
     ContentType,
@@ -33,40 +33,45 @@
     Nav,
     Row,
     TabContent,
-    TabPane
+    TabPane,
   } from "sveltestrap";
   import Icon from "../../Icon.svelte";
-  import {_} from "@/i18n";
+  import { _ } from "@/i18n";
   import ListView from "../ListView.svelte";
   import Prism from "@/components/Prism.svelte";
-  import {createAjvValidator, JSONEditor, Mode, Validator} from "svelte-jsoneditor";
-  import {status_line} from "@/stores/management/status_line";
-  import {authToken} from "@/stores/management/auth";
-  import {timeAgo} from "@/utils/timeago";
-  import {Level, showToast} from "@/utils/toast";
-  import {faSave} from "@fortawesome/free-regular-svg-icons";
+  import {
+    createAjvValidator,
+    JSONEditor,
+    Mode,
+    Validator,
+  } from "svelte-jsoneditor";
+  import { status_line } from "@/stores/management/status_line";
+  import { authToken } from "@/stores/management/auth";
+  import { timeAgo } from "@/utils/timeago";
+  import { Level, showToast } from "@/utils/toast";
+  import { faSave } from "@fortawesome/free-regular-svg-icons";
   import refresh_spaces from "@/stores/management/refresh_spaces";
-  import {website} from "@/config";
+  import { website } from "@/config";
   import HtmlEditor from "../editors/HtmlEditor.svelte";
   import MarkdownEditor from "../editors/MarkdownEditor.svelte";
   import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
   import checkAccess, { checkAccessv2 } from "@/utils/checkAccess";
-  import {fade} from "svelte/transition";
+  import { fade } from "svelte/transition";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
   import downloadFile from "@/utils/downloadFile";
   import SchemaForm from "svelte-jsonschema-form";
   import Table2Cols from "@/components/management/Table2Cols.svelte";
   import Attachments from "@/components/management/Attachments.svelte";
   import HistoryListView from "@/components/management/HistoryListView.svelte";
-  import {marked} from "marked";
+  import { marked } from "marked";
   import {
-      generateObjectFromSchema,
-      managementEntities,
-      resolveResourceType
+    generateObjectFromSchema,
+    managementEntities,
+    resolveResourceType,
   } from "@/utils/renderer/rendererUtils";
   import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
   import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
-  import {metadata} from "@/stores/management/metadata";
+  import { metadata } from "@/stores/management/metadata";
   import metaUserSchema from "@/validations/meta.user.json";
   import metaRoleSchema from "@/validations/meta.role.json";
   import metaPermissionSchema from "@/validations/meta.permission.json";
@@ -78,7 +83,7 @@
   import PermissionForm from "./Forms/PermissionForm.svelte";
   import RoleForm from "./Forms/RoleForm.svelte";
 
-    // props
+  // props
   export let entry: ResponseEntry;
   export let space_name: string;
   export let subpath: string;
@@ -87,14 +92,17 @@
   export let refresh = {};
 
   // auth
-  const canCreateFolder = checkAccessv2("create", space_name, subpath, ResourceType.folder);
-  const canCreateEntry = checkAccessv2("create", space_name, subpath, ResourceType.content)
-  || checkAccessv2("create", space_name, subpath, ResourceType.ticket)
-  || checkAccessv2("create", space_name, subpath, ResourceType.schema);
-  const canUpdate = checkAccessv2("update", space_name, subpath, resource_type);
-  const canDelete = checkAccessv2("delete", space_name, subpath, resource_type) && !(
-      space_name==="management" && subpath==="/"
+  const canCreateFolder = checkAccessv2(
+    "create",
+    space_name,
+    subpath,
+    ResourceType.folder
   );
+  let canCreateEntry = false;
+  const canUpdate = checkAccessv2("update", space_name, subpath, resource_type);
+  const canDelete =
+    checkAccessv2("delete", space_name, subpath, resource_type) &&
+    !(space_name === "management" && subpath === "/");
 
   // misc
   let header_height: number;
@@ -103,10 +111,15 @@
   let isNeedRefresh = false;
 
   // view
-  let tab_option = (resource_type === ResourceType.folder || resource_type === ResourceType.space) ? "list" : "view";
-  const isContentPreviewable: boolean = resource_type === ResourceType.content
-      && !!entry?.payload?.content_type
-      && !!entry?.payload?.body;
+  let tab_option =
+    resource_type === ResourceType.folder ||
+    resource_type === ResourceType.space
+      ? "list"
+      : "view";
+  const isContentPreviewable: boolean =
+    resource_type === ResourceType.content &&
+    !!entry?.payload?.content_type &&
+    !!entry?.payload?.body;
 
   // editors
   //// meta
@@ -135,9 +148,9 @@
   let isModalOpen = false;
   let entryType = "folder";
   let isSchemaEntryInForm = true;
-  let isContentEntryInForm = true;
+  let isModalContentEntryInForm = true;
   /// content
-  let schemaContent = {json:{}, text: undefined};
+  let schemaContent = { json: {}, text: undefined };
   let contentShortname = "";
   let workflowShortname = "";
   let selectedSchema = subpath === "workflows" ? "workflow" : "";
@@ -154,615 +167,641 @@
 
   let allowedResourceTypes = [ResourceType.content];
   function setMetaValidator(): Validator {
-      let schema = {}
-      switch (resource_type){
-          case ResourceType.user: schema=metaUserSchema; break;
-          case ResourceType.permission: schema=metaPermissionSchema; break;
-          case ResourceType.role: schema=metaRoleSchema; break;
-          default: schema=structuredClone($metadata); break;
-      }
-      return createAjvValidator({
-          schema: schema,
-      });
+    let schema = {};
+    switch (resource_type) {
+      case ResourceType.user:
+        schema = metaUserSchema;
+        break;
+      case ResourceType.permission:
+        schema = metaPermissionSchema;
+        break;
+      case ResourceType.role:
+        schema = metaRoleSchema;
+        break;
+      default:
+        schema = structuredClone($metadata);
+        break;
+    }
+    return createAjvValidator({
+      schema: schema,
+    });
   }
   onMount(async () => {
     if (entry) {
       const cpy = structuredClone(entry);
       if (entry?.payload) {
-          if (entry?.payload?.content_type === "json") {
-              jseContentRef.set({
-                  text: JSON.stringify(cpy?.payload?.body ?? {}, null, 2)
-              });
-          } else {
-              jseContent = cpy?.payload?.body;
-          }
+        if (entry?.payload?.content_type === "json") {
+          jseContentRef.set({
+            text: JSON.stringify(cpy?.payload?.body ?? {}, null, 2),
+          });
+        } else {
+          jseContent = cpy?.payload?.body;
+        }
       }
       delete cpy?.payload?.body;
       delete cpy?.attachments;
 
       // jseMeta.text = JSON.stringify(cpy,null,2)
       if (jseMetaRef) {
-        jseMetaRef.set({text: JSON.stringify(cpy,null,2)})
+        jseMetaRef.set({ text: JSON.stringify(cpy, null, 2) });
         oldJSEMeta = structuredClone(jseMeta);
       }
 
       if (!!entry?.payload?.body?.stream) {
+        if ("websocket" in website) {
+          ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+        }
 
-          if ("websocket" in website) {
-              ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+        ws.onopen = () => {
+          ws.send(
+            JSON.stringify({
+              type: "notification_subscription",
+              space_name: space_name,
+              subpath: subpath,
+            })
+          );
+        };
+
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event?.data ?? "");
+          if (data?.message?.title) {
+            isNeedRefresh = true;
           }
-
-          ws.onopen = () => {
-              ws.send(
-                  JSON.stringify({
-                      type: "notification_subscription",
-                      space_name: space_name,
-                      subpath: subpath,
-                  })
-              );
-          };
-
-          ws.onmessage = (event) => {
-              const data = JSON.parse(event?.data ?? "");
-              if (data?.message?.title) {
-                  isNeedRefresh = true;
-              }
-          };
+        };
       }
 
       await checkWorkflowsSubpath();
 
       if (entry?.payload?.schema_shortname) {
-          const entrySchema = entry?.payload?.schema_shortname;
-          let _schema: any = null;
+        const entrySchema = entry?.payload?.schema_shortname;
+        let _schema: any = null;
 
-          _schema = await retrieve_entry(
-              ResourceType.schema,
-              ["folder_rendering"].includes(entrySchema) ? "management" : space_name,
-              "schema",
-              entrySchema,
-              true
+        _schema = await retrieve_entry(
+          ResourceType.schema,
+          ["folder_rendering"].includes(entrySchema)
+            ? "management"
+            : space_name,
+          "schema",
+          entrySchema,
+          true
+        );
+
+        if (_schema) {
+          schema = _schema.payload?.body;
+          validatorContent = createAjvValidator({ schema });
+        } else {
+          showToast(
+            Level.warn,
+            `Can't load the schema ${entry?.payload?.schema_shortname} !`
           );
-
-          if (_schema){
-              schema = _schema.payload?.body;
-              validatorContent = createAjvValidator({schema});
-          }
-          else {
-              showToast(Level.warn, `Can't load the schema ${entry?.payload?.schema_shortname} !`);
-          }
+        }
       }
 
+      canCreateEntry = allowedResourceTypes.map(r=>checkAccessv2("create", space_name, subpath, r)).some(item => item);
+
       status_line.set(
-          `<small>Last updated: <strong>${timeAgo(
-              new Date(entry.updated_at)
-          )}</strong><br/>Attachments: <strong>${
-              Object.keys(entry.attachments).length
-          }</strong></small>`
+        `<small>Last updated: <strong>${timeAgo(
+          new Date(entry.updated_at)
+        )}</strong><br/>Attachments: <strong>${
+          Object.keys(entry.attachments).length
+        }</strong></small>`
       );
     }
   });
 
   onDestroy(() => {
-      status_line.set("");
+    status_line.set("");
 
-      if (isWSOpen(ws)) {
-          ws.send(JSON.stringify({ type: "notification_unsubscribe" }));
-      }
-      if (ws != null) ws.close();
+    if (isWSOpen(ws)) {
+      ws.send(JSON.stringify({ type: "notification_unsubscribe" }));
+    }
+    if (ws != null) ws.close();
   });
 
   function isWSOpen(ws: any) {
-      return ws != null && ws.readyState === ws.OPEN;
+    return ws != null && ws.readyState === ws.OPEN;
   }
 
   async function checkWorkflowsSubpath() {
+    try {
       const chk = await retrieve_entry(
-          ResourceType.folder,
-          space_name,
-          "/",
-          "workflows",
-          true,
-          false,
-          true
+      ResourceType.folder,
+      space_name,
+      "/",
+      "workflows",
+      true,
+      false,
+      true
+    );
+    if (chk) {
+      allowedResourceTypes.push(ResourceType.ticket);
+    }
+    if ((entry?.payload?.body?.content_resource_types ?? []).length) {
+      const content_resource_types =
+        entry?.payload?.body?.content_resource_types;
+      allowedResourceTypes = allowedResourceTypes.filter((e) =>
+        content_resource_types.includes(e)
       );
-      if (chk) {
-          allowedResourceTypes.push(ResourceType.ticket);
-      }
-      if ((entry?.payload?.body?.content_resource_types ?? []).length){
-          const content_resource_types = entry?.payload?.body?.content_resource_types
-          allowedResourceTypes = allowedResourceTypes.filter((e) => content_resource_types.includes(e));
-      }
+    }
+    } catch (error) {}
   }
 
   async function handleSave(e: Event) {
-      e.preventDefault();
-      // if (!isSchemaValidated) {
-      //   alert("The content does is not validated agains the schema");
-      //   return;
-      // }
-      errorContent = null;
+    e.preventDefault();
+    // if (!isSchemaValidated) {
+    //   alert("The content does is not validated agains the schema");
+    //   return;
+    // }
+    errorContent = null;
 
-      const x = jseMeta.json
-          ? structuredClone(jseMeta.json)
-          : JSON.parse(jseMeta.text);
+    const x = jseMeta.json
+      ? structuredClone(jseMeta.json)
+      : JSON.parse(jseMeta.text);
 
-      let data: any = structuredClone(x);
-      if (entry?.payload) {
-          if (entry?.payload?.content_type === "json") {
-              if (tab_option === "edit_content_form"){
-                  if (schemaFormRefContent && !schemaFormRefContent.reportValidity()) {
-                      return;
-                  }
-              }
-              const y = jseContent.json
-                  ? structuredClone(jseContent.json)
-                  : JSON.parse(jseContent.text);
-
-              if (new_resource_type === "schema") {
-                  if (isSchemaEntryInForm){
-                      delete y.name;
-                  }
-              }
-
-              if (data.payload) {
-                  data.payload.body = y;
-              }
-          } else {
-              data.payload.body = jseContent;
+    let data: any = structuredClone(x);
+    if (entry?.payload) {
+      if (entry?.payload?.content_type === "json") {
+        if (tab_option === "edit_content_form") {
+          if (schemaFormRefContent && !schemaFormRefContent.reportValidity()) {
+            return;
           }
-      }
-      if (resource_type === ResourceType.folder) {
-          const arr = subpath.split("/");
-          arr[arr.length - 1] = "";
-          subpath = arr.join("/");
-      }
-      subpath = subpath === "__root__" || subpath === "" ? "/" : subpath;
+        }
+        const y = jseContent.json
+          ? structuredClone(jseContent.json)
+          : JSON.parse(jseContent.text);
 
-      const request_data = {
+        if (new_resource_type === "schema") {
+          if (isSchemaEntryInForm) {
+            delete y.name;
+          }
+        }
+
+        if (data.payload) {
+          data.payload.body = y;
+        }
+      } else {
+        data.payload.body = jseContent;
+      }
+    }
+    
+    if (resource_type === ResourceType.user && btoa(data.password.slice(0,6)) === 'JDJiJDEy') {
+      delete data.password;
+    }
+
+    if (resource_type === ResourceType.folder) {
+      const arr = subpath.split("/");
+      arr[arr.length - 1] = "";
+      subpath = arr.join("/");
+    }
+    subpath = subpath === "__root__" || subpath === "" ? "/" : subpath;
+
+    const request_data = {
+      space_name: space_name,
+      request_type: RequestType.replace,
+      records: [
+        {
+          resource_type,
+          shortname: entry.shortname,
+          subpath,
+          attributes: data,
+        },
+      ],
+    };
+
+    let response;
+    if (resource_type === ResourceType.space) {
+      request_data.request_type = RequestType.update;
+      request_data.records[0].resource_type = ResourceType.space;
+      response = await space(request_data);
+    } else {
+      response = await request(request_data);
+    }
+
+    if (response.status == Status.success) {
+      showToast(Level.info);
+      oldJSEMeta = structuredClone(jseMeta);
+
+      if (data.shortname !== entry.shortname) {
+        const moveAttrb = {
+          src_subpath: subpath,
+          src_shortname: entry.shortname,
+          dest_subpath: subpath,
+          dest_shortname: data.shortname,
+        };
+        const response = await request({
           space_name: space_name,
-          request_type: RequestType.replace,
+          request_type: RequestType.move,
           records: [
-              {
-                  resource_type,
-                  shortname: entry.shortname,
-                  subpath,
-                  attributes: data,
-              },
+            {
+              resource_type,
+              shortname: entry.shortname,
+              subpath,
+              attributes: moveAttrb,
+            },
           ],
-      };
-
-      let response;
-      if (resource_type === ResourceType.space){
-          request_data.request_type = RequestType.update;
-          request_data.records[0].resource_type = ResourceType.space;
-          response = await space(request_data);
-      }
-      else {
-          response = await request(request_data);
-      }
-
-      if (response.status == Status.success) {
+        });
+        if (response.status == Status.success) {
           showToast(Level.info);
-          oldJSEMeta = structuredClone(jseMeta);
-
-          if (data.shortname !== entry.shortname) {
-              const moveAttrb = {
-                  src_subpath: subpath,
-                  src_shortname: entry.shortname,
-                  dest_subpath: subpath,
-                  dest_shortname: data.shortname,
-              };
-              const response = await request({
-                  space_name: space_name,
-                  request_type: RequestType.move,
-                  records: [
-                      {
-                          resource_type,
-                          shortname: entry.shortname,
-                          subpath,
-                          attributes: moveAttrb,
-                      },
-                  ],
-              });
-              if (response.status == Status.success) {
-                  showToast(Level.info);
-                  window.location.reload();
-              } else {
-                  errorContent = response;
-                  showToast(Level.warn);
-              }
-          }
           window.location.reload();
-      }
-      else {
+        } else {
           errorContent = response;
           showToast(Level.warn);
+        }
       }
+      window.location.reload();
+    } else {
+      errorContent = response;
+      showToast(Level.warn);
+    }
   }
 
-  function handleRenderMenu(items: any, context: { mode: 'tree' | 'text' | 'table', modal: boolean }) {
-      items = items.filter(
-          (item) => !["tree", "text", "table"].includes(item.text)
-      );
-      const separator = {
-          separator: true,
-      };
+  function handleRenderMenu(
+    items: any,
+    context: { mode: "tree" | "text" | "table"; modal: boolean }
+  ) {
+    items = items.filter(
+      (item) => !["tree", "text", "table"].includes(item.text)
+    );
+    const separator = {
+      separator: true,
+    };
 
-      const itemsWithoutSpace = items.slice(0, items.length - 2);
-      if (isModalOpen){
-          return itemsWithoutSpace.concat([
-              separator,
-              {
-                  space: true,
-              },
-          ]);
-      } else {
-          return itemsWithoutSpace.concat([
-              separator,
-              {
-                  onClick: handleSave,
-                  icon: faSave,
-                  title: "Save",
-              },
-              {
-                  space: true,
-              },
-          ]);
-      }
+    const itemsWithoutSpace = items.slice(0, items.length - 2);
+    if (isModalOpen) {
+      return itemsWithoutSpace.concat([
+        separator,
+        {
+          space: true,
+        },
+      ]);
+    } else {
+      return itemsWithoutSpace.concat([
+        separator,
+        {
+          onClick: handleSave,
+          icon: faSave,
+          title: "Save",
+        },
+        {
+          space: true,
+        },
+      ]);
+    }
   }
 
   async function handleSubmit(event: Event) {
-      event.preventDefault();
+    event.preventDefault();
 
-      let response: any;
-      let request_body: any = {};
-      if (new_resource_type === "schema") {
-          let body = schemaContent.json
-              ? structuredClone(schemaContent.json)
-              : JSON.parse(schemaContent.text);
+    let response: any;
+    let request_body: any = {};
+    if (new_resource_type === "schema") {
+      let body = schemaContent.json
+        ? structuredClone(schemaContent.json)
+        : JSON.parse(schemaContent.text);
 
-          if (isSchemaEntryInForm){
-              delete body.name;
+      if (isSchemaEntryInForm) {
+        delete body.name;
+      }
+
+      request_body = {
+        space_name,
+        request_type: RequestType.create,
+        records: [
+          {
+            resource_type: ResourceType.schema,
+            shortname: contentShortname === "" ? "auto" : contentShortname,
+            subpath,
+            attributes: {
+              is_active: true,
+              payload: {
+                content_type: "json",
+                schema_shortname: "meta_schema",
+                body: body,
+              },
+            },
+          },
+        ],
+      };
+      response = await request(request_body);
+    } else if (new_resource_type === ResourceType.user) {
+      if (jseModalContentRef?.validate()?.validationErrors) {
+        return;
+      }
+
+      // if (!schemaFormRefModal.reportValidity()) {
+      //     return;
+      // }
+
+      let body: any;
+      // if (isModalContentEntryInForm){
+      //     body = selectedSchemaData.json
+      //         ? structuredClone(selectedSchemaData.json)
+      //         : JSON.parse(selectedSchemaData.text);
+      //     body = {
+      //         attributes: body
+      //     }
+      // } else {
+      body = jseModalContent.json
+        ? structuredClone(jseModalContent.json)
+        : JSON.parse(jseModalContent.text);
+      // }
+
+      if (!body?.password) {
+        showToast(Level.warn, "Password must be provided!");
+        return;
+      } else {
+        if (!passwordRegExp.test(body?.password)) {
+          showToast(Level.warn, passwordWrongExp);
+          return;
+        }
+      }
+
+      const shortnameStatus: any = await check_existing(
+        "shortname",
+        contentShortname
+      );
+      if (!shortnameStatus.attributes.unique) {
+        showToast(Level.warn, "Shortname already exists!");
+        return;
+      }
+
+      if (body.email) {
+        const emailStatus: any = await check_existing("email", body.email);
+        if (!emailStatus.attributes.unique) {
+          showToast(Level.warn, "Email already exists!");
+          return;
+        }
+      } else {
+        delete body.email;
+      }
+
+      if (body.msisdn) {
+        const msisdnStatus: any = await check_existing("msisdn", body.msisdn);
+        if (!msisdnStatus.attributes.unique) {
+          showToast(Level.warn, "MSISDN already exists!");
+          return;
+        }
+      } else {
+        delete body.msisdn;
+      }
+
+      if (body.is_active === undefined) {
+        body.is_active = true;
+      }
+      if (body.invitation === undefined) {
+        body.invitation = "sysadmin";
+      }
+      if (!!body.type === false) {
+        body.type = "web";
+      }
+      if (!!body.language === false) {
+        delete body.language;
+      }
+
+      const request = {
+        shortname: contentShortname,
+        resource_type: "user",
+        subpath: "users",
+        attributes: body,
+      };
+      response = await create_user(request);
+    } else if (entryType === "content") {
+      if (selectedContentType === "json") {
+        let body: any;
+
+        if (jseModalContentRef?.validate()?.validationErrors) {
+          return;
+        }
+        // if (isModalContentEntryInForm){
+        //     if (
+        //         selectedSchemaContent != null &&
+        //         selectedSchemaData.json
+        //     ) {
+        //         // if (!schemaFormRefModal.reportValidity()) {
+        //         //     return;
+        //         // }
+        //         body = selectedSchemaData.json;
+        //     }
+        // }
+        // else {
+        body = jseModalContent.json
+          ? structuredClone(jseModalContent.json)
+          : JSON.parse(jseModalContent.text);
+        // }
+
+        if (isModalContentEntryInForm) {
+          if (new_resource_type === ResourceType.role) {
+            body.permissions = formModalContent;
           }
+          if (new_resource_type === ResourceType.permission) {
+            body = {
+              ...body,
+              ...formModalContent,
+            };
+          }
+        }
 
+        if (
+          new_resource_type === ResourceType.role ||
+          new_resource_type === ResourceType.permission
+        ) {
           request_body = {
-              space_name,
-              request_type: RequestType.create,
-              records: [
-                  {
-                      resource_type: ResourceType.schema,
-                      shortname: contentShortname === "" ? "auto" : contentShortname,
-                      subpath,
-                      attributes: {
-                          is_active: true,
-                          payload: {
-                              content_type: "json",
-                              schema_shortname: "meta_schema",
-                              body: body,
-                          }
-                      },
-                  },
-              ],
-          };
-          response = await request(request_body);
-      }
-      else if (new_resource_type === ResourceType.user){
-          if (jseModalContentRef?.validate()?.validationErrors){
-              return
-          }
-
-          // if (!schemaFormRefModal.reportValidity()) {
-          //     return;
-          // }
-
-          let body: any;
-          // if (isContentEntryInForm){
-          //     body = selectedSchemaData.json
-          //         ? structuredClone(selectedSchemaData.json)
-          //         : JSON.parse(selectedSchemaData.text);
-          //     body = {
-          //         attributes: body
-          //     }
-          // } else {
-              body = jseModalContent.json
-                  ? structuredClone(jseModalContent.json)
-                  : JSON.parse(jseModalContent.text);
-          // }
-
-
-          if (!body?.password){
-              showToast(Level.warn, "Password must be provided!");
-              return;
-          } else {
-              if (!passwordRegExp.test(body?.password)){
-                  showToast(Level.warn, passwordWrongExp);
-                  return;
-              }
-          }
-
-          const shortnameStatus: any = await check_existing("shortname",contentShortname);
-          if (!shortnameStatus.attributes.unique){
-              showToast(Level.warn,"Shortname already exists!");
-              return;
-          }
-
-          if (body.email) {
-              const emailStatus: any = await check_existing("email", body.email);
-              if (!emailStatus.attributes.unique) {
-                  showToast(Level.warn, "Email already exists!");
-                  return;
-              }
-          } else {
-              delete body.email;
-          }
-
-          if (body.msisdn) {
-              const msisdnStatus: any = await check_existing("msisdn", body.msisdn);
-              if (!msisdnStatus.attributes.unique) {
-                  showToast(Level.warn, "MSISDN already exists!");
-                  return;
-              }
-          } else {
-              delete body.msisdn;
-          }
-
-          if (body.is_active === undefined){
-              body.is_active = true;
-          }
-          if (body.invitation === undefined){
-              body.invitation = "sysadmin";
-          }
-          if (!!body.type === false){
-              body.type = "web";
-          }
-          if (!!body.language === false){
-              delete body.language;
-          }
-
-          const request = {
-              shortname: contentShortname,
-              resource_type: "user",
-              subpath: "users",
-              attributes: body
-          }
-          response = await create_user(request);
-      }
-      else if (entryType === "content") {
-          if (selectedContentType === "json") {
-              let body: any;
-
-              if (jseModalContentRef?.validate()?.validationErrors){
-                  return
-              }
-              // if (isContentEntryInForm){
-              //     if (
-              //         selectedSchemaContent != null &&
-              //         selectedSchemaData.json
-              //     ) {
-              //         // if (!schemaFormRefModal.reportValidity()) {
-              //         //     return;
-              //         // }
-              //         body = selectedSchemaData.json;
-              //     }
-              // }
-              // else {
-                  body = jseModalContent.json
-                      ? structuredClone(jseModalContent.json)
-                      : JSON.parse(jseModalContent.text);
-              // }
-
-              if (new_resource_type === ResourceType.role) {
-                body.permissions = formModalContent;
-              }
-
-              if (new_resource_type === ResourceType.permission) {
-                body = {
+            space_name,
+            request_type: RequestType.create,
+            records: [
+              {
+                resource_type: new_resource_type,
+                shortname: contentShortname === "" ? "auto" : contentShortname,
+                subpath,
+                attributes: {
+                  is_active: true,
                   ...body,
-                  ...formModalContent
-                }
-              }
-
-              if (new_resource_type === ResourceType.role || new_resource_type === ResourceType.permission){
-                  request_body = {
-                      space_name,
-                      request_type: RequestType.create,
-                      records: [
-                          {
-                              resource_type: new_resource_type,
-                              shortname: contentShortname === "" ? "auto" : contentShortname,
-                              subpath,
-                              attributes: {
-                                  is_active: true,
-                                  ...body
-                              },
-                          },
-                      ],
-                  };
-              }
-              else {
-                  if (workflowShortname){
-                      request_body = {...request_body, workflow_shortname:workflowShortname}
-                  }
-
-                  request_body = {
-                      space_name,
-                      request_type: RequestType.create,
-                      records: [
-                          {
-                              resource_type: new_resource_type,
-                              shortname: contentShortname === "" ? "auto" : contentShortname,
-                              subpath,
-                              attributes: {
-                                  is_active: true,
-                                  ...request_body
-                              },
-                          },
-                      ],
-                  };
-              }
-              if (new_resource_type === ResourceType.ticket) {
-                  request_body.records[0].attributes.workflow_shortname =
-                      workflowShortname;
-                  selectedContentType = ContentType.json;
-              }
-              if (selectedContentType !== null
-                  && new_resource_type !== ResourceType.role
-                  && new_resource_type !== ResourceType.permission
-              ) {
-                  request_body.records[0].attributes.payload = {
-                      content_type: "json",
-                      schema_shortname: selectedSchema,
-                      body: body,
-                  };
-
-              }
-              response = await request(request_body);
-          } else if (
-              ["text", "html", "markdown"].includes(selectedContentType)
-          ) {
-              request_body = {
-                  space_name,
-                  request_type: RequestType.create,
-                  records: [
-                      {
-                          resource_type: new_resource_type,
-                          shortname: contentShortname === "" ? "auto" : contentShortname,
-                          subpath,
-                          attributes: {
-                              is_active: true,
-                              payload: {
-                                  content_type: selectedContentType,
-                                  body: jseModalContent,
-                              }
-                          },
-                      },
-                  ],
-              };
-              response = await request(request_body);
-          }
-          else if (
-              ["image", "python", "pdf", "audio", "video"].includes(
-                  selectedContentType
-              )
-          ) {
-              response = await upload_with_payload(
-                  space_name,
-                  subpath,
-                  ResourceType[new_resource_type],
-                  null,
-                  contentShortname === "" ? "auto" : contentShortname,
-                  payloadFiles[0]
-              );
-          }
-      }
-      else if (entryType === "folder") {
-          let body: any = {}
-          // if (isContentEntryInForm){
-          //     body = selectedSchemaData.json
-          //         ? structuredClone(selectedSchemaData.json)
-          //         : JSON.parse(selectedSchemaData.text);
-          // } else {
-              body = jseModalContent.json
-                  ? structuredClone(jseModalContent.json)
-                  : JSON.parse(jseModalContent.text);
-          // }
-          if (!!body.query.type===false){
-              body.query.type = "search"
-          }
-          if (!!body.sort_type===false){
-              body.sort_type = "ascending"
-          }
-          request_body = {
-              space_name,
-              request_type: RequestType.create,
-              records: [
-                  {
-                      resource_type: ResourceType.folder,
-                      shortname: contentShortname === "" ? "auto" : contentShortname,
-                      subpath,
-                      attributes: {
-                          is_active: true,
-                          payload: {
-                              content_type: "json",
-                              schema_shortname: "folder_rendering",
-                              body: body ?? {}
-                          }
-                      },
-                  },
-              ],
+                },
+              },
+            ],
           };
-          response = await request(request_body);
-      }
+        } else {
+          if (workflowShortname) {
+            request_body = {
+              ...request_body,
+              workflow_shortname: workflowShortname,
+            };
+          }
 
-      if (response.status === "success") {
-          showToast(Level.info);
-          contentShortname = "";
-          isModalOpen = false;
-          refresh = !refresh;
+          request_body = {
+            space_name,
+            request_type: RequestType.create,
+            records: [
+              {
+                resource_type: new_resource_type,
+                shortname: contentShortname === "" ? "auto" : contentShortname,
+                subpath,
+                attributes: {
+                  is_active: true,
+                  ...request_body,
+                },
+              },
+            ],
+          };
+        }
+        if (new_resource_type === ResourceType.ticket) {
+          request_body.records[0].attributes.workflow_shortname =
+            workflowShortname;
+          selectedContentType = ContentType.json;
+        }
+        if (
+          selectedContentType !== null &&
+          new_resource_type !== ResourceType.role &&
+          new_resource_type !== ResourceType.permission
+        ) {
+          request_body.records[0].attributes.payload = {
+            content_type: "json",
+            schema_shortname: selectedSchema,
+            body: body,
+          };
+        }
+        response = await request(request_body);
+      } else if (["text", "html", "markdown"].includes(selectedContentType)) {
+        request_body = {
+          space_name,
+          request_type: RequestType.create,
+          records: [
+            {
+              resource_type: new_resource_type,
+              shortname: contentShortname === "" ? "auto" : contentShortname,
+              subpath,
+              attributes: {
+                is_active: true,
+                payload: {
+                  content_type: selectedContentType,
+                  body: jseModalContent,
+                },
+              },
+            },
+          ],
+        };
+        response = await request(request_body);
+      } else if (
+        ["image", "python", "pdf", "audio", "video"].includes(
+          selectedContentType
+        )
+      ) {
+        response = await upload_with_payload(
+          space_name,
+          subpath,
+          ResourceType[new_resource_type],
+          null,
+          contentShortname === "" ? "auto" : contentShortname,
+          payloadFiles[0]
+        );
       }
-      else {
-          showToast(Level.warn);
-          errorContent = response.error;
+    } else if (entryType === "folder") {
+      let body: any = {};
+      // if (isModalContentEntryInForm){
+      //     body = selectedSchemaData.json
+      //         ? structuredClone(selectedSchemaData.json)
+      //         : JSON.parse(selectedSchemaData.text);
+      // } else {
+      body = jseModalContent.json
+        ? structuredClone(jseModalContent.json)
+        : JSON.parse(jseModalContent.text);
+      // }
+      if (!!body.query.type === false) {
+        body.query.type = "search";
       }
+      if (!!body.sort_type === false) {
+        body.sort_type = "ascending";
+      }
+      request_body = {
+        space_name,
+        request_type: RequestType.create,
+        records: [
+          {
+            resource_type: ResourceType.folder,
+            shortname: contentShortname === "" ? "auto" : contentShortname,
+            subpath,
+            attributes: {
+              is_active: true,
+              payload: {
+                content_type: "json",
+                schema_shortname: "folder_rendering",
+                body: body ?? {},
+              },
+            },
+          },
+        ],
+      };
+      response = await request(request_body);
+    }
+
+    if (response.status === "success") {
+      showToast(Level.info);
+      contentShortname = "";
+      isModalOpen = false;
+      refresh = !refresh;
+    } else {
+      showToast(Level.warn);
+      errorContent = response.error;
+    }
   }
 
   async function handleDelete() {
-      if (
-          confirm(`Are you sure want to delete ${entry.shortname} entry ?`) === false
-      ) {
-          return;
-      }
+    if (
+      confirm(`Are you sure want to delete ${entry.shortname} entry ?`) ===
+      false
+    ) {
+      return;
+    }
 
-      let targetSubpath: string;
-      if (resource_type === ResourceType.folder) {
-          const arr = subpath.split("/");
-          arr[arr.length - 1] = "";
-          targetSubpath = arr.join("/");
-      } else {
-          targetSubpath = subpath;
-      }
+    let targetSubpath: string;
+    if (resource_type === ResourceType.folder) {
+      const arr = subpath.split("/");
+      arr[arr.length - 1] = "";
+      targetSubpath = arr.join("/");
+    } else {
+      targetSubpath = subpath;
+    }
 
-      let response: any = {};
-      if (resource_type !== ResourceType.space){
-          const request_body = {
-              space_name,
-              request_type: RequestType.delete,
-              records: [
-                  {
-                      resource_type,
-                      shortname: entry.shortname,
-                      subpath: targetSubpath || "/",
-                      branch_name: "master",
-                      attributes: {},
-                  },
-              ],
-          };
-          response = await request(request_body);
-      } else {
-          const request_body = {
-              space_name,
-              request_type: RequestType.delete,
-              records: [
-                  {
-                      resource_type: ResourceType.space,
-                      subpath: "/",
-                      shortname: entry.shortname,
-                      attributes: {},
-                  },
-              ],
-          };
-          response = await space(request_body);
-      }
+    let response: any = {};
+    if (resource_type !== ResourceType.space) {
+      const request_body = {
+        space_name,
+        request_type: RequestType.delete,
+        records: [
+          {
+            resource_type,
+            shortname: entry.shortname,
+            subpath: targetSubpath || "/",
+            branch_name: "master",
+            attributes: {},
+          },
+        ],
+      };
+      response = await request(request_body);
+    } else {
+      const request_body = {
+        space_name,
+        request_type: RequestType.delete,
+        records: [
+          {
+            resource_type: ResourceType.space,
+            subpath: "/",
+            shortname: entry.shortname,
+            attributes: {},
+          },
+        ],
+      };
+      response = await space(request_body);
+    }
 
-      if (response?.status === "success") {
-          showToast(Level.info);
-          // await spaces.refresh();
-          refresh_spaces.refresh();
-          history.go(-1);
-      } else {
-          showToast(Level.warn);
-      }
+    if (response?.status === "success") {
+      showToast(Level.info);
+      // await spaces.refresh();
+      refresh_spaces.refresh();
+      history.go(-1);
+    } else {
+      showToast(Level.warn);
+    }
   }
 
   // function beforeUnload(event) {
@@ -777,172 +816,191 @@
   // }
 
   async function handleDownload() {
-      const body = {
-          space_name,
-          subpath,
-          type: "search",
-          search: "",
-          retrieve_json_payload: true,
-          limit: 1000,
-          branch_name: "master",
-          filter_schema_names: [],
-      };
-      const data = await csv(body);
-      downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
+    const body = {
+      space_name,
+      subpath,
+      type: "search",
+      search: "",
+      retrieve_json_payload: true,
+      limit: 1000,
+      branch_name: "master",
+      filter_schema_names: [],
+    };
+    const data = await csv(body);
+    downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
   }
 
   const modalToggle = () => {
-      isModalOpen = !isModalOpen;
-      contentShortname = "";
+    isModalOpen = !isModalOpen;
+    contentShortname = "";
   };
 
-  function setPrepModalContentPayloadFromLocalSchema(){
-      let meta: any = {};
-      if (new_resource_type === ResourceType.user) {
-          meta = structuredClone(metaUserSchema);
-          delete meta.properties.uuid
-          delete meta.properties.shortname
-          delete meta.properties.created_at
-          delete meta.properties.updated_at
-          delete meta.properties.payload
-          // selectedSchemaContent = meta
-          jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
-          // jseContentRef.set({text: generateObjectFromSchema(meta)})
-          validatorModalContent = createAjvValidator({schema: meta});
+  function setPrepModalContentPayloadFromLocalSchema() {
+    let meta: any = {};
+    if (new_resource_type === ResourceType.user) {
+      meta = structuredClone(metaUserSchema);
+      delete meta.properties.uuid;
+      delete meta.properties.shortname;
+      delete meta.properties.created_at;
+      delete meta.properties.updated_at;
+      delete meta.properties.payload;
+      // selectedSchemaContent = meta
+      jseModalContent = {
+        text: JSON.stringify(generateObjectFromSchema(meta), null, 2),
+      };
+      // jseContentRef.set({text: generateObjectFromSchema(meta)})
+      validatorModalContent = createAjvValidator({ schema: meta });
+    } else if (new_resource_type === ResourceType.permission) {
+      meta = structuredClone(metaPermissionSchema);
+      delete meta.properties.uuid;
+      delete meta.properties.shortname;
+      delete meta.properties.created_at;
+      delete meta.properties.updated_at;
+      // selectedSchemaContent = meta
+      // jseContent.json = generateObjectFromSchema(meta)
+      jseModalContent = {
+        text: JSON.stringify(generateObjectFromSchema(meta), null, 2),
+      };
+      validatorModalContent = createAjvValidator({ schema: meta });
+    } else if (new_resource_type === ResourceType.role) {
+      meta = structuredClone(metaRoleSchema);
+      delete meta.properties.uuid;
+      delete meta.properties.shortname;
+      delete meta.properties.created_at;
+      delete meta.properties.updated_at;
+      delete meta.properties.updated_at;
+      // jseContent.json = generateObjectFromSchema(meta)
+      jseModalContent = {
+        text: JSON.stringify(generateObjectFromSchema(meta), null, 2),
+      };
+      validatorModalContent = createAjvValidator({ schema: meta });
+    } else {
+      if (schema) {
+        jseModalContent = {
+          text: JSON.stringify(generateObjectFromSchema(schema), null, 2),
+        };
+        if (meta.required) {
+          meta.required = meta.required.filter(
+            (item) =>
+              !["uuid", "shortname", "created_at", "updated_at"].includes(item)
+          );
+        }
+        validatorModalContent = createAjvValidator({ schema: schema });
+        old_new_resource_type = new_resource_type;
       }
-      else if (new_resource_type === ResourceType.permission) {
-          meta = structuredClone(metaPermissionSchema);
-          delete meta.properties.uuid
-          delete meta.properties.shortname
-          delete meta.properties.created_at
-          delete meta.properties.updated_at
-          // selectedSchemaContent = meta
-          // jseContent.json = generateObjectFromSchema(meta)
-          jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
-          validatorModalContent = createAjvValidator({schema: meta});
-      }
-      else if (new_resource_type === ResourceType.role) {
-          meta = structuredClone(metaRoleSchema);
-          delete meta.properties.uuid
-          delete meta.properties.shortname
-          delete meta.properties.created_at
-          delete meta.properties.updated_at
-          delete meta.properties.updated_at
-          // jseContent.json = generateObjectFromSchema(meta)
-          jseModalContent = {text: JSON.stringify(generateObjectFromSchema(meta), null, 2)}
-          validatorModalContent = createAjvValidator({schema: meta});
-      }
-      else {
-          if (schema) {
-              jseModalContent = {text: JSON.stringify(generateObjectFromSchema(schema), null, 2)}
-              if (meta.required) {
-                  meta.required = meta.required.filter(item => !["uuid", "shortname", "created_at", "updated_at"].includes(item))
-              }
-              validatorModalContent = createAjvValidator({schema: schema});
-              old_new_resource_type = new_resource_type;
-          }
-      }
-
+    }
   }
   async function setPrepModalContentPayloadFromFetchedSchema() {
     let schemaContent;
     if (["folder_rendering"].includes(selectedSchema)) {
-        schemaContent = await retrieve_entry(
-            ResourceType.schema,
-            "management",
-            "schema",
-            selectedSchema,
-            true
-        );
-    }
-    else {
-        schemaContent = await retrieve_entry(ResourceType.schema, space_name, "schema", selectedSchema, true, false);
+      schemaContent = await retrieve_entry(
+        ResourceType.schema,
+        "management",
+        "schema",
+        selectedSchema,
+        true
+      );
+    } else {
+      schemaContent = await retrieve_entry(
+        ResourceType.schema,
+        space_name,
+        "schema",
+        selectedSchema,
+        true,
+        false
+      );
     }
     if (schemaContent === null) {
-        showToast(Level.warn, `Can't load the schema ${selectedSchema} !`);
-        return
+      showToast(Level.warn, `Can't load the schema ${selectedSchema} !`);
+      return;
     }
     let _schema = schemaContent.payload.body;
-    if (new_resource_type === ResourceType.user){
-        const _metaUserSchema = structuredClone(metaUserSchema);
-        delete _metaUserSchema.properties.uuid
-        delete _metaUserSchema.properties.shortname
-        delete _metaUserSchema.properties.created_at
-        delete _metaUserSchema.properties.updated_at
-        delete _metaUserSchema.properties.payload.properties.last_validated
-        delete _metaUserSchema.properties.payload.properties.validation_status
-        _metaUserSchema.properties.payload.properties.body = _schema;
-        _schema = _metaUserSchema;
+    if (new_resource_type === ResourceType.user) {
+      const _metaUserSchema = structuredClone(metaUserSchema);
+      delete _metaUserSchema.properties.uuid;
+      delete _metaUserSchema.properties.shortname;
+      delete _metaUserSchema.properties.created_at;
+      delete _metaUserSchema.properties.updated_at;
+      delete _metaUserSchema.properties.payload.properties.last_validated;
+      delete _metaUserSchema.properties.payload.properties.validation_status;
+      _metaUserSchema.properties.payload.properties.body = _schema;
+      _schema = _metaUserSchema;
 
-        validatorModalContent = createAjvValidator({ schema:  _schema });
-        const body: any = generateObjectFromSchema(structuredClone(_schema));
-        body.payload.content_type = "json";
-        body.payload.schema_shortname = selectedSchema;
-        jseModalContent = {text: JSON.stringify(body,null,2)};
-    }
-    else
-    {
-        validatorModalContent = createAjvValidator({ schema:  _schema });
-        const body: any = generateObjectFromSchema(structuredClone(_schema));
-        jseModalContent = {text: JSON.stringify(body,null,2)};
+      validatorModalContent = createAjvValidator({ schema: _schema });
+      const body: any = generateObjectFromSchema(structuredClone(_schema));
+      body.payload.content_type = "json";
+      body.payload.schema_shortname = selectedSchema;
+      jseModalContent = { text: JSON.stringify(body, null, 2) };
+    } else {
+      validatorModalContent = createAjvValidator({ schema: _schema });
+      const body: any = generateObjectFromSchema(structuredClone(_schema));
+      jseModalContent = { text: JSON.stringify(body, null, 2) };
     }
     oldSelectedSchema = selectedSchema;
   }
 
   function setSchemaItems(schemas): Array<string> {
-      if (schemas === null){
-          return [];
-      }
-      let result;
-      const _schemas = schemas.records.map((e) => e.shortname);
-      if (entryType === "folder"){
-          result = ["folder_rendering", ..._schemas];
-      } else {
-          result = _schemas.filter((e) => !["meta_schema", "folder_rendering"].includes(e));
-      }
-      if ((entry?.payload?.body?.content_schema_shortnames ?? []).length){
-          result = result.filter((e) => entry?.payload?.body?.content_schema_shortnames.includes(e));
-      }
-      return result;
+    if (schemas === null) {
+      return [];
+    }
+    let result;
+    const _schemas = schemas.records.map((e) => e.shortname);
+    if (entryType === "folder") {
+      result = ["folder_rendering", ..._schemas];
+    } else {
+      result = _schemas.filter(
+        (e) => !["meta_schema", "folder_rendering"].includes(e)
+      );
+    }
+    if ((entry?.payload?.body?.content_schema_shortnames ?? []).length) {
+      result = result.filter((e) =>
+        entry?.payload?.body?.content_schema_shortnames.includes(e)
+      );
+    }
+    return result;
   }
 
   $: {
-      if (selectedContentType === "json") {
-          jseModalContent = { text: "{}" };
-      } else {
-          jseModalContent = "";
-      }
+    if (selectedContentType === "json") {
+      jseModalContent = { text: "{}" };
+    } else {
+      jseModalContent = "";
+    }
   }
 
-  let old_new_resource_type = ""
+  let old_new_resource_type = "";
   $: {
-      if (old_new_resource_type!==new_resource_type){
-        setPrepModalContentPayloadFromLocalSchema();
-      }
+    if (old_new_resource_type !== new_resource_type) {
+      setPrepModalContentPayloadFromLocalSchema();
+    }
   }
 
   let oldSelectedSchema = "oolldd";
   $: {
-      if (selectedSchema && selectedSchema!==oldSelectedSchema){
-          setPrepModalContentPayloadFromFetchedSchema();
-      }
+    if (selectedSchema && selectedSchema !== oldSelectedSchema) {
+      setPrepModalContentPayloadFromFetchedSchema();
+    }
   }
 
   function handleCreateEntryModal() {
-      entryType = "content";
-      isModalOpen = true;
-      new_resource_type = resolveResourceType(
-          space_name,
-          subpath,
-          allowedResourceTypes.length ? allowedResourceTypes[0] : ResourceType.content
-      );
-      if ([ResourceType.user,ResourceType.permission,ResourceType.role].includes(new_resource_type)){
-          setPrepModalContentPayloadFromLocalSchema();
-      }
-      else if (selectedSchema) {
-          setPrepModalContentPayloadFromFetchedSchema();
-      }
-
+    entryType = "content";
+    isModalOpen = true;
+    new_resource_type = resolveResourceType(
+      space_name,
+      subpath,
+      allowedResourceTypes.length
+        ? allowedResourceTypes[0]
+        : ResourceType.content
+    );
+    if (
+      [ResourceType.user, ResourceType.permission, ResourceType.role].includes(
+        new_resource_type
+      )
+    ) {
+      setPrepModalContentPayloadFromLocalSchema();
+    } else if (selectedSchema) {
+      setPrepModalContentPayloadFromFetchedSchema();
+    }
   }
 </script>
 
@@ -955,7 +1013,9 @@
 >
   <ModalHeader toggle={modalToggle}>
     Creating a {new_resource_type} under
-    <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>
+    <span class="text-success">{space_name}</span>/<span class="text-primary"
+      >{subpath}</span
+    >
   </ModalHeader>
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
@@ -982,12 +1042,7 @@
                 type="select"
               >
                 <option value={null}>{"None"}</option>
-                {#each [
-                    ContentType.json,
-                    ContentType.text,
-                    ContentType.markdown,
-                    ContentType.html,
-                ] as type}
+                {#each [ContentType.json, ContentType.text, ContentType.markdown, ContentType.html] as type}
                   <option value={type}>{type}</option>
                 {/each}
               </Input>
@@ -1002,7 +1057,7 @@
           {/if}
         {/if}
 
-        {#if !["workflows", "schema"].includes(subpath) && ![ResourceType.folder,ResourceType.role,ResourceType.permission,].includes(new_resource_type) }
+        {#if !["workflows", "schema"].includes(subpath) && ![ResourceType.folder, ResourceType.role, ResourceType.permission].includes(new_resource_type)}
           <Label class="mt-3">Schema</Label>
           <Input bind:value={selectedSchema} type="select">
             <option value={null}>{"None"}</option>
@@ -1022,7 +1077,9 @@
         />
         <hr />
         {#if new_resource_type === "schema"}
-          <TabContent on:tab={(e) => (isSchemaEntryInForm = e.detail==="form")}>
+          <TabContent
+            on:tab={(e) => (isSchemaEntryInForm = e.detail === "form")}
+          >
             <TabPane tabId="form" tab="Forms" active>
               <SchemaEditor bind:content={schemaContent} />
             </TabPane>
@@ -1035,8 +1092,7 @@
               />
             </TabPane>
           </TabContent>
-          <Row>
-          </Row>
+          <Row></Row>
         {:else if selectedContentType}
           {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
             <Label class="mt-3">Payload</Label>
@@ -1048,30 +1104,45 @@
           {/if}
           {#if selectedContentType === "json"}
             <Label class="mt-3">
-              {
-                new_resource_type === ResourceType.permission
-                    ? "Permission definition"
-                    : new_resource_type === ResourceType.role
-                        ? "Role definition"
-                        : "Payload"
-              }
+              {new_resource_type === ResourceType.permission
+                ? "Permission definition"
+                : new_resource_type === ResourceType.role
+                  ? "Role definition"
+                  : "Payload"}
             </Label>
-<!--              <TabContent on:tab={(e) => (isContentEntryInForm = e.detail==="form")}>-->
-              <!--{#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}-->
-              <!--  <TabPane tabId="form" tab="Form" active>-->
-              <!--    <SchemaForm-->
-              <!--      bind:ref={schemaFormRefModal}-->
-              <!--      schema={selectedSchemaContent}-->
-              <!--      bind:data={selectedSchemaData.json}-->
-              <!--    />-->
-              <!--  </TabPane>-->
-              <!--{/if}-->
-<!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
+            <!--              <TabContent on:tab={(e) => (isModalContentEntryInForm = e.detail==="form")}>-->
+            <!--{#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}-->
+            <!--  <TabPane tabId="form" tab="Form" active>-->
+            <!--    <SchemaForm-->
+            <!--      bind:ref={schemaFormRefModal}-->
+            <!--      schema={selectedSchemaContent}-->
+            <!--      bind:data={selectedSchemaData.json}-->
+            <!--    />-->
+            <!--  </TabPane>-->
+            <!--{/if}-->
+            <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
 
-            {#if new_resource_type === ResourceType.permission}
-              <PermissionForm bind:content={formModalContent} />
-            {:else if new_resource_type === ResourceType.role}
-              <RoleForm bind:content={formModalContent} />
+            {#if [ResourceType.permission, ResourceType.role].includes(new_resource_type)}
+            <TabContent
+              on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}
+            >
+              <TabPane tabId="form" tab="Form" active>
+                {#if new_resource_type === ResourceType.permission}
+                  <PermissionForm bind:content={formModalContent} />
+                {:else if new_resource_type === ResourceType.role}
+                  <RoleForm bind:content={formModalContent} />
+                {/if}
+              </TabPane>
+              <TabPane tabId="editor" tab="Editor">
+                <JSONEditor
+                  bind:this={jseModalContentRef}
+                  bind:content={jseModalContent}
+                  bind:validator={validatorModalContent}
+                  onRenderMenu={handleRenderMenu}
+                  mode={Mode.text}
+                />
+              </TabPane>
+            </TabContent>
             {:else}
               <JSONEditor
                 bind:this={jseModalContentRef}
@@ -1081,9 +1152,6 @@
                 mode={Mode.text}
               />
             {/if}
-            
-              <!--                </TabPane>-->
-<!--              </TabContent>-->
           {/if}
           {#if selectedContentType === "text"}
             <Label class="mt-3">Payload</Label>
@@ -1114,7 +1182,7 @@
           isModalOpen = false;
           contentShortname = "";
         }}
-      >cancel
+        >cancel
       </Button>
       <Button type="submit" color="primary">Submit</Button>
     </ModalFooter>
@@ -1171,7 +1239,8 @@
             class="justify-content-center text-center py-0 px-1"
             active={"edit_meta" === tab_option}
             title={$_("edit") + " meta"}
-            on:click={() => (tab_option = "edit_meta")}>
+            on:click={() => (tab_option = "edit_meta")}
+          >
             <Icon name="code-slash" />
           </Button>
           {#if entry.payload}
@@ -1221,7 +1290,8 @@
               class="justify-content-center text-center py-0 px-1"
               active={"visualization" === tab_option}
               title={$_("edit") + " payload"}
-              on:click={() => (tab_option = "visualization")}>
+              on:click={() => (tab_option = "visualization")}
+            >
               <Icon name="diagram-3" />
             </Button>
           {/if}
@@ -1233,7 +1303,8 @@
           class="justify-content-center text-center py-0 px-1"
           active={"attachments" === tab_option}
           title={$_("attachments")}
-          on:click={() => (tab_option = "attachments")}>
+          on:click={() => (tab_option = "attachments")}
+        >
           <Icon name="paperclip" />
         </Button>
         <Button
@@ -1243,7 +1314,8 @@
           class="justify-content-center text-center py-0 px-1"
           active={"history" === tab_option}
           title={$_("history")}
-          on:click={() => (tab_option = "history")}>
+          on:click={() => (tab_option = "history")}
+        >
           <Icon name="clock-history" />
         </Button>
       </ButtonGroup>
@@ -1258,7 +1330,8 @@
             size="sm"
             title={$_("delete")}
             on:click={handleDelete}
-            class="justify-content-center text-center py-0 px-1">
+            class="justify-content-center text-center py-0 px-1"
+          >
             <Icon name="trash" />
           </Button>
         {/if}
@@ -1269,7 +1342,8 @@
             size="sm"
             title={$_("download")}
             on:click={handleDownload}
-            class="justify-content-center text-center py-0 px-1">
+            class="justify-content-center text-center py-0 px-1"
+          >
             <Icon name="cloud-download" />
           </Button>
         {/if}
@@ -1279,18 +1353,17 @@
         {#if subpath !== "health_check"}
           {#if canCreateEntry}
             <Button
-            outline
-            color="success"
-            size="sm"
-            title={$_("create_entry")}
-            class="justify-contnet-center text-center py-0 px-1"
-            on:click={handleCreateEntryModal}
-          >
-            <Icon name="file-plus" />
-          </Button>
+              outline
+              color="success"
+              size="sm"
+              title={$_("create_entry")}
+              class="justify-contnet-center text-center py-0 px-1"
+              on:click={handleCreateEntryModal}
+            >
+              <Icon name="file-plus" />
+            </Button>
           {/if}
-          {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) &&
-          !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
+          {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
             <Button
               outline
               color="success"
@@ -1300,7 +1373,7 @@
               on:click={() => {
                 entryType = "folder";
                 new_resource_type = ResourceType.folder;
-                selectedSchema = "folder_rendering"
+                selectedSchema = "folder_rendering";
                 isModalOpen = true;
               }}
             >
@@ -1323,7 +1396,6 @@
           </Button>
         {/if}
       </ButtonGroup>
-
     </Nav>
   </div>
 
@@ -1333,19 +1405,20 @@
     transition:fade={{ delay: 25 }}
   >
     <div class="tab-pane" class:active={tab_option === "list"}>
-      <ListView {space_name} {subpath}
-                folderColumns={entry?.payload?.body?.index_attributes ?? null}
-                sort_by={entry?.payload?.body?.sort_by ?? null}
-                sort_order={entry?.payload?.body?.sort_order ?? null}
+      <ListView
+        {space_name}
+        {subpath}
+        folderColumns={entry?.payload?.body?.index_attributes ?? null}
+        sort_by={entry?.payload?.body?.sort_by ?? null}
+        sort_order={entry?.payload?.body?.sort_order ?? null}
       />
     </div>
     <div class="tab-pane" class:active={tab_option === "source"}>
-      <!--JSONEditor json={entry} /-->
       <div
         class="px-1 pb-1 h-100"
         style="text-align: left; direction: ltr; overflow: hidden auto;"
       >
-      <pre>
+        <pre>
         {JSON.stringify(entry, undefined, 1)}
       </pre>
       </div>
@@ -1353,14 +1426,15 @@
     <div class="tab-pane" class:active={tab_option === "view"}>
       <div
         class="px-1 pb-1 h-100"
-        style="text-align: left; direction: ltr; overflow: hidden auto;">
+        style="text-align: left; direction: ltr; overflow: hidden auto;"
+      >
         <TabContent>
           {#if isContentPreviewable}
             <TabPane tabId="content" tab="Content" class="p-3" active>
               {#if entry.payload.content_type === ContentType.html}
                 {@html entry.payload.body}
               {:else if entry.payload.content_type === ContentType.text}
-                <textarea value={entry.payload.body.toString()} disabled/>
+                <textarea value={entry.payload.body.toString()} disabled />
               {:else if entry.payload.content_type === ContentType.markdown}
                 {@html marked(entry.payload.body.toString())}
               {:else if entry.payload.content_type === ContentType.json}
@@ -1368,7 +1442,11 @@
               {/if}
             </TabPane>
           {/if}
-          <TabPane tabId="table" tab="Table" active={!isContentPreviewable}><Table2Cols entry={{"Resource type": resource_type,...entry}} /></TabPane>
+          <TabPane tabId="table" tab="Table" active={!isContentPreviewable}
+            ><Table2Cols
+              entry={{ "Resource type": resource_type, ...entry }}
+            /></TabPane
+          >
           <TabPane tabId="form" tab="Raw"><Prism code={entry} /></TabPane>
         </TabContent>
       </div>
@@ -1378,10 +1456,15 @@
         class="px-1 pb-1 h-100"
         style="text-align: left; direction: ltr; overflow: hidden auto;"
       >
-        {#if (resource_type===ResourceType.ticket)}
+        {#if resource_type === ResourceType.ticket}
           <TicketEntryRenderer {space_name} {subpath} bind:entry />
-        {:else if (resource_type===ResourceType.user)}
-          <UserEntryRenderer {space_name} {subpath} bind:entry  bind:errorContent/>
+        {:else if resource_type === ResourceType.user}
+          <UserEntryRenderer
+            {space_name}
+            {subpath}
+            bind:entry
+            bind:errorContent
+          />
         {/if}
         <JSONEditor
           bind:this={jseMetaRef}
@@ -1400,14 +1483,15 @@
       <div class="tab-pane" class:active={tab_option === "edit_content"}>
         <div
           class="px-1 pb-1 h-100"
-          style="text-align: left; direction: ltr; overflow: hidden auto;">
+          style="text-align: left; direction: ltr; overflow: hidden auto;"
+        >
           {#if entry.payload.content_type === "image"}
             {#if entry?.payload?.body.endsWith(".wsq")}
               <a
                 target="_blank"
                 download={entry?.payload?.body}
                 href={`${website.backend}/managed/payload/media/${space_name}/${subpath}/${entry?.payload?.body}`}
-              >{entry?.payload?.body}</a
+                >{entry?.payload?.body}</a
               >
             {:else}
               <img
@@ -1453,10 +1537,14 @@
               mode={Mode.text}
             />
           {:else}
-            <ContentEditor {space_name} {subpath} {handleSave}
-                           content_type={entry.payload.content_type}
-                           body={entry.payload.body}
-                           bind:jseContent />
+            <ContentEditor
+              {space_name}
+              {subpath}
+              {handleSave}
+              content_type={entry.payload.content_type}
+              body={entry.payload.body}
+              bind:jseContent
+            />
           {/if}
           {#if errorContent}
             <h3 class="mt-3">Error:</h3>
@@ -1474,7 +1562,10 @@
           {:else if resource_type === ResourceType.content && schema_name === "configuration"}
             <ConfigEditor entries={jseContent.json.items} />
           {:else if resource_type === ResourceType.content && schema_name === "translation"}
-            <TranslationEditor bind:entries={jseContent.json.items} columns={Object.keys(schema.properties.items.items.properties)} />
+            <TranslationEditor
+              bind:entries={jseContent.json.items}
+              columns={Object.keys(schema.properties.items.items.properties)}
+            />
           {:else}
             <div class="px-1 pb-1 h-100">
               <SchemaForm
@@ -1495,20 +1586,15 @@
         >
           <div class="preview">
             {#if ["meta_schema"].includes(entry.shortname)}
-<!--              <a href={"https://www.plantuml.com/plantuml/svg/" +-->
-<!--              schemaVisualizationEncoder(entry.payload.body)}-->
-<!--                download="{entry.shortname}.svg"-->
-<!--              >-->
-<!--                <img src={"https://www.plantuml.com/plantuml/svg/" +-->
-<!--                schemaVisualizationEncoder(entry.payload.body)}-->
-<!--                    alt={entry.shortname}-->
-<!--                />-->
-<!--              </a>-->
               <WorkflowRenderer
-                      shortname={entry.shortname}
-                      workflowContent={entry?.payload?.body} />
+                shortname={entry.shortname}
+                workflowContent={entry?.payload?.body}
+              />
             {:else}
-              <PlantUML shortname={entry.shortname} properties={entry.payload.body.properties} />
+              <PlantUML
+                shortname={entry.shortname}
+                properties={entry.payload.body.properties}
+              />
             {/if}
           </div>
         </div>
@@ -1539,7 +1625,9 @@
   </div>
 {:else}
   <Alert color="danger text-center mt-5">
-    <h4 class="alert-heading text-capitalize">Failed to load the entry, please check its existence or try again.</h4>
+    <h4 class="alert-heading text-capitalize">
+      Failed to load the entry, please check its existence or try again.
+    </h4>
   </Alert>
 {/if}
 
