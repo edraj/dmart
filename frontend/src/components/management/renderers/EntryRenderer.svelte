@@ -230,31 +230,39 @@
         };
       }
 
-      await checkWorkflowsSubpath();
+      try {
+          await checkWorkflowsSubpath();
+      } catch (e) {
 
-      if (entry?.payload?.schema_shortname) {
-        const entrySchema = entry?.payload?.schema_shortname;
-        let _schema: any = null;
+      }
 
-        _schema = await retrieve_entry(
-          ResourceType.schema,
-          ["folder_rendering"].includes(entrySchema)
-            ? "management"
-            : space_name,
-          "schema",
-          entrySchema,
-          true
-        );
+      try {
+          if (entry?.payload?.schema_shortname) {
+              const entrySchema = entry?.payload?.schema_shortname;
+              let _schema: any = null;
 
-        if (_schema) {
-          schema = _schema.payload?.body;
-          validatorContent = createAjvValidator({ schema });
-        } else {
-          showToast(
-            Level.warn,
-            `Can't load the schema ${entry?.payload?.schema_shortname} !`
-          );
-        }
+              _schema = await retrieve_entry(
+                  ResourceType.schema,
+                  ["folder_rendering"].includes(entrySchema)
+                      ? "management"
+                      : space_name,
+                  "schema",
+                  entrySchema,
+                  true
+              );
+
+              if (_schema) {
+                  schema = _schema.payload?.body;
+                  validatorContent = createAjvValidator({ schema });
+              } else {
+                  showToast(
+                      Level.warn,
+                      `Can't load the schema ${entry?.payload?.schema_shortname} !`
+                  );
+              }
+          }
+      } catch (e){
+
       }
 
       canCreateEntry = allowedResourceTypes.map(r=>checkAccessv2("create", space_name, subpath, r)).some(item => item);
@@ -347,7 +355,6 @@
     if (resource_type === ResourceType.user && btoa(data.password.slice(0,6)) === 'JDJiJDEy') {
       delete data.password;
     }
-
     if (resource_type === ResourceType.folder) {
       const arr = subpath.split("/");
       arr[arr.length - 1] = "";
@@ -959,6 +966,12 @@
     }
     return result;
   }
+  function setWorkflowItem(workflows): Array<string> {
+    if (workflows === null) {
+      return [];
+    }
+    return workflows.records.map((e) => e.shortname);
+  }
 
   $: {
     if (selectedContentType === "json") {
@@ -1048,11 +1061,14 @@
               </Input>
             {/if}
             {#if new_resource_type === "ticket"}
-              <Label class="mt-3">Workflow Shortname</Label>
-              <Input
-                placeholder="Shortname..."
-                bind:value={workflowShortname}
-              />
+              {#await query( { space_name, type: QueryType.search, subpath: "/workflow", search: "", retrieve_json_payload: true, limit: 99 } ) then workflows}
+                <Label class="mt-3">Workflow</Label>
+                <Input bind:value={workflowShortname} type="select">
+                  {#each setWorkflowItem(workflows) as workflow}
+                    <option value={workflow}>{workflow}</option>
+                  {/each}
+                </Input>
+              {/await}
             {/if}
           {/if}
         {/if}
