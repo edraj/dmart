@@ -37,7 +37,10 @@ def decode_jwt(token: str) -> dict[str, Any]:
         )
         
 
-    if isinstance(decoded_token["data"], dict) and decoded_token["data"].get("username"):
+    if(
+        isinstance(decoded_token["data"], dict) 
+        and decoded_token["data"].get("username") is not None
+    ):
         return decoded_token["data"]
     else:
         raise api.Exception(
@@ -76,13 +79,18 @@ class JWTBearer(HTTPBearer):
             
         decoded = decode_jwt(auth_token)
         user_shortname = decoded["username"]
+        if not user_shortname:
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [2]"),
+            )
         
         active_session_token = await get_redis_active_session(user_shortname)
-        if active_session_token != auth_token:
+        if not isinstance(active_session_token, str) or active_session_token != auth_token:
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(
-                    type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [2]"
+                    type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [3]"
                 ),
             )
             
@@ -124,7 +132,7 @@ async def set_redis_active_session(user_shortname: str, token: str) -> bool:
             ex=settings.session_inactivity_ttl,
         ))
         
-async def get_redis_active_session(user_shortname: str) -> str | None:
+async def get_redis_active_session(user_shortname: str):
     async with RedisServices() as redis:
         return await redis.get(
             f"active_session:{user_shortname}"
