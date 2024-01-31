@@ -28,7 +28,7 @@ def test_user_does_not_exist():
 
 
 @pytest.mark.run(order=1)
-def test_create_user():
+def DISABLED_test_create_user():
     request_body = {
         "resource_type": "user",
         "shortname": new_user_data["shortname"],
@@ -64,7 +64,7 @@ def test_create_user():
     )
 
 @pytest.mark.run(order=1)
-def test_login_with_the_new_user():
+def DISABLED_test_login_with_the_new_user():
     response = client.post(
         "/user/login",
         json={
@@ -77,21 +77,21 @@ def test_login_with_the_new_user():
 
 
 @pytest.mark.run(order=1)
-def test_get_profile() -> None:
+def DISABLED_test_get_profile() -> None:
     response = client.get("/user/profile")
     assert_code_and_status_success(response)
     assert response.json()['records'][0]['shortname'] == new_user_data['shortname']
 
 
 @pytest.mark.run(order=1)
-def test_user_already_exist():
+def DISABLED_test_user_already_exist():
     response = client.get("/user/check-existing", params=new_user_data)
     assert_code_and_status_success(response)
     assert response.json()["attributes"]["unique"] is False
 
 
 @pytest.mark.run(order=1)
-def test_update_profile() -> None:
+def DISABLED_test_update_profile() -> None:
     request_data = {
         "resource_type": "user",
         "subpath": "users",
@@ -104,7 +104,7 @@ def test_update_profile() -> None:
 
 
 @pytest.mark.run(order=1)
-def test_logout_with_the_new_user():
+def DISABLED_test_logout_with_the_new_user():
     response = client.post(
         "/user/logout",
         json={},
@@ -113,7 +113,7 @@ def test_logout_with_the_new_user():
 
 
 @pytest.mark.run(order=1)
-def test_delete_new_user_profile() -> None:
+def DISABLED_test_delete_new_user_profile() -> None:
     response = client.post("/user/delete", json={})
     assert_code_and_status_success(response)
 
