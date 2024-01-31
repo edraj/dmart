@@ -17,13 +17,14 @@
   import { isDeepEqual } from "@/utils/compare";
   import { folderRenderingColsToListCols } from "@/utils/columnsUtils";
   import {
-    Modal,
-    ModalBody,
-    ModalFooter,
-    ModalHeader,
-    Button,
+      Modal,
+      ModalBody,
+      ModalFooter,
+      ModalHeader,
+      Button, Input,
   } from "sveltestrap";
   import { params } from "@roxi/routify";
+  import {bulkBucket} from "@/stores/management/bulk_bucket";
 
   onDestroy(() => status_line.set(""));
 
@@ -300,6 +301,20 @@
   const toggelModal = () => {
       open != open;
   }
+
+  function handleBulk(e) {
+      try {
+          const { name, checked } = e.target;
+          const _shortname = objectDatatable.arrayRawData[name].shortname;
+          const _resource_type = objectDatatable.arrayRawData[name].resource_type;
+          if (checked) {
+              $bulkBucket = [...$bulkBucket, {shortname: _shortname, resource_type: _resource_type}];
+          }
+          else {
+              $bulkBucket = $bulkBucket.filter(e=> e.shortname !== shortname);
+          }
+      }catch (e){}
+  }
 </script>
 
 {#key open}
@@ -330,7 +345,7 @@
 <div class="list">
   {#await fetchPageRecords()}
     READING DATA...
-  {:then}
+  {:then _}
     <Engine bind:propDatatable={objectDatatable} />
 
     <div class="mx-3" transition:fade={{ delay: 25 }}>
@@ -342,6 +357,7 @@
         <table class="table table-striped table-sm mt-2">
           <thead>
             <tr>
+              <th></th>
               {#each Object.keys(columns) as col}
                 <th>
                   <Sort bind:propDatatable={objectDatatable} propColumn={col}>{columns[col].title}</Sort>
@@ -350,8 +366,9 @@
             </tr>
           </thead>
           <tbody>
-            {#each objectDatatable.arrayRawData as row}
+            {#each objectDatatable.arrayRawData as row, index}
               <tr>
+                <td style="cursor: pointer;"><Input type="checkbox" on:change={handleBulk} name={index} /></td>
                 {#each Object.keys(columns) as col}
                   <!-- svelte-ignore a11y-click-events-have-key-events -->
                   <td
