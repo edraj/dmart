@@ -366,3 +366,12 @@ def test_delete_folder():
 @pytest.mark.run("last")
 def test_delete_space():
     delete_space()
+
+
+@pytest.mark.run("last")
+def test_logout():
+    response = client.post(
+        "/user/logout",
+        json={},
+    )
+    assert_code_and_status_success(response)
