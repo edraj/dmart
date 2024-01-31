@@ -82,6 +82,8 @@
   import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
   import PermissionForm from "./Forms/PermissionForm.svelte";
   import RoleForm from "./Forms/RoleForm.svelte";
+  import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
+  import {bulkBucket} from "@/stores/management/bulk_bucket";
 
   // props
   export let entry: ResponseEntry;
@@ -164,6 +166,7 @@
   let jseModalContentRef;
   let jseModalContent: any = { text: "{}" };
   let formModalContent: any;
+  let formModalContentPayload: any = { json: {}, text: undefined };
 
   let allowedResourceTypes = [ResourceType.content];
   function setMetaValidator(): Validator {
@@ -230,31 +233,39 @@
         };
       }
 
-      await checkWorkflowsSubpath();
+      try {
+          await checkWorkflowsSubpath();
+      } catch (e) {
 
-      if (entry?.payload?.schema_shortname) {
-        const entrySchema = entry?.payload?.schema_shortname;
-        let _schema: any = null;
+      }
 
-        _schema = await retrieve_entry(
-          ResourceType.schema,
-          ["folder_rendering"].includes(entrySchema)
-            ? "management"
-            : space_name,
-          "schema",
-          entrySchema,
-          true
-        );
+      try {
+          if (entry?.payload?.schema_shortname) {
+              const entrySchema = entry?.payload?.schema_shortname;
+              let _schema: any = null;
 
-        if (_schema) {
-          schema = _schema.payload?.body;
-          validatorContent = createAjvValidator({ schema });
-        } else {
-          showToast(
-            Level.warn,
-            `Can't load the schema ${entry?.payload?.schema_shortname} !`
-          );
-        }
+              _schema = await retrieve_entry(
+                  ResourceType.schema,
+                  ["folder_rendering"].includes(entrySchema)
+                      ? "management"
+                      : space_name,
+                  "schema",
+                  entrySchema,
+                  true
+              );
+
+              if (_schema) {
+                  schema = _schema.payload?.body;
+                  validatorContent = createAjvValidator({ schema });
+              } else {
+                  showToast(
+                      Level.warn,
+                      `Can't load the schema ${entry?.payload?.schema_shortname} !`
+                  );
+              }
+          }
+      } catch (e){
+
       }
 
       canCreateEntry = allowedResourceTypes.map(r=>checkAccessv2("create", space_name, subpath, r)).some(item => item);
@@ -347,7 +358,6 @@
     if (resource_type === ResourceType.user && btoa(data.password.slice(0,6)) === 'JDJiJDEy') {
       delete data.password;
     }
-
     if (resource_type === ResourceType.folder) {
       const arr = subpath.split("/");
       arr[arr.length - 1] = "";
@@ -483,7 +493,8 @@
         ],
       };
       response = await request(request_body);
-    } else if (new_resource_type === ResourceType.user) {
+    }
+    else if (new_resource_type === ResourceType.user) {
       if (jseModalContentRef?.validate()?.validationErrors) {
         return;
       }
@@ -501,15 +512,33 @@
       //         attributes: body
       //     }
       // } else {
-      body = jseModalContent.json
-        ? structuredClone(jseModalContent.json)
-        : JSON.parse(jseModalContent.text);
+
+        if (isModalContentEntryInForm){
+            body = {}
+            formModalContent.forEach(item => {
+                body[item.key] = item.value;
+            });
+            body = structuredClone(body);
+        }
+        else {
+            body = jseModalContent.json
+                ? structuredClone(jseModalContent.json)
+                : JSON.parse(jseModalContent.text);
+        }
+        if (formModalContentPayload.text){
+            body.payload = {
+                content_type: "json",
+                schema_shortname: selectedSchema,
+                body: JSON.parse(formModalContentPayload.text)
+            }
+        }
       // }
 
       if (!body?.password) {
         showToast(Level.warn, "Password must be provided!");
         return;
-      } else {
+      }
+      else {
         if (!passwordRegExp.test(body?.password)) {
           showToast(Level.warn, passwordWrongExp);
           return;
@@ -531,7 +560,8 @@
           showToast(Level.warn, "Email already exists!");
           return;
         }
-      } else {
+      }
+      else {
         delete body.email;
       }
 
@@ -541,7 +571,8 @@
           showToast(Level.warn, "MSISDN already exists!");
           return;
         }
-      } else {
+      }
+      else {
         delete body.msisdn;
       }
 
@@ -778,7 +809,8 @@
         ],
       };
       response = await request(request_body);
-    } else {
+    }
+    else {
       const request_body = {
         space_name,
         request_type: RequestType.delete,
@@ -799,6 +831,40 @@
       // await spaces.refresh();
       refresh_spaces.refresh();
       history.go(-1);
+    } else {
+      showToast(Level.warn);
+    }
+  }
+  async function handleDeleteBulk() {
+      console.log({D: $bulkBucket.map(e=>e.shortname)})
+    if (
+      confirm(`Are you sure want to delete (${$bulkBucket.map(e=>e.shortname).join(", ")}) ${$bulkBucket.length === 1 ? "entry" : "entries"} ?`) ===
+      false
+    ) {
+      return;
+    }
+
+      const records = []
+      $bulkBucket.map(b => {
+          records.push({
+              resource_type: b.resource_type,
+              shortname: b.shortname,
+              subpath: subpath || "/",
+              branch_name: "master",
+              attributes: {},
+          });
+      });
+
+    const request_body = {
+      space_name,
+      request_type: RequestType.delete,
+      records: records,
+    };
+    const response = await request(request_body);
+
+    if (response?.status === "success") {
+      showToast(Level.info);
+      window.location.reload();
     } else {
       showToast(Level.warn);
     }
@@ -928,6 +994,14 @@
 
       validatorModalContent = createAjvValidator({ schema: _schema });
       const body: any = generateObjectFromSchema(structuredClone(_schema));
+      formModalContentPayload = {
+          text: JSON.stringify(
+              generateObjectFromSchema(structuredClone(_metaUserSchema.properties.payload.properties.body)),
+              null,
+              2
+          )
+      };
+
       body.payload.content_type = "json";
       body.payload.schema_shortname = selectedSchema;
       jseModalContent = { text: JSON.stringify(body, null, 2) };
@@ -958,6 +1032,12 @@
       );
     }
     return result;
+  }
+  function setWorkflowItem(workflows): Array<string> {
+    if (workflows === null) {
+      return [];
+    }
+    return workflows.records.map((e) => e.shortname);
   }
 
   $: {
@@ -1048,11 +1128,14 @@
               </Input>
             {/if}
             {#if new_resource_type === "ticket"}
-              <Label class="mt-3">Workflow Shortname</Label>
-              <Input
-                placeholder="Shortname..."
-                bind:value={workflowShortname}
-              />
+              {#await query( { space_name, type: QueryType.search, subpath: "/workflow", search: "", retrieve_json_payload: true, limit: 99 } ) then workflows}
+                <Label class="mt-3">Workflow</Label>
+                <Input bind:value={workflowShortname} type="select">
+                  {#each setWorkflowItem(workflows) as workflow}
+                    <option value={workflow}>{workflow}</option>
+                  {/each}
+                </Input>
+              {/await}
             {/if}
           {/if}
         {/if}
@@ -1122,7 +1205,7 @@
             <!--{/if}-->
             <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
 
-            {#if [ResourceType.permission, ResourceType.role].includes(new_resource_type)}
+            {#if [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)}
             <TabContent
               on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}
             >
@@ -1131,6 +1214,8 @@
                   <PermissionForm bind:content={formModalContent} />
                 {:else if new_resource_type === ResourceType.role}
                   <RoleForm bind:content={formModalContent} />
+                {:else if new_resource_type === ResourceType.user}
+                  <UserForm bind:content={formModalContent} bind:payload={formModalContentPayload}/>
                 {/if}
               </TabPane>
               <TabPane tabId="editor" tab="Editor">
@@ -1334,6 +1419,18 @@
           >
             <Icon name="trash" />
           </Button>
+          {#if $bulkBucket.length}
+          <Button
+            outline
+            color="success"
+            size="sm"
+            title={$_("delete")}
+            on:click={handleDeleteBulk}
+            class="justify-content-center text-center py-0 px-1"
+          >
+            <Icon name="x-circle" />
+          </Button>
+          {/if}
         {/if}
         {#if !!entry?.payload?.body?.allow_csv}
           <Button
