@@ -32,7 +32,7 @@ import utils.db as db
 import utils.regex as regex
 import sys
 import json
-from utils.jwt import JWTBearer, GetJWTToken, remove_redis_session_key
+from utils.jwt import JWTBearer, GetJWTToken, remove_redis_active_session
 from utils.access_control import access_control
 from utils.spaces import get_spaces, initialize_spaces
 from typing import Any
@@ -900,7 +900,7 @@ async def serve_request(
                         isinstance(resource_obj, core.User) and
                         record.attributes.get("is_active") is False
                 ):
-                    await remove_redis_session_key(record.shortname)
+                    await remove_redis_active_session(record.shortname)
 
                 records.append(
                     resource_obj.to_record(
