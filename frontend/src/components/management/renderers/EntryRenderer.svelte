@@ -83,6 +83,7 @@
   import PermissionForm from "./Forms/PermissionForm.svelte";
   import RoleForm from "./Forms/RoleForm.svelte";
   import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
+  import {bulkBucket} from "@/stores/management/bulk_bucket";
 
   // props
   export let entry: ResponseEntry;
@@ -808,7 +809,8 @@
         ],
       };
       response = await request(request_body);
-    } else {
+    }
+    else {
       const request_body = {
         space_name,
         request_type: RequestType.delete,
@@ -829,6 +831,40 @@
       // await spaces.refresh();
       refresh_spaces.refresh();
       history.go(-1);
+    } else {
+      showToast(Level.warn);
+    }
+  }
+  async function handleDeleteBulk() {
+      console.log({D: $bulkBucket.map(e=>e.shortname)})
+    if (
+      confirm(`Are you sure want to delete (${$bulkBucket.map(e=>e.shortname).join(", ")}) ${$bulkBucket.length === 1 ? "entry" : "entries"} ?`) ===
+      false
+    ) {
+      return;
+    }
+
+      const records = []
+      $bulkBucket.map(b => {
+          records.push({
+              resource_type: b.resource_type,
+              shortname: b.shortname,
+              subpath: subpath || "/",
+              branch_name: "master",
+              attributes: {},
+          });
+      });
+
+    const request_body = {
+      space_name,
+      request_type: RequestType.delete,
+      records: records,
+    };
+    const response = await request(request_body);
+
+    if (response?.status === "success") {
+      showToast(Level.info);
+      window.location.reload();
     } else {
       showToast(Level.warn);
     }
@@ -1383,6 +1419,18 @@
           >
             <Icon name="trash" />
           </Button>
+          {#if $bulkBucket.length}
+          <Button
+            outline
+            color="success"
+            size="sm"
+            title={$_("delete")}
+            on:click={handleDeleteBulk}
+            class="justify-content-center text-center py-0 px-1"
+          >
+            <Icon name="x-circle" />
+          </Button>
+          {/if}
         {/if}
         {#if !!entry?.payload?.body?.allow_csv}
           <Button
