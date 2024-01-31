@@ -82,6 +82,7 @@
   import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
   import PermissionForm from "./Forms/PermissionForm.svelte";
   import RoleForm from "./Forms/RoleForm.svelte";
+  import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
 
   // props
   export let entry: ResponseEntry;
@@ -164,6 +165,7 @@
   let jseModalContentRef;
   let jseModalContent: any = { text: "{}" };
   let formModalContent: any;
+  let formModalContentPayload: any = { json: {}, text: undefined };
 
   let allowedResourceTypes = [ResourceType.content];
   function setMetaValidator(): Validator {
@@ -490,7 +492,8 @@
         ],
       };
       response = await request(request_body);
-    } else if (new_resource_type === ResourceType.user) {
+    }
+    else if (new_resource_type === ResourceType.user) {
       if (jseModalContentRef?.validate()?.validationErrors) {
         return;
       }
@@ -508,15 +511,33 @@
       //         attributes: body
       //     }
       // } else {
-      body = jseModalContent.json
-        ? structuredClone(jseModalContent.json)
-        : JSON.parse(jseModalContent.text);
+
+        if (isModalContentEntryInForm){
+            body = {}
+            formModalContent.forEach(item => {
+                body[item.key] = item.value;
+            });
+            body = structuredClone(body);
+        }
+        else {
+            body = jseModalContent.json
+                ? structuredClone(jseModalContent.json)
+                : JSON.parse(jseModalContent.text);
+        }
+        if (formModalContentPayload.text){
+            body.payload = {
+                content_type: "json",
+                schema_shortname: selectedSchema,
+                body: JSON.parse(formModalContentPayload.text)
+            }
+        }
       // }
 
       if (!body?.password) {
         showToast(Level.warn, "Password must be provided!");
         return;
-      } else {
+      }
+      else {
         if (!passwordRegExp.test(body?.password)) {
           showToast(Level.warn, passwordWrongExp);
           return;
@@ -538,7 +559,8 @@
           showToast(Level.warn, "Email already exists!");
           return;
         }
-      } else {
+      }
+      else {
         delete body.email;
       }
 
@@ -548,7 +570,8 @@
           showToast(Level.warn, "MSISDN already exists!");
           return;
         }
-      } else {
+      }
+      else {
         delete body.msisdn;
       }
 
@@ -935,6 +958,14 @@
 
       validatorModalContent = createAjvValidator({ schema: _schema });
       const body: any = generateObjectFromSchema(structuredClone(_schema));
+      formModalContentPayload = {
+          text: JSON.stringify(
+              generateObjectFromSchema(structuredClone(_metaUserSchema.properties.payload.properties.body)),
+              null,
+              2
+          )
+      };
+
       body.payload.content_type = "json";
       body.payload.schema_shortname = selectedSchema;
       jseModalContent = { text: JSON.stringify(body, null, 2) };
@@ -1138,7 +1169,7 @@
             <!--{/if}-->
             <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
 
-            {#if [ResourceType.permission, ResourceType.role].includes(new_resource_type)}
+            {#if [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)}
             <TabContent
               on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}
             >
@@ -1147,6 +1178,8 @@
                   <PermissionForm bind:content={formModalContent} />
                 {:else if new_resource_type === ResourceType.role}
                   <RoleForm bind:content={formModalContent} />
+                {:else if new_resource_type === ResourceType.user}
+                  <UserForm bind:content={formModalContent} bind:payload={formModalContentPayload}/>
                 {/if}
               </TabPane>
               <TabPane tabId="editor" tab="Editor">
