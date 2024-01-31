@@ -12,7 +12,7 @@ from pydantic.fields import Field
 from models.enums import ContentType, Language, ResourceType
 from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import sign_jwt
+from utils.jwt import generate_jwt
 from utils.plugin_manager import plugin_manager
 from utils.spaces import get_spaces
 from utils.settings import settings
@@ -1717,7 +1717,7 @@ async def store_user_invitation_token(user: core.User, channel: str) -> str | No
     if not invitation_value:
         return None
 
-    invitation_token = sign_jwt(
+    invitation_token = generate_jwt(
         {"shortname": user.shortname, "channel": channel},
         settings.jwt_access_expires,
     )
