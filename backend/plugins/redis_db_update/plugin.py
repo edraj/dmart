@@ -10,10 +10,8 @@ from utils.redis_services import RedisServices
 from fastapi.logger import logger
 from create_index import main as reload_redis
 
-
 class Plugin(PluginBase):
     async def hook(self, data: Event):
-        # print(f"\n\n {data = } \n\n")
         self.data = data
         # Type narrowing for PyRight
         if (
