@@ -10,8 +10,10 @@ from utils.redis_services import RedisServices
 from fastapi.logger import logger
 from create_index import main as reload_redis
 
+
 class Plugin(PluginBase):
     async def hook(self, data: Event):
+        # print(f"\n\n {data = } \n\n")
         self.data = data
         # Type narrowing for PyRight
         if (
@@ -35,6 +37,13 @@ class Plugin(PluginBase):
             return
 
         async with RedisServices() as redis_services:
+            if(
+                data.resource_type == ResourceType.folder 
+                and data.action_type in [ActionType.delete, ActionType.move]
+            ):
+                await reload_redis(for_space=data.space_name)
+                return
+            
             if data.action_type == ActionType.delete:
                 doc_id = redis_services.generate_doc_id(
                     data.space_name,
@@ -82,9 +91,9 @@ class Plugin(PluginBase):
                     data.space_name, data.branch_name, data.subpath, meta
                 )
                 payload = {}
-                if(
-                    meta.payload and 
-                    meta.payload.content_type == ContentType.json
+                if (
+                    meta.payload
+                    and meta.payload.content_type == ContentType.json
                     and meta.payload.body is not None
                 ):
                     payload = db.load_resource_payload(
@@ -96,11 +105,11 @@ class Plugin(PluginBase):
                     )
 
                 meta_json["payload_string"] = await generate_payload_string(
-                    space_name=data.space_name, 
+                    space_name=data.space_name,
                     subpath=meta_json["subpath"],
                     shortname=meta_json["shortname"],
-                    branch_name=data.branch_name, 
-                    payload=payload
+                    branch_name=data.branch_name,
+                    payload=payload,
                 )
 
                 await redis_services.save_doc(meta_doc_id, meta_json)
@@ -116,12 +125,6 @@ class Plugin(PluginBase):
                     )
 
             elif data.action_type == ActionType.move:
-                if data.resource_type == ResourceType.folder:
-                    await reload_redis(
-                        for_space=data.space_name
-                    )
-                    return
-                
                 await redis_services.move_meta_doc(
                     data.space_name,
                     data.branch_name,
@@ -141,15 +144,16 @@ class Plugin(PluginBase):
                         data.subpath,
                     )
 
-
     async def update_parent_entry_payload_string(self) -> None:
-
         async with RedisServices() as redis_services:
             # get the parent meta doc
             subpath_parts = self.data.subpath.strip("/").split("/")
             if len(subpath_parts) <= 1:
                 return
-            parent_subpath, parent_shortname = "/".join(subpath_parts[:-1]), subpath_parts[-1]
+            parent_subpath, parent_shortname = (
+                "/".join(subpath_parts[:-1]),
+                subpath_parts[-1],
+            )
             doc_id = redis_services.generate_doc_id(
                 self.data.space_name,
                 self.data.branch_name,
@@ -165,15 +169,15 @@ class Plugin(PluginBase):
             payload_doc = await redis_services.get_doc_by_id(
                 meta_doc.get("payload_doc_id", "")
             )
-            payload = {k:v for k, v in payload_doc.items() if k not in meta_doc}
+            payload = {k: v for k, v in payload_doc.items() if k not in meta_doc}
 
             # generate the payload string
             meta_doc["payload_string"] = await generate_payload_string(
-                space_name=self.data.space_name, 
+                space_name=self.data.space_name,
                 subpath=parent_subpath,
                 shortname=parent_shortname,
-                branch_name=self.data.branch_name, 
-                payload=payload
+                branch_name=self.data.branch_name,
+                payload=payload,
             )
 
             # update parent meta doc
