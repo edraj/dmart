@@ -155,7 +155,7 @@
   let schemaContent = { json: {}, text: undefined };
   let contentShortname = "";
   let workflowShortname = "";
-  let selectedSchema = subpath === "workflows" ? "workflow" : "";
+  let selectedSchema = subpath === "workflows" ? "workflow" : null;
   let selectedContentType = ContentType.json;
   let new_resource_type: ResourceType;
 
@@ -836,7 +836,6 @@
     }
   }
   async function handleDeleteBulk() {
-      console.log({D: $bulkBucket.map(e=>e.shortname)})
     if (
       confirm(`Are you sure want to delete (${$bulkBucket.map(e=>e.shortname).join(", ")}) ${$bulkBucket.length === 1 ? "entry" : "entries"} ?`) ===
       false
@@ -916,7 +915,8 @@
       };
       // jseContentRef.set({text: generateObjectFromSchema(meta)})
       validatorModalContent = createAjvValidator({ schema: meta });
-    } else if (new_resource_type === ResourceType.permission) {
+    }
+    else if (new_resource_type === ResourceType.permission) {
       meta = structuredClone(metaPermissionSchema);
       delete meta.properties.uuid;
       delete meta.properties.shortname;
@@ -928,7 +928,8 @@
         text: JSON.stringify(generateObjectFromSchema(meta), null, 2),
       };
       validatorModalContent = createAjvValidator({ schema: meta });
-    } else if (new_resource_type === ResourceType.role) {
+    }
+    else if (new_resource_type === ResourceType.role) {
       meta = structuredClone(metaRoleSchema);
       delete meta.properties.uuid;
       delete meta.properties.shortname;
@@ -940,20 +941,6 @@
         text: JSON.stringify(generateObjectFromSchema(meta), null, 2),
       };
       validatorModalContent = createAjvValidator({ schema: meta });
-    } else {
-      if (schema) {
-        jseModalContent = {
-          text: JSON.stringify(generateObjectFromSchema(schema), null, 2),
-        };
-        if (meta.required) {
-          meta.required = meta.required.filter(
-            (item) =>
-              !["uuid", "shortname", "created_at", "updated_at"].includes(item)
-          );
-        }
-        validatorModalContent = createAjvValidator({ schema: schema });
-        old_new_resource_type = new_resource_type;
-      }
     }
   }
   async function setPrepModalContentPayloadFromFetchedSchema() {
@@ -966,7 +953,8 @@
         selectedSchema,
         true
       );
-    } else {
+    }
+    else {
       schemaContent = await retrieve_entry(
         ResourceType.schema,
         space_name,
@@ -1048,16 +1036,22 @@
     }
   }
 
-  let old_new_resource_type = "";
+  let old_new_resource_type = undefined;
   $: {
-    if (old_new_resource_type !== new_resource_type) {
+    if (old_new_resource_type !== new_resource_type
+    && [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)) {
       setPrepModalContentPayloadFromLocalSchema();
     }
   }
 
-  let oldSelectedSchema = "oolldd";
+  let oldSelectedSchema = null;
   $: {
-    if (selectedSchema && selectedSchema !== oldSelectedSchema) {
+    if (selectedSchema === null){
+        validatorModalContent = createAjvValidator({ schema: {} });
+        jseModalContent = { text: JSON.stringify({}, null, 2) };
+        oldSelectedSchema = null;
+    }
+    else if (selectedSchema !== oldSelectedSchema) {
       setPrepModalContentPayloadFromFetchedSchema();
     }
   }
@@ -1072,6 +1066,7 @@
         ? allowedResourceTypes[0]
         : ResourceType.content
     );
+    selectedSchema = null;
     if (
       [ResourceType.user, ResourceType.permission, ResourceType.role].includes(
         new_resource_type
@@ -1128,13 +1123,17 @@
               </Input>
             {/if}
             {#if new_resource_type === "ticket"}
-              {#await query( { space_name, type: QueryType.search, subpath: "/workflow", search: "", retrieve_json_payload: true, limit: 99 } ) then workflows}
+              {#await query( { space_name, type: QueryType.search, subpath: "/workflows", search: "", retrieve_json_payload: true, limit: 99 } ) then workflows}
                 <Label class="mt-3">Workflow</Label>
-                <Input bind:value={workflowShortname} type="select">
-                  {#each setWorkflowItem(workflows) as workflow}
-                    <option value={workflow}>{workflow}</option>
-                  {/each}
-                </Input>
+                {#if setWorkflowItem(workflows).length === 0}
+                  <Input bind:value={workflowShortname} />
+                {:else}
+                  <Input bind:value={workflowShortname} type="select">
+                    {#each setWorkflowItem(workflows) as workflow}
+                      <option value={workflow}>{workflow}</option>
+                    {/each}
+                  </Input>
+                {/if}
               {/await}
             {/if}
           {/if}
