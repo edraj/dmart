@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     redis_host: str = "127.0.0.1"
     redis_password: str = ""
     redis_port: int = 6379
+    one_session_per_user: bool = True
     management_space: str = "management"
     users_subpath: str = "users"
     spaces_folder: Path = Path("../sample/spaces/")
