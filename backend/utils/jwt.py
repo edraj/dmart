@@ -85,16 +85,17 @@ class JWTBearer(HTTPBearer):
                 api.Error(type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [2]"),
             )
         
-        active_session_token = await get_redis_active_session(user_shortname)
-        if not isinstance(active_session_token, str) or active_session_token != auth_token:
-            raise api.Exception(
-                status.HTTP_401_UNAUTHORIZED,
-                api.Error(
-                    type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [3]"
-                ),
-            )
-            
-        await set_redis_active_session(user_shortname, active_session_token)
+        if settings.one_session_per_user:
+            active_session_token = await get_redis_active_session(user_shortname)
+            if not isinstance(active_session_token, str) or active_session_token != auth_token:
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [3]"
+                    ),
+                )
+                
+            await set_redis_active_session(user_shortname, active_session_token)
         
         return user_shortname
 
@@ -120,7 +121,8 @@ def generate_jwt(data: dict, expires: int = 86400) -> str:
 
 async def sign_jwt(data: dict, expires: int = 86400) -> str:
     token = generate_jwt(data, expires)
-    await set_redis_active_session(data["username"], token)
+    if settings.one_session_per_user:
+        await set_redis_active_session(data["username"], token)
     return token
 
 
