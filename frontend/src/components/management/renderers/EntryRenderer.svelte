@@ -268,6 +268,13 @@
 
       }
 
+      allowedResourceTypes.push(
+          resolveResourceType(
+            space_name,
+            subpath,
+            null
+        )
+      )
       canCreateEntry = allowedResourceTypes.map(r=>checkAccessv2("create", space_name, subpath, r)).some(item => item);
 
       status_line.set(
@@ -519,19 +526,23 @@
                 body[item.key] = item.value;
             });
             body = structuredClone(body);
+            if (body.roles){
+                body.roles = body.roles.split(",");
+            }
+            if (formModalContentPayload.text){
+                body.payload = {
+                    content_type: "json",
+                    schema_shortname: selectedSchema,
+                    body: JSON.parse(formModalContentPayload.text)
+                }
+            }
         }
         else {
             body = jseModalContent.json
                 ? structuredClone(jseModalContent.json)
                 : JSON.parse(jseModalContent.text);
         }
-        if (formModalContentPayload.text){
-            body.payload = {
-                content_type: "json",
-                schema_shortname: selectedSchema,
-                body: JSON.parse(formModalContentPayload.text)
-            }
-        }
+
       // }
 
       if (!body?.password) {
@@ -567,10 +578,16 @@
 
       if (body.msisdn) {
         const msisdnStatus: any = await check_existing("msisdn", body.msisdn);
-        if (!msisdnStatus.attributes.unique) {
-          showToast(Level.warn, "MSISDN already exists!");
-          return;
+        if (msisdnStatus) {
+            if (!msisdnStatus.attributes.unique) {
+                showToast(Level.warn, "MSISDN already exists!");
+                return;
+            }
+        } else {
+            showToast(Level.warn, "Please double check your MSISDN!");
+            return;
         }
+
       }
       else {
         delete body.msisdn;
