@@ -526,7 +526,7 @@
                 body[item.key] = item.value;
             });
             body = structuredClone(body);
-            if (body.roles){
+            if (typeof body.roles === 'string'){
                 body.roles = body.roles.split(",");
             }
             if (formModalContentPayload.text){
