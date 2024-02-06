@@ -275,6 +275,12 @@
             null
         )
       )
+
+      console.log({allowedResourceTypes})
+      allowedResourceTypes.map(r=> {
+          console.log("create", space_name, subpath, r);
+      })
+
       canCreateEntry = allowedResourceTypes.map(r=>checkAccessv2("create", space_name, subpath, r)).some(item => item);
 
       status_line.set(
@@ -502,9 +508,6 @@
       response = await request(request_body);
     }
     else if (new_resource_type === ResourceType.user) {
-      if (jseModalContentRef?.validate()?.validationErrors) {
-        return;
-      }
 
       // if (!schemaFormRefModal.reportValidity()) {
       //     return;
@@ -526,10 +529,13 @@
                 body[item.key] = item.value;
             });
             body = structuredClone(body);
-            if (body.roles){
+            if (typeof body.roles === 'string'){
                 body.roles = body.roles.split(",");
             }
             if (formModalContentPayload.text){
+                jseModalContent = {
+                    json: JSON.parse(formModalContentPayload.text)
+                };
                 body.payload = {
                     content_type: "json",
                     schema_shortname: selectedSchema,
@@ -542,7 +548,6 @@
                 ? structuredClone(jseModalContent.json)
                 : JSON.parse(jseModalContent.text);
         }
-
       // }
 
       if (!body?.password) {
