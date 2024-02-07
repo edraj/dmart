@@ -3,7 +3,7 @@
   import { Col, Container, Row } from "sveltestrap";
   import Header from "@/components/Header.svelte";
   import Footer from "@/components/Footer.svelte";
-  import {bulkBucket} from "@/stores/management/bulk_bucket";
+
   // import Sidebar from "@/components/Sidebar.svelte";
   // import { user } from "@/stores/user";
   // import Login from "@/components/Login.svelte";
@@ -14,7 +14,6 @@
   let header_height: number;
   let footer_height: number;
 
-  $bulkBucket = [];
 
   // let isOffline = false;
 
