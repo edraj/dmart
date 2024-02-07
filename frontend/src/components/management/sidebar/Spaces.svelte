@@ -103,41 +103,45 @@
   {#await get_spaces()}
     <!--h3 transition:fade >Loading spaces list</h3-->
   {:then loaded_spaces}
-    {#each loaded_spaces.records as space}
-      <ListGroupItem class="ps-2 pe-0 py-0">
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <!-- svelte-ignore a11y-no-static-element-interactions -->
-        <div
-          class="hover mb-2"
-          style="cursor: pointer;"
-          on:click={async () => await expandSpace(space)}
-        >
-          <Icon name="diagram-3" class="me-1" /> <b>{displayname(space)}</b>
-          <style>
-            .toolbar {
-              /* display: none; */
-              color: brown;
-            }
+    {#if loaded_spaces}
+      {#each loaded_spaces.records as space}
+        <ListGroupItem class="ps-2 pe-0 py-0">
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <div
+            class="hover mb-2"
+            style="cursor: pointer;"
+            on:click={async () => await expandSpace(space)}
+          >
+            <Icon name="diagram-3" class="me-1" /> <b>{displayname(space)}</b>
+            <style>
+              .toolbar {
+                /* display: none; */
+                color: brown;
+              }
 
-            .toolbar span:hover {
-              color: green;
-            }
-          </style>
-        </div>
+              .toolbar span:hover {
+                color: green;
+              }
+            </style>
+          </div>
 
-        {#if expanded === space.shortname}
-          {#await get_children( space.shortname, "/", 10, 0, [ResourceType.folder] )}
-            <!--h4> Loading {space.shortname} </h4-->
-          {:then children_data}
-            {#each (children_data?.records ?? []) as folder}
-              <Folder {folder} space_name={space.shortname} />
-            {/each}
-          {:catch error}
-            <p style="color: red">{error.message}</p>
-          {/await}
-        {/if}
-      </ListGroupItem>
-    {/each}
+          {#if expanded === space.shortname}
+            {#await get_children( space.shortname, "/", 10, 0, [ResourceType.folder] )}
+              <!--h4> Loading {space.shortname} </h4-->
+            {:then children_data}
+              {#each (children_data?.records ?? []) as folder}
+                <Folder {folder} space_name={space.shortname} />
+              {/each}
+            {:catch error}
+              <p style="color: red">{error.message}</p>
+            {/await}
+          {/if}
+        </ListGroupItem>
+      {/each}
+    {:else}
+      <p>Can't load spaces!</p>
+    {/if}
   {:catch error}
     <p style="color: red">{error.message}</p>
   {/await}
