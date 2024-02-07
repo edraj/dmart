@@ -26,6 +26,8 @@
   import { params } from "@roxi/routify";
   import {bulkBucket} from "@/stores/management/bulk_bucket";
 
+  $bulkBucket = [];
+
   onDestroy(() => status_line.set(""));
 
   export let space_name: string;
