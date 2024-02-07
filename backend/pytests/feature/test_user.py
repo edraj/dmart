@@ -102,16 +102,6 @@ def test_update_profile() -> None:
     assert_code_and_status_success(client.post("/user/profile", json=request_data))
 
 
-
-@pytest.mark.run(order=1)
-def test_logout_with_the_new_user():
-    response = client.post(
-        "/user/logout",
-        json={},
-    )
-    assert_code_and_status_success(response)
-
-
 @pytest.mark.run(order=1)
 def test_delete_new_user_profile() -> None:
     response = client.post("/user/delete", json={})

@@ -153,10 +153,13 @@ class AccessControl:
             resource_achieved_conditions.add(ConditionType.is_active)
         if resource_owner_shortname == user_shortname or resource_owner_group in user_groups:
             resource_achieved_conditions.add(ConditionType.own)
-
-        subpath_parts = list(filter(None, subpath.split("/")))
+        
         # Allow checking for root permissions
-        subpath_parts.insert(0, "/")
+        subpath_parts = ["/"]
+        subpath_parts += list(filter(None, subpath.strip("/").split("/")))
+        if resource_type == ResourceType.folder and entry_shortname:
+            subpath_parts.append(entry_shortname)
+        
         search_subpath = ""
         for subpath_part in subpath_parts:
             search_subpath += subpath_part
