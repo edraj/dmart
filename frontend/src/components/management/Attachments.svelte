@@ -709,7 +709,9 @@
                     {/each}
                   </Col>
                 {:else if attachment.resource_type === ResourceType.jsonl}
-                  <Prism code={attachment.dataAsset} />
+                  <div class="w-100">
+                    <Prism code={attachment.dataAsset} />
+                  </div>
                 {/if}
               {/if}
             {:else if attachment.resource_type === ResourceType.media }
