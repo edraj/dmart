@@ -52,6 +52,11 @@
         );
         if (!(r instanceof AxiosError)) {
           attachment.dataAsset = r;
+        } else {
+            attachment.dataAsset = {
+                code: r.response.data?.error?.code,
+                message: r.response.data?.error?.message
+            };
         }
       } else if (attachment.resource_type === "sqlite") {
         const tables = await fetchDataAsset(
@@ -709,17 +714,17 @@
               {/if}
             {:else if attachment.resource_type === ResourceType.media }
               <Media
-                      resource_type={ResourceType[attachment.resource_type]}
-                      attributes={attachment.attributes}
-                      displayname={attachment.shortname}
-                      url={get_attachment_url(
-                attachment.resource_type,
-                space_name,
-                subpath,
-                parent_shortname,
-                attachment.shortname,
-                getFileExtension(attachment.attributes?.payload?.body)
-              )}
+                resource_type={ResourceType[attachment.resource_type]}
+                attributes={attachment.attributes}
+                displayname={attachment.shortname}
+                url={get_attachment_url(
+                  attachment.resource_type,
+                  space_name,
+                  subpath,
+                  parent_shortname,
+                  attachment.shortname,
+                  getFileExtension(attachment.attributes?.payload?.body)
+                )}
               />
             {:else}
               {#await get_attachment_content(attachment.resource_type, space_name, `${subpath}/${parent_shortname}`, attachment.attributes?.payload?.body)}
