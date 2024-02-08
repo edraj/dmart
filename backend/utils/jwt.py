@@ -123,7 +123,7 @@ class JWTBearer(HTTPBearer):
                     ),
                 )
 
-            await set_redis_active_session(user_shortname, active_session_token)
+            await set_redis_active_session(user_shortname, auth_token)
 
         return user_shortname
 
