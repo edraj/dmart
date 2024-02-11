@@ -113,6 +113,7 @@ class Query(BaseModel):
             self.limit = settings.max_query_limit
 
     model_config = {
+        "extra": "forbid",
         "json_schema_extra": {
             "examples": [
                 {
