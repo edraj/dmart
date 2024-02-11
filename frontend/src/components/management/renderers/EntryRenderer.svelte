@@ -1445,7 +1445,7 @@
             outline
             color="success"
             size="sm"
-            title={$_("delete")}
+            title={$_("delete_selected")}
             on:click={handleDeleteBulk}
             class="justify-content-center text-center py-0 px-1"
           >

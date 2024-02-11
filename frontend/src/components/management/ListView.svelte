@@ -313,7 +313,7 @@
               $bulkBucket = [...$bulkBucket, {shortname: _shortname, resource_type: _resource_type}];
           }
           else {
-              $bulkBucket = $bulkBucket.filter(e=> e.shortname !== shortname);
+              $bulkBucket = $bulkBucket.filter(e=> e.shortname !== objectDatatable.arrayRawData[name].shortname);
           }
       }catch (e){}
   }
