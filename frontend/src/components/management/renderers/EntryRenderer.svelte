@@ -611,13 +611,17 @@
         delete body.language;
       }
 
-      const request = {
+      const request_body = {
         shortname: contentShortname,
-        resource_type: "user",
+        resource_type: ResourceType.user,
         subpath: "users",
         attributes: body,
       };
-      response = await create_user(request);
+      response = await request({
+          request_type: RequestType.create,
+          space_name: "management",
+          records: [request_body]
+      });
     } else if (entryType === "content") {
       if (selectedContentType === "json") {
         let body: any;
@@ -1445,7 +1449,7 @@
             outline
             color="success"
             size="sm"
-            title={$_("delete")}
+            title={$_("delete_selected")}
             on:click={handleDeleteBulk}
             class="justify-content-center text-center py-0 px-1"
           >
