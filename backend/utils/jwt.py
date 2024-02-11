@@ -4,6 +4,7 @@ from typing import Optional, Any
 from fastapi import Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from utils.internal_error_code import InternalErrorCode
+from utils.password_hashing import hash_password, verify_password
 
 from utils.settings import settings
 from utils.redis_services import RedisServices
@@ -87,7 +88,9 @@ class JWTBearer(HTTPBearer):
         
         if settings.one_session_per_user:
             active_session_token = await get_redis_active_session(user_shortname)
-            if not isinstance(active_session_token, str) or active_session_token != auth_token:
+            if not isinstance(active_session_token, str) or not verify_password(
+                auth_token, active_session_token
+            ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
@@ -130,7 +133,7 @@ async def set_redis_active_session(user_shortname: str, token: str) -> bool:
     async with RedisServices() as redis:
         return bool(await redis.set(
             key=f"active_session:{user_shortname}",
-            value=token,
+            value=hash_password(token),
             ex=settings.session_inactivity_ttl,
         ))
         
