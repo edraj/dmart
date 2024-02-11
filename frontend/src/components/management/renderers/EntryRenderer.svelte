@@ -611,13 +611,17 @@
         delete body.language;
       }
 
-      const request = {
+      const request_body = {
         shortname: contentShortname,
-        resource_type: "user",
+        resource_type: ResourceType.user,
         subpath: "users",
         attributes: body,
       };
-      response = await create_user(request);
+      response = await request({
+          request_type: RequestType.create,
+          space_name: "management",
+          records: [request_body]
+      });
     } else if (entryType === "content") {
       if (selectedContentType === "json") {
         let body: any;
