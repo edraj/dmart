@@ -532,14 +532,19 @@
             if (typeof body.roles === 'string'){
                 body.roles = body.roles.split(",");
             }
-            if (formModalContentPayload.text){
+
+            const formModalContentPayloadJson = formModalContentPayload.json
+                ? structuredClone(formModalContentPayload.json)
+                : JSON.parse(formModalContentPayload.text);
+
+            if (Object.keys(formModalContentPayloadJson).length){
                 jseModalContent = {
-                    json: JSON.parse(formModalContentPayload.text)
+                    json: formModalContentPayloadJson
                 };
                 body.payload = {
                     content_type: "json",
                     schema_shortname: selectedSchema,
-                    body: JSON.parse(formModalContentPayload.text)
+                    body: formModalContentPayloadJson
                 }
             }
         }

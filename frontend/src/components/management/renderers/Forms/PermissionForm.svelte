@@ -154,7 +154,7 @@
   }
   $: {
     if(restricted_fields){
-        content.restricted_fields = resource_types
+        content.restricted_fields = restricted_fields
             .map((i) => i.value)
             .filter((i) => i.length);
     }
