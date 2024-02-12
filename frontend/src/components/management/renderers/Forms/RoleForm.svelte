@@ -20,12 +20,14 @@
     function addInput(e) {
         e.preventDefault();
         inputs = [...inputs, { value: "" }];
-        content = inputs.map(i=> i.value).filter(i=> i.length);
     }
 
     function removeInput(index) {
         inputs = inputs.filter((_, i) => i !== index);
-        content = inputs.map(i=> i.value).filter(i=> i.length);
+    }
+
+    $: {
+        content = inputs.map((i) => i.value).filter((i) => i.length);
     }
 </script>
 
