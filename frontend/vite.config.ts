@@ -5,6 +5,8 @@ import { mdsvex } from "mdsvex";
 import preprocess from "svelte-preprocess";
 import routify from "@roxi/routify/vite-plugin";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import {viteStaticCopy} from "vite-plugin-static-copy";
+import * as path from "path";
 
 const production = process.env.NODE_ENV === "production";
 
@@ -45,6 +47,14 @@ export default defineConfig({
       showToggleButton: 'always',
       toggleButtonPos: 'bottom-right'
     }),*/
+    viteStaticCopy({
+      targets: [
+        {
+          src: path.resolve(__dirname, './assets') + '/[!.]*',
+          dest: 'assets'
+        }
+      ]
+    }),
     routify({
       ssr: { enable: false /*production*/ },
     }),
