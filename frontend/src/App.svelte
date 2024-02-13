@@ -3,8 +3,10 @@
   import routes from "../.routify/routes.default";
   import { SvelteToast } from "@zerodevx/svelte-toast";
   import "bootstrap-icons/font/bootstrap-icons.min.css";
-  const rtlUrl = new URL('bootstrap/dist/css/bootstrap.rtl.min.css', import.meta.url).href;
-  const ltrUrl = new URL('bootstrap/dist/css/bootstrap.min.css', import.meta.url).href;
+  // const rtlUrl = new URL('bootstrap/dist/css/bootstrap.rtl.min.css', import.meta.url).href;
+  // const ltrUrl = new URL('bootstrap/dist/css/bootstrap.min.css', import.meta.url).href;
+  // const rtlUrl = new URL('./../assets/morph/bootstrap.rtl.min.css', import.meta.url).href;
+  // const ltrUrl = new URL('./../assets/morph/bootstrap.min.css', import.meta.url).href;
 
   const router = createRouter({ routes });
   const options = {
@@ -25,19 +27,24 @@
 <script lang="ts">
   import { setupI18n, dir } from "./i18n";
   import refresh_spaces from "@/stores/management/refresh_spaces";
+  import {themesStore} from "@/stores/themes_store";
 
   setupI18n();
   $: { document.dir = $dir; refresh_spaces.refresh(); }
 </script>
 
-
-
 <svelte:head>
-  {#if $dir == "rtl"}
-    <link rel="stylesheet" id="bootstrap" href="{rtlUrl}" />
-  {:else}
-    <link rel="stylesheet" id="bootstrap" href="{ltrUrl}" />
-  {/if}
+  {#key $themesStore}
+    {#if $dir === "rtl"}
+      <link rel="stylesheet" id="bootstrap"
+            href="{new URL($themesStore.rtlUrl, import.meta.url).href}"
+      />
+    {:else}
+      <link rel="stylesheet" id="bootstrap"
+            href="{new URL($themesStore.ltrUrl, import.meta.url).href}"
+      />
+    {/if}
+  {/key}
 </svelte:head>
 
 <div id="routify-app">
