@@ -53,24 +53,6 @@
 </div>
 
 <style>
-    @import './../assets/themes/default/bootstrap.min.css';
-    @import './../assets/themes/default/bootstrap.rtl.min.css';
-
-    @import './../assets/themes/cosmo/bootstrap.min.css';
-    @import './../assets/themes/cosmo/bootstrap.rtl.min.css';
-
-    @import './../assets/themes/sandstone/bootstrap.min.css';
-    @import './../assets/themes/sandstone/bootstrap.rtl.min.css';
-
-    @import './../assets/themes/spacelab/bootstrap.min.css';
-    @import './../assets/themes/spacelab/bootstrap.rtl.min.css';
-
-    @import './../assets/themes/solar/bootstrap.min.css';
-    @import './../assets/themes/solar/bootstrap.rtl.min.css';
-
-    @import './../assets/themes/united/bootstrap.min.css';
-    @import './../assets/themes/united/bootstrap.rtl.min.css';
-
   :global(.custom-toast.info) {
     --toastBackground: rgba(72, 187, 120, 0.9);
     --toastBarBackground: #2f855a;
