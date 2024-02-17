@@ -196,6 +196,17 @@ podman exec -it -w /home/backend dmart ./curl.sh
 ### Steps 
 
 ```bash
+
+# Enable kefahi dnf from copr to download redis modules
+sudo dnf copr enable kefah/RediSearch
+
+# Download necessary system packages
+sudo dnf install jq redis rejson redisearch python3-pip python3
+echo 'loadmodule /usr/lib64/redis/modules/librejson.so
+loadmodule /usr/lib64/redis/modules/redisearch.so' | sudo tee -a /etc/redis/redis.conf
+sudo systemctl start redis
+
+
 git clone https://github.com/edraj/dmart.git
 
 cd dmart 
@@ -204,7 +215,7 @@ cd dmart
 mkdir logs
 
 # Copy sample spaces structure
-cp sample/spaces ../
+cp -a sample/spaces ../
 
 
 cd backend
@@ -214,6 +225,9 @@ pip install --user -r requirements.txt
 
 # Optionally, fine-tune your configuration
 cp config.env.sample config.env
+
+# Set the admin password
+./set_admin_passwd.py
 
 # Start DMART microservice
 ./main.py
