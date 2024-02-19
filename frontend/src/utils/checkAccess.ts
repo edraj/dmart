@@ -120,7 +120,7 @@ export function checkAccessv2(
   if (permissions === null || Object.keys(permissions).length === 0) {
     return false;
   }
-  
+
   for (const key of keys) {
     if (permissions[key]) {
       return permissions[key].allowed_actions.includes(action);
