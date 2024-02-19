@@ -191,6 +191,7 @@ podman exec -it -w /home/backend dmart ./curl.sh
 - redis >= 7.2
 - RedisJSON (rejson) >= 2.6
 - RediSearch >= 2.8
+- python venv
 
 
 ### Steps 
@@ -208,6 +209,12 @@ cp sample/spaces ../
 
 
 cd backend
+
+# Create the virtual env
+python -m venv env
+
+# Activate virtual env
+source env/bin/activate
 
 # Install python modules
 pip install --user -r requirements.txt
