@@ -657,8 +657,6 @@ async def serve_request(
                             schema_shortname=resource_obj.payload.schema_shortname,
                         )
                         
-                    print(f"\n\n {resource_obj = } \n\n")
-
                     await db.save(
                         request.space_name,
                         record.subpath,
