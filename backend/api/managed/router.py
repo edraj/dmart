@@ -626,7 +626,8 @@ async def serve_request(
 
                     await validate_uniqueness(request.space_name, record)
 
-                    resource_obj = core.Meta.from_record(
+
+                    resource_obj = resource_cls.from_record(
                         record=record, owner_shortname=owner_shortname
                     )
                     if not is_internal or "created_at" not in record.attributes:
@@ -655,6 +656,8 @@ async def serve_request(
                             branch_name=record.branch_name,
                             schema_shortname=resource_obj.payload.schema_shortname,
                         )
+                        
+                    print(f"\n\n {resource_obj = } \n\n")
 
                     await db.save(
                         request.space_name,
