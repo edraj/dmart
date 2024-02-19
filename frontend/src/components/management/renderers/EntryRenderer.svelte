@@ -210,29 +210,6 @@
         oldJSEMeta = structuredClone(jseMeta);
       }
 
-      if (!!entry?.payload?.body?.stream) {
-        if ("websocket" in website) {
-          ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
-        }
-
-        ws.onopen = () => {
-          ws.send(
-            JSON.stringify({
-              type: "notification_subscription",
-              space_name: space_name,
-              subpath: subpath,
-            })
-          );
-        };
-
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event?.data ?? "");
-          if (data?.message?.title) {
-            isNeedRefresh = true;
-          }
-        };
-      }
-
       try {
           await checkWorkflowsSubpath();
       } catch (e) {
@@ -290,6 +267,29 @@
           Object.keys(entry.attachments).length
         }</strong></small>`
       );
+
+      if (!!entry?.payload?.body?.stream) {
+          if ("websocket" in website) {
+              ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+          }
+
+          ws.onopen = () => {
+              ws.send(
+                  JSON.stringify({
+                      type: "notification_subscription",
+                      space_name: space_name,
+                      subpath: subpath,
+                  })
+              );
+          };
+
+          ws.onmessage = (event) => {
+              const data = JSON.parse(event?.data ?? "");
+              if (data?.message?.title) {
+                  isNeedRefresh = true;
+              }
+          };
+      }
     }
   });
 
@@ -367,7 +367,7 @@
         data.payload.body = jseContent;
       }
     }
-    
+
     if (resource_type === ResourceType.user && btoa(data.password.slice(0,6)) === 'JDJiJDEy') {
       delete data.password;
     }
