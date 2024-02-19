@@ -26,7 +26,7 @@ from utils.helpers import camel_case, remove_none, snake_case
 import utils.regex as regex
 from utils.settings import settings
 import utils.password_hashing as password_hashing
-
+from hashlib import sha1 as hashlib_sha1
 
 # class MoveModel(BaseModel):
 #    resource_type: ResourceType
@@ -49,6 +49,19 @@ class Payload(Resource):
     client_checksum: str | None = None
     checksum: str | None = None
     body: str | dict[str, Any]
+    
+    def __init__(self, **data):
+        BaseModel.__init__(self, **data)
+        
+        if not self.checksum and self.body:
+            sha1 = hashlib_sha1()
+            
+            if isinstance(self.body, dict):
+                sha1.update(json.dumps(self.body).encode('utf-8'))
+            else:
+                sha1.update(self.body.encode('utf-8'))
+                
+            self.checksum = sha1.hexdigest()
 
     def update(
         self, payload: dict, old_body: dict | None = None, replace: bool = False
