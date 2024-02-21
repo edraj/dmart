@@ -3,7 +3,6 @@
   import {
     check_existing,
     ContentType,
-    create_user,
     csv,
     passwordRegExp,
     passwordWrongExp,
@@ -252,11 +251,6 @@
             null
         )
       )
-
-      console.log({allowedResourceTypes})
-      allowedResourceTypes.map(r=> {
-          console.log("create", space_name, subpath, r);
-      })
 
       canCreateEntry = allowedResourceTypes.map(r=>checkAccessv2("create", space_name, subpath, r)).some(item => item);
 
