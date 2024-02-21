@@ -83,6 +83,7 @@
   import RoleForm from "./Forms/RoleForm.svelte";
   import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
   import {bulkBucket} from "@/stores/management/bulk_bucket";
+  import RelationshipForm from "@/components/management/renderers/Forms/RelationshipForm.svelte";
 
   // props
   export let entry: ResponseEntry;
@@ -143,6 +144,7 @@
   let jseContentRef;
   // let schemaFormRefModal;
   let schemaFormRefContent;
+  let relationshipContent = structuredClone(entry)?.relationships ?? null;
 
   // modal
   /// flags
@@ -200,6 +202,7 @@
           jseContent = cpy?.payload?.body;
         }
       }
+
       delete cpy?.payload?.body;
       delete cpy?.attachments;
 
@@ -331,11 +334,16 @@
     //   return;
     // }
     errorContent = null;
+    const _relationshipContent = relationshipContent.filter(r=>r.space_name).map(r=>{
+        return {
+            related_to: r, attributes: {}
+        };
+    });
 
     const x = jseMeta.json
       ? structuredClone(jseMeta.json)
       : JSON.parse(jseMeta.text);
-
+    x.relationships = _relationshipContent;
     let data: any = structuredClone(x);
     if (entry?.payload) {
       if (entry?.payload?.content_type === "json") {
@@ -468,7 +476,8 @@
 
   async function handleSubmit(event: Event) {
     event.preventDefault();
-
+      console.log({jseModalContent})
+      return
     let response: any;
     let request_body: any = {};
     if (new_resource_type === "schema") {
@@ -621,7 +630,8 @@
           space_name: "management",
           records: [request_body]
       });
-    } else if (entryType === "content") {
+    }
+    else if (entryType === "content") {
       if (selectedContentType === "json") {
         let body: any;
 
@@ -1405,6 +1415,19 @@
             </Button>
           {/if}
         {/if}
+        {#if ![ResourceType.folder, ResourceType.space].includes(resource_type)}
+          <Button
+            outline
+            color="success"
+            size="sm"
+            class="justify-content-center text-center py-0 px-1"
+            active={"relationships" === tab_option}
+            title={$_("relationships")}
+            on:click={() => (tab_option = "relationships")}
+          >
+            <Icon name="link" />
+          </Button>
+        {/if}
         <Button
           outline
           color="success"
@@ -1733,6 +1756,14 @@
         {/if}
       {/key}
       <!--History subpath="{entry.subpath}" shortname="{entry.shortname}" /-->
+    </div>
+    <div class="tab-pane" class:active={tab_option === "relationships"}>
+      <div class="d-flex justify-content-end my-2 mx-5 flex-row">
+        <div><Button on:click={handleSave}>Save</Button></div>
+      </div>
+      <div class="px-5">
+        <RelationshipForm bind:content={relationshipContent}/>
+      </div>
     </div>
     <div class="tab-pane" class:active={tab_option === "attachments"}>
       <Attachments

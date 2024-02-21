@@ -1,18 +1,24 @@
 <script>
     import {Card, CardBody, Form, FormGroup, Label, Input, Button, Icon} from 'sveltestrap';
+    import {ResourceType} from "@/dmart";
+    import {onMount} from "svelte";
 
-    export let content = [];
-
-    content = [
-        {
-            property_domain: "",
-            type: "",
-            space_name: "",
-            subpath: "",
-            shortname: ""
+    export let content = null;
+    onMount(()=>{
+        if (content === null) {
+            content = [
+                {
+                    branch_name: "",
+                    type: "",
+                    space_name: "",
+                    subpath: "",
+                    shortname: ""
+                }
+            ];
+        } else {
+            content = (content ?? []).map(c=>c.related_to);
         }
-    ];
-
+    });
 
 
     // Add a new item to the array
@@ -20,7 +26,7 @@
         content = [
             ...content,
             {
-                property_domain: "",
+                branch_name: "",
                 type: "",
                 space_name: "",
                 subpath: "",
@@ -42,13 +48,14 @@
 
 <Card>
     <Form on:submit={handleSubmit}>
+      {#if content}
       {#each content as item, index}
         <Card>
           <CardBody>
             <div class="form-item">
             <FormGroup>
               <div class="d-flex justify-content-between">
-                <Label>Property Domain</Label>
+                <Label>Branch name</Label>
                 <Icon
                   class="mx-1"
                   name="trash-fill"
@@ -56,11 +63,15 @@
                   onclick={() => removeItem(index)}
                 />
               </div>
-              <Input type="url" bind:value={item.property_domain} />
+              <Input type="url" bind:value={item.branch_name} />
             </FormGroup>
             <FormGroup>
-              <Label>Type</Label>
-              <Input bind:value={item.type} />
+              <Label>Resource Type</Label>
+              <Input type="select" bind:value={item.type}>
+                {#each Object.keys(ResourceType) as resourceType}
+                  <option value={resourceType}>{resourceType}</option>
+                {/each}
+              </Input>
             </FormGroup>
             <FormGroup>
               <Label>Space name</Label>
@@ -78,6 +89,7 @@
           </CardBody>
         </Card>
       {/each}
+      {/if}
       <Button color="primary" class="w-100" on:click={addNewItem}>Add Relation</Button>
     </Form>
 </Card>
