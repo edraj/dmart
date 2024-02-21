@@ -168,6 +168,8 @@
   let jseModalContent: any = { text: "{}" };
   let formModalContent: any;
   let formModalContentPayload: any = { json: {}, text: undefined };
+  let isNewEntryHasRelationship = false;
+  let relationshipModalContent = null;
 
   let allowedResourceTypes = [ResourceType.content];
   function setMetaValidator(): Validator {
@@ -476,8 +478,16 @@
 
   async function handleSubmit(event: Event) {
     event.preventDefault();
-      console.log({jseModalContent})
-      return
+
+    let _relationshipModalContent = []
+    if (isNewEntryHasRelationship){
+        _relationshipModalContent = relationshipModalContent.filter(r=>r.space_name).map(r=>{
+            return {
+                related_to: r, attributes: {}
+            };
+        });
+    }
+
     let response: any;
     let request_body: any = {};
     if (new_resource_type === "schema") {
@@ -504,6 +514,7 @@
                 schema_shortname: "meta_schema",
                 body: body,
               },
+              relationships: _relationshipModalContent,
             },
           },
         ],
@@ -557,7 +568,7 @@
                 : JSON.parse(jseModalContent.text);
         }
       // }
-
+      body.relationships = _relationshipModalContent;
       if (!body?.password) {
         showToast(Level.warn, "Password must be provided!");
         return;
@@ -682,6 +693,7 @@
                 attributes: {
                   is_active: true,
                   ...body,
+                  relationships: _relationshipModalContent,
                 },
               },
             ],
@@ -705,6 +717,7 @@
                 attributes: {
                   is_active: true,
                   ...request_body,
+                  relationships: _relationshipModalContent,
                 },
               },
             ],
@@ -726,6 +739,8 @@
             body: body,
           };
         }
+
+        request_body.records[0].attributes.relationships = _relationshipModalContent,
         response = await request(request_body);
       } else if (["text", "html", "markdown"].includes(selectedContentType)) {
         request_body = {
@@ -742,6 +757,7 @@
                   content_type: selectedContentType,
                   body: jseModalContent,
                 },
+                relationships: _relationshipModalContent,
               },
             },
           ],
@@ -793,6 +809,7 @@
                 schema_shortname: "folder_rendering",
                 body: body ?? {},
               },
+              relationships: _relationshipModalContent,
             },
           },
         ],
@@ -1284,6 +1301,15 @@
             <Label class="mt-3">Payload</Label>
             <MarkdownEditor bind:content={jseModalContent} />
           {/if}
+        {/if}
+        <hr />
+        <Input
+          bind:checked={isNewEntryHasRelationship}
+          type="checkbox"
+          label="Add relationship ?"
+        />
+        {#if isNewEntryHasRelationship}
+          <RelationshipForm bind:content={relationshipModalContent}/>
         {/if}
         <hr />
         {#if errorContent}
