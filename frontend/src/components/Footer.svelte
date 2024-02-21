@@ -14,12 +14,12 @@
   <NavbarBrand href="https://github.com/edraj/dmart" title="github" class="ms-auto"><Icon name="github" class="text-secondary"/></NavbarBrand>
   <NavbarBrand href="mailto:kefah.issa@gmail.com" title="eMail"><Icon name="envelope-at" class="text-secondary"/></NavbarBrand>
   <NavbarBrand href="https://matrix.to/#/#discussions:dmart.cc" title="Public chat on Matrix"><Icon name="chat-left-text" class="text-secondary"/></NavbarBrand>
-  <Dropdown>
-    <DropdownToggle><Icon name="palette-fill" /></DropdownToggle>
-    <DropdownMenu end>
-      {#each themesList as theme}
-        <DropdownItem name={theme} on:click={handleThemeChange}>{theme}</DropdownItem>
-      {/each}
-    </DropdownMenu>
-  </Dropdown>
+<!--  <Dropdown>-->
+<!--    <DropdownToggle><Icon name="palette-fill" /></DropdownToggle>-->
+<!--    <DropdownMenu end>-->
+<!--      {#each themesList as theme}-->
+<!--        <DropdownItem name={theme} on:click={handleThemeChange}>{theme}</DropdownItem>-->
+<!--      {/each}-->
+<!--    </DropdownMenu>-->
+<!--  </Dropdown>-->
 </Navbar>
