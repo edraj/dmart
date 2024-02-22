@@ -331,6 +331,7 @@ export type ResponseEntry = MetaExtended & {
   updated_at: string;
   owner_shortname: string;
   payload?: Payload;
+  relationships?: any;
   attachments?: Object;
   workflow_shortname?: string;
   state?: string;

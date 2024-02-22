@@ -4,7 +4,6 @@
 
   export let shortname: string;
   export let workflowContent: any;
-  console.log({workflowContent})
 
   let currentDiagram = {
     name: shortname,
