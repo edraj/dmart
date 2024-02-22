@@ -131,7 +131,7 @@ async def sign_jwt(data: dict, expires: int = 86400) -> str:
 
 async def set_redis_active_session(user_shortname: str, token: str) -> bool:
     async with RedisServices() as redis:
-        return bool(await redis.set(
+        return bool(await redis.set_key(
             key=f"active_session:{user_shortname}",
             value=hash_password(token),
             ex=settings.session_inactivity_ttl,
@@ -139,7 +139,7 @@ async def set_redis_active_session(user_shortname: str, token: str) -> bool:
         
 async def get_redis_active_session(user_shortname: str):
     async with RedisServices() as redis:
-        return await redis.get(
+        return await redis.get_key(
             f"active_session:{user_shortname}"
         )
 

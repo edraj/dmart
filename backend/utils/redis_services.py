@@ -1,9 +1,8 @@
-import asyncio
 import re
 import json
 import sys
 from typing import Any, Awaitable
-from redis.asyncio import BlockingConnectionPool, Redis
+from redis.asyncio import Redis
 from models.api import RedisReducer, SortType
 import models.core as core
 from models.enums import RedisReducerName, ResourceType, LockAction
@@ -24,15 +23,7 @@ from fastapi import status
 from fastapi.logger import logger
 
 
-class RedisServices(object):
-    POOL = BlockingConnectionPool(
-        host=settings.redis_host,
-        port=settings.redis_port,
-        password=settings.redis_password,
-        decode_responses=True,
-        protocol=3,
-        max_connections=20,
-    )
+class RedisServices(Redis):
     
     META_SCHEMA = (
         TextField("$.uuid", no_stem=True, as_name="uuid"),
@@ -241,45 +232,16 @@ class RedisServices(object):
     redis_indices: dict[str, dict[str, Search]] = {}
     is_pytest = False
 
-    def __await__(self):
-        return self.init().__await__()
+    def __init__(self):
+        super().__init__(
+            host=settings.redis_host,
+            port=settings.redis_port,
+            password=settings.redis_password,
+            decode_responses=True,
+            protocol=3,
+            max_connections=20,
+        )
 
-    async def init(self):
-        if not hasattr(self, "client"):
-            self.client = await Redis(connection_pool=self.POOL)
-            if self.is_pytest:
-                try:
-                    await self.client.ping()
-                except RuntimeError:
-                    pass
-        return self
-
-    def __del__(self):
-        # Close connection when this object is destroyed
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.create_task(self.client.aclose())
-            else:
-                loop.run_until_complete(self.client.aclose())
-        except Exception:
-            pass
-
-    async def __aenter__(self):
-        if not hasattr(self, "client"):
-            self.client = await Redis(connection_pool=self.POOL)
-            if self.is_pytest:
-                try:
-                    await self.client.ping()
-                except RuntimeError:
-                    pass
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        exc_type = exc_type
-        exc = exc
-        tb = tb
-        await self.client.aclose()
 
     async def create_index(
         self,
@@ -474,7 +436,7 @@ class RedisServices(object):
                 self.redis_indices[f"{space_name}:{branch_name}"] = {}
                 self.redis_indices[f"{space_name}:{branch_name}"][
                     "meta"
-                ] = self.client.ft(f"{space_name}:{branch_name}:meta")
+                ] = self.ft(f"{space_name}:{branch_name}:meta")
 
                 await self.create_index(
                     f"{space_name}:{branch_name}", "meta", self.META_SCHEMA, del_docs
@@ -532,7 +494,7 @@ class RedisServices(object):
                     if redis_schema_definition:
                         self.redis_indices[f"{space_name}:{branch_name}"][
                             schema_shortname
-                        ] = self.client.ft(
+                        ] = self.ft(
                             f"{space_name}:{branch_name}:{schema_shortname}"
                         )
                         redis_schema_definition.append(
@@ -849,18 +811,18 @@ class RedisServices(object):
     async def save_doc(
         self, doc_id: str, payload: dict, path: str = Path.root_path(), nx: bool = False
     ):
-        x = self.client.json().set(doc_id, path, payload, nx=nx)
+        x = self.json().set(doc_id, path, payload, nx=nx)
         if x and isinstance(x, Awaitable):
             await x
 
     async def save_bulk(self, data: list, path: str = Path.root_path()):
-        pipe = self.client.pipeline()
+        pipe = self.pipeline()
         for document in data:
             pipe.json().set(document["doc_id"], path, document["payload"])
         return await pipe.execute()
 
     async def get_count(self, space_name: str, branch_name: str, schema_shortname: str):
-        ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_shortname}")
+        ft_index = self.ft(f"{space_name}:{branch_name}:{schema_shortname}")
 
         try:
             info = await ft_index.info()
@@ -890,10 +852,10 @@ class RedisServices(object):
     ):
         # Tries to get the index from the provided space
         try:
-            ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
+            ft_index = self.ft(f"{space_name}:{branch_name}:{schema_name}")
             await ft_index.info()
         except Exception as e:
-            logger.error(f"Error at redis_services.search: {e}")
+            logger.error(f"Error accessing index: {space_name}:{branch_name}:{schema_name}, at redis_services.search: {e}")
             return {"data": [], "total": 0}
 
         search_query = Query(
@@ -940,7 +902,7 @@ class RedisServices(object):
     ) -> list:
         # Tries to get the index from the provided space
         try:
-            ft_index = self.client.ft(f"{space_name}:{branch_name}:{schema_name}")
+            ft_index = self.ft(f"{space_name}:{branch_name}:{schema_name}")
             await ft_index.info()
         except Exception:
             return []
@@ -1012,7 +974,7 @@ class RedisServices(object):
 
     async def get_doc_by_id(self, doc_id: str) -> dict:
         try:
-            x = self.client.json().get(name=doc_id) or {}
+            x = self.json().get(name=doc_id) or {}
             if x and isinstance(x, Awaitable):
                 value = await x
                 if isinstance(value, dict):
@@ -1027,7 +989,7 @@ class RedisServices(object):
 
     async def get_docs_by_ids(self, docs_ids: list[str]) -> list:
         try:
-            x = self.client.json().mget(docs_ids, "$")
+            x = self.json().mget(docs_ids, "$")
             if x and isinstance(x, Awaitable):
                 value = await x
                 if isinstance(value, list):
@@ -1038,7 +1000,7 @@ class RedisServices(object):
 
     async def get_content_by_id(self, doc_id: str) -> Any:
         try:
-            return await self.client.get(doc_id)
+            return await self.get(doc_id)
         except Exception as e:
             logger.warning(f"Error at redis_services.get_content_by_id: {e}")
             return ""
@@ -1050,7 +1012,7 @@ class RedisServices(object):
             space_name, branch_name, schema_shortname, shortname, subpath
         )
         try:
-            x = self.client.json().delete(key=docid)
+            x = self.json().delete(key=docid)
             if x and isinstance(x, Awaitable):
                 await x
         except Exception as e:
@@ -1097,7 +1059,7 @@ class RedisServices(object):
 
     async def get_keys(self, pattern: str = "*") -> list:
         try:
-            value = await self.client.keys(pattern)
+            value = await self.keys(pattern)
             if isinstance(value, list):
                 return value
         except Exception as e:
@@ -1106,40 +1068,40 @@ class RedisServices(object):
 
     async def del_keys(self, keys: list):
         try:
-            return await self.client.delete(*keys)
+            return await self.delete(*keys)
         except Exception as e:
             logger.warning(f"Error at redis_services.def_keys {keys}: {e}")
             return False
 
-    async def get(self, key) -> str | None:
-        value = await self.client.get(key)
+    async def get_key(self, key) -> str | None:
+        value = await self.get(key)
         if isinstance(value, str):
             return value
         else:
             return None
 
-    async def getdel(self, key) -> str | None:
-        value = await self.client.getdel(key)
+    async def getdel_key(self, key) -> str | None:
+        value = await self.getdel(key)
         if isinstance(value, str):
             return value
         else:
             return None
 
-    async def set(self, key, value, ex=None, nx: bool = False):
-        return await self.client.set(key, value, ex=ex, nx=nx)
+    async def set_key(self, key, value, ex=None, nx: bool = False):
+        return await self.set(key, value, ex=ex, nx=nx)
 
     async def set_ttl(self, key: str, ttl: int):
-        return await self.client.expire(key, ttl)
+        return await self.expire(key, ttl)
 
     async def drop_index(self, name: str, delete_docs: bool = False):
         try:
-            ft_index = self.client.ft(name)
+            ft_index = self.ft(name)
             await ft_index.dropindex(delete_docs)
             return True
         except Exception:
             return False
 
     async def list_indices(self):
-        x = self.client.ft().execute_command("FT._LIST")
+        x = self.ft().execute_command("FT._LIST")
         if x and isinstance(x, Awaitable): 
             return await x 
