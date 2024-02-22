@@ -1,0 +1,13 @@
+
+  {
+    "resource_type": "content",
+    "subpath": "/workflows",
+    "shortname": "myworkflow",
+    "attributes": {
+      "is_active": true,
+      "payload": {
+        "schema_shortname": "ticket_workflows",
+        "content_type": "json",
+        "body": "ticket_workflow.json"}}
+  }
+ 

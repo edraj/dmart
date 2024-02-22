@@ -1,0 +1,45 @@
+VAR $path ./
+
+// 1. Create space
+// create space test
+
+switch test
+/*
+cd mytickets
+rm an_example
+
+cd ..
+
+cd workflows
+rm myworkflow
+
+cd ..
+
+rm mytickets
+rm workflows
+*/
+// 2. Create folders : e.g. mytickets
+// create folder test
+// create folder workflows
+
+// 3. Create schema entries (of type schema)  : e.g. workflow and mycustomticket
+// upload schema workflow $path/workflow_schema.json
+// upload schema ticket $path/ticket_schema.json
+// query schema
+
+// 4. Create workflow entry  (of type content) : e.g. myworkflow
+// request content ./ticket_workflow.json 
+// query workflows
+
+// 5. Create ticket entry (of type ticket) : e.g. myticket
+ request content ./myticket.json 
+// query mytickets
+
+// 6. Attache file to a ticket
+// attach my mytickets/an_example media ./my.jpg
+
+// 7. Progress the ticket
+// progress mytickets an_example planned
+
+/*
+*/

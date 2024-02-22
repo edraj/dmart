@@ -1,2 +1,33 @@
-{"uuid": "1ef1131f-53f7-45d8-9565-4c884b1eac71", "shortname": "applications", "is_active": true, "displayname": {"en": "Applications"}, "tags": [], "created_at": "2023-04-09T12:55:00.899747", "updated_at": "2023-04-09T12:55:00.906988", "owner_shortname": "dmart", "root_registration_signature": "", "primary_website": "", "indexing_enabled": true, "capture_misses": false, "check_health": false, "languages": ["english"], "icon": "", "mirrors": [], "hide_folders": [], "hide_space": true, "active_plugins": ["action_log", "redis_db_update", "system_notification_sender"], "branches": ["master"],
-"ordinal":1}
+{
+    "uuid": "1ef1131f-53f7-45d8-9565-4c884b1eac71",
+    "shortname": "applications",
+    "is_active": false,
+    "displayname": {
+        "en": "Applications"
+    },
+    "tags": [],
+    "created_at": "2023-04-09T12:55:00.899747",
+    "updated_at": "2023-04-09T12:55:00.906988",
+    "owner_shortname": "dmart",
+    "root_registration_signature": "",
+    "primary_website": "",
+    "indexing_enabled": false,
+    "capture_misses": false,
+    "check_health": false,
+    "languages": [
+        "english"
+    ],
+    "icon": "",
+    "mirrors": [],
+    "hide_folders": [],
+    "hide_space": true,
+    "active_plugins": [
+        "action_log",
+        "redis_db_update",
+        "system_notification_sender"
+    ],
+    "branches": [
+        "master"
+    ],
+    "ordinal": 1
+}

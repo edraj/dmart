@@ -1,0 +1,20 @@
+version: '3'
+services:
+  redis:
+    image: "redis/redis-stack"
+    ports:
+      -8001:8001
+      -6379:6379
+    environment:
+      - REDIS_ARGS="--requirepass mypassword"
+  node:
+    image: "node:8"
+    user: "node"
+    working_dir: /home/node/app
+    environment:
+      - NODE_ENV=local
+    volumes:
+      - ./:/home/node/app
+    expose:
+      - "8081"
+    command: "npm start"
