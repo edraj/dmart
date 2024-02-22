@@ -322,26 +322,26 @@
   <div class="row">
     <FormGroup class="col-4">
       <Input
-              name="is_email_verified"
-              bind:checked={user.is_email_verified}
-              type="checkbox"
-              label="Is Email Verified"
+        name="is_email_verified"
+        bind:checked={user.is_email_verified}
+        type="checkbox"
+        label="Is Email Verified"
       />
     </FormGroup>
     <FormGroup class="col-4">
       <Input
-              name="is_msisdn_verified"
-              bind:checked={user.is_msisdn_verified}
-              type="checkbox"
-              label="Is MSISDN Verified"
+        name="is_msisdn_verified"
+        bind:checked={user.is_msisdn_verified}
+        type="checkbox"
+        label="Is MSISDN Verified"
       />
     </FormGroup>
     <FormGroup class="col-4">
       <Input
-              name="force_password_change"
-              bind:checked={user.force_password_change}
-              type="checkbox"
-              label="Force Password Change"
+        name="force_password_change"
+        bind:checked={user.force_password_change}
+        type="checkbox"
+        label="Force Password Change"
       />
     </FormGroup>
   </div>

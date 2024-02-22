@@ -115,14 +115,14 @@
       </NavLink>
     </NavItem>
       <NavItem>
-      <Dropdown>
-        <DropdownToggle><Icon name="palette-fill" /></DropdownToggle>
-        <DropdownMenu end>
-          {#each themesList as theme}
-            <DropdownItem name={theme} on:click={handleThemeChange}>{theme}</DropdownItem>
-          {/each}
-        </DropdownMenu>
-      </Dropdown>
+<!--      <Dropdown>-->
+<!--        <DropdownToggle><Icon name="palette-fill" /></DropdownToggle>-->
+<!--        <DropdownMenu end>-->
+<!--          {#each themesList as theme}-->
+<!--            <DropdownItem name={theme} on:click={handleThemeChange}>{theme}</DropdownItem>-->
+<!--          {/each}-->
+<!--        </DropdownMenu>-->
+<!--      </Dropdown>-->
     </NavItem>
   </Nav>
 </Navbar>

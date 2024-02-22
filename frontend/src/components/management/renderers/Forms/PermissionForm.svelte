@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import {
     Button,
     Col,
@@ -11,12 +10,6 @@
   } from "sveltestrap";
 
   export let content: any = {};
-
-  // let subpaths = {
-  //     "personal": [
-  //         "people/__all_subpaths__/protected"
-  //     ]
-  // };
 
   let subpaths = [{ space: "", subpathList: [""] }];
   let resource_types = [{ value: "" }];
@@ -405,6 +398,6 @@
         </Col>
       </div>
     {/each}
-    <Button color="primary" class="w-100" on:click={addField}>Add Field</Button>
+    <Button color="primary" class="w-100" on:click={addField}>Add permission</Button>
   </TabPane>
 </TabContent>
