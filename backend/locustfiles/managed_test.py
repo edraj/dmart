@@ -6,7 +6,7 @@ from shutil import rmtree
 from re import search
 
 
-SPACE_NAME = "test"
+SPACE_NAME = "applications"
 BASE_PATH = os.path.dirname(os.getcwd())
 
 SHORTNAME = "dmart"
@@ -189,16 +189,20 @@ class WebsiteUser(HttpUser):
 
     
     # retrieve entry
-    @task
-    def retrieve_entry(self):
-        self.client.get("/managed/entry/schema/test/schema/test_schema?retrieve_json_payload=true&retrieve_attachments=true", headers=self.headers)
+    # @task
+    # def retrieve_entry(self):
+    #     self.client.get("/managed/entry/schema/test/schema/test_schema?retrieve_json_payload=true&retrieve_attachments=true", headers=self.headers)
 
     
     # health API
-    @task
-    def health_check(self):
-        self.client.get("/managed/health/management", headers=self.headers)
+    # @task
+    # def health_check(self):
+    #     self.client.get("/managed/health/management", headers=self.headers)
 
+    # retrieve entry
+    @task
+    def retrieve_entry(self):
+        self.client.get("/managed/entry/content/applications/queries/order?retrieve_json_payload=true")
 
     @task(3)
     def query_subpath(self):

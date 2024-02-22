@@ -5,7 +5,7 @@ from glob import glob
 from shutil import rmtree
 from re import search
 
-SPACE_NAME = "products"
+SPACE_NAME = "applications"
 
 class WebsitePublic(HttpUser):
     wait_time = between(1, 2)
@@ -24,13 +24,13 @@ class WebsitePublic(HttpUser):
     #     print("\n\n\n ressss from public: ", res)
 
     # Query search
-    @task(3)
+    @task(10)
     def query_search(self):
         request_data = {
             "space_name": SPACE_NAME,
             "type": "search",
-            "subpath": "/offers",
-            "filter_schema_names": ["offer"],
+            "subpath": "/queries",
+            "filter_schema_names": ["query"],
             "retrieve_json_payload": True
         }
         self.client.post("/public/query", json=request_data)
@@ -51,10 +51,10 @@ class WebsitePublic(HttpUser):
     #     self.client.post("/public/excute/query/products", json=request_data)
 
 
-    # retrieve entry
-    @task
-    def retrieve_entry(self):
-        self.client.get("/public/entry/content/personal/people/dmart/public/mything")
+    # # retrieve entry
+    # @task
+    # def retrieve_entry(self):
+    #     self.client.get("/managed/entry/content/applications/queries/order?retrieve_json_payload=true")
 
 
     # retrieve media
