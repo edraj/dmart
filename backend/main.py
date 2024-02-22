@@ -40,7 +40,6 @@ from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info
 
-from utils.redis_services import RedisServices
 from utils.internal_error_code import InternalErrorCode
 
 @asynccontextmanager
@@ -66,8 +65,6 @@ async def lifespan(app: FastAPI):
 
     yield
     logger.info("Application shutting down")
-    await RedisServices.POOL.aclose()
-    await RedisServices.POOL.disconnect(True)
     print('{"stage":"shutting down"}')
 
 
