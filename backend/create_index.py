@@ -301,7 +301,7 @@ async def main(
     async with RedisServices() as redis_man:
         if flushall:
             print("FLUSHALL")
-            await redis_man.client.flushall()
+            await redis_man.flushall()
 
         print("Intializing spaces")
         await initialize_spaces()
@@ -318,7 +318,6 @@ async def main(
         if loaded_data:
             for item in loaded_data:
                 print(f"{item['documents']}\tRegular {space_name}/{item['subpath']}")
-    await RedisServices.POOL.disconnect(True)
 
 
 

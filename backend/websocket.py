@@ -10,7 +10,6 @@ from hypercorn.asyncio import serve
 from models.enums import Status as ResponseStatus
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
-from utils.redis_services import RedisServices
 
 
 all_MKW = "__ALL__"
@@ -198,7 +197,6 @@ async def app_startup() -> None:
 @app.on_event("shutdown")
 async def app_shutdown() -> None:
     logger.info("Application shutting down")
-    await RedisServices.POOL.disconnect(True)
     print('{"stage":"shutting down"}')
 
 
