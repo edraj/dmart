@@ -62,9 +62,9 @@ class AccessControl:
         async with RedisServices() as redis_services:
             try:
                 # Check if index already exist
-                await redis_services.client.ft("user_permission").info()
+                await redis_services.ft("user_permission").info()
             except Exception:
-                await redis_services.client.ft("user_permission").create_index(
+                await redis_services.ft("user_permission").create_index(
                     fields=(TextField("name")),
                     definition=IndexDefinition(
                         prefix=["users_permissions"],
@@ -93,7 +93,7 @@ class AccessControl:
     async def delete_user_permissions_map_in_redis(self) -> None:
         async with RedisServices() as redis_services:
             search_query = Query("*").no_content()
-            docs: dict = await redis_services.client.\
+            docs: dict = await redis_services.\
                 ft("user_permission").\
                 search(search_query) # type: ignore
             if docs and len(docs.get("results", [])):

@@ -51,7 +51,7 @@ class Plugin(PluginBase):
             return
 
         # Get msisdns users
-        async with await RedisServices() as redis:
+        async with RedisServices() as redis:
             receivers = await redis.search(
                 space_name=settings.management_space,
                 branch_name=settings.management_space_branch,
