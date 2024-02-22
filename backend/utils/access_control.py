@@ -1,4 +1,3 @@
-import asyncio
 import json
 import re
 from redis.commands.search.field import TextField
@@ -13,45 +12,45 @@ import models.core as core
 from utils.regex import FILE_PATTERN
 from utils.redis_services import RedisServices
 
-
 class AccessControl:
     permissions: dict[str, Permission] = {}
     groups: dict[str, Group] = {}
     roles: dict[str, Role] = {}
     users: dict[str, User] = {}
 
-    async def load_permissions_and_roles(self):
+    async def load_permissions_and_roles(self) -> None:
         management_branch = settings.management_space_branch
         management_path = settings.spaces_folder / settings.management_space
 
-        management_modules = {
-            "groups": {"subpath": "groups", "type": core.Group},
-            "roles": {"subpath": "roles", "type": core.Role},
-            "permissions": {"subpath": "permissions", "type": core.Permission},
+        management_modules : dict[str, type[core.Meta]] = {
+            "groups": core.Group,
+            "roles": core.Role,
+            "permissions": core.Permission
         }
 
         for module_name, module_value in management_modules.items():
-            path = management_path / module_value["subpath"]
+            self_module = getattr(self, module_name)
+            self_module = {}
+            path = management_path / module_name
             entries_glob = ".dm/*/meta.*.json"
             for one in path.glob(entries_glob):
                 match = FILE_PATTERN.search(str(one))
-                if not match or not one.is_file:
+                if not match or not one.is_file():
                     continue
                 shortname = match.group(1)
                 try:
-                    resource_obj = await db.load(
+                    resource_obj : core.Meta = await db.load(
                         settings.management_space,
-                        module_value["subpath"],
+                        module_name,
                         shortname,
-                        module_value["type"],
+                        module_value,
                         "anonymous",
                         management_branch,
                     )
-                    module = getattr(self, module_name)
                     if resource_obj.is_active:
-                        module[shortname] = resource_obj  # store in redis doc
+                        self_module[shortname] = resource_obj  # store in redis doc
                 except Exception as ex:
-                    print(f"Error processing @{settings.management_space}/{module_value['subpath']}/{shortname} ... ", ex)
+                    print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
                     raise ex
 
         await self.create_user_premission_index()
@@ -59,22 +58,22 @@ class AccessControl:
         await self.delete_user_permissions_map_in_redis()
 
 
-    async def create_user_premission_index(self):
+    async def create_user_premission_index(self) -> None:
         async with RedisServices() as redis_services:
             try:
                 # Check if index already exist
                 await redis_services.client.ft("user_permission").info()
-            except:
+            except Exception:
                 await redis_services.client.ft("user_permission").create_index(
                     fields=(TextField("name")),
                     definition=IndexDefinition(
-                        prefix=[f"users_permissions"],
+                        prefix=["users_permissions"],
                         index_type=IndexType.JSON,
                     )
                 )
 
 
-    async def store_modules_to_redis(self):
+    async def store_modules_to_redis(self) -> None:
         modules = [
             "roles",
             "groups",
@@ -83,7 +82,7 @@ class AccessControl:
         async with RedisServices() as redis_services:
             for module_name in modules:
                 class_var = getattr(self, module_name)
-                for name, object in class_var.items():
+                for _, object in class_var.items():
                     await redis_services.save_meta_doc(
                         space_name=settings.management_space,
                         branch_name=settings.management_space_branch,
@@ -91,26 +90,39 @@ class AccessControl:
                         meta=object,
                     )
 
-    async def delete_user_permissions_map_in_redis(self):
+    async def delete_user_permissions_map_in_redis(self) -> None:
         async with RedisServices() as redis_services:
             search_query = Query("*").no_content()
-            docs = await redis_services.client.ft("user_permission").search(search_query)
-            keys = [doc.id for doc in docs.docs]
-            await redis_services.del_keys(keys)
+            docs: dict = await redis_services.client.\
+                ft("user_permission").\
+                search(search_query) # type: ignore
+            if docs and len(docs.get("results", [])):
+                keys = [doc["id"] for doc in docs["results"]]
+                if len(keys) > 0:
+                    await redis_services.del_keys(keys)
 
     def generate_user_permission_doc_id(self, user_shortname: str):
         return f"users_permissions_{user_shortname}"
 
-    async def get_user_premissions(self, user_shortname: str) -> dict:
+
+    async def is_user_verified(self, user_shortname: str | None, identifier: str | None):
         async with RedisServices() as redis_services:
-            user_premissions = await redis_services.get_doc_by_id(
-                self.generate_user_permission_doc_id(user_shortname)
-            )
+            user: dict = await redis_services.get_doc_by_id(f"management:master:meta:users/{user_shortname}")
+            if identifier == "msisdn":
+                return user.get("is_msisdn_verified", True)
+            if identifier == "email":
+                return user.get("is_email_verified", True)
+            return False
 
-        if not user_premissions:
-            return await self.generate_user_permissions(user_shortname)
 
-        return user_premissions
+    async def get_user_permissions(self, user_shortname: str) -> dict:
+        async with RedisServices() as redis_services:
+            user_permissions : dict = await redis_services.get_doc_by_id(self.generate_user_permission_doc_id(user_shortname))
+
+            if not user_permissions:
+               return await self.generate_user_permissions(user_shortname)
+
+            return user_permissions
 
     async def check_access(
         self,
@@ -122,9 +134,15 @@ class AccessControl:
         resource_is_active: bool = False,
         resource_owner_shortname: str | None = None,
         resource_owner_group: str | None = None,
-        record_attributes: dict = {}
+        record_attributes: dict = {},
+        entry_shortname: str | None = None
     ):
-        user_permissions = await self.get_user_premissions(user_shortname)
+        if resource_type == ResourceType.space and entry_shortname:
+            return await self.check_space_access(
+                user_shortname,
+                entry_shortname
+            )
+        user_permissions = await self.get_user_permissions(user_shortname)
 
         user_groups = (await self.load_user_meta(user_shortname)).groups or []
 
@@ -135,10 +153,13 @@ class AccessControl:
             resource_achieved_conditions.add(ConditionType.is_active)
         if resource_owner_shortname == user_shortname or resource_owner_group in user_groups:
             resource_achieved_conditions.add(ConditionType.own)
-
-        subpath_parts = list(filter(None, subpath.split("/")))
+        
         # Allow checking for root permissions
-        subpath_parts.insert(0, "/")
+        subpath_parts = ["/"]
+        subpath_parts += list(filter(None, subpath.strip("/").split("/")))
+        if resource_type == ResourceType.folder and entry_shortname:
+            subpath_parts.append(entry_shortname)
+        
         search_subpath = ""
         for subpath_part in subpath_parts:
             search_subpath += subpath_part
@@ -196,6 +217,7 @@ class AccessControl:
         subpath = {subpath}/protected => __all_subpaths__/protected
         subpath = {subpath}/protected/mine => {subpath}/__all_subpaths__/mine
         """
+        original_subpath = search_subpath
         search_subpath_parts = search_subpath.split("/")
         if len(search_subpath_parts) > 1:
             search_subpath_parts[-2] = settings.all_subpaths_mw
@@ -209,9 +231,14 @@ class AccessControl:
         # check if has access to all spaces
         if f"{settings.all_spaces_mw}:{search_subpath}:{resource_type}" in user_permissions:
             permission_key = f"{settings.all_spaces_mw}:{search_subpath}:{resource_type}"
+        
         # check if has access to current spaces
         if f"{space_name}:{search_subpath}:{resource_type}" in user_permissions:
             permission_key = f"{space_name}:{search_subpath}:{resource_type}"
+        
+        # check if has access to current subpath
+        if f"{settings.all_spaces_mw}:{original_subpath}:{resource_type}" in user_permissions:
+            permission_key = f"{settings.all_spaces_mw}:{original_subpath}:{resource_type}"
 
         if not permission_key:
             return False
@@ -263,10 +290,18 @@ class AccessControl:
             if restricted_field in flattened_attributes:
                 return False
 
-        for allowed_field_name, allowed_field_values in allowed_fields_values.items():
+        for field_name, field_values in allowed_fields_values.items():
+            if field_name not in flattened_attributes:
+                continue
             if(
-                allowed_field_name in flattened_attributes and 
-                flattened_attributes[allowed_field_name] not in allowed_field_values
+                isinstance(flattened_attributes[field_name], list) and
+                isinstance(field_values[0], list) and
+                not all(i in field_values[0] for i in flattened_attributes[field_name])
+            ):
+                return False
+            elif(
+                not isinstance(flattened_attributes[field_name], list) and
+                flattened_attributes[field_name] not in field_values
             ):
                 return False
 
@@ -274,7 +309,7 @@ class AccessControl:
         
     
     async def check_space_access(self, user_shortname: str, space_name: str) -> bool:
-        user_permissions = await access_control.get_user_premissions(user_shortname)
+        user_permissions = await access_control.get_user_permissions(user_shortname)
         prog = re.compile(f"{space_name}:*|{settings.all_spaces_mw}:*")
         return bool(list(filter(prog.match, user_permissions.keys())))
     
@@ -292,11 +327,11 @@ class AccessControl:
         return subpath
 
 
-    async def generate_user_permissions(self, user_shortname: str):
-        user_permissions = {}
+    async def generate_user_permissions(self, user_shortname: str) -> dict:
+        user_permissions : dict = {}
 
         user_roles = await self.get_user_roles(user_shortname)
-        for name, role in user_roles.items():
+        for _, role in user_roles.items():
             role_permissions = await self.get_role_permissions(role)
 
             for permission in role_permissions:
@@ -348,7 +383,7 @@ class AccessControl:
         role_permissions: list[Permission] = []
 
         for permission_doc in permissions_search["data"]:
-            permission = Permission.parse_obj(json.loads(permission_doc.json))
+            permission = Permission.model_validate(json.loads(permission_doc))
             role_permissions.append(permission)
 
         return role_permissions
@@ -375,11 +410,11 @@ class AccessControl:
 
         all_user_roles_from_redis = []
         for redis_document in roles_search["data"]:
-            all_user_roles_from_redis.append(json.loads(redis_document.json))
+            all_user_roles_from_redis.append(redis_document)
 
         all_user_roles_from_redis.extend(user_roles_from_groups)
         for role_json in all_user_roles_from_redis:
-            role = Role.parse_obj(role_json)
+            role = Role.model_validate(json.loads(role_json))
             user_roles[role.shortname] = role
 
         return user_roles
@@ -393,8 +428,8 @@ class AccessControl:
                 subpath="users",
                 shortname=user_shortname,
             )
-            user = await redis_services.get_doc_by_id(user_meta_doc_id)
-            if not user:
+            value : dict = await redis_services.get_doc_by_id(user_meta_doc_id)
+            if not value: 
                 user = await db.load(
                     space_name=settings.management_space,
                     branch_name=settings.management_space_branch,
@@ -409,9 +444,10 @@ class AccessControl:
                     "users",
                     user,
                 )
+                return user
             else:
-                user = core.User(**user)
-        return user
+                user = core.User(**value)
+                return user
 
 
     async def get_user_by_criteria(self, key: str, value: str) -> str | None:
@@ -426,8 +462,11 @@ class AccessControl:
             )
         if not user_search["data"]:
             return None
-        data = json.loads(user_search["data"][0].json)
-        return data["shortname"]
+        data = json.loads(user_search["data"][0])
+        if data.get("shortname") and isinstance (data["shortname"], str): 
+            return data["shortname"]
+        else:
+            return None
 
 
     async def get_user_roles_from_groups(self, user_meta: core.User) -> list:
@@ -449,7 +488,7 @@ class AccessControl:
 
             roles = []
             for group in groups_search["data"]:
-                group_json = json.loads(group.json)
+                group_json = json.loads(group)
                 for role_shortname in group_json["roles"]:
                     role = await redis_services.get_doc_by_id(
                         redis_services.generate_doc_id(
@@ -466,22 +505,36 @@ class AccessControl:
         return roles
 
     
-    async def get_user_query_policies(self, user_shortname: str) -> list:
+    async def get_user_query_policies(
+        self, 
+        user_shortname: str,
+        space_name: str,
+        subpath: str
+    ) -> list:
         """
         Generate list of query policies based on user's permissions
         ex: [
             "products:offers:content:true:admin_shortname", # IF conditions = {"is_active", "own"}
             "products:offers:content:true:*", # IF conditions = {"is_active"}
-            "products:offers:content:false:admin_shortname|products:offers:content:true:admin_shortname", # IF conditions = {"own"}
+            "products:offers:content:false:admin_shortname|products:offers:content:true:admin_shortname",
+            # ^^^ IF conditions = {"own"}
             "products:offers:content:*", # IF conditions = {}
         ]
         """
-        user_permissions = await self.get_user_premissions(user_shortname)
+        user_permissions = await self.get_user_permissions(user_shortname)
         user_groups = (await self.load_user_meta(user_shortname)).groups or []
         user_groups.append(user_shortname)
 
         redis_query_policies = []
         for perm_key, permission in user_permissions.items():
+            if(
+                not perm_key.startswith(space_name) and 
+                not perm_key.startswith(settings.all_spaces_mw)
+            ):
+                continue
+            perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
+            perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
+            perm_key = perm_key.strip("/")
             if (
                 core.ConditionType.is_active in permission["conditions"]
                 and core.ConditionType.own in permission["conditions"]

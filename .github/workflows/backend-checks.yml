@@ -1,0 +1,66 @@
+name: Backend checks
+
+on:
+  push:
+    branches: [ "master" ]
+    paths: ["backend/**"]
+  pull_request:
+    branches: [ "master" ]
+    paths: ["backend/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install python dependencies
+      run: |
+        source $HOME/venv/bin/activate
+        cd backend; 
+        pip install -r requirements.txt
+        pip install -r test-requirements.txt
+        pip install -r plugins-requirements.txt
+        mkdir logs/
+        cp ~/login_creds.sh ./
+        cp ~/config.env ./
+    - name: Lint with pyright
+      run: |
+        cd backend
+        source $HOME/venv/bin/activate
+        PYRIGHT_PYTHON_FORCE_VERSION=latest pyright ./
+    - name: Lint with Ruff
+      run: |
+        source $HOME/venv/bin/activate
+        cd backend; ruff check .
+    - name: Check with mypy
+      run: |
+        source $HOME/venv/bin/activate
+        cd backend; mypy --explicit-package-bases --warn-return-any .
+    - name: Test with pytest
+      run: |
+        source $HOME/venv/bin/activate
+        cd backend; pytest
+    - name: Start dmart service and run curl.sh
+      run: |
+        export XDG_RUNTIME_DIR="/run/user/$UID"
+        export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+        source $HOME/venv/bin/activate
+        systemctl --user restart dmart
+        cd backend
+        ./reload.sh
+        ./curl.sh
+    - name: Install frontend js depdenencies
+      run: |
+        # cd frontend; yarn install
+    - name: Build frontend
+      run: |
+        # cd frontend; yarn build
+    - name: Check svelte
+      run: |
+        # cd frontend; ./node_modules/.bin/svelte-check 
+

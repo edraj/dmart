@@ -1,0 +1,1 @@
+{"uuid": "9e2496b3-968d-4e94-a06e-3a200baa3371", "shortname": "create_log", "is_active": true, "tags": [], "created_at": "2023-03-20T08:46:26.282663", "updated_at": "2023-03-20T08:46:26.282678", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "api", "body": "create_log.json"}}

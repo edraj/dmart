@@ -1,0 +1,144 @@
+[
+  {
+    "id": "contributions",
+    "type": "section",
+    "expanded": true,
+    "icon": "users",
+    "children": [
+      { 
+        "id": "posts", 
+        "type": "item", 
+        "icon": "journals", 
+        "link":"folder/posts"
+      },
+      { 
+        "id": "media",
+        "type": "item",
+        "icon": "images",
+        "link":"folder/media"
+      },
+      { 
+        "id": "profiles", 
+        "type": "item", 
+        "icon": "people", 
+        "link":"folder/profiles"
+      },
+      { 
+        "id": "calendar", 
+        "type": "item", 
+        "icon": "calendar", 
+        "link":"folder/calendar"
+      },
+      { 
+        "id": "activities", 
+        "type": "item", 
+        "icon": "list", 
+        "link":"folder/tasks"
+      },
+      { 
+        "id": "news", 
+        "type": "item", 
+        "icon": "newspaper", 
+        "link":"folder/news"
+      },
+      { 
+        "id": "forum", 
+        "type": "item", 
+        "icon": "chat-square-quote", 
+        "link":"folder/forum"
+      }
+    ]
+  },
+  {
+    "id": "sampled",
+    "type": "section",
+    "expanded": true,
+    "icon": "make-group",
+    "children": [
+      { 
+        "id": "latest", 
+        "type": "item", 
+        "icon": "rss", 
+        "link":"latest"
+      },
+      { 
+        "id": "picks", 
+        "type": "item", 
+        "icon": "star", 
+        "link":"folder/picks"
+      },
+      { 
+        "id": "random", 
+        "type": "item", 
+        "icon": "shuffle", 
+        "link":"random"
+      },
+      { 
+        "id": "tag_cloud", 
+        "type": "item", 
+        "icon": "tags", 
+        "link":"tag/posts"
+      },
+      { 
+        "id": "near_by", 
+        "type": "item", 
+        "icon": "geo-alt", 
+        "link":"geo/posts"
+      }
+    ]
+  },
+  {
+    "id": "library",
+    "type": "section",
+    "icon": "books",
+    "expanded": true,
+    "children": [
+      { 
+        "id": "knowledgebase", 
+        "type": "item", 
+        "icon": "stack", 
+        "link":"folder/knowledgebase"
+      },
+      { 
+        "id": "publications", 
+        "type": "item", 
+        "icon": "newspaper", 
+        "link":"folder/publications"
+      },
+      { 
+        "id": "faq", 
+        "type": "item", 
+        "icon": "question-square", 
+        "description": "Frequently asked questions", 
+        "link":"folder/faq"
+      },
+      { 
+        "id": "glossary", 
+        "type": "item", 
+        "icon": "info-square", 
+        "description":"Nomenclature / terms", 
+        "link":"folder/glossary"
+      }
+    ]
+  },
+  {
+    "id": "other_spaces",
+    "type": "section",
+    "icon": "sphere",
+    "expanded": true,
+    "children": [
+      { 
+        "id": "maqola", 
+        "type": "item", 
+        "icon": "blockquote-right", 
+        "link":"https://maqola.imx.sh"
+      },
+      { 
+        "id": "bookmarks", 
+        "type": "item", 
+        "icon": "bookmarks", 
+        "link":"folder/bookmarks"
+      }
+    ]
+  }
+]

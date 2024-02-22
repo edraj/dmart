@@ -1,0 +1,6 @@
+http://localhost:8080 {
+	root * ./dist/client/
+	encode gzip
+	try_files {path} /index.html
+	file_server
+}

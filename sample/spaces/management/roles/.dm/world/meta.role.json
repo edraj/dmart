@@ -9,6 +9,7 @@
   "permissions": [
     "world",
     "access_public",
-    "create_log"
+    "create_log",
+    "access_applications_world"
   ]
 }

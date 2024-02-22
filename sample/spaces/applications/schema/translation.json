@@ -1,1 +1,26 @@
-{"type": "object", "title": "title", "properties": {"items": {"type": "array", "items": {"type": "object", "properties": {"key": {"type": "string"}, "en": {"type": "string"}, "ar": {"type": "string"}, "kd": {"type": "string"}}}}}}
+{
+  "type": "object",
+  "title": "title",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "en": {
+            "type": "string"
+          },
+          "ar": {
+            "type": "string"
+          },
+          "ku": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

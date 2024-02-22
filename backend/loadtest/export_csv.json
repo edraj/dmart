@@ -1,0 +1,7 @@
+{
+  "space_name": "management",
+  "subpath": "permissions",
+  "type": "subpath",
+  "retrieve_json_payload": true,
+  "limit": 5
+}

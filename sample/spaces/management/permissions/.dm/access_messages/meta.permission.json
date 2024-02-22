@@ -1,0 +1,23 @@
+{
+  "uuid": "4baa4393-0fcb-4fbb-a824-35262a09553e",
+  "shortname": "access_messages",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2022-10-07T14:48:22.074676",
+  "updated_at": "2022-10-07T14:48:22.074681",
+  "owner_shortname": "dmart",
+  "subpaths": {
+    "personal": ["people/__all_subpaths__/messages"]
+  },
+  "resource_types": [
+    "media",
+    "content",
+    "locator",
+    "ticket",
+    "comment",
+    "alteration",
+    "json"
+  ],
+  "actions": ["create"],
+  "conditions": ["own"]
+}

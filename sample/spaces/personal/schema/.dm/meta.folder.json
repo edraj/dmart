@@ -1,14 +1,1 @@
-{
-  "uuid": "f318ce51-261e-4c6b-9bd9-7fdc3aa91303",
-  "shortname": "schema",
-  "is_active": true,
-  "description": {
-    "en": "##Hello\nhi",
-    "ar": "## Hello\nhi",
-    "kd": "## Hello \nhi"
-  },
-  "tags": [],
-  "created_at": "2022-08-23T07:44:36.399780",
-  "updated_at": "2022-11-04T15:49:43.709426",
-  "owner_shortname": "dmart"
-}
+{"uuid": "b9b2b289-7f7c-4d40-a5a5-e896a9c146b4", "shortname": "schema", "is_active": true, "tags": [], "created_at": "2022-08-23T07:44:36.399780", "updated_at": "2022-11-04T15:49:43.709426", "owner_shortname": "dmart"}

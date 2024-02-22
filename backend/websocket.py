@@ -1,6 +1,6 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 import json
-from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect, status, Request
+from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect, status
 from utils.jwt import decode_jwt
 import asyncio
 from hypercorn.config import Config
@@ -10,11 +10,12 @@ from hypercorn.asyncio import serve
 from models.enums import Status as ResponseStatus
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
+from utils.redis_services import RedisServices
 
 
 all_MKW = "__ALL__"
 class ConnectionManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.active_connections: dict[str, WebSocket] = {}
         # item => channel_name: list_of_subscribed_clients
         self.channels: dict[str, list[str]] = {}
@@ -70,7 +71,6 @@ class ConnectionManager:
 
     
     def generate_channel_name(self, msg: dict):
-        s1 = {"space_name", "subpath"}
         if not {"space_name", "subpath"}.issubset(msg):
             return False
         space_name = msg["space_name"]
@@ -118,7 +118,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
     try:
         decoded_token = decode_jwt(token)
-    except :
+    except Exception:
         return status.HTTP_401_UNAUTHORIZED, [], b"Invalid token\n"
 
     user_shortname = decoded_token["username"]
@@ -189,7 +189,20 @@ async def service_info():
         }
     )
 
-if __name__ == "__main__":
+@app.on_event("startup")
+async def app_startup() -> None:
+    logger.info("Starting up")
+    print('{"stage":"starting up"}')
+
+
+@app.on_event("shutdown")
+async def app_shutdown() -> None:
+    logger.info("Application shutting down")
+    await RedisServices.POOL.disconnect(True)
+    print('{"stage":"shutting down"}')
+
+
+async def main():
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.websocket_port}"]
     config.backlog = 200
@@ -198,5 +211,8 @@ if __name__ == "__main__":
     config.logconfig_dict = logging_schema
     config.errorlog = logger
     config.accesslog = logger
+    await serve(app, config)  # type: ignore
 
-    asyncio.run(serve(app, config))  # type: ignore
+if __name__ == "__main__":
+
+    asyncio.run(main())  # type: ignore

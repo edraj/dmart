@@ -1,0 +1,13 @@
+diff --git a/deps/VectorSimilarity/src/VecSim/spaces/CMakeLists.txt b/deps/VectorSimilarity/src/VecSim/spaces/CMakeLists.txt
+index 201bdec..e3b34f3 100644
+--- a/deps/VectorSimilarity/src/VecSim/spaces/CMakeLists.txt
++++ b/deps/VectorSimilarity/src/VecSim/spaces/CMakeLists.txt
+@@ -45,7 +45,7 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64|amd64)|(^i.86$)")
+ 	endif()
+ endif()
+ 
+-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall")
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+ # Here we are compiling the space selectors with the relevant optimization flag.
+ add_library(VectorSimilaritySpaces STATIC 
+ 	space_aux.cpp

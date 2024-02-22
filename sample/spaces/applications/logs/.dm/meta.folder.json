@@ -1,1 +1,1 @@
-{"uuid": "ec3b452b-050b-47fc-ae9f-9322c6db51fd", "shortname": "logs", "is_active": true, "tags": [], "created_at": "2023-02-27T16:01:02.692698", "updated_at": "2023-02-27T21:57:13.519112", "owner_shortname": "dmart", "payload": {"content_type": "json", "schema_shortname": "folder_rendering", "body": "logs.json"}}
+{"uuid": "97908d66-7a34-4058-b4fe-3a052a1ff38a", "shortname": "logs", "is_active": true, "displayname": {"en": "Logs"}, "tags": [], "created_at": "2022-11-17T13:35:52.537017", "updated_at": "2023-04-09T14:14:31.976150", "owner_shortname": "dmart"}

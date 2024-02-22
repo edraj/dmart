@@ -11,8 +11,8 @@
     "access_personal",
     "access_protected",
     "access_public",
-    "access_inbox",
- "create_log",
- "view_workflows"
+    "access_messages",
+    "create_log",
+    "access_applications"
   ]
 }

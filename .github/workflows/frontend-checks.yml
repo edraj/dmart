@@ -1,0 +1,33 @@
+name: Frontend checks
+
+on:
+  push:
+    branches: [ "master" ]
+    paths: ["frontend/**"]
+  pull_request:
+    branches: [ "master" ]
+    paths: ["frontend/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install frontend js depdenencies
+      run: |
+        cd frontend
+        rm .yarnrc
+        yarn install
+    - name: Build frontend
+      run: |
+        cd frontend
+        yarn build
+    - name: Check svelte
+      run: |
+        cd frontend
+        yarn svelte-check

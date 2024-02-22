@@ -1,7 +1,5 @@
-from copy import deepcopy
-import json
-import requests
 from models.core import PluginBase, Event
+from utils.async_request import AsyncRequest
 from utils.settings import settings
 
 
@@ -11,14 +9,14 @@ class Plugin(PluginBase):
         all_MKW = "__ALL__"
 
         state = data.attributes.get("state", all_MKW)
-        if data.subpath[0] == "/":
-            data.subpath = data.subpath[1:]
 
         # if subpath = parent/child
         # send to channels with subpaths "parent" and "parent/child"
         channels = []
         subpath = ""
         for subpath_part in data.subpath.split("/"):
+            if not subpath_part:
+                continue
             subpath += subpath_part
             
             # Consider channels with __ALL__ magic word
@@ -37,20 +35,22 @@ class Plugin(PluginBase):
             ])
             subpath += "/"
 
-        try:
-            
-            requests.post(
-                url=f"{settings.websocket_url}/broadcast-to-channels",
-                data=json.dumps(
-                    {
-                        "channels": channels,
-                        "message": {
-                            "title": "updated"
-                        }
-                    }
-                ),
-            )
-        except :
-            pass
+        if not settings.websocket_url : 
+            return 
 
-        
+        async with AsyncRequest() as client:
+            await client.post(
+                f"{settings.websocket_url}/broadcast-to-channels",
+                json={
+                    "channels": [*set(channels)],
+                    "message": {
+                        "title": "updated",
+                        "subpath": data.subpath,
+                        "space": data.space_name,
+                        "shortname": data.shortname,
+                        "action_type": data.action_type,
+                        "owner_shortname": data.user_shortname
+                    }
+                }
+            )
+            

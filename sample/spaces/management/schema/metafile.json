@@ -1,0 +1,153 @@
+{
+  "title": "Meta Schema",
+  "type": "object",
+  "properties": {
+    "uuid": {
+      "type": "string",
+      "description": "A universally unique identifier for the entity."
+    },
+    "shortname": {
+      "type": "string",
+      "pattern": "^[\\w]{1,64}$",
+      "description": "A short name or abbreviation for the entity."
+    },
+    "slug": {
+      "type": "string",
+      "description": "A URL-friendly version of the short name."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The date and time that the entity was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The date and time that the entity was last updated."
+    },
+    "is_active": {
+      "type": "boolean",
+      "description": "Whether the entity is currently active or not."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "A list of tags or keywords associated with the entity."
+    },
+    "owner_shortname": {
+      "type": "string",
+      "description": "The short name of the owner of the entity."
+    },
+    "owner_group_shortname": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "is_open": {
+      "type": "boolean"
+    },
+    "reporter": {
+      "type": "string"
+    },
+    "workflow_shortname": {
+      "type": "string"
+    },
+    "collaborators": {
+      "type": "object",
+      "properties": {}
+    },
+    "resolution_reason": {
+      "type": "string"
+    },
+    "receiver": {
+      "type": "string"
+    },
+    "title": {
+      "$ref": "#/definitions/translation"
+    },
+    "body": {
+      "$ref": "#/definitions/translation"
+    },
+    "image_urls": {
+      "$ref": "#/definitions/translation"
+    },
+    "deep_link": {
+      "type": "object",
+      "properties": {}
+    },
+    "entry_id": {
+      "type": "string"
+    },
+    "is_read": {
+      "type": "boolean"
+    },
+    "priority": {
+      "type": "string"
+    },
+    "entry": {
+      "$ref": "#/definitions/locator"
+    },
+    "payload": {
+      "type": "object",
+      "properties": {}
+    },
+    "displayname": {
+      "$ref": "#/definitions/translation"
+    },
+    "description": {
+      "$ref": "#/definitions/translation"
+    }
+  },
+  "definitions": {
+    "locator": {
+      "type": "object",
+      "description": "Information about where the entity can be located.",
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "description": "A universally unique identifier for the location."
+        },
+        "shortname": {
+          "type": "string",
+          "description": "A short name or abbreviation for the location."
+        },
+        "displayname": {
+          "type": "string",
+          "description": "The name of the location that should be displayed to users."
+        },
+        "space_name": {
+          "type": "string",
+          "description": "The name of the space where the entity can be found."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of tags or keywords associated with the location."
+        }
+      }
+    },
+    "translation": {
+      "type": "object",
+      "description": "Information about the entity's translations in different languages.",
+      "properties": {
+        "en": {
+          "type": "string",
+          "description": "The English translation of the entity."
+        },
+        "ar": {
+          "type": "string",
+          "description": "The Arabic translation of the entity."
+        },
+        "ku": {
+          "type": "string",
+          "description": "The Kurdish translation of the entity."
+        }
+      }
+    }
+  }
+}

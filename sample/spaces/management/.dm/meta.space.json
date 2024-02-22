@@ -1,22 +1,49 @@
 {
-  "shortname": "management",
-  "owner_shortname": "soheyb",
-  "displayname": {"en":"Management", "ar":"Management", "kd":"Management"},
-  "description": {"en":"A management / sample space", "ar":"A managment / sample space", "kd":"A managment / sample space"},
   "uuid": "69ab4e02-b9ce-41e4-ada4-1e0869ccdc8f",
-  "resource_type": "Space",
+  "shortname": "management",
+  "is_active": false,
+  "displayname": {
+    "en": "Management",
+    "ar": "Management",
+    "ku": "Management"
+  },
+  "description": {
+    "en": "A management / sample space",
+    "ar": "A managment / sample space",
+    "ku": "A managment / sample space"
+  },
+  "tags": [],
+  "created_at": "2023-08-14T12:18:22.732102",
+  "updated_at": "2023-08-15T13:37:49.135334",
+  "owner_shortname": "dmart",
+  "root_registration_signature": "",
+  "primary_website": "https://dmart.cc",
+  "indexing_enabled": true,
+  "capture_misses": false,
+  "check_health": true,
   "languages": [
     "english"
   ],
-  "indexing_enabled": true,
-  "primary_website": "https://dmart.cc",
+  "icon": "",
   "mirrors": [],
-  "check_health": true,
-  "hide_space": false,
-  "branches": [],
+  "hide_folders": [
+    "schema",
+    "workflows",
+    "visits",
+    "health_check",
+    "collections",
+    "groups"
+  ],
   "active_plugins": [
     "action_log",
     "update_access_controls",
-    "redis_db_update"
-  ]
+    "system_notification_sender",
+    "admin_notification_sender",
+    "redis_db_update",
+    "reports_stats",
+    "realtime_updates_notifier",
+    "user_folders_creation"
+  ],
+  "branches": [],
+  "ordinal": 1
 }

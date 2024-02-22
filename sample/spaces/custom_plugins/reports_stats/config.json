@@ -8,6 +8,6 @@
     "schema_shortnames": ["__ALL__"],
     "actions": ["query"]
   },
-  "listen_time": "after",
+  "listen_time": "before",
   "type": "hook"
 }

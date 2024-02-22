@@ -1,0 +1,15 @@
+{
+  "end_point": "/managed/query",
+  "verb": "post",
+  "request_body": {
+    "type": "search",
+    "space_name": "applications",
+    "subpath": "/",
+    "filter_types": [
+      "content"
+    ],
+    "retrieve_json_payload": true,
+    "search": "",
+    "limit": 100
+  }
+}

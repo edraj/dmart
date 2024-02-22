@@ -1,0 +1,11 @@
+--- deps/readies/mk/main        2021-03-15 00:59:39.698730833 +0300
++++ deps/readies/mk/main        2021-03-15 00:59:54.868555296 +0300
+@@ -15,7 +15,7 @@
+ 
+ MK:=$(READIES)/mk
+ 
+-MK.pyver ?= 2
++MK.pyver ?= 3
+ MK.getpy=getpy$(MK.pyver)
+ 
+ ifneq ($(shell { CHECK=1 $(READIES)/bin/$(MK.getpy); echo -n $$?; }),0)

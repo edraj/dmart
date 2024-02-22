@@ -1,0 +1,113 @@
+{
+  "type": "object",
+  "properties": {
+    "uuid": {
+      "type": "string"
+    },
+    "shortname": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "displayname": {
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string"
+        },
+        "ar": {
+          "type": "string"
+        },
+        "ku": {
+          "type": "string"
+        }
+      }
+    },
+    "description": {
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string"
+        },
+        "ar": {
+          "type": "string"
+        },
+        "ku": {
+          "type": "string"
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "content_type": {
+          "type": "string"
+        },
+        "schema_shortname": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "last_validated": {
+          "type": "string"
+        },
+        "validation_status": {
+          "type": "string"
+        }
+      }
+    },
+    "password": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "msisdn": {
+      "type": "string"
+    },
+    "is_email_verified": {
+      "type": "boolean"
+    },
+    "is_msisdn_verified": {
+      "type": "boolean"
+    },
+    "force_password_change": {
+      "type": "boolean"
+    },
+    "type": {
+      "type": "string"
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "firebase_token": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string"
+    }
+  }
+}

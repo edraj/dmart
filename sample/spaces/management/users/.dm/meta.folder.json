@@ -5,15 +5,10 @@
   "description": {
     "en": "Users",
     "ar": "Users",
-    "kd": "Users"
+    "ku": "Users"
   },
   "tags": [],
   "created_at": "2022-08-23T07:44:36.399780",
   "updated_at": "2022-12-26T09:49:54.593831",
-  "owner_shortname": "dmart",
-  "payload": {
-    "content_type": "json",
-    "schema_shortname": "folder_rendering",
-    "body": "users.json"
-  }
+  "owner_shortname": "dmart"
 }

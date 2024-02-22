@@ -1,0 +1,76 @@
+{
+  "type": "object",
+  "properties": {
+    "uuid": {
+      "type": "string"
+    },
+    "shortname": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "tags": {
+      "type": "array",
+      "items": {}
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "subpaths": {
+      "type": "object",
+      "properties": {
+        "test": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "applications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "resource_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "restricted_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowed_fields_values": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "subpaths",
+    "resource_types",
+    "actions",
+    "conditions",
+    "restricted_fields",
+    "allowed_fields_values"
+  ]
+}

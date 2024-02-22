@@ -1,32 +1,94 @@
-from models.enums import QueryType, ResourceType, SortType, Status
 import models.core as core
-from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from datetime import datetime
 from typing import Any
 from builtins import Exception as PyException
-from models.enums import RequestType
+from models.enums import (
+    DataAssetType,
+    QueryType,
+    ResourceType,
+    SortType,
+    Status,
+    RequestType,
+)
 import utils.regex as regex
 from utils.settings import settings
 
 
 class Request(BaseModel):
-    space_name: str = Field(..., regex=regex.SPACENAME)
+    space_name: str = Field(..., pattern=regex.SPACENAME)
     request_type: RequestType
     records: list[core.Record]
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "space_name": "data",
+                    "request_type": "create",
+                    "records": [
+                        {
+                            "resource_type": "content",
+                            "shortname": "auto",
+                            "subpath": "/users",
+                            "attributes": {
+                                "is_active": True,
+                                "slug": None,
+                                "displayname": {
+                                    "en": "name en",
+                                    "ar": "name ar",
+                                    "ku": "name ku",
+                                },
+                                "description": {
+                                    "en": "desc en",
+                                    "ar": "desc ar",
+                                    "ku": "desc ku",
+                                },
+                                "tags": [],
+                                "payload": {
+                                    "content_type": "json",
+                                    "schema_shortname": "user",
+                                    "body": {
+                                        "email": "myname@gmail.com",
+                                        "first_name": "John",
+                                        "language": "en",
+                                        "last_name": "Doo",
+                                        "mobile": "7999311703",
+                                    },
+                                },
+                            },
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+
+class RedisReducer(BaseModel):
+    reducer_name: str
+    alias: str | None = None
+    args: list = []
+
+
+class RedisAggregate(BaseModel):
+    group_by: list[str] = []
+    reducers: list[RedisReducer] = []
+    load: list = []
+
 
 class Query(BaseModel):
+    __pydantic_extra__ = None
     type: QueryType
-    space_name: str = Field(..., regex=regex.SPACENAME)
-    subpath: str = Field(..., regex=regex.SUBPATH)
+    space_name: str = Field(..., pattern=regex.SPACENAME)
+    subpath: str = Field(..., pattern=regex.SUBPATH)
     exact_subpath: bool = False
-    branch_name: str = Field(default=settings.default_branch, regex=regex.SHORTNAME)
+    branch_name: str = Field(default=settings.default_branch, pattern=regex.SHORTNAME)
     filter_types: list[ResourceType] | None = None
     filter_schema_names: list[str] = ["meta"]
-    filter_shortnames: list[str] | None = Field(
-        regex=regex.SHORTNAME, default_factory=list
-    )
+    filter_shortnames: list[
+        str
+    ] | None = []  # Field( pattern=regex.SHORTNAME, default_factory=list)
     filter_tags: list[str] | None = None
     search: str | None = None
     from_date: datetime | None = None
@@ -42,6 +104,42 @@ class Query(BaseModel):
     jq_filter: str | None = None
     limit: int = 10
     offset: int = 0
+    aggregation_data: RedisAggregate | None = None
+
+    # Replace -1 limit by settings.max_query_limit
+    def __init__(self, **data):
+        BaseModel.__init__(self, **data)
+        if self.limit == -1:
+            self.limit = settings.max_query_limit
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "type": "search",
+                    "space_name": "acme",
+                    "subpath": "/users",
+                    "filter_types": [],
+                    "retrieve_attachments": True,
+                    "retrieve_json_payload": True,
+                    "validate_schema": True,
+                    "filter_shortnames": [],
+                    "filter_tags": [],
+                    "filter_schema_names": ["user"],
+                    "search": "@first_name:joh*",
+                    "limit": 10,
+                    "offset": 0,
+                    "exclude_fields": [],
+                    "include_fields": [],
+                    "from_date": None,
+                    "to_date": None,
+                    "sort_type": "ascending",
+                    "sort_by": "created_at",
+                }
+            ]
+        }
+    }
 
 
 class Error(BaseModel):
@@ -66,3 +164,30 @@ class Exception(PyException):
         super().__init__(status_code)
         self.status_code = status_code
         self.error = error
+
+
+class DataAssetQuery(BaseModel):
+    space_name: str = Field(..., pattern=regex.SPACENAME)
+    subpath: str = Field(..., pattern=regex.SUBPATH)
+    resource_type: ResourceType
+    shortname: str = Field(..., pattern=regex.SHORTNAME, examples=["data_csv"])
+    filter_data_assets: list[str] | None = Field(default=None, examples=["csv_chunk_3"])
+    data_asset_type: DataAssetType
+    branch_name: str = Field(default=settings.default_branch, pattern=regex.SHORTNAME)
+    query_string: str = Field(..., examples=["SELECT * FROM file"])
+
+    @field_validator("data_asset_type")
+    @classmethod
+    def validate_sqlite(cls, v: DataAssetType, info: ValidationInfo):
+        if (
+            v == DataAssetType.sqlite
+            and (
+                not info.data.get("filter_data_assets")
+                or len(info.data.get("filter_data_assets", [])) != 1
+            )
+        ):
+            raise ValueError(
+                "filter_data_assets must include only one item in case of data_asset_type is sqlite"
+            )
+
+        return v

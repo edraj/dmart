@@ -1,0 +1,17 @@
+{
+  "uuid": "2f6d55db-25fe-4cbd-a78d-46a16bbeb99b",
+  "shortname": "health_check",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2022-11-23T16:36:23.648737",
+  "updated_at": "2022-11-23T16:36:23.648742",
+  "owner_shortname": "dmart",
+  "payload": {
+    "content_type": "json",
+    "schema_shortname": "meta_schema",
+    "checksum": "b8577e013bad6ac25e4a43e68ddbe9dcb17358b6",
+    "body": "health_check.json",
+    "last_validated": "2022-12-30T11:55:39.760685",
+    "validation_status": "valid"
+  }
+}

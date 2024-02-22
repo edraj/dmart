@@ -1,0 +1,15 @@
+{
+    "invitation_message": "Congratulations, your Zain POS account is now created, please follow this link to confirm and login: {link}, This link can be used once and within the next 48 hours.",
+    "rejected": "rejected",
+    "accepted": "accepted",
+    "pending": "pending",
+    "cancelled": "cancelled",
+    "assigned": "assigned",
+    "failed": "failed",
+    "confirmed": "confirmed",
+    "new": "new",
+    "completed": "completed",
+    "approved": "approved",
+    "contract_submitted": "contract submitted"
+    
+}

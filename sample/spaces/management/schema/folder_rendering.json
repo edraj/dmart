@@ -4,6 +4,17 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "stream": {
+      "title": "Enable websocket stream",
+      "description": "folder level websocket watch",
+      "type": "boolean"
+    },
+
+    "disable_filter": {
+      "title": "Disable filter",
+      "description": "The search filter icon / functionality is disabled",
+      "type": "boolean"
+    },
     "expand_children": {
       "title": "Expand folders' children",
       "description": "If the folder should expand children",
@@ -13,6 +24,24 @@
       "title": "Append subpath",
       "description": "Append string to the query subpath",
       "type": "string"
+    },
+    "csv_columns": {
+      "title": "CSV columns",
+      "description": "CSV columns title",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        }
+      }
     },
     "search_columns": {
       "title": "Search columns",
@@ -31,6 +60,13 @@
           }
         }
       }
+    },
+    "enable_pdf_schema_shortnames": {
+	    "title": "List of schema shortnames for which pdf icon is displayed",
+	    "type": "array",
+	    "items": {
+		    "type": "string"
+	    }
     },
     "workflow_shortnames": {
       "title": "Workflow shortname",

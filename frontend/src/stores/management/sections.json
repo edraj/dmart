@@ -1,0 +1,44 @@
+[
+  {
+    "name": "member",
+    "icon": "person-circle",
+    "children": [
+      {
+        "type": "component",
+        "name": "profile"
+      }
+    ]
+  },
+  {
+    "name": "content",
+    "icon": "card-list",
+    "children": [
+      {
+        "type": "component",
+        "name": "spaces"
+      }
+    ]
+  },
+  {
+    "name": "tools",
+    "icon": "tools",
+    "is_expandable": false,
+    "children": [
+      {
+        "type": "link",
+        "name": "query",
+        "icon": "binoculars"
+      }, 
+      {
+        "type": "link",
+        "name": "info",
+        "icon": "info-circle"
+      },
+      {
+        "type": "link",
+        "name": "events",
+        "icon": "receipt-cutoff"
+      }
+    ]
+  }
+]

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Patch redis config
+
+sed -ri 's!^# loadmodule /path/to/other_module.so$!loadmodule /usr/lib/redisjson.so!' /etc/redis.conf
+
