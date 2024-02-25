@@ -9,6 +9,10 @@
     InputGroup,
     Input,
     InputGroupText,
+    Dropdown,
+    DropdownItem,
+    DropdownMenu,
+    DropdownToggle
   } from "sveltestrap";
   import Icon from "../Icon.svelte";
   import { _ } from "@/i18n";
@@ -20,6 +24,7 @@
   import { fly } from "svelte/transition";
   import { isSlowNetwork } from "@/stores/management/slow_network";
   import { onMount } from "svelte";
+  import {handleThemeChange, themesList, themesStore} from "@/stores/themes_store";
 
 
   let search_value = "";
@@ -108,6 +113,16 @@
       <NavLink href="#" title={$_("logout")} on:click={signout}>
         <Icon name="power" />
       </NavLink>
+    </NavItem>
+      <NavItem>
+<!--      <Dropdown>-->
+<!--        <DropdownToggle><Icon name="palette-fill" /></DropdownToggle>-->
+<!--        <DropdownMenu end>-->
+<!--          {#each themesList as theme}-->
+<!--            <DropdownItem name={theme} on:click={handleThemeChange}>{theme}</DropdownItem>-->
+<!--          {/each}-->
+<!--        </DropdownMenu>-->
+<!--      </Dropdown>-->
     </NavItem>
   </Nav>
 </Navbar>

@@ -51,7 +51,7 @@ export const managementEntities = [
     "/schema",
 ];
 
-export function resolveResourceType(space_name:string, subpath:string ,resourceType: ResourceType) {
+export function resolveResourceType(space_name:string, subpath:string ,resourceType: ResourceType = null) {
     const fullSubpath = `${space_name}/${subpath}`;
     switch (fullSubpath) {
         case "management/users":

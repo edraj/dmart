@@ -26,6 +26,8 @@
   import { params } from "@roxi/routify";
   import {bulkBucket} from "@/stores/management/bulk_bucket";
 
+  $bulkBucket = [];
+
   onDestroy(() => status_line.set(""));
 
   export let space_name: string;
@@ -311,7 +313,7 @@
               $bulkBucket = [...$bulkBucket, {shortname: _shortname, resource_type: _resource_type}];
           }
           else {
-              $bulkBucket = $bulkBucket.filter(e=> e.shortname !== shortname);
+              $bulkBucket = $bulkBucket.filter(e=> e.shortname !== objectDatatable.arrayRawData[name].shortname);
           }
       }catch (e){}
   }

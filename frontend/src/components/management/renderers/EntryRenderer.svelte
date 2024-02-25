@@ -3,7 +3,6 @@
   import {
     check_existing,
     ContentType,
-    create_user,
     csv,
     passwordRegExp,
     passwordWrongExp,
@@ -84,6 +83,7 @@
   import RoleForm from "./Forms/RoleForm.svelte";
   import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
   import {bulkBucket} from "@/stores/management/bulk_bucket";
+  import RelationshipForm from "@/components/management/renderers/Forms/RelationshipForm.svelte";
 
   // props
   export let entry: ResponseEntry;
@@ -144,6 +144,7 @@
   let jseContentRef;
   // let schemaFormRefModal;
   let schemaFormRefContent;
+  let relationshipContent = structuredClone(entry)?.relationships ?? null;
 
   // modal
   /// flags
@@ -167,6 +168,8 @@
   let jseModalContent: any = { text: "{}" };
   let formModalContent: any;
   let formModalContentPayload: any = { json: {}, text: undefined };
+  let isNewEntryHasRelationship = false;
+  let relationshipModalContent = null;
 
   let allowedResourceTypes = [ResourceType.content];
   function setMetaValidator(): Validator {
@@ -201,6 +204,7 @@
           jseContent = cpy?.payload?.body;
         }
       }
+
       delete cpy?.payload?.body;
       delete cpy?.attachments;
 
@@ -208,29 +212,6 @@
       if (jseMetaRef) {
         jseMetaRef.set({ text: JSON.stringify(cpy, null, 2) });
         oldJSEMeta = structuredClone(jseMeta);
-      }
-
-      if (!!entry?.payload?.body?.stream) {
-        if ("websocket" in website) {
-          ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
-        }
-
-        ws.onopen = () => {
-          ws.send(
-            JSON.stringify({
-              type: "notification_subscription",
-              space_name: space_name,
-              subpath: subpath,
-            })
-          );
-        };
-
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event?.data ?? "");
-          if (data?.message?.title) {
-            isNeedRefresh = true;
-          }
-        };
       }
 
       try {
@@ -268,6 +249,14 @@
 
       }
 
+      allowedResourceTypes.push(
+          resolveResourceType(
+            space_name,
+            subpath,
+            null
+        )
+      )
+
       canCreateEntry = allowedResourceTypes.map(r=>checkAccessv2("create", space_name, subpath, r)).some(item => item);
 
       status_line.set(
@@ -277,6 +266,29 @@
           Object.keys(entry.attachments).length
         }</strong></small>`
       );
+
+      if (!!entry?.payload?.body?.stream) {
+          if ("websocket" in website) {
+              ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+          }
+
+          ws.onopen = () => {
+              ws.send(
+                  JSON.stringify({
+                      type: "notification_subscription",
+                      space_name: space_name,
+                      subpath: subpath,
+                  })
+              );
+          };
+
+          ws.onmessage = (event) => {
+              const data = JSON.parse(event?.data ?? "");
+              if (data?.message?.title) {
+                  isNeedRefresh = true;
+              }
+          };
+      }
     }
   });
 
@@ -324,11 +336,16 @@
     //   return;
     // }
     errorContent = null;
+    const _relationshipContent = relationshipContent.filter(r=>r.space_name).map(r=>{
+        return {
+            related_to: r, attributes: {}
+        };
+    });
 
     const x = jseMeta.json
       ? structuredClone(jseMeta.json)
       : JSON.parse(jseMeta.text);
-
+    x.relationships = _relationshipContent;
     let data: any = structuredClone(x);
     if (entry?.payload) {
       if (entry?.payload?.content_type === "json") {
@@ -354,7 +371,7 @@
         data.payload.body = jseContent;
       }
     }
-    
+
     if (resource_type === ResourceType.user && btoa(data.password.slice(0,6)) === 'JDJiJDEy') {
       delete data.password;
     }
@@ -462,6 +479,15 @@
   async function handleSubmit(event: Event) {
     event.preventDefault();
 
+    let _relationshipModalContent = []
+    if (isNewEntryHasRelationship){
+        _relationshipModalContent = relationshipModalContent.filter(r=>r.space_name).map(r=>{
+            return {
+                related_to: r, attributes: {}
+            };
+        });
+    }
+
     let response: any;
     let request_body: any = {};
     if (new_resource_type === "schema") {
@@ -488,6 +514,7 @@
                 schema_shortname: "meta_schema",
                 body: body,
               },
+              relationships: _relationshipModalContent,
             },
           },
         ],
@@ -495,9 +522,6 @@
       response = await request(request_body);
     }
     else if (new_resource_type === ResourceType.user) {
-      if (jseModalContentRef?.validate()?.validationErrors) {
-        return;
-      }
 
       // if (!schemaFormRefModal.reportValidity()) {
       //     return;
@@ -519,21 +543,32 @@
                 body[item.key] = item.value;
             });
             body = structuredClone(body);
+            if (typeof body.roles === 'string'){
+                body.roles = body.roles.split(",");
+            }
+
+            const formModalContentPayloadJson = formModalContentPayload.json
+                ? structuredClone(formModalContentPayload.json)
+                : JSON.parse(formModalContentPayload.text);
+
+            if (Object.keys(formModalContentPayloadJson).length){
+                jseModalContent = {
+                    json: formModalContentPayloadJson
+                };
+                body.payload = {
+                    content_type: "json",
+                    schema_shortname: selectedSchema,
+                    body: formModalContentPayloadJson
+                }
+            }
         }
         else {
             body = jseModalContent.json
                 ? structuredClone(jseModalContent.json)
                 : JSON.parse(jseModalContent.text);
         }
-        if (formModalContentPayload.text){
-            body.payload = {
-                content_type: "json",
-                schema_shortname: selectedSchema,
-                body: JSON.parse(formModalContentPayload.text)
-            }
-        }
       // }
-
+      body.relationships = _relationshipModalContent;
       if (!body?.password) {
         showToast(Level.warn, "Password must be provided!");
         return;
@@ -567,10 +602,16 @@
 
       if (body.msisdn) {
         const msisdnStatus: any = await check_existing("msisdn", body.msisdn);
-        if (!msisdnStatus.attributes.unique) {
-          showToast(Level.warn, "MSISDN already exists!");
-          return;
+        if (msisdnStatus) {
+            if (!msisdnStatus.attributes.unique) {
+                showToast(Level.warn, "MSISDN already exists!");
+                return;
+            }
+        } else {
+            showToast(Level.warn, "Please double check your MSISDN!");
+            return;
         }
+
       }
       else {
         delete body.msisdn;
@@ -589,14 +630,19 @@
         delete body.language;
       }
 
-      const request = {
+      const request_body = {
         shortname: contentShortname,
-        resource_type: "user",
+        resource_type: ResourceType.user,
         subpath: "users",
         attributes: body,
       };
-      response = await create_user(request);
-    } else if (entryType === "content") {
+      response = await request({
+          request_type: RequestType.create,
+          space_name: "management",
+          records: [request_body]
+      });
+    }
+    else if (entryType === "content") {
       if (selectedContentType === "json") {
         let body: any;
 
@@ -647,6 +693,7 @@
                 attributes: {
                   is_active: true,
                   ...body,
+                  relationships: _relationshipModalContent,
                 },
               },
             ],
@@ -670,6 +717,7 @@
                 attributes: {
                   is_active: true,
                   ...request_body,
+                  relationships: _relationshipModalContent,
                 },
               },
             ],
@@ -691,6 +739,8 @@
             body: body,
           };
         }
+
+        request_body.records[0].attributes.relationships = _relationshipModalContent,
         response = await request(request_body);
       } else if (["text", "html", "markdown"].includes(selectedContentType)) {
         request_body = {
@@ -707,6 +757,7 @@
                   content_type: selectedContentType,
                   body: jseModalContent,
                 },
+                relationships: _relationshipModalContent,
               },
             },
           ],
@@ -758,6 +809,7 @@
                 schema_shortname: "folder_rendering",
                 body: body ?? {},
               },
+              relationships: _relationshipModalContent,
             },
           },
         ],
@@ -1251,6 +1303,15 @@
           {/if}
         {/if}
         <hr />
+        <Input
+          bind:checked={isNewEntryHasRelationship}
+          type="checkbox"
+          label="Add relationship ?"
+        />
+        {#if isNewEntryHasRelationship}
+          <RelationshipForm bind:content={relationshipModalContent}/>
+        {/if}
+        <hr />
         {#if errorContent}
           <h3 class="mt-3">Error:</h3>
           <Prism bind:code={errorContent} />
@@ -1380,6 +1441,19 @@
             </Button>
           {/if}
         {/if}
+        {#if ![ResourceType.folder, ResourceType.space].includes(resource_type)}
+          <Button
+            outline
+            color="success"
+            size="sm"
+            class="justify-content-center text-center py-0 px-1"
+            active={"relationships" === tab_option}
+            title={$_("relationships")}
+            on:click={() => (tab_option = "relationships")}
+          >
+            <Icon name="link" />
+          </Button>
+        {/if}
         <Button
           outline
           color="success"
@@ -1423,7 +1497,7 @@
             outline
             color="success"
             size="sm"
-            title={$_("delete")}
+            title={$_("delete_selected")}
             on:click={handleDeleteBulk}
             class="justify-content-center text-center py-0 px-1"
           >
@@ -1708,6 +1782,14 @@
         {/if}
       {/key}
       <!--History subpath="{entry.subpath}" shortname="{entry.shortname}" /-->
+    </div>
+    <div class="tab-pane" class:active={tab_option === "relationships"}>
+      <div class="d-flex justify-content-end my-2 mx-5 flex-row">
+        <div><Button on:click={handleSave}>Save</Button></div>
+      </div>
+      <div class="px-5">
+        <RelationshipForm bind:content={relationshipContent}/>
+      </div>
     </div>
     <div class="tab-pane" class:active={tab_option === "attachments"}>
       <Attachments

@@ -45,7 +45,7 @@
 
     $: {
         if (inputs){
-            content = inputs
+            content = inputs;
         }
     }
 
@@ -71,10 +71,10 @@
             {#each Object.keys(input.value) as lang}
               <Col sm="4">
                 <Input
-                        type="text"
-                        class="form-control"
-                        bind:value={input.value[lang]}
-                        placeholder={`${formatting(input.key)} (${lang})...`}
+                    type="text"
+                    class="form-control"
+                    bind:value={input.value[lang]}
+                    placeholder={`${formatting(input.key)} (${lang})...`}
                 />
               </Col>
             {/each}
@@ -83,7 +83,7 @@
           <Row class="my-3">
             <Col sm="2"><Label>{formatting(input.key)}</Label></Col>
             <Col sm="10">
-              <Input bind:value={input.value} />
+              <Input bind:value={input.value} placeholder={input.key==="roles" ? "admin,seller,..." : "" } />
             </Col>
           </Row>
         {/if}

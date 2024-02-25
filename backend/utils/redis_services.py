@@ -1,9 +1,8 @@
-import asyncio
 import re
 import json
 import sys
 from typing import Any, Awaitable
-from redis.asyncio import BlockingConnectionPool, Redis
+from redis.asyncio import Redis
 from models.api import RedisReducer, SortType
 import models.core as core
 from models.enums import RedisReducerName, ResourceType, LockAction
@@ -25,14 +24,6 @@ from fastapi.logger import logger
 
 
 class RedisServices(Redis):
-    POOL = BlockingConnectionPool(
-        host=settings.redis_host,
-        port=settings.redis_port,
-        password=settings.redis_password,
-        decode_responses=True,
-        protocol=3,
-        max_connections=20,
-    )
     
     META_SCHEMA = (
         TextField("$.uuid", no_stem=True, as_name="uuid"),

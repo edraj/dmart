@@ -2267,7 +2267,7 @@ async def shoting_url(
         token: str,
 ):
     async with RedisServices() as redis_services:
-        if url := await redis_services.get(f"short/{token}"):
+        if url := await redis_services.get_key(f"short/{token}"):
             return RedirectResponse(url)
         else:
             return RedirectResponse(url="/frontend")

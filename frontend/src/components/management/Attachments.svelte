@@ -15,23 +15,14 @@
     ResourceType,
     upload_with_payload,
   } from "@/dmart";
-  import { Level, showToast } from "@/utils/toast";
+  import {Level, showToast} from "@/utils/toast";
   import Media from "./Media.svelte";
-  import {
-    Button,
-    Col,
-    Input,
-    Label,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    ModalHeader,
-  } from "sveltestrap";
-  import { JSONEditor, Mode } from "svelte-jsoneditor";
-  import { jsonToFile } from "@/utils/jsonToFile";
+  import {Button, Col, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader,} from "sveltestrap";
+  import {JSONEditor, Mode} from "svelte-jsoneditor";
+  import {jsonToFile} from "@/utils/jsonToFile";
   import Prism from "@/components/Prism.svelte";
-  import { parseCSV, parseJSONL } from "@/utils/attachements";
-  import { AxiosError } from "axios";
+  import {parseCSV, parseJSONL} from "@/utils/attachements";
+  import {AxiosError} from "axios";
 
   export let attachments: Array<any> = [];
   export let resource_type: string;
@@ -52,6 +43,11 @@
         );
         if (!(r instanceof AxiosError)) {
           attachment.dataAsset = r;
+        } else {
+            attachment.dataAsset = {
+                code: r.response.data?.error?.code,
+                message: r.response.data?.error?.message
+            };
         }
       } else if (attachment.resource_type === "sqlite") {
         const tables = await fetchDataAsset(
@@ -238,32 +234,32 @@
       let _payloadContent = payloadContent.json
         ? structuredClone(payloadContent.json)
         : JSON.parse(payloadContent.text ?? "{}");
-      const request_dict = {
+      let request_dict = {
         space_name,
         request_type: isModalInUpdateMode
-          ? RequestType.update
-          : RequestType.create,
+            ? RequestType.update
+            : RequestType.create,
         records: [
-          {
-            resource_type: ResourceType[resourceType],
-            shortname: shortname,
-            subpath: `${subpath}/${parent_shortname}`,
-            attributes: {
-              is_active: true,
-              payload: {
-                content_type: contentType,
-                schema_shortname:
-                  resourceType == ResourceAttachmentType.json && selectedSchema
-                    ? selectedSchema
-                    : null,
-                body:
-                  resourceType == ResourceAttachmentType.json
-                    ? _payloadContent
-                    : payloadData,
+              {
+                  resource_type: ResourceType[resourceType],
+                  shortname: shortname,
+                  subpath: `${subpath}/${parent_shortname}`,
+                  attributes: {
+                      is_active: true,
+                      payload: {
+                          content_type: contentType,
+                          schema_shortname:
+                              resourceType == ResourceAttachmentType.json && selectedSchema
+                                  ? selectedSchema
+                                  : null,
+                          body:
+                              resourceType == ResourceAttachmentType.json
+                                  ? _payloadContent
+                                  : payloadData,
+                      },
+                  },
               },
-            },
-          },
-        ],
+          ],
       };
       response = await request(request_dict);
     }
@@ -434,7 +430,7 @@
         bind:value={resourceType}
         disabled={isModalInUpdateMode}
       >
-        {#each Object.values(ResourceAttachmentType).filter((type) => type !== ResourceAttachmentType.alteration && type !== ResourceAttachmentType.relationship) as type}
+        {#each Object.values(ResourceAttachmentType).filter((type) => type !== ResourceAttachmentType.alteration) as type}
           <option value={type}>{type}</option>
         {/each}
       </Input>
@@ -525,7 +521,6 @@
         {:else if resourceType === ResourceAttachmentType.parquet}
           <Label>Parquet File</Label>
           <Input bind:files={payloadFiles} type="file" accept=".parquet" />
-        {:else}
           <b> TBD ... show custom fields for resource type : {resourceType} </b>
         {/if}
       {/key}
@@ -704,22 +699,24 @@
                     {/each}
                   </Col>
                 {:else if attachment.resource_type === ResourceType.jsonl}
-                  <Prism code={attachment.dataAsset} />
+                  <div class="w-100">
+                    <Prism code={attachment.dataAsset} />
+                  </div>
                 {/if}
               {/if}
             {:else if attachment.resource_type === ResourceType.media }
               <Media
-                      resource_type={ResourceType[attachment.resource_type]}
-                      attributes={attachment.attributes}
-                      displayname={attachment.shortname}
-                      url={get_attachment_url(
-                attachment.resource_type,
-                space_name,
-                subpath,
-                parent_shortname,
-                attachment.shortname,
-                getFileExtension(attachment.attributes?.payload?.body)
-              )}
+                resource_type={ResourceType[attachment.resource_type]}
+                attributes={attachment.attributes}
+                displayname={attachment.shortname}
+                url={get_attachment_url(
+                  attachment.resource_type,
+                  space_name,
+                  subpath,
+                  parent_shortname,
+                  attachment.shortname,
+                  getFileExtension(attachment.attributes?.payload?.body)
+                )}
               />
             {:else}
               {#await get_attachment_content(attachment.resource_type, space_name, `${subpath}/${parent_shortname}`, attachment.attributes?.payload?.body)}
