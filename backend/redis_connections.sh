@@ -7,6 +7,6 @@ REDIS_PASSWORD="$(./get_settings.py | jq -r .redis_password)"
 
 while true
     do
-        redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT}  info | grep connected_clients
+        redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} ${REDIS_PASSWORD}  info | grep connected_clients
         sleep 1
     done
