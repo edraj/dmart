@@ -232,7 +232,7 @@ class RedisServices(Redis):
                     password=settings.redis_password,
                     decode_responses=True,
                     protocol=3,
-                    max_connections=20,
+                    max_connections=settings.redis_pool_max_connections,
                 )
             )
         else:
