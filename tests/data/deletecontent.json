@@ -1,0 +1,12 @@
+{
+    "space_name": "dummy",
+    "request_type": "delete",
+    "records": [
+        {
+            "resource_type": "content",
+            "subpath": "myfolder",
+            "shortname": "buyer_123",
+            "attributes": {}
+        }
+    ]
+}

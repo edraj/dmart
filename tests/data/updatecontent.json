@@ -1,0 +1,20 @@
+{
+    "space_name": "dummy",
+    "request_type": "update",
+    "records": [
+        {
+            "resource_type": "content",
+            "subpath": "myfolder",
+            "shortname": "buyer_123",
+            "attributes": {
+                "schema_shortname": "mytestsc",
+                "tags": [
+                    "fun_UPDATED",
+                    "personal_UPDATED"
+                ],
+                "name": "NEW_Eggs",
+                "price": 99934.99
+            }
+        }
+    ]
+}

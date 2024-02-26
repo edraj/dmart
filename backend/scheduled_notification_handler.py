@@ -100,8 +100,6 @@ async def trigger_admin_notifications() -> None:
             )
             pass
 
-    await RedisServices.POOL.disconnect(True)
-
 
 async def prepare_request(notification_dict) -> dict:
     # Get Notification Request Images
