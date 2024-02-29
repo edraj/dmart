@@ -84,6 +84,14 @@
   import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
   import {bulkBucket} from "@/stores/management/bulk_bucket";
   import RelationshipForm from "@/components/management/renderers/Forms/RelationshipForm.svelte";
+  import {mangle} from "marked-mangle";
+  import {gfmHeadingId} from "marked-gfm-heading-id";
+
+
+  marked.use(mangle());
+  marked.use(gfmHeadingId({
+      prefix: "my-prefix-",
+  }));
 
   // props
   export let entry: ResponseEntry;
@@ -1307,7 +1315,7 @@
           {/if}
           {#if selectedContentType === "markdown"}
             <Label class="mt-3">Payload</Label>
-            <MarkdownEditor bind:content={jseModalContent} />
+<!--            <MarkdownEditor bind:content={jseModalContent} />-->
           {/if}
         {/if}
         <hr />

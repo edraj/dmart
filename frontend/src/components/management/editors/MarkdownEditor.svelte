@@ -11,7 +11,11 @@
       prefix: "my-prefix-",
   }));
 
-  export let content;
+  export let content = "";
+
+  if (typeof(content) !== "string"){
+      content = "";
+  }
 
   let textarea;
   let start = 0, end = 0;
