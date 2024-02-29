@@ -104,7 +104,7 @@ async def send_email(from_address: str, to_address: str, message: str, subject: 
     json = {}
     status: int
     start_time = time.time()
-    if settings.mock_smpp_api:
+    if settings.mock_smtp_api:
         return True
     
     async with AsyncRequest() as client:
