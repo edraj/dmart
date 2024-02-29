@@ -34,7 +34,7 @@
     TabContent,
     TabPane,
   } from "sveltestrap";
-  import Icon from "../../Icon.svelte";
+  import Icon from "@/components/Icon.svelte";
   import { _ } from "@/i18n";
   import ListView from "../ListView.svelte";
   import Prism from "@/components/Prism.svelte";
@@ -54,7 +54,7 @@
   import HtmlEditor from "../editors/HtmlEditor.svelte";
   import MarkdownEditor from "../editors/MarkdownEditor.svelte";
   import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
-  import checkAccess, { checkAccessv2 } from "@/utils/checkAccess";
+  import { checkAccessv2 } from "@/utils/checkAccess";
   import { fade } from "svelte/transition";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
   import downloadFile from "@/utils/downloadFile";
@@ -367,7 +367,8 @@
         if (data.payload) {
           data.payload.body = y;
         }
-      } else {
+      }
+      else {
         data.payload.body = jseContent;
       }
     }
@@ -375,6 +376,7 @@
     if (resource_type === ResourceType.user && btoa(data.password.slice(0,6)) === 'JDJiJDEy') {
       delete data.password;
     }
+
     if (resource_type === ResourceType.folder) {
       const arr = subpath.split("/");
       arr[arr.length - 1] = "";
@@ -400,7 +402,8 @@
       request_data.request_type = RequestType.update;
       request_data.records[0].resource_type = ResourceType.space;
       response = await space(request_data);
-    } else {
+    }
+    else {
       response = await request(request_data);
     }
 
@@ -430,7 +433,8 @@
         if (response.status == Status.success) {
           showToast(Level.info);
           window.location.reload();
-        } else {
+        }
+        else {
           errorContent = response;
           showToast(Level.warn);
         }
@@ -1080,11 +1084,15 @@
     return workflows.records.map((e) => e.shortname);
   }
 
+  let oldSelectedContentType = ""
   $: {
-    if (selectedContentType === "json") {
-      jseModalContent = { text: "{}" };
-    } else {
-      jseModalContent = "";
+    if(oldSelectedContentType !== selectedContentType){
+        if (selectedContentType === "json") {
+            jseModalContent = { text: "{}" };
+        } else {
+            jseModalContent = "";
+        }
+        oldSelectedContentType = structuredClone(selectedContentType);
     }
   }
 
