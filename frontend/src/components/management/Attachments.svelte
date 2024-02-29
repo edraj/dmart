@@ -23,6 +23,7 @@
   import Prism from "@/components/Prism.svelte";
   import {parseCSV, parseJSONL} from "@/utils/attachements";
   import {AxiosError} from "axios";
+  import MarkdownEditor from "@/components/management/editors/MarkdownEditor.svelte";
 
   export let attachments: Array<any> = [];
   export let resource_type: string;
@@ -228,6 +229,7 @@
         ContentType.json,
         ContentType.text,
         ContentType.html,
+        ContentType.markdown,
         ContentType,
       ].includes(contentType)
     ) {
@@ -471,6 +473,8 @@
           {:else if contentType === ContentType.python}
             <Label>Python File</Label>
             <Input accept=".py" bind:files={payloadFiles} type="file" />
+          {:else if contentType === ContentType.markdown}
+            <MarkdownEditor bind:content={payloadData} />
           {:else}
             <Input type={"textarea"} bind:value={payloadData} />
           {/if}
