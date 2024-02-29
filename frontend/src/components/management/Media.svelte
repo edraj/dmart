@@ -1,6 +1,7 @@
 <script lang="ts">
   import { JSONEditor, Mode } from "svelte-jsoneditor";
   import { ResourceType } from "@/dmart";
+  import {marked} from "marked";
 
   export let attributes: any = {};
   export let resource_type: ResourceType;
@@ -58,6 +59,8 @@
       <p>For some reason PDF is not rendered here properly.</p>
     </object>
   </div>
+{:else if content_type.includes("markdown")}
+  {@html marked(body)}
 {:else}
   <a href={url} title={displayname}
      target="_blank" rel="noopener noreferrer" download>link {displayname}</a>
