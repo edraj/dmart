@@ -63,7 +63,7 @@
                   onclick={() => removeItem(index)}
                 />
               </div>
-              <Input type="url" bind:value={item.branch_name} />
+              <Input bind:value={item.branch_name} />
             </FormGroup>
             <FormGroup>
               <Label>Resource Type</Label>
