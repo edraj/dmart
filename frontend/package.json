@@ -46,6 +46,8 @@
     "workbox-window": "^7.0.0"
   },
   "dependencies": {
+    "marked-gfm-heading-id": "^3.1.3",
+    "marked-mangle": "^1.1.7",
     "plantuml-encoder": "^1.4.0",
     "svelte-datatables-net": "https://github.com/edraj/svelte-datatables-net",
     "svelte-jsonschema-form": "edraj/svelte-jsonschema-form",
