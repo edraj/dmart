@@ -8,7 +8,7 @@
         if (content === null) {
             content = [
                 {
-                    branch_name: "",
+                    branch_name: "master",
                     type: "",
                     space_name: "",
                     subpath: "",
@@ -26,7 +26,7 @@
         content = [
             ...content,
             {
-                branch_name: "",
+                branch_name: "master",
                 type: "",
                 space_name: "",
                 subpath: "",
