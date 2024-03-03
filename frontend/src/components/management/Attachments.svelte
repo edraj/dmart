@@ -570,6 +570,10 @@
 <div class="d-flex justify-content-end mx-2 flex-row">
   <div
     on:click={() => {
+      shortname = "auto";
+      resourceType = ResourceAttachmentType.media;
+      contentType = ContentType.image;
+
       openCreateAttachemntModal = true;
       isModalInUpdateMode = false;
     }}
