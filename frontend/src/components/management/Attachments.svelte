@@ -342,13 +342,13 @@
     shortname = _attachment.shortname;
 
     resourceType = _attachment.resource_type;
-
+    contentType = _attachment?.attributes.payload?.content_type;
     if (attachment.resource_type === ResourceAttachmentType.json) {
       payloadContent = { json: _attachment.attributes.payload.body };
     } else if (attachment.resource_type === ResourceAttachmentType.comment) {
       payloadData = _attachment.attributes.body;
     } else {
-      payloadContent = _attachment.attributes.payload.body;
+      payloadData = _attachment.attributes.payload.body;
     }
 
     openCreateAttachemntModal = true;
@@ -633,6 +633,19 @@
             >
               <Icon name="code-slash" />
             </div>
+            {#if [ContentType.markdown].includes(attachment.attributes.payload.content_type)}
+              <!-- svelte-ignore a11y-click-events-have-key-events -->
+              <!-- svelte-ignore a11y-no-static-element-interactions -->
+              <div
+                class="mx-1"
+                style="cursor: pointer;"
+                on:click={() => {
+                  handleContentEditModal(attachment);
+                }}
+              >
+                <Icon name="pencil-square" />
+              </div>
+            {/if}
             {#if [ResourceType.json, ResourceType.content, ResourceType.comment].includes(attachment.resource_type)}
               <!-- svelte-ignore a11y-click-events-have-key-events -->
               <!-- svelte-ignore a11y-no-static-element-interactions -->
