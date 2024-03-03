@@ -60,7 +60,9 @@
     </object>
   </div>
 {:else if content_type.includes("markdown")}
-  {@html marked(body)}
+  <div>
+    {@html marked(body)}
+  </div>
 {:else}
   <a href={url} title={displayname}
      target="_blank" rel="noopener noreferrer" download>link {displayname}</a>
