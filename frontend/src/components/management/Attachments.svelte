@@ -15,15 +15,25 @@
     ResourceType,
     upload_with_payload,
   } from "@/dmart";
-  import {Level, showToast} from "@/utils/toast";
+  import { Level, showToast } from "@/utils/toast";
   import Media from "./Media.svelte";
-  import {Button, Col, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader,} from "sveltestrap";
-  import {JSONEditor, Mode} from "svelte-jsoneditor";
-  import {jsonToFile} from "@/utils/jsonToFile";
+  import {
+    Button,
+    Col,
+    Input,
+    Label,
+    Modal,
+    ModalBody,
+    ModalFooter,
+    ModalHeader,
+  } from "sveltestrap";
+  import { JSONEditor, Mode } from "svelte-jsoneditor";
+  import { jsonToFile } from "@/utils/jsonToFile";
   import Prism from "@/components/Prism.svelte";
-  import {parseCSV, parseJSONL} from "@/utils/attachements";
-  import {AxiosError} from "axios";
+  import { parseCSV, parseJSONL } from "@/utils/attachements";
+  import { AxiosError } from "axios";
   import MarkdownEditor from "@/components/management/editors/MarkdownEditor.svelte";
+  import HtmlEditor from "@/components/management/editors/HtmlEditor.svelte";
 
   export let attachments: Array<any> = [];
   export let resource_type: string;
@@ -45,10 +55,10 @@
         if (!(r instanceof AxiosError)) {
           attachment.dataAsset = r;
         } else {
-            attachment.dataAsset = {
-                code: r.response.data?.error?.code,
-                message: r.response.data?.error?.message
-            };
+          attachment.dataAsset = {
+            code: r.response.data?.error?.code,
+            message: r.response.data?.error?.message,
+          };
         }
       } else if (attachment.resource_type === "sqlite") {
         const tables = await fetchDataAsset(
@@ -180,7 +190,7 @@
             subpath: `${subpath}/${parent_shortname}`,
             attributes: {
               is_active: true,
-              state: "xxx",
+              state: "commented",
               body: payloadData,
             },
           },
@@ -239,29 +249,29 @@
       let request_dict = {
         space_name,
         request_type: isModalInUpdateMode
-            ? RequestType.update
-            : RequestType.create,
+          ? RequestType.update
+          : RequestType.create,
         records: [
-              {
-                  resource_type: ResourceType[resourceType],
-                  shortname: shortname,
-                  subpath: `${subpath}/${parent_shortname}`,
-                  attributes: {
-                      is_active: true,
-                      payload: {
-                          content_type: contentType,
-                          schema_shortname:
-                              resourceType == ResourceAttachmentType.json && selectedSchema
-                                  ? selectedSchema
-                                  : null,
-                          body:
-                              resourceType == ResourceAttachmentType.json
-                                  ? _payloadContent
-                                  : payloadData,
-                      },
-                  },
+          {
+            resource_type: ResourceType[resourceType],
+            shortname: shortname,
+            subpath: `${subpath}/${parent_shortname}`,
+            attributes: {
+              is_active: true,
+              payload: {
+                content_type: contentType,
+                schema_shortname:
+                  resourceType == ResourceAttachmentType.json && selectedSchema
+                    ? selectedSchema
+                    : null,
+                body:
+                  resourceType == ResourceAttachmentType.json
+                    ? _payloadContent
+                    : payloadData,
               },
-          ],
+            },
+          },
+        ],
       };
       response = await request(request_dict);
     }
@@ -475,6 +485,8 @@
             <Input accept=".py" bind:files={payloadFiles} type="file" />
           {:else if contentType === ContentType.markdown}
             <MarkdownEditor bind:content={payloadData} />
+          {:else if contentType === ContentType.html}
+            <HtmlEditor bind:content={payloadData} />
           {:else}
             <Input type={"textarea"} bind:value={payloadData} />
           {/if}
@@ -574,6 +586,9 @@
       resourceType = ResourceAttachmentType.media;
       contentType = ContentType.image;
 
+      payloadContent = { json: {}, text: undefined };
+      payloadData = "";
+
       openCreateAttachemntModal = true;
       isModalInUpdateMode = false;
     }}
@@ -637,7 +652,7 @@
             >
               <Icon name="code-slash" />
             </div>
-            {#if [ContentType.markdown].includes(attachment.attributes.payload.content_type)}
+            {#if [ResourceType.json, ResourceType.content, ResourceType.comment].includes(attachment.resource_type) || [ContentType.markdown, ContentType.html, ContentType.text].includes(attachment.attributes.payload.content_type)}
               <!-- svelte-ignore a11y-click-events-have-key-events -->
               <!-- svelte-ignore a11y-no-static-element-interactions -->
               <div
@@ -650,19 +665,6 @@
                 <Icon name="pencil-square" />
               </div>
             {/if}
-            {#if [ResourceType.json, ResourceType.content, ResourceType.comment].includes(attachment.resource_type)}
-              <!-- svelte-ignore a11y-click-events-have-key-events -->
-              <!-- svelte-ignore a11y-no-static-element-interactions -->
-              <div
-                class="mx-1"
-                style="cursor: pointer;"
-                on:click={() => {
-                  handleContentEditModal(attachment);
-                }}
-              >
-                <Icon name="pencil" />
-              </div>
-            {/if}
           </div>
         </div>
         <div
@@ -670,62 +672,66 @@
           style="overflow: auto;max-height: 80vh;max-width: 80vw;"
         >
           {#if attachment}
-            {#if [ResourceType.csv, ResourceType.jsonl, ResourceType.parquet, ResourceType.sqlite].includes(attachment.resource_type)}
-              {#if attachment.dataAsset}
-                {#if [ResourceType.parquet, ResourceType.csv].includes(attachment.resource_type)}
-                  <table class="table table-striped table-sm">
-                    <thead>
+            {#if [ResourceType.csv, ResourceType.jsonl, ResourceType.parquet, ResourceType.sqlite].includes(attachment.resource_type)
+                 && attachment.dataAsset
+            }
+              {#if [ResourceType.parquet, ResourceType.csv].includes(attachment.resource_type)}
+                <table class="table table-striped table-sm">
+                  <thead>
+                    <tr>
+                      {#each Object.keys(attachment.dataAsset[0]) as header (header)}
+                        <th>{header}</th>
+                      {/each}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each attachment.dataAsset as item}
                       <tr>
-                        {#each Object.keys(attachment.dataAsset[0]) as header (header)}
-                          <th>{header}</th>
+                        {#each Object.keys(attachment.dataAsset[0]) as key (key)}
+                          <td>
+                            {item[key]}
+                          </td>
                         {/each}
                       </tr>
-                    </thead>
-                    <tbody>
-                      {#each attachment.dataAsset as item}
+                    {/each}
+                  </tbody>
+                </table>
+              {:else if attachment.resource_type === ResourceType.sqlite}
+                <Col>
+                  {#each attachment.dataAsset ?? [] as dataAsset}
+                    <h3>{dataAsset.table_name}</h3>
+                    <table class="table table-striped table-sm">
+                      <thead>
                         <tr>
-                          {#each Object.keys(attachment.dataAsset[0]) as key (key)}
-                            <td>
-                              {item[key]}
-                            </td>
+                          {#each Object.keys(dataAsset.rows[0]) as header (header)}
+                            <th>{header}</th>
                           {/each}
                         </tr>
-                      {/each}
-                    </tbody>
-                  </table>
-                {:else if attachment.resource_type === ResourceType.sqlite}
-                  <Col>
-                    {#each attachment.dataAsset ?? [] as dataAsset}
-                      <h3>{dataAsset.table_name}</h3>
-                      <table class="table table-striped table-sm">
-                        <thead>
+                      </thead>
+                      <tbody>
+                        {#each dataAsset.rows as item}
                           <tr>
-                            {#each Object.keys(dataAsset.rows[0]) as header (header)}
-                              <th>{header}</th>
+                            {#each Object.keys(dataAsset.rows[0]) as key (key)}
+                              <td>
+                                {item[key]}
+                              </td>
                             {/each}
                           </tr>
-                        </thead>
-                        <tbody>
-                          {#each dataAsset.rows as item}
-                            <tr>
-                              {#each Object.keys(dataAsset.rows[0]) as key (key)}
-                                <td>
-                                  {item[key]}
-                                </td>
-                              {/each}
-                            </tr>
-                          {/each}
-                        </tbody>
-                      </table>
-                    {/each}
-                  </Col>
-                {:else if attachment.resource_type === ResourceType.jsonl}
-                  <div class="w-100">
-                    <Prism code={attachment.dataAsset} />
-                  </div>
-                {/if}
+                        {/each}
+                      </tbody>
+                    </table>
+                  {/each}
+                </Col>
+              {:else if attachment.resource_type === ResourceType.jsonl}
+                <div class="w-100">
+                  <Prism code={attachment} />
+                </div>
               {/if}
-            {:else if attachment.resource_type === ResourceType.media }
+            {:else if attachment.resource_type === ResourceType.json}
+                <div class="w-100">
+                  <Prism code={attachment.attributes.payload.body} />
+                </div>
+            {:else if [ResourceType.media, ResourceType.comment].includes(attachment.resource_type)}
               <Media
                 resource_type={ResourceType[attachment.resource_type]}
                 attributes={attachment.attributes}
