@@ -59,7 +59,7 @@
       <p>For some reason PDF is not rendered here properly.</p>
     </object>
   </div>
-{:else if ["markdown", "html"].includes(content_type)}
+{:else if ["markdown", "html", "text"].includes(content_type)}
   <div>
     {@html marked(body)}
   </div>
