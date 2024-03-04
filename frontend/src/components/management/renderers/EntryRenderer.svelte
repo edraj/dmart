@@ -1771,19 +1771,20 @@
           style="text-align: left; direction: ltr; overflow: hidden auto;"
         >
           <div class="preview">
-            {#if ["meta_schema"].includes(entry.shortname)}
-              <WorkflowRenderer
-                shortname={entry.shortname}
-                workflowContent={entry?.payload?.body}
-              />
-            {:else}
               <PlantUML
                 shortname={entry.shortname}
                 properties={entry.payload.body.properties}
               />
-            {/if}
           </div>
         </div>
+      </div>
+    {/if}
+    {#if selectedSchema === "workflow"}
+      <div class="tab-pane" class:active={tab_option === "workflow"}>
+          <WorkflowRenderer
+            shortname={entry.shortname}
+            workflowContent={entry?.payload?.body}
+          />
       </div>
     {/if}
     <div class="tab-pane" class:active={tab_option === "history"}>
@@ -1797,7 +1798,6 @@
           />
         {/if}
       {/key}
-      <!--History subpath="{entry.subpath}" shortname="{entry.shortname}" /-->
     </div>
     <div class="tab-pane" class:active={tab_option === "relationships"}>
       <div class="d-flex justify-content-end my-2 mx-5 flex-row">
