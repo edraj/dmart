@@ -122,6 +122,7 @@ async def retrieve_entry_meta(
         resource_is_active=meta.is_active,
         resource_owner_shortname=meta.owner_shortname,
         resource_owner_group=meta.owner_group_shortname,
+        entry_shortname=meta.shortname,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -251,6 +252,7 @@ async def retrieve_entry_or_attachment_payload(
         resource_is_active=meta.is_active,
         resource_owner_shortname=meta.owner_shortname,
         resource_owner_group=meta.owner_group_shortname,
+        entry_shortname=meta.shortname,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
