@@ -968,7 +968,10 @@ class RedisServices(Redis):
             {":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
         )
         for item in filters.items():
-            if item[0] in ["tags", "query_policies"] and item[1]:
+            if(
+                (item[0] == "tags" and item[1])
+                or (item[0] == "query_policies" and item[1] is not None)
+            ):
                 query_string += (
                     " @"
                     + item[0]
@@ -976,6 +979,7 @@ class RedisServices(Redis):
                     + "|".join(item[1]).translate(redis_escape_chars)
                     + "}"
                 )
+
             elif item[0] == "created_at" and item[1]:
                 query_string += f" @{item[0]}:{item[1]}"
             elif item[0] == "subpath" and exact_subpath:

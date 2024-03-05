@@ -182,6 +182,10 @@ class Relationship(Resource):
     related_to: Locator
     attributes: dict[str, Any]
 
+class ACL(BaseModel):
+    user_shortname: str
+    allowed_actions: list[ActionType]
+
 
 class Meta(Resource):
     uuid: UUID = Field(default_factory=uuid4)
@@ -197,6 +201,7 @@ class Meta(Resource):
     owner_group_shortname: str | None = None
     payload: Payload | None = None
     relationships: list[Relationship] | None = None
+    acl: list[ACL] | None = None
 
     model_config = ConfigDict(validate_assignment=True)
 
