@@ -165,7 +165,7 @@
   let contentShortname = "";
   let workflowShortname = "";
   let selectedSchema = subpath === "workflows" ? "workflow" : null;
-  let selectedContentType = ContentType.json;
+  let selectedContentType: any = ContentType.json;
   let new_resource_type: ResourceType;
 
   let payloadFiles: FileList;
@@ -1315,7 +1315,7 @@
           {/if}
           {#if selectedContentType === "markdown"}
             <Label class="mt-3">Payload</Label>
-<!--            <MarkdownEditor bind:content={jseModalContent} />-->
+            <MarkdownEditor bind:content={jseModalContent} />
           {/if}
         {/if}
         <hr />
@@ -1598,6 +1598,7 @@
         folderColumns={entry?.payload?.body?.index_attributes ?? null}
         sort_by={entry?.payload?.body?.sort_by ?? null}
         sort_order={entry?.payload?.body?.sort_order ?? null}
+        canDelete={canDelete}
       />
     </div>
     <div class="tab-pane" class:active={tab_option === "source"}>
