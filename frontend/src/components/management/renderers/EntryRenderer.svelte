@@ -165,7 +165,7 @@
   let contentShortname = "";
   let workflowShortname = "";
   let selectedSchema = subpath === "workflows" ? "workflow" : null;
-  let selectedContentType = ContentType.json;
+  let selectedContentType: any = ContentType.json;
   let new_resource_type: ResourceType;
 
   let payloadFiles: FileList;
@@ -1315,7 +1315,7 @@
           {/if}
           {#if selectedContentType === "markdown"}
             <Label class="mt-3">Payload</Label>
-<!--            <MarkdownEditor bind:content={jseModalContent} />-->
+            <MarkdownEditor bind:content={jseModalContent} />
           {/if}
         {/if}
         <hr />
@@ -1379,7 +1379,6 @@
             <Icon name="card-list" />
           </Button>
         {/if}
-
         <Button
           outline
           color="success"
@@ -1391,7 +1390,6 @@
         >
           <Icon name="binoculars" />
         </Button>
-
         {#if canUpdate}
           <Button
             outline
@@ -1493,10 +1491,58 @@
           <Icon name="clock-history" />
         </Button>
       </ButtonGroup>
+
       <ButtonGroup size="sm" class="align-items-center">
         {#if canCreateEntry || canCreateFolder || canDelete || !!entry?.payload?.body?.allow_csv}
           <span class="ps-2 pe-1"> {$_("actions")} </span>
         {/if}
+
+        {#if subpath !== "health_check"}
+          {#if canCreateEntry}
+            <Button
+                    outline
+                    color="success"
+                    size="sm"
+                    title={$_("create_entry")}
+                    class="justify-contnet-center text-center py-0 px-1"
+                    on:click={handleCreateEntryModal}
+            >
+              <Icon name="file-plus" />
+            </Button>
+          {/if}
+          {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
+            <Button
+                    outline
+                    color="success"
+                    size="sm"
+                    title={$_("create_folder")}
+                    class="justify-contnet-center text-center py-0 px-1"
+                    on:click={() => {
+                entryType = "folder";
+                new_resource_type = ResourceType.folder;
+                selectedSchema = "folder_rendering";
+                isModalOpen = true;
+              }}
+            >
+              <Icon name="folder-plus" />
+            </Button>
+          {/if}
+        {/if}
+        {#if !!entry?.payload?.body?.stream}
+          <Button
+                  outline={!isNeedRefresh}
+                  color={isNeedRefresh ? "danger" : "success"}
+                  size="sm"
+                  title={$_("refresh")}
+                  class="justify-contnet-center text-center py-0 px-1"
+                  on:click={() => {
+              refresh = !refresh;
+            }}
+          >
+            <Icon name="arrow-clockwise" />
+          </Button>
+        {/if}
+
         {#if canDelete}
           <Button
             outline
@@ -1508,18 +1554,6 @@
           >
             <Icon name="trash" />
           </Button>
-          {#if $bulkBucket.length}
-          <Button
-            outline
-            color="success"
-            size="sm"
-            title={$_("delete_selected")}
-            on:click={handleDeleteBulk}
-            class="justify-content-center text-center py-0 px-1"
-          >
-            <Icon name="x-circle" />
-          </Button>
-          {/if}
         {/if}
         {#if !!entry?.payload?.body?.allow_csv}
           <Button
@@ -1533,54 +1567,21 @@
             <Icon name="cloud-download" />
           </Button>
         {/if}
-      </ButtonGroup>
 
-      <ButtonGroup>
-        {#if subpath !== "health_check"}
-          {#if canCreateEntry}
-            <Button
-              outline
-              color="success"
-              size="sm"
-              title={$_("create_entry")}
-              class="justify-contnet-center text-center py-0 px-1"
-              on:click={handleCreateEntryModal}
-            >
-              <Icon name="file-plus" />
-            </Button>
-          {/if}
-          {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
-            <Button
-              outline
-              color="success"
-              size="sm"
-              title={$_("create_folder")}
-              class="justify-contnet-center text-center py-0 px-1"
-              on:click={() => {
-                entryType = "folder";
-                new_resource_type = ResourceType.folder;
-                selectedSchema = "folder_rendering";
-                isModalOpen = true;
-              }}
-            >
-              <Icon name="folder-plus" />
-            </Button>
-          {/if}
-        {/if}
-        {#if !!entry?.payload?.body?.stream}
+        {#if $bulkBucket.length}
+          <span class="ps-2 pe-1"> {$_("bulk_actions")} </span>
           <Button
-            outline={!isNeedRefresh}
-            color={isNeedRefresh ? "danger" : "success"}
+            outline
+            color="success"
             size="sm"
-            title={$_("refresh")}
-            class="justify-contnet-center text-center py-0 px-1"
-            on:click={() => {
-              refresh = !refresh;
-            }}
+            title={$_("delete_selected")}
+            on:click={handleDeleteBulk}
+            class="justify-content-center text-center py-0 px-1"
           >
-            <Icon name="arrow-clockwise" />
+            <Icon name="x-circle" />
           </Button>
         {/if}
+
       </ButtonGroup>
     </Nav>
   </div>
@@ -1597,6 +1598,7 @@
         folderColumns={entry?.payload?.body?.index_attributes ?? null}
         sort_by={entry?.payload?.body?.sort_by ?? null}
         sort_order={entry?.payload?.body?.sort_order ?? null}
+        canDelete={canDelete}
       />
     </div>
     <div class="tab-pane" class:active={tab_option === "source"}>
