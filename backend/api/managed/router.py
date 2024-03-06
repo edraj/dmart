@@ -363,6 +363,7 @@ async def serve_space(
                     resource_type=ResourceType.space,
                     action_type=core.ActionType.update,
                     record_attributes=record.attributes,
+                    entry_shortname=record.shortname
             ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -432,6 +433,7 @@ async def serve_space(
                     subpath="/",
                     resource_type=ResourceType.space,
                     action_type=core.ActionType.delete,
+                    entry_shortname=record.shortname
             ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -797,6 +799,7 @@ async def serve_request(
                         resource_owner_shortname=old_resource_obj.owner_shortname,
                         resource_owner_group=old_resource_obj.owner_group_shortname,
                         record_attributes=record.attributes,
+                        entry_shortname=record.shortname
                 ):
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
@@ -988,6 +991,7 @@ async def serve_request(
                         resource_owner_shortname=resource_obj.owner_shortname,
                         resource_owner_group=resource_obj.owner_group_shortname,
                         record_attributes=record.attributes,
+                        entry_shortname=record.shortname
                 ):
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
@@ -1080,6 +1084,7 @@ async def serve_request(
                         resource_is_active=resource_obj.is_active,
                         resource_owner_shortname=resource_obj.owner_shortname,
                         resource_owner_group=resource_obj.owner_group_shortname,
+                        entry_shortname=record.shortname
                 ):
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
@@ -1167,6 +1172,7 @@ async def serve_request(
                         resource_is_active=resource_obj.is_active,
                         resource_owner_shortname=resource_obj.owner_shortname,
                         resource_owner_group=resource_obj.owner_group_shortname,
+                        entry_shortname=record.shortname
                 ) or not await access_control.check_access(
                     user_shortname=owner_shortname,
                     space_name=request.space_name,
@@ -1290,6 +1296,7 @@ async def update_state(
             resource_owner_shortname=ticket_obj.owner_shortname,
             resource_owner_group=ticket_obj.owner_group_shortname,
             record_attributes={"state": "", "resolution_reason": ""},
+            entry_shortname=shortname
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -1617,6 +1624,7 @@ async def create_or_update_resource_with_payload(
             resource_type=record.resource_type,
             action_type=core.ActionType.create,
             record_attributes=record.attributes,
+            entry_shortname=record.shortname,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,

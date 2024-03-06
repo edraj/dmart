@@ -228,6 +228,7 @@ async def serve_query(
                                 resource_is_active=resource_obj.is_active,
                                 resource_owner_shortname=resource_obj.owner_shortname,
                                 resource_owner_group=resource_obj.owner_group_shortname,
+                                entry_shortname=shortname,
                             ):
                                 continue
                             total += 1
@@ -334,6 +335,7 @@ async def serve_query(
                         subpath=f"{query.subpath}/{shortname}",
                         resource_type=ResourceType.folder,
                         action_type=core.ActionType.query,
+                        entry_shortname=shortname
                     ):
                         continue
                     if (
@@ -407,7 +409,7 @@ async def serve_query(
                 space_name=query.space_name,
                 subpath=query.subpath,
                 resource_type=ResourceType.content,
-                action_type=core.ActionType.query,
+                action_type=core.ActionType.query
             ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -1643,6 +1645,7 @@ async def get_entry_by_var(
         resource_is_active=entry_doc["is_active"],
         resource_owner_shortname=entry_doc.get("owner_shortname"),
         resource_owner_group=entry_doc.get("owner_group_shortname"),
+        entry_shortname=entry_doc.get("shortname")
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
