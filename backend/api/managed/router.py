@@ -171,7 +171,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     keys: list = [i["name"] for i in folder_views]
     keys_existence = dict(zip(keys, [False for _ in range(len(keys))]))
-    search_res, _ = await repository.redis_query_search(query, redis_query_policies)
+    search_res, _ = await repository.redis_query_search(query, user_shortname, redis_query_policies)
     json_data = []
     timestamp_fields = ["created_at", "updated_at"]
     new_keys: set = set()
