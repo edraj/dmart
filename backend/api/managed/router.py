@@ -1044,6 +1044,116 @@ async def serve_request(
                     )
                 )
 
+
+        case api.RequestType.update_acl:
+            for record in request.records:
+                if not record.attributes.get("acl"):
+                    raise api.Exception(
+                        status.HTTP_400_BAD_REQUEST,
+                        api.Error(
+                            type="request",
+                            code=InternalErrorCode.MISSING_DATA,
+                            message="The acl is required",
+                        ),
+                    )
+                    
+                if record.subpath[0] != "/":
+                    record.subpath = f"/{record.subpath}"
+                await plugin_manager.before_action(
+                    core.Event(
+                        space_name=request.space_name,
+                        branch_name=record.branch_name,
+                        subpath=record.subpath,
+                        shortname=record.shortname,
+                        schema_shortname=record.attributes.get("payload", {}).get(
+                            "schema_shortname", None
+                        ),
+                        action_type=core.ActionType.update,
+                        resource_type=record.resource_type,
+                        user_shortname=owner_shortname,
+                    )
+                )
+
+                resource_cls = getattr(
+                    sys.modules["models.core"], camel_case(
+                        record.resource_type)
+                )
+                schema_shortname = record.attributes.get("payload", {}).get(
+                    "schema_shortname"
+                )
+                resource_obj = await db.load(
+                    space_name=request.space_name,
+                    subpath=record.subpath,
+                    shortname=record.shortname,
+                    class_type=resource_cls,
+                    user_shortname=owner_shortname,
+                    branch_name=record.branch_name,
+                    schema_shortname=schema_shortname,
+                )
+
+                # CHECK PERMISSION
+                if not await access_control.check_access(
+                        user_shortname=owner_shortname,
+                        space_name=request.space_name,
+                        subpath=record.subpath,
+                        resource_type=record.resource_type,
+                        action_type=core.ActionType.update,
+                        resource_is_active=resource_obj.is_active,
+                        resource_owner_shortname=resource_obj.owner_shortname,
+                        resource_owner_group=resource_obj.owner_group_shortname,
+                        record_attributes=record.attributes,
+                ) or resource_obj.owner_shortname != owner_shortname:
+                    raise api.Exception(
+                        status.HTTP_401_UNAUTHORIZED,
+                        api.Error(
+                            type="request",
+                            code=InternalErrorCode.NOT_ALLOWED,
+                            message="You don't have permission to this action [06]",
+                        ),
+                    )
+
+                old_version_flattend = flatten_dict(resource_obj.model_dump())
+
+                resource_obj.updated_at = datetime.now()
+                resource_obj.acl = record.attributes["acl"]
+                
+
+                history_diff = await db.update(
+                    space_name=request.space_name,
+                    subpath=record.subpath,
+                    meta=resource_obj,
+                    old_version_flattend=old_version_flattend,
+                    new_version_flattend=flatten_dict(resource_obj.model_dump()),
+                    updated_attributes_flattend=["acl"],
+                    branch_name=record.branch_name,
+                    user_shortname=owner_shortname,
+                    schema_shortname=schema_shortname,
+                )
+
+
+                records.append(
+                    resource_obj.to_record(
+                        record.subpath, resource_obj.shortname, [], record.branch_name
+                    )
+                )
+
+                await plugin_manager.after_action(
+                    core.Event(
+                        space_name=request.space_name,
+                        branch_name=record.branch_name,
+                        subpath=record.subpath,
+                        shortname=record.shortname,
+                        schema_shortname=record.attributes.get("payload", {}).get(
+                            "schema_shortname", None
+                        ),
+                        action_type=core.ActionType.update,
+                        resource_type=record.resource_type,
+                        user_shortname=owner_shortname,
+                        attributes={"history_diff": history_diff},
+                    )
+                )
+        
+        
         case api.RequestType.delete:
             for record in request.records:
                 if record.subpath[0] != "/":
