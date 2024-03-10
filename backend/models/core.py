@@ -248,6 +248,7 @@ class Meta(Resource):
             "updated_at",
             "owner_shortname",
             "payload",
+            "acl",
         ]
         for field_name, _ in self.__dict__.items():
             if field_name in record.attributes and field_name not in restricted_fields:
