@@ -149,6 +149,7 @@ class RedisServices(Redis):
             "subpath": "roles",
             "class": core.Role,
             "exclude_from_index": [
+                "relationships",
                 "is_active",
                 "description",
                 "displayname",
@@ -161,6 +162,7 @@ class RedisServices(Redis):
             "subpath": "groups",
             "class": core.Group,
             "exclude_from_index": [
+                "relationships",
                 "is_active",
                 "description",
                 "displayname",
@@ -173,6 +175,7 @@ class RedisServices(Redis):
             "subpath": "users",
             "class": core.User,
             "exclude_from_index": [
+                "relationships",
                 "is_active",
                 "description",
                 "displayname",
@@ -191,6 +194,7 @@ class RedisServices(Redis):
             "subpath": "permissions",
             "class": core.Permission,
             "exclude_from_index": [
+                "relationships",
                 "is_active",
                 "description",
                 "displayname",

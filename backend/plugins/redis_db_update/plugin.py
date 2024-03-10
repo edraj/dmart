@@ -170,10 +170,12 @@ class Plugin(PluginBase):
             if meta_doc is None:
                 raise Exception("Meta doc not found")
 
-            payload_doc = await redis_services.get_doc_by_id(
-                meta_doc.get("payload_doc_id", "")
-            )
-            payload = {k: v for k, v in payload_doc.items() if k not in meta_doc}
+            payload = {}
+            if meta_doc.get("payload_doc_id"):
+                payload_doc = await redis_services.get_doc_by_id(
+                    meta_doc["payload_doc_id"]
+                )
+                payload = {k: v for k, v in payload_doc.items() if k not in meta_doc}
 
             # generate the payload string
             meta_doc["payload_string"] = await generate_payload_string(
