@@ -52,6 +52,14 @@ export default defineConfig({
         {
           src: path.resolve(__dirname, './assets') + '/[!.]*',
           dest: 'assets'
+        },
+        {
+          src: path.resolve(__dirname, './node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff'),
+          dest: 'assets/fonts'
+        },
+        {
+          src: path.resolve(__dirname, './node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff2'),
+          dest: 'assets/fonts'
         }
       ]
     }),
@@ -78,7 +86,8 @@ export default defineConfig({
     }),
   ],
   build: {
-    chunkSizeWarningLimit: 900,
+    chunkSizeWarningLimit: 512,
+    cssMinify: 'lightningcss',
     rollupOptions: {
       output: {
         manualChunks(id) {
