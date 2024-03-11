@@ -150,6 +150,7 @@
   "views": "Views",
   "view": "View",
   "actions": "Actions",
+  "bulk_actions": "Bulk",
   "status": "Status",
   "near_by": "Near by",
   "is_active": "Is active?",

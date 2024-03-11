@@ -1,16 +1,16 @@
 <script lang="ts">
     import {onDestroy, onMount} from "svelte";
     import {
-        check_existing,
-        passwordRegExp,
-        passwordWrongExp,
-        query,
-        QueryType,
-        request,
-        RequestType,
-        ResourceType,
-        ResponseEntry,
-        Status,
+      check_existing,
+      passwordRegExp,
+      passwordWrongExp,
+      query,
+      QueryType,
+      request,
+      RequestType,
+      ResourceType,
+      ResponseEntry,
+      Status,
     } from "@/dmart";
     import {Button, Form, FormGroup, Input, Label,} from "sveltestrap";
     import {createAjvValidator, Validator,} from "svelte-jsoneditor";
@@ -25,7 +25,7 @@
     import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
     import {REGEX} from "@/utils/regex";
 
-    export let entry: ResponseEntry;
+  export let entry: ResponseEntry;
   export let space_name: string;
   export let subpath: string;
   export let errorContent: any;
@@ -247,40 +247,40 @@
     <FormGroup class="col-4">
       <Label>Email</Label>
       <Input
-              style="width: 100% !important"
-              bind:value={user.email}
-              class="w-25"
-              type="email"
-              name="email"
-              placeholder="Email..."
-              autocomplete="off"
+        style="width: 100% !important"
+        bind:value={user.email}
+        class="w-25"
+        type="email"
+        name="email"
+        placeholder="Email..."
+        autocomplete="off"
       />
     </FormGroup>
     <FormGroup class="col-4">
       <Label>MSISDN</Label>
       <Input
-              style="width: 100% !important"
-              bind:value={user.msisdn}
-              class="w-25"
-              type="text"
-              name="msisdn"
-              placeholder="MSISDN..."
-              autocomplete="off"
+        style="width: 100% !important"
+        bind:value={user.msisdn}
+        class="w-25"
+        type="text"
+        name="msisdn"
+        placeholder="MSISDN..."
+        autocomplete="off"
       />
     </FormGroup>
     <FormGroup class="col-4">
       <Label>Password</Label>
       <Input
-              style="width: 100% !important"
-              bind:value={user.password}
-              class="w-25"
-              type="password"
-              name="password"
-              placeholder="password..."
-              minlength={8}
-              maxlength={24}
-              pattern={REGEX.PASSWORD}
-              autocomplete="off"
+        style="width: 100% !important"
+        bind:value={user.password}
+        class="w-25"
+        type="password"
+        name="password"
+        placeholder="password..."
+        minlength={8}
+        maxlength={24}
+        pattern={REGEX.PASSWORD}
+        autocomplete="off"
       />
     </FormGroup>
   </div>
@@ -288,34 +288,34 @@
     <FormGroup class="col-4">
       <Label>English Displayname</Label>
       <Input
-              style="width: 100% !important"
-              bind:value={user.displayname.en}
-              class="w-25"
-              type="text"
-              name="displayname_en"
-              placeholder="English Displayname..."
+        style="width: 100% !important"
+        bind:value={user.displayname.en}
+        class="w-25"
+        type="text"
+        name="displayname_en"
+        placeholder="English Displayname..."
       />
     </FormGroup>
     <FormGroup class="col-4">
       <Label>Arabic Displayname</Label>
       <Input
-              style="width: 100% !important"
-              bind:value={user.displayname.ar}
-              class="w-25"
-              type="text"
-              name="displayname_ar"
-              placeholder="Arabic Displayname..."
+        style="width: 100% !important"
+        bind:value={user.displayname.ar}
+        class="w-25"
+        type="text"
+        name="displayname_ar"
+        placeholder="Arabic Displayname..."
       />
     </FormGroup>
     <FormGroup class="col-4">
       <Label>Kurdish Displayname</Label>
       <Input
-              style="width: 100% !important"
-              bind:value={user.displayname.kd}
-              class="w-25"
-              type="text"
-              name="displayname_kd"
-              placeholder="Kurdish Displayname..."
+        style="width: 100% !important"
+        bind:value={user.displayname.kd}
+        class="w-25"
+        type="text"
+        name="displayname_kd"
+        placeholder="Kurdish Displayname..."
       />
     </FormGroup>
   </div>
@@ -345,7 +345,5 @@
       />
     </FormGroup>
   </div>
-  <Button color="primary" style="width: 25% !important" type="submit"
-  >Save</Button
-  >
+  <Button color="primary" style="width: 25% !important" type="submit">Save</Button>
 </Form>

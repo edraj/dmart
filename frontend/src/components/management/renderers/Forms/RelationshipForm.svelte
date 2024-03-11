@@ -8,7 +8,7 @@
         if (content === null) {
             content = [
                 {
-                    branch_name: "",
+                    branch_name: "master",
                     type: "",
                     space_name: "",
                     subpath: "",
@@ -26,7 +26,7 @@
         content = [
             ...content,
             {
-                branch_name: "",
+                branch_name: "master",
                 type: "",
                 space_name: "",
                 subpath: "",
@@ -63,7 +63,7 @@
                   onclick={() => removeItem(index)}
                 />
               </div>
-              <Input type="url" bind:value={item.branch_name} />
+              <Input bind:value={item.branch_name} />
             </FormGroup>
             <FormGroup>
               <Label>Resource Type</Label>

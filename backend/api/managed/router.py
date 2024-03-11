@@ -939,11 +939,10 @@ async def serve_request(
                         ),
                     )
                 _target_user = await db.load(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
+                    space_name=settings.management_space,
+                    subpath=settings.users_subpath,
                     shortname=record.attributes["owner_shortname"],
                     class_type=core.User,
-                    user_shortname=owner_shortname,
                     branch_name=record.branch_name
                 )
                     
@@ -1775,11 +1774,7 @@ async def create_or_update_resource_with_payload(
         client_checksum=sha if isinstance(sha, str) else None,
         schema_shortname="meta_schema"
         if record.resource_type == ResourceType.schema
-        else (
-            None
-            if "schema_shortname" not in record.attributes
-            else record.attributes["schema_shortname"]
-        ),
+        else record.attributes.get("payload", {}).get("schema_shortname", None),
         body=f"{record.shortname}." + payload_filename.split(".")[1],
     )
     if (
