@@ -68,7 +68,6 @@
 <Navbar class="py-0 px-0">
   <Nav tabs class="align-items-center w-100" style="background-color: #f4f4f4;">
     {#each sections as section}
-      <NavItem>
         <NavLink
           href={$url("/management/" + section.name)}
           title={$_(section.name)}
@@ -84,36 +83,34 @@
           {/if}
           -->
         </NavLink>
-      </NavItem>
     {/each}
-    <NavItem>
       <NavLink href="/" title={$_("published")}>
         <Icon name="globe" />
       </NavLink>
+    <NavItem class="ms-auto">
+      <Form inline={true} class="ms-auto" on:submit={handleSearch}>
+        <InputGroup size="sm">
+          <Input
+            type="search"
+            placeholder={$_("searching_for_what")}
+            on:input={handleInput}
+          />
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <span on:click={handleSearch}>
+            <InputGroupText><Icon name="search" /></InputGroupText>
+          </span>
+        </InputGroup>
+      </Form>
     </NavItem>
-    <Form inline={true} class="ms-auto" on:submit={handleSearch}>
-      <InputGroup size="sm">
-        <Input
-          type="search"
-          placeholder={$_("searching_for_what")}
-          on:input={handleInput}
-        />
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <!-- svelte-ignore a11y-no-static-element-interactions -->
-        <span on:click={handleSearch}>
-          <InputGroupText><Icon name="search" /></InputGroupText>
-        </span>
-      </InputGroup>
-    </Form>
-    &nbsp;&nbsp;
     <NavItem>
       <SelectLanguage />
     </NavItem>
-    <NavItem>
+
       <NavLink href="#" title={$_("logout")} on:click={signout}>
         <Icon name="power" />
       </NavLink>
-    </NavItem>
+
       <NavItem>
 <!--      <Dropdown>-->
 <!--        <DropdownToggle><Icon name="palette-fill" /></DropdownToggle>-->
