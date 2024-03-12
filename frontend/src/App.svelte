@@ -29,41 +29,94 @@
   import {themesStore} from "@/stores/themes_store";
   import {locale} from "svelte-i18n";
 
-  function findRoute(routesChildren, paths) {
+  function findRoute(routers, paths, lang) {
       if (paths.length === 0) {
-          return routesChildren;
+          return routers;
       }
 
       const [currentPath, ...remainingPaths] = paths;
-      const matchingChild = routesChildren.find(child => child.name === currentPath);
 
+      const matchingChild = routers.children.find(
+          (child) => child.name === `${currentPath}`
+      );
       if (matchingChild) {
-          return findRoute(matchingChild.children, remainingPaths);
+          return findRoute(matchingChild, remainingPaths, lang);
       } else {
           return null;
       }
   }
   async function prepareRouter(lang: string) {
-      // console.log($activeRoute.fragments.pop().node);
       return createRouter({
           routes: routes,
           urlRewrite: {
               toInternal: (url) => {
                   const paths = url.split("/");
                   paths.shift();
-                  const fileName = paths[paths.length-1]
+                  let fileName = paths[paths.length - 1];
+                  if (fileName === "") {
+                      fileName = "index";
+                  }
+
                   if (![".en", ".ar", ".kd"].includes(fileName)) {
-                      paths[paths.length-1] = `${fileName}.${lang}`;
-                      if (findRoute(routes.children, paths) !== null){
-                          return url.split('/').slice(0, url.split('/').length-1).join("/") + `/${fileName}.${lang}`;
+                      paths[paths.length - 1] = `${fileName}.${lang}`;
+                      let result = findRoute(routes, paths, lang);
+                      // if the REQUIRED+LANG file is NOT found
+                      // then look for the REQUIRED file
+                      if (result === null) {
+                          paths[paths.length - 1] = fileName;
+                          result = findRoute(routes, paths, lang);
+                          // if the REQUIRED file is NOT found
+                          // then look for the INDEX+LANG file
+                          if (result === null) {
+                              paths[paths.length - 1] = `index.${lang}`;
+                              result = findRoute(routes, paths, lang);
+                              // if the INDEX+LANG file is NOT found
+                              // then look for the INDEX file
+                              if (result === null) {
+                                  paths[paths.length - 1] = `index`;
+                                  result = findRoute(routes, paths, lang);
+                                  if (result !== null) {
+                                      // return INDEX
+                                      return (
+                                          url
+                                              .split("/")
+                                              .slice(0, url.split("/").length - 1)
+                                              .join("/") + `/${paths[paths.length - 1]}`
+                                      );
+                                  }
+                              } else {
+                                  // return INDEX+LANG
+                                  return (
+                                      url
+                                          .split("/")
+                                          .slice(0, url.split("/").length - 1)
+                                          .join("/") + `/${paths[paths.length - 1]}`
+                                  );
+                              }
+                          } else {
+                              // return REQUIRED
+                              return (
+                                  url
+                                      .split("/")
+                                      .slice(0, url.split("/").length - 1)
+                                      .join("/") + `/${paths[paths.length - 1]}`
+                              );
+                          }
+                      } else {
+                          // return REQUIRED+LANG
+                          return (
+                              url
+                                  .split("/")
+                                  .slice(0, url.split("/").length - 1)
+                                  .join("/") + `/${paths[paths.length - 1]}`
+                          );
                       }
                   }
+
                   return url;
               },
-              toExternal: url => {
-                  return url;
-              }
-          }
+              toExternal: (url) => url,
+          },
       });
   }
 
