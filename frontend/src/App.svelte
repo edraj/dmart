@@ -50,6 +50,9 @@
           routes: routes,
           urlRewrite: {
               toInternal: (url) => {
+                  if (url.startsWith("/management")){
+                      return url;
+                  }
                   const paths = url.split("/");
                   paths.shift();
                   let fileName = paths[paths.length - 1];
@@ -119,7 +122,6 @@
           },
       });
   }
-
   setupI18n();
   $: { document.dir = $dir; refresh_spaces.refresh(); }
 </script>
