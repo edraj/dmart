@@ -164,9 +164,9 @@ def metapath(
         filename = "meta.space.json"
     elif issubclass(class_type, core.Attachment):
         [parent_subpath, parent_name] = subpath.rsplit("/", 1)
-        schema_shortname = "." + schema_shortname if schema_shortname else ""
+        # schema_shortname = "." + schema_shortname if schema_shortname else ""
         attachment_folder = (
-            f"{parent_name}/attachments{schema_shortname}.{class_type.__name__.lower()}"
+            f"{parent_name}/attachments.{class_type.__name__.lower()}"
         )
         path = path / parent_subpath / ".dm" / attachment_folder
         filename = f"meta.{shortname}.json"
