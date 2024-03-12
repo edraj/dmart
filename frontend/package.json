@@ -29,6 +29,7 @@
     "eslint": "^8.44.0",
     "intl-messageformat": "^10.5.3",
     "jsdom": "^22.1.0",
+    "lightningcss": "^1.24.0",
     "marked": "^5.0.0",
     "mdsvex": "^0.11.0",
     "prismjs": "^1.29.0",
