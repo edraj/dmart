@@ -29,12 +29,11 @@
     ModalBody,
     ModalFooter,
     ModalHeader,
-    Nav,
     Row,
     TabContent,
     TabPane,
   } from "sveltestrap";
-  import Icon from "../../Icon.svelte";
+  import Icon from "@/components/Icon.svelte";
   import { _ } from "@/i18n";
   import ListView from "../ListView.svelte";
   import Prism from "@/components/Prism.svelte";
@@ -54,7 +53,7 @@
   import HtmlEditor from "../editors/HtmlEditor.svelte";
   import MarkdownEditor from "../editors/MarkdownEditor.svelte";
   import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
-  import checkAccess, { checkAccessv2 } from "@/utils/checkAccess";
+  import { checkAccessv2 } from "@/utils/checkAccess";
   import { fade } from "svelte/transition";
   import BreadCrumbLite from "../BreadCrumbLite.svelte";
   import downloadFile from "@/utils/downloadFile";
@@ -84,6 +83,14 @@
   import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
   import {bulkBucket} from "@/stores/management/bulk_bucket";
   import RelationshipForm from "@/components/management/renderers/Forms/RelationshipForm.svelte";
+  import {mangle} from "marked-mangle";
+  import {gfmHeadingId} from "marked-gfm-heading-id";
+
+
+  marked.use(mangle());
+  marked.use(gfmHeadingId({
+      prefix: "my-prefix-",
+  }));
 
   // props
   export let entry: ResponseEntry;
@@ -157,7 +164,7 @@
   let contentShortname = "";
   let workflowShortname = "";
   let selectedSchema = subpath === "workflows" ? "workflow" : null;
-  let selectedContentType = ContentType.json;
+  let selectedContentType: any = ContentType.json;
   let new_resource_type: ResourceType;
 
   let payloadFiles: FileList;
@@ -367,7 +374,8 @@
         if (data.payload) {
           data.payload.body = y;
         }
-      } else {
+      }
+      else {
         data.payload.body = jseContent;
       }
     }
@@ -375,6 +383,7 @@
     if (resource_type === ResourceType.user && btoa(data.password.slice(0,6)) === 'JDJiJDEy') {
       delete data.password;
     }
+
     if (resource_type === ResourceType.folder) {
       const arr = subpath.split("/");
       arr[arr.length - 1] = "";
@@ -400,7 +409,8 @@
       request_data.request_type = RequestType.update;
       request_data.records[0].resource_type = ResourceType.space;
       response = await space(request_data);
-    } else {
+    }
+    else {
       response = await request(request_data);
     }
 
@@ -430,7 +440,8 @@
         if (response.status == Status.success) {
           showToast(Level.info);
           window.location.reload();
-        } else {
+        }
+        else {
           errorContent = response;
           showToast(Level.warn);
         }
@@ -1080,11 +1091,15 @@
     return workflows.records.map((e) => e.shortname);
   }
 
+  let oldSelectedContentType = ""
   $: {
-    if (selectedContentType === "json") {
-      jseModalContent = { text: "{}" };
-    } else {
-      jseModalContent = "";
+    if(oldSelectedContentType !== selectedContentType){
+        if (selectedContentType === "json") {
+            jseModalContent = { text: "{}" };
+        } else {
+            jseModalContent = "";
+        }
+        oldSelectedContentType = structuredClone(selectedContentType);
     }
   }
 
@@ -1340,7 +1355,7 @@
     class="pt-3 pb-2 px-2"
     transition:fade={{ delay: 25 }}
   >
-    <Nav class="w-100">
+    <div class="d-flex justify-content-end w-100">
       <BreadCrumbLite
         {space_name}
         {subpath}
@@ -1363,7 +1378,6 @@
             <Icon name="card-list" />
           </Button>
         {/if}
-
         <Button
           outline
           color="success"
@@ -1375,7 +1389,6 @@
         >
           <Icon name="binoculars" />
         </Button>
-
         {#if canUpdate}
           <Button
             outline
@@ -1477,10 +1490,58 @@
           <Icon name="clock-history" />
         </Button>
       </ButtonGroup>
+
       <ButtonGroup size="sm" class="align-items-center">
         {#if canCreateEntry || canCreateFolder || canDelete || !!entry?.payload?.body?.allow_csv}
           <span class="ps-2 pe-1"> {$_("actions")} </span>
         {/if}
+
+        {#if subpath !== "health_check"}
+          {#if canCreateEntry}
+            <Button
+                    outline
+                    color="success"
+                    size="sm"
+                    title={$_("create_entry")}
+                    class="justify-contnet-center text-center py-0 px-1"
+                    on:click={handleCreateEntryModal}
+            >
+              <Icon name="file-plus" />
+            </Button>
+          {/if}
+          {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
+            <Button
+                    outline
+                    color="success"
+                    size="sm"
+                    title={$_("create_folder")}
+                    class="justify-contnet-center text-center py-0 px-1"
+                    on:click={() => {
+                entryType = "folder";
+                new_resource_type = ResourceType.folder;
+                selectedSchema = "folder_rendering";
+                isModalOpen = true;
+              }}
+            >
+              <Icon name="folder-plus" />
+            </Button>
+          {/if}
+        {/if}
+        {#if !!entry?.payload?.body?.stream}
+          <Button
+                  outline={!isNeedRefresh}
+                  color={isNeedRefresh ? "danger" : "success"}
+                  size="sm"
+                  title={$_("refresh")}
+                  class="justify-contnet-center text-center py-0 px-1"
+                  on:click={() => {
+              refresh = !refresh;
+            }}
+          >
+            <Icon name="arrow-clockwise" />
+          </Button>
+        {/if}
+
         {#if canDelete}
           <Button
             outline
@@ -1492,18 +1553,6 @@
           >
             <Icon name="trash" />
           </Button>
-          {#if $bulkBucket.length}
-          <Button
-            outline
-            color="success"
-            size="sm"
-            title={$_("delete_selected")}
-            on:click={handleDeleteBulk}
-            class="justify-content-center text-center py-0 px-1"
-          >
-            <Icon name="x-circle" />
-          </Button>
-          {/if}
         {/if}
         {#if !!entry?.payload?.body?.allow_csv}
           <Button
@@ -1517,56 +1566,23 @@
             <Icon name="cloud-download" />
           </Button>
         {/if}
-      </ButtonGroup>
 
-      <ButtonGroup>
-        {#if subpath !== "health_check"}
-          {#if canCreateEntry}
-            <Button
-              outline
-              color="success"
-              size="sm"
-              title={$_("create_entry")}
-              class="justify-contnet-center text-center py-0 px-1"
-              on:click={handleCreateEntryModal}
-            >
-              <Icon name="file-plus" />
-            </Button>
-          {/if}
-          {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
-            <Button
-              outline
-              color="success"
-              size="sm"
-              title={$_("create_folder")}
-              class="justify-contnet-center text-center py-0 px-1"
-              on:click={() => {
-                entryType = "folder";
-                new_resource_type = ResourceType.folder;
-                selectedSchema = "folder_rendering";
-                isModalOpen = true;
-              }}
-            >
-              <Icon name="folder-plus" />
-            </Button>
-          {/if}
-        {/if}
-        {#if !!entry?.payload?.body?.stream}
+        {#if $bulkBucket.length}
+          <span class="ps-2 pe-1"> {$_("bulk_actions")} </span>
           <Button
-            outline={!isNeedRefresh}
-            color={isNeedRefresh ? "danger" : "success"}
+            outline
+            color="success"
             size="sm"
-            title={$_("refresh")}
-            class="justify-contnet-center text-center py-0 px-1"
-            on:click={() => {
-              refresh = !refresh;
-            }}
+            title={$_("delete_selected")}
+            on:click={handleDeleteBulk}
+            class="justify-content-center text-center py-0 px-1"
           >
-            <Icon name="arrow-clockwise" />
+            <Icon name="x-circle" />
           </Button>
         {/if}
+
       </ButtonGroup>
-    </Nav>
+    </div>
   </div>
 
   <div
@@ -1581,6 +1597,7 @@
         folderColumns={entry?.payload?.body?.index_attributes ?? null}
         sort_by={entry?.payload?.body?.sort_by ?? null}
         sort_order={entry?.payload?.body?.sort_order ?? null}
+        canDelete={canDelete}
       />
     </div>
     <div class="tab-pane" class:active={tab_option === "source"}>
@@ -1755,19 +1772,20 @@
           style="text-align: left; direction: ltr; overflow: hidden auto;"
         >
           <div class="preview">
-            {#if ["meta_schema"].includes(entry.shortname)}
-              <WorkflowRenderer
-                shortname={entry.shortname}
-                workflowContent={entry?.payload?.body}
-              />
-            {:else}
               <PlantUML
                 shortname={entry.shortname}
                 properties={entry.payload.body.properties}
               />
-            {/if}
           </div>
         </div>
+      </div>
+    {/if}
+    {#if selectedSchema === "workflow"}
+      <div class="tab-pane" class:active={tab_option === "workflow"}>
+          <WorkflowRenderer
+            shortname={entry.shortname}
+            workflowContent={entry?.payload?.body}
+          />
       </div>
     {/if}
     <div class="tab-pane" class:active={tab_option === "history"}>
@@ -1781,7 +1799,6 @@
           />
         {/if}
       {/key}
-      <!--History subpath="{entry.subpath}" shortname="{entry.shortname}" /-->
     </div>
     <div class="tab-pane" class:active={tab_option === "relationships"}>
       <div class="d-flex justify-content-end my-2 mx-5 flex-row">

@@ -61,7 +61,9 @@ export let handleSave;
   <div class="d-flex justify-content-end">
     <Button on:click={handleSave}>Save</Button>
   </div>
-  <MarkdownEditor bind:content={jseContent} />
+  {#if typeof(jseContent) === "string"}
+    <MarkdownEditor bind:content={jseContent} />
+  {/if}
 {/if}
 {#if content_type === "html"}
   <div class="d-flex justify-content-end">

@@ -925,6 +925,121 @@ async def serve_request(
                     )
                 )
 
+        case api.RequestType.assign:
+            for record in request.records:
+                if not record.attributes.get("owner_shortname"):
+                    raise api.Exception(
+                        status.HTTP_400_BAD_REQUEST,
+                        api.Error(
+                            type="request",
+                            code=InternalErrorCode.MISSING_DATA,
+                            message="The owner_shortname is required",
+                        ),
+                    )
+                _target_user = await db.load(
+                    space_name=settings.management_space,
+                    subpath=settings.users_subpath,
+                    shortname=record.attributes["owner_shortname"],
+                    class_type=core.User,
+                    branch_name=record.branch_name
+                )
+                    
+                if record.subpath[0] != "/":
+                    record.subpath = f"/{record.subpath}"
+                await plugin_manager.before_action(
+                    core.Event(
+                        space_name=request.space_name,
+                        branch_name=record.branch_name,
+                        subpath=record.subpath,
+                        shortname=record.shortname,
+                        schema_shortname=record.attributes.get("payload", {}).get(
+                            "schema_shortname", None
+                        ),
+                        action_type=core.ActionType.update,
+                        resource_type=record.resource_type,
+                        user_shortname=owner_shortname,
+                    )
+                )
+
+                resource_cls = getattr(
+                    sys.modules["models.core"], camel_case(
+                        record.resource_type)
+                )
+                schema_shortname = record.attributes.get("payload", {}).get(
+                    "schema_shortname"
+                )
+                resource_obj = await db.load(
+                    space_name=request.space_name,
+                    subpath=record.subpath,
+                    shortname=record.shortname,
+                    class_type=resource_cls,
+                    user_shortname=owner_shortname,
+                    branch_name=record.branch_name,
+                    schema_shortname=schema_shortname,
+                )
+
+                # CHECK PERMISSION
+                if not await access_control.check_access(
+                        user_shortname=owner_shortname,
+                        space_name=request.space_name,
+                        subpath=record.subpath,
+                        resource_type=record.resource_type,
+                        action_type=core.ActionType.assign,
+                        resource_is_active=resource_obj.is_active,
+                        resource_owner_shortname=resource_obj.owner_shortname,
+                        resource_owner_group=resource_obj.owner_group_shortname,
+                        record_attributes=record.attributes,
+                ):
+                    raise api.Exception(
+                        status.HTTP_401_UNAUTHORIZED,
+                        api.Error(
+                            type="request",
+                            code=InternalErrorCode.NOT_ALLOWED,
+                            message="You don't have permission to this action [05]",
+                        ),
+                    )
+
+                old_version_flattend = flatten_dict(resource_obj.model_dump())
+
+                resource_obj.updated_at = datetime.now()
+                resource_obj.owner_shortname = record.attributes["owner_shortname"]
+                
+
+                history_diff = await db.update(
+                    space_name=request.space_name,
+                    subpath=record.subpath,
+                    meta=resource_obj,
+                    old_version_flattend=old_version_flattend,
+                    new_version_flattend=flatten_dict(resource_obj.model_dump()),
+                    updated_attributes_flattend=["owner_shortname"],
+                    branch_name=record.branch_name,
+                    user_shortname=owner_shortname,
+                    schema_shortname=schema_shortname,
+                )
+
+
+                records.append(
+                    resource_obj.to_record(
+                        record.subpath, resource_obj.shortname, [], record.branch_name
+                    )
+                )
+
+                await plugin_manager.after_action(
+                    core.Event(
+                        space_name=request.space_name,
+                        branch_name=record.branch_name,
+                        subpath=record.subpath,
+                        shortname=record.shortname,
+                        schema_shortname=record.attributes.get("payload", {}).get(
+                            "schema_shortname", None
+                        ),
+                        action_type=core.ActionType.update,
+                        resource_type=record.resource_type,
+                        user_shortname=owner_shortname,
+                        attributes={"history_diff": history_diff},
+                    )
+                )
+
         case api.RequestType.delete:
             for record in request.records:
                 if record.subpath[0] != "/":
@@ -1542,11 +1657,7 @@ async def create_or_update_resource_with_payload(
         client_checksum=sha if isinstance(sha, str) else None,
         schema_shortname="meta_schema"
         if record.resource_type == ResourceType.schema
-        else (
-            None
-            if "schema_shortname" not in record.attributes
-            else record.attributes["schema_shortname"]
-        ),
+        else record.attributes.get("payload", {}).get("schema_shortname", None),
         body=f"{record.shortname}." + payload_filename.split(".")[1],
     )
     if (

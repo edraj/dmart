@@ -10,6 +10,7 @@ class StrEnum(str, Enum):
 class RequestType(StrEnum):
     create = "create"
     update = "update"
+    assign = "assign"
     r_replace = "replace"
     delete = "delete"
     move = "move"
@@ -155,6 +156,7 @@ class ActionType(StrEnum):
     create = "create"
     delete = "delete"
     attach = "attach"
+    assign = "assign"
     move = "move"
     progress_ticket = "progress_ticket"
     lock = "lock"
