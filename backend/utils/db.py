@@ -18,6 +18,7 @@ from fastapi import status
 import aiofiles
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN
 from shutil import copy2 as copy_file
+from fastapi.logger import logger
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
 
@@ -260,7 +261,14 @@ def load_resource_payload(
         #     status_code=status.HTTP_404_NOT_FOUND,
         #     error=api.Error(type="db", code=12, message="Request object is not available"),
         # )
-    return json.loads(path.read_bytes())
+    try:
+        return json.loads(path.read_bytes())
+    except Exception as e:
+        logger.error(
+            f"Invalid json entry at :{path}. Error: {e.args}"
+        )
+        return None
+        
 
 
 async def save(
