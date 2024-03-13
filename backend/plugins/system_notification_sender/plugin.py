@@ -41,16 +41,19 @@ class Plugin(PluginBase):
         if data.action_type == ActionType.delete and data.attributes.get("entry"):
             entry = data.attributes["entry"].model_dump()
         else:
-            entry = (
-                await load(
-                    data.space_name,
-                    data.subpath,
-                    data.shortname,
-                    getattr(sys_modules["models.core"], camel_case(data.resource_type)),
-                    data.user_shortname,
-                    data.branch_name,
-                )
-            ).model_dump()
+            try:
+                entry = (
+                    await load(
+                        data.space_name,
+                        data.subpath,
+                        data.shortname,
+                        getattr(sys_modules["models.core"], camel_case(data.resource_type)),
+                        data.user_shortname,
+                        data.branch_name,
+                    )
+                ).model_dump()
+            except Exception as _:
+                return
             if (
                 entry["payload"]
                 and entry["payload"]["content_type"] == ContentType.json

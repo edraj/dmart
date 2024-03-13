@@ -31,14 +31,17 @@ class Plugin(PluginBase):
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"]
         else:
-            entry = await load(
-                space_name=data.space_name,
-                branch_name=data.branch_name,
-                subpath=data.subpath,
-                shortname=data.shortname,
-                class_type=class_type,
-                user_shortname=data.user_shortname,
-            )
+            try:
+                entry = await load(
+                    space_name=data.space_name,
+                    branch_name=data.branch_name,
+                    subpath=data.subpath,
+                    shortname=data.shortname,
+                    class_type=class_type,
+                    user_shortname=data.user_shortname,
+                )
+            except Exception as _:
+                return
 
         action_attributes = {}
         if data.action_type == ActionType.create:

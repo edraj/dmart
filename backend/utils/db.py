@@ -239,7 +239,20 @@ async def load(
     path /= filename
     async with aiofiles.open(path, "r") as file:
         content = await file.read()
+    try:
         return class_type.model_validate_json(content)
+    except Exception as e:
+        logger.error(
+            f"Invalid json entry at :{path}. Error: {e.args}"
+        )
+        raise api.Exception(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error=api.Error(
+                type="db",
+                code=InternalErrorCode.OBJECT_NOT_FOUND,
+                message=f"Request object is not available @{space_name}/{subpath}/{shortname} {class_type=} {schema_shortname=}",
+            ),
+        )
 
 
 def load_resource_payload(
@@ -267,7 +280,7 @@ def load_resource_payload(
         logger.error(
             f"Invalid json entry at :{path}. Error: {e.args}"
         )
-        return None
+        return {}
         
 
 
