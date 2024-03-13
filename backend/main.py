@@ -18,7 +18,7 @@ from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
-# from utils.redis_services import RedisServices
+from utils.redis_services import RedisServices
 from utils.spaces import initialize_spaces
 from fastapi import Depends, FastAPI, Request, Response, status
 from utils.logger import logging_schema
