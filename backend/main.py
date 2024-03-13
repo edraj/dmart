@@ -18,7 +18,7 @@ from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
-# from utils.redis_services import RedisServices
+from utils.redis_services import RedisServices
 from utils.spaces import initialize_spaces
 from fastapi import Depends, FastAPI, Request, Response, status
 from utils.logger import logging_schema
@@ -66,8 +66,8 @@ async def lifespan(app: FastAPI):
 
     yield
     
-    await RedisServices._RedisServices__POOL.aclose()
-    await RedisServices._RedisServices__POOL.disconnect(True)
+    await RedisServices._RedisServices__POOL.aclose() # type: ignore
+    await RedisServices._RedisServices__POOL.disconnect(True) # type: ignore
     
     logger.info("Application shutting down")
     print('{"stage":"shutting down"}')
