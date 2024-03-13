@@ -65,6 +65,10 @@ async def lifespan(app: FastAPI):
     await access_control.load_permissions_and_roles()
 
     yield
+    
+    await RedisServices._RedisServices__POOL.aclose()
+    await RedisServices._RedisServices__POOL.disconnect(True)
+    
     logger.info("Application shutting down")
     print('{"stage":"shutting down"}')
 
