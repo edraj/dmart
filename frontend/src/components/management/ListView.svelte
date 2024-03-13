@@ -39,6 +39,7 @@
   export let sort_by: any = null;
   export let sort_order: any = null;
   export let is_clickable = true;
+  export let canDelete = false;
 
   if (columns !== null && folderColumns !== null){
       throw new Error('columns and folderColumns cannot co-exist!');
@@ -281,16 +282,24 @@
         fetchPageRecords(true, x);
         sort = structuredClone(x);
       }
-      if (objectDatatable.numberRowsPerPage != numberRowsPerPage) {
+      if (objectDatatable.numberRowsPerPage !== numberRowsPerPage) {
         numberRowsPerPage = objectDatatable.numberRowsPerPage;
-        if (typeof localStorage !== 'undefined')
-          localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
-        fetchPageRecords();
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
+        }
+        (async() => {
+            await fetchPageRecords(true);
+            handleAllBulk(null, isAllBulkChecked);
+        })();
       }
-      if (objectDatatable.numberActivePage != numberActivePage) {
+      if (objectDatatable.numberActivePage !== numberActivePage) {
         setQueryParam({page: objectDatatable.numberActivePage.toString()});
         numberActivePage = objectDatatable.numberActivePage;
-        fetchPageRecords(false);
+        (async() => {
+            await fetchPageRecords(false);
+            handleAllBulk(null, false);
+        })();
+
       }
 
       paginationBottomInfoFrom = objectDatatable.numberRowsPerPage *  (objectDatatable.numberActivePage - 1) + 1;
@@ -308,14 +317,37 @@
       try {
           const { name, checked } = e.target;
           const _shortname = objectDatatable.arrayRawData[name].shortname;
-          const _resource_type = objectDatatable.arrayRawData[name].resource_type;
           if (checked) {
+              const _resource_type = objectDatatable.arrayRawData[name].resource_type;
               $bulkBucket = [...$bulkBucket, {shortname: _shortname, resource_type: _resource_type}];
           }
           else {
               $bulkBucket = $bulkBucket.filter(e=> e.shortname !== objectDatatable.arrayRawData[name].shortname);
           }
-      }catch (e){}
+      } catch (e){}
+  }
+  let isAllBulkChecked = false;
+  function handleAllBulk(e, override = null) {
+      isAllBulkChecked = override === null ? !isAllBulkChecked : override;
+      if (e) {
+          e.target.checked = isAllBulkChecked;
+      }
+
+      objectDatatable.arrayRawData.map((e, i) => {
+          const _shortname = e.shortname;
+
+          const input: any = document.getElementById(_shortname);
+          if (input === null) return;
+          input.checked = isAllBulkChecked;
+
+          if (input.checked) {
+              const _resource_type = objectDatatable.arrayRawData[i].resource_type;
+              $bulkBucket = [...$bulkBucket, {shortname: _shortname, resource_type: _resource_type}];
+          }
+          else {
+              $bulkBucket = $bulkBucket.filter(e=> e.shortname !== objectDatatable.arrayRawData[i].shortname);
+          }
+      });
   }
 </script>
 
@@ -359,7 +391,9 @@
         <table class="table table-striped table-sm mt-2">
           <thead>
             <tr>
-              <th></th>
+              {#if canDelete}
+                <th><Input type="checkbox" on:change={handleAllBulk} /></th>
+              {/if}
               {#each Object.keys(columns) as col}
                 <th>
                   <Sort bind:propDatatable={objectDatatable} propColumn={col}>{columns[col].title}</Sort>
@@ -370,7 +404,9 @@
           <tbody>
             {#each objectDatatable.arrayRawData as row, index}
               <tr>
-                <td style="cursor: pointer;"><Input type="checkbox" on:change={handleBulk} name={index} /></td>
+                {#if canDelete}
+                  <td style="cursor: pointer;"><Input id={row.shortname} type="checkbox" on:change={handleBulk} name={index} /></td>
+                {/if}
                 {#each Object.keys(columns) as col}
                   <!-- svelte-ignore a11y-click-events-have-key-events -->
                   <td

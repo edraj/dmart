@@ -308,7 +308,7 @@
       class="pt-3 pb-2 px-2"
       transition:fade={{ delay: 25 }}
     >
-      <Nav class="w-100">
+      <div class="d-flex justify-content-end w-100">
         <BreadCrumbLite
           {space_name}
           {subpath}
@@ -406,7 +406,7 @@
             </Button>
           {/if}
         </ButtonGroup>
-      </Nav>
+      </div>
     </div>
 
     <div

@@ -147,8 +147,7 @@
   {/await}
 {/key}
 {#if canCreateNewSpace}
-  <hr class="w-100 mt-1 mb-0 py-1" />
-  <Button
+  <ListGroupItem><Button
     class="w-100"
     type="button"
     outline
@@ -156,7 +155,7 @@
     on:click={() => {
       isSpaceModalOpen = true;
     }}>Create new space</Button
-  >
+  ></ListGroupItem>
 {/if}
 
 <Modal

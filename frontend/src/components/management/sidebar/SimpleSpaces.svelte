@@ -23,7 +23,7 @@
   <!--h3 transition:fade >Loading spaces list</h3-->
 {:then spaces_data}
   {#each spaces_data.records as space}
-    <ListGroupItem class="ps-2 pe-0 py-0" style={selectedSpace == space.shortname?"background-color: #49505757;":""}>
+    <ListGroupItem class="ps-2 pe-0 py-0" style={selectedSpace === space.shortname?"background-color: #49505757;":""}>
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
       <div
