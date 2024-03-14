@@ -26,7 +26,7 @@ from fastapi.logger import logger
 
 class RedisServices(Redis):
 
-    __POOL = BlockingConnectionPool(
+    POOL = BlockingConnectionPool(
         host=settings.redis_host,
         port=settings.redis_port,
         password=settings.redis_password,
@@ -240,7 +240,7 @@ class RedisServices(Redis):
                 )
             )
         else:
-            super().__init__(connection_pool=self.__POOL, decode_responses=True)
+            super().__init__(connection_pool=self.POOL, decode_responses=True)
 
     async def create_index(
         self,
