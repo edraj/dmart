@@ -29,29 +29,6 @@ class WebsiteUser(HttpUser):
     def user_get_profile(self):
         self.client.get("/user/profile", headers=self.headers)
 
-
-    @task
-    def create_folder_resource(self):
-        request_data = {
-            "space_name": SPACE_NAME,
-            "request_type": "create",
-            "records": [
-                {
-                    "resource_type": "folder",
-                    "subpath": "/content",
-                    "shortname": "auto",
-                    "attributes": {
-                        "tags": ["one", "two"],
-                        "displayname": {"en":"This is a nice one"},
-                        "description": {"en": "Further description could help"},
-                    },
-                }
-            ],
-        }
-        res = self.client.post("/managed/request", json=request_data, headers=self.headers)
-        if res.status_code != 200:
-            print(f"\n\n FAILED REQUEST: {res.json()}")
-    
     
     @task
     def create_content_resource(self):
@@ -61,7 +38,7 @@ class WebsiteUser(HttpUser):
             "records": [
                 {
                     "resource_type": "content",
-                    "subpath": f"content",
+                    "subpath": "content",
                     "shortname": "auto",
                     "attributes": {
                         "is_active": True,
@@ -122,7 +99,7 @@ class WebsiteUser(HttpUser):
         }
         res = self.client.post("/managed/request", json=request_data, headers=self.headers)
         if res.status_code != 200:
-            print(f"\n\n FAILED create_content_resource: {res.json()}")
+            print(f"\n\n FAILED /managed/request: {res.json()}")
 
 
     @task
@@ -141,10 +118,10 @@ class WebsiteUser(HttpUser):
                 files=files
             )
             if res.status_code != 200:
-                print(f"\n\n FAILED create_schema_resource: {res.json()}")
+                print(f"\n\n FAILED /managed/resource_with_payload: {res.json()}")
 
     @task
-    def delete_resource(self):
+    def create_and_delete_resource(self):
         stamp = str(time.time()).replace(".", "")[-7:]
         headers = {"Content-Type": "application/json"}
         request_data = {
@@ -167,7 +144,9 @@ class WebsiteUser(HttpUser):
                 }
             ],
         }
-        self.client.post("/managed/request", json=request_data, headers=self.headers)
+        res = self.client.post("/managed/request", json=request_data, headers=self.headers)
+        if res.status_code != 200:
+            print(f"\n\n FAILED /managed/request delete_resource.create: {res.json()}")
 
         endpoint = "/managed/request"
         request_data = {
@@ -185,7 +164,7 @@ class WebsiteUser(HttpUser):
 
         res = self.client.post(endpoint, json=request_data, headers=headers)
         if res.status_code != 200:
-            print(f"\n\n FAILED delete_resource: {res.json()}")
+            print(f"\n\n FAILED /managed/request delete_resource.delete: {res.json()}")
 
     
     # retrieve entry
@@ -202,17 +181,7 @@ class WebsiteUser(HttpUser):
     # retrieve entry
     @task
     def retrieve_entry(self):
-        self.client.get("/managed/entry/content/applications/queries/order?retrieve_json_payload=true")
-
-    @task(3)
-    def query_subpath(self):
-        request_data = {
-            "space_name": SPACE_NAME,
-            "type": "subpath",
-            "subpath": "/offers",
-            "retrieve_json_payload": True
-        }
-        self.client.post("/managed/query", json=request_data, headers=self.headers)
+        self.client.get("/managed/entry/folder/applications/api/user?retrieve_json_payload=true")
 
 
     def on_stop(self):

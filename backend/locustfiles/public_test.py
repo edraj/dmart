@@ -27,11 +27,13 @@ class WebsitePublic(HttpUser):
     @task(10)
     def query_search(self):
         request_data = {
-            "space_name": SPACE_NAME,
             "type": "search",
-            "subpath": "/queries",
-            "filter_schema_names": ["query"],
-            "retrieve_json_payload": True
+            "space_name": SPACE_NAME,
+            "subpath": "/api",
+            "search": "",
+            "retrieve_json_payload": "1",
+            "offset": 0,
+            "limit": 20
         }
         self.client.post("/public/query", json=request_data)
 
