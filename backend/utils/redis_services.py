@@ -997,13 +997,15 @@ class RedisServices(Redis):
 
     async def get_doc_by_id(self, doc_id: str) -> dict:
         try:
-            x = self.json().get(name=doc_id) or {}
+            x = self.json().get(name=doc_id)
             if x and isinstance(x, Awaitable):
                 value = await x
                 if isinstance(value, dict):
                     return value
-                # else:
-                #    raise Exception(f"Not dict {value=}")
+                if isinstance(value, str):
+                    return json.loads(value)
+                else:
+                   raise Exception(f"Not json dict at id: {doc_id}. data: {value=}")
             else:
                 raise Exception(f"Not awaitable {x=}")
         except Exception as e:
