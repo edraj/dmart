@@ -160,9 +160,9 @@ max_in_use_con: int = 0
 async def middle(request: Request, call_next):
     global max_in_use_con
     """Wrapper function to manage errors and logging"""
-    print(f"\n\n _available_connections: {len(RedisServices._RedisServices__POOL._available_connections)}\n_in_use_connections: {len(RedisServices._RedisServices__POOL._in_use_connections)}\n {max_in_use_con = } \n")
-    if len(RedisServices._RedisServices__POOL._in_use_connections) > max_in_use_con:
-        max_in_use_con = len(RedisServices._RedisServices__POOL._in_use_connections) 
+    print(f"\n\n _available_connections: {len(RedisServices.POOL._available_connections)}\n_in_use_connections: {len(RedisServices.POOL._in_use_connections)}\n {max_in_use_con = } \n")
+    if len(RedisServices.POOL._in_use_connections) > max_in_use_con:
+        max_in_use_con = len(RedisServices.POOL._in_use_connections) 
     if request.url._url.endswith("/docs") or request.url._url.endswith("openapi.json"):
         return await call_next(request)
 

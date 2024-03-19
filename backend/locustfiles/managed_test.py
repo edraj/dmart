@@ -196,7 +196,7 @@ class WebsiteUser(HttpUser):
                 rmtree(item)
 
         for item in glob(f"{BASE_PATH}/spaces/{SPACE_NAME}/content/*"):
-            if item.__contains__("myposts_"):
-                rmtree(item)
+            rmtree(item)
+            # if item.__contains__("myposts_"):
 
     

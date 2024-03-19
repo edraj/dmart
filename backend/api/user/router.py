@@ -1041,7 +1041,7 @@ async def process_user_login(
         max_age=settings.jwt_access_expires,
         key="auth_token",
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="none",
     )
     record = core.Record(
