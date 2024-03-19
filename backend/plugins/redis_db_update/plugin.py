@@ -77,14 +77,17 @@ class Plugin(PluginBase):
                 )
                 return
 
-            meta = await db.load(
-                space_name=data.space_name,
-                subpath=data.subpath,
-                shortname=data.shortname,
-                class_type=class_type,
-                user_shortname=data.user_shortname,
-                branch_name=data.branch_name,
-            )
+            try:
+                meta = await db.load(
+                    space_name=data.space_name,
+                    subpath=data.subpath,
+                    shortname=data.shortname,
+                    class_type=class_type,
+                    user_shortname=data.user_shortname,
+                    branch_name=data.branch_name,
+                )
+            except Exception as _:
+                return
 
             if data.action_type in [
                 ActionType.create,
