@@ -1,0 +1,9 @@
+{
+  "type": "search",
+  "space_name": "applications",
+  "subpath": "/api",
+  "search": "",
+  "retrieve_json_payload": "1",
+  "offset": 0,
+  "limit": 20
+}
