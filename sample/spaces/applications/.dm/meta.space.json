@@ -1,7 +1,7 @@
 {
     "uuid": "1ef1131f-53f7-45d8-9565-4c884b1eac71",
     "shortname": "applications",
-    "is_active": false,
+    "is_active": true,
     "displayname": {
         "en": "Applications"
     },
@@ -11,7 +11,7 @@
     "owner_shortname": "dmart",
     "root_registration_signature": "",
     "primary_website": "",
-    "indexing_enabled": false,
+    "indexing_enabled": true,
     "capture_misses": false,
     "check_health": false,
     "languages": [
