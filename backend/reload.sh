@@ -36,6 +36,7 @@ done
 sleep 4
 
 TOKEN=$(curl -s "${APP_URL}/user/login" -H 'Content-Type: application/json' -d "${SUPERMAN}" | jq -r '.records[0].attributes.access_token')
+curl -s -H "Authorization: Bearer ${TOKEN}" -H "$CT" $APP_URL/user/profile | jq -r '.status'
 RESULT+=$?
 
 curl -s -H "Authorization: Bearer ${TOKEN}" "${APP_URL}/user/profile" | jq '.records[0].attributes.roles'
