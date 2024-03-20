@@ -21,7 +21,14 @@ In Dmart, "Tickets" represent units of work or requests submitted to the system 
 ## Ticket Attributes
 - **state**: the state of the ticket
 - **is_open**: boolean value indicates if the ticket is still open or closed
-- **reporter**: object of type Reporter
+- **reporter**: object of type Reporter, consists of
+    - **type**: string
+    - **name**: string
+    - **channel**: string
+    - **distributor**: string
+    - **governorate**: string
+    - **msisdn**: string
+    - **channel_address**: string
 - **workflow_shortname**: the lifecycle of the ticket, client defined, check the Workflow section for more details 
 - **collaborators**: a map of the ticket collaborators, the key is the action and the value is the collaborator name
 - **resolution_reason**: the rejection reason if the ticket is rejected
