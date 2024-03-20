@@ -50,26 +50,27 @@
 >
   <ListGroup flush class="w-100">
     {#each $active_section.children as child ($active_section.name + child.name)}
-      {#if child.type == "component" && child.name in components}
+      {#if child.type === "component" && child.name in components}
         <svelte:component this={components[child.name]} />
-      {:else if child.type == "link"}
+      {:else if child.type === "link"}
         <!--p class="my-0 font-monospace"><small>{JSON.stringify(child, undefined,1)}</small></p-->
-        <ListGroupItem
+        <ListGroupItem class="borderless p-2 m-0"
           color="light"
           action
-          href={`/management/${$active_section.name}/${child.name}`}
           active={$isActive(
             `/management/${$active_section.name}/${child.name}`
           )}
         >
+          <a style="font-weight: bold" class={"text-decoration-none " + ($isActive(
+            `/management/${$active_section.name}/${child.name}`
+          )? "text-light":"text-dark")} href={`/management/${$active_section.name}/${child.name}`}>
           {#if child.icon}<Icon name={child.icon} class="pe-1" />{/if}
-          {$_(child.name)}
-          
+          {$_(child.name)}</a>
         </ListGroupItem>
         {#if withSpaces.includes(child.name) && $active_section.name === "tools"}
             <SimpleSpaces name={child.name} />
-          {/if}
-      {:else if child.type == "folder"}
+        {/if}
+      {:else if child.type === "folder"}
         <ListGroupItem class="px-0">
           {#if child.icon}<Icon name={child.icon} class="pe-1" />{/if}
           {$_(child.name)}

@@ -1774,11 +1774,7 @@ async def create_or_update_resource_with_payload(
         client_checksum=sha if isinstance(sha, str) else None,
         schema_shortname="meta_schema"
         if record.resource_type == ResourceType.schema
-        else (
-            None
-            if "schema_shortname" not in record.attributes
-            else record.attributes["schema_shortname"]
-        ),
+        else record.attributes.get("payload", {}).get("schema_shortname", None),
         body=f"{record.shortname}." + payload_filename.split(".")[1],
     )
     if (
