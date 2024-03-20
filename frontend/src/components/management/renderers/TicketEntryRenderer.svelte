@@ -117,16 +117,18 @@
       {/if}
     {/key}
   {/await}
-  <FormGroup>
-    <Label>Comment</Label>
-    <!-- on:change={handleInputChange} -->
-    <Input
-      class="w-25"
-      type="text"
-      name="comment"
-      placeholder="Comment..."
-      bind:value={comment}
-    />
-  </FormGroup>
-  <Button type="submit">Save</Button>
+  {#if ticketStates.length}
+    <FormGroup>
+      <Label>Comment</Label>
+      <!-- on:change={handleInputChange} -->
+      <Input
+        class="w-25"
+        type="text"
+        name="comment"
+        placeholder="Comment..."
+        bind:value={comment}
+      />
+    </FormGroup>
+    <Button type="submit">Save</Button>
+  {/if}
 </Form>
