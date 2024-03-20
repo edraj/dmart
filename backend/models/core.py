@@ -546,12 +546,40 @@ class Notification(Meta):
     is_read: bool = False
     priority: NotificationPriority
     entry: Locator | None = None
+    
+    @staticmethod
+    def from_record(record: Record, owner_shortname: str):
+        
+        entry_locator = None
+        if record.attributes.get("entry"):
+            entry_locator = Locator(
+                space_name=record.attributes["entry"].get("space_name"),
+                branch_name=record.attributes["entry"].get("branch_name"),
+                type=record.attributes["entry"].get("resource_type"),
+                schema_shortname=record.attributes["entry"].get("schema_shortname"),
+                subpath=record.attributes["entry"].get("subpath"),
+                shortname=record.attributes["entry"].get("shortname"),
+            )
+
+        uuid = uuid4()
+        return Notification(
+            uuid=uuid,
+            shortname=str(uuid)[:8],
+            is_active=record.attributes.get("is_active", True),
+            displayname=record.attributes.get("displayname"),
+            description=record.attributes.get("description"),
+            owner_shortname=record.attributes.get("owner_shortname", owner_shortname),
+            type=record.attributes.get("notification_type", NotificationType.system),
+            priority=record.attributes.get("priority", NotificationPriority.low),
+            is_read=False,
+            entry=entry_locator,
+        )
 
     @staticmethod
     async def from_request(notification_req: dict, entry: dict = {}):
         if (
-            notification_req["payload"]["schema_shortname"]
-            == "admin_notification_request"
+            notification_req.get("payload")
+            and notification_req["payload"].get("schema_shortname") == "admin_notification_request"
         ):
             notification_type = NotificationType.admin
         else:
