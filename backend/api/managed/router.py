@@ -939,11 +939,10 @@ async def serve_request(
                         ),
                     )
                 _target_user = await db.load(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
+                    space_name=settings.management_space,
+                    subpath=settings.users_subpath,
                     shortname=record.attributes["owner_shortname"],
                     class_type=core.User,
-                    user_shortname=owner_shortname,
                     branch_name=record.branch_name
                 )
                     

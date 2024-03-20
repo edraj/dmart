@@ -28,6 +28,45 @@
   import { setupI18n, dir } from "./i18n";
   import refresh_spaces from "@/stores/management/refresh_spaces";
   import {themesStore} from "@/stores/themes_store";
+  import {locale} from "svelte-i18n";
+
+  function findRoute(routesChildren, paths) {
+      if (paths.length === 0) {
+          return routesChildren;
+      }
+
+      const [currentPath, ...remainingPaths] = paths;
+      const matchingChild = routesChildren.find(child => child.name === currentPath);
+
+      if (matchingChild) {
+          return findRoute(matchingChild.children, remainingPaths);
+      } else {
+          return null;
+      }
+  }
+  async function prepareRouter(lang: string) {
+      // console.log($activeRoute.fragments.pop().node);
+      return createRouter({
+          routes: routes,
+          urlRewrite: {
+              toInternal: (url) => {
+                  const paths = url.split("/");
+                  paths.shift();
+                  const fileName = paths[paths.length-1]
+                  if (![".en", ".ar", ".kd"].includes(fileName)) {
+                      paths[paths.length-1] = `${fileName}.${lang}`;
+                      if (findRoute(routes.children, paths) !== null){
+                          return url.split('/').slice(0, url.split('/').length-1).join("/") + `/${fileName}.${lang}`;
+                      }
+                  }
+                  return url;
+              },
+              toExternal: url => {
+                  return url;
+              }
+          }
+      });
+  }
 
   setupI18n();
   $: { document.dir = $dir; refresh_spaces.refresh(); }
@@ -49,7 +88,9 @@
 
 <div id="routify-app">
   <SvelteToast {options} />
-  <Router {router} />
+  {#await prepareRouter($locale) then router}
+    <Router {router} />
+  {/await}
 </div>
 
 <style>
