@@ -18,6 +18,7 @@ from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
+from utils.redis_services import RedisServices
 from utils.spaces import initialize_spaces
 from fastapi import Depends, FastAPI, Request, Response, status
 from utils.logger import logging_schema
@@ -40,7 +41,6 @@ from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info
 
-from utils.redis_services import RedisServices
 from utils.internal_error_code import InternalErrorCode
 
 @asynccontextmanager
@@ -65,9 +65,11 @@ async def lifespan(app: FastAPI):
     await access_control.load_permissions_and_roles()
 
     yield
-    logger.info("Application shutting down")
+    
     await RedisServices.POOL.aclose()
     await RedisServices.POOL.disconnect(True)
+    
+    logger.info("Application shutting down")
     print('{"stage":"shutting down"}')
 
 
@@ -157,6 +159,7 @@ app.add_middleware(CustomRequestMiddleware)
 @app.middleware("http")
 async def middle(request: Request, call_next):
     """Wrapper function to manage errors and logging"""
+    # print(f"\n\n _available_connections: {len(RedisServices.POOL._available_connections)}\n_in_use_connections: {len(RedisServices._RedisServices__POOL._in_use_connections)}\n\n")
     if request.url._url.endswith("/docs") or request.url._url.endswith("openapi.json"):
         return await call_next(request)
 

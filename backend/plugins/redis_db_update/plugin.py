@@ -10,6 +10,7 @@ from utils.redis_services import RedisServices
 from fastapi.logger import logger
 from create_index import main as reload_redis
 
+
 class Plugin(PluginBase):
     async def hook(self, data: Event):
         self.data = data
@@ -23,7 +24,10 @@ class Plugin(PluginBase):
             return
 
         spaces = await get_spaces()
-        if not Space.model_validate_json(spaces[data.space_name]).indexing_enabled:
+        if (
+            data.space_name not in spaces
+            or not Space.model_validate_json(spaces[data.space_name]).indexing_enabled
+        ):
             return
 
         class_type = getattr(
@@ -35,13 +39,13 @@ class Plugin(PluginBase):
             return
 
         async with RedisServices() as redis_services:
-            if(
-                data.resource_type == ResourceType.folder 
-                and data.action_type in [ActionType.delete, ActionType.move]
-            ):
+            if data.resource_type == ResourceType.folder and data.action_type in [
+                ActionType.delete,
+                ActionType.move,
+            ]:
                 await reload_redis(for_space=data.space_name)
                 return
-            
+
             if data.action_type == ActionType.delete:
                 doc_id = redis_services.generate_doc_id(
                     data.space_name,
@@ -63,9 +67,11 @@ class Plugin(PluginBase):
                 await redis_services.delete_doc(
                     data.space_name,
                     data.branch_name,
-                    meta_doc.get("payload", {}).get("schema_shortname", "meta")
-                    if meta_doc
-                    else "meta",
+                    (
+                        meta_doc.get("payload", {}).get("schema_shortname", "meta")
+                        if meta_doc
+                        else "meta"
+                    ),
                     data.shortname,
                     data.subpath,
                 )
@@ -164,10 +170,12 @@ class Plugin(PluginBase):
             if meta_doc is None:
                 raise Exception("Meta doc not found")
 
-            payload_doc = await redis_services.get_doc_by_id(
-                meta_doc.get("payload_doc_id", "")
-            )
-            payload = {k: v for k, v in payload_doc.items() if k not in meta_doc}
+            payload = {}
+            if meta_doc.get("payload_doc_id"):
+                payload_doc = await redis_services.get_doc_by_id(
+                    meta_doc["payload_doc_id"]
+                )
+                payload = {k: v for k, v in payload_doc.items() if k not in meta_doc}
 
             # generate the payload string
             meta_doc["payload_string"] = await generate_payload_string(
