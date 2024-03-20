@@ -39,6 +39,7 @@
   export let sort_by: any = null;
   export let sort_order: any = null;
   export let is_clickable = true;
+  export let canDelete = false;
 
   if (columns !== null && folderColumns !== null){
       throw new Error('columns and folderColumns cannot co-exist!');
@@ -359,7 +360,9 @@
         <table class="table table-striped table-sm mt-2">
           <thead>
             <tr>
-              <th></th>
+              {#if canDelete}
+                <th></th>
+              {/if}
               {#each Object.keys(columns) as col}
                 <th>
                   <Sort bind:propDatatable={objectDatatable} propColumn={col}>{columns[col].title}</Sort>
@@ -370,7 +373,9 @@
           <tbody>
             {#each objectDatatable.arrayRawData as row, index}
               <tr>
-                <td style="cursor: pointer;"><Input type="checkbox" on:change={handleBulk} name={index} /></td>
+                {#if canDelete}
+                  <td style="cursor: pointer;"><Input type="checkbox" on:change={handleBulk} name={index} /></td>
+                {/if}
                 {#each Object.keys(columns) as col}
                   <!-- svelte-ignore a11y-click-events-have-key-events -->
                   <td
