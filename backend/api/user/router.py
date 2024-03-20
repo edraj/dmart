@@ -210,8 +210,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     try:
         if request.invitation:
             async with RedisServices() as redis_services:
-                # FIXME invitation_token = await redis_services.getdel(
-                invitation_token = await redis_services.get(
+                # FIXME invitation_token = await redis_services.getdel_key(
+                invitation_token = await redis_services.get_key(
                     f"users:login:invitation:{request.invitation}"
                 )
             if not invitation_token:
@@ -860,7 +860,7 @@ async def confirm_otp(
         key = f"middleware:otp:otps/{result['email']}"
 
     async with RedisServices() as redis_services:
-        code = await redis_services.get(key)
+        code = await redis_services.get_key(key)
         if not code:
             raise Exception(
                 status.HTTP_400_BAD_REQUEST,
@@ -896,7 +896,7 @@ async def confirm_otp(
             key = f"users:otp:confirmation/email/{user_request.email}"
             data.attributes["email"] = user_request.email
 
-        await redis_services.set(key, confirmation)
+        await redis_services.set_key(key, confirmation)
 
         response = await update_profile(data, shortname=user)
 
