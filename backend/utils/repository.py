@@ -1692,7 +1692,7 @@ async def get_entry_by_var(
 async def url_shortner(url: str) -> str:
     token_uuid = str(uuid4())[:8]
     async with RedisServices() as redis_services:
-        await redis_services.set(
+        await redis_services.set_key(
             f"short/{token_uuid}",
             url,
             ex=60 * 60 * 48,
@@ -1722,7 +1722,7 @@ async def store_user_invitation_token(user: core.User, channel: str) -> str | No
         settings.jwt_access_expires,
     )
     async with RedisServices() as redis_services:
-        await redis_services.set(
+        await redis_services.set_key(
             f"users:login:invitation:{invitation_token}",
             invitation_value
         )

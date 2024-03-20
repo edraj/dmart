@@ -62,9 +62,9 @@ class AccessControl:
         async with RedisServices() as redis_services:
             try:
                 # Check if index already exist
-                await redis_services.client.ft("user_permission").info()
+                await redis_services.ft("user_permission").info()
             except Exception:
-                await redis_services.client.ft("user_permission").create_index(
+                await redis_services.ft("user_permission").create_index(
                     fields=(TextField("name")),
                     definition=IndexDefinition(
                         prefix=["users_permissions"],
@@ -93,7 +93,7 @@ class AccessControl:
     async def delete_user_permissions_map_in_redis(self) -> None:
         async with RedisServices() as redis_services:
             search_query = Query("*").no_content()
-            docs: dict = await redis_services.client.\
+            docs: dict = await redis_services.\
                 ft("user_permission").\
                 search(search_query) # type: ignore
             if docs and len(docs.get("results", [])):
@@ -170,7 +170,8 @@ class AccessControl:
                 search_subpath,
                 action_type, 
                 resource_type, 
-                resource_achieved_conditions
+                resource_achieved_conditions,
+                record_attributes
             )
             if global_access:
                 return True
@@ -208,7 +209,8 @@ class AccessControl:
         search_subpath: str,
         action_type: ActionType, 
         resource_type: str, 
-        resource_achieved_conditions: set
+        resource_achieved_conditions: set,
+        record_attributes: dict
     ) -> bool:
         """
         check if has access to global subpath by replacing the following
@@ -249,6 +251,12 @@ class AccessControl:
                 set(user_permissions[permission_key]["conditions"]),
                 set(resource_achieved_conditions),
                 action_type,
+            )
+            and self.check_access_restriction(
+                user_permissions[permission_key]["restricted_fields"],
+                user_permissions[permission_key]["allowed_fields_values"],
+                action_type,
+                record_attributes
             )
         ):
             return True
