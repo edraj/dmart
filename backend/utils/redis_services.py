@@ -26,13 +26,13 @@ from fastapi.logger import logger
 
 class RedisServices(Redis):
 
-    __POOL = BlockingConnectionPool(
+    POOL = BlockingConnectionPool(
         host=settings.redis_host,
         port=settings.redis_port,
         password=settings.redis_password,
         decode_responses=True,
         protocol=3,
-        max_connections=20,
+        max_connections=settings.redis_pool_max_connections,
     )
 
     META_SCHEMA = (
@@ -240,7 +240,7 @@ class RedisServices(Redis):
                 )
             )
         else:
-            super().__init__(connection_pool=self.__POOL, decode_responses=True)
+            super().__init__(connection_pool=self.POOL, decode_responses=True)
 
     async def create_index(
         self,
@@ -995,15 +995,17 @@ class RedisServices(Redis):
 
         return query_string or "*"
 
-    async def get_doc_by_id(self, doc_id: str) -> dict:
+    async def get_doc_by_id(self, doc_id: str) -> Any:
         try:
-            x = self.json().get(name=doc_id) or {}
+            x = self.json().get(name=doc_id)
             if x and isinstance(x, Awaitable):
                 value = await x
                 if isinstance(value, dict):
                     return value
-                # else:
-                #    raise Exception(f"Not dict {value=}")
+                if isinstance(value, str):
+                    return json.loads(value)
+                else:
+                   raise Exception(f"Not json dict at id: {doc_id}. data: {value=}")
             else:
                 raise Exception(f"Not awaitable {x=}")
         except Exception as e:
