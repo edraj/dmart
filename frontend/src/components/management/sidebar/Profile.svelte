@@ -8,13 +8,14 @@
 </script>
 
 {#await get_profile()}
-  <h3> Loading profile </h3>
+  <ListGroupItem><h3> Loading profile </h3></ListGroupItem>
 {:then profile_data}
   {#if profile_data.records[0].attributes.displayname}
-    <strong>Displayname</strong> {profile_data.records[0].attributes.displayname.en}
-    <hr />
-  {/if} 
-  <strong> Notifications / Inbox </strong>
+    <ListGroupItem class="borderless p-0 m-0"><strong>Displayname</strong></ListGroupItem>
+    <ListGroupItem class="borderless p-0 m-0">{profile_data.records[0].attributes.displayname.en}</ListGroupItem>
+    <ListGroupItem class="borderless p-0 m-0"><hr /></ListGroupItem>
+  {/if}
+  <ListGroupItem class="borderless p-0 m-0"><strong> Notifications / Inbox </strong></ListGroupItem>
   <ListGroupItem class="ps-2 pe-0 py-0">
     <!--Folder folder={{subpath:`/people/${profile_data.records[0].shortname}`, resource_type: ResourceType.folder, shortname:'notifications', attributes:{}}} space_name="personal" /-->
     {#await get_children("personal", `/people/${profile_data.records[0].shortname}`, 10, 0, [ResourceType.folder])}
@@ -28,12 +29,17 @@
     {/await}
   </ListGroupItem>
     <br/>
-    <strong>Roles </strong>
+    <ListGroupItem class="borderless p-0 m-0"><strong>Roles </strong></ListGroupItem>
     <ListGroup flush>
       {#each profile_data.records[0].attributes.roles as role}
         <ListGroupItem disabled >{role}</ListGroupItem>
       {/each}
     </ListGroup>
+  <style>
+      .borderless {
+          border: none;
+      }
+  </style>
 {:catch error}
 	<p style="color: red">{error.message}</p>
 {/await}

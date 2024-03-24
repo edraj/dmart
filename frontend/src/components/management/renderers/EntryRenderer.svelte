@@ -29,7 +29,6 @@
     ModalBody,
     ModalFooter,
     ModalHeader,
-    Nav,
     Row,
     TabContent,
     TabPane,
@@ -86,6 +85,8 @@
   import RelationshipForm from "@/components/management/renderers/Forms/RelationshipForm.svelte";
   import {mangle} from "marked-mangle";
   import {gfmHeadingId} from "marked-gfm-heading-id";
+  import {user} from "@/stores/user";
+  import ACLForm from "@/components/management/renderers/Forms/ACLForm.svelte";
 
 
   marked.use(mangle());
@@ -335,6 +336,41 @@
       );
     }
     } catch (error) {}
+  }
+
+  let aclContent = entry.acl ?? [];
+  async function handleSaveACL(e: Event) {
+      e.preventDefault();
+      const _aclContent = aclContent.map((acl: any)=>{
+          return {
+              user_shortname: acl.user_shortname,
+              allowed_actions: acl.allowed_actions,
+          }
+      });
+      const response = await request({
+          space_name: space_name,
+          request_type: RequestType.updateACL,
+          records: [
+              {
+                  resource_type: resource_type,
+                  shortname: entry.shortname,
+                  subpath,
+                  attributes: {
+                      acl: _aclContent
+                  },
+              },
+          ],
+      });
+
+      if (response.status == Status.success) {
+          showToast(Level.info);
+          oldJSEMeta = structuredClone(jseMeta);
+
+          window.location.reload();
+      } else {
+          errorContent = response;
+          showToast(Level.warn);
+      }
   }
 
   async function handleSave(e: Event) {
@@ -1356,7 +1392,7 @@
     class="pt-3 pb-2 px-2"
     transition:fade={{ delay: 25 }}
   >
-    <Nav class="w-100">
+    <div class="d-flex justify-content-end w-100">
       <BreadCrumbLite
         {space_name}
         {subpath}
@@ -1390,6 +1426,19 @@
         >
           <Icon name="binoculars" />
         </Button>
+        {#if entry.owner_shortname === $user.shortname}
+          <Button
+            outline
+            color="success"
+            size="sm"
+            class="justify-content-center text-center py-0 px-1"
+            active={"acl" === tab_option}
+            title={'ACL'}
+            on:click={() => (tab_option = "acl")}
+          >
+            <Icon name="key" />
+          </Button>
+        {/if}
         {#if canUpdate}
           <Button
             outline
@@ -1583,7 +1632,7 @@
         {/if}
 
       </ButtonGroup>
-    </Nav>
+    </div>
   </div>
 
   <div
@@ -1801,6 +1850,16 @@
         {/if}
       {/key}
     </div>
+    {#if entry.owner_shortname === $user.shortname}
+      <div class="tab-pane" class:active={tab_option === "acl"}>
+        <div class="d-flex justify-content-end my-2 mx-5 flex-row">
+          <div><Button on:click={handleSaveACL}>Save</Button></div>
+        </div>
+        <div class="px-5">
+          <ACLForm bind:content={aclContent} />
+        </div>
+      </div>
+    {/if}
     <div class="tab-pane" class:active={tab_option === "relationships"}>
       <div class="d-flex justify-content-end my-2 mx-5 flex-row">
         <div><Button on:click={handleSave}>Save</Button></div>
