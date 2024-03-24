@@ -11,6 +11,8 @@ types-aiofiles
 types-ldap3
 types-jsonschema
 
+locust
+
 # types-ujson
 # types-pyOpenSSL
 # types-requests
