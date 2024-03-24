@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, jsonify
 import psutil
 
 
-stats = {}
+stats : dict= {}
 min_cpu = 999999999
 max_cpu = 0
 min_memory = 999999999
