@@ -52,10 +52,19 @@ export default defineConfig({
         {
           src: path.resolve(__dirname, './assets') + '/[!.]*',
           dest: 'assets'
+        },
+        {
+          src: path.resolve(__dirname, './node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff'),
+          dest: 'assets/fonts'
+        },
+        {
+          src: path.resolve(__dirname, './node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff2'),
+          dest: 'assets/fonts'
         }
       ]
     }),
     routify({
+      "render.ssr": { enable: false /*production*/ },
       ssr: { enable: false /*production*/ },
     }),
     svelte({
@@ -78,7 +87,8 @@ export default defineConfig({
     }),
   ],
   build: {
-    chunkSizeWarningLimit: 900,
+    chunkSizeWarningLimit: 512,
+    cssMinify: 'lightningcss',
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -94,7 +104,9 @@ export default defineConfig({
   //   environment: "jsdom",
   //   globals: true,
   // },
-  ssr: {
-    noExternal: ["@popperjs/core"],
+  render:{
+    ssr: {
+      noExternal: ["@popperjs/core"],
+    }
   },
 });

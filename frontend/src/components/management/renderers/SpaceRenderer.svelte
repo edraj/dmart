@@ -296,7 +296,7 @@
 </Modal>
 
 <div bind:clientHeight={header_height} class="pt-3 pb-2 px-2">
-  <Nav class="w-100">
+  <div class="d-flex justify-content-end w-100">
     <ButtonGroup size="sm" class="align-items-center">
       <span class="font-monospace">
         <small>
@@ -383,7 +383,7 @@
     >
       <Icon name="folder-plus" />
     </Button>
-  </Nav>
+  </div>
 </div>
 <div
   class="px-1 tab-content"
