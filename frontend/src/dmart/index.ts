@@ -227,6 +227,7 @@ export type QueryRequest = {
 export enum RequestType {
   create = "create",
   update = "update",
+  updateACL = "update_acl",
   replace = "replace",
   delete = "delete",
   move = "move",
@@ -333,6 +334,7 @@ export type ResponseEntry = MetaExtended & {
   payload?: Payload;
   relationships?: any;
   attachments?: Object;
+  acl?: [Object];
   workflow_shortname?: string;
   state?: string;
 };
