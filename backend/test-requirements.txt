@@ -12,6 +12,7 @@ types-ldap3
 types-jsonschema
 
 locust
+types-psutil
 
 # types-ujson
 # types-pyOpenSSL
