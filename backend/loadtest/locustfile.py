@@ -1,13 +1,9 @@
 import os
-from time import time
 from html import escape
-from locust import HttpUser, TaskSet, task, web, between, events
-from flask import Blueprint, render_template, jsonify, make_response
+from locust import events
+from flask import Blueprint, render_template, jsonify
 import psutil
-import requests
 
-from locustfiles.public_test import WebsitePublic
-from locustfiles.managed_test import WebsiteUser
 
 stats = {}
 min_cpu = 999999999
@@ -90,7 +86,7 @@ def on_request(request_type, name, response_time, response_length, exception, co
     if cpu_percentage < min_cpu:
         min_cpu = cpu_percentage
 
-    root_request = requests.get('http://0.0.0.0:8282/').json()
+    # root_request = requests.get('http://0.0.0.0:8282/').json()
     # memory_precentage = root_request["memory_precentage"]
     # memory_used = root_request["memory_usage"]
     # if memory_precentage > max_memory:

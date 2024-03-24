@@ -65,7 +65,7 @@ class WebsiteUser(HttpUser):
             "records": [
                 {
                     "resource_type": "content",
-                    "subpath": f"content",
+                    "subpath": "content",
                     "shortname": "auto",
                     "attributes": {
                         "is_active": True,
@@ -157,7 +157,7 @@ class WebsiteUser(HttpUser):
             "records": [
                 {
                     "resource_type": "content",
-                    "subpath": f"content",
+                    "subpath": "content",
                     "shortname": f"{stamp}",
                     "attributes": {
                         "payload": {

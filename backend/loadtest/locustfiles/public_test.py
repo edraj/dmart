@@ -1,9 +1,4 @@
-import time
 from locust import HttpUser, between, task
-import os
-from glob import glob
-from shutil import rmtree
-from re import search
 
 SPACE_NAME = "applications"
 
