@@ -938,7 +938,8 @@ async def user_reset(
         action_type=ActionType.update,
         resource_is_active=user.is_active,
         resource_owner_shortname=user.owner_shortname,
-        resource_owner_group=user.owner_group_shortname
+        resource_owner_group=user.owner_group_shortname,
+        entry_shortname=user.shortname,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
