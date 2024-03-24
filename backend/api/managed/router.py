@@ -1046,7 +1046,7 @@ async def serve_request(
 
         case api.RequestType.update_acl:
             for record in request.records:
-                if not record.attributes.get("acl"):
+                if record.attributes.get("acl", None) is None:
                     raise api.Exception(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
