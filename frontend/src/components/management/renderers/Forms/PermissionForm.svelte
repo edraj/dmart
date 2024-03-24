@@ -237,7 +237,7 @@
             onclick={() => removeResourceTypes(index)}
             style={"font-size: 1.5rem;"}
           />
-          {#if index == resource_types.length - 1}
+          {#if index === resource_types.length - 1}
             <Icon
               class="mx-1"
               name="plus-square-fill"
@@ -267,7 +267,7 @@
             onclick={() => removeActions(index)}
             style={"font-size: 1.5rem;"}
           />
-          {#if index == actions.length - 1}
+          {#if index === actions.length - 1}
             <Icon
               class="mx-1"
               name="plus-square-fill"
@@ -297,7 +297,7 @@
             onclick={() => removeConditions(index)}
             style={"font-size: 1.5rem;"}
           />
-          {#if index == conditions.length - 1}
+          {#if index === conditions.length - 1}
             <Icon
               class="mx-1"
               name="plus-square-fill"
@@ -327,7 +327,7 @@
             onclick={() => removeRestrictedFields(index)}
             style={"font-size: 1.5rem;"}
           />
-          {#if index == restricted_fields.length - 1}
+          {#if index === restricted_fields.length - 1}
             <Icon
               class="mx-1"
               name="plus-square-fill"
