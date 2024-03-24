@@ -4,7 +4,6 @@ import os
 from glob import glob
 from shutil import rmtree
 import subprocess
-import sys
 
 SPACE_NAME = "applications"
 BASE_PATH = os.path.dirname(os.getcwd())
@@ -15,7 +14,7 @@ if not os.path.exists(LOGIN_CREDS) or not os.path.isfile(LOGIN_CREDS) or not pip
 
 
 SHORTNAME = "dmart"
-PASSWORD = pipe.stdout.read().decode().strip()
+PASSWORD = pipe.stdout.read().decode().strip() if pipe.stdout else ""
 
 
 class WebsiteUser(HttpUser):
