@@ -5,6 +5,7 @@ import os
 import re
 import string
 import random
+from typing import Any
 from venv import logger
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
@@ -90,11 +91,11 @@ class Settings(BaseSettings):
                     self.channels = json.load(file)
                 
                 # Compile the patterns for better performance
-                for channel, config in self.channels.items():
-                    compiled_patterns = []
-                    for pattern in config.get("allowed_api_patterns", []):
-                        compiled_patterns = re.compile(pattern)
-                    self.channels[channel]["allowed_api_patterns"] = compiled_patterns
+                for idx, channel in enumerate(self.channels):
+                    compiled_patterns: list[re.Pattern[Any]] = []
+                    for pattern in channel.get("allowed_api_patterns", []):
+                        compiled_patterns.append(re.compile(pattern))
+                    self.channels[idx]["allowed_api_patterns"] = compiled_patterns
                     
             except Exception as e:
                 logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")    

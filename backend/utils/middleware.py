@@ -1,4 +1,5 @@
 from contextvars import ContextVar
+from typing import Any
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.requests import Request
 from utils.internal_error_code import InternalErrorCode
@@ -63,13 +64,13 @@ class ChannelMiddleware:
                 ),
             )
         
-        request_channel_name: str | None = None
-        for channel, config in settings.channels:
-            if channel_key in config.get("keys", []):
-                request_channel_name = channel
+        request_channel: dict[str, Any] | None = None
+        for channel in settings.channels:
+            if channel_key in channel.get("keys", []):
+                request_channel = channel
                 break
             
-        if not request_channel_name:
+        if not request_channel:
             raise api.Exception(
                 status_code=status.HTTP_403_FORBIDDEN,
                 error=api.Error(
@@ -77,7 +78,7 @@ class ChannelMiddleware:
                 ),
             )
             
-        for pattern in settings.channels[request_channel_name]["allowed_api_patterns"]:
+        for pattern in request_channel["allowed_api_patterns"]:
             if pattern.search(request.scope['path']):
                 await self.app(scope, receive, send)
                 return
@@ -88,8 +89,5 @@ class ChannelMiddleware:
                 type="channel_auth", code=InternalErrorCode.NOT_ALLOWED, message="Requested method or path is forbidden [3]"
             ),
         )
-                
-            
-        
-        print(request.scope['path'])
+
             
