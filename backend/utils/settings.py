@@ -1,8 +1,11 @@
 """ Application Settings """
 
+import json
 import os
+import re
 import string
 import random
+from venv import logger
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
@@ -71,10 +74,33 @@ class Settings(BaseSettings):
 
     facebook_client_id: str = ""
     facebook_client_secret: str = ""
+    
+    enable_channel_auth: bool = False
+    channels: dict = {}
 
     model_config = SettingsConfigDict(
         env_file=os.getenv("BACKEND_ENV", "config.env"), env_file_encoding="utf-8"
     )
+    
+    def load_config_files(self):
+        channels_config_file = os.path.join(os.path.dirname(__file__), '../config/channels.json')
+        if os.path.exists(channels_config_file):
+            try:
+                with open(channels_config_file, 'r') as file:
+                    self.channels = json.load(file)
+                
+                # Compile the patterns for better performance
+                for channel, config in self.channels.items():
+                    compiled_patterns = []
+                    for pattern in config.get("allowed_api_patterns", []):
+                        compiled_patterns = re.compile(pattern)
+                    self.channels[channel]["allowed_api_patterns"] = compiled_patterns
+                    
+            except Exception as e:
+                logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")    
+        
+        
 
 
 settings = Settings()
+settings.load_config_files()
