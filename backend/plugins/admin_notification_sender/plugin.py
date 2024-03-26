@@ -4,7 +4,7 @@ from models.core import Notification, NotificationData, PluginBase, Event, Trans
 from utils.helpers import branch_path, camel_case
 from utils.notification import NotificationManager
 from utils.redis_services import RedisServices
-from utils.repository import _save_model, get_entry_attachments
+from utils.repository import internal_save_model, get_entry_attachments
 from utils.settings import settings
 from fastapi.logger import logger
 from utils.db import load, load_resource_payload, save_payload_from_json
@@ -22,7 +22,7 @@ class Plugin(PluginBase):
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
             logger.warning(
-                f"data.shortname is None and str is required at system_notification_sender"
+                "data.shortname is None and str is required at system_notification_sender"
             )
             return
 
@@ -51,7 +51,7 @@ class Plugin(PluginBase):
             return
 
         # Get msisdns users
-        async with await RedisServices() as redis:
+        async with RedisServices() as redis:
             receivers = await redis.search(
                 space_name=settings.management_space,
                 branch_name=settings.management_space_branch,
@@ -65,7 +65,7 @@ class Plugin(PluginBase):
 
         receivers_shortnames = set()
         for receiver in receivers["data"]:
-            receivers_shortnames.add(json.loads(receiver.json)["shortname"])
+            receivers_shortnames.add(json.loads(receiver)["shortname"])
 
         # await send_notification(
         #     notification_dict=notification_dict,
@@ -74,10 +74,9 @@ class Plugin(PluginBase):
         notification_manager = NotificationManager()
         formatted_req = await self.prepare_request(notification_dict)
         for receiver in set(receivers_shortnames):
-
             if not formatted_req["push_only"]:
                 notification_obj = await Notification.from_request(notification_dict)
-                await _save_model(
+                await internal_save_model(
                     "personal",
                     f"people/{receiver}/notifications",
                     notification_obj,
@@ -104,11 +103,12 @@ class Plugin(PluginBase):
             branch_name=data.branch_name,
         )
 
-    async def prepare_request(self, notification_dict):
+    async def prepare_request(self, notification_dict) -> dict:
         # Get Notification Request Images
         attachments_path = (
             settings.spaces_folder
-            / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
+            / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}/"
+            f"{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
         notification_attachments = await get_entry_attachments(
             subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
@@ -118,7 +118,7 @@ class Plugin(PluginBase):
         notification_images = {
             "en": notification_attachments.get("media", {}).get("en"),
             "ar": notification_attachments.get("media", {}).get("ar"),
-            "kd": notification_attachments.get("media", {}).get("kd"),
+            "ku": notification_attachments.get("media", {}).get("ku"),
         }
 
         return {

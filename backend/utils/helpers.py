@@ -1,14 +1,22 @@
 from copy import deepcopy
+import csv
 from datetime import datetime
+from pathlib import Path
 from re import sub as re_sub
-from jsonschema import RefResolver
+import aiofiles
+from jsonschema.validators import _RefResolver as RefResolver  # type: ignore
+
+# TBD from referencing import Registry, Resource
+# TBD import referencing.jsonschema
 from collections.abc import MutableMapping
 from models.enums import Language
 from utils.settings import settings
 from typing import Any
+from languages.loader import languages
+
 
 def flatten_all(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict:
-    items = []
+    items: list = []
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
         if isinstance(v, MutableMapping):
@@ -21,7 +29,7 @@ def flatten_all(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict
 
 
 def flatten_dict(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict:
-    items = []
+    items: list = []
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
         if isinstance(v, MutableMapping):
@@ -30,9 +38,10 @@ def flatten_dict(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dic
             items.append((new_key, v))
     return dict(items)
 
-def flatten_list(l: list, key: str | None = None):
+
+def flatten_list(ll: list, key: str | None = None):
     flattened = {}
-    for idx, item in enumerate(l):
+    for idx, item in enumerate(ll):
         flattened[f"{key}.{idx}" if key else f"{idx}"] = item
     return flattened
 
@@ -43,8 +52,8 @@ def arr_remove_common(arr1: list, arr2: list):
             arr1.remove(i1)
             arr2.remove(i1)
 
-    return arr1, arr2        
-    
+    return arr1, arr2
+
 
 def flatten_list_of_dicts_in_dict(d: dict) -> dict:
     """
@@ -72,8 +81,12 @@ def flatten_list_of_dicts_in_dict(d: dict) -> dict:
     """
     flattened_d = deepcopy(d)
     for parent_key, list_of_dict in d.items():
-        if type(list_of_dict) == list and len(list_of_dict) > 0 and type(list_of_dict[0]) == dict:
-            flattened = {}
+        if (
+            isinstance(list_of_dict, list)
+            and len(list_of_dict) > 0
+            and isinstance(list_of_dict[0], dict)
+        ):
+            flattened: dict = {}
             for dict_item in list_of_dict:
                 for key, value in dict_item.items():
                     flattened.setdefault(f"{parent_key}.{key}", [])
@@ -82,7 +95,6 @@ def flatten_list_of_dicts_in_dict(d: dict) -> dict:
             flattened_d.update(flattened)
 
     return flattened_d
-    
 
 
 def resolve_schema_references(schema: dict, refs: dict = {}):
@@ -149,21 +161,21 @@ def snake_case(camel_str):
     return re_sub(r"(?<!^)(?=[A-Z])", "_", camel_str).lower()
 
 
-def divide_chunks(l, n):
+def divide_chunks(lll, n):
     """
-    Yield successive n-sized chunks from l.
+    Yield successive n-sized chunks from lll.
     """
 
     # looping till length l
-    for i in range(0, len(l), n):
-        yield l[i : i + n]
+    for i in range(0, len(lll), n):
+        yield lll[i : i + n]
 
 
 def remove_none(target: dict | list):
     if isinstance(target, dict):
         new_d: dict = {}
         for key, val in target.items():
-            if val == None:
+            if val is None:
                 continue
 
             if isinstance(val, dict) or isinstance(val, list):
@@ -175,7 +187,7 @@ def remove_none(target: dict | list):
     else:
         new_l: list = []
         for val in target:
-            if val == None:
+            if val is None:
                 continue
 
             if isinstance(val, dict) or isinstance(val, list):
@@ -187,30 +199,26 @@ def remove_none(target: dict | list):
 
 
 def alter_dict_keys(
-    target: dict, 
-    include: list | None = None, 
-    exclude: list | None = None, 
-    parents: str = ""
+    target: dict,
+    include: list | None = None,
+    exclude: list | None = None,
+    parents: str = "",
 ):
     result: dict = {}
     for k in list(target):
         search_for = f"{parents}.{k}" if parents else f"{k}"
-        if type(target[k]) == dict:
+        if isinstance(target[k], dict):
             if include and search_for in include:
                 result[k] = target[k]
                 continue
             if exclude and search_for in exclude:
                 continue
             result[k] = alter_dict_keys(
-                target[k],
-                include,
-                exclude,
-                search_for if parents else f"{k}"
+                target[k], include, exclude, search_for if parents else f"{k}"
             )
 
-        elif(
-            (include and search_for not in include)
-            or (exclude and search_for in exclude)
+        elif (include and search_for not in include) or (
+            exclude and search_for in exclude
         ):
             continue
 
@@ -219,7 +227,7 @@ def alter_dict_keys(
 
     return result
 
-        
+
 def branch_path(branch_name: str | None = settings.default_branch) -> str:
     return (
         (f"branches/{branch_name}") if branch_name != settings.default_branch else "./"
@@ -229,7 +237,7 @@ def branch_path(branch_name: str | None = settings.default_branch) -> str:
 def json_flater(data: dict[str, Any]) -> dict[str, Any]:
     flatened_data = {}
     for k, v in data.items():
-        if type(v) is dict:
+        if isinstance(v, dict):
             __flatened_data = json_flater(v)
             _flatened_data = {
                 key: val for key, val in __flatened_data.items()
@@ -243,14 +251,15 @@ def json_flater(data: dict[str, Any]) -> dict[str, Any]:
             flatened_data = {**flatened_data, k: v}
     return flatened_data
 
+
 def lang_code(lang: Language):
     match lang:
         case Language.ar:
             return "ar"
         case Language.en:
             return "en"
-        case Language.kd:
-            return "kd"
+        case Language.ku:
+            return "ku"
         case Language.fr:
             return "fr"
         case Language.tr:
@@ -260,16 +269,22 @@ def lang_code(lang: Language):
 def replace_message_vars(message: str, dest_data: dict, locale: str):
     dest_data_dict = flatten_dict(dest_data)
     for field, value in dest_data_dict.items():
-        if type(value) == dict and locale in value:
+        if isinstance(value, dict) and locale in value:
             value = value[locale]
         if field in ["created_at", "updated_at"]:
             message = message.replace(
-                f"{{{field}}}", datetime.strptime(str(value), "%Y-%m-%d %H:%M:%S.%f").strftime("%Y-%m-%d %H:%M:%S")
+                f"{{{field}}}",
+                datetime.strptime(str(value), "%Y-%m-%d %H:%M:%S.%f").strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
             )
         else:
-            message = message.replace(f"{{{field}}}", str(value))
+            message = message.replace(
+                f"{{{field}}}", languages[Language[locale]].get(str(value), str(value))
+            )
 
     return re_sub(r"\{\w*.*\}", "", message)
+
 
 def str_to_datetime(str: str, format: str = "%Y-%m-%dT%H:%M:%S.%f"):
     return datetime.strptime(str, format)
@@ -290,5 +305,19 @@ def pp(*args, **kwargs):
 
     print_str += "\n\n_____________________END________________________\n\n"
     print(print_str)
-        
-    
+
+
+async def csv_file_to_json(csv_file_path: Path) -> list[dict[str, Any]]:
+    data: list[dict[str, Any]] = []
+
+    async with aiofiles.open(
+        csv_file_path, mode="r", encoding="utf-8", newline=""
+    ) as csvf:
+        contents = await csvf.readlines()
+        csvReader = csv.DictReader(contents)
+
+        for row in csvReader:
+            data.append(row)
+
+    return data
+

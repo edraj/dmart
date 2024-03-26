@@ -1,0 +1,25 @@
+{
+  "uuid": "00ac2c58-35d3-4996-87d7-4f511df15b77",
+  "shortname": "view_users",
+  "is_active": true,
+  "displayname": {"en":"View users", "ar":"View users", "ku":"View users"},
+  "tags": [],
+  "created_at": "2022-10-06T10:21:33.912450",
+  "updated_at": "2022-10-06T10:21:33.912459",
+  "owner_shortname": "dmart",
+  "subpaths": {
+    "management": [
+      "users"
+    ]
+  },
+  "resource_types": [
+    "content",
+    "ticket",
+    "folder"
+  ],
+  "actions": [
+    "view",
+    "query"
+  ],
+  "conditions": []
+}

@@ -2,4 +2,7 @@ rich
 typer
 prompt_toolkit
 pydantic
-pydantic[email,dotenv]
+pydantic[email]
+prompt_toolkit
+pydantic_settings
+requests

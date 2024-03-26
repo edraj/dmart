@@ -1,0 +1,41 @@
+# Maintainer: Kefah T. Issa <kefah.issa@gmail.com>
+pkgname=redisjson
+pkgver=2.6.6
+pkgrel=0
+pkgdesc="RedisJSON plugin for Redis"
+url="https://redis.io/docs/stack/json/"
+arch="all"
+license="RSAL (REDIS SOURCE AVAILABLE LICENSE)"
+pkgusers="redis"
+pkggroups="redis"
+makedepends="redis"
+#"coreutils gcc linux-headers make musl-dev openssl-dev make cmake cago rust clang-libs"
+install="$pkgname.post-install"
+
+prepare() {
+	default_prepare
+	echo "Package dir: $pkgdir"
+	echo "Source dir: $srcdir"
+	echo "Build dir: $builddir"
+	git clone -b "v$pkgver" https://github.com/RedisJSON/RedisJSON "$srcdir"
+
+}
+
+build() {
+	cd "$srcdir"
+	# make all -j 4
+	cargo build --release
+}
+
+check() {
+	echo "smoke test"
+}
+
+package() {
+	mkdir -p "$pkgdir"
+	cd "$pkgdir"
+	#install -D -m 755 "$srcdir"/bin/linux-x64-release/rejson.so usr/lib/redisjson.so
+	install -D -m 755 "$srcdir"/target/release/deps/librejson.so usr/lib/redisjson.so
+}
+
+

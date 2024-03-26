@@ -1,0 +1,8 @@
+{
+  "resource_type": "schema",
+  "subpath": "schema",
+  "shortname": "test_schema",
+  "attributes": {
+    "is_active": true
+  }
+}

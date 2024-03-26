@@ -1,12 +1,12 @@
 from re import sub as res_sub
 from uuid import uuid4
-from fastapi import APIRouter, Request, Path, status
-from fastapi import APIRouter, Path, Depends, status
-from models.enums import ContentType, ResourceType, TaskType
+from fastapi import APIRouter, Query, Request, Path, status, Depends
+from models.enums import AttachmentType, ContentType, ResourceType, TaskType
 import utils.db as db
 import models.api as api
 from utils.helpers import branch_path, camel_case
 from utils.custom_validations import validate_payload_with_schema
+from utils.internal_error_code import InternalErrorCode
 import utils.regex as regex
 import models.core as core
 from fastapi.responses import FileResponse
@@ -70,12 +70,13 @@ async def query_entries(query: api.Query) -> api.Response:
     response_model_exclude_none=True,
 )
 async def retrieve_entry_meta(
-    resource_type: core.ResourceType,
-    space_name: str = Path(..., regex=regex.SPACENAME),
-    subpath: str = Path(..., regex=regex.SUBPATH),
-    shortname: str = Path(..., regex=regex.SHORTNAME),
+    resource_type: ResourceType,
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    shortname: str = Path(..., pattern=regex.SHORTNAME),
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
+    filter_attachments_types: list = Query(default=[], examples=["media", "comment", "json"]),
     branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
 
@@ -94,7 +95,8 @@ async def retrieve_entry_meta(
         )
     )
 
-    resource_class = getattr(sys.modules["models.core"], camel_case(resource_type))
+    resource_class = getattr(
+        sys.modules["models.core"], camel_case(resource_type))
     meta = await db.load(
         space_name=space_name,
         subpath=subpath,
@@ -107,7 +109,7 @@ async def retrieve_entry_meta(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=221, message="Request object is not available"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not found"
             ),
         )
 
@@ -120,12 +122,13 @@ async def retrieve_entry_meta(
         resource_is_active=meta.is_active,
         resource_owner_shortname=meta.owner_shortname,
         resource_owner_group=meta.owner_group_shortname,
+        entry_shortname=meta.shortname,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [14]",
             ),
         )
@@ -140,16 +143,16 @@ async def retrieve_entry_meta(
             subpath=subpath,
             attachments_path=entry_path,
             branch_name=branch_name,
-            retrieve_json_payload=retrieve_json_payload
+            retrieve_json_payload=retrieve_json_payload,
+            filter_types=filter_attachments_types
         )
 
-
-    if (not retrieve_json_payload or 
-        not meta.payload or 
-        not meta.payload.body or 
-        type(meta.payload.body) != str or 
-        meta.payload.content_type != ContentType.json
-    ):
+    if (not retrieve_json_payload or
+            not meta.payload or
+            not meta.payload.body or
+            not isinstance(meta.payload.body, str) or
+            meta.payload.content_type != ContentType.json
+            ):
         # TODO
         # include locked before returning the dictionary
         return {
@@ -198,11 +201,11 @@ async def retrieve_entry_meta(
     response_model_exclude_none=True,
 )
 async def retrieve_entry_or_attachment_payload(
-    resource_type: core.ResourceType,
-    space_name: str = Path(..., regex=regex.SPACENAME),
-    subpath: str = Path(..., regex=regex.SUBPATH),
-    shortname: str = Path(..., regex=regex.SHORTNAME),
-    ext: str = Path(..., regex=regex.EXT),
+    resource_type: ResourceType,
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    shortname: str = Path(..., pattern=regex.SHORTNAME),
+    ext: str = Path(..., pattern=regex.EXT),
     branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
 
@@ -218,7 +221,8 @@ async def retrieve_entry_or_attachment_payload(
         )
     )
 
-    resource_class = getattr(sys.modules["models.core"], camel_case(resource_type))
+    resource_class = getattr(
+        sys.modules["models.core"], camel_case(resource_type))
     meta = await db.load(
         space_name=space_name,
         subpath=subpath,
@@ -235,7 +239,7 @@ async def retrieve_entry_or_attachment_payload(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=220, message="Request object is not available"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 
@@ -248,18 +252,20 @@ async def retrieve_entry_or_attachment_payload(
         resource_is_active=meta.is_active,
         resource_owner_shortname=meta.owner_shortname,
         resource_owner_group=meta.owner_group_shortname,
+        entry_shortname=meta.shortname,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [15]",
             ),
         )
     # TODO check security labels for pubblic access
     # assert meta.is_active
-    payload_path = db.payload_path(space_name, subpath, resource_class, branch_name)
+    payload_path = db.payload_path(
+        space_name, subpath, resource_class, branch_name)
 
     await plugin_manager.after_action(
         core.Event(
@@ -350,8 +356,8 @@ async def create_entry(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=401,
-                message="Not allowed schema_shortname",
+                code=InternalErrorCode.NOT_ALLOWED_LOCATION,
+                message="Selected location is not allowed",
             ),
         )
 
@@ -368,7 +374,7 @@ async def create_entry(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="request",
-                code=401,
+                code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [13]",
             ),
         )
@@ -430,8 +436,75 @@ async def create_entry(
     return api.Response(status=api.Status.success)
 
 
+@router.post("/attach/{space_name}")
+async def create_attachment(
+    space_name: str,
+    record: core.Record,
+    branch_name: str | None = settings.default_branch,
+):
+    if record.resource_type not in AttachmentType.__members__:
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="You don't have permission to this action [14]",
+            ),
+        )
+
+    if not await access_control.check_access(
+        user_shortname="anonymous",
+        space_name=space_name,
+        subpath=record.subpath,
+        resource_type=record.resource_type,
+        action_type=core.ActionType.create,
+        record_attributes=record.attributes,
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="You don't have permission to this action [15]",
+            ),
+        )
+
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=record.subpath,
+            action_type=core.ActionType.create,
+            resource_type=record.resource_type,
+            user_shortname="anonymous",
+        )
+    )
+
+    attachment_obj = core.Meta.from_record(
+        record=record, owner_shortname="anonymous"
+    )
+
+    await db.save(space_name, record.subpath, attachment_obj, branch_name)
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=record.subpath,
+            shortname=attachment_obj.shortname,
+            action_type=core.ActionType.create,
+            resource_type=record.resource_type,
+            user_shortname="anonymous",
+            attributes={}
+        )
+    )
+
+    return api.Response(status=api.Status.success)
+
+
 @router.post("/excute/{task_type}/{space_name}")
 async def excute(space_name: str, task_type: TaskType, record: core.Record):
+    task_type = task_type
     meta = await db.load(
         space_name=space_name,
         subpath=record.subpath,
@@ -443,13 +516,13 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
 
     if (
         meta.payload is None
-        or type(meta.payload.body) != str
+        or not isinstance(meta.payload.body, str)
         or not str(meta.payload.body).endswith(".json")
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=220, message="Request object is not available"
+                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
             ),
         )
 
@@ -462,7 +535,8 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
     )
 
     for param, value in record.attributes.items():
-        query_dict["search"] = query_dict["search"].replace(f"${param}", str(value))
+        query_dict["search"] = query_dict["search"].replace(
+            f"${param}", str(value))
 
     query_dict["search"] = res_sub(
         r"@\w*\:({|\()?\$\w*(}|\))?", "", query_dict["search"]
@@ -477,12 +551,13 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
     query_dict["subpath"] = query_dict["query_subpath"]
     query_dict.pop("query_subpath")
     filter_shortnames = record.attributes.get("filter_shortnames", [])
-    query_dict["filter_shortnames"] = filter_shortnames if isinstance(filter_shortnames, list) else []
+    query_dict["filter_shortnames"] = filter_shortnames if isinstance(
+        filter_shortnames, list) else []
 
     return await query_entries(api.Query(**query_dict))
 
 
-@router.get("/byuuid/{uuid}",response_model_exclude_none=True)
+@router.get("/byuuid/{uuid}", response_model_exclude_none=True)
 async def get_entry_by_uuid(
     uuid: str,
     retrieve_json_payload: bool = False,
@@ -496,7 +571,8 @@ async def get_entry_by_uuid(
         retrieve_attachments,
     )
 
-@router.get("/byslug/{slug}",response_model_exclude_none=True)
+
+@router.get("/byslug/{slug}", response_model_exclude_none=True)
 async def get_entry_by_slug(
     slug: str,
     retrieve_json_payload: bool = False,

@@ -1,13 +1,13 @@
 import sys
 import aiofiles
+from utils.middleware import get_request_data
 from models.core import ActionType, PluginBase, Event
-from models.enums import ContentType, RequestType, ResourceType
+from models.enums import ContentType, ResourceType
 from utils.db import load, load_resource_payload
 from models.core import Action, Locator, Meta
 from utils.helpers import branch_path, camel_case
 from utils.settings import settings
 from datetime import datetime
-from utils.db import load, load_resource_payload
 from fastapi.logger import logger
 
 
@@ -21,7 +21,7 @@ class Plugin(PluginBase):
             or not isinstance(data.resource_type, ResourceType)
             or not isinstance(data.attributes, dict)
         ):
-            logger.warning(f"invalid data at action_log")
+            logger.warning("invalid data at action_log")
             return
 
         class_type = getattr(
@@ -40,8 +40,8 @@ class Plugin(PluginBase):
                 user_shortname=data.user_shortname,
             )
 
-        action_attributes = None
-        if data.action_type == RequestType.create:
+        action_attributes = {}
+        if data.action_type == ActionType.create:
             payload = {}
             if(
                 entry.payload and 
@@ -59,6 +59,8 @@ class Plugin(PluginBase):
 
         elif data.action_type == ActionType.update:
             action_attributes = data.attributes.get("history_diff", {})
+
+        action_attributes={**action_attributes, **get_request_data()}
 
         event_obj = Action(
             resource=Locator(
@@ -85,7 +87,7 @@ class Plugin(PluginBase):
             / ".dm/events.jsonl"
         )
         file_content = (
-            f"\n{event_obj.json()}" if events_file_path.is_file() else event_obj.json()
+            f"\n{event_obj.model_dump_json()}" if events_file_path.is_file() else event_obj.model_dump_json()
         )
 
         async with aiofiles.open(events_file_path, "a") as events_file:
@@ -94,11 +96,11 @@ class Plugin(PluginBase):
     def generate_create_event_attributes(self, entry: Meta, attributes: dict):
         generated_attributes = {}
         for key, value in entry.__dict__.items():
-            if key not in Meta.__fields__:
+            if key not in Meta.model_fields:
                 generated_attributes[key] = value
 
         if entry.payload:
-            generated_attributes["payload"] = entry.payload.dict()
+            generated_attributes["payload"] = entry.payload.model_dump()
 
         if attributes:
             generated_attributes["payload"]["body"] = attributes

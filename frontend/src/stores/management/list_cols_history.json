@@ -1,0 +1,26 @@
+{
+  "owner_shortname": {
+    "path": "attributes.owner_shortname",
+    "title": "Owner shorname",
+    "type": "string",
+    "width": "15%"
+  },
+  "created_at": {
+    "path": "attributes.created_at",
+    "title": "Created At",
+    "type": "string",
+    "width": "15%"
+  },
+  "request_headers": {
+    "path": "attributes.request_headers",
+    "title": "Request Headers",
+    "type": "json",
+    "width": "55%"
+  },
+  "diff": {
+    "path": "attributes.diff",
+    "title": "Diff",
+    "type": "json",
+    "width": "55%"
+  }
+}

@@ -3,7 +3,7 @@
   "owner_shortname": "dmart",
   "displayname": {"en":"Personal"},
   "description": {"en":"Personal space"},
-  "uuid": "2232f679-27eb-4085-a3de-12362ca1eb73",
+  "uuid": "e6d4dd9f-7dac-4b8c-b399-f822351759f1",
   "resource_type": "Space",
   "languages": [
     "english"
@@ -14,9 +14,12 @@
   "mirrors": [],
   "check_health": true,
   "branches": [],
-  "hide_space": false,
+  "hide_space": true,
   "active_plugins": [
     "action_log",
-    "redis_db_update"
-  ]
+    "redis_db_update",
+    "system_notification_sender",
+    "reports_stats"
+  ], 
+  "ordinal": 3
 }

@@ -1,10 +1,1 @@
-{
-	"uuid": "a4d1ba23-659b-47a1-82ce-1b434fda046d",
-	"shortname": "private",
-	"is_active": true,
-	"tags": [],
-	"created_at": "2022-10-26T10:41:18.538676",
-	"updated_at": "2022-11-11T13:52:44.699793",
-	"owner_shortname": "dmart",
-	"payload": { "content_type": "text", "body": "folderrrrrr" }
-}
+{"uuid": "8d7e3012-020b-43a9-8536-94dde6099d22", "shortname": "private", "is_active": true, "tags": [], "created_at": "2023-08-01T14:31:21.844764", "updated_at": "2023-08-01T14:31:21.844766", "owner_shortname": "dmart"}

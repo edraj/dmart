@@ -1,0 +1,31 @@
+{
+  "uuid": "fcdbebdb-59dc-4682-916e-8a9682649065",
+  "shortname": "view_world",
+  "is_active": true,
+  "displayname": {
+    "en": "view_world ",
+    "ar": "view_world",
+    "ku": "view_world "
+  },
+  "tags": [],
+  "created_at": "2023-04-25T15:46:08.110593",
+  "updated_at": "2023-05-03T10:07:57.928814",
+  "owner_shortname": "dmart",
+  "subpaths": {
+    "hr": [
+      "/vacancies"
+    ]
+  },
+  "resource_types": [
+    "folder"
+  ],
+  "actions": [
+    "view",
+    "query"
+  ],
+  "conditions": [
+    "is_active"
+  ],
+  "restricted_fields": [],
+  "allowed_fields_values": {}
+}

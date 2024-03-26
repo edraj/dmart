@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "title": "title",
+  "properties": {
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "ar": {
+            "type": "string"
+          },
+          "en": {
+            "type": "string"
+          },
+          "ku": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "type",
+          "key",
+          "ar",
+          "en",
+          "ku"
+        ]
+      }
+    }
+  },
+  "required": [
+    "errors"
+  ]
+}

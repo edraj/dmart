@@ -1,12 +1,12 @@
-python-json-logger
-json_logging
+# python-json-logger
+# json_logging
 fastapi
 pydantic
-pydantic[email,dotenv]
+pydantic[email]
 concurrent-log-handler
 hypercorn
 pyjwt
-redis
+redis >= 5.0.3
 aiofiles
 aiohttp
 python-multipart
@@ -17,3 +17,7 @@ bcrypt
 jq
 segno
 jinja2
+asgi-correlation-id
+pydantic-settings
+fastapi-sso >= 0.9.1
+duckdb

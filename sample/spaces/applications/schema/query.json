@@ -1,0 +1,118 @@
+{
+  "title": "Report",
+  "type": "object",
+  "required": [],
+  "properties": {
+    "type": {
+      "title": "Query Type",
+      "type": "string",
+      "default": "search"
+    },
+    "space_name": {
+      "title": "Space Name",
+      "type": "string",
+      "default": "aftersales"
+    },
+    "query_subpath": {
+      "title": "Subpath",
+      "type": "string"
+    },
+    "filter_schema_names": {
+      "title": "Filter Schema Names",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "filter_shortnames": {
+      "title": "Filter Shortnames",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "filter_types": {
+      "title": "Filter Resource Type",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "user",
+          "group",
+          "folder",
+          "schema",
+          "content",
+          "acl",
+          "comment",
+          "media",
+          "locator",
+          "relationship",
+          "alteration",
+          "history",
+          "space",
+          "permission",
+          "role",
+          "ticket",
+          "plugin_wrapper"
+        ]
+      }
+    },
+    "filter_tags": {
+      "title": "Filter Tags",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "exclude_fields": {
+      "title": "Exclude Fields",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "include_fields": {
+      "title": "Include Fields",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "search": {
+      "title": "Redis Search String",
+      "type": "string"
+    },
+    "highlight_fields": {
+      "title": "Highlight Fields",
+      "type": "object",
+      "properties": {}
+    },
+    "offset": {
+      "title": "Offset",
+      "type": "integer"
+    },
+    "limit": {
+      "title": "Limit",
+      "type": "integer"
+    },
+    "retrieve_json_payload": {
+      "type": "boolean"
+    },
+    "retrieve_attachments": {
+      "type": "boolean",
+      "title": "Retrieve Attachments"
+    },
+    "sort_by": {
+      "title": "Sort By",
+      "type": "string"
+    },
+    "sort_type": {
+      "title": "Sort Type",
+      "type": "string",
+      "enum": [
+        "ascending",
+        "descending"
+      ]
+    }
+  }
+}

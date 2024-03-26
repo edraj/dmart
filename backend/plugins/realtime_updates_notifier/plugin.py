@@ -1,7 +1,5 @@
-from copy import deepcopy
-import json
-import requests
 from models.core import PluginBase, Event
+from utils.async_request import AsyncRequest
 from utils.settings import settings
 
 
@@ -37,16 +35,22 @@ class Plugin(PluginBase):
             ])
             subpath += "/"
 
-        requests.post(
-            url=f"{settings.websocket_url}/broadcast-to-channels",
-            data=json.dumps(
-                {
-                    "channels": channels,
+        if not settings.websocket_url : 
+            return 
+
+        async with AsyncRequest() as client:
+            await client.post(
+                f"{settings.websocket_url}/broadcast-to-channels",
+                json={
+                    "channels": [*set(channels)],
                     "message": {
-                        "title": "updated"
+                        "title": "updated",
+                        "subpath": data.subpath,
+                        "space": data.space_name,
+                        "shortname": data.shortname,
+                        "action_type": data.action_type,
+                        "owner_shortname": data.user_shortname
                     }
                 }
-            ),
-        )
-
-        
+            )
+            

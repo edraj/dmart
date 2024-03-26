@@ -16,13 +16,10 @@ from utils.helpers import branch_path, camel_case, replace_message_vars
 
 # from utils.notification import NotificationContext, send_notification
 from utils.redis_services import RedisServices
-from utils.repository import _save_model, get_entry_attachments, get_group_users
+from utils.repository import internal_save_model, get_entry_attachments, get_group_users
 from utils.settings import settings
 from fastapi.logger import logger
 from utils.db import load, load_resource_payload
-
-
-
 
 
 class Plugin(PluginBase):
@@ -36,13 +33,13 @@ class Plugin(PluginBase):
         """
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
-           logger.warning(
-               f"data.shortname is None and str is required at system_notification_sender"
-           )
-           return
-            
-        if data.action_type == ActionType.delete:
-            entry = data.attributes["entry"].dict()
+            logger.warning(
+                "data.shortname is None and str is required at system_notification_sender"
+            )
+            return
+
+        if data.action_type == ActionType.delete and data.attributes.get("entry"):
+            entry = data.attributes["entry"].model_dump()
         else:
             entry = (
                 await load(
@@ -53,7 +50,7 @@ class Plugin(PluginBase):
                     data.user_shortname,
                     data.branch_name,
                 )
-            ).dict()
+            ).model_dump()
             if (
                 entry["payload"]
                 and entry["payload"]["content_type"] == ContentType.json
@@ -86,7 +83,7 @@ class Plugin(PluginBase):
                 search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
             )
         if not matching_notification_requests.get("data", {}):
-            return True
+            return
 
         # 2- get list of subscribed users
         notification_subscribers = [entry["owner_shortname"]]
@@ -95,32 +92,44 @@ class Plugin(PluginBase):
         if entry.get("owner_group_shortname", None):
             group_users = await get_group_users(entry["owner_group_shortname"])
             group_members = [
-                json.loads(user_doc.json)["shortname"] for user_doc in group_users
+                json.loads(user_doc)["shortname"] for user_doc in group_users
             ]
             notification_subscribers.extend(group_members)
 
         if data.user_shortname in notification_subscribers:
             notification_subscribers.remove(data.user_shortname)
 
+        users_objects: dict[str, dict] = {}
+        for subscriber in notification_subscribers:
+            async with RedisServices() as redis:
+                users_objects[subscriber] = await redis.get_doc_by_id(
+                    redis.generate_doc_id(
+                        settings.management_space,
+                        settings.management_space_branch,
+                        "meta",
+                        subscriber,
+                        settings.users_subpath,
+                    )
+                )
+
         # 3- send the notification
         notification_manager = NotificationManager()
         for redis_document in matching_notification_requests["data"]:
-            notification_dict = json.loads(redis_document.json)
+            notification_dict = json.loads(redis_document)
             if (
                 "state" in entry
-                and "on_state" in notification_dict
+                and notification_dict.get("on_state", "") != ""
                 and notification_dict["on_state"] != entry["state"]
             ):
                 continue
 
             formatted_req = await self.prepare_request(notification_dict, entry)
             for receiver in set(notification_subscribers):
-
                 if not formatted_req["push_only"]:
                     notification_obj = await Notification.from_request(
                         notification_dict, entry
                     )
-                    await _save_model(
+                    await internal_save_model(
                         "personal",
                         f"people/{receiver}/notifications",
                         notification_obj,
@@ -131,7 +140,7 @@ class Plugin(PluginBase):
                     await notification_manager.send(
                         platform=platform,
                         data=NotificationData(
-                            receiver=receiver,
+                            receiver=users_objects[receiver],
                             title=formatted_req["title"],
                             body=formatted_req["body"],
                             image_urls=formatted_req["images_urls"],
@@ -141,7 +150,7 @@ class Plugin(PluginBase):
                     )
 
     async def prepare_request(self, notification_dict: dict, entry: dict) -> dict:
-        for locale in ["ar", "en", "kd"]:
+        for locale in ["ar", "en", "ku"]:
             notification_dict["displayname"][locale] = replace_message_vars(
                 notification_dict["displayname"][locale], entry, locale
             )
@@ -151,7 +160,8 @@ class Plugin(PluginBase):
         # Get Notification Request Images
         attachments_path = (
             settings.spaces_folder
-            / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
+            / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}"
+            f"/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
         notification_attachments = await get_entry_attachments(
             subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
@@ -161,7 +171,7 @@ class Plugin(PluginBase):
         notification_images = {
             "en": notification_attachments.get("media", {}).get("en"),
             "ar": notification_attachments.get("media", {}).get("ar"),
-            "kd": notification_attachments.get("media", {}).get("kd"),
+            "ku": notification_attachments.get("media", {}).get("ku"),
         }
 
         return {

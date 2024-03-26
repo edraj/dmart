@@ -29,6 +29,11 @@ src/tmp/
 sample/spaces/eser
 history.jsonl
 events.jsonl
-spaces/
+sample/spaces/management/health_check/**
+sample/spaces/dummy/**
+sample/spaces/maqola/**
+sample/spaces/management/users
 sample/spaces/startappz/**
 .idea/
+pos-spaces/
+spaces/

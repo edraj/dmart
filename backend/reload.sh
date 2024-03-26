@@ -19,19 +19,24 @@ APP_URL="http://localhost:$PORT"
 time ./create_index.py --flushall
 RESULT+=$?
 
-which systemctl 2> /dev/null && systemctl --user list-units dmart.service > /dev/null && systemctl --user restart dmart.service
+(which systemctl > /dev/null && systemctl --user list-unit-files dmart.service > /dev/null  && systemctl --user restart dmart.service) || \
+( [[ -x "/etc/init.d/dmart" ]] && /etc/init.d/dmart restart )
 RESULT+=$?
-RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
+sleep 2
+# RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
+RESP="000"
 COUNTER=0
 while [ $RESP -ne "200" ]; do
   sleep 1
   COUNTER=$((COUNTER+1))
   echo "Waiting for the server to come up ${RESP} ${COUNTER} seconds"
-  RESP=$(curl --write-out '%{http_code}' --silent --output /dev/null  "${APP_URL}")
-  [[ $COUNTER -ge 10 ]] && break
+  RESP=$(curl --write-out '%{http_code}' --silent --connect-timeout 0.5 --output /dev/null  "${APP_URL}")
+  [[ $COUNTER -ge 30 ]] && break
 done
+sleep 4
 
 TOKEN=$(curl -s "${APP_URL}/user/login" -H 'Content-Type: application/json' -d "${SUPERMAN}" | jq -r '.records[0].attributes.access_token')
+curl -s -H "Authorization: Bearer ${TOKEN}" -H "$CT" $APP_URL/user/profile | jq -r '.status'
 RESULT+=$?
 
 curl -s -H "Authorization: Bearer ${TOKEN}" "${APP_URL}/user/profile" | jq '.records[0].attributes.roles'

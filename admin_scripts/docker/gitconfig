@@ -1,0 +1,83 @@
+
+[init]
+  defaultBranch = master
+
+[pull]
+  rebase = false
+
+[push]
+  default = simple
+
+[core]
+  whitespace=fix,-indent-with-non-tab,trailing-space,cr-at-eol
+	editor = vim
+#	pager = delta
+
+# [interactive]
+#	diffFilter = delta --color-only
+
+[add.interactive]
+	useBuiltin = false # required for git 2.37.0
+
+# [delta]
+#	navigate = true    # use n and N to move between diff sections
+#	light = false      # set to true if you're in a terminal w/ a light background color (e.g. the default macOS terminal)
+
+[merge]
+    conflictstyle = diff3
+
+[diff]
+    colorMoved = default
+
+[color]
+  ui = auto
+
+[color "branch"]
+  current = yellow reverse
+  local = yellow
+  remote = green
+
+[color "diff"]
+  meta = yellow bold
+  frag = magenta bold
+  old = red bold
+  new = green bold
+
+[color "status"]
+  added = yellow
+  changed = green
+  untracked = cyan
+
+[color]
+  diff = auto
+  status = auto
+  branch = auto
+  interactive = auto
+  pager = true
+  ui = true
+
+[color "diff"]
+  whitespace = red reverse
+
+[alias]
+  st = status -sb
+  ci = commit
+  br = branch
+  co = checkout
+  df = diff
+  dc = diff --cached
+  lg = log -p
+  lol = log --graph --decorate --pretty=oneline --abbrev-commit
+  lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
+  logc = log --pretty='%Cgreen%h %Creset%cr: %Cred%s - %Creset%cn.' --no-merges
+  ls = ls-files
+	wdiff = diff --word-diff
+	cdiff = diff --color-words=.
+	cd = diff --color-words=.
+
+[filter "lfs"]
+  required = true
+  clean = git-lfs clean -- %f
+  smudge = git-lfs smudge -- %f
+  process = git-lfs filter-process
+

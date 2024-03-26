@@ -1,27 +1,31 @@
 from time import time
 from fastapi import APIRouter, Depends, Path, Body, status
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from api.managed.router import retrieve_entry_meta
+from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer
 from io import BytesIO
 import segno
 import models.api as api
 import utils.regex as regex
-import hmac, hashlib
+import hmac
+import hashlib
 from utils.settings import settings
+from models.enums import ResourceType
 
 router = APIRouter()
 
 
 @router.get("/generate/{resource_type}/{space_name}/{subpath:path}/{shortname}")
 async def generate_qr_user_profile(
-    resource_type: api.ResourceType = Path(...),
-    space_name: str = Path(..., regex=regex.SPACENAME),
-    subpath: str = Path(..., regex=regex.SUBPATH),
-    shortname: str = Path(..., regex=regex.SHORTNAME),
+    resource_type: ResourceType = Path(...),
+    space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
+    shortname: str = Path(..., pattern=regex.SHORTNAME,
+                          examples=["unique_shortname"]),
     logged_in_user=Depends(JWTBearer()),
 ) -> StreamingResponse:
-    data = await retrieve_entry_meta(
+    data: str | dict = await retrieve_entry_meta(
         resource_type,
         space_name,
         subpath,
@@ -30,13 +34,15 @@ async def generate_qr_user_profile(
     )
 
     if (
-        data.get("owner_shortname") != logged_in_user
+        isinstance(data, dict)
+        and data.get("owner_shortname") != logged_in_user
         and f"management/{subpath}/{data['shortname']}"
         != f"{space_name}/users/{logged_in_user}"
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            api.Error(type="qr", code=14, message="QR cannot be generated"),
+            api.Error(type="qr", code=InternalErrorCode.QR_ERROR,
+                      message="QR cannot be generated"),
         )
     m = hmac.new(settings.jwt_secret.encode(), digestmod=hashlib.blake2s)
     data = f"{resource_type}/{space_name}/{subpath}/{shortname}"
@@ -52,10 +58,11 @@ async def generate_qr_user_profile(
 
 @router.post("/validate")
 async def validate_qr_user_profile(
-    resource_type: api.ResourceType = Body(...),
-    space_name: str = Body(..., regex=regex.SPACENAME),
-    subpath: str = Body(..., regex=regex.SUBPATH),
-    shortname: str = Body(..., regex=regex.SHORTNAME),
+    resource_type: ResourceType = Body(...),
+    space_name: str = Body(..., pattern=regex.SPACENAME, examples=["data"]),
+    subpath: str = Body(..., pattern=regex.SUBPATH, examples=["/content"]),
+    shortname: str = Body(..., pattern=regex.SHORTNAME,
+                          examples=["unique_shortname"]),
     logged_in_user=Depends(JWTBearer()),
     qr_data: str = Body(..., embed=True),
 ):
@@ -71,7 +78,8 @@ async def validate_qr_user_profile(
     if int(req_date) + 60 < int(time()):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            api.Error(type="qr", code=15, message="QR did expire"),
+            api.Error(type="qr", code=InternalErrorCode.QR_EXPIRED,
+                      message="QR did expire"),
         )
     data = f"{resource_type}/{space_name}/{subpath}/{shortname}"
     m = hmac.new(settings.jwt_secret.encode(), digestmod=hashlib.blake2s)
@@ -83,5 +91,6 @@ async def validate_qr_user_profile(
     else:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            api.Error(type="qr", code=16, message="Invalid data passed"),
+            api.Error(type="qr", code=InternalErrorCode.QR_INVALID,
+                      message="Invalid data passed"),
         )

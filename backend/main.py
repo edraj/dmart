@@ -2,8 +2,9 @@
 """ Main module """
 # from logging import handlers
 from starlette.datastructures import UploadFile
+from contextlib import asynccontextmanager
 import asyncio
-# import json
+import json
 from os import getpid
 import sys
 import time
@@ -13,9 +14,11 @@ from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import  ValidationError
+from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
+from utils.redis_services import RedisServices
 from utils.spaces import initialize_spaces
 from fastapi import Depends, FastAPI, Request, Response, status
 from utils.logger import logging_schema
@@ -26,18 +29,60 @@ from utils.access_control import access_control
 from fastapi.responses import JSONResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
-# from starlette.concurrency import iterate_in_threadpool
+from starlette.concurrency import iterate_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import models.api as api
 from utils.settings import settings
+from asgi_correlation_id import CorrelationIdMiddleware
+
+from api.managed.router import router as managed
+from api.qr.router import router as qr
+from api.public.router import router as public
+from api.user.router import router as user
+from api.info.router import router as info
+
+from utils.internal_error_code import InternalErrorCode
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting up")
+    print('{"stage":"starting up"}')
+    # , extra={"props":{
+    #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
+    #    "redis_port": settings.redis_port
+    #    }})
+
+    openapi_schema = app.openapi()
+    paths = openapi_schema["paths"]
+    for path in paths:
+        for method in paths[path]:
+            responses = paths[path][method]["responses"]
+            if responses.get("422"):
+                responses.pop("422")
+    app.openapi_schema = openapi_schema
+
+    await initialize_spaces()
+    await access_control.load_permissions_and_roles()
+
+    yield
+    
+    await RedisServices.POOL.aclose()
+    await RedisServices.POOL.disconnect(True)
+    
+    logger.info("Application shutting down")
+    print('{"stage":"shutting down"}')
+
+
 
 app = FastAPI(
+    lifespan=lifespan,
     title="Datamart API",
     description="Structured Content Management System",
-    version="1.0.0",
+    version="1.1.0",
     redoc_url=None,
-    docs_url="/docs",
+    docs_url=f"{settings.base_path}/docs",
     openapi_url=f"{settings.base_path}/openapi.json",
+    servers=[{"url": f"{settings.base_path}/"}],
     contact={
         "name": "Kefah T. Issa",
         "url": "https://dmart.cc",
@@ -47,7 +92,6 @@ app = FastAPI(
         "name": "GNU Affero General Public License v3+",
         "url": "https://www.gnu.org/licenses/agpl-3.0.en.html",
     },
-    servers=[{"url": f"{settings.base_path}/"}],
     swagger_ui_parameters={"defaultModelsExpandDepth": -1},
     openapi_tags=[
         {"name": "user", "description": "User registration, login, profile and delete"},
@@ -68,7 +112,7 @@ async def capture_body(request: Request):
 
     if (
         request.method == "POST"
-        and request.headers.get("content-type") == "application/json"
+        and "application/json" in request.headers.get("content-type", "")
     ):
         request.state.request_body = await request.json()
 
@@ -105,60 +149,33 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
     raise api.Exception(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         error=api.Error(
-            code=422, type="validation", message="Validation error [1]", info=err
+            code=InternalErrorCode.UNPROCESSABLE_ENTITY, type="validation", message="Validation error [1]", info=err
         ),
     )
 
 
-@app.on_event("startup")
-async def app_startup():
-    logger.info("Starting")
-    print("Starting")
-    # , extra={"props":{
-    #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
-    #    "redis_port": settings.redis_port
-    #    }})
-
-    openapi_schema = app.openapi()
-    paths = openapi_schema["paths"]
-    for path in paths:
-        for method in paths[path]:
-            responses = paths[path][method]["responses"]
-            if responses.get("422"):
-                responses.pop("422")
-    app.openapi_schema = openapi_schema
-
-    await initialize_spaces()
-    await access_control.load_permissions_and_roles()
-
-
-@app.on_event("shutdown")
-async def app_shutdown():
-    logger.info("Application shutdown")
-
-
 app.add_middleware(CustomRequestMiddleware)
-
 
 @app.middleware("http")
 async def middle(request: Request, call_next):
     """Wrapper function to manage errors and logging"""
+    # print(f"\n\n _available_connections: {len(RedisServices.POOL._available_connections)}\n_in_use_connections: {len(RedisServices._RedisServices__POOL._in_use_connections)}\n\n")
     if request.url._url.endswith("/docs") or request.url._url.endswith("openapi.json"):
         return await call_next(request)
 
     start_time = time.time()
-    # response_body: str | dict = ""
+    response_body: str | dict = {}
     exception_data: dict[str, Any] | None = None
     try:
         response = await call_next(request)
-        # raw_response = [section async for section in response.body_iterator]
-        # response.body_iterator = iterate_in_threadpool(iter(raw_response))
-        # raw_data = b"".join(raw_response)
-        # if raw_data:
-        #     try:
-        #         response_body = json.loads(raw_data)
-        #     except:
-        #         response_body = ""
+        raw_response = [section async for section in response.body_iterator]
+        response.body_iterator = iterate_in_threadpool(iter(raw_response))
+        raw_data = b"".join(raw_response)
+        if raw_data:
+            try:
+                response_body = json.loads(raw_data)
+            except Exception:
+                response_body = {}
     except api.Exception as e:
         response = JSONResponse(
             status_code=e.status_code,
@@ -176,7 +193,7 @@ async def middle(request: Request, call_next):
             if "site-packages" not in frame.f_code.co_filename
         ]
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        # response_body = json.loads(response.body.decode())
+        response_body = json.loads(response.body.decode())
     except ValidationError as e:
         stack = [
             {
@@ -199,7 +216,7 @@ async def middle(request: Request, call_next):
                 },
             },
         )
-        # response_body = json.loads(response.body.decode())
+        response_body = json.loads(response.body.decode())
     except SchemaValidationError as e:
         stack = [
             {
@@ -216,7 +233,7 @@ async def middle(request: Request, call_next):
             content={
                 "status": "failed",
                 "error": {
-                    "code": 400,
+                    "code": 422,
                     "message": "Validation error [3]",
                     "info": [{
                         "loc": list(e.path),
@@ -225,22 +242,22 @@ async def middle(request: Request, call_next):
                 },
             },
         )
-        # response_body = json.loads(response.body.decode())
-    except Exception as e:
+        response_body = json.loads(response.body.decode())
+    except Exception:
         exception_message = ""
         stack = None
-        if e := sys.exc_info()[1]:
+        if ee := sys.exc_info()[1]:
             stack = [
                 {
                     "file": frame.f_code.co_filename,
                     "function": frame.f_code.co_name,
                     "line": lineno,
                 }
-                for frame, lineno in traceback.walk_tb(e.__traceback__)
+                for frame, lineno in traceback.walk_tb(ee.__traceback__)
                 if "site-packages" not in frame.f_code.co_filename
             ]
-            exception_message = str(e)
-            exception_data = {"props": {"exception": str(e), "stack": stack}}
+            exception_message = str(ee)
+            exception_data = {"props": {"exception": str(ee), "stack": stack}}
 
         error_log = {"code": 99, "message": exception_message}
         if settings.debug_enabled:
@@ -252,15 +269,16 @@ async def middle(request: Request, call_next):
                 "error": error_log,
             },
         )
-        # response_body = json.loads(response.body.decode())
+        response_body = json.loads(response.body.decode())
 
     referer = request.headers.get(
         "referer",
+        request.headers.get("origin",
         request.headers.get("x-forwarded-proto", "http")
         + "://"
         + request.headers.get(
             "x-forwarded-host", f"{settings.listening_host}:{settings.listening_port}"
-        ),
+        )),
     )
     origin = urlparse(referer)
     response.headers[
@@ -281,8 +299,8 @@ async def middle(request: Request, call_next):
 
     user_shortname = "guest"
     try:
-        user_shortname = await JWTBearer().__call__(request)
-    except:
+        user_shortname = str(await JWTBearer().__call__(request))
+    except Exception:
         pass
 
     extra = {
@@ -308,10 +326,12 @@ async def middle(request: Request, call_next):
 
     if exception_data is not None:
         extra["props"]["exception"] = exception_data
-    if hasattr(request.state, "request_body"):
+    if (hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict) 
+        and isinstance(extra["props"]["request"], dict)):
         extra["props"]["request"]["body"] = request.state.request_body
-    # if response_body:
-    #     extra["props"]["response"]["body"] = response_body
+    if (response_body and isinstance(extra, dict) and isinstance(extra["props"], dict) 
+        and isinstance(extra["props"]["response"], dict)):
+        extra["props"]["response"]["body"] = response_body
 
     if response.status_code >= 400 and response.status_code < 500:
         logger.warning("Served request", extra=extra)
@@ -323,6 +343,11 @@ async def middle(request: Request, call_next):
     return response
 
 
+app.add_middleware(
+    CorrelationIdMiddleware,
+    header_name='X-Correlation-ID',
+    update_request_header=False,
+)
 @app.get("/", include_in_schema=False)
 async def root():
     """Dummy api end point"""
@@ -340,7 +365,7 @@ async def space_backup(key: str):
     if not key or key != "ABC":
         return api.Response(
             status=api.Status.failed,
-            error=api.Error(type="git", code=555, message="Api key is invalid"),
+            error=api.Error(type="git", code=InternalErrorCode.INVALID_APP_KEY, message="Api key is invalid"),
         )
 
     import subprocess
@@ -355,12 +380,6 @@ async def space_backup(key: str):
     }
     return api.Response(status=api.Status.success, attributes=attributes)
 
-
-from api.managed.router import router as managed
-from api.qr.router import router as qr
-from api.public.router import router as public
-from api.user.router import router as user
-from api.info.router import router as info
 
 app.include_router(
     user, prefix="/user", tags=["user"], dependencies=[Depends(capture_body)]
@@ -396,19 +415,25 @@ async def myoptions():
 @app.put("/{x:path}", include_in_schema=False)
 @app.patch("/{x:path}", include_in_schema=False)
 @app.delete("/{x:path}", include_in_schema=False)
-async def catchall():
+async def catchall() -> None:
     raise api.Exception(
         status_code=status.HTTP_404_NOT_FOUND,
         error=api.Error(
-            type="catchall", code=230, message="Requested method or path is invalid"
+            type="catchall", code=InternalErrorCode.INVALID_ROUTE, message="Requested method or path is invalid"
         ),
     )
-if __name__ == "__main__":
+    
+load_langs()
+
+async def main():
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
     config.backlog = 200
 
     config.logconfig_dict = logging_schema
     config.errorlog = logger
+    await serve(app, config)  # type: ignore
 
-    asyncio.run(serve(app, config))  # type: ignore
+
+if __name__ == "__main__":
+    asyncio.run(main())

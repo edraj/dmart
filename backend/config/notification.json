@@ -5,12 +5,12 @@
         "class": "WebNotifier"
     },
     "sms": {
-        "active": false,
+        "active": true,
         "module": "utils.sms_notifier",
         "class": "SMSNotifier"
     },
     "mobile": {
-        "active": false,
+        "active": true,
         "module": "utils.firebase_notifier",
         "class": "FirebaseNotifier"
     }

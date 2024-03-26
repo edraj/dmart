@@ -1,5 +1,5 @@
 {
-  "uuid": "9830aa16-4107-43d1-9a40-9670a63da171",
+  "uuid": "4baa4393-0fcb-4fbb-a824-35262a09553e",
   "shortname": "access_personal",
   "is_active": true,
   "tags": [],
@@ -11,7 +11,7 @@
       "people/__current_user__/private",
       "people/__current_user__/protected",
       "people/__current_user__/public",
-      "people/__current_user__/inbox",
+      "people/__current_user__/messages",
       "people/__current_user__/notifications"
     ]
   },

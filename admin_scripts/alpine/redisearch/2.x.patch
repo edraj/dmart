@@ -1,0 +1,82 @@
+diff --git a/deps/rmutil/alloc.h b/deps/rmutil/alloc.h
+index 5e916527..9b11cee3 100644
+--- a/deps/rmutil/alloc.h
++++ b/deps/rmutil/alloc.h
+@@ -23,10 +23,10 @@ char *rmalloc_strndup(const char *s, size_t n);
+ 
+ #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
+ 
+-#define malloc(size) RedisModule_Alloc(size)
+-#define calloc(count, size) RedisModule_Calloc(count, size)
+-#define realloc(ptr, size) RedisModule_Realloc(ptr, size)
+-#define free(ptr) RedisModule_Free(ptr)
++//#define malloc(size) RedisModule_Alloc(size)
++//#define calloc(count, size) RedisModule_Calloc(count, size)
++//#define realloc(ptr, size) RedisModule_Realloc(ptr, size)
++//#define free(ptr) RedisModule_Free(ptr)
+ 
+ #ifdef strdup
+ #undef strdup
+diff --git a/src/util/strconv.h b/src/util/strconv.h
+index a820b535..e7567483 100644
+--- a/src/util/strconv.h
++++ b/src/util/strconv.h
+@@ -2,7 +2,7 @@
+ #define RS_STRCONV_H_
+ #include <stdlib.h>
+ #include <limits.h>
+-#include <sys/errno.h>
++#include <errno.h>
+ #include <math.h>
+ #include <string.h>
+ #include <ctype.h>
+@@ -87,4 +87,4 @@ static char *rm_strdupcase(const char *s, size_t len) {
+   return ret;
+ }
+ 
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/tests/ctests/test_array.c b/tests/ctests/test_array.c
+index c70c5315..fad10a39 100644
+--- a/tests/ctests/test_array.c
++++ b/tests/ctests/test_array.c
+@@ -33,4 +33,4 @@ int testArray() {
+ TEST_MAIN({
+   RMUTil_InitAlloc();
+   TESTFUNC(testArray);
+-})
+\ No newline at end of file
++})
+diff --git a/deps/VectorSimilarity/src/VecSim/info_iterator.h b/deps/VectorSimilarity/src/VecSim/info_iterator.h
+index 74645bd..f8fb90a 100644
+--- a/deps/VectorSimilarity/src/VecSim/info_iterator.h
++++ b/deps/VectorSimilarity/src/VecSim/info_iterator.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ #include <stdlib.h>
++#include <stdint.h>
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+@@ -30,7 +31,7 @@ typedef struct {
+     union {
+         double floatingPointValue; // Floating point value. 64 bits float.
+         int64_t integerValue;      // Integer value. Signed 64 bits integer.
+-        u_int64_t uintegerValue;   // Unsigned value. Unsigned 64 buts integer.
++        uint64_t uintegerValue;   // Unsigned value. Unsigned 64 buts integer.
+         const char *stringValue;   // String value.
+     };
+ } VecSim_InfoField;
+diff --git a/deps/VectorSimilarity/src/VecSim/query_results.h b/deps/VectorSimilarity/src/VecSim/query_results.h
+index 50b36a7..ddbafe2 100644
+--- a/deps/VectorSimilarity/src/VecSim/query_results.h
++++ b/deps/VectorSimilarity/src/VecSim/query_results.h
+@@ -1,6 +1,7 @@
+ #pragma once
+ 
+ #include <stdlib.h>
++#include <stdint.h>
+ #include <stdbool.h>
+ 
+ #ifdef __cplusplus

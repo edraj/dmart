@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from importlib.util import find_spec, module_from_spec
 import json
 import sys
@@ -10,7 +10,9 @@ from fastapi.logger import logger
 
 
 class Notifier(ABC):
-    async def send(self, data: NotificationData):
+    
+    @abstractmethod
+    async def send(self, data: NotificationData) -> bool:
         pass
 
     async def _load_user(self, shortname: str) -> User:
@@ -62,7 +64,7 @@ class NotificationManager:
                 extra={
                     "props": {
                         "title": f"FAIL at {self.notifiers[platform]}.send",
-                        "message": e,
+                        "message": str(e),
                     }
                 },
             )

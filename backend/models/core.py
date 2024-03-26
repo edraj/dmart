@@ -1,23 +1,23 @@
 import copy
 import json
 from abc import ABC, abstractmethod
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Any
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
 from pydantic import Field
 from datetime import datetime
 import sys
-from pydantic.utils import deep_update
+from pydantic.v1.utils import deep_update
 from models.enums import (
     ActionType,
     ContentType,
     Language,
     NotificationPriority,
     NotificationType,
+    ReactionType,
     ResourceType,
     UserType,
-    ValidationEnum,
     ConditionType,
     PluginType,
     EventListenTime,
@@ -26,7 +26,7 @@ from utils.helpers import camel_case, remove_none, snake_case
 import utils.regex as regex
 from utils.settings import settings
 import utils.password_hashing as password_hashing
-
+from hashlib import sha1 as hashlib_sha1
 
 # class MoveModel(BaseModel):
 #    resource_type: ResourceType
@@ -37,9 +37,7 @@ import utils.password_hashing as password_hashing
 
 
 class Resource(BaseModel):
-    class Config:
-        use_enum_values = True
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(use_enum_values=True, arbitrary_types_allowed=True)
 
 
 class Payload(Resource):
@@ -48,28 +46,44 @@ class Payload(Resource):
         None  # FIXME change to proper content type static hashmap
     )
     schema_shortname: str | None = None
+    client_checksum: str | None = None
     checksum: str | None = None
     body: str | dict[str, Any]
-
+    
+    def __init__(self, **data):
+        BaseModel.__init__(self, **data)
+        
+        if not self.checksum and self.body:
+            sha1 = hashlib_sha1()
+            
+            if isinstance(self.body, dict):
+                sha1.update(json.dumps(self.body).encode('utf-8'))
+            else:
+                sha1.update(self.body.encode('utf-8'))
+                
+            self.checksum = sha1.hexdigest()
 
     def update(
-        self, 
-        payload: dict, 
-        old_body: dict | None = None,
-        replace: bool = False
+        self, payload: dict, old_body: dict | None = None, replace: bool = False
     ) -> dict | None:
+        self.content_type = payload["content_type"]
+
         if self.content_type == ContentType.json:
             if old_body and not replace:
-                separate_payload_body = dict(remove_none(deep_update(
-                    old_body,
-                    payload["body"],
-                )))
+                separate_payload_body = dict(
+                    remove_none(
+                        deep_update(
+                            old_body,
+                            payload["body"],
+                        )
+                    )
+                )
             else:
                 separate_payload_body = payload["body"]
-                
+
             if "schema_shortname" in payload:
                 self.schema_shortname = payload["schema_shortname"]
-            
+
             return separate_payload_body
 
         else:
@@ -77,39 +91,85 @@ class Payload(Resource):
             return None
 
 
-
-
-
 class Record(BaseModel):
     resource_type: ResourceType
     uuid: UUID | None = None
-    shortname: str = Field(regex=regex.SHORTNAME)
+    shortname: str = Field(pattern=regex.SHORTNAME)
     branch_name: str | None = Field(
-        default=settings.default_branch, regex=regex.SHORTNAME
+        default=settings.default_branch, pattern=regex.SHORTNAME
     )
-    subpath: str = Field(regex=regex.SUBPATH)
+    subpath: str = Field(pattern=regex.SUBPATH)
     version_hash: str = "__INITIAL__"
     attributes: dict[str, Any]
     attachments: dict[ResourceType, list[Any]] | None = None
 
+    def __init__(self, **data):
+        BaseModel.__init__(self, **data)
+        if self.subpath != "/":
+            self.subpath = self.subpath.strip("/")
+
     def to_dict(self):
-        return json.loads(self.json())
+        return json.loads(self.model_dump_json())
 
     def __eq__(self, other):
-        return isinstance(other, Record) and self.shortname == other.shortname
+        return (
+            isinstance(other, Record)
+            and self.shortname == other.shortname
+            and self.subpath == other.subpath
+        )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "resource_type": "content",
+                    "shortname": "auto",
+                    "subpath": "/users",
+                    "attributes": {
+                        "is_active": True,
+                        "slug": None,
+                        "displayname": {
+                            "en": "name en",
+                            "ar": "name ar",
+                            "ku": "name ku",
+                        },
+                        "description": {
+                            "en": "desc en",
+                            "ar": "desc ar",
+                            "ku": "desc ku",
+                        },
+                        "tags": [],
+                        "payload": {
+                            "content_type": "json",
+                            "schema_shortname": "user",
+                            "body": {
+                                "email": "myname@gmail.com",
+                                "first_name": "John",
+                                "language": "en",
+                                "last_name": "Doo",
+                                "mobile": "7999311703",
+                            },
+                        },
+                    },
+                }
+            ]
+        }
+    }
 
 
 class Translation(Resource):
     en: str | None = None
     ar: str | None = None
-    kd: str | None = None
+    ku: str | None = None
+
 
 class Locator(Resource):
     uuid: UUID | None = None
+    domain: str | None = None
     type: ResourceType
     space_name: str
     branch_name: str | None = Field(
-        default=settings.default_branch, regex=regex.SHORTNAME
+        default=settings.default_branch, pattern=regex.SHORTNAME
     )
     subpath: str
     shortname: str
@@ -123,12 +183,15 @@ class Relationship(Resource):
     related_to: Locator
     attributes: dict[str, Any]
 
+class ACL(BaseModel):
+    user_shortname: str
+    allowed_actions: list[ActionType]
 
 
 class Meta(Resource):
     uuid: UUID = Field(default_factory=uuid4)
-    shortname: str = Field(regex=regex.SHORTNAME)
-    slug: str = Field(default=None, regex=regex.SHORTNAME)
+    shortname: str = Field(pattern=regex.SHORTNAME)
+    slug: str | None = Field(default=None, pattern=regex.SHORTNAME)
     is_active: bool = False
     displayname: Translation | None = None
     description: Translation | None = None
@@ -140,21 +203,28 @@ class Meta(Resource):
     payload: Payload | None = None
     relationships : list[Relationship] | None = None
     latest_version_hash: str = "__INITIAL__"
+    acl: list[ACL] | None = None
 
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
     @staticmethod
     def from_record(record: Record, owner_shortname: str):
+        if record.shortname == settings.auto_uuid_rule:
+            record.uuid = uuid4()
+            record.shortname = str(record.uuid)[:8]
+            record.attributes["uuid"] = record.uuid
+
         meta_class = getattr(
             sys.modules["models.core"], camel_case(record.resource_type)
         )
+
         if issubclass(meta_class, User) and "password" in record.attributes:
             hashed_pass = password_hashing.hash_password(record.attributes["password"])
             record.attributes["password"] = hashed_pass
+
         record.attributes["owner_shortname"] = owner_shortname
         record.attributes["shortname"] = record.shortname
-        meta_obj = meta_class(**record.attributes)
+        meta_obj = meta_class(**remove_none(record.attributes))  # type: ignore
         return meta_obj
 
     @staticmethod
@@ -171,10 +241,7 @@ class Meta(Resource):
         return meta_obj
 
     def update_from_record(
-        self, 
-        record: Record, 
-        old_body: dict | None = None,
-        replace: bool = False
+        self, record: Record, old_body: dict | None = None, replace: bool = False
     ) -> dict | None:
         restricted_fields = [
             "uuid",
@@ -183,6 +250,7 @@ class Meta(Resource):
             "updated_at",
             "owner_shortname",
             "payload",
+            "acl",
         ]
         for field_name, _ in self.__dict__.items():
             if field_name in record.attributes and field_name not in restricted_fields:
@@ -194,16 +262,23 @@ class Meta(Resource):
                     continue
 
                 self.__setattr__(field_name, record.attributes[field_name])
-        
-        if(
-            self.payload and
-            record.attributes.get("payload", {}).get("content_type") == self.payload.content_type
+
+        if (
+            not self.payload
+            and "payload" in record.attributes
+            and "content_type" in record.attributes["payload"]
         ):
-            return self.payload.update(
-                payload=record.attributes["payload"],
-                old_body=old_body,
-                replace=replace
+            self.payload = Payload(
+                content_type=record.attributes["payload"]["content_type"],
+                schema_shortname=record.attributes["payload"].get("schema_shortname"),
+                body=f"{record.shortname}.json",
             )
+
+        if self.payload and "payload" in record.attributes:
+            return self.payload.update(
+                payload=record.attributes["payload"], old_body=old_body, replace=replace
+            )
+        return None
 
     def to_record(
         self,
@@ -211,7 +286,7 @@ class Meta(Resource):
         shortname: str,
         include: list[str] = [],
         branch_name: str | None = None,
-    ):
+    ) -> Record:
         # Sanity check
 
         if self.shortname != shortname:
@@ -251,6 +326,7 @@ class Space(Meta):
     hide_space: bool | None = None
     active_plugins: list[str] = []
     branches: list[str] = []
+    ordinal: int | None = None
 
 
 class Actor(Meta):
@@ -260,7 +336,7 @@ class Actor(Meta):
 class User(Actor):
     password: str | None = None
     email: str | None = None
-    msisdn: str | None = Field(default=None, regex=regex.EXTENDED_MSISDN)
+    msisdn: str | None = Field(default=None, pattern=regex.EXTENDED_MSISDN)
     is_email_verified: bool = False
     is_msisdn_verified: bool = False
     force_password_change: bool = True
@@ -269,6 +345,15 @@ class User(Actor):
     groups: list[str] = []
     firebase_token: str | None = None
     language: Language = Language.ar
+    google_id: str | None = None
+    facebook_id: str | None = None
+    social_avatar_url: str | None = None
+
+    @staticmethod
+    def invitation_url_template() -> str:
+        return (
+            "{url}/auth/invitation?invitation={token}&lang={lang}&user-type={user_type}"
+        )
 
 
 class Group(Meta):
@@ -276,20 +361,47 @@ class Group(Meta):
 
 
 class Attachment(Meta):
+    author_locator: Locator | None = None
+
+
+class DataAsset(Attachment):
     pass
 
 
 class Json(Attachment):
     pass
 
+
+class Jsonl(DataAsset):
+    pass
+
+
+class Parquet(DataAsset):
+    pass
+
+
+class Sqlite(DataAsset):
+    pass
+
+
+class Duckdb(DataAsset):
+    pass
+
+class Csv(DataAsset):
+    pass
+
+
 class Share(Attachment):
     pass
 
+
 class Reaction(Attachment):
-    pass
+    type: ReactionType
+
 
 class Reply(Attachment):
     pass
+
 
 class Comment(Attachment):
     body: str
@@ -302,7 +414,6 @@ class Lock(Attachment):
 
 class Media(Attachment):
     pass
-
 
 
 class Alteration(Attachment):
@@ -320,6 +431,7 @@ class Action(Resource):
 class History(Meta):
     timestamp: datetime
     previous_hash: str
+    request_headers: dict[str, Any]
     diff: dict[str, Any]
 
 
@@ -329,7 +441,7 @@ class Schema(Meta):
     # USE meta_schema TO VALIDATE ANY SCHEMA
     def __init__(self, **data):
         Meta.__init__(self, **data)
-        if self.payload != None and self.shortname != "meta_schema":
+        if self.payload is not None and self.shortname != "meta_schema":
             self.payload.schema_shortname = "meta_schema"
 
 
@@ -381,16 +493,18 @@ class Ticket(Meta):
     collaborators: dict[str, str] | None = None  # list[Collabolator] | None = None
     resolution_reason: str | None = None
 
+
 class Post(Content):
     pass
+
 
 class Event(BaseModel):
     space_name: str
     branch_name: str | None = Field(
-        default=settings.default_branch, regex=regex.SHORTNAME
+        default=settings.default_branch, pattern=regex.SHORTNAME
     )
-    subpath: str = Field(regex=regex.SUBPATH)
-    shortname: str | None = Field(default=None, regex=regex.SHORTNAME)
+    subpath: str = Field(pattern=regex.SUBPATH)
+    shortname: str | None = Field(default=None, pattern=regex.SHORTNAME)
     action_type: ActionType
     resource_type: ResourceType | None = None
     schema_shortname: str | None = None
@@ -400,7 +514,7 @@ class Event(BaseModel):
 
 class PluginBase(ABC):
     @abstractmethod
-    def hook(self, data: Event):
+    async def hook(self, data: Event) -> None:
         pass
 
 
@@ -412,7 +526,7 @@ class EventFilter(BaseModel):
 
 
 class PluginWrapper(Resource):
-    shortname: str = Field(default=None, regex=regex.SHORTNAME)
+    shortname: str = Field(default=None, pattern=regex.SHORTNAME)
     is_active: bool = False
     filters: EventFilter | None = None
     listen_time: EventListenTime | None = None
@@ -423,7 +537,7 @@ class PluginWrapper(Resource):
 
 
 class NotificationData(Resource):
-    receiver: str
+    receiver: dict
     title: Translation
     body: Translation
     image_urls: Translation | None = None

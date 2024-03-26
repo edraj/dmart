@@ -1,29 +1,18 @@
 #!/bin/bash
 
-# Basic setup
-npx @roxi/routify@next create frontend
-cd frontend
-npm install
-npm run dev
+# Offline deployment
 
-# Add typescript support
-npm install svelte-preprocess # Adds 26 new packages
-npm install typescript # Adds 1 package
-mv src/main.js src/main.ts
-sed -i 's/main.js/main.ts/g' index.html
+# The following three steps are done only once and the resulting file can be kept under git
+yarn config set yarn-offline-mirror /tmp/js-offline
+yarn config set yarn-offline-mirror-pruning true
+mv ~/.yarnrc ./
 
-sed -i "1i import preprocess from 'svelte-preprocess'" vite.config.js
-sed -i "s/preprocess: \[/preprocess: [ preprocess(), /g" vite.config.js
+rm -rf yarn.lock node_modules
+yarn install
+# commit and push the resulting yarn.lock and .yarnrc files to the remove server as well
+# Sync the js modules
+rsync -av /tmp/js-offline/ TARGET_SERVER:/tmp/js-offline
 
-# Install Sveltestrap with bootstrap and icons
-npm install bootstrap
-npm install bootstrap-icons
-npm install sveltestrap
-
-
-# I18N
-npm install svelte-i18n # Adds 36 packages
-
-
-# Notifications
-npm install svelte-notifications
+# On the "offline" target computer
+yarn install --offline --frozen-lockfile
+yarn build

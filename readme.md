@@ -3,13 +3,14 @@
 <!--img src="https://img.shields.io/github/v/release/edraj/dmart.svg" --> 
 
 <a href="https://github.com/edraj/dmart/releases/latest">
-<img src="https://github.com/edraj/dmart/actions/workflows/dmart-checks.yml/badge.svg" > 
+<img src="https://github.com/edraj/dmart/actions/workflows/backend-checks.yml/badge.svg" > 
+<img src="https://github.com/edraj/dmart/actions/workflows/frontend-checks.yml/badge.svg" > 
 </a>
 
 <a href="https://github.com/edraj/dmart/releases/latest">
 <img alt="Latest release" src="https://img.shields.io/github/v/release/edraj/dmart" />
 </a>
-
+<br/>
 <a href="https://github.com/edraj/dmart/pulse">
 <img alt="Last commit" src="https://img.shields.io/github/last-commit/edraj/dmart"/>
 </a>
@@ -30,17 +31,17 @@
 <img alt="Repo Size" src="https://img.shields.io/github/repo-size/edraj/dmart" />
 </a>
 
-DMART is a data service layer that offers a streamlined / simplified way to develop certain class of solutions with small to medium data footprint (<=300 million primary entries). DMART is not a one-solution fit-all kind of technology, but it tries to address a wide variety of needs. Specifically, DMART is not suited for systems that have large data (> 400 million primary entries) nor systems that require heavily/complex related data modeling or requiring atomic operations (transactions).
+DMART is a data service layer that offers a streamlined / simplified way to develop certain class of solutions with small to medium data footprint (<=300 million primary entries). It is not suited for systems that have large data nor systems that require heavily/complex related data modeling or requiring atomic operations (transactions).
 
-As such, DMART serves as general-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS). 
+DMART serves as general-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS).
 
 It represents a low-code information inventory platform (aka content registry/repository/vault) that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and extend. Thus, valuable data assets can be maintained as the mastered version and act as the single source of truth. 
 
 ## The problem DMART attempts to solve
 
-Valuable information (organizational and individual) is getting out of control!
+Valuable information (organizational and personal) is getting out of control!
 
-- Information is dispersed over too many systems, requiring multiple access contexts.
+- Dispersed over too many systems, requiring multiple access contexts.
 - Difficult to consolidate and link for consumption, insights, reporting and dashboards
 - Locked to vendors or application-specific data-formats
 - Chaotic and hard to discover / search the data piling up over the years
@@ -72,9 +73,9 @@ Valuable information (organizational and individual) is getting out of control!
   - Changes on entries are recorded for audit and tracking.
   - Structured content: Each structured json content (payload) is associated with a pre-defined json schema stored under the schema section in the space. 
   - Arbitrary attachments: An entity could have attachments (binary or otherwise)
-- Entries are stord and orgazined arbitrary hierarchical folder structure (aka categories) on the file-system. Facilitating folder-based routes.
+- Entries are stord and organized arbitrary hierarchical folder structure (aka categories) on the file-system. Facilitating folder-based routes.
 
-DMART is a "Data-first" platform to management your valuable data/information; allowing you to transform your perciption of data from liability into assets.
+DMART is a "Data-first" platform to management your valuable data/information; allowing you to transform your perception of data from liability into assets.
 
 <img src="./docs/tree.png" width="500">
 
@@ -82,9 +83,9 @@ DMART is a "Data-first" platform to management your valuable data/information; a
 
   - **Management**  : Create/update/delete schema, content, scripts, triggers, users and roles
   - **Discovery**   : Users, paths, scripts, changes/history, schema and content
-  - **Consumption** : Content/attachments, scripts and submissions  
+  - **Consumption** : Content/attachments, scripts and submissions
 
-Full OpenApi 3 compliant documentation can be found [here](https://dmart.cc/docs)
+Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/docs)
 
 ## Architecture and technology stack
 
@@ -93,11 +94,11 @@ Full OpenApi 3 compliant documentation can be found [here](https://dmart.cc/docs
   - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files. 
   - Python 3.11 with emphasis on 
     - asyncio : maximizing scalability and leverage of server resources and enabling background jobs (post api service time).
-    - type hinting and strengent linting (pyright).
+    - type hinting and stringent linting (pyright).
   - FastAPI as the api micro-framework (based on our _curated_ fastapi skeleton) and full leverage of Pydantic and OpenApi version 3. 
   - Hypercorn (runner server)
-  - Redis as the operational data store. With sepecific leverage of RediSearch RedisJSON modules.
-  - Intensive json-based logging for easier insights.  
+  - Redis as the operational data store. With specific leverage of RediSearch RedisJSON modules.
+  - Intensive json-based logging for easier insights.
 
 <img src="./docs/datamart-one.png" width="50"> <img src="./docs/datamart-two.png" width="50"> <img src="./docs/datamart-three.png" width="50"> <img src="./docs/datamart-four.png" width="50">
 
@@ -146,22 +147,67 @@ With this scheme, only proper entry main payload files appear to the user. All m
 
 ## Installation
 
-### Requirements 
+### Container (recommended)
 
+Using podman (or docker), dmart can be fully setup and configured in few minutes.
+
+You only need a command line console, git and podman (or docker). 
+
+#### Steps
+```
+# Clone the git repo
+git clone https://github.com/edraj/dmart.git
+cd dmart/admin_scripts/docker
+
+# Build the container
+podman build -t dmart -f Dockerfile
+
+# Run the container
+podman run --name dmart -p 8000:8000 -d -it dmart
+
+# Set the admin password
+podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 ./set_admin_passwd.py
+
+# Load the sample spaces data
+podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
+
+# Run the auto tests 
+podman exec -it -w /home/backend dmart ./curl.sh
+
+# Open the browser to login to the admin tool and click on login. 
+# User name: dmart
+# Password: The password you entered in the set_admin_passwd step above.
+# Url : http://localhost:8000
+
+```
+
+### Manual (for advanced users)
 #### Requirements
 
 - git
 - jq
-- python >= 3.11
+- python == 3.11
 - pip
-- redis >= 7
-- RedisJSON (rejson) >= 2.4
-- RediSearch >= 2.6
+- redis >= 7.2
+- RedisJSON (rejson) >= 2.6
+- RediSearch >= 2.8
+- python venv
 
 
 ### Steps 
 
 ```bash
+
+# Enable kefahi dnf from copr to download redis modules
+sudo dnf copr enable kefah/RediSearch
+
+# Download necessary system packages
+sudo dnf install jq redis rejson redisearch python3-pip python3
+echo 'loadmodule /usr/lib64/redis/modules/librejson.so
+loadmodule /usr/lib64/redis/modules/redisearch.so' | sudo tee -a /etc/redis/redis.conf
+sudo systemctl start redis
+
+
 git clone https://github.com/edraj/dmart.git
 
 cd dmart 
@@ -170,16 +216,25 @@ cd dmart
 mkdir logs
 
 # Copy sample spaces structure
-cp sample/spaces ../
+cp -a sample/spaces ../
 
 
 cd backend
+
+# Create the virtual env
+python -m venv env
+
+# Activate virtual env
+source env/bin/activate
 
 # Install python modules
 pip install --user -r requirements.txt
 
 # Optionally, fine-tune your configuration
 cp config.env.sample config.env
+
+# Set the admin password
+./set_admin_passwd.py
 
 # Start DMART microservice
 ./main.py
@@ -189,7 +244,7 @@ cp config.env.sample config.env
 
 ```
 
-### Automated testing
+#### Automated testing
 
 #### Installing python dependencies
 
@@ -202,13 +257,46 @@ pip install --user -r test-requirements.txt
 ```bash
 cd backend
 ./curl.sh
-pytest
+python -m pytest
 ```
 
 <img src="./docs/curl-test.png" width="300">
 <img src="./docs/pytest.png" width="450">
 
 
+#### Using the Admin UI tool
+
+DMART has a comprehensive Admin UI that interacts with the backend entirely via the formal API. It is built with Svelte, Routify3 and SvelteStrap.
+
+```bash
+cd dmart/frontend
+yarn install
+
+# Configure the dmart server backend url in src/config.ts
+
+# To run in Development mode
+yarn dev
+
+# To build and run in production / static file serving mode (i.e. w/o nodejs) using Caddy
+yarn build
+caddy run
+```
+
+### Building tauri binary (Linux AppImage)
+
+This allows packaging the admin tool as a desktop application.
+
+```
+# Regular build without inspection
+yarn tauri build --bundles appimage
+
+# To add inspection (right mouse click -> inspect)
+yarn tauri build --bundles appimage --debug
+
+```
+
+<img src="./docs/admin_ui_1.png" width="800">
+<img src="./docs/admin_ui_2.png" width="800">
 
 ### Using the command line tool
 
@@ -229,14 +317,52 @@ pip install --user  -r requirements.txt
 
 <img src="./docs/cli.png" width="450">
 
+### Offline (aka airgapped) deployment
+
+```bash
+# On the "online" computer
+rmdir ~/.pipi
+rmdir ~/.venv
+virtualenv --python=/usr/bin/python3.11 ~/.venv # or your favorate py env virtualization tool
+source ~/.venv/bin/activate
+mkdir ~/.pipi
+# under dmart/backend
+pip download -d ~/.pipi/ $(cat *requirements.txt) virtualenv pip
+rsync -av ~/.pipi/ TARGET_OFFLINE_SERVER:~/.pipi
+
+# On the "offline" target server
+pip install --no-index --find-links=~/.pipi virtualenv
+virtualenv ~/.venv
+source ~/.venv/bin/activate
+pip install --no-index --find-links=~/.pipi --upgrade pip
+pip install --no-index --find-links=~/.pipi -r requirements.txt -r test-requirements.txt -r plugins-requirements.txt
+```
 
 
-## Coming soon ...
+### Running extra python checks
 
+```bash
+cd backend
+ruff check .
+mypy --explicit-package-bases --warn-return-any .
 
-### Mobile app skeleton (based on SvelteNative and NativeScript)
+# Freeze pip modules versions
+pip freeze > pip.freeze
 
-### Web app skeleton (based on Svelte)
+```
 
 ### Sample usecases
 
+DMART is a low-level general-purpose data platform. Hence it could apply to a reasonably wide variety of usecases.
+
+The one usecase we are currently focused on building is a universal online presence platform. A tool that combines CMS, Messaging, and Collaboration in a federated fashion (borrowing from how email federates its messaging service)
+
+Simply put, this will help small teams, individuals and interest groups to quickly launch a website (that is their own) index-able by search engines, provision users and allow all to author and interact with content (both from the website and mobile app). With the leverage of DMART all information elements are structures as entries within the specific hierarchy desired by the admin user. 
+
+[High-level description](docs/universal_presence_platform.md)
+
+* Sample webapp (Svelte4, Routify3, Sveltestrap)
+* Sample mobile app (Flutter)
+
+> [!NOTE]
+> Comiong soon.

@@ -4,33 +4,32 @@
   "is_active": true,
   "tags": [],
   "created_at": "2022-10-06T10:21:33.912450",
-  "updated_at": "2022-10-06T10:21:33.912459",
+  "updated_at": "2023-11-13T14:21:13.859607",
   "owner_shortname": "dmart",
   "subpaths": {
-    "test": [
-      "/"
-    ],
+    "test": ["/"],
     "applications": [
-      "/translations"
+      "/translations",
+      "/configurations",
+      "/collections"
     ]
   },
   "resource_types": [
-    "permission",
-    "schema",
-    "content",
-    "group",
-    "history",
-    "role",
-    "folder",
     "media",
+    "content",
+    "folder",
+    "permission",
+    "role",
+    "history",
+    "comment",
+    "group",
     "user",
+    "schema",
+    "json",
     "comment"
   ],
-  "actions": [
-    "view",
-    "query"
-  ],
-  "conditions": [
-    "is_active"
-  ]
+  "actions": ["view", "query"],
+  "conditions": ["is_active"],
+  "restricted_fields": [],
+  "allowed_fields_values": {}
 }

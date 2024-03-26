@@ -1,0 +1,12 @@
+{
+  "uuid": "93100cda-b094-4a87-9a6f-d90336281906",
+  "shortname": "dummy",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2022-10-06T10:21:33.912450",
+  "updated_at": "2022-10-06T10:21:33.912459",
+  "owner_shortname": "dmart",
+  "permissions": [
+    "create_dummy"
+  ]
+}

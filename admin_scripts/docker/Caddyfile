@@ -1,0 +1,33 @@
+http://localhost:8000 {
+	handle /openapi.json {
+		reverse_proxy localhost:8282
+	}
+
+	handle /dmart/* {
+		uri strip_prefix /dmart
+		reverse_proxy localhost:8282
+	}
+	handle /ws {
+		reverse_proxy localhost:8484
+	}
+	handle /ws-api/* {
+		uri strip_prefix /ws-api
+		reverse_proxy localhost:8484
+	}
+
+	handle /* {
+		root * /home/frontend/dist/client/
+		encode gzip
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output file /home/logs/caddy.log {
+			roll_size 1gb
+			roll_keep 5
+			roll_keep_for 720h
+		}
+		format json
+	}
+}

@@ -1,0 +1,65 @@
+# Maintainer: Kefah T. Issa <kefah.issa@gmail.com>
+pkgname=redisearch
+pkgver=2.8.4
+pkgrel=0
+pkgdesc="RediSearch plugin for Redis"
+url="https://redisearch.io/"
+arch="all"
+license="RSAL (REDIS SOURCE AVAILABLE LICENSE)"
+pkgusers="redis"
+pkggroups="redis"
+makedepends="redis"
+#"coreutils gcc linux-headers make musl-dev openssl-dev make cmake"
+install="$pkgname.post-install"
+# source="2.x.patch"
+# source="disable_avx.patch"
+#source="disable-wall.patch"
+
+prepare() {
+	default_prepare
+	echo "Package dir: $pkgdir"
+	echo "Source dir: $srcdir"
+	echo "Build dir: $builddir"
+	git clone -b "v$pkgver" --recursive https://github.com/RediSearch/RediSearch.git "$srcdir"
+	sed -i 's/!defined(__APPLE__) && !defined(__FreeBSD__)/0/g' "$srcdir/src/spec.c"
+	sed -i 's/<sys.errno.h>/<errno.h>/g' "$srcdir/src/util/strconv.h" "$srcdir/deps/rmutil/cmdparse.c"
+	sed -i 's/#include <stdlib.h>/#include <stdlib.h>\n#include <stdint.h>/g' "$srcdir/deps/VectorSimilarity/src/VecSim/info_iterator.h"
+	sed -i 's/#include <shared_mutex>/#include <shared_mutex>\n#include <sys\/types.h>/g' "$srcdir/deps/VectorSimilarity/src/VecSim/algorithms/hnsw/hnsw.h"
+	sed -i 's/u_int64_t/uint64_t/g' "$srcdir/deps/VectorSimilarity/src/VecSim/info_iterator.h"
+	sed -i 's/-Wall//g' "$srcdir/deps/VectorSimilarity/src/VecSim/CMakeLists.txt" "$srcdir/deps/VectorSimilarity/src/VecSim/spaces/CMakeLists.txt"
+        # sed -i 's/^set(CMAKE_CXX_FLAGS .*$//g' "$srcdir/deps/VectorSimilarity/src/VecSim/spaces/CMakeLists.txt"
+	#sed -i 's/-Wall//g' "$srcdir/deps/VectorSimilarity/src/VecSim/spaces/CMakeLists.txt"
+	#sed -i 's/^#define calloc(.*//g' "$srcdir/deps/rmutil/alloc.h"
+	#sed -i 's/^#define free(.*//g' "$srcdir/deps/rmutil/alloc.h"
+	## sed -i 's/int64_t/long long int/g' "$srcdir/deps/VectorSimilarity/src/VecSim/info_iterator.h"
+	## rm -rf "$srcdir/.git" "$srcdir/*/.git"
+	## sed -i 's/^.*-Wall.*$//g' "$srcdir/deps/VectorSimilarity/src/CMakeLists.txt"
+	## sed -i 's/-Wall//g' "$srcdir/deps/VectorSimilarity/src/VecSim/CMakeLists.txt"
+	## git clone -b 'v2.0.1' --single-branch --depth 1 --recursive https://github.com/RediSearch/RediSearch.git "$srcdir"
+	## a quick sed -i instead of using a patch file
+	## sed -i 's/MK\.pyver ?= 2/MK\.pyver ?= 3/g' "$srcdir/deps/readies/mk/main"
+
+}
+
+build() {
+	cd "$srcdir"
+	# KEFAH patch -p 1 < ../2.x.patch
+	# patch -p 1 < ../disable-wall.patch
+	make build
+}
+
+check() {
+	echo "smoke test"
+}
+
+package() {
+	mkdir -p "$pkgdir"
+	cd "$pkgdir"
+	install -D -m 755 "$srcdir"/bin/linux-x64-release/search/redisearch.so usr/lib/redisearch.so
+}
+
+
+# sha512sums="ff77f46a6df3cfbfd2f0ee94fdc228b00e834d7acca68944b7c253de504120fed6f0d542c49fe764b2e0fc86bb02f4b51fc7db72adf98975b6ecbff9f4981b8c  2.x.patch"
+# sha512sums="cbc071fa891831015b40e877d24d25c377ddde1b1708166e31e52bf0b1002e4e473b2faf8f0b8c31765cabd25fe496e1cba1c011fafd1a9bf1bb164237adb40a disable_avx.patch"
+# sha256sums="a6a295e6dd28c234718ff9842e7c26546f70989d1f88ff344fb6c870dd715b36 disable_avx.patch"
+# sha512sums="c64e1288d5040b797b74b0f7aa39d4ea6cee1e7344123bafa5a66eaa7c4b20e71056570a64ce1ea3ee1270a64f9abf271d29149cca1959893ddfa8b81dda4092 disable-wall.patch"
