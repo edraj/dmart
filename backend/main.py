@@ -15,7 +15,7 @@ from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import  ValidationError
 from languages.loader import load_langs
-from utils.middleware import CustomRequestMiddleware
+from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
 from utils.redis_services import RedisServices
@@ -155,6 +155,7 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
 
 
 app.add_middleware(CustomRequestMiddleware)
+app.add_middleware(ChannelMiddleware)
 
 @app.middleware("http")
 async def middle(request: Request, call_next):
