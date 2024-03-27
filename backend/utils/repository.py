@@ -101,7 +101,7 @@ async def serve_query(
                 )
 
         case api.QueryType.search:
-            search_res, total = await redis_query_search(query, redis_query_policies)
+            search_res, total = await redis_query_search(query, logged_in_user, redis_query_policies)
             res_data: list = []
             for redis_document in search_res:
                 res_data.append(json.loads(redis_document))
@@ -228,6 +228,7 @@ async def serve_query(
                                 resource_is_active=resource_obj.is_active,
                                 resource_owner_shortname=resource_obj.owner_shortname,
                                 resource_owner_group=resource_obj.owner_group_shortname,
+                                entry_shortname=shortname,
                             ):
                                 continue
                             total += 1
@@ -334,6 +335,7 @@ async def serve_query(
                         subpath=f"{query.subpath}/{shortname}",
                         resource_type=ResourceType.folder,
                         action_type=core.ActionType.query,
+                        entry_shortname=shortname
                     ):
                         continue
                     if (
@@ -407,7 +409,7 @@ async def serve_query(
                 space_name=query.space_name,
                 subpath=query.subpath,
                 resource_type=ResourceType.content,
-                action_type=core.ActionType.query,
+                action_type=core.ActionType.query
             ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -861,7 +863,7 @@ async def redis_query_aggregate(
 
 
 async def redis_query_search(
-    query: api.Query, redis_query_policies: list = []
+    query: api.Query, user_shortname: str, redis_query_policies: list = []
 ) -> tuple:
     search_res: list = []
     total = 0
@@ -909,6 +911,7 @@ async def redis_query_search(
                     "tags": query.filter_tags or [],
                     "subpath": [query.subpath],
                     "query_policies": redis_query_policies,
+                    "user_shortname": user_shortname,
                     "created_at": created_at_search,
                 },
                 exact_subpath=query.exact_subpath,
@@ -1643,6 +1646,7 @@ async def get_entry_by_var(
         resource_is_active=entry_doc["is_active"],
         resource_owner_shortname=entry_doc.get("owner_shortname"),
         resource_owner_group=entry_doc.get("owner_group_shortname"),
+        entry_shortname=entry_doc.get("shortname")
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
