@@ -1,6 +1,7 @@
 {
   "datetime": "{ts, date, full} -  الساعة {ts, time, ::hh} ",
   "home": "الرئيسة",
+  "docs": "توثيقات",
   "language": "اللغة",
   "about": "عن الموقع",
   "posts": "منشورات",
