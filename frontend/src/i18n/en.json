@@ -1,6 +1,7 @@
 {
   "datetime": "{ts, date, full} - at {ts, time, ::hh} ",
   "home": "Home",
+  "docs": "Docs",
   "language": "Language",
   "about": "About",
   "posts": "Posts",

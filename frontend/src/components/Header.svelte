@@ -19,7 +19,9 @@
 
 <Navbar color="light" light expand="md" class="px-2 w-100 py-0">
   <NavbarBrand href="/" title="{$_('home')}">{$_('home')}</NavbarBrand>
+
   <Nav class="me-auto" navbar>
+    <NavLink href="/docs" title="{$_('docs')}">{$_('docs')}</NavLink>
     {#if $user && $user.signedin}
       <NavLink href="/management/content">{$user.localized_displayname}</NavLink>
     {/if}
