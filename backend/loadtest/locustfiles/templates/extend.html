@@ -1,0 +1,51 @@
+{% extends "index.html" %}
+
+{% block extended_head %}
+<link rel="stylesheet" type="text/css" href="./extend/static/custom-stats-table.css?v={{ version }}" media="screen">
+{% endblock extended_head %}
+
+{% block extended_tabs %}
+<li><a href="#" class="content-length-tab-link">Host Metrics</a></li>
+{% endblock extended_tabs %}
+
+{% block extended_panes %}
+<div style="display:none;">
+    <table id="host-metrics" class="stats">
+        <thead>
+            <tr>
+                <th class="stats_label" href="#" data-sortkey="name">Name</th>
+                <th class="stats_label numeric" href="#" data-sortkey="percentage" title="Percentage">Percentage</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+    <div id="content-length-container">
+        <div class="content-length-chart-container"></div>
+        <p class="note">Note: There is no persistence of these charts, if you refresh this page, new charts will be created.</p>
+    </div>
+    <p></p>
+</div>
+{% endblock extended_panes %}
+
+{% block extended_script %}
+<script type="text/javascript" src="./extend/static/extend.js"></script>
+<script type="text/x-jqote-template" id="host-metrics-template">
+    <![CDATA[
+    <tr class="<%=(alternate ? "dark" : "")%> <%=(this.is_aggregated ? "total" : "")%>">
+        <td class="name" title="<%= this.name %>"><%= this.safe_name %></td>
+        <td class="numeric"><%= this.percentage %></td>
+    </tr>
+    <% alternate = !alternate; %>
+    ]]>
+</script>
+<script type="text/x-jqote-template" id="host-metrics-template">
+    <![CDATA[
+    <tr class="<%=(alternate ? "dark" : "")%> <%=(this.is_aggregated ? "total" : "")%>">
+        <td class="name" title="<%= this.name %>"><%= this.safe_name %></td>
+        <td class="numeric"><%= this.precentage %></td>
+    </tr>
+    <% alternate = !alternate; %>
+    ]]>
+</script>
+{% endblock extended_script %}

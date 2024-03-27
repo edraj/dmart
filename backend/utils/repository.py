@@ -101,7 +101,7 @@ async def serve_query(
                 )
 
         case api.QueryType.search:
-            search_res, total = await redis_query_search(query, redis_query_policies)
+            search_res, total = await redis_query_search(query, logged_in_user, redis_query_policies)
             res_data: list = []
             for redis_document in search_res:
                 res_data.append(json.loads(redis_document))
@@ -863,7 +863,7 @@ async def redis_query_aggregate(
 
 
 async def redis_query_search(
-    query: api.Query, redis_query_policies: list = []
+    query: api.Query, user_shortname: str, redis_query_policies: list = []
 ) -> tuple:
     search_res: list = []
     total = 0
@@ -911,6 +911,7 @@ async def redis_query_search(
                     "tags": query.filter_tags or [],
                     "subpath": [query.subpath],
                     "query_policies": redis_query_policies,
+                    "user_shortname": user_shortname,
                     "created_at": created_at_search,
                 },
                 exact_subpath=query.exact_subpath,
