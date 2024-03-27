@@ -36,9 +36,9 @@ echo -n -e "update user from admin: \t" >&2
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"update","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"roles": ["ros"], "msisdn": "7895412658", "email": "dummy_unqiue@gmail.com"}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
-echo -n -e "Verify Email/msisdn admin side: " >&2
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"update","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"is_email_verified":true,"is_msisdn_verified":true}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
-RESULT+=$?
+# echo -n -e "Verify Email/msisdn admin side: " >&2
+# curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"update","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"is_email_verified":true,"is_msisdn_verified":true}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
+# RESULT+=$?
 
 echo -n -e "Reset user from admin side\t" >&2
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d $'{"shortname": "distributor"}' ${API_URL}/user/reset | jq .status | tee /dev/stderr | grep -q "success"

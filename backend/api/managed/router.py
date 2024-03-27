@@ -2326,9 +2326,10 @@ async def lock_entry(
         shortname,
         logged_in_user,
         {},
-        {"lock_type": lock_type},
+        {"lock_type": LockAction.lock},
         ["lock_type"],
         core.Content,
+        "__lock__"
     )
     return api.Response(
         status=api.Status.success,
@@ -2388,6 +2389,7 @@ async def cancel_lock(
         {"lock_type": LockAction.cancel},
         ["lock_type"],
         core.Content,
+        "__lock__"
     )
     return api.Response(
         status=api.Status.success,
