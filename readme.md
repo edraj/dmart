@@ -244,6 +244,63 @@ cp config.env.sample config.env
 
 ```
 
+#### install on macos
+#### Requirements
+
+- git
+- python == 3.12
+- pip3
+- python venv
+
+### Steps 
+
+```bash
+
+# install jq
+brew install jq
+
+# istall redis & redis-extensions
+brew tap redis-stack/redis-stack
+
+brew install redis-stack
+
+# start redis-stack in new terminal
+redis-stack-server
+
+# Make logs folder
+mkdir logs
+
+# back to first terminal
+git clone https://github.com/edraj/dmart.git
+
+cd dmart 
+
+# Copy sample spaces structure
+cp -a sample/spaces ../
+
+cd backend
+
+# Create the virtual env
+python3 -m venv env
+
+# Activate virtual env
+source env/bin/activate
+
+# Install python modules
+pip install -r requirements.txt
+
+# Optionally, fine-tune your configuration
+cp config.env.sample config.env
+
+# Set the admin password
+./set_admin_passwd.py
+
+# Start DMART microservice
+./main.py
+
+```
+
+
 #### Automated testing
 
 #### Installing python dependencies

@@ -13,6 +13,7 @@ mycookies.jar
 config.ini
 
 .env
+backend/env/
 secrets.env
 backend/config.env
 workspace.xml
