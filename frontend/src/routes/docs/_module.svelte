@@ -24,6 +24,11 @@
     let footer_height: number;
 </script>
 
+<style>
+    @import "prismjs/themes/prism.css";
+    @import "prismjs/themes/prism-coy.css";
+</style>
+
 <Row class="d-flex" style="margin-top: -1rem;height: 88vh;padding: 0px!important;" >
   <Col sm="2" style="height:88vh;overflow-y: auto; padding: 0px!important;">
     <div class="d-flex bg-light">
