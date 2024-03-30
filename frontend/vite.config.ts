@@ -7,6 +7,7 @@ import routify from "@roxi/routify/vite-plugin";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import {viteStaticCopy} from "vite-plugin-static-copy";
 import * as path from "path";
+import plantuml from "@akebifiky/remark-simple-plantuml"
 
 const production = process.env.NODE_ENV === "production";
 
@@ -73,7 +74,10 @@ export default defineConfig({
         hydratable: !!process.env.ROUTIFY_SSR_ENABLE,
       },
       extensions: [".md", ".svelte"],
-      preprocess: [preprocess(), mdsvex({ extension: "md" })],
+      preprocess: [preprocess(), mdsvex({
+        extension: "md",
+        remarkPlugins:  [plantuml,{ baseUrl: "https://www.plantuml.com/plantuml/svg" }]
+      })],
       onwarn: (warning, defaultHandler) => {
         // Ignore a11y-click-events-have-key-events warning from sveltestrap
         if (
