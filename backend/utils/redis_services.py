@@ -6,7 +6,7 @@ from redis.asyncio import Redis
 from redis.asyncio.connection import BlockingConnectionPool
 from models.api import RedisReducer, SortType
 import models.core as core
-from models.enums import RedisReducerName, ResourceType, LockAction
+from models.enums import ActionType, RedisReducerName, ResourceType, LockAction
 from redis.commands.json.path import Path
 from redis.commands.search.field import TextField, NumericField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
@@ -32,7 +32,7 @@ class RedisServices(Redis):
         password=settings.redis_password,
         decode_responses=True,
         protocol=3,
-        max_connections=20,
+        max_connections=settings.redis_pool_max_connections,
     )
 
     META_SCHEMA = (
@@ -67,6 +67,7 @@ class RedisServices(Redis):
         ),
         NumericField("$.created_at", sortable=True, as_name="created_at"),
         NumericField("$.updated_at", sortable=True, as_name="updated_at"),
+        TagField("$.view_acl.*", as_name="view_acl"),
         TagField("$.tags.*", as_name="tags"),
         TextField(
             "$.owner_shortname",
@@ -150,6 +151,7 @@ class RedisServices(Redis):
             "class": core.Role,
             "exclude_from_index": [
                 "relationships",
+                "acl",
                 "is_active",
                 "description",
                 "displayname",
@@ -163,6 +165,7 @@ class RedisServices(Redis):
             "class": core.Group,
             "exclude_from_index": [
                 "relationships",
+                "acl",
                 "is_active",
                 "description",
                 "displayname",
@@ -176,6 +179,7 @@ class RedisServices(Redis):
             "class": core.User,
             "exclude_from_index": [
                 "relationships",
+                "acl",
                 "is_active",
                 "description",
                 "displayname",
@@ -195,6 +199,7 @@ class RedisServices(Redis):
             "class": core.Permission,
             "exclude_from_index": [
                 "relationships",
+                "acl",
                 "is_active",
                 "description",
                 "displayname",
@@ -218,6 +223,7 @@ class RedisServices(Redis):
         "meta_doc_id",
         "payload_doc_id",
         "payload_string",
+        "view_acl",
     ]
     redis_indices: dict[str, dict[str, Search]] = {}
     is_pytest = False
@@ -625,6 +631,7 @@ class RedisServices(Redis):
             meta.owner_group_shortname,
             meta.shortname,
         )
+        meta_json["view_acl"] = self.generate_view_acl(meta_json.get("acl"))
         meta_json["subpath"] = subpath
         meta_json["branch_name"] = branch_name
         meta_json["resource_type"] = resource_type
@@ -633,6 +640,18 @@ class RedisServices(Redis):
         meta_json["payload_doc_id"] = payload_doc_id
 
         return meta_doc_id, meta_json
+    
+    def generate_view_acl(self, acl: list[dict[str, Any]] | None) -> list[str] | None:
+        if not acl:
+            return None
+        
+        view_acl: list[str] = []
+        
+        for access in acl:
+            if ActionType.view in access.get("allowed_actions", []) or ActionType.query in access.get("allowed_actions", []):
+                view_acl.append(access["user_shortname"])
+                
+        return view_acl
 
     async def save_meta_doc(
         self, space_name: str, branch_name: str | None, subpath: str, meta: core.Meta
@@ -967,8 +986,11 @@ class RedisServices(Redis):
         redis_escape_chars = str.maketrans(
             {":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
         )
+        if filters.get("query_policies", None) == []:
+            filters["query_policies"] = ["__NONE__"]
+            
         for item in filters.items():
-            if item[0] in ["tags", "query_policies"] and item[1]:
+            if item[0] == "tags" and item[1]:
                 query_string += (
                     " @"
                     + item[0]
@@ -976,6 +998,16 @@ class RedisServices(Redis):
                     + "|".join(item[1]).translate(redis_escape_chars)
                     + "}"
                 )
+            elif item[0] == "query_policies" and item[1] is not None:
+                query_string += (
+                    f" ((@{item[0]}:{{" + "|".join(item[1]).translate(redis_escape_chars) + "})"
+                )
+                if filters.get("user_shortname", None) is not None:
+                    query_string += (
+                        f" | (@view_acl:{{{filters['user_shortname']}}}) )"
+                    )
+                else:
+                    query_string += ")"
             elif item[0] == "created_at" and item[1]:
                 query_string += f" @{item[0]}:{item[1]}"
             elif item[0] == "subpath" and exact_subpath:
@@ -990,7 +1022,7 @@ class RedisServices(Redis):
                 query_string += f" @exact_subpath:{{{exact_subpath_value}}}"
             elif item[0] == "subpath" and item[1][0] == "/":
                 pass
-            elif item[1]:
+            elif item[1] and item[0] != "user_shortname":
                 query_string += " @" + item[0] + ":(" + "|".join(item[1]) + ")"
 
         return query_string or "*"

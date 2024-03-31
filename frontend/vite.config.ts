@@ -104,7 +104,9 @@ export default defineConfig({
   //   environment: "jsdom",
   //   globals: true,
   // },
-  ssr: {
-    noExternal: ["@popperjs/core"],
+  render:{
+    ssr: {
+      noExternal: ["@popperjs/core"],
+    }
   },
 });

@@ -1,11 +1,12 @@
 import json
 import re
+import sys
 from redis.commands.search.field import TextField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
-from models.core import ActionType, ConditionType, Group, Permission, Role, User
+from models.core import ACL, ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
-from utils.helpers import flatten_dict
+from utils.helpers import camel_case, flatten_dict
 from utils.settings import settings
 import utils.db as db
 import models.core as core
@@ -200,8 +201,51 @@ class AccessControl:
             else:
                 search_subpath += "/"
 
+        if entry_shortname:
+            return await self.check_access_control_list(
+                space_name,
+                subpath,
+                resource_type,
+                entry_shortname,
+                action_type,
+                user_shortname,
+            )
+            
         return False
 
+    async def check_access_control_list(
+        self,
+        space_name: str,
+        subpath: str,
+        resource_type: ResourceType,
+        entry_shortname: str,
+        action_type: ActionType,
+        user_shortname: str,
+    ) -> bool:
+        resource_cls = getattr(
+            sys.modules["models.core"], camel_case(resource_type)
+        )
+        entry = await db.load(
+            space_name=space_name,
+            subpath=subpath,
+            shortname=entry_shortname,
+            class_type=resource_cls
+        )
+        if not entry.acl:
+            return False
+        
+        user_acl: ACL | None = None
+        for access in entry.acl:
+            if access.user_shortname == user_shortname:
+                user_acl = access
+                break
+            
+        if not user_acl:
+            return False
+        
+        return (action_type in user_acl.allowed_actions)
+            
+            
     def has_global_access(
         self, 
         space_name: str,
