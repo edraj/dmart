@@ -1,18 +1,7 @@
 <script lang="ts">
-  import {
-    ResourceType,
-    ResponseEntry,
-    get_payload,
-    progress_ticket,
-  } from "@/dmart";
-  import {
-      Form,
-      FormGroup,
-      Button,
-      Label,
-      Input,
-  } from "sveltestrap";
-  import { showToast, Level } from "@/utils/toast";
+    import {get_payload, progress_ticket, request, RequestType, ResourceType, ResponseEntry,} from "@/dmart";
+    import {Button, Form, FormGroup, Input, Label,} from "sveltestrap";
+    import {Level, showToast} from "@/utils/toast";
 
 
   export let entry: ResponseEntry;
@@ -27,8 +16,48 @@
   let ticket_action = null;
   let resolution = null;
   let comment;
+  let to_shortname="";
   async function handleTicketSubmit(e) {
     e.preventDefault();
+    if (ticket_action === null && to_shortname===""){
+        showToast(Level.info, "Nothing to be saved!");
+        return;
+    }
+
+    if (to_shortname!=="") {
+        const response = await request({
+            space_name,
+            request_type: RequestType.assign,
+            records: [
+                {
+                    resource_type: ResourceType.ticket,
+                    shortname: entry.shortname,
+                    subpath,
+                    attributes: {
+                        is_active: true,
+                        owner_shortname: to_shortname,
+                        workflow_shortname: entry.workflow_shortname,
+                        payload: {
+                            content_type: entry.payload.content_type,
+                            schema_shortname: entry.payload.schema_shortname
+                        }
+                    }
+                }
+            ]
+        });
+        if (response.status === "success") {
+            showToast(Level.info);
+            window.location.reload();
+        }
+        else {
+            showToast(Level.warn, response.error.message);
+        }
+    }
+
+    if (ticket_action === null){
+        return;
+    }
+
     const response = await progress_ticket(
       space_name,
       subpath,
@@ -77,58 +106,71 @@
 
 </script>
 
-<Form class="px-5 mb-5" on:submit={handleTicketSubmit}>
-  {#await get_ticket_payload() then _}
-    <FormGroup>
-      {#if ticketStates}
-      <Label>State</Label>
-      <!-- on:change={handleInputChange} -->
-      <Input
-        class="w-25"
-        type="select"
-        name="status"
-        placeholder="Status..."
-        bind:value={ticket_status}
-      >
-        <option value={null}>Select next state</option>
-        {#each ticketStates as e}
-          <option value={e.state} disabled={!e.roles.some((el) => userRoles.includes(el))}>{e.state}</option>
-        {/each}
-      </Input>
-      {/if}
-    </FormGroup>
-    {#key ticket_status}
-      {#if ticketResolutions.length !== 0}
-        <FormGroup>
-          <Label>Resolution</Label>
+<Form class="d-flex flex-column justify-content-between w-100 p-5" on:submit={handleTicketSubmit}>
+  <div class="d-flex row">
+    {#await get_ticket_payload() then _}
+      <FormGroup class="col">
+        {#if ticketStates}
+          <Label>State</Label>
+          <!-- on:change={handleInputChange} -->
           <Input
-            class="w-25"
-            type="select"
-            name="resolution"
-            placeholder="Resolution..."
-            bind:value={resolution}
+                  class=""
+                  type="select"
+                  name="status"
+                  placeholder="Status..."
+                  bind:value={ticket_status}
           >
-            <option value={null}>Select resolution</option>
-            {#each ticketResolutions as resolution}
-              <option value={resolution}>{resolution}</option>
+            <option value={null}>Select next state</option>
+            {#each ticketStates as e}
+              <option value={e.state} disabled={!e.roles.some((el) => userRoles.includes(el))}>{e.state}</option>
             {/each}
           </Input>
-        </FormGroup>
-      {/if}
-    {/key}
-  {/await}
-  {#if ticketStates.length}
-    <FormGroup>
-      <Label>Comment</Label>
+        {/if}
+      </FormGroup>
+      {#key ticket_status}
+        {#if ticketResolutions.length !== 0}
+          <FormGroup>
+            <Label>Resolution</Label>
+            <Input
+                    class=""
+                    type="select"
+                    name="resolution"
+                    placeholder="Resolution..."
+                    bind:value={resolution}
+            >
+              <option value={null}>Select resolution</option>
+              {#each ticketResolutions as resolution}
+                <option value={resolution}>{resolution}</option>
+              {/each}
+            </Input>
+          </FormGroup>
+        {/if}
+      {/key}
+    {/await}
+    {#if ticketStates.length}
+      <FormGroup class="col">
+        <Label>Comment</Label>
+        <!-- on:change={handleInputChange} -->
+        <Input
+          class=""
+          type="text"
+          name="comment"
+          placeholder="Comment..."
+          bind:value={comment}
+        />
+      </FormGroup>
+    {/if}
+    <FormGroup class="col">
+      <Label>Transfer</Label>
       <!-- on:change={handleInputChange} -->
       <Input
-        class="w-25"
+        class=""
         type="text"
-        name="comment"
-        placeholder="Comment..."
-        bind:value={comment}
+        name="transfer"
+        placeholder="Transfer to..."
+        bind:value={to_shortname}
       />
     </FormGroup>
-    <Button type="submit">Save</Button>
-  {/if}
+  </div>
+  <Button color="primary" class="mx-auto justify-content-center" style="width: 75%" type="submit">Save</Button>
 </Form>

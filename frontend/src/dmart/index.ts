@@ -231,6 +231,7 @@ export enum RequestType {
   replace = "replace",
   delete = "delete",
   move = "move",
+  assign = "assign",
 }
 
 export enum ResourceAttachmentType {
