@@ -1,6 +1,7 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 """ Main module """
 # from logging import handlers
+# import uvicorn
 from starlette.datastructures import UploadFile
 from contextlib import asynccontextmanager
 import asyncio
@@ -80,8 +81,8 @@ app = FastAPI(
     description="Structured Content Management System",
     version="1.1.0",
     redoc_url=None,
-    docs_url=f"{settings.base_path}/docs",
-    openapi_url=f"{settings.base_path}/openapi.json",
+    docs_url=f"{settings.base_path}docs",
+    openapi_url=f"{settings.base_path}openapi.json",
     servers=[{"url": f"{settings.base_path}/"}],
     contact={
         "name": "Kefah T. Issa",
