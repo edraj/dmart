@@ -321,3 +321,15 @@ async def csv_file_to_json(csv_file_path: Path) -> list[dict[str, Any]]:
 
     return data
 
+
+def trans_magic_words(subpath: str, user_shortname: str) -> str:
+        subpath = subpath.replace(settings.current_user_mw, user_shortname)
+        subpath = subpath.replace("//", "/")
+
+        if len(subpath) == 0:
+            subpath = "/"
+        if subpath[0] == "/" and len(subpath) > 1:
+            subpath = subpath[1:]
+        if subpath[-1] == "/" and len(subpath) > 1:
+            subpath = subpath[:-1]
+        return subpath

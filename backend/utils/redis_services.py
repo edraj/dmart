@@ -1027,7 +1027,7 @@ class RedisServices(Redis):
 
         return query_string or "*"
 
-    async def get_doc_by_id(self, doc_id: str) -> Any:
+    async def get_doc_by_id(self, doc_id: str) -> dict[str, Any]:
         try:
             x = self.json().get(name=doc_id)
             if x and isinstance(x, Awaitable):

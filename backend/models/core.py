@@ -2,7 +2,7 @@ import copy
 import json
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, ConfigDict
-from typing import Any
+from typing import Any, TypeVar
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
 from pydantic import Field
@@ -35,6 +35,17 @@ from hashlib import sha1 as hashlib_sha1
 #    dist_shortname: str = Field(default=None, regex=regex.SHORTNAME)
 #    dist_subpath: str = Field(default=None, regex=regex.SUBPATH)
 
+class EntityDTO(BaseModel):
+    space_name: str
+    subpath: str
+    shortname: str
+    resource_type: ResourceType = ResourceType.content
+    branch_name: str | None = settings.default_branch
+    schema_shortname: str | None = None
+    user_shortname: str | None = None
+    
+    # def from_record(record: Record):
+    #     pass
 
 class Resource(BaseModel):
     model_config = ConfigDict(use_enum_values=True, arbitrary_types_allowed=True)
@@ -587,3 +598,6 @@ class Notification(Meta):
             priority=notification_req["priority"],
             entry=entry_locator,
         )
+
+
+MetaChild = TypeVar("MetaChild", bound=Meta)
