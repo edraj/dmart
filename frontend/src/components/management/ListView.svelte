@@ -40,6 +40,7 @@
   export let sort_order: any = null;
   export let is_clickable = true;
   export let canDelete = false;
+  export let scope = "managed";
 
   if (columns !== null && folderColumns !== null){
       throw new Error('columns and folderColumns cannot co-exist!');
@@ -130,7 +131,7 @@
       search: $search,
       ...requestExtra,
       retrieve_json_payload: true
-    });
+    }, scope);
 
     old_search = $search;
     total = resp.attributes.total;
