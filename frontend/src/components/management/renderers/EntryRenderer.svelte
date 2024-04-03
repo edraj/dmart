@@ -1463,7 +1463,7 @@
             >
               <Icon name="pencil" />
             </Button>
-            {#if schema}
+            {#if schema && jseContent?.json}
               <Button
                 outline
                 color="success"
