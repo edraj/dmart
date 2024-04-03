@@ -1,5 +1,9 @@
-# Simple Example
+<script>
+  import {QueryType} from "@/dmart";
+  import ListView from "@/components/management/ListView.svelte";
+</script>
 
+# Simple Example
 
 ## Important terms
 **Each term has a dedicated section with a detailed explanation**
@@ -89,18 +93,33 @@ if it's valid, the system stores the entry under `dmart_data/products`.
 
 ## 3. Search
 Now you can do a full text search or an attribute based search for that field.
-for example, lets say we want to retrieve product under **Mobile Phones** category
+for example, lets say we want to retrieve all sub-folders under **mysapce** space
 
 we call the `/query` API with the following request body
 
-```
+```json
 {
-    "type": "search",
-    "space_name": "dmart_data",
-    "subpath": "products",
-    "filter_schema_names": ["product"],
-    "search": "@category:Mobile Phones"
+  "filter_shortnames": [],
+  "type": "subpath",
+  "search": "",
+  "space_name": "myspace",
+  "subpath": "/",
+  "exact_subpath": true,
+  "limit": 15,
+  "offset": 0,
+  "retrieve_json_payload": true,
+  "sort_type": "ascending",
+  "sort_by": "created_at"
 }
 ```
 
+And the results would be:
+
+<ListView
+    type={QueryType.subpath}
+    space_name={"myspace"}
+    subpath={"/"}
+    is_clickable={false}
+    scope={"public"}
+/>
 
