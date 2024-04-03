@@ -473,7 +473,7 @@ export type ApiQueryResponse = ApiResponse & {
   attributes: { total: number; returned: number };
 };
 
-export async function query(query: QueryRequest): Promise<ApiQueryResponse> {
+export async function query(query: QueryRequest, scope="managed"): Promise<ApiQueryResponse> {
   try {
     if (query.type != QueryType.spaces) {
       query.sort_type = query.sort_type || SortyType.ascending;
@@ -481,7 +481,7 @@ export async function query(query: QueryRequest): Promise<ApiQueryResponse> {
     }
     query.subpath = query.subpath.replace(/\/+/g, "/");
     const { data } = await axios.post<ApiQueryResponse>(
-        website.backend + "/managed/query",
+        website.backend + `/${scope}/query`,
         query,
         { headers , timeout: 3000 }
     );
