@@ -58,7 +58,7 @@
     </div>
   </Col>
   <Col sm="10" style="padding: 1rem; margin-top: -1rem">
-    <Card style="overflow-y: auto; height:88vh">
+    <Card class="px-4" style="overflow-y: auto; height:88vh">
       <CardBody>
         <slot/>
       </CardBody>
