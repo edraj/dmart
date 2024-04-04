@@ -8,7 +8,7 @@ from models.api import RedisReducer, SortType
 import models.core as core
 from models.enums import ActionType, RedisReducerName, ResourceType, LockAction
 from redis.commands.json.path import Path
-from redis.commands.search.field import TextField, NumericField, TagField
+from redis.commands.search.field import TextField, NumericField, TagField, Field
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from datetime import datetime
 
@@ -248,6 +248,17 @@ class RedisServices(Redis):
         else:
             super().__init__(connection_pool=self.POOL, decode_responses=True)
 
+    async def create_index_direct(
+        self,
+        name: str,
+        fields: tuple[Field],
+        definition: IndexDefinition
+    ):
+        await self.ft(name).create_index(
+            fields=fields,
+            definition=definition
+        )
+        
     async def create_index(
         self,
         space_branch_name: str,
@@ -607,7 +618,7 @@ class RedisServices(Redis):
 
     def prepate_meta_doc(
         self, space_name: str, branch_name: str | None, subpath: str, meta: core.Meta
-    ):
+    ) -> tuple[str, dict[str, Any]]:
         resource_type = meta.__class__.__name__.lower()
         meta_doc_id = self.generate_doc_id(
             space_name, branch_name, "meta", meta.shortname, subpath
@@ -621,7 +632,7 @@ class RedisServices(Redis):
                 meta.shortname,
                 subpath,
             )
-        meta_json = json.loads(meta.model_dump_json(exclude_none=True))
+        meta_json: dict[str, Any] = json.loads(meta.model_dump_json(exclude_none=True))
         meta_json["query_policies"] = self.generate_query_policies(
             space_name,
             subpath,
@@ -668,27 +679,24 @@ class RedisServices(Redis):
         branch_name: str | None,
         subpath: str,
         meta: core.Meta,
-        payload: dict,
-        resource_type: str = ResourceType.content,
-    ):
+        payload: dict[str, Any],
+        resource_type: ResourceType | None = ResourceType.content,
+    ) -> tuple[str, dict[str, Any]]:
         if meta.payload is None:
-            print(
+            raise Exception(
                 f"Missing payload for {space_name}/{branch_name}/{subpath} of type {resource_type}"
             )
-            return "", {}
         if meta.payload.body is None:
-            print(
+            raise Exception(
                 f"Missing body for {space_name}/{branch_name}/{subpath} of type {resource_type}"
             )
-            return "", {}
         if not isinstance(meta.payload.body, str):
-            print("body should be type of string")
-            return "", {}
+            raise Exception("body should be type of string")
         payload_shortname = meta.payload.body.split(".")[0]
         meta_doc_id = self.generate_doc_id(
             space_name, branch_name, "meta", payload_shortname, subpath
         )
-        docid = self.generate_doc_id(
+        docid: str = self.generate_doc_id(
             space_name,
             branch_name,
             meta.payload.schema_shortname or "",
@@ -699,7 +707,7 @@ class RedisServices(Redis):
         payload["query_policies"] = self.generate_query_policies(
             space_name,
             subpath,
-            resource_type,
+            resource_type or ResourceType.content,
             meta.is_active,
             meta.owner_shortname,
             meta.owner_group_shortname,
@@ -733,7 +741,7 @@ class RedisServices(Redis):
             return
         await self.save_doc(docid, payload)
 
-    async def get_payload_doc(self, doc_id: str, resource_type: ResourceType):
+    async def get_payload_doc(self, doc_id: str, resource_type: ResourceType) -> dict[str, Any]:
         resource_class = getattr(
             sys.modules["models.core"],
             camel_case(resource_type),
@@ -759,7 +767,7 @@ class RedisServices(Redis):
         payload_shortname: str,
         owner_shortname: str,
         ttl: int,
-    ):
+    ) -> LockAction:
         lock_doc_id = self.generate_doc_id(
             space_name, branch_name, "lock", payload_shortname, subpath
         )
@@ -797,7 +805,7 @@ class RedisServices(Redis):
         branch_name: str | None,
         subpath: str,
         payload_shortname: str,
-    ):
+    ) -> dict[str, Any]:
         lock_doc_id = self.generate_doc_id(
             space_name, branch_name, "lock", payload_shortname, subpath
         )
@@ -864,7 +872,7 @@ class RedisServices(Redis):
         space_name: str,
         branch_name: str | None,
         search: str,
-        filters: dict[str, str | list],
+        filters: dict[str, str | list | None],
         limit: int,
         offset: int,
         exact_subpath: bool = False,
@@ -873,7 +881,7 @@ class RedisServices(Redis):
         highlight_fields: list[str] | None = None,
         schema_name: str = "meta",
         return_fields: list = [],
-    ):
+    ) -> tuple[int, list[str]]:
         # Tries to get the index from the provided space
         try:
             ft_index = self.ft(f"{space_name}:{branch_name}:{schema_name}")
@@ -882,7 +890,7 @@ class RedisServices(Redis):
             logger.error(
                 f"Error accessing index: {space_name}:{branch_name}:{schema_name}, at redis_services.search: {e}"
             )
-            return {"data": [], "total": 0}
+            return (0, [])
 
         search_query = Query(
             query_string=self.prepare_query_string(search, filters, exact_subpath)
@@ -907,25 +915,32 @@ class RedisServices(Redis):
                 and "results" in search_res
                 and "total_results" in search_res
             ):
-
-                return {
-                    "data": [
-                        one["extra_attributes"]["$"]
-                        for one in search_res["results"]
-                        if "extra_attributes" in one
-                    ],
-                    "total": search_res["total_results"],
-                }
+                # res = {
+                #     "data": [
+                #         one["extra_attributes"]["$"]
+                #         for one in search_res["results"]
+                #         if "extra_attributes" in one
+                #     ],
+                #     "total": search_res["total_results"],
+                # }
+                # print(type(res["data"]))
+                # pprint(res)
+                # print("\n\n")
+                return search_res["total_results"], [
+                    one["extra_attributes"]["$"]
+                    for one in search_res["results"]
+                    if "extra_attributes" in one
+                ]
             else:
-                return {}
+                return 0, []
         except Exception:
-            return {}
+            return 0, []
 
     async def aggregate(
         self,
         space_name: str,
         search: str,
-        filters: dict[str, str | list],
+        filters: dict[str, str | list | None],
         group_by: list[str],
         reducers: list[RedisReducer],
         max: int = 10,
@@ -979,7 +994,7 @@ class RedisServices(Redis):
         return []
 
     def prepare_query_string(
-        self, search: str, filters: dict[str, str | list], exact_subpath: bool
+        self, search: str, filters: dict[str, str | list | None], exact_subpath: bool
     ):
         query_string = search
 
@@ -1012,7 +1027,7 @@ class RedisServices(Redis):
                 query_string += f" @{item[0]}:{item[1]}"
             elif item[0] == "subpath" and exact_subpath:
                 search_value = ""
-                for subpath in item[1]:  # Handle existence/absence of `/`
+                for subpath in (item[1] or []):  # Handle existence/absence of `/`
                     search_value += "|" + subpath.strip("/")
                     search_value += "|" + f"/{subpath}".replace("//", "/")
 
@@ -1020,7 +1035,7 @@ class RedisServices(Redis):
                     redis_escape_chars
                 )
                 query_string += f" @exact_subpath:{{{exact_subpath_value}}}"
-            elif item[0] == "subpath" and item[1][0] == "/":
+            elif item[0] == "subpath" and len(item) > 1 and item[1] and item[1][0] == "/":
                 pass
             elif item[1] and item[0] != "user_shortname":
                 query_string += " @" + item[0] + ":(" + "|".join(item[1]) + ")"
@@ -1158,7 +1173,9 @@ class RedisServices(Redis):
         except Exception:
             return False
 
-    async def list_indices(self):
+    async def list_indices(self) -> set[str]:
         x = self.ft().execute_command("FT._LIST")
         if x and isinstance(x, Awaitable):
             return await x
+        
+        return set()

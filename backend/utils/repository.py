@@ -10,11 +10,11 @@ import jq  # type: ignore
 from fastapi.encoders import jsonable_encoder
 from pydantic.fields import Field
 from models.enums import ContentType, Language, ResourceType
-from utils.access_control import access_control
+# from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import generate_jwt
 from utils.plugin_manager import plugin_manager
-from utils.spaces import get_spaces
+from utils.operational_repo import operational_repo
 from utils.settings import settings
 import utils.regex as regex
 import models.core as core
@@ -68,24 +68,24 @@ async def serve_query(
     """
     records: list[core.Record] = []
     total: int = 0
-    spaces = await get_spaces()
+    spaces = await operational_repo.find_by_id("spaces")
     match query.type:
         case api.QueryType.spaces:
             for space_json in spaces.values():
                 space = core.Space.model_validate_json(space_json)
 
-                if await access_control.check_space_access(
-                    logged_in_user, space.shortname
-                ):
-                    total += 1
-                    records.append(
-                        space.to_record(
-                            query.subpath,
-                            space.shortname,
-                            query.include_fields if query.include_fields else [],
-                            query.branch_name,
-                        )
-                    )
+                # if await access_control.check_space_access(
+                #     logged_in_user, space.shortname
+                # ):
+                #     total += 1
+                #     records.append(
+                #         space.to_record(
+                #             query.subpath,
+                #             space.shortname,
+                #             query.include_fields if query.include_fields else [],
+                #             query.branch_name,
+                #         )
+                #     )
             if not query.sort_by:
                 query.sort_by = "ordinal"
             if records:
@@ -219,18 +219,18 @@ async def serve_query(
                                 continue
 
                             # apply check access
-                            if not await access_control.check_access(
-                                user_shortname=logged_in_user,
-                                space_name=query.space_name,
-                                subpath=query.subpath,
-                                resource_type=ResourceType(resource_name),
-                                action_type=core.ActionType.view,
-                                resource_is_active=resource_obj.is_active,
-                                resource_owner_shortname=resource_obj.owner_shortname,
-                                resource_owner_group=resource_obj.owner_group_shortname,
-                                entry_shortname=shortname,
-                            ):
-                                continue
+                            # if not await access_control.check_access(
+                            #     user_shortname=logged_in_user,
+                            #     space_name=query.space_name,
+                            #     subpath=query.subpath,
+                            #     resource_type=ResourceType(resource_name),
+                            #     action_type=core.ActionType.view,
+                            #     resource_is_active=resource_obj.is_active,
+                            #     resource_owner_shortname=resource_obj.owner_shortname,
+                            #     resource_owner_group=resource_obj.owner_group_shortname,
+                            #     entry_shortname=shortname,
+                            # ):
+                            #     continue
                             total += 1
                             if len(records) >= query.limit or total < query.offset:
                                 continue
@@ -329,15 +329,15 @@ async def serve_query(
                         continue
 
                     shortname = match.group(1)
-                    if not await access_control.check_access(
-                        user_shortname=logged_in_user,
-                        space_name=query.space_name,
-                        subpath=f"{query.subpath}/{shortname}",
-                        resource_type=ResourceType.folder,
-                        action_type=core.ActionType.query,
-                        entry_shortname=shortname
-                    ):
-                        continue
+                    # if not await access_control.check_access(
+                    #     user_shortname=logged_in_user,
+                    #     space_name=query.space_name,
+                    #     subpath=f"{query.subpath}/{shortname}",
+                    #     resource_type=ResourceType.folder,
+                    #     action_type=core.ActionType.query,
+                    #     entry_shortname=shortname
+                    # ):
+                    #     continue
                     if (
                         query.filter_shortnames
                         and shortname not in query.filter_shortnames
@@ -404,21 +404,21 @@ async def serve_query(
                     )
 
         case api.QueryType.counters:
-            if not await access_control.check_access(
-                user_shortname=logged_in_user,
-                space_name=query.space_name,
-                subpath=query.subpath,
-                resource_type=ResourceType.content,
-                action_type=core.ActionType.query
-            ):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [16]",
-                    ),
-                )
+            # if not await access_control.check_access(
+            #     user_shortname=logged_in_user,
+            #     space_name=query.space_name,
+            #     subpath=query.subpath,
+            #     resource_type=ResourceType.content,
+            #     action_type=core.ActionType.query
+            # ):
+            #     raise api.Exception(
+            #         status.HTTP_401_UNAUTHORIZED,
+            #         api.Error(
+            #             type="request",
+            #             code=InternalErrorCode.NOT_ALLOWED,
+            #             message="You don't have permission to this action [16]",
+            #         ),
+            #     )
             async with RedisServices() as redis_services:
                 for schema_name in query.filter_schema_names:
                     redis_res = await redis_services.get_count(
@@ -506,21 +506,21 @@ async def serve_query(
                     records.append(record)
 
         case api.QueryType.history:
-            if not await access_control.check_access(
-                user_shortname=logged_in_user,
-                space_name=query.space_name,
-                subpath=query.subpath,
-                resource_type=ResourceType.history,
-                action_type=core.ActionType.query,
-            ):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [17]",
-                    ),
-                )
+            # if not await access_control.check_access(
+            #     user_shortname=logged_in_user,
+            #     space_name=query.space_name,
+            #     subpath=query.subpath,
+            #     resource_type=ResourceType.history,
+            #     action_type=core.ActionType.query,
+            # ):
+            #     raise api.Exception(
+            #         status.HTTP_401_UNAUTHORIZED,
+            #         api.Error(
+            #             type="request",
+            #             code=InternalErrorCode.NOT_ALLOWED,
+            #             message="You don't have permission to this action [17]",
+            #         ),
+            #     )
 
             if not query.filter_shortnames:
                 raise api.Exception(
@@ -646,15 +646,15 @@ async def serve_query(
                     ):
                         break
 
-                    if not await access_control.check_access(
-                        user_shortname=logged_in_user,
-                        space_name=query.space_name,
-                        subpath=action_obj.get(
-                            "resource", {}).get("subpath", "/"),
-                        resource_type=action_obj["resource"]["type"],
-                        action_type=core.ActionType(action_obj["request"]),
-                    ):
-                        continue
+                    # if not await access_control.check_access(
+                    #     user_shortname=logged_in_user,
+                    #     space_name=query.space_name,
+                    #     subpath=action_obj.get(
+                    #         "resource", {}).get("subpath", "/"),
+                    #     resource_type=action_obj["resource"]["type"],
+                    #     action_type=core.ActionType(action_obj["request"]),
+                    # ):
+                    #     continue
 
                     records.append(
                         core.Record(
@@ -923,8 +923,8 @@ async def redis_query_search(
             )
 
             if redis_res:
-                search_res.extend(redis_res["data"])
-                total += redis_res["total"]
+                search_res.extend(redis_res[1])
+                total += redis_res[0]
     return search_res, total
 
 
@@ -1033,7 +1033,7 @@ async def get_group_users(group_name: str):
         )
 
     if users_docs:
-        return users_docs["data"]
+        return users_docs[1]
 
     return []
 
@@ -1605,7 +1605,7 @@ async def get_entry_by_var(
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
 ):
-    spaces = await get_spaces()
+    spaces = await operational_repo.find_by_id("spaces")
     entry_doc = None
     entry_space = None
     entry_branch = None
@@ -1621,8 +1621,8 @@ async def get_entry_by_var(
                     offset=0,
                     filters={},
                 )
-                if search_res["total"] > 0:
-                    entry_doc = json.loads(search_res["data"][0])
+                if search_res[0] > 0:
+                    entry_doc = json.loads(search_res[1][0])
                     entry_branch = branch
                     break
             if entry_doc:
@@ -1637,25 +1637,25 @@ async def get_entry_by_var(
             ),
         )
 
-    if not await access_control.check_access(
-        user_shortname=logged_in_user,
-        space_name=entry_space,
-        subpath=entry_doc["subpath"],
-        resource_type=entry_doc["resource_type"],
-        action_type=core.ActionType.view,
-        resource_is_active=entry_doc["is_active"],
-        resource_owner_shortname=entry_doc.get("owner_shortname"),
-        resource_owner_group=entry_doc.get("owner_group_shortname"),
-        entry_shortname=entry_doc.get("shortname")
-    ):
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="request",
-                code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [12]",
-            ),
-        )
+    # if not await access_control.check_access(
+    #     user_shortname=logged_in_user,
+    #     space_name=entry_space,
+    #     subpath=entry_doc["subpath"],
+    #     resource_type=entry_doc["resource_type"],
+    #     action_type=core.ActionType.view,
+    #     resource_is_active=entry_doc["is_active"],
+    #     resource_owner_shortname=entry_doc.get("owner_shortname"),
+    #     resource_owner_group=entry_doc.get("owner_group_shortname"),
+    #     entry_shortname=entry_doc.get("shortname")
+    # ):
+    #     raise api.Exception(
+    #         status.HTTP_401_UNAUTHORIZED,
+    #         api.Error(
+    #             type="request",
+    #             code=InternalErrorCode.NOT_ALLOWED,
+    #             message="You don't have permission to this action [12]",
+    #         ),
+    #     )
 
     await plugin_manager.before_action(
         core.Event(

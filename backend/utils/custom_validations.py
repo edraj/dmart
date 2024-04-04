@@ -3,16 +3,15 @@ from typing import Any
 import aiofiles
 from fastapi import status
 from models.core import Record
-from models.enums import RequestType
+from models.enums import QueryType, RequestType
 from utils.helpers import branch_path, csv_file_to_json, flatten_dict, flatten_list_of_dicts_in_dict
 from utils.internal_error_code import InternalErrorCode
-from utils.redis_services import RedisServices
-from models.api import Exception as API_Exception, Error as API_Error
+from models.api import Exception as API_Exception, Error as API_Error, Query
 from utils.settings import settings
 from pathlib import Path as FSPath
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
-
+from utils.operational_repo import operational_repo
 
 async def validate_payload_with_schema(
     payload_data: UploadFile | dict,
@@ -189,14 +188,14 @@ async def validate_uniqueness(
         if subpath[0] == "/":
             subpath = subpath[1:]
 
-        redis_search_str += f" @subpath:{subpath}"
+        # redis_search_str += f" @subpath:{subpath}"
 
         if action == RequestType.update:
             redis_search_str += f" (-@shortname:{record.shortname})"
 
         schema_name = record.attributes.get("payload", {}).get("schema_shortname", None)
 
-        for index in RedisServices.CUSTOM_INDICES:
+        for index in operational_repo.SYS_INDEXES:
             if space_name == index["space"] and index["subpath"] == subpath:
                 schema_name = "meta"
                 break
@@ -204,18 +203,17 @@ async def validate_uniqueness(
         if not schema_name:
             continue
 
-        async with RedisServices() as redis_services:
-            redis_search_res = await redis_services.search(
-                space_name=space_name,
-                branch_name=record.branch_name,
-                search=redis_search_str,
-                limit=1,
-                offset=0,
-                filters={},
-                schema_name=schema_name,
-            )
+        redis_search_res = await operational_repo.search(Query(
+            type=QueryType.search,
+            space_name=space_name,
+            branch_name=record.branch_name,
+            search=redis_search_str,
+            subpath=subpath,
+            filter_schema_name=[schema_name],
+            limit=1
+        ))
 
-        if redis_search_res and redis_search_res["total"] > 0:
+        if redis_search_res and redis_search_res[0] > 0:
             raise API_Exception(
                 status.HTTP_400_BAD_REQUEST,
                 API_Error(

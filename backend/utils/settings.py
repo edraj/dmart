@@ -71,6 +71,8 @@ class Settings(BaseSettings):
 
     facebook_client_id: str = ""
     facebook_client_secret: str = ""
+    
+    active_operational_db: str = "redis" # allowed values: redis, manticore
 
     model_config = SettingsConfigDict(
         env_file=os.getenv("BACKEND_ENV", "config.env"), env_file_encoding="utf-8"

@@ -35,18 +35,6 @@ from hashlib import sha1 as hashlib_sha1
 #    dist_shortname: str = Field(default=None, regex=regex.SHORTNAME)
 #    dist_subpath: str = Field(default=None, regex=regex.SUBPATH)
 
-class EntityDTO(BaseModel):
-    space_name: str
-    subpath: str
-    shortname: str
-    resource_type: ResourceType = ResourceType.content
-    branch_name: str | None = settings.default_branch
-    schema_shortname: str | None = None
-    user_shortname: str | None = None
-    
-    # def from_record(record: Record):
-    #     pass
-
 class Resource(BaseModel):
     model_config = ConfigDict(use_enum_values=True, arbitrary_types_allowed=True)
 
@@ -601,3 +589,21 @@ class Notification(Meta):
 
 
 MetaChild = TypeVar("MetaChild", bound=Meta)
+
+class EntityDTO(BaseModel):
+    space_name: str
+    subpath: str
+    shortname: str
+    resource_type: ResourceType | None = ResourceType.content
+    branch_name: str | None = settings.default_branch
+    schema_shortname: str | None = None
+    user_shortname: str | None = None
+    
+    @staticmethod
+    def from_event_data(data: Event) -> "EntityDTO":
+        return EntityDTO(
+            **data.model_dump(include={"space_name", "branch_name", "subpath", "shortname", "resource_type", "schema_shortname", "user_shortname"})
+        )
+    
+    # def from_record(record: Record):
+    #     pass

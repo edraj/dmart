@@ -1,14 +1,15 @@
 import json
 from sys import modules as sys_modules
+from models.api import Query
 from models.core import Notification, NotificationData, PluginBase, Event, Translation
+from models.enums import QueryType
 from utils.helpers import branch_path, camel_case
 from utils.notification import NotificationManager
-from utils.redis_services import RedisServices
 from utils.repository import internal_save_model, get_entry_attachments
 from utils.settings import settings
 from fastapi.logger import logger
 from utils.db import load, load_resource_payload, save_payload_from_json
-
+from utils.operational_repo import operational_repo
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
@@ -51,21 +52,21 @@ class Plugin(PluginBase):
             return
 
         # Get msisdns users
-        async with RedisServices() as redis:
-            receivers = await redis.search(
-                space_name=settings.management_space,
-                branch_name=settings.management_space_branch,
-                search=f"@subpath:users @msisdn:{'|'.join(notification_dict['msisdns'])}",
-                filters={},
-                limit=10000,
-                offset=0,
-            )
-        if not receivers or receivers.get("total", 0) == 0:
+        receivers = await operational_repo.search(Query(
+            type=QueryType.search,
+            space_name=settings.management_space,
+            branch_name=settings.management_space_branch,
+            subpath="users",
+            search=f"@msisdn:{'|'.join(notification_dict['msisdns'])}",
+            limit=10000,
+            offset=0,
+        ))
+        if not receivers or receivers[0] == 0:
             return
 
         receivers_shortnames = set()
-        for receiver in receivers["data"]:
-            receivers_shortnames.add(json.loads(receiver)["shortname"])
+        for receiver in receivers[1]:
+            receivers_shortnames.add(receiver["shortname"])
 
         # await send_notification(
         #     notification_dict=notification_dict,

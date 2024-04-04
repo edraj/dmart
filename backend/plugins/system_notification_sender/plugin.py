@@ -1,8 +1,10 @@
 import json
 from sys import modules as sys_modules
-from models.enums import ContentType
+from models.api import Query
+from models.enums import ContentType, QueryType, ResourceType
 from models.core import (
     ActionType,
+    EntityDTO,
     Notification,
     NotificationData,
     PluginBase,
@@ -15,12 +17,11 @@ from utils.notification import NotificationManager
 from utils.helpers import branch_path, camel_case, replace_message_vars
 
 # from utils.notification import NotificationContext, send_notification
-from utils.redis_services import RedisServices
 from utils.repository import internal_save_model, get_entry_attachments, get_group_users
 from utils.settings import settings
 from fastapi.logger import logger
 from utils.db import load, load_resource_payload
-
+from utils.operational_repo import operational_repo
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
@@ -72,17 +73,17 @@ class Plugin(PluginBase):
 
         # 1- get the matching SystemNotificationRequests
         search_subpaths = list(filter(None, data.subpath.split("/")))
-        async with await RedisServices() as redis:
-            matching_notification_requests = await redis.search(
-                space_name=settings.management_space,
-                branch_name=data.branch_name,
-                schema_name="system_notification_request",
-                filters={"subpath": ["notifications/system"]},
-                limit=30,
-                offset=0,
-                search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
-            )
-        if not matching_notification_requests.get("data", {}):
+        matching_notification_requests = await operational_repo.search(Query(
+            type=QueryType.search,
+            space_name=settings.management_space,
+            branch_name=settings.management_space_branch,
+            subpath="notifications/system",
+            filter_schema_names=["system_notification_request"],
+            search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
+            limit=30,
+            offset=0,
+        ))
+        if not matching_notification_requests[0] == 0:
             return
 
         # 2- get list of subscribed users
@@ -101,21 +102,21 @@ class Plugin(PluginBase):
 
         users_objects: dict[str, dict] = {}
         for subscriber in notification_subscribers:
-            async with RedisServices() as redis:
-                users_objects[subscriber] = await redis.get_doc_by_id(
-                    redis.generate_doc_id(
-                        settings.management_space,
-                        settings.management_space_branch,
-                        "meta",
-                        subscriber,
-                        settings.users_subpath,
-                    )
+                users_objects[subscriber] = await operational_repo.find_by_id(
+                    await operational_repo.entity_doc_id(EntityDTO(
+                        space_name=settings.management_space,
+                        subpath=settings.users_subpath,
+                        shortname=subscriber,
+                        resource_type=ResourceType.user,
+                        branch_name=settings.management_space_branch,
+                        schema_shortname="meta",
+                        
+                    ))
                 )
 
         # 3- send the notification
         notification_manager = NotificationManager()
-        for redis_document in matching_notification_requests["data"]:
-            notification_dict = json.loads(redis_document)
+        for notification_dict in matching_notification_requests[1]:
             if (
                 "state" in entry
                 and notification_dict.get("on_state", "") != ""

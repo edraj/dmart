@@ -7,6 +7,7 @@ import re
 import traceback
 
 import models.api as api
+from utils.bootstrap import bootstrap_all
 import utils.db as db
 import models.core as core
 import sys
@@ -19,8 +20,6 @@ from utils.repository import generate_payload_string
 from utils.settings import settings
 import utils.regex as regex
 import asyncio
-from utils.spaces import get_spaces, initialize_spaces
-from utils.access_control import access_control
 # from time import time
 from multiprocessing import Pool
 
@@ -262,7 +261,8 @@ async def load_all_spaces_data_to_redis(
     Loop over spaces and subpaths inside it and load the data to redis of indexing_enabled for the space
     """
     loaded_data = {}
-    spaces = await get_spaces()
+    async with RedisServices() as redis:
+        spaces = await redis.get_doc_by_id("spaces")
     for space_name, space_json in spaces.items():
         space_obj = core.Space.model_validate_json(space_json)
         if (for_space and for_space != space_name) or not space_obj.indexing_enabled:
@@ -304,10 +304,10 @@ async def main(
             await redis_man.flushall()
 
         print("Intializing spaces")
-        await initialize_spaces()
+        
+        await bootstrap_all()
 
         print(f"Creating Redis indices: {for_space=} {for_schemas=}")
-        await access_control.load_permissions_and_roles()
         await redis_man.create_indices(
             for_space=for_space, 
             for_schemas=for_schemas,

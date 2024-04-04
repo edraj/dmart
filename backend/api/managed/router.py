@@ -8,6 +8,7 @@ from time import time
 from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, status
 from fastapi.responses import FileResponse
 from starlette.responses import StreamingResponse
+from utils.bootstrap import bootstrap_all, load_permissions_and_roles
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema, validate_uniqueness
 from utils.internal_error_code import InternalErrorCode
@@ -34,7 +35,7 @@ import sys
 import json
 from utils.jwt import JWTBearer, GetJWTToken, remove_redis_active_session
 from utils.access_control import access_control
-from utils.spaces import get_spaces, initialize_spaces
+from utils.operational_repo import operational_repo
 from typing import Any
 import utils.repository as repository
 from utils.helpers import (
@@ -52,7 +53,6 @@ from api.user.service import (
     send_email,
     send_sms,
 )
-from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
 from languages.loader import languages
 from typing import Callable
@@ -145,9 +145,9 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies(
-        user_shortname, query.space_name, query.subpath
-    )
+    # redis_query_policies = await access_control.get_user_query_policies(
+    #     user_shortname, query.space_name, query.subpath
+    # )
 
     folder = await db.load(
         query.space_name,
@@ -171,76 +171,75 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     keys: list = [i["name"] for i in folder_views]
     keys_existence = dict(zip(keys, [False for _ in range(len(keys))]))
-    search_res, _ = await repository.redis_query_search(query, user_shortname, redis_query_policies)
+    search_res, _ = await repository.redis_query_search(query, user_shortname, [])
     json_data = []
     timestamp_fields = ["created_at", "updated_at"]
     new_keys: set = set()
     deprecated_keys: set = set()
-    async with RedisServices() as redis_services:
-        for redis_document in search_res:
-            redis_doc_dict = json.loads(redis_document)
-            if (
-                    redis_doc_dict.get("payload_doc_id")
-                    and query.retrieve_json_payload
-            ):
-                payload_doc_content = await redis_services.get_payload_doc(
-                    redis_doc_dict["payload_doc_id"], redis_doc_dict["resource_type"]
-                )
-                redis_doc_dict.update(payload_doc_content)
+    for redis_document in search_res:
+        redis_doc_dict = json.loads(redis_document)
+        if (
+                redis_doc_dict.get("payload_doc_id")
+                and query.retrieve_json_payload
+        ):
+            payload_doc_content = await operational_repo.find_payload_data_by_id(
+                redis_doc_dict["payload_doc_id"], redis_doc_dict["resource_type"]
+            )
+            redis_doc_dict.update(payload_doc_content)
 
-            rows: list[dict] = [{}]
-            flattened_doc = flatten_dict(redis_doc_dict)
-            for folder_view in folder_views:
-                column_key = folder_view.get("key")
-                column_title = folder_view.get("name")
-                attribute_val = flattened_doc.get(column_key)
-                if attribute_val:
-                    keys_existence[column_title] = True
-                """
-                Extract array items in a separate row per item
-                - list_new_rows = []
-                - for row in rows:
-                -      for item in new_list[1:]:
-                -          new_row = row
-                -          add item attributes to the new_row
-                -          list_new_rows.append(new_row)
-                -      add new_list[0] attributes to row
-                -    
-                -  rows += list_new_rows
-                """
-                if isinstance(attribute_val, list) and len(attribute_val) > 0:
-                    list_new_rows: list[dict] = []
-                    # Duplicate old rows
-                    for row in rows:
-                        # New row for each item
-                        for item in attribute_val[1:]:
-                            new_row = copy(row)
-                            # New cell for each item's attribute
-                            if isinstance(item, dict):
-                                for k, v in item.items():
-                                    new_row[f"{column_title}.{k}"] = v
-                                    new_keys.add(f"{column_title}.{k}")
-                            else:
-                                new_row[column_title] = item
-
-                            list_new_rows.append(new_row)
-                        # Add first items's attribute to the existing rows
-                        if isinstance(attribute_val[0], dict):
-                            deprecated_keys.add(column_title)
-                            for k, v in attribute_val[0].items():
-                                row[f"{column_title}.{k}"] = v
+        rows: list[dict] = [{}]
+        flattened_doc = flatten_dict(redis_doc_dict)
+        for folder_view in folder_views:
+            column_key = folder_view.get("key")
+            column_title = folder_view.get("name")
+            attribute_val = flattened_doc.get(column_key)
+            if attribute_val:
+                keys_existence[column_title] = True
+            """
+            Extract array items in a separate row per item
+            - list_new_rows = []
+            - for row in rows:
+            -      for item in new_list[1:]:
+            -          new_row = row
+            -          add item attributes to the new_row
+            -          list_new_rows.append(new_row)
+            -      add new_list[0] attributes to row
+            -    
+            -  rows += list_new_rows
+            """
+            if isinstance(attribute_val, list) and len(attribute_val) > 0:
+                list_new_rows: list[dict] = []
+                # Duplicate old rows
+                for row in rows:
+                    # New row for each item
+                    for item in attribute_val[1:]:
+                        new_row = copy(row)
+                        # New cell for each item's attribute
+                        if isinstance(item, dict):
+                            for k, v in item.items():
+                                new_row[f"{column_title}.{k}"] = v
                                 new_keys.add(f"{column_title}.{k}")
                         else:
-                            row[column_title] = attribute_val[0]
-                    rows += list_new_rows
+                            new_row[column_title] = item
 
-                elif attribute_val and not isinstance(attribute_val, list):
-                    new_col = attribute_val if column_key not in timestamp_fields else \
-                        datetime.fromtimestamp(attribute_val).strftime(
-                            '%Y-%m-%d %H:%M:%S')
-                    for row in rows:
-                        row[column_title] = new_col
-            json_data += rows
+                        list_new_rows.append(new_row)
+                    # Add first items's attribute to the existing rows
+                    if isinstance(attribute_val[0], dict):
+                        deprecated_keys.add(column_title)
+                        for k, v in attribute_val[0].items():
+                            row[f"{column_title}.{k}"] = v
+                            new_keys.add(f"{column_title}.{k}")
+                    else:
+                        row[column_title] = attribute_val[0]
+                rows += list_new_rows
+
+            elif attribute_val and not isinstance(attribute_val, list):
+                new_col = attribute_val if column_key not in timestamp_fields else \
+                    datetime.fromtimestamp(attribute_val).strftime(
+                        '%Y-%m-%d %H:%M:%S')
+                for row in rows:
+                    row[column_title] = new_col
+        json_data += rows
 
     # Sort all entries from all schemas
     if query.sort_by in core.Meta.model_fields and len(query.filter_schema_names) > 1:
@@ -288,7 +287,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 async def serve_space(
         request: api.Request, owner_shortname=Depends(JWTBearer())
 ) -> api.Response:
-    spaces = await get_spaces()
+    spaces = await operational_repo.find_by_id("spaces")
     record = request.records[0]
     history_diff = {}
     match request.request_type:
@@ -446,14 +445,11 @@ async def serve_space(
 
             os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
 
-            async with RedisServices() as redis_services:
-                x = await redis_services.list_indices()
-                if x:
-                    indices: list[str] = x
-                    for index in indices:
-                        if index.startswith(f"{request.space_name}:"):
-                            await redis_services.drop_index(index, True)
-
+            indexes = await operational_repo.list_indexes()
+            for index in indexes:
+                if index.startswith(f"{request.space_name}:"):
+                    await operational_repo.drop_index(index, True)
+                    
         case _:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
@@ -464,9 +460,7 @@ async def serve_space(
                 ),
             )
 
-    await initialize_spaces()
-
-    await access_control.load_permissions_and_roles()
+    await bootstrap_all()
 
     await plugin_manager.after_action(
         core.Event(
@@ -499,12 +493,12 @@ async def query_entries(
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies(
-        user_shortname, query.space_name, query.subpath
-    )
+    # redis_query_policies = await access_control.get_user_query_policies(
+    #     user_shortname, query.space_name, query.subpath
+    # )
 
     total, records = await repository.serve_query(
-        query, user_shortname, redis_query_policies
+        query, user_shortname, []
     )
 
     await plugin_manager.after_action(
@@ -530,7 +524,7 @@ async def serve_request(
         owner_shortname=Depends(JWTBearer()),
         is_internal: bool = False,
 ) -> api.Response:
-    spaces = await get_spaces()
+    spaces = await operational_repo.find_by_id("spaces")
     if request.space_name not in spaces:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -1355,7 +1349,7 @@ async def update_state(
         comment: str | None = Body(None, embed=True, examples=["Nice ticket"]),
         branch_name: str | None = settings.default_branch,
 ) -> api.Response:
-    spaces = await get_spaces()
+    spaces = await operational_repo.find_by_id("spaces")
     if space_name not in spaces:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -1365,8 +1359,7 @@ async def update_state(
                 message="Space name provided is empty or invalid [4]",
             ),
         )
-    _user_roles = await access_control.get_user_roles(logged_in_user)
-    user_roles = _user_roles.keys()
+    user_roles: list[str] = list((await operational_repo.get_user_roles(logged_in_user)).keys())
 
     await plugin_manager.before_action(
         core.Event(
@@ -1666,7 +1659,7 @@ async def create_or_update_resource_with_payload(
 ):
     # NOTE We currently make no distinction between create and update.
     # in such case update should contain all the data every time.
-    spaces = await get_spaces()
+    spaces = await operational_repo.find_by_id("spaces")
     if space_name not in spaces:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -2152,7 +2145,7 @@ async def get_entry_by_slug(
 #     logged_in_user=Depends(JWTBearer()),
 # ):
 
-#     spaces = await get_spaces()
+    # spaces = await operational_repo.find_by_id("spaces")
 #     for space_name, space_json in spaces.items():
 #         space_obj = core.Space.model_validate_json(space_json)
 #         if space_obj.indexing_enabled and not await access_control.check_access(
@@ -2204,7 +2197,7 @@ async def get_space_report(
             ),
         )
 
-    spaces = await get_spaces()
+    spaces = await operational_repo.find_by_id("spaces")
     if space_name not in spaces and space_name != "all":
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -2299,14 +2292,24 @@ async def lock_entry(
     # if lock file is doesn't exist
     # elif lock file exit but lock_period expired
     # elif lock file exist and lock_period isn't expired but the owner want to extend the lock
-    async with RedisServices() as redis_services:
-        lock_type = await redis_services.save_lock_doc(
-            space_name,
-            branch_name,
-            subpath,
-            shortname,
-            logged_in_user,
-            settings.lock_period,
+    lock_type: LockAction | None = await operational_repo.save_lock_doc(
+        core.EntityDTO(
+            space_name=space_name,
+            branch_name=branch_name,
+            subpath=subpath,
+            shortname=shortname,
+        ),
+        logged_in_user
+    )
+    
+    if lock_type is None:
+        raise api.Exception(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error=api.Error(
+                type="lock",
+                code=InternalErrorCode.LOCK_UNAVAILABLE,
+                message="Lock does not exist or you have no access",
+            ),
         )
 
     await db.store_entry_diff(
@@ -2350,10 +2353,9 @@ async def cancel_lock(
         branch_name: str | None = settings.default_branch,
         logged_in_user=Depends(JWTBearer()),
 ):
-    async with RedisServices() as redis_services:
-        lock_payload = await redis_services.get_lock_doc(
-            space_name, branch_name, subpath, shortname
-        )
+    lock_payload = await operational_repo.get_lock_doc(core.EntityDTO(
+        space_name=space_name, branch_name=branch_name, subpath=subpath, shortname=shortname
+    ))
 
     if not lock_payload or lock_payload["owner_shortname"] != logged_in_user:
         raise api.Exception(
@@ -2376,10 +2378,9 @@ async def cancel_lock(
         )
     )
 
-    async with RedisServices() as redis_services:
-        await redis_services.delete_lock_doc(
-            space_name, branch_name, subpath, shortname
-        )
+    await operational_repo.delete_lock_doc(core.EntityDTO(
+        space_name=space_name, branch_name=branch_name, subpath=subpath, shortname=shortname
+    ))
 
     await db.store_entry_diff(
         space_name,
@@ -2413,7 +2414,7 @@ async def cancel_lock(
 
 @router.get("/reload-security-data")
 async def reload_security_data(_=Depends(JWTBearer())):
-    await access_control.load_permissions_and_roles()
+    await load_permissions_and_roles()
 
     return api.Response(status=api.Status.success)
 
@@ -2494,11 +2495,10 @@ async def execute(
 async def shoting_url(
         token: str,
 ):
-    async with RedisServices() as redis_services:
-        if url := await redis_services.get_key(f"short/{token}"):
-            return RedirectResponse(url)
-        else:
-            return RedirectResponse(url="/frontend")
+    if url := await operational_repo.find_key(f"short/{token}"):
+        return RedirectResponse(url)
+    else:
+        return RedirectResponse(url="/frontend")
 
 
 @router.post(

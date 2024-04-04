@@ -10,7 +10,7 @@ from utils.generate_email import generate_email_from_template
 from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
-from models.enums import ActionType, RequestType, ResourceType, ContentType
+from models.enums import ActionType, QueryType, RequestType, ResourceType, ContentType
 from utils.custom_validations import validate_uniqueness
 import utils.db as db
 from utils.access_control import access_control
@@ -19,12 +19,11 @@ from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, remove_redis_active_session, sign_jwt, decode_jwt
 from typing import Any
+from utils.operational_repo import operational_repo
 from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
-from utils.redis_services import RedisServices
-from models.api import Error, Exception, Status
 from utils.social_sso import get_facebook_sso, get_google_sso
 from .service import (
     gen_alphanumeric,
@@ -71,27 +70,28 @@ async def check_existing_user_fields(
     redis_escape_chars = str.maketrans(
         {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
-    async with RedisServices() as redis_man:
-        for key, value in unique_fields.items():
-            if not value:
-                continue
-            value = value.translate(redis_escape_chars).replace("\\\\", "\\")
-            if key == "email_unescaped":
-                value = f"{{{value}}}"
-            redis_search_res = await redis_man.search(
-                space_name=MANAGEMENT_SPACE,
-                branch_name=MANAGEMENT_BRANCH,
-                search=search_str + f" @{key}:{value}",
-                limit=1,
-                offset=0,
-                filters={},
-            )
+    for key, value in unique_fields.items():
+        if not value:
+            continue
+        value = value.translate(redis_escape_chars).replace("\\\\", "\\")
+        if key == "email_unescaped":
+            value = f"{{{value}}}"
+        redis_search_res: tuple[int, list[dict[str, Any]]] = await operational_repo.search(Query(
+            type=QueryType.search,
+            space_name=MANAGEMENT_SPACE,
+            branch_name=MANAGEMENT_BRANCH,
+            search=search_str + f" @{key}:{value}",
+            limit=1,
+            offset=0,
+            filters={},
+        ))
 
-            if redis_search_res and redis_search_res["total"] > 0:
-                return api.Response(
-                    status=api.Status.success,
-                    attributes={"unique": False, "field": key},
-                )
+
+        if redis_search_res and redis_search_res[0] > 0:
+            return api.Response(
+                status=api.Status.success,
+                attributes={"unique": False, "field": key},
+            )
 
     return api.Response(status=api.Status.success, attributes={"unique": True})
 
@@ -209,11 +209,9 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     identifier = request.check_fields()
     try:
         if request.invitation:
-            async with RedisServices() as redis_services:
-                # FIXME invitation_token = await redis_services.getdel_key(
-                invitation_token = await redis_services.get_key(
-                    f"users:login:invitation:{request.invitation}"
-                )
+            invitation_token: str | None = await operational_repo.find_key(
+                f"users:login:invitation:{request.invitation}"
+            )
             if not invitation_token:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -278,11 +276,25 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
             if "shortname" in identifier:
                 shortname = identifier["shortname"]
+                user = await db.load(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    class_type=core.User,
+                    user_shortname=shortname,
+                    branch_name=MANAGEMENT_BRANCH,
+                )
             else:
                 key, value = list(identifier.items())[0]
                 if isinstance(value, str) and isinstance(key, str):
-                    shortname = await access_control.get_user_by_criteria(key, value)
-                    if not (await access_control.is_user_verified(shortname, key)):
+                    user: core.User | None = await access_control.get_user_by_criteria(key, value)
+                    if not user:
+                        raise Exception("Invalid identifier")
+                        
+                    if (
+                        (key == "msisdn" and not user.is_msisdn_verified) or
+                        (key == "email" and not user.is_email_verified) 
+                    ):
                         raise api.Exception(
                             status.HTTP_401_UNAUTHORIZED,
                             api.Error(
@@ -302,14 +314,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                             message="Invalid username or password [1]",
                         ),
                     )
-            user = await db.load(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                class_type=core.User,
-                user_shortname=shortname,
-                branch_name=MANAGEMENT_BRANCH,
-            )
+            
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
         if (
             user
@@ -407,7 +412,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     attributes["is_msisdn_verified"] = user.is_msisdn_verified
     attributes["force_password_change"] = user.force_password_change
 
-    attributes["permissions"] = await access_control.get_user_permissions(shortname)
+    attributes["permissions"] = await operational_repo.get_user_permissions_doc(shortname)
     attributes["roles"] = user.roles
     attributes["groups"] = user.groups
 
@@ -512,15 +517,14 @@ async def update_profile(
 
     if "confirmation" in profile.attributes:
         result = None
-        async with RedisServices() as redis_services:
-            if profile_user.email:
-                result = await redis_services.get_content_by_id(
-                    f"users:otp:confirmation/email/{profile_user.email}"
-                )
-            elif profile_user.msisdn:
-                result = await redis_services.get_content_by_id(
-                    f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
-                )
+        if profile_user.email:
+            result = await operational_repo.find_key(
+                f"users:otp:confirmation/email/{profile_user.email}"
+            )
+        elif profile_user.msisdn:
+            result = await operational_repo.find_key(
+                f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
+            )
 
         if result is None or result != profile.attributes["confirmation"]:
             raise Exception(
@@ -750,8 +754,8 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     )
 
     key, value = list(result.items())[0]
-    shortname = await access_control.get_user_by_criteria(key, value)
-    if shortname is None:
+    user: core.User | None = await access_control.get_user_by_criteria(key, value)
+    if user is None:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
@@ -761,15 +765,6 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             ),
         )
 
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
-    )
-
     old_version_flattend = flatten_dict(user.model_dump())
     user.force_password_change = True
 
@@ -778,10 +773,10 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             space_name=MANAGEMENT_SPACE,
             branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
-            shortname=shortname,
+            shortname=user.shortname,
             action_type=core.ActionType.update,
             resource_type=ResourceType.user,
-            user_shortname=shortname,
+            user_shortname=user.shortname,
         )
     )
 
@@ -793,7 +788,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
         flatten_dict(user.model_dump()),
         ["force_password_change"],
         MANAGEMENT_BRANCH,
-        shortname,
+        user.shortname,
     )
 
     await plugin_manager.after_action(
@@ -801,10 +796,10 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             space_name=MANAGEMENT_SPACE,
             branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
-            shortname=shortname,
+            shortname=user.shortname,
             action_type=core.ActionType.update,
             resource_type=ResourceType.user,
-            user_shortname=shortname,
+            user_shortname=user.shortname,
         )
     )
 
@@ -859,60 +854,60 @@ async def confirm_otp(
     elif "email" in result:
         key = f"middleware:otp:otps/{result['email']}"
 
-    async with RedisServices() as redis_services:
-        code = await redis_services.get_key(key)
-        if not code:
-            raise Exception(
-                status.HTTP_400_BAD_REQUEST,
-                Error(
-                    type="OTP",
-                    code=InternalErrorCode.OTP_EXPIRED,
-                    message="Expired OTP",
-                ),
-            )
+    code = await operational_repo.find_key(key)
 
-        if code != user_request.code:
-            raise Exception(
-                status.HTTP_400_BAD_REQUEST,
-                Error(
-                    type="OTP",
-                    code=InternalErrorCode.OTP_INVALID,
-                    message="Invalid OTP",
-                ),
-            )
-
-        confirmation = gen_alphanumeric()
-        data: core.Record = core.Record(
-            resource_type=ResourceType.user,
-            subpath="users",
-            attributes={"confirmation": confirmation},
-            shortname=user,
+    if not code:
+        raise Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="OTP",
+                code=InternalErrorCode.OTP_EXPIRED,
+                message="Expired OTP",
+            ),
         )
 
-        if "msisdn" in result:
-            key = f"users:otp:confirmation/msisdn/{user_request.msisdn}"
-            data.attributes["msisdn"] = user_request.msisdn
-        else:
-            key = f"users:otp:confirmation/email/{user_request.email}"
-            data.attributes["email"] = user_request.email
+    if code != user_request.code:
+        raise Exception(
+            status.HTTP_400_BAD_REQUEST,
+           api.Error(
+                type="OTP",
+                code=InternalErrorCode.OTP_INVALID,
+                message="Invalid OTP",
+            ),
+        )
 
-        await redis_services.set_key(key, confirmation)
+    confirmation = gen_alphanumeric()
+    data: core.Record = core.Record(
+        resource_type=ResourceType.user,
+        subpath="users",
+        attributes={"confirmation": confirmation},
+        shortname=user,
+    )
 
-        response = await update_profile(data, shortname=user)
+    if "msisdn" in result:
+        key = f"users:otp:confirmation/msisdn/{user_request.msisdn}"
+        data.attributes["msisdn"] = user_request.msisdn
+    else:
+        key = f"users:otp:confirmation/email/{user_request.email}"
+        data.attributes["email"] = user_request.email
 
-        if response.status == Status.success:
-            return api.Response(status=api.Status.success, records=[])
-        else:
-            raise Exception(
-                status.HTTP_400_BAD_REQUEST,
-                Error(
-                    type="OTP",
-                    code=InternalErrorCode.OTP_FAILED,
-                    message=response.error.message
-                    if response.error
-                    else "Internal error",
-                ),
-            )
+    await operational_repo.set_key(key, confirmation)
+
+    response = await update_profile(data, shortname=user)
+
+    if response.status == api.Status.success:
+        return api.Response(status=api.Status.success, records=[])
+    else:
+        raise Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="OTP",
+                code=InternalErrorCode.OTP_FAILED,
+                message=response.error.message
+                if response.error
+                else "Internal error",
+            ),
+        )
 
 
 @router.post("/reset", response_model=api.Response, response_model_exclude_none=True)
@@ -1129,17 +1124,17 @@ if settings.social_login_allowed:
             provider_user = await sso.openid_from_response(content)
             
             
-        async with RedisServices() as redis_man:
-            redis_search_res = await redis_man.search(
-                space_name=MANAGEMENT_SPACE,
-                branch_name=MANAGEMENT_BRANCH,
-                search=f"@{provider}_id:{provider_user.id}",
-                limit=1,
-                offset=0,
-                filters={},
-            )
+        redis_search_res: tuple[int, list[dict[str, Any]]] = await operational_repo.search(Query(
+            type=QueryType.search,
+            space_name=MANAGEMENT_SPACE,
+            branch_name=MANAGEMENT_BRANCH,
+            search=f"@{provider}_id:{provider_user.id}",
+            limit=1,
+            offset=0,
+            filters={},
+        ))
 
-        if not redis_search_res or redis_search_res["total"] == 0:
+        if not redis_search_res or redis_search_res[0] == 0:
             uuid = uuid4()
             shortname = str(uuid)[:8]
             user_model = core.User(
@@ -1157,13 +1152,12 @@ if settings.social_login_allowed:
             await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user_model, MANAGEMENT_BRANCH)
 
         else:
-            redis_doc_dict = json.loads(redis_search_res["data"][0])
             user_record = await repository.get_record_from_redis_doc(
                 space_name=MANAGEMENT_SPACE,
                 branch_name=MANAGEMENT_BRANCH,
-                doc=redis_doc_dict,
+                doc=redis_search_res[1][0],
                 retrieve_json_payload=True
             )
-            user_model = core.User.from_record(user_record, owner_shortname=redis_doc_dict.get("owner_shortname"))
+            user_model = core.User.from_record(user_record, owner_shortname=(redis_search_res[1][0]).get("owner_shortname", ""))
             
         return user_model

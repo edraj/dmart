@@ -7,9 +7,8 @@ from utils.internal_error_code import InternalErrorCode
 from utils.password_hashing import hash_password, verify_password
 
 from utils.settings import settings
-from utils.redis_services import RedisServices
 import models.api as api
-
+from utils.operational_repo import operational_repo
 
 def decode_jwt(token: str) -> dict[str, Any]:
     decoded_token: dict
@@ -130,25 +129,17 @@ async def sign_jwt(data: dict, expires: int = 86400) -> str:
 
 
 async def set_redis_active_session(user_shortname: str, token: str) -> bool:
-    async with RedisServices() as redis:
-        return bool(await redis.set_key(
-            key=f"active_session:{user_shortname}",
-            value=hash_password(token),
-            ex=settings.session_inactivity_ttl,
-        ))
+    return await operational_repo.set_key(
+        key=f"active_session:{user_shortname}",
+        value=hash_password(token),
+        ex=settings.session_inactivity_ttl,
+    )
         
 async def get_redis_active_session(user_shortname: str):
-    async with RedisServices() as redis:
-        return await redis.get_key(
-            f"active_session:{user_shortname}"
-        )
-
+    return await operational_repo.find_key(f"active_session:{user_shortname}")
 
 async def remove_redis_active_session(user_shortname: str) -> bool:
-    async with RedisServices() as redis:
-        return bool(
-            await redis.del_keys([f"active_session:{user_shortname}"])
-        )
+    return await operational_repo.delete_keys([f"active_session:{user_shortname}"])
 
 
 # if __name__ == "__main__":

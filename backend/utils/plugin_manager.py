@@ -16,7 +16,7 @@ from models.core import (
 )
 from models.enums import ResourceType, PluginType
 from utils.settings import settings
-from utils.spaces import get_spaces
+from utils.operational_repo import operational_repo
 from importlib.util import find_spec, module_from_spec
 import sys
 from fastapi.logger import logger
@@ -152,7 +152,7 @@ class PluginManager:
         return True
 
     async def before_action(self, event: Event):
-        spaces = await get_spaces()
+        spaces = await operational_repo.find_by_id("spaces")
         if (
             event.space_name not in spaces
             or event.action_type not in self.plugins_wrappers
@@ -181,7 +181,7 @@ class PluginManager:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
     async def after_action(self, event: Event):
-        spaces = await get_spaces()
+        spaces = await operational_repo.find_by_id("spaces")
         if (
             event.space_name not in spaces
             or event.action_type not in self.plugins_wrappers
