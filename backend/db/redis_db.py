@@ -90,9 +90,6 @@ class RedisDB(BaseDB):
             return ""
 
     async def find(self, entity: EntityDTO) -> None | dict[str, Any]:
-        if not entity.schema_shortname:
-            return None
-
         async with RedisServices() as redis:
             return await redis.get_doc_by_id(
                 redis.generate_doc_id(
@@ -327,6 +324,26 @@ class RedisDB(BaseDB):
             logger.error(f"Error at RedisDB.create_index: {e.args}")
             return False
 
+    async def create_application_indexes(
+        self,
+        for_space: str | None = None,
+        for_schemas: list | None = None,
+        for_custom_indices: bool = True,
+        del_docs: bool = True,
+    ) -> None:
+        try:
+            async with RedisServices() as redis:
+                await redis.create_indices(
+                    for_space=for_space,
+                    for_schemas=for_schemas,
+                    for_custom_indices=for_custom_indices,
+                    del_docs=del_docs,
+                )
+
+        except Exception as e:
+            logger.error(f"Error at RedisDB.create_application_indexes: {e.args}")
+
+    
     async def save_lock_doc(
         self, entity: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
@@ -358,7 +375,29 @@ class RedisDB(BaseDB):
         except Exception as e:
             logger.error(f"Error at RedisDB.get_lock_doc: {e.args}")
             return {}
+    
+    async def is_locked_by_other_user(
+        self, entity: EntityDTO
+    ) -> bool:
+        try:
+            async with RedisServices() as redis:
+                lock_payload = await redis.get_lock_doc(
+                    entity.space_name, 
+                    entity.branch_name, 
+                    entity.subpath, 
+                    entity.shortname
+                )
+                if lock_payload:
+                    if entity.user_shortname:
+                        return lock_payload["owner_shortname"] != entity.user_shortname
+                    else:
+                        return True
+                return False
 
+        except Exception as e:
+            logger.error(f"Error at RedisDB.is_entry_locked: {e.args}")
+            return False
+    
     async def delete_lock_doc(self, entity: EntityDTO) -> None:
         try:
             async with RedisServices() as redis:

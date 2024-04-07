@@ -445,7 +445,7 @@ class RedisServices(Redis):
         """
         Loop over all spaces, and for each one we create: (only if indexing_enabled is true for the space)
         1-index for meta file called space_name:meta
-        2-indices for schema files called space_name:schema_shortname
+        2-indices for schema files called space_name:{schema_shortname}
         """
         spaces = await self.get_doc_by_id("spaces")
         for space_name in spaces:

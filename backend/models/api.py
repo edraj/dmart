@@ -1,9 +1,10 @@
 import models.core as core
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 from datetime import datetime
 from typing import Any
 from builtins import Exception as PyException
 from models.enums import (
+    ActionType,
     DataAssetType,
     QueryType,
     ResourceType,
@@ -63,6 +64,25 @@ class Request(BaseModel):
             ]
         }
     }
+
+    @field_validator("records")
+    @classmethod
+    def validate_empty_records(cls, v: list[core.Record], info: ValidationInfo):
+        if (not v):
+            raise ValueError("Request records cannot be empty")
+
+        return v
+    
+    @property
+    def action_type(self) -> ActionType:
+        match self.request_type:
+            case RequestType.create:
+                return ActionType.create
+            case RequestType.update | RequestType.r_replace | RequestType.assign | RequestType.update_acl:
+                return ActionType.update
+            case RequestType.delete | RequestType.move:
+                return ActionType.delete
+                
 
 
 class RedisReducer(BaseModel):

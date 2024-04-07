@@ -1,50 +1,44 @@
 import models.api as api
 from fastapi import status
+from models.enums import ResourceType
 import utils.db as db
 import models.core as core
-from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode
+from utils.operational_repo import operational_repo
 
 
-async def set_init_state_from_request(ticket: api.Request, branch_name, logged_in_user):
-    workflow_attr = ticket.records[0].attributes
-    workflow_shortname = workflow_attr["workflow_shortname"]
+async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket):
+# async def set_init_state_from_request(ticket: api.Request, branch_name, logged_in_user):
+    # workflow_attr = ticket.records[0].attributes
+    # workflow_shortname = workflow_attr["workflow_shortname"]
 
-    _user_roles = await access_control.get_user_roles(logged_in_user)
-    user_roles = _user_roles.keys()
+    user_roles_names = list((await operational_repo.get_user_roles(logged_in_user)).keys())
+    # user_roles = _user_roles.keys()
 
-    workflows_data = await db.load(
-        space_name=ticket.space_name,
-        subpath="workflows",
-        shortname=workflow_shortname,
-        class_type=core.Content,
-        user_shortname=logged_in_user,
-        branch_name=branch_name,
+    workflow_entity = core.EntityDTO(
+        **entity.model_dump(include={"space_name", "user_shortname"}),
+        shortname=ticket.workflow_shortname,
+        resource_type=ResourceType.content,
+        subpath="workflows"
     )
+    workflows_data = await db.load(workflow_entity)
 
-    if workflows_data is not None and workflows_data.payload is not None:
-        workflows_payload = db.load_resource_payload(
-            space_name=ticket.space_name,
-            subpath="workflows",
-            filename=str(workflows_data.payload.body),
-            class_type=core.Content,
-            branch_name=branch_name,
-        )
+    if workflows_data.payload is not None:
+        workflows_payload = await db.load_resource_payload(workflow_entity)
 
         initial_state = None
         for state in workflows_payload["initial_state"]:
             if initial_state is None and "default" in state["roles"]:
                 initial_state = state["name"]
-            elif [role in user_roles for role in state["roles"]].count(True):
+            elif [role in user_roles_names for role in state["roles"]].count(True):
                 initial_state = state["name"]
                 break
 
-        ticket.records[0].attributes = {
-            **workflow_attr,
-            "state": initial_state,
-            "is_open": True,
-        }
-        return ticket.records[0]
+        if initial_state:
+            ticket.state = initial_state
+            ticket.is_open = True
+            
+            return ticket
 
     raise api.Exception(
         status.HTTP_400_BAD_REQUEST,
@@ -56,43 +50,43 @@ async def set_init_state_from_request(ticket: api.Request, branch_name, logged_i
     )
 
 
-async def set_init_state_from_record(
-    ticket: core.Record, branch_name, logged_in_user, space_name
-):
-    workflow_attr = ticket.attributes
-    workflow_shortname = workflow_attr["workflow_shortname"]
+# async def set_init_state_from_record(
+#     ticket: core.Record, branch_name, logged_in_user, space_name
+# ):
+#     workflow_attr = ticket.attributes
+#     workflow_shortname = workflow_attr["workflow_shortname"]
 
-    workflows_data = await db.load(
-        space_name=space_name,
-        subpath="workflows",
-        shortname=workflow_shortname,
-        class_type=core.Content,
-        user_shortname=logged_in_user,
-        branch_name=branch_name,
-    )
+#     workflows_data = await db.load(
+#         space_name=space_name,
+#         subpath="workflows",
+#         shortname=workflow_shortname,
+#         class_type=core.Content,
+#         user_shortname=logged_in_user,
+#         branch_name=branch_name,
+#     )
 
-    if workflows_data is not None and workflows_data.payload is not None:
-        workflows_payload = db.load_resource_payload(
-            space_name=space_name,
-            subpath="workflows",
-            filename=str(workflows_data.payload.body),
-            class_type=core.Content,
-            branch_name=branch_name,
-        )
-        ticket.attributes = {
-            **workflow_attr,
-            "state": workflows_payload["initial_state"],
-        }
-        return ticket
+#     if workflows_data is not None and workflows_data.payload is not None:
+#         workflows_payload = db.load_resource_payload(
+#             space_name=space_name,
+#             subpath="workflows",
+#             filename=str(workflows_data.payload.body),
+#             class_type=core.Content,
+#             branch_name=branch_name,
+#         )
+#         ticket.attributes = {
+#             **workflow_attr,
+#             "state": workflows_payload["initial_state"],
+#         }
+#         return ticket
 
-    raise api.Exception(
-        status.HTTP_400_BAD_REQUEST,
-        api.Error(
-            type="request",
-            code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
-            message="This shortname already exists",
-        ),
-    )
+#     raise api.Exception(
+#         status.HTTP_400_BAD_REQUEST,
+#         api.Error(
+#             type="request",
+#             code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
+#             message="This shortname already exists",
+#         ),
+#     )
 
 
 def transite(states, current_state: str, action: str, user_roles):

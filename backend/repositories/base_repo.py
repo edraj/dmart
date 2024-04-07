@@ -103,7 +103,7 @@ class BaseRepo(ABC):
     ]
 
     def __init__(self, db: BaseDB) -> None:
-        self.db = db
+        self.db: BaseDB = db
 
     # ================================================================================
     # Core CRUD Functions
@@ -320,13 +320,29 @@ class BaseRepo(ABC):
     async def get_lock_doc(self, entity: EntityDTO) -> dict[str, Any]:
         return await self.db.get_lock_doc(entity)
 
-    async def delete_lock_doc(self, entity: EntityDTO) -> dict[str, Any]:
-        return await self.db.get_lock_doc(entity)
+    async def delete_lock_doc(self, entity: EntityDTO) -> None:
+        return await self.db.delete_lock_doc(entity)
 
+    async def is_locked_by_other_user(
+        self, entity: EntityDTO
+    ) -> bool:
+        return await self.db.is_locked_by_other_user(entity)
+    
+    async def validate_and_release_lock(
+        self, entity: EntityDTO
+    ) -> bool:
+        if await self.is_locked_by_other_user(entity):
+            return False
+        
+        await self.delete_lock_doc(entity)
+        
+        return True
+
+        
     # ================================== END =========================================
 
     # ================================================================================
-    # Indexes Functions
+    # Indexing Functions
     # ================================================================================
     async def is_index_exist(self, name: str) -> bool:
         return name in (await self.db.list_indexes())
@@ -339,6 +355,15 @@ class BaseRepo(ABC):
 
     async def create_index(self, name: str, fields: list[Any], **kwargs) -> bool:
         return await self.db.create_index(name, fields, **kwargs)
+    
+    async def create_application_indexes(
+        self,
+        for_space: str | None = None,
+        for_schemas: list | None = None,
+        for_custom_indices: bool = True,
+        del_docs: bool = True,
+    ) -> None:
+        await self.db.create_application_indexes(for_space, for_schemas, for_custom_indices, del_docs)
 
     async def create_index_if_not_exist(
         self, name: str, fields: list[Any], **kwargs

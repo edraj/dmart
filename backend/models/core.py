@@ -2,7 +2,7 @@ import copy
 import json
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, ConfigDict
-from typing import Any, TypeVar
+from typing import Any, Type, TypeVar
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
 from pydantic import Field
@@ -35,6 +35,7 @@ from hashlib import sha1 as hashlib_sha1
 #    dist_shortname: str = Field(default=None, regex=regex.SHORTNAME)
 #    dist_subpath: str = Field(default=None, regex=regex.SUBPATH)
 
+
 class Resource(BaseModel):
     model_config = ConfigDict(use_enum_values=True, arbitrary_types_allowed=True)
 
@@ -48,18 +49,18 @@ class Payload(Resource):
     client_checksum: str | None = None
     checksum: str | None = None
     body: str | dict[str, Any]
-    
+
     def __init__(self, **data):
         BaseModel.__init__(self, **data)
-        
+
         if not self.checksum and self.body:
             sha1 = hashlib_sha1()
-            
+
             if isinstance(self.body, dict):
-                sha1.update(json.dumps(self.body).encode('utf-8'))
+                sha1.update(json.dumps(self.body).encode("utf-8"))
             else:
-                sha1.update(self.body.encode('utf-8'))
-                
+                sha1.update(self.body.encode("utf-8"))
+
             self.checksum = sha1.hexdigest()
 
     def update(
@@ -105,6 +106,9 @@ class Record(BaseModel):
         BaseModel.__init__(self, **data)
         if self.subpath != "/":
             self.subpath = self.subpath.strip("/")
+        
+        if self.subpath[0] != "/":
+            self.subpath = f"/{self.subpath}"
 
     def to_dict(self):
         return json.loads(self.model_dump_json())
@@ -180,6 +184,7 @@ class Locator(Resource):
 class Relationship(Resource):
     related_to: Locator
     attributes: dict[str, Any]
+
 
 class ACL(BaseModel):
     user_shortname: str
@@ -383,6 +388,7 @@ class Sqlite(DataAsset):
 
 class Duckdb(DataAsset):
     pass
+
 
 class Csv(DataAsset):
     pass
@@ -590,20 +596,63 @@ class Notification(Meta):
 
 MetaChild = TypeVar("MetaChild", bound=Meta)
 
+
 class EntityDTO(BaseModel):
     space_name: str
     subpath: str
     shortname: str
-    resource_type: ResourceType | None = ResourceType.content
+    resource_type: ResourceType = ResourceType.content
     branch_name: str | None = settings.default_branch
-    schema_shortname: str | None = None
+    schema_shortname: str = "meta"
     user_shortname: str | None = None
-    
+
+    def __init__(self, **data):
+        """Allow passing nulls and remove them to make Pydantic set the default values"""
+
+        if "resource_type" in data and data["resource_type"] is None:
+            del data["resource_type"]
+        if "schema_shortname" in data and data["schema_shortname"] is None:
+            del data["schema_shortname"]
+        BaseModel.__init__(self, **data)
+
+    @property
+    def class_type(self) -> Type[Meta]:
+        return getattr(sys.modules["models.core"], camel_case(self.resource_type))
+
     @staticmethod
     def from_event_data(data: Event) -> "EntityDTO":
         return EntityDTO(
-            **data.model_dump(include={"space_name", "branch_name", "subpath", "shortname", "resource_type", "schema_shortname", "user_shortname"})
+            **data.model_dump(
+                include={
+                    "space_name",
+                    "branch_name",
+                    "subpath",
+                    "shortname",
+                    "resource_type",
+                    "schema_shortname",
+                    "user_shortname",
+                }
+            )
         )
-    
-    # def from_record(record: Record):
-    #     pass
+
+    def to_event_data(
+        self, action_type: ActionType, additional_data: dict[str, Any] = {}
+    ) -> Event:
+        return Event(
+            **self.model_dump(), action_type=action_type, attributes=additional_data
+        )
+
+    @staticmethod
+    def from_record(
+        record: Record,
+        space_name: str,
+        user_shortname: str | None = None,
+    ) -> "EntityDTO":
+        return EntityDTO(
+            space_name=space_name,
+            schema_shortname=record.attributes.get("payload", {}).get("schema_shortname", None),
+            user_shortname=user_shortname,
+            **record.model_dump(
+                include={"branch_name", "subpath", "shortname", "resource_type"}
+            ),
+        )

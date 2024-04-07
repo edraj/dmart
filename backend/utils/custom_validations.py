@@ -2,7 +2,7 @@ import json
 from typing import Any
 import aiofiles
 from fastapi import status
-from models.core import Record
+from models.core import EntityDTO, Record
 from models.enums import QueryType, RequestType
 from utils.helpers import branch_path, csv_file_to_json, flatten_dict, flatten_list_of_dicts_in_dict
 from utils.internal_error_code import InternalErrorCode
@@ -76,7 +76,7 @@ def get_schema_path(space_name: str, branch_name: str | None, schema_shortname: 
 
 
 async def validate_uniqueness(
-    space_name: str, record: Record, action: str = RequestType.create
+    entity: EntityDTO, input_data: dict[str, Any], action: str = RequestType.create
 ):
     """
     Get list of unique fields from entry's folder meta data
@@ -84,9 +84,9 @@ async def validate_uniqueness(
     """
     folder_meta_path = (
         settings.spaces_folder
-        / space_name
-        / branch_path(record.branch_name)
-        / f"{record.subpath[1:] if record.subpath[0] == '/' else record.subpath}.json"
+        / entity.space_name
+        / branch_path(entity.branch_name)
+        / f"{entity.subpath[1:] if entity.subpath[0] == '/' else entity.subpath}.json"
     )
 
     if not folder_meta_path.is_file():
@@ -100,7 +100,7 @@ async def validate_uniqueness(
         return True
 
     entry_dict_flattened: dict[Any, Any] = flatten_list_of_dicts_in_dict(
-        flatten_dict(record.attributes)
+        flatten_dict(input_data)
     )
     redis_escape_chars = str.maketrans(
         {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
@@ -184,19 +184,19 @@ async def validate_uniqueness(
         if not redis_search_str:
             continue
 
-        subpath = record.subpath
+        subpath = entity.subpath
         if subpath[0] == "/":
             subpath = subpath[1:]
 
         # redis_search_str += f" @subpath:{subpath}"
 
         if action == RequestType.update:
-            redis_search_str += f" (-@shortname:{record.shortname})"
+            redis_search_str += f" (-@shortname:{entity.shortname})"
 
-        schema_name = record.attributes.get("payload", {}).get("schema_shortname", None)
+        schema_name = input_data.get("payload", {}).get("schema_shortname", None)
 
         for index in operational_repo.SYS_INDEXES:
-            if space_name == index["space"] and index["subpath"] == subpath:
+            if entity.space_name == index["space"] and index["subpath"] == subpath:
                 schema_name = "meta"
                 break
 
@@ -205,8 +205,8 @@ async def validate_uniqueness(
 
         redis_search_res = await operational_repo.search(Query(
             type=QueryType.search,
-            space_name=space_name,
-            branch_name=record.branch_name,
+            space_name=entity.space_name,
+            branch_name=entity.branch_name,
             search=redis_search_str,
             subpath=subpath,
             filter_schema_name=[schema_name],

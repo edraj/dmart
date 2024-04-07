@@ -1,8 +1,8 @@
 from models.core import Folder, PluginBase, Event
 from models.enums import ResourceType
-from utils.redis_services import RedisServices
 from utils.repository import internal_save_model
 from fastapi.logger import logger
+from utils.operational_repo import operational_repo
 
 
 class Plugin(PluginBase):
@@ -39,13 +39,11 @@ class Plugin(PluginBase):
             #         branch_name=data.branch_name
             #     )
 
-            async with RedisServices() as redis_services:
-                await redis_services.create_indices(
-                    for_space=data.shortname,
-                    # for_schemas=sys_schemas,
-                    for_custom_indices=False,
-                    del_docs=False,
-                )
+            await operational_repo.create_application_indexes(
+                for_space=data.shortname,
+                for_custom_indices=False,
+                del_docs=False
+            )
 
             # redis_update_plugin = RedisUpdatePlugin()
             # for schema_name in sys_schemas:

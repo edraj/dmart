@@ -12,57 +12,56 @@ class AccessControl:
 
     async def check_access(
         self,
-        user_shortname: str,
-        space_name: str,
-        subpath: str,
-        resource_type: ResourceType,
-        action_type: ActionType,
-        resource_is_active: bool = False,
-        resource_owner_shortname: str | None = None,
-        resource_owner_group: str | None = None,
-        record_attributes: dict = {},
-        entry_shortname: str | None = None
-    ):
-        if resource_type == ResourceType.space and entry_shortname:
+        entity: core.EntityDTO,
+        action_type: ActionType, #XX
+        record_attributes: dict = {}, #XX
+        meta: core.Meta | None = None,
+    ) -> bool:
+        if not entity.user_shortname:
+            return False
+        
+        if entity.resource_type == ResourceType.space and entity.shortname:
             return await self.check_space_access(
-                user_shortname,
-                entry_shortname
+                entity.user_shortname,
+                entity.shortname
             )
-        user_permissions = await operational_repo.get_user_permissions_doc(user_shortname)
+        user_permissions = await operational_repo.get_user_permissions_doc(entity.user_shortname)
 
-        user_groups: list[str] = (await operational_repo.get_user(user_shortname)).groups or []
+        user_groups: list[str] = (await operational_repo.get_user(entity.user_shortname)).groups or []
 
         # Generate set of achevied conditions on the resource
         # ex: {"is_active", "own"}
+        # meta: None | core.Meta = await operational_repo.find(entity)
+        
         resource_achieved_conditions: set[ConditionType] = set()
-        if resource_is_active:
+        if meta and meta.is_active:
             resource_achieved_conditions.add(ConditionType.is_active)
-        if resource_owner_shortname == user_shortname or resource_owner_group in user_groups:
+        if meta and (meta.owner_shortname == entity.user_shortname or meta.owner_group_shortname in user_groups):
             resource_achieved_conditions.add(ConditionType.own)
         
         # Allow checking for root permissions
         subpath_parts = ["/"]
-        subpath_parts += list(filter(None, subpath.strip("/").split("/")))
-        if resource_type == ResourceType.folder and entry_shortname:
-            subpath_parts.append(entry_shortname)
+        subpath_parts += list(filter(None, entity.subpath.strip("/").split("/")))
+        if entity.resource_type == ResourceType.folder and entity.shortname:
+            subpath_parts.append(entity.shortname)
         
         search_subpath = ""
         for subpath_part in subpath_parts:
             search_subpath += subpath_part
             # Check if the user has global access
             global_access = self.has_global_access(
-                space_name,
+                entity.space_name,
                 user_permissions, 
                 search_subpath,
                 action_type, 
-                resource_type, 
+                entity.resource_type, 
                 resource_achieved_conditions,
                 record_attributes
             )
             if global_access:
                 return True
             
-            permission_key = f"{space_name}:{search_subpath}:{resource_type}"
+            permission_key = f"{entity.space_name}:{search_subpath}:{entity.resource_type}"
             if (
                 permission_key in user_permissions
                 and action_type in user_permissions[permission_key]["allowed_actions"]
@@ -86,34 +85,20 @@ class AccessControl:
             else:
                 search_subpath += "/"
 
-        if entry_shortname:
+        if entity.shortname and meta:
             return await self.check_access_control_list(
-                space_name,
-                subpath,
-                resource_type,
-                entry_shortname,
-                action_type,
-                user_shortname,
+                meta, entity.user_shortname, action_type
             )
             
         return False
 
     async def check_access_control_list(
         self,
-        space_name: str,
-        subpath: str,
-        resource_type: ResourceType,
-        entry_shortname: str,
-        action_type: ActionType,
+        entry: core.Meta,
         user_shortname: str,
+        action_type: ActionType,
     ) -> bool:
-        entry: core.Meta | None = await operational_repo.find(core.EntityDTO(
-            space_name=space_name,
-            subpath=subpath,
-            shortname=entry_shortname,
-            resource_type=resource_type
-        ))
-        if entry is None or not entry.acl:
+        if not entry.acl:
             return False
         
         user_acl: core.ACL | None = None

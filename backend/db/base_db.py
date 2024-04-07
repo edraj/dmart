@@ -142,6 +142,16 @@ class BaseDB(ABC):
         pass
 
     @abstractmethod
+    async def create_application_indexes(
+        self,
+        for_space: str | None = None,
+        for_schemas: list | None = None,
+        for_custom_indices: bool = True,
+        del_docs: bool = True,
+    ) -> None:
+        pass
+
+    @abstractmethod
     async def save_lock_doc(
         self, entity: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
@@ -151,6 +161,12 @@ class BaseDB(ABC):
     async def get_lock_doc(self, entity: EntityDTO) -> dict[str, Any]:
         pass
 
+    @abstractmethod
+    async def is_locked_by_other_user(
+        self, entity: EntityDTO
+    ) -> bool:
+        pass
+    
     @abstractmethod
     async def delete_lock_doc(self, entity: EntityDTO) -> None:
         pass
