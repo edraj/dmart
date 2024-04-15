@@ -15,18 +15,40 @@ class BaseDB(ABC):
     async def search(
         self,
         space_name: str,
-        branch_name: str | None,
         search: str,
         filters: dict[str, str | list | None],
         limit: int,
         offset: int,
         exact_subpath: bool = False,
         sort_type: SortType = SortType.ascending,
+        branch_name: str | None = None,
         sort_by: str | None = None,
         highlight_fields: list[str] | None = None,
         schema_name: str = "meta",
         return_fields: list = [],
     ) -> tuple[int, list[dict[str, Any]]]:
+        pass
+    
+    @abstractmethod
+    async def aggregate(
+        self,
+        space_name: str,
+        search: str,
+        filters: dict[str, str | list | None],
+        group_by: list[str],
+        reducers: list[Any],
+        max: int = 10,
+        branch_name: str = settings.default_branch,
+        exact_subpath: bool = False,
+        sort_type: SortType = SortType.ascending,
+        sort_by: str | None = None,
+        schema_name: str = "meta",
+        load: list = [],
+    ) -> list[Any]:
+        pass
+    
+    @abstractmethod
+    async def get_count(self, space_name: str, schema_shortname: str, branch_name: str = settings.default_branch) -> int:
         pass
 
     @abstractmethod
@@ -73,6 +95,10 @@ class BaseDB(ABC):
     @abstractmethod
     async def find_by_id(self, id: str) -> dict[str, Any]:
         pass
+    
+    @abstractmethod
+    async def list_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
+        pass
 
     @abstractmethod
     async def find_payload_data_by_id(
@@ -93,14 +119,12 @@ class BaseDB(ABC):
     @abstractmethod
     async def prepare_payload_doc(
         self,
-        space_name: str,
-        branch_name: str | None,
-        subpath: str,
+        entity: EntityDTO,
         meta: Meta,
         payload: dict[str, Any],
-        resource_type: ResourceType | None = ResourceType.content,
     ) -> tuple[str, dict[str, Any]]:
         pass
+    
 
     @abstractmethod
     async def update(

@@ -1,4 +1,5 @@
 import json
+from re import A
 from typing import Any
 
 from fastapi.logger import logger
@@ -18,13 +19,13 @@ class RedisDB(BaseDB):
     async def search(
         self,
         space_name: str,
-        branch_name: str | None,
         search: str,
         filters: dict[str, str | list | None],
         limit: int,
         offset: int,
         exact_subpath: bool = False,
         sort_type: SortType = SortType.ascending,
+        branch_name: str | None = None,
         sort_by: str | None = None,
         highlight_fields: list[str] | None = None,
         schema_name: str = "meta",
@@ -46,6 +47,38 @@ class RedisDB(BaseDB):
                 return_fields,
             )
             return res[0], [json.loads(item) for item in res[1]]
+        
+    async def aggregate(
+        self,
+        space_name: str,
+        search: str,
+        filters: dict[str, str | list | None],
+        group_by: list[str],
+        reducers: list[Any],
+        max: int = 10,
+        branch_name: str = settings.default_branch,
+        exact_subpath: bool = False,
+        sort_type: SortType = SortType.ascending,
+        sort_by: str | None = None,
+        schema_name: str = "meta",
+        load: list = [],
+    ) -> list[Any]:
+        async with RedisServices() as redis:
+            res = await redis.aggregate(
+            space_name,
+            search,
+            filters,
+            group_by,
+            reducers,
+            max,
+            branch_name,
+            exact_subpath,
+            sort_type,
+            sort_by,
+            schema_name,
+            load,
+            )
+        return [json.loads(item) for item in res]
 
     async def free_search(
         self, index_name: str, search_str: str, limit: int = 20, offset: int = 0
@@ -71,6 +104,15 @@ class RedisDB(BaseDB):
             logger.error(f"Error at RedisDB.free_search: {e.args}")
             return []
 
+    async def get_count(self, space_name: str, schema_shortname: str, branch_name: str = settings.default_branch) -> int:
+        try:
+            async with RedisServices() as redis:
+                return await redis.get_count(space_name, branch_name, schema_shortname)
+
+        except Exception as e:
+            logger.error(f"Error at RedisDB.entity_doc_id: {e.args}")
+            return 0
+        
     async def entity_doc_id(self, entity: EntityDTO) -> str:
         if not entity.schema_shortname:
             raise Exception("schema_shortname is required to generate the doc_id")
@@ -131,6 +173,10 @@ class RedisDB(BaseDB):
     async def find_by_id(self, id: str) -> dict[str, Any]:
         async with RedisServices() as redis:
             return await redis.get_doc_by_id(id)
+        
+    async def list_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
+        async with RedisServices() as redis:
+            return await redis.get_docs_by_ids(ids)
 
     async def find_payload_data_by_id(
         self, id: str, resource_type: ResourceType
@@ -146,16 +192,18 @@ class RedisDB(BaseDB):
 
     async def prepare_payload_doc(
         self,
-        space_name: str,
-        branch_name: str | None,
-        subpath: str,
+        entity: EntityDTO,
         meta: Meta,
         payload: dict[str, Any],
-        resource_type: ResourceType | None = ResourceType.content,
     ) -> tuple[str, dict[str, Any]]:
         async with RedisServices() as redis:
             return redis.prepare_payload_doc(
-                space_name, branch_name, subpath, meta, payload, resource_type
+                entity.space_name, 
+                entity.branch_name, 
+                entity.subpath, 
+                meta, 
+                payload, 
+                entity.resource_type
             )
 
     async def create(

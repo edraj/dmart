@@ -1,251 +1,39 @@
 from datetime import datetime
 import json
 import sys
+
+from fastapi.encoders import jsonable_encoder
 from db.redis_db import RedisDB
 from repositories.base_repo import BaseRepo
 from typing import Any
-from models.api import Query
-from models.core import EntityDTO, Meta, Permission, Role, User
+from models.api import Query, RedisAggregate, RedisReducer
+from models.core import EntityDTO, Meta, Permission, Record, Role, Space, User
 from models.enums import ConditionType, ContentType, QueryType, ResourceType, SortType
-from utils.helpers import branch_path, camel_case, flatten_all, trans_magic_words
+from utils.helpers import alter_dict_keys, branch_path, camel_case, flatten_all, trans_magic_words
 from utils.settings import settings
 from utils import db as main_db
-
+from utils.access_control import access_control
 
 class RedisRepo(BaseRepo):
 
     def __init__(self) -> None:
         super().__init__(RedisDB())
 
-    async def get_user(self, user_shortname: str) -> User:
-        user_doc: None | dict[str, Any] = await self.db.find(
-            EntityDTO(
-                space_name=settings.management_space,
-                branch_name=settings.management_space_branch,
-                schema_shortname="meta",
-                subpath="users",
-                shortname=user_shortname,
-                resource_type=ResourceType.user,
-            )
-        )
+    
 
-        if user_doc:
-            return User(**user_doc)
+    
 
-        user: User = await main_db.load(
-            space_name=settings.management_space,
-            branch_name=settings.management_space_branch,
-            shortname=user_shortname,
-            subpath="users",
-            class_type=User,
-            user_shortname=user_shortname,
-        )
+    
 
-        await self.create(
-            entity=EntityDTO(
-                space_name=settings.management_space,
-                branch_name=settings.management_space_branch,
-                schema_shortname="meta",
-                subpath="users",
-                shortname=user_shortname,
-            ),
-            meta=user,
-        )
-        return user
+    
 
-    def generate_user_permissions_doc_id(self, user_shortname: str) -> str:
-        return f"users_permissions_{user_shortname}"
+    
 
-    async def get_user_permissions_doc(self, user_shortname: str) -> dict[str, Any]:
-        user_permissions: dict[str, Any] = await self.db.find_by_id(
-            self.generate_user_permissions_doc_id(user_shortname)
-        )
+    
 
-        if not user_permissions:
-            return await self.generate_user_permissions_doc(user_shortname)
+    
 
-        return user_permissions
-
-    async def generate_user_permissions_doc(
-        self, user_shortname: str
-    ) -> dict[str, Any]:
-        """
-        User's Access Control List Document should be
-        a dict of: key = "{space}:{subpath}:{resource_type}"
-        and the value is another dict of
-        1. list of allowed actions
-        2. list of permission conditions
-        3. list of restricted fields
-        4. dict of allowed fields values
-
-        """
-        user_permissions: dict[str, Any] = {}
-
-        user_roles = await self.get_user_roles(user_shortname)
-        for _, role in user_roles.items():
-            role_permissions = await self.get_role_permissions(role)
-
-            for permission in role_permissions:
-                for space_name, permission_subpaths in permission.subpaths.items():
-                    for permission_subpath in permission_subpaths:
-                        permission_subpath = trans_magic_words(
-                            permission_subpath, user_shortname
-                        )
-                        for permission_resource_types in permission.resource_types:
-                            actions = permission.actions
-                            conditions = permission.conditions
-                            if (
-                                f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                                in user_permissions
-                            ):
-                                old_perm = user_permissions[
-                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                                ]
-                                actions |= set(old_perm["allowed_actions"])
-                                conditions |= set(old_perm["conditions"])
-
-                            user_permissions[
-                                f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                            ] = {
-                                "allowed_actions": list(actions),
-                                "conditions": list(conditions),
-                                "restricted_fields": permission.restricted_fields,
-                                "allowed_fields_values": permission.allowed_fields_values,
-                            }
-
-        await self.db.save_at_id(
-            self.generate_user_permissions_doc_id(user_shortname), user_permissions
-        )
-
-        return user_permissions
-
-    async def get_user_roles(self, user_shortname: str) -> dict[str, Role]:
-        user_meta: User = await self.get_user(user_shortname)
-        user_associated_roles: list[str] = user_meta.roles
-        user_associated_roles.append("logged_in")
-
-        roles_search = await self.db.search(
-            space_name=settings.management_space,
-            branch_name=settings.management_space_branch,
-            search="@shortname:(" + "|".join(user_associated_roles) + ")",
-            filters={"subpath": ["roles"]},
-            limit=10000,
-            offset=0,
-        )
-
-        user_roles_from_groups = await self.get_user_roles_from_groups(user_meta)
-        if not roles_search and not user_roles_from_groups:
-            return {}
-
-        user_roles: dict[str, Role] = {}
-
-        all_user_roles_from_redis = []
-        for redis_document in roles_search[1]:
-            all_user_roles_from_redis.append(redis_document)
-
-        all_user_roles_from_redis.extend(user_roles_from_groups)
-        for role_json in all_user_roles_from_redis:
-            role = Role.model_validate(json.loads(role_json))
-            user_roles[role.shortname] = role
-
-        return user_roles
-
-    async def get_user_roles_from_groups(self, user_meta: User) -> list[Role]:
-        if not user_meta.groups:
-            return []
-
-        groups_search = await self.db.search(
-            space_name=settings.management_space,
-            branch_name=settings.management_space_branch,
-            search="@shortname:(" + "|".join(user_meta.groups) + ")",
-            filters={"subpath": ["groups"]},
-            limit=10000,
-            offset=0,
-        )
-        if not groups_search:
-            return []
-
-        roles: list[Role] = []
-        for group_json in groups_search[1]:
-            for role_shortname in group_json["roles"]:
-                role_doc: None | dict[str, Any] = await self.db.find(
-                    EntityDTO(
-                        space_name=settings.management_space,
-                        branch_name=settings.management_space_branch,
-                        schema_shortname="meta",
-                        shortname=role_shortname,
-                        subpath="roles",
-                    )
-                )
-                if role_doc:
-                    roles.append(Role(**role_doc))
-
-        return roles
-
-    async def get_role_permissions(self, role: Role) -> list[Permission]:
-        permissions_options = "|".join(role.permissions)
-
-        permissions_search = await self.db.search(
-            space_name=settings.management_space,
-            branch_name=settings.management_space_branch,
-            search=f"@shortname:{permissions_options}",
-            filters={"subpath": ["permissions"]},
-            limit=10000,
-            offset=0,
-        )
-        if not permissions_search:
-            return []
-
-        role_permissions: list[Permission] = []
-
-        for permission_doc in permissions_search[1]:
-            permission = Permission.model_validate(permission_doc)
-            role_permissions.append(permission)
-
-        return role_permissions
-
-    async def user_query_policies(
-        self, user_shortname: str, space: str, subpath: str
-    ) -> list[str]:
-        """
-        Generate list of query policies based on user's permissions
-        ex: [
-            "products:offers:content:true:admin_shortname", # IF conditions = {"is_active", "own"}
-            "products:offers:content:true:*", # IF conditions = {"is_active"}
-            "products:offers:content:false:admin_shortname|products:offers:content:true:admin_shortname",
-            # ^^^ IF conditions = {"own"}
-            "products:offers:content:*", # IF conditions = {}
-        ]
-        """
-        user_permissions = await self.get_user_permissions_doc(user_shortname)
-        user_groups = (await self.get_user(user_shortname)).groups or []
-        user_groups.append(user_shortname)
-
-        redis_query_policies = []
-        for perm_key, permission in user_permissions.items():
-            if not perm_key.startswith(space) and not perm_key.startswith(
-                settings.all_spaces_mw
-            ):
-                continue
-            perm_key = perm_key.replace(settings.all_spaces_mw, space)
-            perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
-            perm_key = perm_key.strip("/")
-            if (
-                ConditionType.is_active in permission["conditions"]
-                and ConditionType.own in permission["conditions"]
-            ):
-                for user_group in user_groups:
-                    redis_query_policies.append(f"{perm_key}:true:{user_group}")
-            elif ConditionType.is_active in permission["conditions"]:
-                redis_query_policies.append(f"{perm_key}:true:*")
-            elif ConditionType.own in permission["conditions"]:
-                for user_group in user_groups:
-                    redis_query_policies.append(
-                        f"{perm_key}:true:{user_shortname}|{perm_key}:false:{user_group}"
-                    )
-            else:
-                redis_query_policies.append(f"{perm_key}:*")
-        return redis_query_policies
+    
 
     async def search(
         self, query: Query, user_shortname: str | None = None
@@ -288,7 +76,7 @@ class RedisRepo(BaseRepo):
 
         query_policies: list[str] | None = None
         if user_shortname:
-            query_policies = await self.user_query_policies(
+            query_policies = await access_control.user_query_policies(
                 user_shortname=user_shortname,
                 space=query.space_name,
                 subpath=query.subpath,
@@ -321,6 +109,63 @@ class RedisRepo(BaseRepo):
                 total += redis_res[0]
         return total, search_res
 
+    async def aggregate(
+        self, query: Query, user_shortname: str | None = None
+    ) -> list[Any]:
+        if not query.aggregation_data:
+            return []
+
+        if len(query.filter_schema_names) > 1:
+            return []
+
+        created_at_search = ""
+        if query.from_date and query.to_date:
+            created_at_search = (
+                "[" + f"{query.from_date.timestamp()} {query.to_date.timestamp()}" + "]"
+            )
+
+        elif query.from_date:
+            created_at_search = (
+                "["
+                + f"{query.from_date.timestamp()} {datetime(2199, 12, 31).timestamp()}"
+                + "]"
+            )
+
+        elif query.to_date:
+            created_at_search = (
+                "["
+                + f"{datetime(2010, 1, 1).timestamp()} {query.to_date.timestamp()}"
+                + "]"
+            )
+
+        query_policies: list[str] | None = None
+        if user_shortname:
+            query_policies = await access_control.user_query_policies(
+                user_shortname=user_shortname,
+                space=query.space_name,
+                subpath=query.subpath,
+            )
+        return await self.db.aggregate(
+            space_name=query.space_name,
+            branch_name=query.branch_name,
+            schema_name=query.filter_schema_names[0],
+            search=str(query.search),
+            filters={
+                "resource_type": query.filter_types or [],
+                "shortname": query.filter_shortnames or [],
+                "subpath": [query.subpath],
+                "query_policies": query_policies,
+                "created_at": created_at_search,
+            },
+            load=query.aggregation_data.load,
+            group_by=query.aggregation_data.group_by,
+            reducers=query.aggregation_data.reducers,
+            exact_subpath=query.exact_subpath,
+            sort_by=query.sort_by,
+            max=query.limit,
+            sort_type=query.sort_type or SortType.ascending,
+        )
+
     async def find(self, entity: EntityDTO) -> None | Meta:
         """Return an object of the corresponding class of the entity.resource_type
         default entity.resource_type is ResourceType.content
@@ -349,15 +194,7 @@ class RedisRepo(BaseRepo):
             and meta.payload.content_type == ContentType.json
             and isinstance(meta.payload.body, str)
         ):
-            payload = main_db.load_resource_payload(
-                space_name=entity.space_name,
-                subpath=entity.subpath,
-                filename=meta.payload.body,
-                class_type=getattr(
-                    sys.modules["models.core"], camel_case(entity.resource_type)
-                ),
-                branch_name=entity.branch_name,
-            )
+            payload = await main_db.load_resource_payload(entity)
 
         meta_json["payload_string"] = await self.generate_payload_string(
             entity, payload
@@ -367,12 +204,9 @@ class RedisRepo(BaseRepo):
 
         if payload:
             payload_doc_id, payload_json = await self.db.prepare_payload_doc(
-                entity.space_name,
-                entity.branch_name,
-                entity.subpath,
+                entity,
                 meta,
                 payload,
-                entity.resource_type,
             )
             payload_json.update(meta_json)
             await self.db.save_at_id(payload_doc_id, payload_json)
@@ -393,7 +227,7 @@ class RedisRepo(BaseRepo):
         payload_string += ",".join([str(i) for i in payload_values if i is not None])
 
         # Generate attachments payload string
-        attachments: dict[str, list] = await self.get_entry_attachments(
+        attachments: dict[str, list] = await main_db.get_entry_attachments(
             subpath=f"{entity.subpath}/{entity.shortname}",
             branch_name=entity.branch_name,
             attachments_path=(
@@ -427,6 +261,160 @@ class RedisRepo(BaseRepo):
         )
         payload_string += attachments_payload_string
         return payload_string.strip(",")
+
+    async def db_doc_to_record(
+        self,
+        space_name: str,
+        db_entry: dict,
+        retrieve_json_payload: bool = False,
+        retrieve_attachments: bool = False,
+        filter_types: list | None = None,
+    ) -> Record:
+        meta_doc_content = {}
+        payload_doc_content = {}
+        resource_class = getattr(
+            sys.modules["models.core"],
+            camel_case(db_entry["resource_type"]),
+        )
+
+        for key, value in db_entry.items():
+            if key in resource_class.model_fields.keys():
+                meta_doc_content[key] = value
+            elif key not in self.SYS_ATTRIBUTES:
+                payload_doc_content[key] = value
+
+        entity = EntityDTO(
+            space_name=space_name,
+            subpath=db_entry["subpath"],
+            shortname=db_entry["shortname"],
+            resource_type=db_entry["resource_type"],
+        )
+        # Get payload db_entry
+        if (
+            not payload_doc_content
+            and retrieve_json_payload
+            and "payload_doc_id" in db_entry
+        ):
+            payload_doc_content = await self.get_payload_doc(
+                db_entry["payload_doc_id"], db_entry["resource_type"]
+            )
+
+        # Get lock data
+        locked_data = await self.get_lock_doc(entity)
+
+        meta_doc_content["created_at"] = datetime.fromtimestamp(
+            meta_doc_content["created_at"]
+        )
+        meta_doc_content["updated_at"] = datetime.fromtimestamp(
+            meta_doc_content["updated_at"]
+        )
+        resource_obj = resource_class.model_validate(meta_doc_content)
+        resource_base_record = resource_obj.to_record(
+            db_entry["subpath"],
+            meta_doc_content["shortname"],
+            [],
+            db_entry["branch_name"],
+        )
+
+        if locked_data:
+            resource_base_record.attributes["locked"] = locked_data
+
+        # Get attachments
+        entry_path = (
+            settings.spaces_folder
+            / f"{space_name}/{branch_path(db_entry['branch_name'])}/{db_entry['subpath']}/.dm/{meta_doc_content['shortname']}"
+        )
+        if retrieve_attachments and entry_path.is_dir():
+            resource_base_record.attachments = await main_db.get_entry_attachments(
+                subpath=f"{db_entry['subpath']}/{meta_doc_content['shortname']}",
+                branch_name=db_entry["branch_name"],
+                attachments_path=entry_path,
+                filter_types=filter_types,
+                retrieve_json_payload=retrieve_json_payload,
+            )
+
+        if (
+            retrieve_json_payload
+            and resource_base_record.attributes["payload"]
+            and resource_base_record.attributes["payload"].content_type
+            == ContentType.json
+        ):
+            resource_base_record.attributes["payload"].body = payload_doc_content
+
+        if isinstance(resource_base_record, Record):
+            return resource_base_record
+        else:
+            return Record()
+
+    async def tags_query(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
+        query.sort_by = "tags"
+        query.aggregation_data = RedisAggregate(
+            group_by=["@tags"],
+            reducers=[RedisReducer(reducer_name="count", alias="freq")],
+        )
+        rows = await self.aggregate(query=query, user_shortname=user_shortname)
+
+        return 1, [
+            Record(
+                resource_type=ResourceType.content,
+                shortname="tags_frequency",
+                subpath=query.subpath,
+                attributes={"result": rows},
+            )
+        ]
+
+    async def random_query(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
+        records: list[Record] = []
+        query.aggregation_data = RedisAggregate(
+            load=["@__key"],
+            group_by=["@resource_type"],
+            reducers=[
+                RedisReducer(
+                    reducer_name="random_sample",
+                    alias="id",
+                    args=["@__key", query.limit],
+                )
+            ],
+        )
+        rows = await self.aggregate(query=query, user_shortname=user_shortname)
+        ids = []
+        for row in rows:
+            ids.extend(row[3])
+        docs: list[dict[str, Any]] = await self.list_by_ids(ids)
+        total = len(ids)
+        for doc in docs:
+            if query.retrieve_json_payload and doc.get("payload_doc_id", None):
+                doc["payload"]["body"] = await self.get_payload_doc(
+                    doc["payload_doc_id"], doc["resource_type"]
+                )
+            record = Record(
+                shortname=doc["shortname"],
+                resource_type=doc["resource_type"],
+                uuid=doc["uuid"],
+                branch_name=doc["branch_name"],
+                subpath=doc["subpath"],
+                attributes={"payload": doc.get("payload")},
+            )
+            entry_path = (
+                settings.spaces_folder
+                / f"{query.space_name}/{branch_path(doc['branch_name'])}/{doc['subpath']}/.dm/{doc['shortname']}"
+            )
+            if query.retrieve_attachments and entry_path.is_dir():
+                record.attachments = await main_db.get_entry_attachments(
+                    subpath=f"{doc['subpath']}/{doc['shortname']}",
+                    branch_name=doc["branch_name"],
+                    attachments_path=entry_path,
+                    filter_types=query.filter_types,
+                    include_fields=query.include_fields,
+                    retrieve_json_payload=query.retrieve_json_payload,
+                )
+            records.append(record)
+
+        return total, records
 
     # async def clone(
     #     self,

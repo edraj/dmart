@@ -1059,7 +1059,7 @@ class RedisServices(Redis):
             logger.warning(f"Error at redis_services.get_doc_by_id: {doc_id=} {e}")
         return {}
 
-    async def get_docs_by_ids(self, docs_ids: list[str]) -> list:
+    async def get_docs_by_ids(self, docs_ids: list[str]) -> list[dict[str, Any]]:
         try:
             x = self.json().mget(docs_ids, "$")
             if x and isinstance(x, Awaitable):

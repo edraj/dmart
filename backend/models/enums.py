@@ -181,7 +181,7 @@ class EventListenTime(StrEnum):
 
 class QueryType(StrEnum):
     search = "search"
-    subpath = "subpath"
+    # subpath = "subpath"
     events = "events"
     history = "history"
     tags = "tags"

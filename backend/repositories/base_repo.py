@@ -2,21 +2,26 @@ from abc import ABC, abstractmethod
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 from typing import Any
 
 import aiofiles
+from fastapi.encoders import jsonable_encoder
 
 from db.base_db import BaseDB
 from models.api import Query, Exception as api_exception, Error as api_error
-from models.core import EntityDTO, Group, Meta, Permission, Role, User
-from models.enums import ContentType, LockAction, ResourceType
-from utils.helpers import camel_case
+from models.core import EntityDTO, Group, Meta, Permission, Role, Space, User, Record
+from models.enums import ContentType, LockAction, ActionType, ResourceType, SortType
+from utils.helpers import alter_dict_keys, branch_path, camel_case, str_to_datetime
 from utils.internal_error_code import InternalErrorCode
+from utils.jwt import generate_jwt
 from utils.settings import settings
 from fastapi import status
 from fastapi.logger import logger
 from utils import regex
+import utils.db as main_db
+from utils.access_control import access_control
 
 
 class BaseRepo(ABC):
@@ -114,6 +119,20 @@ class BaseRepo(ABC):
     ) -> tuple[int, list[dict[str, Any]]]:
         pass
 
+    @abstractmethod
+    async def aggregate(
+        self, query: Query, user_shortname: str | None = None
+    ) -> list[dict[str, Any]]:
+        pass
+
+    async def get_count(
+        self,
+        space_name: str,
+        schema_shortname: str,
+        branch_name: str = settings.default_branch,
+    ) -> int:
+        return await self.db.get_count(space_name, schema_shortname, branch_name)
+
     async def free_search(
         self, index_name: str, search_str: str, limit: int = 20, offset: int = 0
     ) -> list[dict[str, Any]]:
@@ -143,6 +162,9 @@ class BaseRepo(ABC):
 
     async def find_by_id(self, id: str) -> dict[str, Any]:
         return await self.db.find_by_id(id)
+
+    async def list_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
+        return await self.db.list_by_ids(ids)
 
     async def find_payload_data_by_id(
         self, id: str, resource_type: ResourceType
@@ -215,98 +237,6 @@ class BaseRepo(ABC):
     # ) -> bool:
     #     pass
 
-    async def get_entry_attachments(
-        self,
-        subpath: str,
-        attachments_path: Path,
-        branch_name: str | None = None,
-        filter_types: list | None = None,
-        include_fields: list | None = None,
-        filter_shortnames: list | None = None,
-        retrieve_json_payload: bool = False,
-    ) -> dict:
-        if not attachments_path.is_dir():
-            return {}
-        attachments_iterator = os.scandir(attachments_path)
-        attachments_dict: dict[str, list] = {}
-        for attachment_entry in attachments_iterator:
-            # TODO: Filter types on the parent attachment type folder layer
-            if not attachment_entry.is_dir():
-                continue
-
-            attachments_files = os.scandir(attachment_entry)
-            for attachments_file in attachments_files:
-                match = regex.ATTACHMENT_PATTERN.search(str(attachments_file.path))
-                if not match or not attachments_file.is_file():
-                    continue
-
-                attach_shortname = match.group(2)
-                attach_resource_name = match.group(1).lower()
-                if filter_shortnames and attach_shortname not in filter_shortnames:
-                    continue
-
-                if (
-                    filter_types
-                    and ResourceType(attach_resource_name) not in filter_types
-                ):
-                    continue
-
-                resource_class = getattr(
-                    sys.modules["models.core"], camel_case(attach_resource_name)
-                )
-                resource_obj = None
-                async with aiofiles.open(attachments_file, "r") as meta_file:
-                    try:
-                        resource_obj = resource_class.model_validate_json(
-                            await meta_file.read()
-                        )
-                    except Exception as e:
-                        raise Exception(
-                            f"Bad attachment ... {attachments_file=}"
-                        ) from e
-
-                resource_record_obj = resource_obj.to_record(
-                    subpath, attach_shortname, include_fields, branch_name
-                )
-                if (
-                    retrieve_json_payload
-                    and resource_obj
-                    and resource_record_obj
-                    and resource_obj.payload
-                    and resource_obj.payload.content_type
-                    and resource_obj.payload.content_type == ContentType.json
-                    and Path(
-                        f"{attachment_entry.path}/{resource_obj.payload.body}"
-                    ).is_file()
-                ):
-                    async with aiofiles.open(
-                        f"{attachment_entry.path}/{resource_obj.payload.body}", "r"
-                    ) as payload_file_content:
-                        resource_record_obj.attributes["payload"].body = json.loads(
-                            await payload_file_content.read()
-                        )
-
-                if attach_resource_name in attachments_dict:
-                    attachments_dict[attach_resource_name].append(resource_record_obj)
-                else:
-                    attachments_dict[attach_resource_name] = [resource_record_obj]
-            attachments_files.close()
-        attachments_iterator.close()
-
-        # SORT ALTERATION ATTACHMENTS BY ALTERATION.CREATED_AT
-        for attachment_name, attachments in attachments_dict.items():
-            try:
-                if attachment_name == ResourceType.alteration:
-                    attachments_dict[attachment_name] = sorted(
-                        attachments, key=lambda d: d.attributes["created_at"]
-                    )
-            except Exception as e:
-                logger.error(
-                    f"Invalid attachment entry:{attachments_path/attachment_name}. Error: {e.args}"
-                )
-
-        return attachments_dict
-
     # ================================== END =========================================
 
     # ================================================================================
@@ -323,22 +253,17 @@ class BaseRepo(ABC):
     async def delete_lock_doc(self, entity: EntityDTO) -> None:
         return await self.db.delete_lock_doc(entity)
 
-    async def is_locked_by_other_user(
-        self, entity: EntityDTO
-    ) -> bool:
+    async def is_locked_by_other_user(self, entity: EntityDTO) -> bool:
         return await self.db.is_locked_by_other_user(entity)
-    
-    async def validate_and_release_lock(
-        self, entity: EntityDTO
-    ) -> bool:
+
+    async def validate_and_release_lock(self, entity: EntityDTO) -> bool:
         if await self.is_locked_by_other_user(entity):
             return False
-        
+
         await self.delete_lock_doc(entity)
-        
+
         return True
 
-        
     # ================================== END =========================================
 
     # ================================================================================
@@ -355,7 +280,7 @@ class BaseRepo(ABC):
 
     async def create_index(self, name: str, fields: list[Any], **kwargs) -> bool:
         return await self.db.create_index(name, fields, **kwargs)
-    
+
     async def create_application_indexes(
         self,
         for_space: str | None = None,
@@ -363,7 +288,9 @@ class BaseRepo(ABC):
         for_custom_indices: bool = True,
         del_docs: bool = True,
     ) -> None:
-        await self.db.create_application_indexes(for_space, for_schemas, for_custom_indices, del_docs)
+        await self.db.create_application_indexes(
+            for_space, for_schemas, for_custom_indices, del_docs
+        )
 
     async def create_index_if_not_exist(
         self, name: str, fields: list[Any], **kwargs
@@ -386,38 +313,446 @@ class BaseRepo(ABC):
     # ================================================================================
     # Custom Functions
     # ================================================================================
-    @abstractmethod
-    async def get_user(self, user_shortname: str) -> User:
-        pass
-
-    @abstractmethod
-    def generate_user_permissions_doc_id(self, user_shortname: str) -> str:
-        pass
-
-    @abstractmethod
-    async def get_user_permissions_doc(self, user_shortname: str) -> dict[str, Any]:
-        pass
-
-    @abstractmethod
-    async def generate_user_permissions_doc(
-        self, user_shortname: str
+    async def get_payload_doc(
+        self, doc_id: str, resource_type: ResourceType
     ) -> dict[str, Any]:
+        doc: dict[str, Any] = await self.find_by_id(doc_id)
+
+        resource_class = getattr(
+            sys.modules["models.core"],
+            camel_case(resource_type),
+        )
+
+        not_payload_attr = self.SYS_ATTRIBUTES + list(
+            resource_class.model_fields.keys()
+        )
+
+        filtered_doc: dict[str, Any] = {}
+        for key, value in doc.items():
+            if key not in not_payload_attr:
+                filtered_doc[key] = value
+        return filtered_doc
+
+    @abstractmethod
+    async def db_doc_to_record(
+        self,
+        space_name: str,
+        db_entry: dict,
+        retrieve_json_payload: bool = False,
+        retrieve_attachments: bool = False,
+        filter_types: list | None = None,
+    ) -> Record:
+        pass
+
+    # ================================== END =========================================
+
+    # ================================================================================
+    # Query Functions
+    # ================================================================================
+
+    async def query_handler(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
+        # Try to get the query function from the repo
+        query_method = getattr(self, f"{query.type}_query", None)
+        if not query_method:
+            # Try to get the query function from the main db
+            query_method = getattr(main_db, f"{query.type}_query", None)
+
+        if not query_method:
+            return 0, []
+
+        return query_method(query, user_shortname)
+
+    async def spaces_query(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
+        records: list[Record] = []
+        spaces = await self.find_by_id("spaces")
+        for space_json in spaces.values():
+            space = Space.model_validate_json(space_json)
+            records.append(
+                space.to_record(
+                    query.subpath,
+                    space.shortname,
+                    query.include_fields if query.include_fields else [],
+                    query.branch_name,
+                )
+            )
+        if not query.sort_by:
+            query.sort_by = "ordinal"
+        if records:
+            record_fields = list(records[0].model_fields.keys())
+            records = sorted(
+                records,
+                key=lambda d: (
+                    d.__getattribute__(query.sort_by)
+                    if query.sort_by in record_fields
+                    else (
+                        d.attributes[query.sort_by]
+                        if query.sort_by in d.attributes
+                        and d.attributes[query.sort_by] is not None
+                        else 1
+                    )
+                ),
+                reverse=(query.sort_type == SortType.descending),
+            )
+        return len(records), records
+
+    async def search_query(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
+        """Doesn't validate the data according to the schema definition"""
+        records: list[Record] = []
+
+        total, search_res = await self.search(query, user_shortname)
+
+        if len(query.filter_schema_names) > 1:
+            if query.sort_by:
+                search_res = sorted(
+                    search_res,
+                    key=lambda d: (
+                        d[query.sort_by]
+                        if query.sort_by in d
+                        else (
+                            d.get("payload", {})[query.sort_by]
+                            if query.sort_by in d.get("payload", {})
+                            else ""
+                        )
+                    ),
+                    reverse=(query.sort_type == SortType.descending),
+                )
+            search_res = search_res[query.offset : (query.limit + query.offset)]
+
+        for redis_doc_dict in search_res:
+            resource_record: Record = await self.db_doc_to_record(
+                space_name=query.space_name,
+                db_entry=redis_doc_dict,
+                retrieve_json_payload=query.retrieve_json_payload,
+                retrieve_attachments=query.retrieve_attachments,
+                filter_types=query.filter_types,
+            )
+            if query.highlight_fields:
+                for key, value in query.highlight_fields.items():
+                    resource_record.attributes[value] = getattr(
+                        redis_doc_dict, key, None
+                    )
+
+            resource_record.attributes = alter_dict_keys(
+                jsonable_encoder(resource_record.attributes, exclude_none=True),
+                query.include_fields,
+                query.exclude_fields,
+            )
+
+            records.append(resource_record)
+
+        return total, records
+
+    async def counters_query(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
+        if not await access_control.check_access(
+            entity=EntityDTO(
+                space_name=query.space_name,
+                subpath=query.subpath,
+                user_shortname=user_shortname,
+                resource_type=ResourceType.content,
+                shortname="",
+            ),
+            action_type=ActionType.query,
+        ):
+            return 0, []
+
+        total: int = 0
+
+        for schema_name in query.filter_schema_names:
+            redis_res = await self.get_count(
+                space_name=query.space_name,
+                branch_name=query.branch_name,
+                schema_shortname=schema_name,
+            )
+            total += int(redis_res)
+
+        return total, []
+
+    @abstractmethod
+    async def tags_query(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
         pass
 
     @abstractmethod
-    async def get_user_roles(self, user_shortname: str) -> dict[str, Role]:
+    async def random_query(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
         pass
 
-    @abstractmethod
-    async def get_user_roles_from_groups(self, user_meta: User) -> list[Role]:
-        pass
+    async def history_query(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
+        records: list[Record] = []
+        total: int = 0
+        if not await access_control.check_access(
+            entity=EntityDTO(
+                space_name=query.space_name,
+                subpath=query.subpath,
+                resource_type=ResourceType.history,
+                user_shortname=user_shortname,
+                shortname="",
+            ),
+            action_type=ActionType.query,
+        ):
+            return total, records
+
+        if not query.filter_shortnames:
+            return total, records
+
+        path = Path(
+            f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}"
+            f"{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl"
+        )
+
+        if not path.is_file():
+            return total, records
+
+        cmd = f"tail -n +{query.offset} {path} | head -n {query.limit} | tac"
+        result = list(
+            filter(
+                None,
+                subprocess.run(
+                    [cmd], capture_output=True, text=True, shell=True
+                ).stdout.split("\n"),
+            )
+        )
+        total = int(
+            subprocess.run(
+                [f"wc -l < {path}"],
+                capture_output=True,
+                text=True,
+                shell=True,
+            ).stdout,
+            10,
+        )
+        for line in result:
+            action_obj = json.loads(line)
+
+            records.append(
+                Record(
+                    resource_type=ResourceType.history,
+                    shortname=query.filter_shortnames[0],
+                    subpath=query.subpath,
+                    attributes=action_obj,
+                    branch_name=query.branch_name,
+                ),
+            )
+        return total, records
+
+    async def events_query(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
+        records: list[Record] = []
+        total: int = 0
+        trimmed_subpath = query.subpath
+        if trimmed_subpath[0] == "/":
+            trimmed_subpath = trimmed_subpath[1:]
+
+        path = Path(
+            f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl"
+        )
+        if not path.is_file():
+            return total, records
+            
+        result = []
+        if query.search:
+            p = subprocess.Popen(
+                ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
+            )
+            p = subprocess.Popen(
+                ["tail", "-n", f"{query.limit + query.offset}"],
+                stdin=p.stdout,
+                stdout=subprocess.PIPE,
+            )
+            p = subprocess.Popen(["tac"], stdin=p.stdout, stdout=subprocess.PIPE)
+            if query.offset > 0:
+                p = subprocess.Popen(
+                    ["sed", f"1,{query.offset}d"],
+                    stdin=p.stdout,
+                    stdout=subprocess.PIPE,
+                )
+            r, _ = p.communicate()
+            result = list(filter(None, r.decode("utf-8").split("\n")))
+        else:
+            cmd = f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
+            if query.offset > 0:
+                cmd += f" | sed '1,{query.offset}d'"
+            result = list(
+                filter(
+                    None,
+                    subprocess.run(
+                        [cmd], capture_output=True, text=True, shell=True
+                    ).stdout.split("\n"),
+                )
+            )
+
+        if query.search:
+            p1 = subprocess.Popen(
+                ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
+            )
+            p2 = subprocess.Popen(
+                ["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE
+            )
+            r, _ = p2.communicate()
+            total = int(
+                r.decode(),
+                10,
+            )
+        else:
+            total = int(
+                subprocess.run(
+                    [f"wc -l < {path}"],
+                    capture_output=True,
+                    text=True,
+                    shell=True,
+                ).stdout,
+                10,
+            )
+        for line in result:
+            action_obj = json.loads(line)
+
+            if (
+                query.from_date
+                and str_to_datetime(action_obj["timestamp"]) < query.from_date
+            ):
+                continue
+
+            if (
+                query.to_date
+                and str_to_datetime(action_obj["timestamp"]) > query.to_date
+            ):
+                break
+
+            if not await access_control.check_access(
+                entity=EntityDTO(
+                    space_name=query.space_name,
+                    subpath=action_obj.get("resource", {}).get("subpath", "/"),
+                    resource_type=action_obj["resource"]["type"],
+                    shortname=action_obj["resource"]["shortname"],
+                    user_shortname=user_shortname,
+                ),
+                action_type=ActionType(action_obj["request"]),
+            ):
+                continue
+
+            records.append(
+                Record(
+                    resource_type=action_obj["resource"]["type"],
+                    shortname=action_obj["resource"]["shortname"],
+                    subpath=action_obj["resource"]["subpath"],
+                    attributes=action_obj,
+                ),
+            )
+        return total, records
 
     @abstractmethod
-    async def get_role_permissions(self, role: Role) -> list[Permission]:
-        pass
+    async def aggregate_query(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
+        records: list[Record] = []
+        rows = await self.aggregate(query=query, user_shortname=user_shortname)
+        total: int = len(rows)
+        for idx, row in enumerate(rows):
+            record = Record(
+                resource_type=ResourceType.content,
+                shortname=str(idx + 1),
+                subpath=query.subpath,
+                attributes=row["extra_attributes"],
+            )
+            records.append(record)
+        return total, records
 
-    @abstractmethod
-    async def user_query_policies(
-        self, user_shortname: str, space: str, subpath: str
-    ) -> list[str]:
-        pass
+
+    async def get_entry_by_var(
+        self,
+        key: str,
+        val: str,
+        user_shortname: str,
+        retrieve_json_payload: bool = False,
+        retrieve_attachments: bool = False,
+    ):
+        spaces = await self.find_by_id("spaces")
+        entry_doc = None
+        entry_space = None
+        entry_branch = None
+        for space_name, space in spaces.items():
+            space = json.loads(space)
+            for branch in space["branches"]:
+                search_res: tuple[int, list[dict[str, Any]]] = await self.db.search(
+                    space_name=space_name,
+                    branch_name=branch,
+                    search=f"@{key}:{val}*",
+                    limit=1,
+                    offset=0,
+                    filters={},
+                )
+                if search_res[0] > 0 and len(search_res[1]) > 0:
+                    entry_doc = search_res[1][0]
+                    entry_branch = branch
+                    break
+            if entry_doc:
+                entry_space = space_name
+                break
+
+        if not entry_doc or not entry_space or not entry_branch:
+            return None
+
+        if not await access_control.check_access(
+            entity=EntityDTO(
+                space_name=entry_space,
+                subpath=entry_doc["subpath"],
+                resource_type=entry_doc["resource_type"],
+                shortname=entry_doc.get("shortname"),
+                user_shortname=user_shortname
+            ),
+            action_type=ActionType.view
+        ):
+            return None
+
+        resource_base_record: Record = await self.db_doc_to_record(
+            space_name=entry_space,
+            db_entry=entry_doc,
+            retrieve_json_payload=retrieve_json_payload,
+            retrieve_attachments=retrieve_attachments
+        )
+
+        return resource_base_record
+    
+    async def store_user_invitation_token(self, user: User, channel: str) -> str | None:
+        """Generate and Store an invitation token 
+
+        Returns:
+            invitation link or None if the user is not eligible
+        """
+        invitation_value = None
+        if channel == "SMS" and user.msisdn:
+            invitation_value = f"{channel}:{user.msisdn}"
+        elif channel == "EMAIL" and user.email:
+            invitation_value = f"{channel}:{user.email}"
+
+        if not invitation_value:
+            return None
+
+        invitation_token = generate_jwt(
+            {"shortname": user.shortname, "channel": channel},
+            settings.jwt_access_expires,
+        )
+        async with RedisServices() as redis_services:
+            await redis_services.set_key(
+                f"users:login:invitation:{invitation_token}",
+                invitation_value
+            )
+
+        return core.User.invitation_url_template()\
+            .replace("{url}", settings.invitation_link)\
+            .replace("{token}", invitation_token)\
+            .replace("{lang}", Language.code(user.language))\
+            .replace("{user_type}", user.type)

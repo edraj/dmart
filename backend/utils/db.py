@@ -1,6 +1,15 @@
 from copy import copy
 import shutil
-from utils.helpers import arr_remove_common, branch_path, flatten_all, snake_case
+import subprocess
+import sys
+from utils.helpers import (
+    arr_remove_common,
+    branch_path,
+    camel_case,
+    flatten_all,
+    snake_case,
+    str_to_datetime,
+)
 from datetime import datetime
 from models.enums import ContentType, ResourceType
 from utils.internal_error_code import InternalErrorCode
@@ -14,8 +23,9 @@ import json
 from pathlib import Path
 from fastapi import status
 import aiofiles
-from utils.regex import FILE_PATTERN, FOLDER_PATTERN
+from utils.regex import ATTACHMENT_PATTERN, FILE_PATTERN, FOLDER_PATTERN
 from shutil import copy2 as copy_file
+from fastapi.logger import logger
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
 
@@ -139,9 +149,95 @@ def folder_path(
     else:
         return f"{settings.spaces_folder}/{space_name}{subpath}/{shortname}"
 
-def metapath(
-    entity: core.EntityDTO
-) -> tuple[Path, str]:
+
+async def get_entry_attachments(
+    subpath: str,
+    attachments_path: Path,
+    branch_name: str | None = None,
+    filter_types: list | None = None,
+    include_fields: list | None = None,
+    filter_shortnames: list | None = None,
+    retrieve_json_payload: bool = False,
+) -> dict:
+    if not attachments_path.is_dir():
+        return {}
+    attachments_iterator = os.scandir(attachments_path)
+    attachments_dict: dict[str, list] = {}
+    for attachment_entry in attachments_iterator:
+        # TODO: Filter types on the parent attachment type folder layer
+        if not attachment_entry.is_dir():
+            continue
+
+        attachments_files = os.scandir(attachment_entry)
+        for attachments_file in attachments_files:
+            match = ATTACHMENT_PATTERN.search(str(attachments_file.path))
+            if not match or not attachments_file.is_file():
+                continue
+
+            attach_shortname = match.group(2)
+            attach_resource_name = match.group(1).lower()
+            if filter_shortnames and attach_shortname not in filter_shortnames:
+                continue
+
+            if filter_types and ResourceType(attach_resource_name) not in filter_types:
+                continue
+
+            resource_class = getattr(
+                sys.modules["models.core"], camel_case(attach_resource_name)
+            )
+            resource_obj = None
+            async with aiofiles.open(attachments_file, "r") as meta_file:
+                try:
+                    resource_obj = resource_class.model_validate_json(
+                        await meta_file.read()
+                    )
+                except Exception as e:
+                    raise Exception(f"Bad attachment ... {attachments_file=}") from e
+
+            resource_record_obj = resource_obj.to_record(
+                subpath, attach_shortname, include_fields, branch_name
+            )
+            if (
+                retrieve_json_payload
+                and resource_obj
+                and resource_record_obj
+                and resource_obj.payload
+                and resource_obj.payload.content_type
+                and resource_obj.payload.content_type == ContentType.json
+                and Path(
+                    f"{attachment_entry.path}/{resource_obj.payload.body}"
+                ).is_file()
+            ):
+                async with aiofiles.open(
+                    f"{attachment_entry.path}/{resource_obj.payload.body}", "r"
+                ) as payload_file_content:
+                    resource_record_obj.attributes["payload"].body = json.loads(
+                        await payload_file_content.read()
+                    )
+
+            if attach_resource_name in attachments_dict:
+                attachments_dict[attach_resource_name].append(resource_record_obj)
+            else:
+                attachments_dict[attach_resource_name] = [resource_record_obj]
+        attachments_files.close()
+    attachments_iterator.close()
+
+    # SORT ALTERATION ATTACHMENTS BY ALTERATION.CREATED_AT
+    for attachment_name, attachments in attachments_dict.items():
+        try:
+            if attachment_name == ResourceType.alteration:
+                attachments_dict[attachment_name] = sorted(
+                    attachments, key=lambda d: d.attributes["created_at"]
+                )
+        except Exception as e:
+            logger.error(
+                f"Invalid attachment entry:{attachments_path/attachment_name}. Error: {e.args}"
+            )
+
+    return attachments_dict
+
+
+def metapath(entity: core.EntityDTO) -> tuple[Path, str]:
     """Construct the full path of the meta file"""
     path = settings.spaces_folder / entity.space_name / branch_path(entity.branch_name)
 
@@ -175,9 +271,7 @@ def metapath(
     return path, filename
 
 
-def payload_path(
-    entity: core.EntityDTO
-) -> Path:
+def payload_path(entity: core.EntityDTO) -> Path:
     """Construct the full path of the meta file"""
     path = settings.spaces_folder / entity.space_name / branch_path(entity.branch_name)
 
@@ -185,19 +279,17 @@ def payload_path(
         entity.subpath = f".{entity.subpath}"
     if issubclass(entity.class_type, core.Attachment):
         [parent_subpath, parent_name] = entity.subpath.rsplit("/", 1)
-        schema_shortname = "." + entity.schema_shortname if entity.schema_shortname else ""
-        attachment_folder = (
-            f"{parent_name}/attachments{schema_shortname}.{entity.class_type.__name__.lower()}"
+        schema_shortname = (
+            "." + entity.schema_shortname if entity.schema_shortname else ""
         )
+        attachment_folder = f"{parent_name}/attachments{schema_shortname}.{entity.class_type.__name__.lower()}"
         path = path / parent_subpath / ".dm" / attachment_folder
     else:
         path = path / entity.subpath
     return path
 
 
-async def load_or_none(
-    entity: core.EntityDTO
-) -> core.Meta | None:
+async def load_or_none(entity: core.EntityDTO) -> MetaChild | None:  # type: ignore
     """Load a Meta Json according to the reuqested Class type"""
     path, filename = metapath(entity)
     if not (path / filename).is_file():
@@ -211,11 +303,10 @@ async def load_or_none(
     async with aiofiles.open(path, "r") as file:
         content = await file.read()
         return entity.class_type.model_validate_json(content)
-    
-async def load(
-    entity: core.EntityDTO
-) -> core.Meta:
-    meta: core.Meta | None = await load_or_none(entity)
+
+
+async def load(entity: core.EntityDTO) -> MetaChild:  # type: ignore
+    meta = await load_or_none(entity)
     if not meta:
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -225,30 +316,27 @@ async def load(
                 message=f"Request object is not available @{entity.space_name}/{entity.subpath}/{entity.shortname} {entity.resource_type=} {entity.schema_shortname=}",
             ),
         )
-    
+
     return meta
 
 
-
-async def load_resource_payload(
-    entity: core.EntityDTO
-) -> dict[str, Any]:
+async def load_resource_payload(entity: core.EntityDTO) -> dict[str, Any]:
     """Load a Meta class payload file"""
 
     path = payload_path(entity)
-    
+
     meta = await load(entity)
-    
+
     if not meta:
         return {}
-    
+
     if not meta.payload or not isinstance(meta.payload.body, str):
         return {}
-    
+
     path /= meta.payload.body
     if not path.is_file():
         return {}
-    
+
     async with aiofiles.open(path, "r") as file:
         content = await file.read()
         return json.loads(content)
@@ -265,7 +353,7 @@ async def save(
 
     async with aiofiles.open(path / filename, "w") as file:
         await file.write(meta.model_dump_json(exclude_none=True))
-        
+
     if payload_data:
         payload_file_path = payload_path(entity)
 
@@ -284,15 +372,16 @@ async def create(
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="create", code=InternalErrorCode.SHORTNAME_ALREADY_EXIST, message="already exists"),
+                type="create",
+                code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
+                message="already exists",
+            ),
         )
 
     await save(entity, meta, payload_data)
 
 
-async def save_payload(
-    entity: core.EntityDTO, meta: core.Meta, attachment
-):
+async def save_payload(entity: core.EntityDTO, meta: core.Meta, attachment):
     path, filename = metapath(entity)
     payload_file_path = payload_path(entity)
     payload_filename = meta.shortname + Path(attachment.filename).suffix
@@ -301,7 +390,10 @@ async def save_payload(
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
+                type="create",
+                code=InternalErrorCode.MISSING_METADATA,
+                message="metadata is missing",
+            ),
         )
 
     async with aiofiles.open(payload_file_path / payload_filename, "wb") as file:
@@ -321,7 +413,10 @@ async def save_payload_from_json(
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
+                type="create",
+                code=InternalErrorCode.MISSING_METADATA,
+                message="metadata is missing",
+            ),
         )
 
     async with aiofiles.open(payload_file_path / payload_filename, "w") as file:
@@ -329,9 +424,7 @@ async def save_payload_from_json(
 
 
 async def update(
-    entity: core.EntityDTO,
-    meta: core.Meta,
-    payload_data: dict[str, Any] | None = None
+    entity: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any] | None = None
 ) -> dict:
     """Update the entry, store the difference and return it
     1. load the current file
@@ -340,17 +433,17 @@ async def update(
     """
     old_meta = await load(entity)
     old_payload = await load_resource_payload(entity)
-    
+
     meta.updated_at = datetime.now()
 
     await save(entity, meta, payload_data)
 
     history_diff = await store_entry_diff(
-        entity=entity, 
-        old_meta=old_meta, 
-        new_meta=meta, 
-        old_payload=old_payload, 
-        new_payload=payload_data
+        entity=entity,
+        old_meta=old_meta,
+        new_meta=meta,
+        old_payload=old_payload,
+        new_payload=payload_data,
     )
 
     return history_diff
@@ -366,11 +459,11 @@ async def store_entry_diff(
     old_flattened = flatten_all(old_meta.model_dump(exclude_none=True))
     if old_payload:
         old_flattened.update(flatten_all(old_payload))
-        
+
     new_flattened = flatten_all(new_meta.model_dump(exclude_none=True))
     if new_payload:
         new_flattened.update(flatten_all(new_payload))
-        
+
     diff_keys = list(old_flattened.keys())
     diff_keys.extend(list(new_flattened.keys()))
     history_diff = {}
@@ -396,11 +489,12 @@ async def store_entry_diff(
         shortname="history",
         owner_shortname=entity.user_shortname or "__system__",
         timestamp=datetime.now(),
-        request_headers=get_request_data().get('request_headers', {}),
+        request_headers=get_request_data().get("request_headers", {}),
         diff=history_diff,
     )
-    history_path = settings.spaces_folder / \
-        entity.space_name / branch_path(entity.branch_name)
+    history_path = (
+        settings.spaces_folder / entity.space_name / branch_path(entity.branch_name)
+    )
 
     if entity.subpath == "/" and entity.resource_type == core.Space:
         history_path = Path(f"{history_path}/.dm")
@@ -412,7 +506,8 @@ async def store_entry_diff(
                 history_path = Path(f"{history_path}/.dm/{entity.shortname}")
             else:
                 history_path = Path(
-                    f"{history_path}/{entity.subpath}/.dm/{entity.shortname}")
+                    f"{history_path}/{entity.subpath}/.dm/{entity.shortname}"
+                )
 
     if not os.path.exists(history_path):
         os.makedirs(history_path)
@@ -432,34 +527,29 @@ async def move(
     dest_subpath: str | None,
     dest_shortname: str | None,
 ):
-    """Move the file that match the criteria given, remove source folder if empty
-    """
+    """Move the file that match the criteria given, remove source folder if empty"""
     dest_entity = copy(entity)
-    
+
     if dest_subpath:
         dest_entity.subpath = dest_subpath
     if dest_shortname:
         dest_entity.shortname = dest_shortname
-        
+
     src_path, src_filename = metapath(entity)
     dest_path, dest_filename = metapath(dest_entity)
-
-    
 
     meta_updated = False
     dest_path_without_dm = dest_path
     if dest_shortname:
         meta.shortname = dest_shortname
         meta_updated = True
-    
+
     if src_path.parts[-1] == ".dm":
         src_path = Path("/".join(src_path.parts[:-1]))
 
     if dest_path.parts[-1] == ".dm":
         dest_path_without_dm = Path("/".join(dest_path.parts[:-1]))
-        
-    
-    
+
     if dest_path_without_dm.is_dir() and len(os.listdir(dest_path_without_dm)):
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -469,17 +559,17 @@ async def move(
                 message="The destination folder is not empty",
             ),
         )
-        
-    # Create dest dir if there's a change in the subpath AND the shortname 
+
+    # Create dest dir if there's a change in the subpath AND the shortname
     # and the subpath shortname folder doesn't exist,
-    if(
+    if (
         entity.shortname != dest_shortname
         and entity.subpath != dest_subpath
         and not os.path.isdir(dest_path_without_dm)
     ):
         os.makedirs(dest_path_without_dm)
-        
-    os.rename(src=src_path , dst=dest_path_without_dm )
+
+    os.rename(src=src_path, dst=dest_path_without_dm)
 
     # Move payload file with the meta file
     if (
@@ -487,13 +577,9 @@ async def move(
         and meta.payload.content_type != ContentType.text
         and isinstance(meta.payload.body, str)
     ):
-        src_payload_file_path = (
-            payload_path(entity) / meta.payload.body
-        )
+        src_payload_file_path = payload_path(entity) / meta.payload.body
         meta.payload.body = meta.shortname + "." + meta.payload.body.split(".")[-1]
-        dist_payload_file_path = (
-            payload_path(dest_entity) / meta.payload.body
-        )
+        dist_payload_file_path = payload_path(dest_entity) / meta.payload.body
         if src_payload_file_path.is_file():
             os.rename(src=src_payload_file_path, dst=dist_payload_file_path)
 
@@ -505,13 +591,14 @@ async def move(
     if src_path.parent.is_dir():
         delete_empty(src_path)
 
+
 def delete_empty(path: Path):
     if path.is_dir() and len(os.listdir(path)) == 0:
         os.removedirs(path)
-        
+
     if path.parent.is_dir() and len(os.listdir(path.parent)) == 0:
         delete_empty(path.parent)
-    
+
 
 async def clone(
     src_entity: core.EntityDTO,
@@ -535,14 +622,12 @@ async def clone(
         and meta_obj.payload.content_type != ContentType.text
         and isinstance(meta_obj.payload.body, str)
     ):
-        src_payload_file_path = (payload_path(src_entity) / meta_obj.payload.body)
-        dist_payload_file_path = (payload_path(dest_entity) / meta_obj.payload.body)
+        src_payload_file_path = payload_path(src_entity) / meta_obj.payload.body
+        dist_payload_file_path = payload_path(dest_entity) / meta_obj.payload.body
         copy_file(src=src_payload_file_path, dst=dist_payload_file_path)
 
 
-async def delete(
-    entity: core.EntityDTO
-):
+async def delete(entity: core.EntityDTO):
     """Delete the file that match the criteria given, remove folder if empty"""
 
     path, filename = metapath(entity)
@@ -550,9 +635,12 @@ async def delete(
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
             error=api.Error(
-                type="delete", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"),
+                type="delete",
+                code=InternalErrorCode.OBJECT_NOT_FOUND,
+                message="Request object is not available",
+            ),
         )
-        
+
     meta = await load(entity)
 
     pathname = path / filename
@@ -565,15 +653,13 @@ async def delete(
             if payload_file_path.exists() and payload_file_path.is_file():
                 os.remove(payload_file_path)
 
-    history_path = f"{settings.spaces_folder}/{entity.space_name}/{branch_path(entity.branch_name)}" +\
-        f"{entity.subpath}/.dm/{meta.shortname}"
+    history_path = (
+        f"{settings.spaces_folder}/{entity.space_name}/{branch_path(entity.branch_name)}"
+        + f"{entity.subpath}/.dm/{meta.shortname}"
+    )
 
-    if (
-        path.is_dir()
-        and (
-            not isinstance(meta, core.Attachment)
-            or len(os.listdir(path)) == 0
-        )
+    if path.is_dir() and (
+        not isinstance(meta, core.Attachment) or len(os.listdir(path)) == 0
     ):
         shutil.rmtree(path)
         # in case of folder the path = {folder_name}/.dm
@@ -583,14 +669,17 @@ async def delete(
             shutil.rmtree(history_path)
 
 
-def is_entry_exist(
-    entity: core.EntityDTO
-) -> bool:
+def is_entry_exist(entity: core.EntityDTO) -> bool:
     if entity.subpath[0] == "/":
         entity.subpath = f".{entity.subpath}"
 
-    payload_file = settings.spaces_folder / entity.space_name / \
-        branch_path(entity.branch_name) / entity.subpath / f"{entity.shortname}.json"
+    payload_file = (
+        settings.spaces_folder
+        / entity.space_name
+        / branch_path(entity.branch_name)
+        / entity.subpath
+        / f"{entity.shortname}.json"
+    )
     if payload_file.is_file():
         return True
 
@@ -599,7 +688,7 @@ def is_entry_exist(
         if r_type == ResourceType.space and r_type != entity.resource_type:
             continue
         meta_path, meta_file = metapath(entity)
-        if (meta_path/meta_file).is_file():
+        if (meta_path / meta_file).is_file():
             return True
 
     return False

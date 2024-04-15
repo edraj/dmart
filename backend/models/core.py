@@ -2,7 +2,7 @@ import copy
 import json
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, ConfigDict
-from typing import Any, Type, TypeVar
+from typing import Any, Self, Type, TypeVar
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
 from pydantic import Field
@@ -209,24 +209,20 @@ class Meta(Resource):
 
     model_config = ConfigDict(validate_assignment=True)
 
-    @staticmethod
-    def from_record(record: Record, owner_shortname: str):
+    @classmethod
+    def from_record(cls, record: Record, owner_shortname: str) -> Self:
         if record.shortname == settings.auto_uuid_rule:
             record.uuid = uuid4()
             record.shortname = str(record.uuid)[:8]
             record.attributes["uuid"] = record.uuid
 
-        meta_class = getattr(
-            sys.modules["models.core"], camel_case(record.resource_type)
-        )
-
-        if issubclass(meta_class, User) and "password" in record.attributes:
+        if issubclass(cls, User) and "password" in record.attributes:
             hashed_pass = password_hashing.hash_password(record.attributes["password"])
             record.attributes["password"] = hashed_pass
 
         record.attributes["owner_shortname"] = owner_shortname
         record.attributes["shortname"] = record.shortname
-        meta_obj = meta_class(**remove_none(record.attributes))  # type: ignore
+        meta_obj = cls(**remove_none(record.attributes))  # type: ignore
         return meta_obj
 
     @staticmethod
@@ -314,6 +310,7 @@ class Meta(Resource):
 
         return Record(**record_fields)
 
+MetaChild = TypeVar("MetaChild", bound=Meta)
 
 class Space(Meta):
     root_registration_signature: str = ""
@@ -594,7 +591,6 @@ class Notification(Meta):
         )
 
 
-MetaChild = TypeVar("MetaChild", bound=Meta)
 
 
 class EntityDTO(BaseModel):
@@ -616,7 +612,7 @@ class EntityDTO(BaseModel):
         BaseModel.__init__(self, **data)
 
     @property
-    def class_type(self) -> Type[Meta]:
+    def class_type(self) -> Type[MetaChild]: # type: ignore
         return getattr(sys.modules["models.core"], camel_case(self.resource_type))
 
     @staticmethod
@@ -642,13 +638,14 @@ class EntityDTO(BaseModel):
             **self.model_dump(), action_type=action_type, attributes=additional_data
         )
 
-    @staticmethod
+    @classmethod
     def from_record(
+        cls,
         record: Record,
         space_name: str,
         user_shortname: str | None = None,
-    ) -> "EntityDTO":
-        return EntityDTO(
+    ) -> Self:
+        return cls(
             space_name=space_name,
             schema_shortname=record.attributes.get("payload", {}).get("schema_shortname", None),
             user_shortname=user_shortname,

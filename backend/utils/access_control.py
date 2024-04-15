@@ -1,12 +1,11 @@
+import json
 import re
 from typing import Any
-from models.api import Query
-from models.enums import QueryType, ResourceType, ActionType, ConditionType
-from utils.helpers import flatten_dict
+from models.enums import ResourceType, ActionType, ConditionType
+from utils.helpers import flatten_dict, trans_magic_words
 from utils.settings import settings
 import models.core as core
-from utils.operational_repo import operational_repo
-
+from utils.operational_database import operational_db
 
 class AccessControl:
 
@@ -25,13 +24,13 @@ class AccessControl:
                 entity.user_shortname,
                 entity.shortname
             )
-        user_permissions = await operational_repo.get_user_permissions_doc(entity.user_shortname)
+        user_permissions = await self.get_user_permissions_doc(entity.user_shortname)
 
-        user_groups: list[str] = (await operational_repo.get_user(entity.user_shortname)).groups or []
+        user_groups: list[str] = (await self.get_user(entity.user_shortname)).groups or []
 
         # Generate set of achevied conditions on the resource
         # ex: {"is_active", "own"}
-        # meta: None | core.Meta = await operational_repo.find(entity)
+        # meta: None | core.Meta = await self.find(entity)
         
         resource_achieved_conditions: set[ConditionType] = set()
         if meta and meta.is_active:
@@ -228,23 +227,77 @@ class AccessControl:
         
     
     async def check_space_access(self, user_shortname: str, space_name: str) -> bool:
-        user_permissions = await operational_repo.get_user_permissions_doc(user_shortname)
+        user_permissions = await self.get_user_permissions_doc(user_shortname)
         prog = re.compile(f"{space_name}:*|{settings.all_spaces_mw}:*")
         return bool(list(filter(prog.match, user_permissions.keys())))
 
 
+    async def get_user(self, user_shortname: str) -> core.User:
+        user_doc: dict[str, Any] = await operational_db.find_or_fail(core.EntityDTO(
+            space_name=settings.management_space,
+            branch_name=settings.management_space_branch,
+            schema_shortname="meta",
+            subpath="users",
+            shortname=user_shortname,
+            resource_type=ResourceType.user,
+        ))
+        
+        return core.User(**user_doc)
+
+
+    async def user_query_policies(
+        self, user_shortname: str, space: str, subpath: str
+    ) -> list[str]:
+        """
+        Generate list of query policies based on user's permissions
+        ex: [
+            "products:offers:content:true:admin_shortname", # IF conditions = {"is_active", "own"}
+            "products:offers:content:true:*", # IF conditions = {"is_active"}
+            "products:offers:content:false:admin_shortname|products:offers:content:true:admin_shortname",
+            # ^^^ IF conditions = {"own"}
+            "products:offers:content:*", # IF conditions = {}
+        ]
+        """
+        user_permissions = await self.get_user_permissions_doc(user_shortname)
+        user_groups = (await self.get_user(user_shortname)).groups or []
+        user_groups.append(user_shortname)
+
+        redis_query_policies = []
+        for perm_key, permission in user_permissions.items():
+            if not perm_key.startswith(space) and not perm_key.startswith(
+                settings.all_spaces_mw
+            ):
+                continue
+            perm_key = perm_key.replace(settings.all_spaces_mw, space)
+            perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
+            perm_key = perm_key.strip("/")
+            if (
+                ConditionType.is_active in permission["conditions"]
+                and ConditionType.own in permission["conditions"]
+            ):
+                for user_group in user_groups:
+                    redis_query_policies.append(f"{perm_key}:true:{user_group}")
+            elif ConditionType.is_active in permission["conditions"]:
+                redis_query_policies.append(f"{perm_key}:true:*")
+            elif ConditionType.own in permission["conditions"]:
+                for user_group in user_groups:
+                    redis_query_policies.append(
+                        f"{perm_key}:true:{user_shortname}|{perm_key}:false:{user_group}"
+                    )
+            else:
+                redis_query_policies.append(f"{perm_key}:*")
+        return redis_query_policies
 
 
     async def get_user_by_criteria(self, key: str, value: str) -> core.User | None:
-        search_res: tuple[int, list[dict[str, Any]]] = await operational_repo.search(Query(
-            type=QueryType.search,
+        search_res: tuple[int, list[dict[str, Any]]] = await operational_db.search(
             space_name=settings.management_space,
             branch_name=settings.management_space_branch,
-            subpath=settings.users_subpath,
             search=f"@{key}:({value.replace('@','?')})",
             limit=2,
             offset=0,
-        ))
+            filters={"subpath": [settings.users_subpath]}
+        )
         try:
             if search_res[0] == 1 and len(search_res[1]) == 1:
                 return core.User(**search_res[1][0])
@@ -253,6 +306,155 @@ class AccessControl:
         except Exception as _:
             return None
 
+    async def get_user_roles_from_groups(self, user_meta: core.User) -> list[core.Role]:
+        if not user_meta.groups:
+            return []
 
+        groups_search = await operational_db.search(
+            space_name=settings.management_space,
+            branch_name=settings.management_space_branch,
+            search="@shortname:(" + "|".join(user_meta.groups) + ")",
+            filters={"subpath": ["groups"]},
+            limit=10000,
+            offset=0,
+        )
+        if not groups_search:
+            return []
+
+        roles: list[core.Role] = []
+        for group_json in groups_search[1]:
+            for role_shortname in group_json["roles"]:
+                role_doc: None | dict[str, Any] = await operational_db.find(
+                    core.EntityDTO(
+                        space_name=settings.management_space,
+                        branch_name=settings.management_space_branch,
+                        schema_shortname="meta",
+                        shortname=role_shortname,
+                        subpath="roles",
+                    )
+                )
+                if role_doc:
+                    roles.append(core.Role(**role_doc))
+
+        return roles
+    
+    async def get_role_permissions(self, role: core.Role) -> list[core.Permission]:
+        permissions_options = "|".join(role.permissions)
+
+        permissions_search = await operational_db.search(
+            space_name=settings.management_space,
+            branch_name=settings.management_space_branch,
+            search=f"@shortname:{permissions_options}",
+            filters={"subpath": ["permissions"]},
+            limit=10000,
+            offset=0,
+        )
+        if not permissions_search:
+            return []
+
+        role_permissions: list[core.Permission] = []
+
+        for permission_doc in permissions_search[1]:
+            permission = core.Permission.model_validate(permission_doc)
+            role_permissions.append(permission)
+
+        return role_permissions
+    
+    async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
+        user_meta: core.User = await self.get_user(user_shortname)
+        user_associated_roles: list[str] = user_meta.roles
+        user_associated_roles.append("logged_in")
+
+        roles_search = await operational_db.search(
+            space_name=settings.management_space,
+            branch_name=settings.management_space_branch,
+            search="@shortname:(" + "|".join(user_associated_roles) + ")",
+            filters={"subpath": ["roles"]},
+            limit=10000,
+            offset=0,
+        )
+
+        user_roles_from_groups = await self.get_user_roles_from_groups(user_meta)
+        if not roles_search and not user_roles_from_groups:
+            return {}
+
+        user_roles: dict[str, core.Role] = {}
+
+        all_user_roles_from_redis = []
+        for redis_document in roles_search[1]:
+            all_user_roles_from_redis.append(redis_document)
+
+        all_user_roles_from_redis.extend(user_roles_from_groups)
+        for role_json in all_user_roles_from_redis:
+            role = core.Role.model_validate(json.loads(role_json))
+            user_roles[role.shortname] = role
+
+        return user_roles
+
+    def generate_user_permissions_doc_id(self, user_shortname: str) -> str:
+        return f"users_permissions_{user_shortname}"
+    
+    async def generate_user_permissions_doc(
+        self, user_shortname: str
+    ) -> dict[str, Any]:
+        """
+        User's Access Control List Document should be
+        a dict of: key = "{space}:{subpath}:{resource_type}"
+        and the value is another dict of
+        1. list of allowed actions
+        2. list of permission conditions
+        3. list of restricted fields
+        4. dict of allowed fields values
+
+        """
+        user_permissions: dict[str, Any] = {}
+
+        user_roles = await self.get_user_roles(user_shortname)
+        for _, role in user_roles.items():
+            role_permissions = await self.get_role_permissions(role)
+
+            for permission in role_permissions:
+                for space_name, permission_subpaths in permission.subpaths.items():
+                    for permission_subpath in permission_subpaths:
+                        permission_subpath = trans_magic_words(
+                            permission_subpath, user_shortname
+                        )
+                        for permission_resource_types in permission.resource_types:
+                            actions = permission.actions
+                            conditions = permission.conditions
+                            if (
+                                f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                                in user_permissions
+                            ):
+                                old_perm = user_permissions[
+                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                                ]
+                                actions |= set(old_perm["allowed_actions"])
+                                conditions |= set(old_perm["conditions"])
+
+                            user_permissions[
+                                f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                            ] = {
+                                "allowed_actions": list(actions),
+                                "conditions": list(conditions),
+                                "restricted_fields": permission.restricted_fields,
+                                "allowed_fields_values": permission.allowed_fields_values,
+                            }
+
+        await operational_db.save_at_id(
+            self.generate_user_permissions_doc_id(user_shortname), user_permissions
+        )
+
+        return user_permissions
+    
+    async def get_user_permissions_doc(self, user_shortname: str) -> dict[str, Any]:
+        user_permissions: dict[str, Any] = await operational_db.find_by_id(
+            self.generate_user_permissions_doc_id(user_shortname)
+        )
+
+        if not user_permissions:
+            return await self.generate_user_permissions_doc(user_shortname)
+
+        return user_permissions
 
 access_control = AccessControl()
