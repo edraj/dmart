@@ -1,5 +1,5 @@
 <script>
-  import { Card, CardHeader, CardFooter, TabContent, TabPane } from "sveltestrap";
+    import {Card, CardHeader, CardFooter, TabContent, TabPane, NavItem, NavLink, Nav} from "sveltestrap";
   import { createEventDispatcher } from "svelte";
   import { marked } from "marked";
   import { mangle } from "marked-mangle";
@@ -90,6 +90,10 @@
     <TabContent>
       <TabPane tabId="editor" tab="Editor" active>
         <textarea
+          on:blur={(e)=>{
+            e.preventDefault();
+            textarea.focus();
+          }}
           on:keydown={handleKeyDown}
           bind:this={textarea}
           on:select={handleSelect}
@@ -106,16 +110,15 @@
         </div>
       </TabPane>
       <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-click-events-have-key-events -->
-
       <div class="d-flex justify-content-end flex-grow-1">
-        <TabPane class="m-0 p-0"><p on:click={()=>handleFormatting("**")} class="text-dark p-0 m-0" slot="tab"><strong>B</strong></p></TabPane>
-        <TabPane><p on:click={()=>handleFormatting("_")} class="text-dark p-0 m-0" slot="tab"><i>I</i></p></TabPane>
-        <TabPane><p on:click={()=>handleFormatting("~~")} class="text-dark p-0 m-0" slot="tab"><del>S</del></p></TabPane>
-        <TabPane><p on:click={()=>handleFormatting("*", false, true)} class="text-dark p-0 m-0" slot="tab">ul</p></TabPane>
-        <TabPane><p on:click={()=>handleFormatting("1.", false, true)} class="text-dark p-0 m-0" slot="tab">ol</p></TabPane>
-        <TabPane><p on:click={()=>handleFormatting("#", false)} class="text-dark p-0 m-0" slot="tab">H1</p></TabPane>
-        <TabPane><p on:click={()=>handleFormatting("##", false)} class="text-dark p-0 m-0" slot="tab">H2</p></TabPane>
-        <TabPane><p on:click={()=>handleFormatting("###", false)} class="text-dark p-0 m-0" slot="tab">H3</p></TabPane>
+        <TabPane class="m-0 p-0" onClick={()=>handleFormatting("**")}><p class="text-dark p-0 m-0" slot="tab"><strong>B</strong></p></TabPane>
+        <TabPane onClick={()=>handleFormatting("_")}><p class="text-dark p-0 m-0" slot="tab"><i>I</i></p></TabPane>
+        <TabPane onClick={()=>handleFormatting("~~")}><p class="text-dark p-0 m-0" slot="tab"><del>S</del></p></TabPane>
+        <TabPane onClick={()=>handleFormatting("*", false, true)}><p class="text-dark p-0 m-0" slot="tab">ul</p></TabPane>
+        <TabPane onClick={()=>handleFormatting("1.", false, true)}><p class="text-dark p-0 m-0" slot="tab">ol</p></TabPane>
+        <TabPane onClick={()=>handleFormatting("#", false)}><p class="text-dark p-0 m-0" slot="tab">H1</p></TabPane>
+        <TabPane onClick={()=>handleFormatting("##", false)}><p class="text-dark p-0 m-0" slot="tab">H2</p></TabPane>
+        <TabPane onClick={()=>handleFormatting("###", false)}><p class="text-dark p-0 m-0" slot="tab">H3</p></TabPane>
       </div>
     </TabContent>
   <CardFooter></CardFooter>

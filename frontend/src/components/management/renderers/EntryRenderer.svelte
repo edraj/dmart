@@ -35,7 +35,7 @@
   } from "sveltestrap";
   import Icon from "@/components/Icon.svelte";
   import { _ } from "@/i18n";
-  import ListView from "../ListView.svelte";
+  import ListView from "@/components/management/ListView.svelte";
   import Prism from "@/components/Prism.svelte";
   import {
     createAjvValidator,
