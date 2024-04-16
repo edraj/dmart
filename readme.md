@@ -100,7 +100,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
   - Redis as the operational data store. With specific leverage of RediSearch RedisJSON modules.
   - Intensive json-based logging for easier insights.
 
-<img src="./frontend/docs/datamart-one.png" width="50"> <img src="./frontend/docs/datamart-two.png" width="50"> <img src="./frontend/docs/datamart-three.png" width="50"> <img src="./frontend/docs/datamart-four.png" width="50">
+<img src="./frontend/docs/docs/datamart-one.png" width="50"> <img src="./frontend/docs/docs/datamart-two.png" width="50"> <img src="./frontend/docs/docs/datamart-three.png" width="50"> <img src="./frontend/docs/datamart-four.png" width="50">
 
 ## Terminology 
 
