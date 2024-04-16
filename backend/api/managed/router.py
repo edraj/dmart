@@ -13,7 +13,6 @@ from utils.generate_email import generate_email_from_template, generate_subject
 from utils.custom_validations import (
     validate_csv_with_schema,
     validate_jsonl_with_schema,
-    validate_uniqueness,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.ticket_sys_utils import (
@@ -40,7 +39,6 @@ from utils.jwt import JWTBearer, GetJWTToken, remove_redis_active_session
 from utils.access_control import access_control
 from utils.operational_repo import operational_repo
 from typing import Any
-import utils.repository as repository
 from utils.helpers import (
     branch_path,
     camel_case,
@@ -538,7 +536,7 @@ async def serve_request(
                             ),
                         )
 
-                    await validate_uniqueness(entity, record.attributes)
+                    await operational_repo.validate_uniqueness(entity, record.attributes)
                     
                     resource_obj = core.Meta.from_record(
                         record=record, owner_shortname=owner_shortname
@@ -584,7 +582,7 @@ async def serve_request(
                     if isinstance(resource_obj, core.User):
                         # SMS Invitation
                         if not resource_obj.is_msisdn_verified and resource_obj.msisdn:
-                            inv_link = await repository.store_user_invitation_token(
+                            inv_link = await operational_repo.store_user_invitation_token(
                                 resource_obj, "SMS"
                             )
                             if inv_link:
@@ -594,12 +592,12 @@ async def serve_request(
                                         "invitation_message"
                                     ].replace(
                                         "{link}",
-                                        await repository.url_shortner(inv_link),
+                                        await operational_repo.url_shortener(inv_link),
                                     ),
                                 )
                         # EMAIL Invitation
                         if not resource_obj.is_email_verified and resource_obj.email:
-                            inv_link = await repository.store_user_invitation_token(
+                            inv_link = await operational_repo.store_user_invitation_token(
                                 resource_obj, "EMAIL"
                             )
                             if inv_link:
@@ -609,7 +607,7 @@ async def serve_request(
                                     message=generate_email_from_template(
                                         "activation",
                                         {
-                                            "link": await repository.url_shortner(
+                                            "link": await operational_repo.url_shortener(
                                                 inv_link
                                             ),
                                             "name": record.attributes.get(
@@ -657,7 +655,7 @@ async def serve_request(
                     )
 
 
-                    await validate_uniqueness(
+                    await operational_repo.validate_uniqueness(
                         entity, record.attributes, RequestType.update
                     )
                     # VALIDATE SEPARATE PAYLOAD BODY

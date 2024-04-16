@@ -8,6 +8,7 @@ from fastapi.logger import logger
 from create_index import main as reload_redis
 from utils.operational_repo import operational_repo
 
+
 class Plugin(PluginBase):
     async def hook(self, data: Event):
         self.data = data
@@ -47,18 +48,10 @@ class Plugin(PluginBase):
             await operational_repo.delete(entity_dto)
 
             return
-        
-        
-        try:
-            meta = await db.load(
-                space_name=data.space_name,
-                subpath=data.subpath,
-                shortname=data.shortname,
-                class_type=class_type,
-                user_shortname=data.user_shortname,
-                branch_name=data.branch_name,
-            )
-        except Exception as _:
+
+        entity = EntityDTO.from_event_data(data)
+        meta = await db.load_or_none(entity)
+        if not meta:
             return
 
         if data.action_type in [
@@ -66,9 +59,8 @@ class Plugin(PluginBase):
             ActionType.update,
             ActionType.progress_ticket,
         ]:
-                
-            await operational_repo.create(entity_dto, meta)
 
+            await operational_repo.create(entity_dto, meta)
 
         elif data.action_type == ActionType.move and data.shortname is not None:
             await operational_repo.move(
@@ -96,10 +88,8 @@ class Plugin(PluginBase):
             subpath=parent_subpath,
         )
         meta: None | core.Meta = await operational_repo.find(parent_entity_dto)
-        
+
         if not meta:
             return
-            
-        await operational_repo.create(
-            entity=parent_entity_dto, meta=meta
-        )
+
+        await operational_repo.create(entity=parent_entity_dto, meta=meta)

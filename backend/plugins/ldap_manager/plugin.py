@@ -1,6 +1,6 @@
 from fastapi.logger import logger
-from models.core import Event, PluginBase, User
-from models.enums import ActionType
+from models.core import EntityDTO, Event, PluginBase, User
+from models.enums import ActionType, ResourceType
 from utils.settings import settings
 from utils.db import load
 
@@ -41,13 +41,14 @@ class Plugin(PluginBase):
             self.delete(data.shortname)
             return
         
-        user_model: User = await load(
+        
+        user_model: User = await load(EntityDTO(
             space_name=settings.management_space,
             subpath=data.subpath,
             branch_name=settings.management_space_branch,
             shortname=data.shortname,
-            class_type=User
-        )
+            resource_type=ResourceType.user
+        ))
         
         if data.action_type == ActionType.create:
             self.add(data.shortname, user_model)

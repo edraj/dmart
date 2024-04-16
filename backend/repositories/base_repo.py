@@ -1,27 +1,57 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 import json
 import os
 from pathlib import Path
+import random
+import string
 import subprocess
 import sys
 from typing import Any
+from uuid import uuid4
 
 import aiofiles
 from fastapi.encoders import jsonable_encoder
 
 from db.base_db import BaseDB
 from models.api import Query, Exception as api_exception, Error as api_error
-from models.core import EntityDTO, Group, Meta, Permission, Role, Space, User, Record
-from models.enums import ContentType, LockAction, ActionType, ResourceType, SortType
-from utils.helpers import alter_dict_keys, branch_path, camel_case, str_to_datetime
+from models.core import (
+    EntityDTO,
+    Folder,
+    Group,
+    Meta,
+    Permission,
+    Role,
+    Space,
+    User,
+    Record,
+)
+from models.enums import (
+    ContentType,
+    Language,
+    LockAction,
+    ActionType,
+    QueryType,
+    RequestType,
+    ResourceType,
+    SortType,
+)
+from utils.custom_validations import validate_payload_with_schema
+from utils.helpers import (
+    alter_dict_keys,
+    branch_path,
+    camel_case,
+    flatten_dict,
+    flatten_list_of_dicts_in_dict,
+    str_to_datetime,
+)
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import generate_jwt
 from utils.settings import settings
 from fastapi import status
-from fastapi.logger import logger
 from utils import regex
 import utils.db as main_db
 from utils.access_control import access_control
+from models.api import Exception as API_Exception, Error as API_Error
 
 
 class BaseRepo(ABC):
@@ -181,7 +211,9 @@ class BaseRepo(ABC):
         return await self.db.find_key(key)
 
     @abstractmethod
-    async def create(self, entity: EntityDTO, meta: Meta) -> None:
+    async def create(
+        self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None
+    ) -> None:
         pass
 
     @abstractmethod
@@ -195,10 +227,11 @@ class BaseRepo(ABC):
     async def save_at_id(self, id: str, doc: dict[str, Any] = {}) -> bool:
         return await self.db.save_at_id(id, doc)
 
+    @abstractmethod
     async def update(
-        self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] = {}
-    ) -> bool:
-        return await self.db.update(entity, meta, payload)
+        self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None
+    ) -> None:
+        pass
 
     async def delete(self, entity: EntityDTO) -> bool:
         return await self.db.delete(entity)
@@ -561,7 +594,7 @@ class BaseRepo(ABC):
         )
         if not path.is_file():
             return total, records
-            
+
         result = []
         if query.search:
             p = subprocess.Popen(
@@ -598,9 +631,7 @@ class BaseRepo(ABC):
             p1 = subprocess.Popen(
                 ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
             )
-            p2 = subprocess.Popen(
-                ["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE
-            )
+            p2 = subprocess.Popen(["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE)
             r, _ = p2.communicate()
             total = int(
                 r.decode(),
@@ -653,7 +684,6 @@ class BaseRepo(ABC):
             )
         return total, records
 
-    @abstractmethod
     async def aggregate_query(
         self, query: Query, user_shortname: str | None = None
     ) -> tuple[int, list[Record]]:
@@ -670,6 +700,465 @@ class BaseRepo(ABC):
             records.append(record)
         return total, records
 
+    async def subpath_query(
+        self, query: Query, user_shortname: str | None = None
+    ) -> tuple[int, list[Record]]:
+        records: list[Record] = []
+        total: int = 0
+
+        subpath = query.subpath
+        if subpath[0] == "/":
+            subpath = "." + subpath
+        path = (
+            settings.spaces_folder
+            / query.space_name
+            / branch_path(query.branch_name)
+            / subpath
+        )
+
+        if query.include_fields is None:
+            query.include_fields = []
+
+        # Gel all matching entries
+        # entries_glob = ".dm/*/meta.*.json"
+
+        meta_path = path / ".dm"
+        if meta_path.is_dir():
+            path_iterator = os.scandir(meta_path)
+            for entry in path_iterator:
+                if not entry.is_dir():
+                    continue
+
+                subpath_iterator = os.scandir(entry)
+                for one in subpath_iterator:
+                    # for one in path.glob(entries_glob):
+                    match = regex.FILE_PATTERN.search(str(one.path))
+                    if not match or not one.is_file():
+                        continue
+
+                    shortname = match.group(1)
+                    resource_name = match.group(2).lower()
+                    if (
+                        query.filter_types
+                        and ResourceType(resource_name) not in query.filter_types
+                    ):
+                        continue
+
+                    if (
+                        query.filter_shortnames
+                        and shortname not in query.filter_shortnames
+                    ):
+                        continue
+
+                    resource_class = getattr(
+                        sys.modules["models.core"], camel_case(resource_name)
+                    )
+
+                    async with aiofiles.open(one, "r") as meta_file:
+                        resource_obj = resource_class.model_validate_json(
+                            await meta_file.read()
+                        )
+
+                    if query.filter_tags and (
+                        not resource_obj.tags
+                        or not any(
+                            item in resource_obj.tags for item in query.filter_tags
+                        )
+                    ):
+                        continue
+
+                    entity = EntityDTO(
+                        space_name=query.space_name,
+                        subpath=query.subpath,
+                        shortname=shortname,
+                        resource_type=ResourceType(resource_name),
+                        user_shortname=user_shortname,
+                        schema_shortname=resource_obj.payload.schema_shortname
+                        or None,
+                    )
+                    # apply check access
+                    if not await access_control.check_access(
+                        entity=entity,
+                        meta=resource_obj,
+                        action_type=ActionType.view,
+                    ):
+                        continue
+
+                    total += 1
+                    if len(records) >= query.limit or total < query.offset:
+                        continue
+
+                    resource_base_record = resource_obj.to_record(
+                        query.subpath,
+                        shortname,
+                        query.include_fields,
+                        query.branch_name,
+                    )
+                    if resource_base_record:
+                        locked_data = await self.get_lock_doc(entity)
+                        if locked_data:
+                            resource_base_record.attributes["locked"] = locked_data
+
+                    if (
+                        query.retrieve_json_payload
+                        and resource_obj.payload
+                        and resource_obj.payload.content_type
+                        and resource_obj.payload.content_type == ContentType.json
+                        and (path / resource_obj.payload.body).is_file()
+                    ):
+                        async with aiofiles.open(
+                            path / resource_obj.payload.body, "r"
+                        ) as payload_file_content:
+                            resource_base_record.attributes["payload"].body = (
+                                json.loads(await payload_file_content.read())
+                            )
+
+                    if (
+                        resource_obj.payload
+                        and resource_obj.payload.schema_shortname
+                    ):
+                        try:
+                            payload_body = resource_base_record.attributes[
+                                "payload"
+                            ].body
+                            if not payload_body or isinstance(payload_body, str):
+                                async with aiofiles.open(
+                                    path / resource_obj.payload.body, "r"
+                                ) as payload_file_content:
+                                    payload_body = json.loads(
+                                        await payload_file_content.read()
+                                    )
+
+                            if query.validate_schema:
+                                await validate_payload_with_schema(
+                                    payload_data=payload_body,
+                                    space_name=query.space_name,
+                                    branch_name=query.branch_name,
+                                    schema_shortname=resource_obj.payload.schema_shortname,
+                                )
+                        except Exception:
+                            continue
+
+                    resource_base_record.attachments = (
+                        await main_db.get_entry_attachments(
+                            subpath=f"{query.subpath}/{shortname}",
+                            branch_name=query.branch_name,
+                            attachments_path=(meta_path / shortname),
+                            filter_types=query.filter_types,
+                            include_fields=query.include_fields,
+                            retrieve_json_payload=query.retrieve_json_payload,
+                        )
+                    )
+                    records.append(resource_base_record)
+
+                subpath_iterator.close()
+            if path_iterator:
+                path_iterator.close()
+
+        # Get all matching sub folders
+        # apply check access
+
+        if meta_path.is_dir():
+            subfolders_iterator = os.scandir(path)
+            for one in subfolders_iterator:
+                if not one.is_dir():
+                    continue
+
+                subfolder_meta = Path(one.path + "/.dm/meta.folder.json")
+
+                match = regex.FOLDER_PATTERN.search(str(subfolder_meta))
+
+                if not match or not subfolder_meta.is_file():
+                    continue
+
+                shortname = match.group(1)
+                entity = EntityDTO(
+                    space_name=query.space_name,
+                    subpath=f"{query.subpath}/{shortname}",
+                    resource_type=ResourceType.folder,
+                    shortname=shortname,
+                    user_shortname=user_shortname,
+                )
+                if not await access_control.check_access(
+                    entity=entity,
+                    action_type=ActionType.query,
+                ):
+                    continue
+                if query.filter_shortnames and shortname not in query.filter_shortnames:
+                    continue
+                total += 1
+                if len(records) >= query.limit or total < query.offset:
+                    continue
+
+                folder_obj = Folder.model_validate_json(subfolder_meta.read_text())
+                folder_record = folder_obj.to_record(
+                    query.subpath,
+                    shortname,
+                    query.include_fields,
+                    query.branch_name,
+                )
+                if (
+                    query.retrieve_json_payload
+                    and folder_obj.payload
+                    and folder_obj.payload.content_type
+                    and folder_obj.payload.content_type == ContentType.json
+                    and isinstance(folder_obj.payload.body, str)
+                    and (path / folder_obj.payload.body).is_file()
+                ):
+                    async with aiofiles.open(
+                        path / folder_obj.payload.body, "r"
+                    ) as payload_file_content:
+                        folder_record.attributes["payload"].body = json.loads(
+                            await payload_file_content.read()
+                        )
+                        if os.path.exists(meta_path / shortname):
+                            folder_record.attachments = await main_db.get_entry_attachments(
+                                subpath=f"{query.subpath if query.subpath != '/' else ''}/{shortname}",
+                                branch_name=query.branch_name,
+                                attachments_path=(meta_path / shortname),
+                                filter_types=query.filter_types,
+                                include_fields=query.include_fields,
+                                retrieve_json_payload=query.retrieve_json_payload,
+                            )
+                records.append(folder_record)
+
+            if subfolders_iterator:
+                subfolders_iterator.close()
+
+        if query.sort_by:
+            sort_reverse: bool = (
+                query.sort_type is not None
+                and query.sort_type == SortType.descending
+            )
+            if query.sort_by in Record.model_fields:
+                records = sorted(
+                    records,
+                    key=lambda record: record.__getattribute__(str(query.sort_by)),
+                    reverse=sort_reverse,
+                )
+            else:
+                records = sorted(
+                    records,
+                    key=lambda record: record.attributes[str(query.sort_by)],
+                    reverse=sort_reverse,
+                )
+        return total, records
+
+    # ================================== END =========================================
+
+    # ================================================================================
+    # Custom Functions
+    # ================================================================================
+    async def validate_uniqueness(
+        self,
+        entity: EntityDTO,
+        input_data: dict[str, Any],
+        action: str = RequestType.create,
+    ):
+        """
+        Get list of unique fields from entry's folder meta data
+        ensure that each sub-list in the unique_fields list is unique across all entries
+        """
+        folder_meta_path = (
+            settings.spaces_folder
+            / entity.space_name
+            / branch_path(entity.branch_name)
+            / f"{entity.subpath[1:] if entity.subpath[0] == '/' else entity.subpath}.json"
+        )
+
+        if not folder_meta_path.is_file():
+            return True
+
+        async with aiofiles.open(folder_meta_path, "r") as file:
+            content = await file.read()
+        folder_meta = json.loads(content)
+
+        if not isinstance(folder_meta.get("unique_fields", None), list):
+            return True
+
+        entry_dict_flattened: dict[Any, Any] = flatten_list_of_dicts_in_dict(
+            flatten_dict(input_data)
+        )
+        redis_escape_chars = str.maketrans(
+            {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
+        )
+        redis_replace_chars: dict[int, str] = str.maketrans(
+            {".": r".", "@": r".", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
+        )
+        # Go over each composite unique array of fields and make sure there's no entry with those values
+        for composite_unique_keys in folder_meta["unique_fields"]:
+            redis_search_str = ""
+            for unique_key in composite_unique_keys:
+                base_unique_key = unique_key
+                if unique_key.endswith("_unescaped"):
+                    unique_key = unique_key.replace("_unescaped", "")
+                if unique_key.endswith("_replace_specials"):
+                    unique_key = unique_key.replace("_replace_specials", "")
+                if not entry_dict_flattened.get(unique_key, None):
+                    continue
+
+                redis_column = unique_key.split("payload.body.")[-1].replace(".", "_")
+
+                # construct redis search string
+                if base_unique_key.endswith("_unescaped"):
+                    redis_search_str += (
+                        " @"
+                        + base_unique_key
+                        + ":{"
+                        + entry_dict_flattened[unique_key]
+                        .translate(redis_escape_chars)
+                        .replace("\\\\", "\\")
+                        + "}"
+                    )
+                elif base_unique_key.endswith(
+                    "_replace_specials"
+                ) or unique_key.endswith("email"):
+                    redis_search_str += (
+                        " @"
+                        + redis_column
+                        + ":"
+                        + entry_dict_flattened[unique_key]
+                        .translate(redis_replace_chars)
+                        .replace("\\\\", "\\")
+                    )
+
+                elif isinstance(entry_dict_flattened[unique_key], list):
+                    redis_search_str += (
+                        " @"
+                        + redis_column
+                        + ":{"
+                        + "|".join(
+                            [
+                                item.translate(redis_escape_chars).replace("\\\\", "\\")
+                                for item in entry_dict_flattened[unique_key]
+                            ]
+                        )
+                        + "}"
+                    )
+                elif isinstance(
+                    entry_dict_flattened[unique_key], (str, bool)
+                ):  # booleans are indexed as TextField
+                    redis_search_str += (
+                        " @"
+                        + redis_column
+                        + ":"
+                        + entry_dict_flattened[unique_key]
+                        .translate(redis_escape_chars)
+                        .replace("\\\\", "\\")
+                    )
+
+                elif isinstance(entry_dict_flattened[unique_key], int):
+                    redis_search_str += (
+                        " @"
+                        + redis_column
+                        + f":[{entry_dict_flattened[unique_key]} {entry_dict_flattened[unique_key]}]"
+                    )
+
+                else:
+                    continue
+
+            if not redis_search_str:
+                continue
+
+            subpath = entity.subpath
+            if subpath[0] == "/":
+                subpath = subpath[1:]
+
+            # redis_search_str += f" @subpath:{subpath}"
+
+            if action == RequestType.update:
+                redis_search_str += f" (-@shortname:{entity.shortname})"
+
+            schema_name = input_data.get("payload", {}).get("schema_shortname", None)
+
+            for index in self.SYS_INDEXES:
+                if entity.space_name == index["space"] and index["subpath"] == subpath:
+                    schema_name = "meta"
+                    break
+
+            if not schema_name:
+                continue
+
+            search_res = await self.search(
+                Query(
+                    type=QueryType.search,
+                    space_name=entity.space_name,
+                    branch_name=entity.branch_name,
+                    search=redis_search_str,
+                    subpath=subpath,
+                    filter_schema_name=[schema_name],
+                    limit=1,
+                )
+            )
+
+            if search_res and search_res[0] > 0:
+                raise API_Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    API_Error(
+                        type="request",
+                        code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
+                        message=f"Entry should have unique values on the following fields: {', '.join(composite_unique_keys)}",
+                    ),
+                )
+
+    async def internal_sys_update_model(
+        self,
+        entity: EntityDTO,
+        meta: Meta,
+        updates: dict,
+        sync_operational_db: bool = True,
+        payload_dict: dict = {},
+    ) -> None:
+        """
+        *To be used by the system only, not APIs*
+        """
+
+        meta.updated_at = datetime.now()
+        meta_updated = False
+        payload_updated = False
+
+        if not payload_dict:
+            payload_dict = await main_db.load_resource_payload(entity)
+
+        restricted_fields = [
+            "uuid",
+            "shortname",
+            "created_at",
+            "updated_at",
+            "owner_shortname",
+            "payload",
+        ]
+        for key, value in updates.items():
+            if key in restricted_fields:
+                continue
+
+            if key in meta.model_fields.keys():
+                meta_updated = True
+                meta.__setattr__(key, value)
+            elif payload_dict:
+                payload_dict[key] = value
+                payload_updated = True
+
+        if payload_updated and meta.payload and meta.payload.schema_shortname:
+            await validate_payload_with_schema(
+                payload_dict, entity.space_name, meta.payload.schema_shortname
+            )
+
+        if meta_updated:
+            await main_db.save(entity, meta, payload_dict)
+
+        if sync_operational_db:
+            await self.update(entity, meta, payload_dict)
+
+    async def internal_save_model(
+        self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None
+    ):
+        """
+        *To be used by the system only, not APIs*
+        """
+        await main_db.save(entity, meta, payload)
+
+        await self.create(entity, meta, payload)
 
     async def get_entry_by_var(
         self,
@@ -711,9 +1200,9 @@ class BaseRepo(ABC):
                 subpath=entry_doc["subpath"],
                 resource_type=entry_doc["resource_type"],
                 shortname=entry_doc.get("shortname"),
-                user_shortname=user_shortname
+                user_shortname=user_shortname,
             ),
-            action_type=ActionType.view
+            action_type=ActionType.view,
         ):
             return None
 
@@ -721,38 +1210,51 @@ class BaseRepo(ABC):
             space_name=entry_space,
             db_entry=entry_doc,
             retrieve_json_payload=retrieve_json_payload,
-            retrieve_attachments=retrieve_attachments
+            retrieve_attachments=retrieve_attachments,
         )
 
         return resource_base_record
-    
+
     async def store_user_invitation_token(self, user: User, channel: str) -> str | None:
-        """Generate and Store an invitation token 
+        """Generate and Store an invitation token
 
         Returns:
             invitation link or None if the user is not eligible
         """
         invitation_value = None
         if channel == "SMS" and user.msisdn:
-            invitation_value = f"{channel}:{user.msisdn}"
+            invitation_value = f"{user.shortname}:{channel}:{user.msisdn}"
         elif channel == "EMAIL" and user.email:
-            invitation_value = f"{channel}:{user.email}"
+            invitation_value = f"{user.shortname}:{channel}:{user.email}"
 
         if not invitation_value:
             return None
 
-        invitation_token = generate_jwt(
-            {"shortname": user.shortname, "channel": channel},
+        invitation_token = "".join(
+            random.choices(string.ascii_letters + string.digits, k=50)
+        )
+
+        await self.set_key(
+            f"users:login:invitation:{invitation_token}",
+            invitation_value,
             settings.jwt_access_expires,
         )
-        async with RedisServices() as redis_services:
-            await redis_services.set_key(
-                f"users:login:invitation:{invitation_token}",
-                invitation_value
-            )
 
-        return core.User.invitation_url_template()\
-            .replace("{url}", settings.invitation_link)\
-            .replace("{token}", invitation_token)\
-            .replace("{lang}", Language.code(user.language))\
+        return (
+            User.invitation_url_template()
+            .replace("{url}", settings.invitation_link)
+            .replace("{token}", invitation_token)
+            .replace("{lang}", Language.code(user.language))
             .replace("{user_type}", user.type)
+        )
+
+    async def url_shortener(self, url: str) -> str:
+        token_uuid = str(uuid4())[:8]
+        await self.set_key(
+            f"short/{token_uuid}",
+            url,
+            ex=60 * 60 * 48,
+            nx=False,
+        )
+
+        return f"{settings.public_app_url}/managed/s/{token_uuid}"

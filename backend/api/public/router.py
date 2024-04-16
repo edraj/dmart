@@ -13,10 +13,9 @@ from fastapi.responses import FileResponse
 from typing import Any
 import sys
 from utils.access_control import access_control
-import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 from utils.settings import settings
-
+from utils.operational_repo import operational_repo
 
 router = APIRouter()
 
@@ -37,15 +36,7 @@ async def query_entries(query: api.Query) -> api.Response:
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies(
-        "anonymous",
-        query.space_name,
-        query.subpath
-    )
-
-    total, records = await repository.serve_query(
-        query, "anonymous", redis_query_policies
-    )
+    total, records = await operational_repo.query_handler(query, "anonymous")
 
     await plugin_manager.after_action(
         core.Event(
@@ -76,53 +67,29 @@ async def retrieve_entry_meta(
     shortname: str = Path(..., pattern=regex.SHORTNAME),
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
-    filter_attachments_types: list = Query(default=[], examples=["media", "comment", "json"]),
+    filter_attachments_types: list = Query(
+        default=[], examples=["media", "comment", "json"]
+    ),
     branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
 
     if subpath == settings.root_subpath_mw:
         subpath = "/"
 
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=space_name,
-            branch_name=branch_name,
-            subpath=subpath,
-            shortname=shortname,
-            action_type=core.ActionType.view,
-            resource_type=resource_type,
-            user_shortname="anonymous",
-        )
-    )
-
-    resource_class = getattr(
-        sys.modules["models.core"], camel_case(resource_type))
-    meta = await db.load(
+    entity = core.EntityDTO(
         space_name=space_name,
+        branch_name=branch_name,
         subpath=subpath,
         shortname=shortname,
-        class_type=resource_class,
+        resource_type=resource_type,
         user_shortname="anonymous",
-        branch_name=branch_name,
     )
-    if meta is None:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not found"
-            ),
-        )
+    meta = await db.load(entity)
 
     if not await access_control.check_access(
-        user_shortname="anonymous",
-        space_name=space_name,
-        subpath=subpath,
-        resource_type=resource_type,
+        entity=entity,
+        meta=meta,
         action_type=core.ActionType.view,
-        resource_is_active=meta.is_active,
-        resource_owner_shortname=meta.owner_shortname,
-        resource_owner_group=meta.owner_group_shortname,
-        entry_shortname=meta.shortname,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -133,40 +100,34 @@ async def retrieve_entry_meta(
             ),
         )
 
+    await plugin_manager.before_action(entity.to_event_data(core.ActionType.view))
+
     attachments = {}
     entry_path = (
         settings.spaces_folder
         / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
     )
     if retrieve_attachments:
-        attachments = await repository.get_entry_attachments(
+        attachments = await db.get_entry_attachments(
             subpath=subpath,
             attachments_path=entry_path,
             branch_name=branch_name,
             retrieve_json_payload=retrieve_json_payload,
-            filter_types=filter_attachments_types
+            filter_types=filter_attachments_types,
         )
 
-    if (not retrieve_json_payload or
-            not meta.payload or
-            not meta.payload.body or
-            not isinstance(meta.payload.body, str) or
-            meta.payload.content_type != ContentType.json
-            ):
+    if (
+        not retrieve_json_payload
+        or not meta.payload
+        or not meta.payload.body
+        or not isinstance(meta.payload.body, str)
+        or meta.payload.content_type != ContentType.json
+    ):
         # TODO
         # include locked before returning the dictionary
-        return {
-            **meta.dict(exclude_none=True),
-            "attachments": attachments
-        }
+        return {**meta.dict(exclude_none=True), "attachments": attachments}
 
-    payload_body = db.load_resource_payload(
-        space_name=space_name,
-        subpath=subpath,
-        filename=meta.payload.body,
-        class_type=resource_class,
-        branch_name=branch_name,
-    )
+    payload_body = await db.load_resource_payload(entity)
 
     if meta.payload and meta.payload.schema_shortname:
         await validate_payload_with_schema(
@@ -177,22 +138,9 @@ async def retrieve_entry_meta(
         )
 
     meta.payload.body = payload_body
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=space_name,
-            branch_name=branch_name,
-            subpath=subpath,
-            shortname=shortname,
-            action_type=core.ActionType.view,
-            resource_type=resource_type,
-            user_shortname="anonymous",
-        )
-    )
+    await plugin_manager.after_action(entity.to_event_data(core.ActionType.view))
 
-    return {
-        **meta.dict(exclude_none=True),
-        "attachments": attachments
-    }
+    return {**meta.dict(exclude_none=True), "attachments": attachments}
 
 
 # Public payload retrieval; can be used in "src=" in html pages
@@ -208,29 +156,17 @@ async def retrieve_entry_or_attachment_payload(
     ext: str = Path(..., pattern=regex.EXT),
     branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
-
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=space_name,
-            branch_name=branch_name,
-            subpath=subpath,
-            shortname=shortname,
-            action_type=core.ActionType.view,
-            resource_type=resource_type,
-            user_shortname="anonymous",
-        )
-    )
-
-    resource_class = getattr(
-        sys.modules["models.core"], camel_case(resource_type))
-    meta = await db.load(
+    
+    entity = core.EntityDTO(
         space_name=space_name,
+        branch_name=branch_name,
         subpath=subpath,
         shortname=shortname,
-        class_type=resource_class,
+        resource_type=resource_type,
         user_shortname="anonymous",
-        branch_name=branch_name,
     )
+    meta = await db.load(entity)
+
     if (
         meta.payload is None
         or meta.payload.body is None
@@ -239,20 +175,16 @@ async def retrieve_entry_or_attachment_payload(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+                type="media",
+                code=InternalErrorCode.OBJECT_NOT_FOUND,
+                message="Request object is not available",
             ),
         )
 
     if not await access_control.check_access(
-        user_shortname="anonymous",
-        space_name=space_name,
-        subpath=subpath,
-        resource_type=resource_type,
+        entity=entity,
+        meta=meta,
         action_type=core.ActionType.view,
-        resource_is_active=meta.is_active,
-        resource_owner_shortname=meta.owner_shortname,
-        resource_owner_group=meta.owner_group_shortname,
-        entry_shortname=meta.shortname,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -262,22 +194,14 @@ async def retrieve_entry_or_attachment_payload(
                 message="You don't have permission to this action [15]",
             ),
         )
-    # TODO check security labels for pubblic access
+        
+    await plugin_manager.before_action(entity.to_event_data(core.ActionType.view))
+    
+    # TODO check security labels for public access
     # assert meta.is_active
-    payload_path = db.payload_path(
-        space_name, subpath, resource_class, branch_name)
+    payload_path = db.payload_path(entity)
 
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=space_name,
-            branch_name=branch_name,
-            subpath=subpath,
-            shortname=shortname,
-            action_type=core.ActionType.view,
-            resource_type=resource_type,
-            user_shortname="anonymous",
-        )
-    )
+    await plugin_manager.after_action(entity.to_event_data(core.ActionType.view))
 
     media_file = payload_path / str(meta.payload.body)
     return FileResponse(media_file)
@@ -298,7 +222,7 @@ async def submit() -> api.Response:
 async def query_via_urlparams(
     query: api.Query = Depends(api.Query),
 ) -> api.Response:
-
+    
     await plugin_manager.before_action(
         core.Event(
             space_name=query.space_name,
@@ -309,14 +233,8 @@ async def query_via_urlparams(
             attributes={"filter_shortnames": query.filter_shortnames},
         )
     )
-
-    redis_query_policies = await access_control.get_user_query_policies(
-        "anonymous",
-        query.space_name,
-        query.subpath
-    )
-    total, records = await repository.serve_query(
-        query, "anonymous", redis_query_policies
+    total, records = await operational_repo.query_handler(
+        query, "anonymous"
     )
 
     await plugin_manager.after_action(
@@ -345,9 +263,7 @@ async def create_entry(
     body: Request,
     branch_name: str | None = settings.default_branch,
 ):
-    allowed_models = {
-        "applications": ["log", "feedback"]
-    }
+    allowed_models = {"applications": ["log", "feedback"]}
     if (
         space_name not in allowed_models
         or schema_shortname not in allowed_models[space_name]
@@ -362,11 +278,18 @@ async def create_entry(
         )
 
     body_dict = await body.json()
-    if not await access_control.check_access(
-        user_shortname="anonymous",
+    uuid = uuid4()
+    shortname = str(uuid)[:8]
+    entity = core.EntityDTO(
         space_name=space_name,
         subpath=subpath,
+        user_shortname="anonymous",
         resource_type=ResourceType.content,
+        schema_shortname=schema_shortname,
+        shortname=shortname
+    )
+    if not await access_control.check_access(
+        entity=entity,
         action_type=core.ActionType.create,
         record_attributes=body_dict,
     ):
@@ -379,20 +302,8 @@ async def create_entry(
             ),
         )
 
-    uuid = uuid4()
-    shortname = str(uuid)[:8]
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=space_name,
-            branch_name=branch_name,
-            subpath=subpath,
-            shortname=shortname,
-            action_type=core.ActionType.create,
-            schema_shortname=schema_shortname,
-            resource_type=ResourceType.content,
-            user_shortname="anonymous",
-        )
-    )
+    
+    await plugin_manager.before_action(entity.to_event_data(core.ActionType.create))
 
     content_obj = core.Content(
         uuid=uuid,
@@ -414,24 +325,9 @@ async def create_entry(
             schema_shortname=content_obj.payload.schema_shortname,
         )
 
-    await db.save(space_name, subpath, content_obj, branch_name)
-    await db.save_payload_from_json(
-        space_name, subpath, content_obj, body_dict, branch_name
-    )
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=space_name,
-            branch_name=branch_name,
-            subpath=subpath,
-            shortname=shortname,
-            action_type=core.ActionType.create,
-            schema_shortname=schema_shortname,
-            resource_type=ResourceType.content,
-            user_shortname="anonymous",
-            attributes={}
-        )
-    )
+    await db.save(entity, content_obj, body_dict)
+    
+    await plugin_manager.after_action(entity.to_event_data(core.ActionType.create))
 
     return api.Response(status=api.Status.success)
 
@@ -451,12 +347,11 @@ async def create_attachment(
                 message="You don't have permission to this action [14]",
             ),
         )
+        
+    entity = core.EntityDTO.from_record(record, space_name, "anonymous")
 
     if not await access_control.check_access(
-        user_shortname="anonymous",
-        space_name=space_name,
-        subpath=record.subpath,
-        resource_type=record.resource_type,
+        entity=entity,
         action_type=core.ActionType.create,
         record_attributes=record.attributes,
     ):
@@ -469,50 +364,22 @@ async def create_attachment(
             ),
         )
 
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=space_name,
-            branch_name=branch_name,
-            subpath=record.subpath,
-            action_type=core.ActionType.create,
-            resource_type=record.resource_type,
-            user_shortname="anonymous",
-        )
-    )
+    await plugin_manager.before_action(entity.to_event_data(core.ActionType.create))
 
-    attachment_obj = core.Meta.from_record(
-        record=record, owner_shortname="anonymous"
-    )
+    attachment_obj = core.Meta.from_record(record=record, owner_shortname="anonymous")
 
-    await db.save(space_name, record.subpath, attachment_obj, branch_name)
+    await db.save(entity, attachment_obj)
 
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=space_name,
-            branch_name=branch_name,
-            subpath=record.subpath,
-            shortname=attachment_obj.shortname,
-            action_type=core.ActionType.create,
-            resource_type=record.resource_type,
-            user_shortname="anonymous",
-            attributes={}
-        )
-    )
+    await plugin_manager.after_action(entity.to_event_data(core.ActionType.create))
 
     return api.Response(status=api.Status.success)
 
 
 @router.post("/excute/{task_type}/{space_name}")
 async def excute(space_name: str, task_type: TaskType, record: core.Record):
-    task_type = task_type
-    meta = await db.load(
-        space_name=space_name,
-        subpath=record.subpath,
-        shortname=record.shortname,
-        class_type=core.Content,
-        user_shortname="anonymous",
-        branch_name=record.branch_name,
-    )
+    
+    entity = core.EntityDTO.from_record(record, space_name, "anonymous")
+    meta = await db.load(entity)
 
     if (
         meta.payload is None
@@ -522,21 +389,16 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+                type="media",
+                code=InternalErrorCode.OBJECT_NOT_FOUND,
+                message="Request object is not available",
             ),
         )
 
-    query_dict = db.load_resource_payload(
-        space_name=space_name,
-        subpath=record.subpath,
-        filename=str(meta.payload.body),
-        class_type=core.Content,
-        branch_name=record.branch_name,
-    )
+    query_dict = await db.load_resource_payload(entity)
 
     for param, value in record.attributes.items():
-        query_dict["search"] = query_dict["search"].replace(
-            f"${param}", str(value))
+        query_dict["search"] = query_dict["search"].replace(f"${param}", str(value))
 
     query_dict["search"] = res_sub(
         r"@\w*\:({|\()?\$\w*(}|\))?", "", query_dict["search"]
@@ -551,19 +413,18 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
     query_dict["subpath"] = query_dict["query_subpath"]
     query_dict.pop("query_subpath")
     filter_shortnames = record.attributes.get("filter_shortnames", [])
-    query_dict["filter_shortnames"] = filter_shortnames if isinstance(
-        filter_shortnames, list) else []
+    query_dict["filter_shortnames"] = (
+        filter_shortnames if isinstance(filter_shortnames, list) else []
+    )
 
     return await query_entries(api.Query(**query_dict))
 
 
 @router.get("/byuuid/{uuid}", response_model_exclude_none=True)
 async def get_entry_by_uuid(
-    uuid: str,
-    retrieve_json_payload: bool = False,
-    retrieve_attachments: bool = False
+    uuid: str, retrieve_json_payload: bool = False, retrieve_attachments: bool = False
 ):
-    return await repository.get_entry_by_var(
+    return await operational_repo.get_entry_by_var(
         "uuid",
         uuid,
         "anonymous",
@@ -574,11 +435,9 @@ async def get_entry_by_uuid(
 
 @router.get("/byslug/{slug}", response_model_exclude_none=True)
 async def get_entry_by_slug(
-    slug: str,
-    retrieve_json_payload: bool = False,
-    retrieve_attachments: bool = False
+    slug: str, retrieve_json_payload: bool = False, retrieve_attachments: bool = False
 ):
-    return await repository.get_entry_by_var(
+    return await operational_repo.get_entry_by_var(
         "slug",
         slug,
         "anonymous",

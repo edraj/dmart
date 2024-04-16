@@ -16,7 +16,7 @@ from utils.helpers import branch_path, camel_case, divide_chunks
 from utils.custom_validations import validate_payload_with_schema
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from utils.redis_services import RedisServices
-from utils.repository import generate_payload_string
+from utils.operational_repo import operational_repo
 from utils.settings import settings
 import utils.regex as regex
 import asyncio
@@ -103,14 +103,16 @@ async def generate_redis_docs(locators: list) -> list:
             myclass = getattr(sys.modules["models.core"], camel_case(one.type))
             # print(f"{one=}")
 
-            meta = await db.load(
+            entity = core.EntityDTO(
                 space_name=one.space_name,
                 branch_name=one.branch_name,
                 subpath=one.subpath,
                 shortname=one.shortname,
-                class_type=myclass,
                 user_shortname="anonymous",
+                
             )
+            meta = await db.load(entity)
+            
             meta_doc_id, meta_data = redis_man.prepate_meta_doc(
                 one.space_name, one.branch_name, one.subpath, meta
             )
@@ -122,9 +124,7 @@ async def generate_redis_docs(locators: list) -> list:
                 and meta.payload.schema_shortname
             ):
                 try:
-                    payload_path = db.payload_path(
-                        one.space_name, one.subpath, myclass, one.branch_name
-                    ) / str(meta.payload.body)
+                    payload_path = db.payload_path(entity) / str(meta.payload.body)
                     payload_data = json.loads(payload_path.read_text())
                     await validate_payload_with_schema(
                         payload_data=payload_data,
@@ -149,12 +149,15 @@ async def generate_redis_docs(locators: list) -> list:
                     )
                 except Exception as ex:
                     print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
-
-            meta_data["payload_string"] = await generate_payload_string(
-                space_name=one.space_name, 
-                subpath=one.subpath, 
-                shortname=one.shortname, 
-                branch_name=one.branch_name, 
+                    
+            meta_data["payload_string"] = await operational_repo.generate_payload_string(
+                entity=core.EntityDTO(
+                    space_name=one.space_name, 
+                    subpath=one.subpath, 
+                    shortname=one.shortname, 
+                    branch_name=one.branch_name, 
+                    resource_type=one.type,
+                ),
                 payload=payload_data,
             )
             

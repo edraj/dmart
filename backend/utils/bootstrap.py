@@ -1,6 +1,7 @@
 import asyncio
 from redis.commands.search.field import TextField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from models.enums import ResourceType
 from utils.settings import settings
 import models.core as core
 from utils.regex import FILE_PATTERN, SPACES_PATTERN
@@ -8,7 +9,6 @@ from utils.operational_repo import operational_repo
 from utils import db
 
 async def load_permissions_and_roles() -> None:
-    management_branch = settings.management_space_branch
     management_path = settings.spaces_folder / settings.management_space
 
     access_control_modules : dict[str, type[core.Meta]] = {
@@ -28,14 +28,14 @@ async def load_permissions_and_roles() -> None:
                 continue
             shortname = match.group(1)
             try:
-                resource_obj : core.Meta = await db.load(
-                    settings.management_space,
-                    module_name,
-                    shortname,
-                    module_class,
-                    "anonymous",
-                    management_branch,
+                entity = core.EntityDTO(
+                    space_name=settings.management_space,
+                    subpath=module_name,
+                    shortname=shortname,
+                    resource_type=ResourceType(module_class.__name__.lower()),
+                    user_shortname="anonymous"
                 )
+                resource_obj : core.Meta = await db.load(entity)
                 if resource_obj and resource_obj.is_active:
                     access_control_models.setdefault(module_name, [])
                     access_control_models[module_name].append(resource_obj)

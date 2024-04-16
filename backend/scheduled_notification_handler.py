@@ -1,20 +1,15 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 from datetime import datetime, timedelta
 from models.api import Query
-from models.core import Content, Notification, NotificationData, Translation
-from models.enums import QueryType
-from utils.db import load as load_meta
+from models.core import EntityDTO, Notification, NotificationData, Translation
+from models.enums import QueryType, ResourceType
+from utils.db import load as load_meta, get_entry_attachments
 from utils.helpers import branch_path
 from utils.notification import NotificationManager
-from utils.repository import (
-    internal_save_model,
-    internal_sys_update_model,
-    get_entry_attachments,
-)
+from utils.operational_repo import operational_repo
 from utils.settings import settings
 from fastapi.logger import logger
 import asyncio
-from utils.operational_repo import operational_repo
 
 
 async def trigger_admin_notifications() -> None:
@@ -62,11 +57,15 @@ async def trigger_admin_notifications() -> None:
                     notification_obj = await Notification.from_request(
                         notification_dict
                     )
-                    await internal_save_model(
-                        space_name="personal",
-                        subpath=f"people/{receiver_data['shortname']}/notifications",
+                    await operational_repo.internal_save_model(
+                        entity=EntityDTO(
+                            space_name="personal",
+                            subpath=f"people/{receiver_data['shortname']}/notifications",
+                            branch_name=notification_dict["branch_name"],
+                            shortname=notification_obj.shortname,
+                            resource_type=ResourceType.notification
+                        ),
                         meta=notification_obj,
-                        branch_name=notification_dict["branch_name"],
                     )
 
                 for platform in formatted_req["platforms"]:
@@ -80,20 +79,18 @@ async def trigger_admin_notifications() -> None:
                         ),
                     )
 
-            notification_meta = await load_meta(
-                settings.management_space,
-                notification_dict["subpath"],
-                notification_dict["shortname"],
-                Content,
-                notification_dict["owner_shortname"],
-                settings.management_space_branch,
+            entity = EntityDTO(
+                space_name=settings.management_space,
+                subpath=notification_dict["subpath"],
+                shortname=notification_dict["shortname"],
+                resource_type=ResourceType.content,
+                user_shortname=notification_dict["owner_shortname"],
             )
-            await internal_sys_update_model(
-                settings.management_space,
-                notification_dict["subpath"],
-                notification_meta,
-                settings.management_space_branch,
-                {"status": "finished"},
+            notification_meta = await load_meta(entity)
+            await operational_repo.internal_sys_update_model(
+                entity=entity,
+                meta=notification_meta,
+                updates={"status": "finished"},
             )
         except Exception as e:
             logger.error(

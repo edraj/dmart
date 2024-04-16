@@ -127,12 +127,6 @@ class BaseDB(ABC):
     
 
     @abstractmethod
-    async def update(
-        self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] = {}
-    ) -> bool:
-        pass
-
-    @abstractmethod
     async def delete(self, entity: EntityDTO) -> bool:
         pass
 

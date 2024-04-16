@@ -4,15 +4,16 @@ from models.enums import ResourceType
 import utils.db as db
 import models.core as core
 from utils.internal_error_code import InternalErrorCode
-from utils.operational_repo import operational_repo
-
+from utils.access_control import access_control
 
 async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket):
 # async def set_init_state_from_request(ticket: api.Request, branch_name, logged_in_user):
     # workflow_attr = ticket.records[0].attributes
     # workflow_shortname = workflow_attr["workflow_shortname"]
+    if not entity.user_shortname:
+        raise Exception("Missing user_shortname in the EntityDTO")
 
-    user_roles_names = list((await operational_repo.get_user_roles(logged_in_user)).keys())
+    user_roles_names = list((await access_control.get_user_roles(entity.user_shortname)).keys())
     # user_roles = _user_roles.keys()
 
     workflow_entity = core.EntityDTO(

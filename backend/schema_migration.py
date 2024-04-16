@@ -2,12 +2,11 @@ import argparse
 import asyncio
 from enum import Enum
 import re
-import sys
-from models.enums import ContentType
+from models.enums import ContentType, ResourceType
 from utils import db, helpers
-from models.core import Meta, Schema
-from utils.repository import internal_sys_update_model
+from models.core import EntityDTO, Meta, Schema
 from utils.settings import settings
+from utils.operational_repo import operational_repo
 
 class FieldType(Enum):
     string = "string"
@@ -33,15 +32,19 @@ async def change_field_type(
 ):
     # 3-update field type to new_type
     schema_properties = schema_payload["properties"]
-    await internal_sys_update_model(
+    entity = EntityDTO(
         space_name=space,
         subpath="schema",
+        shortname=schema_model.shortname,
+        resource_type=ResourceType.schema
+    )
+    await operational_repo.internal_sys_update_model(
+        entity=entity,
         meta=schema_model,
         payload_dict=schema_payload,
         updates={
             "properties": schema_properties
-        },
-        branch_name=settings.default_branch
+        }
     )
     
     updated_num = 0
@@ -55,18 +58,14 @@ async def change_field_type(
         if not match or not one.is_file():
             continue
         subpath = match.group(1)
-        shortname = match.group(2)
-        resource_type = match.group(3)
-        resource_cls = getattr(
-            sys.modules["models.core"], helpers.camel_case(resource_type)
+        one_entity = EntityDTO(
+            space_name=space,
+            subpath=match.group(1),
+            shortname=match.group(2),
+            resource_type=match.group(3)
         )
         try:
-            resource_obj: Meta = await db.load(
-                space_name=space,
-                subpath=subpath,
-                shortname=shortname,
-                class_type=resource_cls
-            )
+            resource_obj: Meta = await db.load(one_entity)
             
             # 5-if resource.schema_shortname == schema:
             if(
@@ -77,12 +76,7 @@ async def change_field_type(
                 continue
             
             # 5.1-load payload file
-            resource_payload = db.load_resource_payload(
-                space_name=space,
-                subpath=subpath,
-                filename=resource_obj.payload.body,
-                class_type=resource_cls
-            )
+            resource_payload = await db.load_resource_payload(one_entity)
         except Exception as ex:
             print(f"Error loading {one}", ex)
             continue
@@ -101,15 +95,13 @@ async def change_field_type(
         field_to_update[field_tree[last_idx]] = FIELD_TYPE_PARSER[new_type](
             field_to_update[field_tree[last_idx]]
         )
-        await internal_sys_update_model(
-            space_name=space,
-            subpath=subpath,
+        await operational_repo.internal_sys_update_model(
+            entity=one_entity,
             meta=resource_obj,
             payload_dict=resource_payload,
             updates={
                 field_tree[0]: main_field
             },
-            branch_name=settings.default_branch
         )
         updated_num += 1
         
@@ -135,12 +127,13 @@ async def main(
     """
     
     # 1-load schema
-    schema_model: Schema = await db.load(
+    schema_entity = EntityDTO(
         space_name=space,
         subpath="schema",
         shortname=schema,
-        class_type=Schema
+        resource_type=ResourceType.schema
     )
+    schema_model: Schema = await db.load(schema_entity)
     if(
         not schema_model.payload or
         schema_model.payload.content_type != ContentType.json or
@@ -148,12 +141,7 @@ async def main(
     ):
         print(f"Invalid schema file: \n{schema_model.model_dump_json()}")
         return
-    schema_payload: dict = db.load_resource_payload(
-        space_name=space,
-        subpath="schema",
-        filename=schema_model.payload.body,
-        class_type=Schema
-    )
+    schema_payload: dict = await db.load_resource_payload(schema_entity)
     
     
     # 2-make sure field with old_type exist

@@ -183,18 +183,21 @@ class RedisRepo(BaseRepo):
         except Exception as _:
             return None
 
-    async def create(self, entity: EntityDTO, meta: Meta) -> None:
+    async def create(self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None) -> None:
         meta_doc_id, meta_json = await self.db.prepare_meta_doc(
             entity.space_name, entity.branch_name, entity.subpath, meta
         )
 
-        payload = {}
+        if payload is None:
+            payload = {}
         if (
-            meta.payload
+            not payload
+            and meta.payload
             and meta.payload.content_type == ContentType.json
             and isinstance(meta.payload.body, str)
         ):
             payload = await main_db.load_resource_payload(entity)
+            
 
         meta_json["payload_string"] = await self.generate_payload_string(
             entity, payload
@@ -210,6 +213,9 @@ class RedisRepo(BaseRepo):
             )
             payload_json.update(meta_json)
             await self.db.save_at_id(payload_doc_id, payload_json)
+            
+    async def update(self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None) -> None:
+        await self.create(entity, meta, payload)
 
     async def generate_payload_string(
         self,

@@ -1,6 +1,5 @@
-from models.core import Folder, PluginBase, Event
+from models.core import EntityDTO, Folder, PluginBase, Event
 from models.enums import ResourceType
-from utils.repository import internal_save_model
 from fastapi.logger import logger
 from utils.operational_repo import operational_repo
 
@@ -60,10 +59,14 @@ class Plugin(PluginBase):
             folders = [(data.shortname, "/", "schema")]
 
         for folder in folders:
-            await internal_save_model(
-                space_name=folder[0],
-                subpath=folder[1],
-                branch_name=data.branch_name,
+            await operational_repo.internal_save_model(
+                entity=EntityDTO(
+                    space_name=folder[0],
+                    subpath=folder[1],
+                    branch_name=data.branch_name,
+                    shortname=folder[2],
+                    resource_type=ResourceType.folder
+                ),
                 meta=Folder(
                     shortname=folder[2],
                     is_active=True,

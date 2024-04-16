@@ -1,4 +1,5 @@
 """ Session Apis """
+
 import json
 import re
 from pathlib import Path
@@ -11,7 +12,6 @@ from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
 from models.enums import ActionType, QueryType, RequestType, ResourceType, ContentType
-from utils.custom_validations import validate_uniqueness
 import utils.db as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
@@ -21,7 +21,6 @@ from utils.jwt import JWTBearer, remove_redis_active_session, sign_jwt, decode_j
 from typing import Any
 from utils.operational_repo import operational_repo
 from utils.settings import settings
-import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
 from utils.social_sso import get_facebook_sso, get_google_sso
@@ -57,14 +56,16 @@ USERS_SUBPATH: str = "users"
 async def check_existing_user_fields(
     _=Depends(JWTBearer()),
     shortname: str | None = Query(
-        default=None, pattern=rgx.SHORTNAME, examples=["john_doo"]),
+        default=None, pattern=rgx.SHORTNAME, examples=["john_doo"]
+    ),
     msisdn: str | None = Query(
-        default=None, pattern=rgx.EXTENDED_MSISDN, examples=["7777778110"]),
-    email: str | None = Query(default=None, pattern=rgx.EMAIL, examples=[
-                              "john_doo@mail.com"]),
+        default=None, pattern=rgx.EXTENDED_MSISDN, examples=["7777778110"]
+    ),
+    email: str | None = Query(
+        default=None, pattern=rgx.EMAIL, examples=["john_doo@mail.com"]
+    ),
 ):
-    unique_fields = {"shortname": shortname,
-                     "msisdn": msisdn, "email_unescaped": email}
+    unique_fields = {"shortname": shortname, "msisdn": msisdn, "email_unescaped": email}
 
     search_str = f"@subpath:{USERS_SUBPATH}"
     redis_escape_chars = str.maketrans(
@@ -76,16 +77,19 @@ async def check_existing_user_fields(
         value = value.translate(redis_escape_chars).replace("\\\\", "\\")
         if key == "email_unescaped":
             value = f"{{{value}}}"
-        redis_search_res: tuple[int, list[dict[str, Any]]] = await operational_repo.search(Query(
-            type=QueryType.search,
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            search=search_str + f" @{key}:{value}",
-            limit=1,
-            offset=0,
-            filters={},
-        ))
-
+        redis_search_res: tuple[int, list[dict[str, Any]]] = (
+            await operational_repo.search(
+                Query(
+                    type=QueryType.search,
+                    space_name=MANAGEMENT_SPACE,
+                    branch_name=MANAGEMENT_BRANCH,
+                    search=search_str + f" @{key}:{value}",
+                    limit=1,
+                    offset=0,
+                    filters={},
+                )
+            )
+        )
 
         if redis_search_res and redis_search_res[0] > 0:
             return api.Response(
@@ -96,15 +100,13 @@ async def check_existing_user_fields(
     return api.Response(status=api.Status.success, attributes={"unique": True})
 
 
-
 @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
 async def create_user(record: core.Record) -> api.Response:
     """Register a new user by invitation"""
     if not settings.is_registrable:
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50,
-                            message="Register API is disabled"),
+            error=api.Error(type="create", code=50, message="Register API is disabled"),
         )
 
     if "invitation" not in record.attributes:
@@ -122,10 +124,9 @@ async def create_user(record: core.Record) -> api.Response:
     if "password" not in record.attributes:
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50,
-                            message="empty password"),
+            error=api.Error(type="create", code=50, message="empty password"),
         )
-        
+
     if not re.match(rgx.PASSWORD, record.attributes["password"]):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -136,61 +137,41 @@ async def create_user(record: core.Record) -> api.Response:
             ),
         )
 
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=record.shortname,
-            action_type=core.ActionType.create,
-            resource_type=ResourceType.user,
-            user_shortname=record.shortname,
-        )
-    )
+    entity = core.EntityDTO.from_record(record, MANAGEMENT_SPACE, record.shortname)
 
-    user = core.User.from_record(
-        record=record,
-        owner_shortname=record.shortname
-    )
-    await validate_uniqueness(MANAGEMENT_SPACE, record)
+    await plugin_manager.before_action(entity.to_event_data(core.ActionType.create))
 
-    separate_payload_data: str | dict[str, Any] = {}
+    user = core.User.from_record(record=record, owner_shortname=record.shortname)
+
+    await operational_repo.validate_uniqueness(entity, record.attributes)
+
+    separate_payload_data: dict[str, Any] = {}
     if "payload" in record.attributes and "body" in record.attributes["payload"]:
         schema_shortname = getattr(user.payload, "schema_shortname", None)
         user.payload = core.Payload(
             content_type=ContentType.json,
             schema_shortname=schema_shortname,
-            body=record.attributes["payload"]["body"] if record.attributes["payload"].get("body", False) else "",
+            body=(
+                record.attributes["payload"]["body"]
+                if record.attributes["payload"].get("body", False)
+                else ""
+            ),
         )
-        if user.payload:
+        if user.payload and isinstance(user.payload.body, dict):
             separate_payload_data = user.payload.body
             user.payload.body = record.shortname + ".json"
 
-        if user.payload and separate_payload_data:
-            if not isinstance(separate_payload_data, str) and not isinstance(
-                separate_payload_data, Path
-            ):
-                if user.payload.schema_shortname:
-                    await validate_payload_with_schema(
-                        payload_data=separate_payload_data,
-                        space_name=MANAGEMENT_SPACE,
-                        branch_name=MANAGEMENT_BRANCH,
-                        schema_shortname=user.payload.schema_shortname,
-                    )
+            if user.payload.schema_shortname:
+                await validate_payload_with_schema(
+                    payload_data=separate_payload_data,
+                    space_name=MANAGEMENT_SPACE,
+                    branch_name=MANAGEMENT_BRANCH,
+                    schema_shortname=user.payload.schema_shortname,
+                )
 
-    await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user, MANAGEMENT_BRANCH)
+    await db.create(entity, user, separate_payload_data)
 
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=record.shortname,
-            action_type=core.ActionType.create,
-            resource_type=ResourceType.user,
-            user_shortname=record.shortname,
-        )
-    )
+    await plugin_manager.after_action(entity.to_event_data(core.ActionType.create))
 
     return api.Response(status=api.Status.success)
 
@@ -204,7 +185,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     """Login and generate refresh token"""
 
     shortname: str | None = None
-    user = None
+    user: core.User | None = None
     user_updates: dict[str, Any] = {}
     identifier = request.check_fields()
     try:
@@ -212,35 +193,36 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             invitation_token: str | None = await operational_repo.find_key(
                 f"users:login:invitation:{request.invitation}"
             )
-            if not invitation_token:
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
-                )
-
-            data = decode_jwt(request.invitation)
-            shortname = data.get("shortname", None)
-            if shortname is None:
+            if (
+                not invitation_token
+                or len(token_data := invitation_token.split(":")) < 3
+            ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="jwtauth",
                         code=InternalErrorCode.INVALID_INVITATION,
-                        message="Invalid invitation or data provided",
+                        message="Invalid invitation",
                     ),
                 )
 
-            user = await db.load(
+            # data = decode_jwt(request.invitation)
+            shortname = token_data[0]
+            channel = token_data[1]
+            token_identifier = token_data[2]
+
+            entity = core.EntityDTO(
                 space_name=MANAGEMENT_SPACE,
                 subpath=USERS_SUBPATH,
                 shortname=shortname,
-                class_type=core.User,
+                resource_type=ResourceType.user,
                 user_shortname=shortname,
-                branch_name=MANAGEMENT_BRANCH,
             )
+            user = await db.load(entity)
+
             if (
-                request.shortname != user.shortname
+                user
+                and request.shortname != user.shortname
                 and request.msisdn != user.msisdn
                 and request.email != user.email
             ):
@@ -253,47 +235,42 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     ),
                 )
 
-            if (
-                data.get("channel") == "EMAIL"
-                and user.email
-                and f"EMAIL:{user.email}" in invitation_token
-            ):
+            if user and channel == "EMAIL" and user.email == token_identifier:
                 user_updates["is_email_verified"] = True
-            elif (
-                data.get("channel") == "SMS"
-                and user.msisdn
-                and f"SMS:{user.msisdn}" in invitation_token
-            ):
+            elif user and channel == "SMS" and user.msisdn == token_identifier:
                 user_updates["is_msisdn_verified"] = True
         else:
             if identifier is None:
                 raise api.Exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     api.Error(
-                        type="request", code=InternalErrorCode.INVALID_IDENTIFIER, message="Invalid identifier [2]"
+                        type="request",
+                        code=InternalErrorCode.INVALID_IDENTIFIER,
+                        message="Invalid identifier [2]",
                     ),
                 )
 
             if "shortname" in identifier:
                 shortname = identifier["shortname"]
-                user = await db.load(
+                entity = core.EntityDTO(
                     space_name=MANAGEMENT_SPACE,
                     subpath=USERS_SUBPATH,
                     shortname=shortname,
-                    class_type=core.User,
+                    resource_type=ResourceType.user,
                     user_shortname=shortname,
-                    branch_name=MANAGEMENT_BRANCH,
                 )
+                user = await db.load(entity)
             else:
                 key, value = list(identifier.items())[0]
                 if isinstance(value, str) and isinstance(key, str):
-                    user: core.User | None = await access_control.get_user_by_criteria(key, value)
+                    user: core.User | None = await access_control.get_user_by_criteria(
+                        key, value
+                    )
                     if not user:
                         raise Exception("Invalid identifier")
-                        
-                    if (
-                        (key == "msisdn" and not user.is_msisdn_verified) or
-                        (key == "email" and not user.is_email_verified) 
+
+                    if (key == "msisdn" and not user.is_msisdn_verified) or (
+                        key == "email" and not user.is_email_verified
                     ):
                         raise api.Exception(
                             status.HTTP_401_UNAUTHORIZED,
@@ -314,7 +291,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                             message="Invalid username or password [1]",
                         ),
                     )
-            
+
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
         if (
             user
@@ -326,7 +303,9 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 )
             )
         ):
-            record = await process_user_login(user, response, user_updates, request.firebase_token)
+            record = await process_user_login(
+                user, response, user_updates, request.firebase_token
+            )
 
             await plugin_manager.after_action(
                 core.Event(
@@ -342,8 +321,11 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             return api.Response(status=api.Status.success, records=[record])
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                      message="Invalid username or password [2]"),
+            api.Error(
+                type="auth",
+                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                message="Invalid username or password [2]",
+            ),
         )
     except api.Exception as e:
         if e.error.type == "db":
@@ -363,26 +345,18 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 @router.get("/profile", response_model=api.Response, response_model_exclude_none=True)
 async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
 
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.view,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
-
-    user = await db.load(
+    entity = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
-        class_type=core.User,
+        resource_type=ResourceType.user,
         user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
     )
+
+    await plugin_manager.before_action(entity.to_event_data(core.ActionType.view))
+
+    user = await db.load(entity)
+
     attributes: dict[str, Any] = {}
     if user.email:
         attributes["email"] = user.email
@@ -412,7 +386,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     attributes["is_msisdn_verified"] = user.is_msisdn_verified
     attributes["force_password_change"] = user.force_password_change
 
-    attributes["permissions"] = await operational_repo.get_user_permissions_doc(shortname)
+    attributes["permissions"] = await access_control.get_user_permissions_doc(shortname)
     attributes["roles"] = user.roles
     attributes["groups"] = user.groups
 
@@ -423,7 +397,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         / ".dm"
         / user.shortname
     )
-    user_avatar = await repository.get_entry_attachments(
+    user_avatar = await db.get_entry_attachments(
         subpath=f"{USERS_SUBPATH}/{user.shortname}",
         attachments_path=attachments_path,
         branch_name=MANAGEMENT_BRANCH,
@@ -438,17 +412,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         attachments=user_avatar,
     )
 
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.view,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
+    await plugin_manager.after_action(entity.to_event_data(core.ActionType.view))
 
     return api.Response(status=api.Status.success, records=[record])
 
@@ -471,28 +435,14 @@ async def update_profile(
                 message="Invalid username or password",
             ),
         )
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
 
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
-    )
+    entity = core.EntityDTO.from_record(profile, MANAGEMENT_SPACE, shortname)
 
-    old_version_flattend = flatten_dict(user.model_dump())
+    await plugin_manager.before_action(entity.to_event_data(core.ActionType.update))
+
+    user = await db.load(entity)
+
+    # old_version_flattend = flatten_dict(user.model_dump())
 
     if profile_user.password and "old_password" in profile.attributes:
         if not password_hashing.verify_password(
@@ -500,13 +450,17 @@ async def update_profile(
         ):
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA,
-                          message="mismatch with the information provided"),
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.UNMATCHED_DATA,
+                    message="mismatch with the information provided",
+                ),
             )
 
     # if "force_password_change" in profile.attributes:
     #     user.force_password_change = profile.attributes["force_password_change"]
 
+    separate_payload_data: dict[str, Any] = {}
     if profile_user.password:
         user.password = password_hashing.hash_password(profile_user.password)
         user.force_password_change = False
@@ -529,8 +483,11 @@ async def update_profile(
         if result is None or result != profile.attributes["confirmation"]:
             raise Exception(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
-                api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
-                          message="Invalid confirmation code [1]"),
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_CONFIRMATION,
+                    message="Invalid confirmation code [1]",
+                ),
             )
 
         if profile_user.email:
@@ -538,7 +495,7 @@ async def update_profile(
         elif profile_user.msisdn:
             user.is_msisdn_verified = True
     else:
-        await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update)
+        await operational_repo.validate_uniqueness(entity, profile.attributes, RequestType.update)
         if "email" in profile.attributes and user.email != profile_user.email:
             user.email = profile_user.email
             user.is_email_verified = False
@@ -548,7 +505,6 @@ async def update_profile(
             user.is_msisdn_verified = False
 
         if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
-            separate_payload_data = {}
             user.payload = core.Payload(
                 content_type=ContentType.json,
                 schema_shortname=profile_user.payload.schema_shortname,
@@ -567,37 +523,10 @@ async def update_profile(
                         schema_shortname=str(user.payload.schema_shortname),
                     )
 
-            if separate_payload_data:
-                await db.save_payload_from_json(
-                    MANAGEMENT_SPACE,
-                    USERS_SUBPATH,
-                    user,
-                    separate_payload_data,
-                    MANAGEMENT_BRANCH,
-                )
-
-    history_diff = await db.update(
-        MANAGEMENT_SPACE,
-        USERS_SUBPATH,
-        user,
-        old_version_flattend,
-        flatten_dict(user.model_dump()),
-        list(profile.attributes.keys()),
-        MANAGEMENT_BRANCH,
-        shortname,
-    )
+    history_diff = await db.update(entity, user, separate_payload_data)
 
     await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-            attributes={"history_diff": history_diff},
-        )
+        entity.to_event_data(core.ActionType.update, {"history_diff": history_diff})
     )
 
     return api.Response(status=api.Status.success)
@@ -623,30 +552,30 @@ async def logout(
     response: Response,
     shortname=Depends(JWTBearer()),
 ) -> api.Response:
-    response.set_cookie(value="", max_age=0, key="auth_token",
-                        httponly=True, secure=True, samesite="none")
+    response.set_cookie(
+        value="",
+        max_age=0,
+        key="auth_token",
+        httponly=True,
+        secure=True,
+        samesite="none",
+    )
 
     await remove_redis_active_session(shortname)
     
-    user = await db.load(
+    entity = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
+        resource_type=ResourceType.user,
         shortname=shortname,
-        class_type=core.User,
         user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
+        
     )
-    if user.firebase_token:
-        await repository.internal_sys_update_model(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            meta=user,
-            branch_name=MANAGEMENT_BRANCH,
-            updates={
-                "firebase_token": None
-            }
 
-        )
+    user = await db.load(entity)
+    
+    if user.firebase_token:
+        await operational_repo.internal_sys_update_model(entity, user, {"firebase_token": None})
 
     return api.Response(status=api.Status.success, records=[])
 
@@ -654,40 +583,21 @@ async def logout(
 @router.post("/delete", response_model=api.Response, response_model_exclude_none=True)
 async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
     """Delete own user"""
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.delete,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
-    user = await db.load(
+    
+    entity = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
-        class_type=core.User,
+        resource_type=ResourceType.user,
         user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
     )
-    await db.delete(MANAGEMENT_SPACE, USERS_SUBPATH, user, MANAGEMENT_BRANCH, shortname)
+    await plugin_manager.before_action(entity.to_event_data(core.ActionType.delete))
+    
+    await db.delete(entity)
 
     await remove_redis_active_session(shortname)
-    
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.delete,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
+
+    await plugin_manager.after_action(entity.to_event_data(core.ActionType.delete))
 
     return api.Response(status=api.Status.success)
 
@@ -705,14 +615,15 @@ async def otp_request(
     """Request new OTP"""
 
     result = user_request.check_fields()
-    user = await db.load(
+    entity = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
-        class_type=core.User,
+        resource_type=ResourceType.user,
         user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
     )
+    user = await db.load(entity)
+    
     exception = api.Exception(
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
@@ -765,55 +676,31 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             ),
         )
 
-    old_version_flattend = flatten_dict(user.model_dump())
+    entity = core.EntityDTO(
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        shortname=user.shortname,
+        resource_type=ResourceType.user,
+        user_shortname=user.shortname,
+    )
+    
     user.force_password_change = True
 
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=user.shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=user.shortname,
-        )
-    )
+    await plugin_manager.before_action(entity.to_event_data(core.ActionType.update))
 
-    await db.update(
-        MANAGEMENT_SPACE,
-        USERS_SUBPATH,
-        user,
-        old_version_flattend,
-        flatten_dict(user.model_dump()),
-        ["force_password_change"],
-        MANAGEMENT_BRANCH,
-        user.shortname,
-    )
+    await db.update(entity, user)
 
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            subpath=USERS_SUBPATH,
-            shortname=user.shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=user.shortname,
-        )
-    )
+    await plugin_manager.after_action(entity.to_event_data(core.ActionType.update))
 
     reset_password_message = "Reset password via this link: {link}, This link can be used once and within the next 48 hours."
 
     if "msisdn" in result:
         if not user.msisdn or user.msisdn != result["msisdn"]:
             raise exception
-        token = await repository.store_user_invitation_token(
-            user, "SMS"
-        )
+        token = await operational_repo.store_user_invitation_token(user, "SMS")
         if not token:
             raise exception
-        shortened_link = await repository.url_shortner(token)
+        shortened_link = await operational_repo.url_shortener(token)
         await send_sms(
             msisdn=user.msisdn,
             message=reset_password_message.replace("{link}", shortened_link),
@@ -821,13 +708,11 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     else:
         if not user.email or user.email != result["email"]:
             raise exception
-        token = await repository.store_user_invitation_token(
-            user, "EMAIL"
-        )
+        token = await operational_repo.store_user_invitation_token(user, "EMAIL")
         if not token:
             raise exception
 
-        shortened_link = await repository.url_shortner(token)
+        shortened_link = await operational_repo.url_shortener(token)
         await send_email(
             from_address=settings.email_sender,
             to_address=user.email,
@@ -869,7 +754,7 @@ async def confirm_otp(
     if code != user_request.code:
         raise Exception(
             status.HTTP_400_BAD_REQUEST,
-           api.Error(
+            api.Error(
                 type="OTP",
                 code=InternalErrorCode.OTP_INVALID,
                 message="Invalid OTP",
@@ -903,38 +788,33 @@ async def confirm_otp(
             api.Error(
                 type="OTP",
                 code=InternalErrorCode.OTP_FAILED,
-                message=response.error.message
-                if response.error
-                else "Internal error",
+                message=response.error.message if response.error else "Internal error",
             ),
         )
 
 
 @router.post("/reset", response_model=api.Response, response_model_exclude_none=True)
 async def user_reset(
-    shortname: str = Body(..., pattern=rgx.SHORTNAME,
-                          embed=True, examples=["john_doo"]),
+    shortname: str = Body(
+        ..., pattern=rgx.SHORTNAME, embed=True, examples=["john_doo"]
+    ),
     logged_user=Depends(JWTBearer()),
 ) -> api.Response:
-
-    user = await db.load(
+    
+    entity = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
-    )
-    if not await access_control.check_access(
-        user_shortname=logged_user,
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
         resource_type=ResourceType.user,
+        user_shortname=logged_user,
+    )
+
+    user = await db.load(entity)
+    
+    if not await access_control.check_access(
+        entity=entity,
+        meta=user,
         action_type=ActionType.update,
-        resource_is_active=user.is_active,
-        resource_owner_shortname=user.owner_shortname,
-        resource_owner_group=user.owner_group_shortname,
-        entry_shortname=user.shortname,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -946,38 +826,25 @@ async def user_reset(
         )
 
     if not user.force_password_change:
-        await repository.internal_sys_update_model(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            branch_name=MANAGEMENT_BRANCH,
-            meta=user,
-            updates={"force_password_change": True}
-        )
+        await operational_repo.internal_sys_update_model(entity, user, {"force_password_change": True})
 
     sms_link = None
     email_link = None
 
     if user.msisdn and not user.is_msisdn_verified:
-        token = await repository.store_user_invitation_token(
-            user, "SMS"
-        )
+        token = await operational_repo.store_user_invitation_token(user, "SMS")
         if token:
-            sms_link = await repository.url_shortner(token)
+            sms_link = await operational_repo.url_shortener(token)
             await send_sms(
                 msisdn=user.msisdn,
-                message=languages[
-                    user.language
-                ]["invitation_message"].replace(
-                    "{link}",
-                    sms_link
+                message=languages[user.language]["invitation_message"].replace(
+                    "{link}", sms_link
                 ),
             )
     if user.email and not user.is_email_verified:
-        token = await repository.store_user_invitation_token(
-            user, "SMS"
-        )
+        token = await operational_repo.store_user_invitation_token(user, "SMS")
         if token:
-            email_link = await repository.url_shortner(token)
+            email_link = await operational_repo.url_shortener(token)
             await send_email(
                 from_address=settings.email_sender,
                 to_address=user.email,
@@ -995,7 +862,7 @@ async def user_reset(
 
     return api.Response(
         status=api.Status.success,
-        attributes={"sms_sent": bool(sms_link), "email_sent": bool(email_link)}
+        attributes={"sms_sent": bool(sms_link), "email_sent": bool(email_link)},
     )
 
 
@@ -1007,26 +874,35 @@ async def user_reset(
 async def validate_password(
     password: str, shortname=Depends(JWTBearer())
 ) -> api.Response:
-    """Validate Password"""
-    user = await db.load(
-        MANAGEMENT_SPACE, USERS_SUBPATH, shortname, core.User, shortname
+    
+    entity = core.EntityDTO(
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        shortname=shortname,
+        resource_type=ResourceType.user,
+        user_shortname=shortname,
     )
-    if user and password_hashing.verify_password(password, user.password or ""):
+    
+    user = await db.load(entity)
+    
+    if password_hashing.verify_password(password, user.password or ""):
         return api.Response(status=api.Status.success)
     else:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="jwtauth", code=InternalErrorCode.PASSWORD_NOT_VALIDATED,
-                      message="Password dose not match"),
+            api.Error(
+                type="jwtauth",
+                code=InternalErrorCode.PASSWORD_NOT_VALIDATED,
+                message="Password dose not match",
+            ),
         )
 
 
-
 async def process_user_login(
-    user: core.User, 
+    user: core.User,
     response: Response,
-    user_updates: dict = {}, 
-    firebase_token: str | None = None
+    user_updates: dict = {},
+    firebase_token: str | None = None,
 ) -> core.Record:
     access_token = await sign_jwt(
         {"username": user.shortname}, settings.jwt_access_expires
@@ -1049,6 +925,7 @@ async def process_user_login(
             "type": user.type,
         },
     )
+    entity = core.EntityDTO.from_record(record, MANAGEMENT_SPACE, user.shortname)
     if user.displayname:
         record.attributes["displayname"] = user.displayname
 
@@ -1056,16 +933,10 @@ async def process_user_login(
         user_updates["firebase_token"] = firebase_token
 
     if user_updates:
-        await repository.internal_sys_update_model(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            branch_name=MANAGEMENT_BRANCH,
-            meta=user,
-            updates=user_updates,
-            sync_redis=False,
-        )
-        
+        await operational_repo.internal_sys_update_model(entity, user, user_updates)
+
     return record
+
 
 if settings.social_login_allowed:
 
@@ -1079,9 +950,7 @@ if settings.social_login_allowed:
         user_model = await social_login(access_token, google_sso, "google")
 
         record = await process_user_login(
-            user=user_model,
-            response=response,
-            firebase_token=firebase_token
+            user=user_model, response=response, firebase_token=firebase_token
         )
 
         return api.Response(status=api.Status.success, records=[record])
@@ -1096,13 +965,10 @@ if settings.social_login_allowed:
         user_model = await social_login(access_token, facebook_sso, "facebook")
 
         record = await process_user_login(
-            user=user_model,
-            response=response,
-            firebase_token=firebase_token
+            user=user_model, response=response, firebase_token=firebase_token
         )
 
         return api.Response(status=api.Status.success, records=[record])
-
 
     async def social_login(access_token: str, sso: SSOBase, provider: str) -> core.User:
         async with AsyncRequest() as session:
@@ -1110,31 +976,43 @@ if settings.social_login_allowed:
             if not user_profile_endpoint:
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(type="auth", code=InternalErrorCode.INVALID_DATA, message="Misconfigured provider"),
+                    error=api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_DATA,
+                        message="Misconfigured provider",
+                    ),
                 )
             response = await session.get(
-                user_profile_endpoint, headers={"Authorization": f"Bearer {access_token}"}
+                user_profile_endpoint,
+                headers={"Authorization": f"Bearer {access_token}"},
             )
             if response.status != 200:
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(type="auth", code=InternalErrorCode.INVALID_DATA, message="Invalid access token"),
+                    error=api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_DATA,
+                        message="Invalid access token",
+                    ),
                 )
             content = await response.json()
             provider_user = await sso.openid_from_response(content)
-            
-            
-        redis_search_res: tuple[int, list[dict[str, Any]]] = await operational_repo.search(Query(
-            type=QueryType.search,
-            space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
-            search=f"@{provider}_id:{provider_user.id}",
-            limit=1,
-            offset=0,
-            filters={},
-        ))
 
-        if not redis_search_res or redis_search_res[0] == 0:
+        search_res: tuple[int, list[dict[str, Any]]] = (
+            await operational_repo.search(
+                Query(
+                    type=QueryType.search,
+                    space_name=MANAGEMENT_SPACE,
+                    branch_name=MANAGEMENT_BRANCH,
+                    search=f"@{provider}_id:{provider_user.id}",
+                    limit=1,
+                    offset=0,
+                    filters={},
+                )
+            )
+        )
+
+        if not search_res or search_res[0] == 0:
             uuid = uuid4()
             shortname = str(uuid)[:8]
             user_model = core.User(
@@ -1149,15 +1027,25 @@ if settings.social_login_allowed:
             )
             setattr(user_model, f"{provider}_id", provider_user.id)
 
-            await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user_model, MANAGEMENT_BRANCH)
+            await db.create(
+                entity=core.EntityDTO(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    resource_type=ResourceType.user
+                ),
+                meta=user_model
+            )
 
         else:
-            user_record = await repository.get_record_from_redis_doc(
+            user_record = await operational_repo.db_doc_to_record(
                 space_name=MANAGEMENT_SPACE,
-                branch_name=MANAGEMENT_BRANCH,
-                doc=redis_search_res[1][0],
-                retrieve_json_payload=True
+                db_entry=search_res[1][0],
+                retrieve_json_payload=True,
             )
-            user_model = core.User.from_record(user_record, owner_shortname=(redis_search_res[1][0]).get("owner_shortname", ""))
-            
+            user_model = core.User.from_record(
+                user_record,
+                owner_shortname=(search_res[1][0]).get("owner_shortname", ""),
+            )
+
         return user_model

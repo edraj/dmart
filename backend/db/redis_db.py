@@ -9,7 +9,6 @@ from models.core import EntityDTO, Meta
 from models.enums import LockAction, ResourceType, SortType
 from utils.redis_services import RedisServices
 from utils.settings import settings
-from utils import repository
 from redis.commands.search.indexDefinition import IndexDefinition
 from redis.commands.search.query import Query as RedisQuery
 
@@ -206,40 +205,6 @@ class RedisDB(BaseDB):
                 entity.resource_type
             )
 
-    async def create(
-        self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] = {}
-    ) -> bool:
-        try:
-            async with RedisServices() as redis:
-                meta_doc_id, meta_json = redis.prepate_meta_doc(
-                    entity.space_name, entity.branch_name, entity.subpath, meta
-                )
-                meta_json["payload_string"] = await repository.generate_payload_string(
-                    space_name=entity.space_name,
-                    subpath=meta_json["subpath"],
-                    shortname=meta_json["shortname"],
-                    branch_name=entity.branch_name,
-                    payload=payload,
-                )
-                await redis.save_doc(meta_doc_id, meta_json)
-                if payload:
-                    payload.update(meta_json)
-                    await redis.save_payload_doc(
-                        entity.space_name,
-                        entity.branch_name,
-                        entity.subpath,
-                        meta,
-                        payload,
-                        (
-                            entity.resource_type
-                            if entity.resource_type
-                            else ResourceType.content
-                        ),
-                    )
-            return True
-        except Exception as e:
-            logger.error(f"Error at RedisDB.create: {e.args}")
-            return False
 
     async def save_at_id(self, id: str, doc: dict[str, Any] = {}) -> bool:
         try:
@@ -249,12 +214,6 @@ class RedisDB(BaseDB):
         except Exception as e:
             logger.error(f"Error at RedisDB.save_at_id: {e.args}")
             return False
-
-    async def update(
-        self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] = {}
-    ) -> bool:
-        # Redis will overwrite the existing documents
-        return await self.create(entity, meta, payload)
 
     async def delete_doc_by_id(self, id: str) -> bool:
         try:

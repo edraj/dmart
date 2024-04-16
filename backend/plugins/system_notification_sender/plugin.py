@@ -17,10 +17,9 @@ from utils.notification import NotificationManager
 from utils.helpers import branch_path, camel_case, replace_message_vars
 
 # from utils.notification import NotificationContext, send_notification
-from utils.repository import internal_save_model, get_entry_attachments, get_group_users
 from utils.settings import settings
 from fastapi.logger import logger
-from utils.db import load, load_resource_payload
+from utils.db import load, load_resource_payload, get_entry_attachments
 from utils.operational_repo import operational_repo
 
 class Plugin(PluginBase):
@@ -39,33 +38,20 @@ class Plugin(PluginBase):
             )
             return
 
+        entity = EntityDTO.from_event_data(data)
+        
         if data.action_type == ActionType.delete and data.attributes.get("entry"):
             entry = data.attributes["entry"].model_dump()
         else:
             entry = (
-                await load(
-                    data.space_name,
-                    data.subpath,
-                    data.shortname,
-                    getattr(sys_modules["models.core"], camel_case(data.resource_type)),
-                    data.user_shortname,
-                    data.branch_name,
-                )
+                await load(entity)
             ).model_dump()
             if (
                 entry["payload"]
                 and entry["payload"]["content_type"] == ContentType.json
                 and entry["payload"]["body"]
             ):
-                entry["payload"]["body"] = load_resource_payload(
-                    space_name=data.space_name,
-                    subpath=data.subpath,
-                    filename=entry["payload"]["body"],
-                    class_type=getattr(
-                        sys_modules["models.core"], camel_case(data.resource_type)
-                    ),
-                    branch_name=data.branch_name,
-                )
+                entry["payload"]["body"] = load_resource_payload(entity)
         entry["space_name"] = data.space_name
         entry["resource_type"] = str(data.resource_type)
         entry["subpath"] = data.subpath
@@ -91,9 +77,15 @@ class Plugin(PluginBase):
         # if entry.get("collaborators", None):
         #     notification_subscribers.extend(entry["collaborators"].values())  # type: ignore
         if entry.get("owner_group_shortname", None):
-            group_users = await get_group_users(entry["owner_group_shortname"])
+            group_users = await operational_repo.free_search(
+                index_name=f"{settings.management_space}:{settings.management_space_branch}:meta",
+                search_str=f"@subpath: users @groups:{{{entry['owner_group_shortname']}}}",
+                limit=10000,
+                offset=0,
+            )
+
             group_members = [
-                json.loads(user_doc)["shortname"] for user_doc in group_users
+                user_doc["shortname"] for user_doc in group_users
             ]
             notification_subscribers.extend(group_members)
 
@@ -130,11 +122,14 @@ class Plugin(PluginBase):
                     notification_obj = await Notification.from_request(
                         notification_dict, entry
                     )
-                    await internal_save_model(
-                        "personal",
-                        f"people/{receiver}/notifications",
-                        notification_obj,
-                        notification_dict["branch_name"],
+                    await operational_repo.internal_save_model(
+                        entity=EntityDTO(
+                            space_name="personal",
+                            subpath=f"people/{receiver}/notifications",
+                            shortname=notification_obj.shortname,
+                            resource_type=ResourceType.notification
+                        ),
+                        meta=notification_obj
                     )
 
                 for platform in formatted_req["platforms"]:
