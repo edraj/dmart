@@ -18,7 +18,9 @@
         'Schema.md',
         'Simple-Example.md',
         'Space.md',
-        'Tickets.md'
+        'Todos.md',
+        'Tickets.md',
+        'Universal-presence-platform.md'
     ];
 
     let selectedIndex = docFiles.findIndex(file => `/docs/${file.replace('.md', '').replace('index','')}`===window.location.pathname );
