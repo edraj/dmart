@@ -100,7 +100,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
   - Redis as the operational data store. With specific leverage of RediSearch RedisJSON modules.
   - Intensive json-based logging for easier insights.
 
-<img src="/frontend./docs/datamart-one.png" width="50"> <img src="./docs/datamart-two.png" width="50"> <img src="./docs/datamart-three.png" width="50"> <img src="./docs/datamart-four.png" width="50">
+<img src="./frontend/docs/datamart-one.png" width="50"> <img src="./frontend/docs/datamart-two.png" width="50"> <img src="./frontend/docs/datamart-three.png" width="50"> <img src="./frontend/docs/datamart-four.png" width="50">
 
 ## Terminology 
 
@@ -260,8 +260,8 @@ cd backend
 python -m pytest
 ```
 
-<img src="./frontend/docs/curl-test.png" width="300">
-<img src="./frontend/docs/pytest.png" width="450">
+<img src="./frontend/docs/docs/curl-test.png" width="300">
+<img src="./frontend/docs/docs/pytest.png" width="450">
 
 
 #### Using the Admin UI tool
@@ -315,7 +315,7 @@ pip install --user  -r requirements.txt
 ./cli.py
 ```
 
-<img src="./frontend/docs/cli.png" width="450">
+<img src="./frontend/docs/docs/cli.png" width="450">
 
 ### Offline (aka airgapped) deployment
 
