@@ -9,10 +9,6 @@
     InputGroup,
     Input,
     InputGroupText,
-    Dropdown,
-    DropdownItem,
-    DropdownMenu,
-    DropdownToggle
   } from "sveltestrap";
   import Icon from "../Icon.svelte";
   import { _ } from "@/i18n";
@@ -24,7 +20,7 @@
   import { fly } from "svelte/transition";
   import { isSlowNetwork } from "@/stores/management/slow_network";
   import { onMount } from "svelte";
-  import {handleThemeChange, themesList, themesStore} from "@/stores/themes_store";
+  // import {handleThemeChange, themesList, themesStore} from "@/stores/themes_store";
 
 
   let search_value = "";
@@ -74,7 +70,7 @@
           on:click={() => {
             $active_section = section;
           }}
-          active={$active_section.name == section.name}
+          active={$active_section.name === section.name}
         >
           <Icon name={section.icon} />
           <!--
