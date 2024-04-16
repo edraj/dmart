@@ -60,7 +60,7 @@ Valuable information (organizational and personal) is getting out of control!
 - **Activities and workflows** : Configurable activity (ticket) and workflow management. 
 - **Messaging and notifications** : Ability to trigger different types of notifications and ability to store user messages.
 
-<img src="./frontend/docs/data-mart.jpg" width="500">
+<img src="./frontend/docs/docs/data-mart.jpg" width="500">
 
 
 ## Core concepts
@@ -77,7 +77,7 @@ Valuable information (organizational and personal) is getting out of control!
 
 DMART is a "Data-first" platform to management your valuable data/information; allowing you to transform your perception of data from liability into assets.
 
-<img src="./frontend/docs/tree.png" width="500">
+<img src="./frontend/docs/docs/tree.png" width="500">
 
 ## API layer (REST-like, JSON-API)
 
@@ -89,7 +89,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
 
 ## Architecture and technology stack
 
-<img src="./frontend/docs/backend.png" width="650"> 
+<img src="./frontend/docs/docs/backend.png" width="650"> 
 
   - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files. 
   - Python 3.11 with emphasis on 
@@ -100,7 +100,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
   - Redis as the operational data store. With specific leverage of RediSearch RedisJSON modules.
   - Intensive json-based logging for easier insights.
 
-<img src="./frontend/docs/docs/datamart-one.png" width="50"> <img src="./frontend/docs/docs/datamart-two.png" width="50"> <img src="./frontend/docs/docs/datamart-three.png" width="50"> <img src="./frontend/docs/datamart-four.png" width="50">
+<img src="./frontend/docs/docs/datamart-one.png" width="50"> <img src="./frontend/docs/docs/datamart-two.png" width="50"> <img src="./frontend/docs/docs/datamart-three.png" width="50"> <img src="./frontend/docs/docs/datamart-four.png" width="50">
 
 ## Terminology 
 
