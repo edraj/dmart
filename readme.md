@@ -77,7 +77,7 @@ Valuable information (organizational and personal) is getting out of control!
 
 DMART is a "Data-first" platform to management your valuable data/information; allowing you to transform your perception of data from liability into assets.
 
-<img src="./docs/tree.png" width="500">
+<img src="./frontend/docs/tree.png" width="500">
 
 ## API layer (REST-like, JSON-API)
 
@@ -89,7 +89,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
 
 ## Architecture and technology stack
 
-<img src="./docs/backend.png" width="650"> 
+<img src="./frontend/docs/backend.png" width="650"> 
 
   - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files. 
   - Python 3.11 with emphasis on 
@@ -100,7 +100,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
   - Redis as the operational data store. With specific leverage of RediSearch RedisJSON modules.
   - Intensive json-based logging for easier insights.
 
-<img src="./docs/datamart-one.png" width="50"> <img src="./docs/datamart-two.png" width="50"> <img src="./docs/datamart-three.png" width="50"> <img src="./docs/datamart-four.png" width="50">
+<img src="/frontend./docs/datamart-one.png" width="50"> <img src="./docs/datamart-two.png" width="50"> <img src="./docs/datamart-three.png" width="50"> <img src="./docs/datamart-four.png" width="50">
 
 ## Terminology 
 
@@ -260,8 +260,8 @@ cd backend
 python -m pytest
 ```
 
-<img src="./docs/curl-test.png" width="300">
-<img src="./docs/pytest.png" width="450">
+<img src="./frontend/docs/curl-test.png" width="300">
+<img src="./frontend/docs/pytest.png" width="450">
 
 
 #### Using the Admin UI tool
@@ -295,8 +295,8 @@ yarn tauri build --bundles appimage --debug
 
 ```
 
-<img src="./docs/admin_ui_1.png" width="800">
-<img src="./docs/admin_ui_2.png" width="800">
+<img src="./frontend/docs/admin_ui_1.png" width="800">
+<img src="./frontend/docs/admin_ui_2.png" width="800">
 
 ### Using the command line tool
 
@@ -315,7 +315,7 @@ pip install --user  -r requirements.txt
 ./cli.py
 ```
 
-<img src="./docs/cli.png" width="450">
+<img src="./frontend/docs/cli.png" width="450">
 
 ### Offline (aka airgapped) deployment
 
