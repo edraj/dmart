@@ -1,7 +1,16 @@
 <script>
   import {QueryType} from "@/dmart";
   import ListView from "@/components/management/ListView.svelte";
+  import Tree from "./assets/tree.png"
 </script>
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
 
 # Simple Example
 
@@ -12,7 +21,8 @@
 - **Meta**: Meta information associated with the entry such as owner, shortname, unique uuid, creation/update timestamp, tags ..etc
 - **Schema**: The JSON schema definition of the entry
 - **Payload**: The actual content associated with the entry
-<img src="./docs/tree.png" width="500">
+
+<img class="center" src={Tree} width="500">
 
 *In this example we will use those attributes*
 `space = dmart_data`

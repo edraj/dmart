@@ -1,3 +1,20 @@
+<script>
+  import CLITest from "./assets/curl-test.png";
+  import PYTest from "./assets/pytest.png";
+  import AdminUI1 from "./assets/admin_ui_1.png";
+  import AdminUI2 from "./assets/admin_ui_2.png";
+  import CLI from "./assets/cli.png";
+</script>
+
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
+
 ## Installation
 
 ### Container (recommended)
@@ -113,8 +130,8 @@ cd backend
 python -m pytest
 ```
 
-<img src="./docs/curl-test.png" width="300">
-<img src="./docs/pytest.png" width="450">
+<img class="center" src={CLITest} width="300">
+<img class="center" src={PYTest} width="450">
 
 
 #### Using the Admin UI tool
@@ -148,8 +165,8 @@ yarn tauri build --bundles appimage --debug
 
 ```
 
-<img src="./docs/admin_ui_1.png" width="800">
-<img src="./docs/admin_ui_2.png" width="800">
+<img class="center" src={AdminUI1}>
+<img class="center" src={AdminUI2}>
 
 ### Using the command line tool
 
@@ -168,4 +185,4 @@ pip install --user  -r requirements.txt
 ./cli.py
 ```
 
-<img src="./docs/cli.png" width="450">
+<img class="center" src={CLI} width="450">
