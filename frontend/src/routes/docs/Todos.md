@@ -17,8 +17,9 @@ create/edit/update lock (file or redis)
 
 uuid : each entry (folder/space/content ... ) has unique uuid
 
-new api end point : like /managed/entry api : /{managemed,public}/byuuid/{uuid} 
-                                              /{managemed,public}/byslug/{slug}
+new api end point : like /managed/entry api : 
+- `/{managemed,public}/byuuid/{uuid}`
+- `/{managemed,public}/byslug/{slug}`
 
 # A : To create one large index for all entries across all spaces ...
   key is uuid (or first 8 chars) : uuid:872343
