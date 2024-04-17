@@ -60,7 +60,7 @@ Valuable information (organizational and personal) is getting out of control!
 - **Activities and workflows** : Configurable activity (ticket) and workflow management. 
 - **Messaging and notifications** : Ability to trigger different types of notifications and ability to store user messages.
 
-<img src="./frontend/docs/docs/data-mart.jpg" width="500">
+<img src="./frontend/src/routes/docs/data-mart.jpg" width="500">
 
 
 ## Core concepts
