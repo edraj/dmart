@@ -6,7 +6,7 @@ import models.core as core
 from utils.internal_error_code import InternalErrorCode
 from utils.access_control import access_control
 
-async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket):
+async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket) -> core.Ticket:
 # async def set_init_state_from_request(ticket: api.Request, branch_name, logged_in_user):
     # workflow_attr = ticket.records[0].attributes
     # workflow_shortname = workflow_attr["workflow_shortname"]
@@ -24,31 +24,41 @@ async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket):
     )
     workflows_data = await db.load(workflow_entity)
 
-    if workflows_data.payload is not None:
-        workflows_payload = await db.load_resource_payload(workflow_entity)
+    if workflows_data.payload is None:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
+                message="This shortname already exists",
+            ),
+        )
 
-        initial_state = None
-        for state in workflows_payload["initial_state"]:
-            if initial_state is None and "default" in state["roles"]:
-                initial_state = state["name"]
-            elif [role in user_roles_names for role in state["roles"]].count(True):
-                initial_state = state["name"]
-                break
+    workflows_payload = await db.load_resource_payload(workflow_entity)
 
-        if initial_state:
-            ticket.state = initial_state
-            ticket.is_open = True
-            
-            return ticket
+    initial_state = None
+    for state in workflows_payload["initial_state"]:
+        if initial_state is None and "default" in state["roles"]:
+            initial_state = state["name"]
+        elif [role in user_roles_names for role in state["roles"]].count(True):
+            initial_state = state["name"]
+            break
 
-    raise api.Exception(
-        status.HTTP_400_BAD_REQUEST,
-        api.Error(
-            type="request",
-            code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
-            message="This shortname already exists",
-        ),
-    )
+    if not initial_state:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
+                message="This shortname already exists",
+            ),
+        )
+    ticket.state = initial_state
+    ticket.is_open = True
+    
+    return ticket
+
+    
 
 
 # async def set_init_state_from_record(

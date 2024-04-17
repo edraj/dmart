@@ -395,7 +395,7 @@ class BaseRepo(ABC):
         if not query_method:
             return 0, []
 
-        return query_method(query, user_shortname)
+        return await query_method(query, user_shortname)
 
     async def spaces_query(
         self, query: Query, user_shortname: str | None = None
@@ -585,9 +585,6 @@ class BaseRepo(ABC):
     ) -> tuple[int, list[Record]]:
         records: list[Record] = []
         total: int = 0
-        trimmed_subpath = query.subpath
-        if trimmed_subpath[0] == "/":
-            trimmed_subpath = trimmed_subpath[1:]
 
         path = Path(
             f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl"

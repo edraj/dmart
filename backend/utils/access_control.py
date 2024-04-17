@@ -386,7 +386,7 @@ class AccessControl:
 
         all_user_roles_from_redis.extend(user_roles_from_groups)
         for role_json in all_user_roles_from_redis:
-            role = core.Role.model_validate(json.loads(role_json))
+            role = core.Role.model_validate(role_json)
             user_roles[role.shortname] = role
 
         return user_roles

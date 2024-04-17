@@ -38,7 +38,7 @@ import json
 from utils.jwt import JWTBearer, GetJWTToken, remove_redis_active_session
 from utils.access_control import access_control
 from utils.operational_repo import operational_repo
-from typing import Any
+from typing import Any, Type
 from utils.helpers import (
     branch_path,
     camel_case,
@@ -307,7 +307,7 @@ async def serve_space(
                     ),
                 )
 
-            resource_obj = core.Meta.from_record(
+            resource_obj = core.Space.from_record(
                 record=record, owner_shortname=owner_shortname
             )
 
@@ -519,7 +519,6 @@ async def serve_request(
                     message="You don't have permission to this action [1]",
                 ),
             )
-        
         await plugin_manager.before_action(
             entity.to_event_data(request.action_type, record.attributes)
         )
@@ -1191,9 +1190,9 @@ async def create_or_update_resource_with_payload(
             ),
         )
     await payload_file.seek(0)
-    resource_obj: core.Ticket = core.Ticket.from_record(record=record, owner_shortname=owner_shortname)
+    resource_obj: core.Meta = entity.class_type.from_record(record=record, owner_shortname=owner_shortname)
     
-    if record.resource_type == ResourceType.ticket:
+    if isinstance(resource_obj, core.Ticket):
         resource_obj = await set_ticket_init_state(
             entity, resource_obj
         )
@@ -1219,7 +1218,7 @@ async def create_or_update_resource_with_payload(
             api.Error(
                 type="attachment",
                 code=InternalErrorCode.SOME_SUPPORTED_TYPE,
-                message="Only resources of type 'attachment' or 'content' are allowed",
+                message="Only resources of type 'attachment', 'content', 'ticket', or 'schema' are allowed",
             ),
         )
 
@@ -1279,7 +1278,7 @@ async def import_resources_from_csv(
         shortname=schema_shortname,
         user_shortname=owner_shortname
     )
-    schema_path = (
+    schema_path: FilePath = (
         db.payload_path(schema_entity)
         / f"{schema_shortname}.json"
     )

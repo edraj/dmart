@@ -241,16 +241,17 @@ def metapath(entity: core.EntityDTO) -> tuple[Path, str]:
     path = settings.spaces_folder / entity.space_name / branch_path(entity.branch_name)
 
     filename = ""
-    if entity.subpath[0] == "/":
-        entity.subpath = f".{entity.subpath}"
+    subpath = copy(entity.subpath)
+    if subpath[0] == "/":
+        subpath = f".{subpath}"
     if issubclass(entity.class_type, core.Folder):
-        path = path / entity.subpath / entity.shortname / ".dm"
+        path = path / subpath / entity.shortname / ".dm"
         filename = f"meta.{entity.class_type.__name__.lower()}.json"
     elif issubclass(entity.class_type, core.Space):
         path = settings.spaces_folder / entity.space_name / ".dm"
         filename = "meta.space.json"
     elif issubclass(entity.class_type, core.Attachment):
-        [parent_subpath, parent_name] = entity.subpath.rsplit("/", 1)
+        [parent_subpath, parent_name] = subpath.rsplit("/", 1)
         # schema_shortname = "." + schema_shortname if schema_shortname else ""
         attachment_folder = (
             f"{parent_name}/attachments.{entity.class_type.__name__.lower()}"
@@ -258,14 +259,14 @@ def metapath(entity: core.EntityDTO) -> tuple[Path, str]:
         path = path / parent_subpath / ".dm" / attachment_folder
         filename = f"meta.{entity.shortname}.json"
     elif issubclass(entity.class_type, core.History):
-        [parent_subpath, parent_name] = entity.subpath.rsplit("/", 1)
+        [parent_subpath, parent_name] = subpath.rsplit("/", 1)
         path = path / parent_subpath / ".dm" / f"{parent_name}/history"
         filename = f"{entity.shortname}.json"
     elif issubclass(entity.class_type, core.Branch):
         path = settings.spaces_folder / entity.space_name / entity.shortname / ".dm"
         filename = "meta.branch.json"
     else:
-        path = path / entity.subpath / ".dm" / entity.shortname
+        path = path / subpath / ".dm" / entity.shortname
         filename = f"meta.{snake_case(entity.class_type.__name__)}.json"
     return path, filename
 
@@ -274,17 +275,18 @@ def payload_path(entity: core.EntityDTO) -> Path:
     """Construct the full path of the meta file"""
     path = settings.spaces_folder / entity.space_name / branch_path(entity.branch_name)
 
-    if entity.subpath[0] == "/":
-        entity.subpath = f".{entity.subpath}"
+    subpath = copy(entity.subpath)
+    if subpath[0] == "/":
+        subpath = f".{subpath}"
     if issubclass(entity.class_type, core.Attachment):
-        [parent_subpath, parent_name] = entity.subpath.rsplit("/", 1)
+        [parent_subpath, parent_name] = subpath.rsplit("/", 1)
         schema_shortname = (
             "." + entity.schema_shortname if entity.schema_shortname else ""
         )
         attachment_folder = f"{parent_name}/attachments{schema_shortname}.{entity.class_type.__name__.lower()}"
         path = path / parent_subpath / ".dm" / attachment_folder
     else:
-        path = path / entity.subpath
+        path = path / subpath
     return path
 
 

@@ -609,10 +609,15 @@ class EntityDTO(BaseModel):
             del data["resource_type"]
         if "schema_shortname" in data and data["schema_shortname"] is None:
             del data["schema_shortname"]
+            
+        data["subpath"] = data["subpath"].strip("/")
+        if data["subpath"] == "":
+            data["subpath"] = "/"
+            
         BaseModel.__init__(self, **data)
 
     @property
-    def class_type(self) -> Type[MetaChild]: # type: ignore
+    def class_type(self) -> Type[MetaChild]: 
         return getattr(sys.modules["models.core"], camel_case(self.resource_type))
 
     @staticmethod

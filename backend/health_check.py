@@ -360,7 +360,7 @@ async def health_check_entry(
     entity: EntityDTO
 ):
     
-    entry_meta_obj = await db.load(entity)
+    entry_meta_obj: core.Meta = await db.load(entity)
     if entry_meta_obj.shortname != entity.shortname:
         raise Exception(
             "the shortname which got from the folder path doesn't match the shortname in the meta file."
@@ -373,6 +373,7 @@ async def health_check_entry(
         payload_file_path = Path(f"{entity.subpath}/{entry_meta_obj.payload.body}")
         if (
             not payload_file_path.is_file()
+            or not isinstance(entry_meta_obj.payload.body, str)
             or not bool(
                 re.match(
                     IMG_EXT,
@@ -413,6 +414,7 @@ async def health_check_entry(
             )
 
     if(
+        entry_meta_obj.payload and
         entry_meta_obj.payload.checksum and 
         entry_meta_obj.payload.client_checksum and 
         entry_meta_obj.payload.checksum != entry_meta_obj.payload.client_checksum
