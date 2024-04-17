@@ -89,7 +89,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
 
 ## Architecture and technology stack
 
-<img src="./frontend/docs/docs/backend.png" width="650"> 
+<img src="./frontend/src/routes/docs/backend.png" width="650"> 
 
   - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files. 
   - Python 3.11 with emphasis on 
@@ -100,7 +100,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
   - Redis as the operational data store. With specific leverage of RediSearch RedisJSON modules.
   - Intensive json-based logging for easier insights.
 
-<img src="./frontend/docs/docs/datamart-one.png" width="50"> <img src="./frontend/docs/docs/datamart-two.png" width="50"> <img src="./frontend/docs/docs/datamart-three.png" width="50"> <img src="./frontend/docs/docs/datamart-four.png" width="50">
+<img src="./frontend/src/routes/docs/datamart-one.png" width="50"> <img src="./frontend/src/routes/docs/datamart-two.png" width="50"> <img src="./frontend/docs/docs/datamart-three.png" width="50"> <img src="./frontend/docs/docs/datamart-four.png" width="50">
 
 ## Terminology 
 
@@ -260,8 +260,8 @@ cd backend
 python -m pytest
 ```
 
-<img src="./frontend/docs/docs/curl-test.png" width="300">
-<img src="./frontend/docs/docs/pytest.png" width="450">
+<img src="./frontend/src/routes/docs/curl-test.png" width="300">
+<img src="./frontend/src/routes/docs/pytest.png" width="450">
 
 
 #### Using the Admin UI tool
@@ -295,8 +295,8 @@ yarn tauri build --bundles appimage --debug
 
 ```
 
-<img src="./frontend/docs/docs/admin_ui_1.png" width="800">
-<img src="./frontend/docs/docs/admin_ui_2.png" width="800">
+<img src="./frontend/src/routes/docs/admin_ui_1.png" width="800">
+<img src="./frontend/src/routes/docs/admin_ui_2.png" width="800">
 
 ### Using the command line tool
 
@@ -315,7 +315,7 @@ pip install --user  -r requirements.txt
 ./cli.py
 ```
 
-<img src="./frontend/docs/docs/cli.png" width="450">
+<img src="./frontend/src/routes/docs/cli.png" width="450">
 
 ### Offline (aka airgapped) deployment
 
