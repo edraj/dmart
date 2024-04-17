@@ -315,7 +315,7 @@ pip install --user  -r requirements.txt
 ./cli.py
 ```
 
-<img src="./frontend/src/routes/docs/asset/cli.png" width="450">
+<img src="./frontend/src/routes/docs/assets/cli.png" width="450">
 
 ### Offline (aka airgapped) deployment
 
