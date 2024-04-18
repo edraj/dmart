@@ -51,7 +51,7 @@ class Plugin(PluginBase):
                 and entry["payload"]["content_type"] == ContentType.json
                 and entry["payload"]["body"]
             ):
-                entry["payload"]["body"] = load_resource_payload(entity)
+                entry["payload"]["body"] = await load_resource_payload(entity)
         entry["space_name"] = data.space_name
         entry["resource_type"] = str(data.resource_type)
         entry["subpath"] = data.subpath
