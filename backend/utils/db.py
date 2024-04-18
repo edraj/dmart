@@ -245,6 +245,7 @@ def metapath(entity: core.EntityDTO) -> tuple[Path, str]:
     subpath = copy(entity.subpath)
     if subpath[0] == "/":
         subpath = f".{subpath}"
+            
     if issubclass(entity.class_type, core.Folder):
         path = path / subpath / entity.shortname / ".dm"
         filename = f"meta.{entity.class_type.__name__.lower()}.json"
@@ -681,14 +682,15 @@ async def delete(entity: core.EntityDTO):
 
 
 def is_entry_exist(entity: core.EntityDTO) -> bool:
-    if entity.subpath[0] == "/":
-        entity.subpath = f".{entity.subpath}"
+    subpath = copy(entity.subpath)
+    if subpath[0] == "/":
+        subpath = f".{subpath}"
 
     payload_file = (
         settings.spaces_folder
         / entity.space_name
         / branch_path(entity.branch_name)
-        / entity.subpath
+        / subpath
         / f"{entity.shortname}.json"
     )
     if payload_file.is_file():

@@ -79,14 +79,14 @@ async def check_existing_user_fields(
             value = f"{{{value}}}"
         redis_search_res: tuple[int, list[dict[str, Any]]] = (
             await operational_repo.search(
-                Query(
+                api.Query(
                     type=QueryType.search,
                     space_name=MANAGEMENT_SPACE,
                     branch_name=MANAGEMENT_BRANCH,
+                    subpath=USERS_SUBPATH,
                     search=search_str + f" @{key}:{value}",
                     limit=1,
-                    offset=0,
-                    filters={},
+                    offset=0
                 )
             )
         )
@@ -1000,14 +1000,14 @@ if settings.social_login_allowed:
 
         search_res: tuple[int, list[dict[str, Any]]] = (
             await operational_repo.search(
-                Query(
+                api.Query(
                     type=QueryType.search,
                     space_name=MANAGEMENT_SPACE,
                     branch_name=MANAGEMENT_BRANCH,
+                    subpath=USERS_SUBPATH,
                     search=f"@{provider}_id:{provider_user.id}",
                     limit=1,
-                    offset=0,
-                    filters={},
+                    offset=0
                 )
             )
         )
