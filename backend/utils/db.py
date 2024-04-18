@@ -7,7 +7,6 @@ from utils.helpers import (
     camel_case,
     flatten_all,
     snake_case,
-    str_to_datetime,
 )
 from datetime import datetime
 from models.enums import ContentType, ResourceType
@@ -191,7 +190,9 @@ async def get_entry_attachments(
                         await meta_file.read()
                     )
                 except Exception as e:
-                    raise Exception(f"Bad attachment ... {attachments_file.path=}. Resource class: {resource_class}") from e
+                    raise Exception(
+                        f"Bad attachment ... {attachments_file.path=}. Resource class: {resource_class}"
+                    ) from e
 
             resource_record_obj = resource_obj.to_record(
                 subpath, attach_shortname, include_fields, branch_name
@@ -281,7 +282,7 @@ def payload_path(entity: core.EntityDTO) -> Path:
     if issubclass(entity.class_type, core.Attachment):
         [parent_subpath, parent_name] = subpath.rsplit("/", 1)
         schema_shortname = (
-            "." + entity.schema_shortname if entity.schema_shortname else ""
+            "." + entity.schema_shortname if entity.schema_shortname != "meta" else ""
         )
         attachment_folder = f"{parent_name}/attachments{schema_shortname}.{entity.class_type.__name__.lower()}"
         path = path / parent_subpath / ".dm" / attachment_folder
@@ -439,6 +440,14 @@ async def update(
 
     await save(entity, meta, payload_data)
 
+    if (
+        meta.payload
+        and meta.payload.body
+        and meta.payload.content_type == ContentType.json
+        and not payload_data
+    ):
+        payload_data = await load_resource_payload(entity)
+        
     history_diff = await store_entry_diff(
         entity=entity,
         old_meta=old_meta,
@@ -457,6 +466,7 @@ async def store_entry_diff(
     old_payload: dict[str, Any] | None = None,
     new_payload: dict[str, Any] | None = None,
 ) -> dict:
+
     old_flattened = flatten_all(old_meta.model_dump(exclude_none=True))
     if old_payload:
         old_flattened.update(flatten_all(old_payload))
