@@ -191,7 +191,7 @@ async def get_entry_attachments(
                         await meta_file.read()
                     )
                 except Exception as e:
-                    raise Exception(f"Bad attachment ... {attachments_file=}") from e
+                    raise Exception(f"Bad attachment ... {attachments_file.path=}. Resource class: {resource_class}") from e
 
             resource_record_obj = resource_obj.to_record(
                 subpath, attach_shortname, include_fields, branch_name

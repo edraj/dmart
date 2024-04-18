@@ -1,6 +1,6 @@
 from re import sub as res_sub
 from uuid import uuid4
-from fastapi import APIRouter, Query, Request, Path, status, Depends
+from fastapi import APIRouter, Body, Query, Path, status, Depends
 from models.enums import AttachmentType, ContentType, ResourceType, TaskType
 import utils.db as db
 import models.api as api
@@ -255,15 +255,17 @@ async def query_via_urlparams(
     )
 
 
-@router.post("/submit/{space_name}/{schema_shortname}/{subpath}")
+@router.post("/submit/{space_name}/{schema_shortname}/{subpath:path}")
 async def create_entry(
-    space_name: str,
-    schema_shortname: str,
-    subpath: str,
-    body: Request,
+    space_name: str = Path(...),
+    schema_shortname: str = Path(...),
+    subpath: str = Path(..., regex=regex.SUBPATH),
+    body_dict: dict[str, Any] = Body(...),
     branch_name: str | None = settings.default_branch,
 ):
-    allowed_models = {"applications": ["log", "feedback"]}
+    allowed_models = {
+        "applications": ["log", "feedback", "cancellation_survey"]
+    }
     if (
         space_name not in allowed_models
         or schema_shortname not in allowed_models[space_name]
@@ -277,7 +279,6 @@ async def create_entry(
             ),
         )
 
-    body_dict = await body.json()
     uuid = uuid4()
     shortname = str(uuid)[:8]
     entity = core.EntityDTO(

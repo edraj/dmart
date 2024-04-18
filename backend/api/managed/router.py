@@ -814,6 +814,7 @@ async def serve_request(
                         dest_subpath=record.attributes["dest_subpath"],
                         dest_shortname=record.attributes["dest_shortname"],
                     )
+                    record.attributes["entry"] = meta
                    
             if meta:                     
                 records.append(
@@ -1721,6 +1722,7 @@ async def cancel_lock(
         branch_name=branch_name,
         subpath=subpath,
         shortname=shortname,
+        user_shortname=logged_in_user
     )
     lock_payload = await operational_repo.get_lock_doc(entity)
 

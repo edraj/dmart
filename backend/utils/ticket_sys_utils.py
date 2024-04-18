@@ -36,15 +36,15 @@ async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket) -> 
 
     workflows_payload = await db.load_resource_payload(workflow_entity)
 
-    initial_state = None
-    for state in workflows_payload["initial_state"]:
-        if initial_state is None and "default" in state["roles"]:
-            initial_state = state["name"]
-        elif [role in user_roles_names for role in state["roles"]].count(True):
-            initial_state = state["name"]
-            break
+    # initial_state = None
+    # for state in workflows_payload["initial_state"]:
+    #     if initial_state is None and "default" in state["roles"]:
+    #         initial_state = state["name"]
+    #     elif [role in user_roles_names for role in state["roles"]].count(True):
+    #         initial_state = state["name"]
+    #         break
 
-    if not initial_state:
+    if "initial_state" not in workflows_payload:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
@@ -53,7 +53,7 @@ async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket) -> 
                 message="This shortname already exists",
             ),
         )
-    ticket.state = initial_state
+    ticket.state = workflows_payload["initial_state"]
     ticket.is_open = True
     
     return ticket
