@@ -681,7 +681,7 @@ class BaseRepo(ABC):
             )
         return total, records
 
-    async def aggregate_query(
+    async def aggregation_query(
         self, query: Query, user_shortname: str | None = None
     ) -> tuple[int, list[Record]]:
         records: list[Record] = []

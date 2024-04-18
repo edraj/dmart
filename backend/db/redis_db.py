@@ -77,7 +77,7 @@ class RedisDB(BaseDB):
             schema_name,
             load,
             )
-        return [json.loads(item) for item in res]
+        return res
 
     async def free_search(
         self, index_name: str, search_str: str, limit: int = 20, offset: int = 0
