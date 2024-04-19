@@ -1,5 +1,3 @@
-import json
-from sys import modules as sys_modules
 from models.api import Query
 from models.core import EntityDTO, Notification, NotificationData, PluginBase, Event, Translation
 from models.enums import QueryType, ResourceType

@@ -1,5 +1,3 @@
-import json
-from sys import modules as sys_modules
 from models.api import Query
 from models.enums import ContentType, QueryType, ResourceType
 from models.core import (
@@ -14,7 +12,7 @@ from models.core import (
 from utils.notification import NotificationManager
 
 # from plugins.web_notification import WebNotifier, websocket_push
-from utils.helpers import branch_path, camel_case, replace_message_vars
+from utils.helpers import branch_path, replace_message_vars
 
 # from utils.notification import NotificationContext, send_notification
 from utils.settings import settings

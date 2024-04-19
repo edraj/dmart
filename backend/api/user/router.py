@@ -2,7 +2,6 @@
 
 import json
 import re
-from pathlib import Path
 from uuid import uuid4
 import aiofiles
 from utils.async_request import AsyncRequest
@@ -14,10 +13,9 @@ import models.core as core
 from models.enums import ActionType, QueryType, RequestType, ResourceType, ContentType
 import utils.db as db
 from utils.access_control import access_control
-from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import JWTBearer, remove_redis_active_session, sign_jwt, decode_jwt
+from utils.jwt import JWTBearer, remove_redis_active_session, sign_jwt
 from typing import Any
 from utils.operational_repo import operational_repo
 from utils.settings import settings
