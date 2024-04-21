@@ -15,7 +15,7 @@
     <Button
       outline
       color="primary"
-      active={key == $locale}
+      active={key === $locale}
       size="sm"
       on:click={(event) => selectLocale(event, key)}>{key}</Button
     >
