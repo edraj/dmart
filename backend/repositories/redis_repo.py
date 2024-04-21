@@ -19,21 +19,6 @@ class RedisRepo(BaseRepo):
     def __init__(self) -> None:
         super().__init__(RedisDB())
 
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
 
     async def search(
         self, query: Query, user_shortname: str | None = None

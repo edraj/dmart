@@ -1,15 +1,13 @@
 from os import scandir
 from re import sub
-from models.core import PluginBase, Event
-from utils.access_control import access_control
+from models.core import EntityDTO, PluginBase, Event
+from models.enums import QueryType, ResourceType, SortType
 from utils.db import load, load_resource_payload
 from models.core import Content
 from models.api import Query
 from utils.helpers import branch_path
-from utils.repository import get_last_updated_entry, serve_query, internal_sys_update_model
 from utils.settings import settings
-from utils.helpers import pp
-
+from utils.operational_repo import operational_repo
 
 
 class Plugin(PluginBase):
@@ -32,22 +30,17 @@ class Plugin(PluginBase):
             subpath, class_type = "reports", Content
 
             try:
-                report_meta = await load(
+                report_entity = EntityDTO(
                     space_name=data.space_name,
                     subpath=subpath,
                     shortname=shortname,  # type: ignore
-                    class_type=class_type,
+                    resource_type=ResourceType.content,
                     user_shortname=data.user_shortname,
                     branch_name=data.branch_name,
                 )
+                report_meta = await load(report_entity)
 
-                report_payload = load_resource_payload(
-                    space_name=data.space_name,
-                    subpath=subpath,
-                    filename=report_meta.payload.body,  # type: ignore
-                    class_type=class_type,
-                    branch_name=data.branch_name,
-                )
+                report_payload = await load_resource_payload(report_entity)
             except Exception:
                 continue
             
@@ -57,19 +50,23 @@ class Plugin(PluginBase):
             
             report_query = Query(**report_payload["query"])
             report_query.limit = 0
-            redis_query_policies = await access_control.get_user_query_policies(
-                data.user_shortname, report_query.space_name, report_query.subpath
+            total, records = await operational_repo.query_handler(
+                report_query, data.user_shortname
             )
-            total, records = await serve_query(
-                report_query, data.user_shortname, redis_query_policies
+            report_query = Query(
+                type=QueryType.search,
+                space_name=data.space_name,
+                branch_name=data.branch_name or settings.default_branch,
+                subpath="/",
+                search=f"@schema_shortname:{'|'.join(report_payload['query']['filter_schema_names'])}",
+                filter_schema_names=["meta"],
+                sort_by="updated_at",
+                sort_type=SortType.descending,
+                limit=50,  # to be in safe side if the query filtered out some invalid entries
             )
-            report_last_updated_entry = await get_last_updated_entry(
-                data.space_name,
-                data.branch_name or settings.default_branch,
-                report_payload["query"]["filter_schema_names"],
-                False,
-                data.user_shortname,
-            )
+            _, records = await operational_repo.query_handler(report_query, data.user_shortname)
+
+            report_last_updated_entry = records[0] if records else None
 
             report_updates: dict = {
                 "number_of_records": total
@@ -78,12 +75,6 @@ class Plugin(PluginBase):
                 report_updates["last_updated"] = str(
                     report_last_updated_entry.attributes["updated_at"]
                 )
-
-            await internal_sys_update_model(
-                data.space_name,
-                "reports",
-                report_meta,
-                data.branch_name,
-                report_updates
-            )
+                
+            await operational_repo.internal_sys_update_model(report_entity, report_meta, report_updates)
 

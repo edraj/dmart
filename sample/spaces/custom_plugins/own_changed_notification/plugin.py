@@ -1,8 +1,8 @@
 import sys
-from models.core import Content, Payload, PluginBase, Event
+from models.core import Content, EntityDTO, Payload, PluginBase, Event
 from models.enums import ContentType, ResourceType
 from utils.helpers import camel_case
-from utils.db import load, save, save_payload_from_json
+from utils.db import load, save
 from uuid import uuid4
 from fastapi.logger import logger
 
@@ -19,15 +19,8 @@ class Plugin(PluginBase):
         class_type = getattr(
             sys.modules["models.core"], camel_case(ResourceType(data.resource_type))
         )
-
-        entry = await load(
-            space_name=data.space_name,
-            branch_name=data.branch_name,
-            subpath=data.subpath,
-            shortname=data.shortname,
-            class_type=class_type,
-            user_shortname=data.user_shortname
-        )
+        entity = EntityDTO.from_event_data(data)
+        entry = await load(entity)
 
         if not entry.owner_shortname or entry.owner_shortname == data.user_shortname:
             return
@@ -44,13 +37,6 @@ class Plugin(PluginBase):
                 body=f"{str(uuid)[:8]}.json"
             )
         )
-        await save(
-            "personal",
-            f"people/{entry.owner_shortname}/notifications",
-            meta_obj,
-            data.branch_name,
-        )
-
         notification_obj = {
             "entry_space": data.space_name,
             "entry_subpath": data.subpath,
@@ -59,10 +45,14 @@ class Plugin(PluginBase):
             "action_type": data.action_type,
             "is_read": "no"
         }
-        await save_payload_from_json(
-            "personal",
-            f"people/{entry.owner_shortname}/notifications",
+        await save(
+            EntityDTO(
+                space_name="personal",
+                subpath=f"people/{entry.owner_shortname}/notifications",
+                shortname=meta_obj.shortname,
+                resource_type=ResourceType.content,
+                schema_shortname="notification"
+            ),
             meta_obj,
-            notification_obj,  # type: ignore
-            data.branch_name,
+            notification_obj
         )

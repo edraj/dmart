@@ -1,15 +1,11 @@
-import json
-from sys import modules as sys_modules
-from models.enums import ContentType
-from models.core import ActionType, PluginBase, Event
-from utils.helpers import camel_case
+from models.api import Query
+from models.enums import ContentType, QueryType
+from models.core import ActionType, EntityDTO, PluginBase, Event
 from .notification import send_notification
-from utils.redis_services import RedisServices
-from utils.repository import get_group_users
 from utils.settings import settings
 from fastapi.logger import logger
 from utils.db import load, load_resource_payload
-
+from utils.operational_repo import operational_repo
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
@@ -29,29 +25,15 @@ class Plugin(PluginBase):
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"].dict()
         else:
+            entity = EntityDTO.from_event_data(data)
             entry = (
-                await load(
-                    data.space_name,
-                    data.subpath,
-                    data.shortname,
-                    getattr(sys_modules["models.core"], camel_case(data.resource_type)),
-                    data.user_shortname,
-                    data.branch_name,
-                )
+                await load(entity)
             ).dict()
             if (
                 entry["payload"]
                 and entry["payload"]["content_type"] == ContentType.json
             ):
-                entry["payload"]["body"] = load_resource_payload(
-                    space_name=data.space_name,
-                    subpath=data.subpath,
-                    filename=entry["payload"]["body"],
-                    class_type=getattr(
-                        sys_modules["models.core"], camel_case(data.resource_type)
-                    ),
-                    branch_name=data.branch_name,
-                )
+                entry["payload"]["body"] = load_resource_payload(entity)
         entry["space_name"] = data.space_name
         entry["resource_type"] = str(data.resource_type)
         entry["subpath"] = data.subpath
@@ -59,27 +41,40 @@ class Plugin(PluginBase):
 
         # 1- get the matching SystemNotificationRequests
         search_subpaths = list(filter(None, data.subpath.split("/")))
-        async with RedisServices() as redis:
-            matching_notification_requests = await redis.search(
+        total, matching_notification_requests = await operational_repo.search(
+            query=Query(
+                type=QueryType.search,
                 space_name=settings.management_space,
+                subpath="notifications/system",
                 branch_name=data.branch_name,
-                schema_name="system_notification_request",
-                filters={"subpath": ["notifications/system"]},
+                filter_schema_names=["system_notification_request"],
                 limit=30,
                 offset=0,
                 search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
             )
-        if not matching_notification_requests.get("data", {}):
-            return True
+        )
+        if total <= 0:
+            return
 
         # 2- get list of subscribed users
         notification_subscribers = [entry["owner_shortname"]]
         # if entry.get("collaborators", None):
         #     notification_subscribers.extend(entry["collaborators"].values())  # type: ignore
         if entry.get("owner_group_shortname", None):
-            group_users = await get_group_users(entry["owner_group_shortname"])
+            _, group_users = await operational_repo.search(
+                Query(
+                    type=QueryType.search,
+                    space_name=settings.management_space,
+                    branch_name=settings.management_space_branch,
+                    subpath="users",
+                    filter_schema_names=["meta"],
+                    search=f"@groups:{{{entry['owner_group_shortname']}}}",
+                    limit=10000,
+                    offset=0,
+                )
+            )
             group_members = [
-                json.loads(user_doc.json)["shortname"] for user_doc in group_users
+                user_doc["shortname"] for user_doc in group_users
             ]
             notification_subscribers.extend(group_members)
 
@@ -87,8 +82,7 @@ class Plugin(PluginBase):
             notification_subscribers.remove(data.user_shortname)
 
         # 3- send the notification
-        for redis_document in matching_notification_requests["data"]:
-            matching_notification_request = json.loads(redis_document.json)
+        for matching_notification_request in matching_notification_requests:
             if (
                 "state" in entry
                 and "on_state" in matching_notification_request

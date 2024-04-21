@@ -1,15 +1,13 @@
 import json
-import sys
 import aiofiles
-from models.core import ActionType, PluginBase, Event, Space
-from utils.helpers import branch_path, camel_case
-from utils.redis_services import RedisServices
-from utils.spaces import get_spaces
+from models.core import ActionType, EntityDTO, PluginBase, Event, Space
+from utils.helpers import branch_path
 import utils.db as db
 from models import core
 from models.enums import ContentType, ResourceType
 from utils.settings import settings
 from fastapi.logger import logger
+from utils.operational_repo import operational_repo
 
 class Plugin(PluginBase):
 
@@ -24,8 +22,8 @@ class Plugin(PluginBase):
             logger.error(f"invalid data at missed_entry")
             return
 
-        spaces = await get_spaces()
-        if not Space.parse_raw(spaces[data.space_name]).capture_misses:
+        spaces = await operational_repo.find_by_id("spaces")
+        if not Space.model_validate_json(spaces[data.space_name]).capture_misses:
             return
 
         if data.action_type == ActionType.query and "filter_shortnames" in data.attributes:
@@ -42,13 +40,11 @@ class Plugin(PluginBase):
     async def check_miss(self, data: Event):
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
-            logger.error(f"data.shortname is None and str is required at missed_entry")
+            logger.error("data.shortname is None and str is required at missed_entry")
             return
 
-        class_type = getattr(
-            sys.modules["models.core"], camel_case(core.ResourceType(data.resource_type))
-        )
-        path, filename = db.metapath(data.space_name, data.subpath, data.shortname, class_type, data.branch_name)
+        entity = EntityDTO.from_event_data(data)
+        path, filename = db.metapath(entity)
         if (path/filename).is_file():
             return
 
@@ -65,11 +61,21 @@ class Plugin(PluginBase):
             branch_path(data.branch_name) /
             f"misses/{miss_shortname}.json"
         )
-        miss_content = None
+        miss_content = {}
         if miss_file.is_file():
             async with aiofiles.open(miss_file, "r") as file:
                 miss_content = json.loads(await file.read())
-
+            
+        if miss_content and "num_of_requests" in miss_content:
+            miss_content["num_of_requests"] += 1
+        else:
+            miss_content = {
+                "requested_subpath": data.subpath,
+                "requested_shortname": data.shortname,
+                "num_of_requests": 1,
+                "actioned": "No",
+            }
+            
         missed_obj_meta = core.Content(
             shortname=miss_shortname,
             owner_shortname=data.user_shortname,
@@ -80,43 +86,6 @@ class Plugin(PluginBase):
                 body=miss_shortname + ".json",
             ),
         )
-        async with RedisServices() as redis_services:
-            meta_doc_id, meta_json = redis_services.prepate_meta_doc(
-                data.space_name, data.branch_name, "misses", missed_obj_meta
-            )
-            if not miss_content:
-                await db.save(data.space_name, "misses", missed_obj_meta, data.branch_name)
-                await redis_services.save_doc(meta_doc_id, meta_json)
-                num_of_requests = 1
-
-            else:
-                num_of_requests = miss_content["num_of_requests"] + 1
-
-            await db.save_payload_from_json(
-                data.space_name,
-                "misses",
-                missed_obj_meta,
-                {
-                    "requested_subpath": data.subpath,
-                    "requested_shortname": data.shortname,
-                    "num_of_requests": num_of_requests,
-                    "actioned": "No",
-                },
-                data.branch_name
-            )
-            payload_dict = {
-                **meta_json,
-                "requested_subpath": data.subpath,
-                "requested_shortname": data.shortname,
-                "num_of_requests": num_of_requests,
-                "actioned": "No"
-                
-            }
-            await redis_services.save_payload_doc(
-                space_name=data.space_name,
-                branch_name=data.branch_name,
-                subpath="misses",
-                meta=missed_obj_meta,
-                payload=payload_dict,
-                resource_type=ResourceType.content
-            )
+        
+        await db.save(entity, missed_obj_meta, miss_content)
+        await operational_repo.create(entity, missed_obj_meta, miss_content)
