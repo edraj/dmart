@@ -72,7 +72,7 @@ class BaseDB(ABC):
             raise api_exception(
                 status_code=status.HTTP_404_NOT_FOUND,
                 error=api_error(
-                    type="delete",
+                    type="find",
                     code=InternalErrorCode.OBJECT_NOT_FOUND,
                     message="Request object is not available",
                 ),

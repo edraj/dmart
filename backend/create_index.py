@@ -107,9 +107,11 @@ async def generate_redis_docs(locators: list) -> list:
                 subpath=one.subpath,
                 shortname=one.shortname,
                 user_shortname="anonymous",
-                
+                resource_type=one.type
             )
-            meta: core.Meta = await db.load(entity)
+            meta: core.Meta | None = await db.load_or_none(entity) #type: ignore
+            if not meta:
+                continue
             
             meta_doc_id, meta_data = redis_man.prepate_meta_doc(
                 one.space_name, one.branch_name, one.subpath, meta

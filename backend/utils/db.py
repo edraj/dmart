@@ -305,7 +305,11 @@ async def load_or_none(entity: core.EntityDTO) -> MetaChild | None:  # type: ign
     path /= filename
     async with aiofiles.open(path, "r") as file:
         content = await file.read()
-        return entity.class_type.model_validate_json(content) # type: ignore
+        try:
+            return entity.class_type.model_validate_json(content) # type: ignore
+        except Exception as e:
+            logger.error(f"Failed parsing an entry. {entity = }. Error: {e.args}")
+            return None
 
 
 async def load(entity: core.EntityDTO) -> MetaChild:  # type: ignore

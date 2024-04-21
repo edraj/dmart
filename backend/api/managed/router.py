@@ -1195,6 +1195,8 @@ async def create_or_update_resource_with_payload(
             ),
         )
     await payload_file.seek(0)
+    if entity.resource_type == ResourceType.ticket:
+        record.attributes["state"] = "TEMP"
     resource_obj: core.Meta = entity.class_type.from_record(
         record=record, owner_shortname=owner_shortname
     )
