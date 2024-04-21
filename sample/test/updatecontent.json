@@ -7,13 +7,18 @@
             "subpath": "myfolder",
             "shortname": "buyer_123",
             "attributes": {
-                "schema_shortname": "mytestsc",
                 "tags": [
                     "fun_UPDATED",
                     "personal_UPDATED"
                 ],
-                "name": "NEW_Eggs",
-                "price": 99934.99
+                "payload": {
+                    "content_type": "json",
+                    "schema_shortname": "test_schema",
+                    "body": {
+                        "name": "NEW_Eggs",
+                        "price": 99934.99
+                    }
+                }
             }
         }
     ]
