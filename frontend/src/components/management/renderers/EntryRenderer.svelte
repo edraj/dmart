@@ -1093,11 +1093,26 @@
       body.payload.content_type = "json";
       body.payload.schema_shortname = selectedSchema;
       jseModalContent = { text: JSON.stringify(body, null, 2) };
-    } else {
+    }
+    else if (new_resource_type===ResourceType.folder){
+        validatorModalContent = createAjvValidator({ schema: _schema });
+        const body: any = generateObjectFromSchema(structuredClone(_schema));
+        body.query.type = "search"
+        body.sort_type = "ascending"
+        body.index_attributes= [
+          {
+            "key": "shortname",
+            "name": "Shortname"
+          }
+        ];
+        jseModalContent = { text: JSON.stringify(body, null, 2) };
+    }
+    else {
       validatorModalContent = createAjvValidator({ schema: _schema });
       const body: any = generateObjectFromSchema(structuredClone(_schema));
       jseModalContent = { text: JSON.stringify(body, null, 2) };
     }
+
     oldSelectedSchema = selectedSchema;
   }
 
@@ -1561,16 +1576,16 @@
           {/if}
           {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some( (m) => `${space_name}/${subpath}`.endsWith(m) )}
             <Button
-                    outline
-                    color="success"
-                    size="sm"
-                    title={$_("create_folder")}
-                    class="justify-contnet-center text-center py-0 px-1"
-                    on:click={() => {
-                entryType = "folder";
-                new_resource_type = ResourceType.folder;
-                selectedSchema = "folder_rendering";
-                isModalOpen = true;
+                outline
+                color="success"
+                size="sm"
+                title={$_("create_folder")}
+                class="justify-contnet-center text-center py-0 px-1"
+                on:click={() => {
+                  entryType = "folder";
+                  new_resource_type = ResourceType.folder;
+                  selectedSchema = "folder_rendering";
+                  isModalOpen = true;
               }}
             >
               <Icon name="folder-plus" />
