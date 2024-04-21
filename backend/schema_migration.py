@@ -57,7 +57,6 @@ async def change_field_type(
         match = FILE_PATTERN.search(str(one))
         if not match or not one.is_file():
             continue
-        subpath = match.group(1)
         one_entity = EntityDTO(
             space_name=space,
             subpath=match.group(1),

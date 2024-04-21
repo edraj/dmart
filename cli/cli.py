@@ -543,7 +543,7 @@ def action(text: str):
             if len(args) == 3:
                 search = re.search(r"@\w+", args[2])
                 if not search:
-                    print(f"[red]Malformated Command")
+                    print("[red]Malformated Command")
                     return
                 space = search.group()
                 space = space.replace("@", "")
@@ -563,7 +563,7 @@ def action(text: str):
             if len(args) == 3:
                 search = re.search(r"@\w+", args[2])
                 if not search:
-                    print(f"[red]Malformated Command")
+                    print("[red]Malformated Command")
                     return
                 space = search.group()
                 space = space.replace("@", "")
@@ -616,7 +616,7 @@ def action(text: str):
             if (len(args) == 3 and is_content) or (len(args) == 2 and not is_content):
                 search = re.search(r"@\w+", args[1])
                 if not search:
-                    print(f"[red]Malformated Command")
+                    print("[red]Malformated Command")
                     return
                 space = search.group()
                 space = space.replace("@", "")
@@ -649,7 +649,7 @@ def action(text: str):
             if len(args) == 4:
                 search = re.search(r"@\w+", args[3])
                 if not search:
-                    print(f"[red]Malformated Command")
+                    print("[red]Malformated Command")
                     return
                 space = search.group()
                 space = space.replace("@", "")
@@ -688,7 +688,7 @@ def action(text: str):
                     path = content[1]
                     search = re.search(r"@\w+", content)
                     if not search:
-                        print(f"[red]Malformated Command")
+                        print("[red]Malformated Command")
                         return
                     space = search.group()
                     space = space.replace("@", "")
@@ -712,7 +712,7 @@ def action(text: str):
                         )
                     )
                 else:
-                    print(f"item not found")
+                    print("item not found")
                 check_update_space(old_space)
                 dmart.list("")
         case "pwd":
@@ -742,12 +742,12 @@ def action(text: str):
                     )
                 )
             else:
-                print(f"item not found")
+                print("item not found")
         case ["cd", directory]:
             if directory.startswith("@"):
                 search = re.search(r"@\w+", directory)
                 if not search:
-                    print(f"[red]Malformated Command")
+                    print("[red]Malformated Command")
                     return
                 space = search.group()
                 space = space.replace("@", "")
@@ -797,14 +797,14 @@ def action(text: str):
             if record is not None:
                 print(record)
             else:
-                print(f"[yellow]Item is not found[/]")
+                print("[yellow]Item is not found[/]")
         case ["ls", *_extra_subpath]:
             extra_subpath = ""
             if len(_extra_subpath) >= 1 and _extra_subpath[0].isnumeric() == False:
                 if _extra_subpath[0].startswith("@"):
                     search = re.search(r"@\w+", _extra_subpath[0])
                     if not search:
-                        print(f"[red]Malformated Command")
+                        print("[red]Malformated Command")
                         return
                     space = search.group()
                     space = space.replace("@", "")
@@ -1033,7 +1033,7 @@ if __name__ == "__main__":
             except KeyboardInterrupt as ex:
                 print(repr(ex))
                 continue
-            except EOFError as ex:
+            except EOFError:
                 print("[green]Exiting ...[/]")
                 break
         # else:

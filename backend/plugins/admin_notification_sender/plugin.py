@@ -1,7 +1,5 @@
-import json
-from sys import modules as sys_modules
 from models.api import Query
-from models.core import EntityDTO, Notification, NotificationData, PluginBase, Event, Translation
+from models.core import Content, EntityDTO, Notification, NotificationData, PluginBase, Event, Translation
 from models.enums import QueryType, ResourceType
 from utils.helpers import branch_path
 from utils.notification import NotificationManager
@@ -27,8 +25,8 @@ class Plugin(PluginBase):
             return
 
         notification_entity = EntityDTO.from_event_data(data)
-        notification_request_meta = await load(notification_entity)
-        notification_dict = notification_request_meta.dict()
+        notification_request_meta: Content = await load(notification_entity)
+        notification_dict = notification_request_meta.model_dump()
         notification_dict["subpath"] = data.subpath
         notification_dict["branch_name"] = data.branch_name
 

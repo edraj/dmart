@@ -1,7 +1,7 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 from datetime import datetime, timedelta
 from models.api import Query
-from models.core import EntityDTO, Notification, NotificationData, Translation
+from models.core import Content, EntityDTO, Notification, NotificationData, Translation
 from models.enums import QueryType, ResourceType
 from utils.db import load as load_meta, get_entry_attachments
 from utils.helpers import branch_path
@@ -86,7 +86,7 @@ async def trigger_admin_notifications() -> None:
                 resource_type=ResourceType.content,
                 user_shortname=notification_dict["owner_shortname"],
             )
-            notification_meta = await load_meta(entity)
+            notification_meta: Content = await load_meta(entity)
             await operational_repo.internal_sys_update_model(
                 entity=entity,
                 meta=notification_meta,

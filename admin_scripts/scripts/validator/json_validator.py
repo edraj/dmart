@@ -13,7 +13,7 @@ console = Console()
 
 
 def exit_with_error(msg: str):
-    console.print(f"ERROR!!", style="#FF0B0B")
+    console.print("ERROR!!", style="#FF0B0B")
     console.print(msg, style="#FF4040")
     sys.exit(1)
 

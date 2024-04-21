@@ -10,9 +10,8 @@ import models.api as api
 from utils.bootstrap import bootstrap_all
 import utils.db as db
 import models.core as core
-import sys
 from models.enums import ContentType, ResourceType
-from utils.helpers import branch_path, camel_case, divide_chunks
+from utils.helpers import branch_path, divide_chunks
 from utils.custom_validations import validate_payload_with_schema
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from utils.redis_services import RedisServices
@@ -100,7 +99,6 @@ async def generate_redis_docs(locators: list) -> list:
     redis_man : RedisServices = await RedisServices()
     for one in locators:
         try:
-            myclass = getattr(sys.modules["models.core"], camel_case(one.type))
             # print(f"{one=}")
 
             entity = core.EntityDTO(
@@ -111,7 +109,7 @@ async def generate_redis_docs(locators: list) -> list:
                 user_shortname="anonymous",
                 
             )
-            meta = await db.load(entity)
+            meta: core.Meta = await db.load(entity)
             
             meta_doc_id, meta_data = redis_man.prepate_meta_doc(
                 one.space_name, one.branch_name, one.subpath, meta

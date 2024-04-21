@@ -373,19 +373,18 @@ class AccessControl:
             offset=0,
         )
 
-        user_roles_from_groups = await self.get_user_roles_from_groups(user_meta)
+        user_roles_from_groups: list[core.Role] = await self.get_user_roles_from_groups(user_meta)
         if not roles_search and not user_roles_from_groups:
             return {}
 
         user_roles: dict[str, core.Role] = {}
 
-        all_user_roles_from_redis = []
+        all_user_roles_from_redis: list[core.Role] = []
         for redis_document in roles_search[1]:
-            all_user_roles_from_redis.append(redis_document)
+            all_user_roles_from_redis.append(core.Role.model_validate(redis_document))
 
         all_user_roles_from_redis.extend(user_roles_from_groups)
-        for role_json in all_user_roles_from_redis:
-            role = core.Role.model_validate(role_json)
+        for role in all_user_roles_from_redis:
             user_roles[role.shortname] = role
 
         return user_roles

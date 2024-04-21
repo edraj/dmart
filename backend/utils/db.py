@@ -305,11 +305,11 @@ async def load_or_none(entity: core.EntityDTO) -> MetaChild | None:  # type: ign
     path /= filename
     async with aiofiles.open(path, "r") as file:
         content = await file.read()
-        return entity.class_type.model_validate_json(content)
+        return entity.class_type.model_validate_json(content) # type: ignore
 
 
 async def load(entity: core.EntityDTO) -> MetaChild:  # type: ignore
-    meta = await load_or_none(entity)
+    meta: core.Meta | None = await load_or_none(entity)  # type: ignore
     if not meta:
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -320,7 +320,7 @@ async def load(entity: core.EntityDTO) -> MetaChild:  # type: ignore
             ),
         )
 
-    return meta
+    return meta #type: ignore
 
 
 async def load_resource_payload(entity: core.EntityDTO) -> dict[str, Any]:
@@ -328,7 +328,7 @@ async def load_resource_payload(entity: core.EntityDTO) -> dict[str, Any]:
 
     path = payload_path(entity)
 
-    meta = await load(entity)
+    meta: core.Meta = await load(entity)
 
     if not meta:
         return {}
@@ -342,7 +342,7 @@ async def load_resource_payload(entity: core.EntityDTO) -> dict[str, Any]:
 
     async with aiofiles.open(path, "r") as file:
         content = await file.read()
-        return json.loads(content)
+        return json.loads(content) #type: ignore
 
 
 async def save(
@@ -434,7 +434,7 @@ async def update(
     3. store meta at the file location
     4. store the diff between old and new file
     """
-    old_meta = await load(entity)
+    old_meta: core.Meta = await load(entity)
     old_payload = await load_resource_payload(entity)
 
     meta.updated_at = datetime.now()
@@ -617,7 +617,7 @@ async def clone(
     dest_entity: core.EntityDTO,
 ):
 
-    meta_obj = await load(src_entity)
+    meta_obj: core.Meta = await load(src_entity)
 
     src_path, src_filename = metapath(src_entity)
     dest_path, dest_filename = metapath(dest_entity)
@@ -653,7 +653,7 @@ async def delete(entity: core.EntityDTO):
             ),
         )
 
-    meta = await load(entity)
+    meta: core.Meta = await load(entity)
 
     pathname = path / filename
     if pathname.is_file():

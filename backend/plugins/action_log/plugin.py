@@ -1,4 +1,3 @@
-import sys
 import aiofiles
 from utils.middleware import get_request_data
 from models.core import ActionType, EntityDTO, PluginBase, Event

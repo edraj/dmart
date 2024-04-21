@@ -2,7 +2,6 @@
 
 import json
 import re
-from pathlib import Path
 from uuid import uuid4
 import aiofiles
 from utils.async_request import AsyncRequest
@@ -14,10 +13,9 @@ import models.core as core
 from models.enums import ActionType, QueryType, RequestType, ResourceType, ContentType
 import utils.db as db
 from utils.access_control import access_control
-from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import JWTBearer, remove_redis_active_session, sign_jwt, decode_jwt
+from utils.jwt import JWTBearer, remove_redis_active_session, sign_jwt
 from typing import Any
 from utils.operational_repo import operational_repo
 from utils.settings import settings
@@ -263,7 +261,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             else:
                 key, value = list(identifier.items())[0]
                 if isinstance(value, str) and isinstance(key, str):
-                    user: core.User | None = await access_control.get_user_by_criteria(
+                    user = await access_control.get_user_by_criteria(
                         key, value
                     )
                     if not user:
@@ -355,7 +353,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
 
     await plugin_manager.before_action(entity.to_event_data(core.ActionType.view))
 
-    user = await db.load(entity)
+    user: core.User = await db.load(entity)
 
     attributes: dict[str, Any] = {}
     if user.email:
@@ -440,7 +438,7 @@ async def update_profile(
 
     await plugin_manager.before_action(entity.to_event_data(core.ActionType.update))
 
-    user = await db.load(entity)
+    user: core.User = await db.load(entity)
 
     # old_version_flattend = flatten_dict(user.model_dump())
 
@@ -572,7 +570,7 @@ async def logout(
         
     )
 
-    user = await db.load(entity)
+    user: core.User = await db.load(entity)
     
     if user.firebase_token:
         await operational_repo.internal_sys_update_model(entity, user, {"firebase_token": None})
@@ -622,7 +620,7 @@ async def otp_request(
         resource_type=ResourceType.user,
         user_shortname=shortname,
     )
-    user = await db.load(entity)
+    user: core.User = await db.load(entity)
     
     exception = api.Exception(
         status.HTTP_401_UNAUTHORIZED,
@@ -809,7 +807,7 @@ async def user_reset(
         user_shortname=logged_user,
     )
 
-    user = await db.load(entity)
+    user: core.User = await db.load(entity)
     
     if not await access_control.check_access(
         entity=entity,
@@ -883,7 +881,7 @@ async def validate_password(
         user_shortname=shortname,
     )
     
-    user = await db.load(entity)
+    user: core.User = await db.load(entity)
     
     if password_hashing.verify_password(password, user.password or ""):
         return api.Response(status=api.Status.success)

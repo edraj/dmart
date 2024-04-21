@@ -50,7 +50,7 @@ class Plugin(PluginBase):
             return
 
         entity = EntityDTO.from_event_data(data)
-        meta = await db.load_or_none(entity)
+        meta = await db.load_or_none(entity) # type: ignore
         if not meta:
             return
 

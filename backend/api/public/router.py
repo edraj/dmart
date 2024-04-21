@@ -4,14 +4,13 @@ from fastapi import APIRouter, Body, Query, Path, status, Depends
 from models.enums import AttachmentType, ContentType, ResourceType, TaskType
 import utils.db as db
 import models.api as api
-from utils.helpers import branch_path, camel_case
+from utils.helpers import branch_path
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
 import utils.regex as regex
 import models.core as core
 from fastapi.responses import FileResponse
 from typing import Any
-import sys
 from utils.access_control import access_control
 from utils.plugin_manager import plugin_manager
 from utils.settings import settings
@@ -84,7 +83,7 @@ async def retrieve_entry_meta(
         resource_type=resource_type,
         user_shortname="anonymous",
     )
-    meta = await db.load(entity)
+    meta: core.Meta = await db.load(entity)
 
     if not await access_control.check_access(
         entity=entity,
@@ -165,7 +164,7 @@ async def retrieve_entry_or_attachment_payload(
         resource_type=resource_type,
         user_shortname="anonymous",
     )
-    meta = await db.load(entity)
+    meta: core.Meta = await db.load(entity)
 
     if (
         meta.payload is None
@@ -380,7 +379,7 @@ async def create_attachment(
 async def excute(space_name: str, task_type: TaskType, record: core.Record):
     
     entity = core.EntityDTO.from_record(record, space_name, "anonymous")
-    meta = await db.load(entity)
+    meta: core.Meta = await db.load(entity)
 
     if (
         meta.payload is None

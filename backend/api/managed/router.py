@@ -140,7 +140,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     subpath = "/"
     shortname = query.subpath
     if len(subpath_parts) > 1:
-        subpath = subpath_parts[:-1]
+        subpath = "/".join(subpath_parts[:-1])
         shortname = subpath_parts[-1]
     folder_entity = core.EntityDTO(
         space_name=query.space_name,
@@ -282,7 +282,7 @@ async def serve_space(
 ) -> api.Response:
     spaces = await operational_repo.find_by_id("spaces")
     record = request.records[0]
-    history_diff = {}
+    history_diff: dict[str, Any] = {}
     match request.request_type:
         case api.RequestType.create:
             if request.space_name in spaces:
@@ -511,7 +511,7 @@ async def serve_request(
         )
 
         if request.request_type != RequestType.create:
-            meta = await db.load_or_none(entity)
+            meta = await db.load_or_none(entity) # type: ignore
 
         if not await access_control.check_access(
             entity=entity,
@@ -714,7 +714,7 @@ async def serve_request(
                                 message="The owner_shortname is required",
                             ),
                         )
-                    _target_user = await db.load(
+                    _target_user: core.User = await db.load(
                         core.EntityDTO(
                             space_name=settings.management_space,
                             subpath=settings.users_subpath,
@@ -937,7 +937,7 @@ async def update_state(
             resource_type=ResourceType.content,
             user_shortname=logged_in_user,
         )
-        workflows_data = await db.load(workflow_entity)
+        workflows_data: core.Content = await db.load(workflow_entity)
 
         if (
             workflows_data.payload is not None
@@ -1066,7 +1066,7 @@ async def retrieve_entry_or_attachment_payload(
         user_shortname=logged_in_user,
     )
 
-    meta = await db.load(entity)
+    meta: core.Meta = await db.load(entity)
 
     await plugin_manager.before_action(entity.to_event_data(core.ActionType.view))
 
@@ -1756,7 +1756,7 @@ async def execute(
 ):
 
     entity = core.EntityDTO.from_record(record, space_name, logged_in_user)
-    meta = await db.load(entity)
+    meta: core.Meta = await db.load(entity)
 
     if (
         meta.payload is None
@@ -1834,7 +1834,7 @@ async def apply_alteration(
         user_shortname=logged_in_user,
         branch_name=on_entry.branch_name,
     )
-    alteration_meta = await db.load(alteration_entity)
+    alteration_meta: core.Alteration = await db.load(alteration_entity)
 
     parent_entity = core.EntityDTO(
         space_name=space_name,
@@ -1844,7 +1844,7 @@ async def apply_alteration(
         user_shortname=logged_in_user,
         branch_name=on_entry.branch_name,
     )
-    entry_meta = await db.load(parent_entity)
+    entry_meta: core.Meta = await db.load(parent_entity)
 
     record: core.Record = entry_meta.to_record(
         on_entry.subpath, on_entry.shortname, [], on_entry.branch_name

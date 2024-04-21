@@ -106,7 +106,7 @@ class Record(BaseModel):
         BaseModel.__init__(self, **data)
         if self.subpath != "/":
             self.subpath = self.subpath.strip("/")
-        
+
         if self.subpath[0] != "/":
             self.subpath = f"/{self.subpath}"
 
@@ -310,7 +310,9 @@ class Meta(Resource):
 
         return Record(**record_fields)
 
+
 MetaChild = TypeVar("MetaChild", bound=Meta)
+
 
 class Space(Meta):
     root_registration_signature: str = ""
@@ -591,8 +593,6 @@ class Notification(Meta):
         )
 
 
-
-
 class EntityDTO(BaseModel):
     space_name: str
     subpath: str
@@ -609,16 +609,16 @@ class EntityDTO(BaseModel):
             del data["resource_type"]
         if "schema_shortname" in data and data["schema_shortname"] is None:
             del data["schema_shortname"]
-            
+
         data["subpath"] = data["subpath"].strip("/")
         if data["subpath"] == "":
             data["subpath"] = "/"
-            
+
         BaseModel.__init__(self, **data)
 
     @property
-    def class_type(self) -> Type[MetaChild]: 
-        return getattr(sys.modules["models.core"], camel_case(self.resource_type))
+    def class_type(self) -> Type[MetaChild]:  # type: ignore
+        return getattr(sys.modules["models.core"], camel_case(self.resource_type))  # type: ignore
 
     @staticmethod
     def from_event_data(data: Event) -> "EntityDTO":
@@ -652,7 +652,9 @@ class EntityDTO(BaseModel):
     ) -> Self:
         return cls(
             space_name=space_name,
-            schema_shortname=record.attributes.get("payload", {}).get("schema_shortname", None),
+            schema_shortname=record.attributes.get("payload", {}).get(
+                "schema_shortname", None
+            ),
             user_shortname=user_shortname,
             **record.model_dump(
                 include={"branch_name", "subpath", "shortname", "resource_type"}

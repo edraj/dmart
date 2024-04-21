@@ -8,7 +8,7 @@ from models.api import RedisReducer, SortType
 import models.core as core
 from models.enums import ActionType, RedisReducerName, ResourceType, LockAction
 from redis.commands.json.path import Path
-from redis.commands.search.field import TextField, NumericField, TagField, Field
+from redis.commands.search.field import TextField, NumericField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from datetime import datetime
 
@@ -251,7 +251,7 @@ class RedisServices(Redis):
     async def create_index_direct(
         self,
         name: str,
-        fields: tuple[Field],
+        fields: tuple,
         definition: IndexDefinition
     ):
         await self.ft(name).create_index(
@@ -558,7 +558,7 @@ class RedisServices(Redis):
         schema_shortname: str,
         shortname: str,
         subpath: str,
-    ):
+    ) -> str:
         # if subpath[0] == "/":
         #     subpath = subpath[1:]
         # if subpath[-1] == "/":
@@ -853,12 +853,12 @@ class RedisServices(Redis):
             pipe.json().set(document["doc_id"], path, document["payload"])
         return await pipe.execute()
 
-    async def get_count(self, space_name: str, branch_name: str, schema_shortname: str):
+    async def get_count(self, space_name: str, branch_name: str, schema_shortname: str) -> int:
         ft_index = self.ft(f"{space_name}:{branch_name}:{schema_shortname}")
 
         try:
             info = await ft_index.info()
-            return info["num_docs"]
+            return int(info["num_docs"])
         except Exception as e:
             logger.error(f"Error at redis_services.get_count: {e}")
             return 0
@@ -1050,7 +1050,7 @@ class RedisServices(Redis):
                 if isinstance(value, dict):
                     return value
                 if isinstance(value, str):
-                    return json.loads(value)
+                    return json.loads(value) # type: ignore
                 else:
                    raise Exception(f"Not json dict at id: {doc_id}. data: {value=}")
             else:
@@ -1176,6 +1176,6 @@ class RedisServices(Redis):
     async def list_indices(self) -> set[str]:
         x = self.ft().execute_command("FT._LIST")
         if x and isinstance(x, Awaitable):
-            return await x
+            return await x # type: ignore
         
         return set()

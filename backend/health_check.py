@@ -15,7 +15,7 @@ from typing import Any
 from jsonschema.validators import Draft7Validator
 
 from api.managed.router import serve_request
-from models.core import EntityDTO, Folder
+from models.core import EntityDTO, Folder, Meta
 from utils import db
 from utils.custom_validations import get_schema_path, validate_payload_with_schema
 from utils.helpers import camel_case, branch_path
@@ -479,8 +479,6 @@ async def validate_subpath_data(
             )
             continue
 
-        folder_meta_content = None
-        folder_meta_payload = None
         try:
             folder_entity = EntityDTO(
                 space_name=space_name,
@@ -490,16 +488,11 @@ async def validate_subpath_data(
                 user_shortname=user_shortname,
                 branch_name=branch_name,
             )
-            folder_meta_content = await db.load(folder_entity)
+            folder_meta_content: Meta = await db.load(folder_entity)
             if (
                 folder_meta_content.payload
                 and folder_meta_content.payload.content_type == ContentType.json
             ):
-                payload_path = "/"
-                subpath_parts = subpath.split("/")
-                if len(subpath_parts) > (len(spaces_path_parts) + 2):
-                    payload_path = "/".join(
-                        subpath_parts[folder_name_index:-1])
                 folder_meta_payload = await db.load_resource_payload(folder_entity)
                 if folder_meta_content.payload.schema_shortname:
                     await validate_payload_with_schema(

@@ -18,7 +18,7 @@ class Notifier(ABC):
 
     async def _load_user(self, shortname: str) -> User:
         if not hasattr(self, "user"):
-            self.user = await load(EntityDTO(
+            self.user: User = await load(EntityDTO(
                 space_name=settings.management_space,
                 subpath=settings.users_subpath,
                 shortname=shortname,

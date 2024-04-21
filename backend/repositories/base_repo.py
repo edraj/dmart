@@ -395,7 +395,7 @@ class BaseRepo(ABC):
         if not query_method:
             return 0, []
 
-        return await query_method(query, user_shortname)
+        return await query_method(query, user_shortname) #type: ignore
 
     async def spaces_query(
         self, query: Query, user_shortname: str | None = None

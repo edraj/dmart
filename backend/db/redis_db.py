@@ -1,5 +1,4 @@
 import json
-from re import A
 from typing import Any
 
 from fastapi.logger import logger
@@ -396,7 +395,7 @@ class RedisDB(BaseDB):
                 )
                 if lock_payload:
                     if entity.user_shortname:
-                        return lock_payload["owner_shortname"] != entity.user_shortname
+                        return bool(lock_payload["owner_shortname"] != entity.user_shortname)
                     else:
                         return True
                 return False
@@ -408,7 +407,7 @@ class RedisDB(BaseDB):
     async def delete_lock_doc(self, entity: EntityDTO) -> None:
         try:
             async with RedisServices() as redis:
-                return await redis.delete_lock_doc(
+                await redis.delete_lock_doc(
                     space_name=entity.space_name,
                     branch_name=entity.branch_name,
                     subpath=entity.subpath,

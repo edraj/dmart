@@ -1,15 +1,13 @@
 from datetime import datetime
-import json
 import sys
 
-from fastapi.encoders import jsonable_encoder
 from db.redis_db import RedisDB
 from repositories.base_repo import BaseRepo
 from typing import Any
 from models.api import Query, RedisAggregate, RedisReducer
-from models.core import EntityDTO, Meta, Permission, Record, Role, Space, User
-from models.enums import ConditionType, ContentType, QueryType, ResourceType, SortType
-from utils.helpers import alter_dict_keys, branch_path, camel_case, flatten_all, trans_magic_words
+from models.core import EntityDTO, Meta, Record
+from models.enums import ContentType, QueryType, ResourceType, SortType
+from utils.helpers import branch_path, camel_case, flatten_all
 from utils.settings import settings
 from utils import db as main_db
 from utils.access_control import access_control
@@ -161,10 +159,7 @@ class RedisRepo(BaseRepo):
             return None
 
         try:
-            resource_cls = getattr(
-                sys.modules["models.core"], camel_case(entity.resource_type)
-            )
-            return resource_cls(**user_document)
+            return entity.class_type.model_validate(user_document) #type: ignore
         except Exception as _:
             return None
 
