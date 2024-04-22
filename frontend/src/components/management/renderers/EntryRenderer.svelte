@@ -87,6 +87,7 @@
   import {gfmHeadingId} from "marked-gfm-heading-id";
   import {user} from "@/stores/user";
   import ACLForm from "@/components/management/renderers/Forms/ACLForm.svelte";
+  import MarkdownRenderer from "@/components/management/renderers/MarkdownRenderer.svelte";
 
 
   marked.use(mangle());
@@ -1667,8 +1668,8 @@
     </div>
     <div class="tab-pane" class:active={tab_option === "source"}>
       <div
-        class="px-1 pb-1 h-100"
-        style="text-align: left; direction: ltr; overflow: hidden auto;"
+        class="px-1 pb-1"
+        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
       >
         <pre>
         {JSON.stringify(entry, undefined, 1)}
@@ -1677,8 +1678,8 @@
     </div>
     <div class="tab-pane" class:active={tab_option === "view"}>
       <div
-        class="px-1 pb-1 h-100"
-        style="text-align: left; direction: ltr; overflow: hidden auto;"
+        class="px-1 pb-1"
+        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
       >
         <TabContent>
           {#if isContentPreviewable}
@@ -1688,7 +1689,7 @@
               {:else if entry.payload.content_type === ContentType.text}
                 <textarea value={entry.payload.body.toString()} disabled />
               {:else if entry.payload.content_type === ContentType.markdown}
-                {@html marked(entry.payload.body.toString())}
+                <MarkdownRenderer doc={entry.payload.body.toString()}/>
               {:else if entry.payload.content_type === ContentType.json}
                 <Prism code={entry.payload.body} />
               {/if}
@@ -1705,8 +1706,8 @@
     </div>
     <div class="tab-pane" class:active={tab_option === "edit_meta"}>
       <div
-        class="px-1 pb-1 h-100"
-        style="text-align: left; direction: ltr; overflow: hidden auto;"
+        class="px-1 pb-1"
+        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
       >
         {#if resource_type === ResourceType.ticket}
           <TicketEntryRenderer {space_name} {subpath} bind:entry />
@@ -1734,7 +1735,7 @@
     {#if entry.payload}
       <div class="tab-pane" class:active={tab_option === "edit_content"}>
         <div
-          class="px-1 pb-1 h-100"
+          class="px-1 pb-1"
           style="text-align: left; direction: ltr; overflow: hidden auto;"
         >
           {#if entry.payload.content_type === "image"}
@@ -1781,6 +1782,9 @@
             </object>
           {/if}
           {#if entry.payload.content_type === "json" && typeof jseContent === "object" && jseContent !== null}
+            <div class="d-flex justify-content-end my-1">
+              <Button on:click={handleSave}>Save</Button>
+            </div>
             <JSONEditor
               bind:this={jseContentRef}
               bind:content={jseContent}
@@ -1806,9 +1810,6 @@
       </div>
       {#if schema && jseContent?.json}
         <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
-          <div class="d-flex justify-content-end my-1">
-            <Button on:click={handleSave}>Save</Button>
-          </div>
           {#if resource_type === ResourceType.schema}
             <SchemaEditor bind:content={jseContent} />
           {:else if resource_type === ResourceType.content && schema_name === "configuration"}
@@ -1837,10 +1838,10 @@
           style="text-align: left; direction: ltr; overflow: hidden auto;"
         >
           <div class="preview">
-              <PlantUML
-                shortname={entry.shortname}
-                properties={entry.payload.body.properties}
-              />
+            <PlantUML
+              shortname={entry.shortname}
+              properties={entry.payload.body.properties}
+            />
           </div>
         </div>
       </div>
@@ -1904,10 +1905,5 @@
 <style>
   span {
     color: dimgrey;
-  }
-  :global(.X) {
-    transform: translate(-50%, -15%) !important;
-    left: 50%;
-    max-width: 90%;
   }
 </style>
