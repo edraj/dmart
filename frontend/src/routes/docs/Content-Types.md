@@ -1,21 +1,22 @@
-# Content Types
-In Dmart, a “Content Type” defines the structure and format of data stored within a an entry.
+**Content Types**
 
-## Supported Types
-- **text**
-- **markdown**
-- **html**
-- **json**
-- **image**
-- **python**
-- **pdf**
-- **audio**
-- **video**
-- **csv**
-- **parquet**
-- **jsonl**
-- **duckdb**
-- **sqlite**
+Content Types within Dmart dictate the structure and format of data stored within an entry.
 
-## How to set the content type in the request body
-under `record.attributes.payload.content_type` 
+Supported Content Types include:
+
+- Text
+- Markdown
+- HTML
+- JSON
+- Image
+- Python
+- PDF
+- Audio
+- Video
+- CSV
+- Parquet
+- JSONL
+- DuckDB
+- SQLite
+
+To set the content type in the request body, navigate to `record.attributes.payload.content_type`.
