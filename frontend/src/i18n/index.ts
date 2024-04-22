@@ -16,8 +16,9 @@ function switchLocale(_locale: string) {
   if (!(_locale in website.languages)) {
     _locale = website.default_language;
   }
-  if (typeof localStorage !== 'undefined')
+  if (typeof localStorage !== 'undefined') {
     localStorage.setItem("preferred_locale", JSON.stringify(_locale));
+  }
   locale.set(_locale);
 }
 

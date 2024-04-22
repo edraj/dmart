@@ -1,9 +1,10 @@
-<script>
-    import {Card, CardHeader, CardFooter, TabContent, TabPane, NavItem, NavLink, Nav} from "sveltestrap";
+<script lang="ts">
+  import {Card, CardHeader, CardFooter, TabContent, TabPane} from "sveltestrap";
   import { createEventDispatcher } from "svelte";
   import { marked } from "marked";
   import { mangle } from "marked-mangle";
   import { gfmHeadingId } from "marked-gfm-heading-id";
+    import Icon from "@/components/Icon.svelte";
 
   const dispatch = createEventDispatcher();
   marked.use(mangle());
@@ -12,6 +13,7 @@
   }));
 
   export let content = "";
+  export let handleSave = () => {};
 
   if (typeof(content) !== "string"){
       content = "";
@@ -44,13 +46,14 @@
 
   }
 
-  function handleFormatting(format, isWrap = true, isPerLine = false){
+  function handleFormatting(format: any, isWrap = true, isPerLine = false){
     if (isWrap && start === 0 && end === 0) {
       return
     }
     if (isWrap) {
         textarea.value = textarea.value.substring(0, start) + format + textarea.value.substring(start, end) + format + textarea.value.substring(end);
-    } else {
+    }
+    else {
         start = textarea.selectionStart;
         end = textarea.selectionEnd;
         if (isPerLine){
@@ -69,7 +72,8 @@
             }
 
             textarea.value = lines.join('\n');
-        } else {
+        }
+        else {
             let lineStart = textarea.value.lastIndexOf('\n', start - 1) + 1;
             let lineEnd = textarea.value.indexOf('\n', end);
             if (lineEnd === -1) {
@@ -97,7 +101,7 @@
           on:keydown={handleKeyDown}
           bind:this={textarea}
           on:select={handleSelect}
-          rows="10"
+          rows="22"
           maxlength="4096"
           class="h-100 w-100 m-0 font-monospace form-control form-control-sm"
           bind:value={content}
@@ -119,6 +123,9 @@
         <TabPane onClick={()=>handleFormatting("#", false)}><p class="text-dark p-0 m-0" slot="tab">H1</p></TabPane>
         <TabPane onClick={()=>handleFormatting("##", false)}><p class="text-dark p-0 m-0" slot="tab">H2</p></TabPane>
         <TabPane onClick={()=>handleFormatting("###", false)}><p class="text-dark p-0 m-0" slot="tab">H3</p></TabPane>
+        <TabPane onClick={handleSave}>
+          <Icon class="text-success p-0 m-0" name="save" slot="tab"/>
+        </TabPane>
       </div>
     </TabContent>
   <CardFooter></CardFooter>
