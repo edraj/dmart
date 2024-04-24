@@ -954,7 +954,7 @@ async def update_state(
                     ),
                 )
             response = transite(
-                workflows_payload["states"], ticket_obj.state, action, user_roles
+                workflows_payload["states"], action, user_roles, ticket_obj.state
             )
 
             if not response["status"]:
@@ -1200,6 +1200,9 @@ async def create_or_update_resource_with_payload(
     resource_obj: core.Meta = entity.class_type.from_record(
         record=record, owner_shortname=owner_shortname
     )
+    
+    if record.shortname != settings.auto_uuid_rule:
+        entity.shortname = resource_obj.shortname
 
     if isinstance(resource_obj, core.Ticket):
         resource_obj = await set_ticket_init_state(entity, resource_obj)

@@ -42,7 +42,7 @@
     "redis_db_update",
     "reports_stats",
     "realtime_updates_notifier",
-    "user_folders_creation"
+    "resource_folders_creation"
   ],
   "branches": [],
   "ordinal": 1

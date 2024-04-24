@@ -101,7 +101,13 @@ async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket) -> 
 #     )
 
 
-def transite(states, current_state: str, action: str, user_roles):
+def transite(states, action: str, user_roles, current_state: str | None = None):
+    if not current_state:
+        return {
+            "status": False,
+            "message": f"You can't progress from {current_state} using {action}",
+        }
+        
     for state in states:
         if state["state"] == current_state:
             for next_state in state["next"]:

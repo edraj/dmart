@@ -282,9 +282,10 @@ def payload_path(entity: core.EntityDTO) -> Path:
         subpath = f".{subpath}"
     if issubclass(entity.class_type, core.Attachment):
         [parent_subpath, parent_name] = subpath.rsplit("/", 1)
-        schema_shortname = (
-            "." + entity.schema_shortname if entity.schema_shortname != "meta" else ""
-        )
+        # schema_shortname = (
+        #     "." + entity.schema_shortname if entity.schema_shortname != "meta" else ""
+        # )
+        schema_shortname = ""
         attachment_folder = f"{parent_name}/attachments{schema_shortname}.{entity.class_type.__name__.lower()}"
         path = path / parent_subpath / ".dm" / attachment_folder
     else:
