@@ -227,9 +227,9 @@ class RedisServices(Redis):
     ]
     redis_indices: dict[str, dict[str, Search]] = {}
     is_pytest = False
-    
+
     def __new__(cls):
-        if not hasattr(cls, 'instance'):
+        if not hasattr(cls, "instance"):
             cls.instance = super(RedisServices, cls).__new__(cls)
         return cls.instance
 
@@ -249,16 +249,10 @@ class RedisServices(Redis):
             super().__init__(connection_pool=self.POOL, decode_responses=True)
 
     async def create_index_direct(
-        self,
-        name: str,
-        fields: tuple,
-        definition: IndexDefinition
+        self, name: str, fields: tuple, definition: IndexDefinition
     ):
-        await self.ft(name).create_index(
-            fields=fields,
-            definition=definition
-        )
-        
+        await self.ft(name).create_index(fields=fields, definition=definition)
+
     async def create_index(
         self,
         space_branch_name: str,
@@ -651,17 +645,19 @@ class RedisServices(Redis):
         meta_json["payload_doc_id"] = payload_doc_id
 
         return meta_doc_id, meta_json
-    
+
     def generate_view_acl(self, acl: list[dict[str, Any]] | None) -> list[str] | None:
         if not acl:
             return None
-        
+
         view_acl: list[str] = []
-        
+
         for access in acl:
-            if ActionType.view in access.get("allowed_actions", []) or ActionType.query in access.get("allowed_actions", []):
+            if ActionType.view in access.get(
+                "allowed_actions", []
+            ) or ActionType.query in access.get("allowed_actions", []):
                 view_acl.append(access["user_shortname"])
-                
+
         return view_acl
 
     async def save_meta_doc(
@@ -741,7 +737,9 @@ class RedisServices(Redis):
             return
         await self.save_doc(docid, payload)
 
-    async def get_payload_doc(self, doc_id: str, resource_type: ResourceType) -> dict[str, Any]:
+    async def get_payload_doc(
+        self, doc_id: str, resource_type: ResourceType
+    ) -> dict[str, Any]:
         resource_class = getattr(
             sys.modules["models.core"],
             camel_case(resource_type),
@@ -853,7 +851,9 @@ class RedisServices(Redis):
             pipe.json().set(document["doc_id"], path, document["payload"])
         return await pipe.execute()
 
-    async def get_count(self, space_name: str, branch_name: str, schema_shortname: str) -> int:
+    async def get_count(
+        self, space_name: str, branch_name: str, schema_shortname: str
+    ) -> int:
         ft_index = self.ft(f"{space_name}:{branch_name}:{schema_shortname}")
 
         try:
@@ -971,16 +971,8 @@ class RedisServices(Redis):
             aggr_request.group_by(group_by, *reducers_functions)
 
         if sort_by:
-            aggr_request.sort_by(
-                [
-                    str(
-                        aggregation.Desc(f"@{sort_by}")
-                        if sort_type == SortType.ascending
-                        else aggregation.Asc(f"@{sort_by}")
-                    )
-                ],
-                max=max,
-            )
+            aggr_request.sort_by(aggregation.Asc(f"@{sort_by}") if sort_type == SortType.ascending else aggregation.Asc(f"@{sort_by}"), max=max)  # type: ignore
+
 
         if load:
             aggr_request.load(*load)
@@ -1015,19 +1007,19 @@ class RedisServices(Redis):
                 )
             elif item[0] == "query_policies" and item[1] is not None:
                 query_string += (
-                    f" ((@{item[0]}:{{" + "|".join(item[1]).translate(redis_escape_chars) + "})"
+                    f" ((@{item[0]}:{{"
+                    + "|".join(item[1]).translate(redis_escape_chars)
+                    + "})"
                 )
                 if filters.get("user_shortname", None) is not None:
-                    query_string += (
-                        f" | (@view_acl:{{{filters['user_shortname']}}}) )"
-                    )
+                    query_string += f" | (@view_acl:{{{filters['user_shortname']}}}) )"
                 else:
                     query_string += ")"
             elif item[0] == "created_at" and item[1]:
                 query_string += f" @{item[0]}:{item[1]}"
             elif item[0] == "subpath" and exact_subpath:
                 search_value = ""
-                for subpath in (item[1] or []):  # Handle existence/absence of `/`
+                for subpath in item[1] or []:  # Handle existence/absence of `/`
                     search_value += "|" + subpath.strip("/")
                     search_value += "|" + f"/{subpath}".replace("//", "/")
 
@@ -1035,7 +1027,9 @@ class RedisServices(Redis):
                     redis_escape_chars
                 )
                 query_string += f" @exact_subpath:{{{exact_subpath_value}}}"
-            elif item[0] == "subpath" and len(item) > 1 and item[1] and item[1][0] == "/":
+            elif (
+                item[0] == "subpath" and len(item) > 1 and item[1] and item[1][0] == "/"
+            ):
                 pass
             elif item[1] and item[0] != "user_shortname":
                 query_string += " @" + item[0] + ":(" + "|".join(item[1]) + ")"
@@ -1050,9 +1044,9 @@ class RedisServices(Redis):
                 if isinstance(value, dict):
                     return value
                 if isinstance(value, str):
-                    return json.loads(value) # type: ignore
+                    return json.loads(value)  # type: ignore
                 else:
-                   raise Exception(f"Not json dict at id: {doc_id}. data: {value=}")
+                    raise Exception(f"Not json dict at id: {doc_id}. data: {value=}")
             else:
                 raise Exception(f"Not awaitable {x=}")
         except Exception as e:
@@ -1176,6 +1170,6 @@ class RedisServices(Redis):
     async def list_indices(self) -> set[str]:
         x = self.ft().execute_command("FT._LIST")
         if x and isinstance(x, Awaitable):
-            return await x # type: ignore
-        
+            return await x  # type: ignore
+
         return set()

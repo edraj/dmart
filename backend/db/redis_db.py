@@ -49,10 +49,10 @@ class RedisDB(BaseDB):
     async def aggregate(
         self,
         space_name: str,
-        search: str,
         filters: dict[str, str | list | None],
         group_by: list[str],
         reducers: list[Any],
+        search: str | None = None,
         max: int = 10,
         branch_name: str = settings.default_branch,
         exact_subpath: bool = False,
@@ -64,7 +64,7 @@ class RedisDB(BaseDB):
         async with RedisServices() as redis:
             res = await redis.aggregate(
             space_name,
-            search,
+            search if search else "",
             filters,
             group_by,
             reducers,

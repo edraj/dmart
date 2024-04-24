@@ -128,11 +128,12 @@ class RedisRepo(BaseRepo):
                 space=query.space_name,
                 subpath=query.subpath,
             )
+        
         return await self.db.aggregate(
             space_name=query.space_name,
             branch_name=query.branch_name,
             schema_name=query.filter_schema_names[0],
-            search=str(query.search),
+            search=query.search,
             filters={
                 "resource_type": query.filter_types or [],
                 "shortname": query.filter_shortnames or [],
@@ -338,9 +339,10 @@ class RedisRepo(BaseRepo):
         query.sort_by = "tags"
         query.aggregation_data = RedisAggregate(
             group_by=["@tags"],
-            reducers=[RedisReducer(reducer_name="count", alias="freq")],
+            reducers=[RedisReducer(reducer_name="r_count", alias="freq")],
         )
         rows = await self.aggregate(query=query, user_shortname=user_shortname)
+        
 
         return 1, [
             Record(

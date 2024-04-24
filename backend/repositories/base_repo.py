@@ -52,6 +52,7 @@ from utils import regex
 import utils.db as main_db
 from utils.access_control import access_control
 from models.api import Exception as API_Exception, Error as API_Error
+from fastapi.logger import logger
 
 
 class BaseRepo(ABC):
@@ -836,16 +837,17 @@ class BaseRepo(ABC):
                         except Exception:
                             continue
 
-                    resource_base_record.attachments = (
-                        await main_db.get_entry_attachments(
-                            subpath=f"{query.subpath}/{shortname}",
-                            branch_name=query.branch_name,
-                            attachments_path=(meta_path / shortname),
-                            filter_types=query.filter_types,
-                            include_fields=query.include_fields,
-                            retrieve_json_payload=query.retrieve_json_payload,
+                    if query.retrieve_attachments:
+                        resource_base_record.attachments = (
+                            await main_db.get_entry_attachments(
+                                subpath=f"{query.subpath}/{shortname}",
+                                branch_name=query.branch_name,
+                                attachments_path=(meta_path / shortname),
+                                filter_types=query.filter_types,
+                                include_fields=query.include_fields,
+                                retrieve_json_payload=query.retrieve_json_payload,
+                            )
                         )
-                    )
                     records.append(resource_base_record)
 
                 subpath_iterator.close()
@@ -887,7 +889,12 @@ class BaseRepo(ABC):
                 if len(records) >= query.limit or total < query.offset:
                     continue
 
-                folder_obj = Folder.model_validate_json(subfolder_meta.read_text())
+                try:
+                    folder_obj = Folder.model_validate_json(subfolder_meta.read_text())
+                except Exception as e:
+                    logger.error(f"Invalid folder meta file at {one.path}. Error: {e}")
+                    continue
+                
                 folder_record = folder_obj.to_record(
                     query.subpath,
                     shortname,

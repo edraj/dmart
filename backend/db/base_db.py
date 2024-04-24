@@ -33,10 +33,10 @@ class BaseDB(ABC):
     async def aggregate(
         self,
         space_name: str,
-        search: str,
         filters: dict[str, str | list | None],
         group_by: list[str],
         reducers: list[Any],
+        search: str | None = None,
         max: int = 10,
         branch_name: str = settings.default_branch,
         exact_subpath: bool = False,
