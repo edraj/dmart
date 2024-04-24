@@ -46,7 +46,7 @@ async def validate_payload_with_schema(
 
 def get_schema_path(space_name: str, branch_name: str | None, schema_shortname: str):
     # Tries to get the schema from the management space first
-    schema_path = (
+    schema_path: FSPath = (
         settings.spaces_folder / 
         settings.management_space / 
         branch_path(settings.management_space_branch) / 
@@ -66,7 +66,8 @@ def get_schema_path(space_name: str, branch_name: str | None, schema_shortname: 
     )
     
     if not schema_path.is_file():
-        raise Exception(f"Invalid schema path, {schema_path=} is not a file")
+        message = f"Invalid schema path, {schema_path} is not a file"
+        raise Exception(message)
     
     return schema_path
     

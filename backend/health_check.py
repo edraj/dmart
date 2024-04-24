@@ -21,6 +21,7 @@ from utils.custom_validations import get_schema_path, validate_payload_with_sche
 from utils.helpers import camel_case, branch_path
 from models import core, api
 from models.enums import ContentType, RequestType, ResourceType
+from utils.redis_services import RedisServices
 from utils.regex import ATTACHMENT_PATTERN, FILE_PATTERN, IMG_EXT
 from utils.settings import settings
 from utils.operational_repo import operational_repo
@@ -75,6 +76,9 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
         print("Wrong mode specify [soft or hard]")
         return
     await save_duplicated_entries(branch_name)
+    
+    await RedisServices.POOL.aclose()
+    await RedisServices.POOL.disconnect(True)
 
 
 def print_header() -> None:
@@ -134,11 +138,14 @@ def load_space_schemas(space_name: str, branch_name: str) -> dict[str, dict]:
         
         schema_meta = json.loads(schema_path_meta.read_text())
         if schema_meta.get("payload", {}).get('body'):
-            schema_path_body = get_schema_path(
-                space_name=space_name,
-                branch_name=branch_name,
-                schema_shortname=schema_meta.get("payload").get('body'),
-            )
+            try:
+                schema_path_body = get_schema_path(
+                    space_name=space_name,
+                    branch_name=branch_name,
+                    schema_shortname=schema_meta.get("payload").get('body'),
+                )
+            except Exception as _:
+                continue
             if schema_path_body.is_file():
                 schemas[schema_meta['shortname']] = json.loads(schema_path_body.read_text())
     return schemas
@@ -370,7 +377,7 @@ async def health_check_entry(
         entry_meta_obj.payload
         and entry_meta_obj.payload.content_type == ContentType.image
     ):
-        payload_file_path = Path(f"{entity.subpath}/{entry_meta_obj.payload.body}")
+        payload_file_path = db.payload_path(entity)
         if (
             not payload_file_path.is_file()
             or not isinstance(entry_meta_obj.payload.body, str)
@@ -397,7 +404,7 @@ async def health_check_entry(
         and isinstance(entry_meta_obj.payload.body, str)
         and entry_meta_obj.payload.content_type == ContentType.json
     ):
-        payload_file_path = Path(f"{entity.subpath}/{entry_meta_obj.payload.body}")
+        payload_file_path = db.payload_path(entity)
         if not entry_meta_obj.payload.body.endswith(
             ".json"
         ) or not os.access(payload_file_path, os.W_OK):
@@ -835,4 +842,5 @@ if __name__ == "__main__":
         args.branch = settings.default_branch
     before_time = time.time()
     asyncio.run(main(args.type, args.space, args.schemas, args.branch))
+    
     print(f'total time: {"{:.2f}".format(time.time() - before_time)} sec')
