@@ -81,5 +81,18 @@
       "state": "deprecated"
     }
   ],
-  "initial_state": "backlog"
+  "initial_state": [
+    {
+      "name": "backlog",
+      "roles": [
+        "default"
+      ]
+    },
+    {
+      "name": "approved",
+      "roles": [
+        "ros"
+      ]
+    }
+  ]
 }

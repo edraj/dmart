@@ -487,7 +487,7 @@ class Reporter(Resource):
 
 
 class Ticket(Meta):
-    state: str
+    state: str | None = None
     is_open: bool = True
     reporter: Reporter | None = None
     workflow_shortname: str

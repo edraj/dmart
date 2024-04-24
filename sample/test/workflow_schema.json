@@ -5,9 +5,23 @@
   "additionalProperties": false,
   "properties": {
     "initial_state": {
-      "title": "name",
-      "description": "name description",
-      "type": "string"
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": []
+      },
+      "description": "state description"
     },
     "name": {
       "title": "name",

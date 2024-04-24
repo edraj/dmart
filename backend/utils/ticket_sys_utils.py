@@ -4,6 +4,7 @@ from models.enums import ResourceType
 import utils.db as db
 import models.core as core
 from utils.internal_error_code import InternalErrorCode
+from utils.access_control import access_control
 
 async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket) -> core.Ticket:
 # async def set_init_state_from_request(ticket: api.Request, branch_name, logged_in_user):
@@ -12,7 +13,7 @@ async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket) -> 
     if not entity.user_shortname:
         raise Exception("Missing user_shortname in the EntityDTO")
 
-    # user_roles_names = list((await access_control.get_user_roles(entity.user_shortname)).keys())
+    user_roles_names = list((await access_control.get_user_roles(entity.user_shortname)).keys())
     # user_roles = _user_roles.keys()
 
     workflow_entity = core.EntityDTO(
@@ -34,16 +35,7 @@ async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket) -> 
         )
 
     workflows_payload = await db.load_resource_payload(workflow_entity)
-
-    # initial_state = None
-    # for state in workflows_payload["initial_state"]:
-    #     if initial_state is None and "default" in state["roles"]:
-    #         initial_state = state["name"]
-    #     elif [role in user_roles_names for role in state["roles"]].count(True):
-    #         initial_state = state["name"]
-    #         break
-
-    if "initial_state" not in workflows_payload:
+    if "initial_state" not in workflows_payload or not isinstance(workflows_payload["initial_state"], list):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
@@ -52,7 +44,17 @@ async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket) -> 
                 message="This shortname already exists",
             ),
         )
-    ticket.state = workflows_payload["initial_state"]
+
+    initial_state = None
+    for state in workflows_payload["initial_state"]:
+        if initial_state is None and "default" in state["roles"]:
+            initial_state = state["name"]
+        elif [role in user_roles_names for role in state["roles"]].count(True):
+            initial_state = state["name"]
+            break
+
+    
+    ticket.state = initial_state
     ticket.is_open = True
     
     return ticket
