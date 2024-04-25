@@ -43,8 +43,8 @@ class Plugin(PluginBase):
             logger.error("data.shortname is None and str is required at missed_entry")
             return
 
-        entity = EntityDTO.from_event_data(data)
-        path, filename = db.metapath(entity)
+        dto = EntityDTO.from_event_data(data)
+        path, filename = db.metapath(dto)
         if (path/filename).is_file():
             return
 
@@ -55,13 +55,13 @@ class Plugin(PluginBase):
         if len(miss_shortname) > 32:
             miss_shortname = miss_shortname[:32]
 
-        entity.shortname = miss_shortname
-        entity.subpath = "misses"
+        dto.shortname = miss_shortname
+        dto.subpath = "misses"
         miss_file = (
             settings.spaces_folder / 
             data.space_name / 
             branch_path(data.branch_name) /
-            f"{entity.subpath}/{entity.shortname}.json"
+            f"{dto.subpath}/{dto.shortname}.json"
         )
         miss_content = {}
         if miss_file.is_file():
@@ -79,15 +79,15 @@ class Plugin(PluginBase):
             }
             
         missed_obj_meta = core.Content(
-            shortname=entity.shortname,
+            shortname=dto.shortname,
             owner_shortname=data.user_shortname,
             is_active=True,
             payload=core.Payload(
                 content_type=ContentType.json,
                 schema_shortname="miss",
-                body=entity.shortname + ".json",
+                body=dto.shortname + ".json",
             ),
         )
         
-        await db.save(entity, missed_obj_meta, miss_content)
-        await operational_repo.create(entity, missed_obj_meta, miss_content)
+        await db.save(dto, missed_obj_meta, miss_content)
+        await operational_repo.create(dto, missed_obj_meta, miss_content)
