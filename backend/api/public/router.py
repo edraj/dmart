@@ -366,7 +366,9 @@ async def create_attachment(
 
     await plugin_manager.before_action(entity.to_event_data(core.ActionType.create))
 
-    attachment_obj = core.Meta.from_record(record=record, owner_shortname="anonymous")
+    attachment_obj = entity.class_type.from_record(record=record, owner_shortname="anonymous")
+    if record.shortname != settings.auto_uuid_rule:
+        entity.shortname = attachment_obj.shortname
 
     await db.save(entity, attachment_obj)
 

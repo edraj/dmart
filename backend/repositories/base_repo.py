@@ -771,8 +771,7 @@ class BaseRepo(ABC):
                         shortname=shortname,
                         resource_type=ResourceType(resource_name),
                         user_shortname=user_shortname,
-                        schema_shortname=resource_obj.payload.schema_shortname
-                        or None,
+                        schema_shortname=resource_obj.payload.schema_shortname if resource_obj.payload else None,
                     )
                     # apply check access
                     if not await access_control.check_access(

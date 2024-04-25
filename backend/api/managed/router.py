@@ -635,13 +635,13 @@ async def serve_request(
                                 )
 
                 case api.RequestType.update | api.RequestType.r_replace:
-                    if not meta:
+                    if not meta or await operational_repo.is_locked_by_other_user(entity):
                         raise api.Exception(
                             status_code=status.HTTP_404_NOT_FOUND,
                             error=api.Error(
                                 type="db",
                                 code=InternalErrorCode.OBJECT_NOT_FOUND,
-                                message=f"Request object is not available @{entity.space_name}/{entity.subpath}/{entity.shortname} {entity.resource_type=} {entity.schema_shortname=}",
+                                message="Request object is not available or locked",
                             ),
                         )
 
@@ -686,6 +686,8 @@ async def serve_request(
                         )
 
                     history_diff = await db.update(entity, meta, updated_payload)
+                    
+                    await operational_repo.delete_lock_doc(entity)
 
                     if (
                         isinstance(meta, core.User)
@@ -696,13 +698,13 @@ async def serve_request(
                     record.attributes["history_diff"] = history_diff
 
                 case api.RequestType.assign:
-                    if not meta:
+                    if not meta or await operational_repo.is_locked_by_other_user(entity):
                         raise api.Exception(
                             status_code=status.HTTP_404_NOT_FOUND,
                             error=api.Error(
                                 type="db",
                                 code=InternalErrorCode.OBJECT_NOT_FOUND,
-                                message=f"Request object is not available @{entity.space_name}/{entity.subpath}/{entity.shortname} {entity.resource_type=} {entity.schema_shortname=}",
+                                message="Request object is not available or locked",
                             ),
                         )
                     if not record.attributes.get("owner_shortname"):
@@ -726,16 +728,17 @@ async def serve_request(
                     meta.updated_at = datetime.now()
                     meta.owner_shortname = record.attributes["owner_shortname"]
                     history_diff = await db.update(entity, meta)
+                    await operational_repo.delete_lock_doc(entity)
                     record.attributes["history_diff"] = history_diff
 
                 case api.RequestType.update_acl:
-                    if not meta:
+                    if not meta or await operational_repo.is_locked_by_other_user(entity):
                         raise api.Exception(
                             status_code=status.HTTP_404_NOT_FOUND,
                             error=api.Error(
                                 type="db",
                                 code=InternalErrorCode.OBJECT_NOT_FOUND,
-                                message=f"Request object is not available @{entity.space_name}/{entity.subpath}/{entity.shortname} {entity.resource_type=} {entity.schema_shortname=}",
+                                message="Request object is not available or locked",
                             ),
                         )
                     if record.attributes.get("acl", None) is None:
@@ -752,17 +755,19 @@ async def serve_request(
                     meta.acl = record.attributes["acl"]
 
                     history_diff = await db.update(entity, meta)
+                    
+                    await operational_repo.delete_lock_doc(entity)
 
                     record.attributes["history_diff"] = history_diff
 
                 case api.RequestType.delete:
-                    if not meta:
+                    if not meta or await operational_repo.is_locked_by_other_user(entity):
                         raise api.Exception(
                             status_code=status.HTTP_404_NOT_FOUND,
                             error=api.Error(
                                 type="db",
                                 code=InternalErrorCode.OBJECT_NOT_FOUND,
-                                message=f"Request object is not available @{entity.space_name}/{entity.subpath}/{entity.shortname} {entity.resource_type=} {entity.schema_shortname=}",
+                                message="Request object is not available or locked",
                             ),
                         )
 
@@ -786,13 +791,13 @@ async def serve_request(
                             ),
                         )
 
-                    if not meta:
+                    if not meta or await operational_repo.is_locked_by_other_user(entity):
                         raise api.Exception(
                             status_code=status.HTTP_404_NOT_FOUND,
                             error=api.Error(
                                 type="db",
                                 code=InternalErrorCode.OBJECT_NOT_FOUND,
-                                message=f"Request object is not available @{entity.space_name}/{entity.subpath}/{entity.shortname} {entity.resource_type=} {entity.schema_shortname=}",
+                                message="Request object is not available or locked",
                             ),
                         )
 
@@ -905,13 +910,17 @@ async def update_state(
         entity.to_event_data(core.ActionType.progress_ticket)
     )
 
-    if ticket_obj.payload is None or ticket_obj.payload.body is None:
+    if(
+        ticket_obj.payload is None 
+        or ticket_obj.payload.body is None 
+        or await operational_repo.is_locked_by_other_user(entity)
+    ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
                 type="media",
                 code=InternalErrorCode.OBJECT_NOT_FOUND,
-                message="Request object is not available",
+                message="Request object is not available or locked",
             ),
         )
 
@@ -1017,6 +1026,7 @@ async def update_state(
                 )
 
             history_diff = await db.update(entity, ticket_obj)
+            await operational_repo.delete_lock_doc(entity)
             await plugin_manager.after_action(
                 entity.to_event_data(
                     core.ActionType.progress_ticket,
@@ -1651,7 +1661,7 @@ async def lock_entry(
         shortname=shortname,
         user_shortname=logged_in_user,
     )
-    meta: core.Ticket = await db.load(entity)
+    meta = await db.load(entity)
 
     await plugin_manager.before_action(entity.to_event_data(core.ActionType.lock))
 
