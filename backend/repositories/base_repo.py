@@ -1147,7 +1147,7 @@ class BaseRepo(ABC):
                 payload_dict, entity.space_name, meta.payload.schema_shortname
             )
 
-        if meta_updated:
+        if meta_updated or payload_dict:
             await main_db.save(entity, meta, payload_dict)
 
         if sync_operational_db:

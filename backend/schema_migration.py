@@ -5,6 +5,7 @@ import re
 from models.enums import ContentType, ResourceType
 from utils import db, helpers
 from models.core import EntityDTO, Meta, Schema
+from utils.redis_services import RedisServices
 from utils.settings import settings
 from utils.operational_repo import operational_repo
 
@@ -91,15 +92,22 @@ async def change_field_type(
         field_to_update = main_field
         for i in range(1, last_idx):
             field_to_update = main_field[field_tree[i]]
-        field_to_update[field_tree[last_idx]] = FIELD_TYPE_PARSER[new_type](
-            field_to_update[field_tree[last_idx]]
-        )
+        
+        if isinstance(field_to_update, dict):
+            field_to_update[field_tree[last_idx]] = FIELD_TYPE_PARSER[new_type](
+                field_to_update[field_tree[last_idx]]
+            )
+        else:
+            field_to_update = FIELD_TYPE_PARSER[new_type](
+                field_to_update
+            )
+        
         await operational_repo.internal_sys_update_model(
             entity=one_entity,
             meta=resource_obj,
             payload_dict=resource_payload,
             updates={
-                field_tree[0]: main_field
+                field_tree[0]: field_to_update
             },
         )
         updated_num += 1
@@ -164,6 +172,9 @@ async def main(
     )
     
     print(f"Successfully updated the schema along with {updated_num} resource files")
+    
+    await RedisServices.POOL.aclose()
+    await RedisServices.POOL.disconnect(True)
 
 
 if __name__ == "__main__":
