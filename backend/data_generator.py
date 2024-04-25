@@ -4,7 +4,7 @@ from pathlib import Path
 from uuid import uuid4
 from models.core import Content, EntityDTO, Payload
 from models.enums import ContentType, ResourceType
-from jsf import JSF
+from jsf import JSF # type: ignore
 from utils.operational_repo import operational_repo
 from utils.redis_services import RedisServices
 

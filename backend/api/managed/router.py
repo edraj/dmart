@@ -1661,11 +1661,11 @@ async def lock_entry(
         shortname=shortname,
         user_shortname=logged_in_user,
     )
-    meta = await db.load(dto)
+    meta: core.Meta = await db.load(dto)
 
     await plugin_manager.before_action(dto.to_event_data(core.ActionType.lock))
 
-    if resource_type == ResourceType.ticket:
+    if resource_type == ResourceType.ticket and isinstance(meta, core.Ticket):
         meta.collaborators = meta.collaborators if meta.collaborators else {}
         if meta.collaborators.get("processed_by") != logged_in_user:
             meta.collaborators["processed_by"] = logged_in_user
