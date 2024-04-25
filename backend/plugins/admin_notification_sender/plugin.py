@@ -24,13 +24,13 @@ class Plugin(PluginBase):
             )
             return
 
-        notification_entity = EntityDTO.from_event_data(data)
-        notification_request_meta: Content = await load(notification_entity)
+        notification_dto = EntityDTO.from_event_data(data)
+        notification_request_meta: Content = await load(notification_dto)
         notification_dict = notification_request_meta.model_dump()
         notification_dict["subpath"] = data.subpath
         notification_dict["branch_name"] = data.branch_name
 
-        notification_request_payload = await load_resource_payload(notification_entity)
+        notification_request_payload = await load_resource_payload(notification_dto)
         notification_dict.update(notification_request_payload)
 
         if not notification_dict or notification_dict.get("scheduled_at", False):
@@ -63,7 +63,7 @@ class Plugin(PluginBase):
             if not formatted_req["push_only"]:
                 notification_obj = await Notification.from_request(notification_dict)
                 await operational_repo.internal_save_model(
-                    entity=EntityDTO(
+                    dto=EntityDTO(
                         space_name="personal",
                         subpath=f"people/{receiver}/notifications",
                         shortname=notification_obj.shortname,
@@ -85,7 +85,7 @@ class Plugin(PluginBase):
 
         notification_request_payload["status"] = "finished"
         await save_payload_from_json(
-            entity=notification_entity,
+            dto=notification_dto,
             meta=notification_request_meta,
             payload_data=notification_request_payload,
         )

@@ -10,56 +10,56 @@ class AccessControl:
 
     async def check_access(
         self,
-        entity: core.EntityDTO,
+        dto: core.EntityDTO,
         action_type: ActionType, #XX
         record_attributes: dict = {}, #XX
         meta: core.Meta | None = None,
     ) -> bool:
-        if not entity.user_shortname:
+        if not dto.user_shortname:
             return False
         
-        if entity.resource_type == ResourceType.space and entity.shortname:
+        if dto.resource_type == ResourceType.space and dto.shortname:
             return await self.check_space_access(
-                entity.user_shortname,
-                entity.shortname
+                dto.user_shortname,
+                dto.shortname
             )
-        user_permissions = await self.get_user_permissions_doc(entity.user_shortname)
+        user_permissions = await self.get_user_permissions_doc(dto.user_shortname)
 
-        user_groups: list[str] = (await self.get_user(entity.user_shortname)).groups or []
+        user_groups: list[str] = (await self.get_user(dto.user_shortname)).groups or []
 
         # Generate set of achevied conditions on the resource
         # ex: {"is_active", "own"}
-        # meta: None | core.Meta = await self.find(entity)
+        # meta: None | core.Meta = await self.find(dto)
         
         resource_achieved_conditions: set[ConditionType] = set()
         if meta and meta.is_active:
             resource_achieved_conditions.add(ConditionType.is_active)
-        if meta and (meta.owner_shortname == entity.user_shortname or meta.owner_group_shortname in user_groups):
+        if meta and (meta.owner_shortname == dto.user_shortname or meta.owner_group_shortname in user_groups):
             resource_achieved_conditions.add(ConditionType.own)
         
         # Allow checking for root permissions
         subpath_parts = ["/"]
-        subpath_parts += list(filter(None, entity.subpath.strip("/").split("/")))
-        if entity.resource_type == ResourceType.folder and entity.shortname:
-            subpath_parts.append(entity.shortname)
+        subpath_parts += list(filter(None, dto.subpath.strip("/").split("/")))
+        if dto.resource_type == ResourceType.folder and dto.shortname:
+            subpath_parts.append(dto.shortname)
         
         search_subpath = ""
         for subpath_part in subpath_parts:
             search_subpath += subpath_part
             # Check if the user has global access
             global_access = self.has_global_access(
-                entity.space_name,
+                dto.space_name,
                 user_permissions, 
                 search_subpath,
                 action_type, 
-                entity.resource_type, 
+                dto.resource_type, 
                 resource_achieved_conditions,
                 record_attributes
             )
             if global_access:
                 return True
             
-            permission_key = f"{entity.space_name}:{search_subpath}:{entity.resource_type}"
+            permission_key = f"{dto.space_name}:{search_subpath}:{dto.resource_type}"
             if (
                 permission_key in user_permissions
                 and action_type in user_permissions[permission_key]["allowed_actions"]
@@ -83,9 +83,9 @@ class AccessControl:
             else:
                 search_subpath += "/"
 
-        if entity.shortname and meta:
+        if dto.shortname and meta:
             return await self.check_access_control_list(
-                meta, entity.user_shortname, action_type
+                meta, dto.user_shortname, action_type
             )
             
         return False

@@ -142,7 +142,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     if len(subpath_parts) > 1:
         subpath = "/".join(subpath_parts[:-1])
         shortname = subpath_parts[-1]
-    folder_entity = core.EntityDTO(
+    folder_dto = core.EntityDTO(
         space_name=query.space_name,
         subpath=subpath,
         shortname=shortname,
@@ -151,7 +151,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     )
 
     await plugin_manager.before_action(
-        folder_entity.to_event_data(
+        folder_dto.to_event_data(
             core.ActionType.query, {"filter_shortnames": query.filter_shortnames}
         )
     )
@@ -160,8 +160,8 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     #     user_shortname, query.space_name, query.subpath
     # )
 
-    # folder: core.Meta = await db.load(folder_entity)
-    folder_payload: dict[str, Any] = await db.load_resource_payload(folder_entity)
+    # folder: core.Meta = await db.load(folder_dto)
+    folder_payload: dict[str, Any] = await db.load_resource_payload(folder_dto)
 
     folder_views = folder_payload.get("csv_columns", [])
     if not folder_views:
@@ -250,7 +250,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
 
     await plugin_manager.after_action(
-        folder_entity.to_event_data(core.ActionType.query)
+        folder_dto.to_event_data(core.ActionType.query)
     )
 
     if len(json_data) == 0:
@@ -295,12 +295,12 @@ async def serve_space(
                     ),
                 )
 
-            entity = core.EntityDTO.from_record(
+            dto = core.EntityDTO.from_record(
                 record, request.space_name, owner_shortname
             )
 
             if not await access_control.check_access(
-                entity=entity,
+                dto=dto,
                 action_type=core.ActionType.create,
                 record_attributes=record.attributes,
             ):
@@ -325,13 +325,13 @@ async def serve_space(
                 "redis_db_update",
                 "resource_folders_creation",
             ]
-            await db.save(entity, resource_obj)
+            await db.save(dto, resource_obj)
 
         case api.RequestType.update:
-            entity = core.EntityDTO.from_record(
+            dto = core.EntityDTO.from_record(
                 record, request.space_name, owner_shortname
             )
-            space = await operational_repo.find(entity)
+            space = await operational_repo.find(dto)
             if (
                 not space
                 or request.space_name not in spaces
@@ -347,7 +347,7 @@ async def serve_space(
                 )
 
             if not await access_control.check_access(
-                entity=entity,
+                dto=dto,
                 action_type=core.ActionType.update,
                 meta=space,
                 record_attributes=record.attributes,
@@ -361,7 +361,7 @@ async def serve_space(
                     ),
                 )
 
-            if not await operational_repo.validate_and_release_lock(entity):
+            if not await operational_repo.validate_and_release_lock(dto):
                 raise api.Exception(
                     status_code=status.HTTP_403_FORBIDDEN,
                     error=api.Error(
@@ -372,10 +372,10 @@ async def serve_space(
                 )
 
             await plugin_manager.before_action(
-                entity.to_event_data(core.ActionType.update)
+                dto.to_event_data(core.ActionType.update)
             )
 
-            await db.update(entity, space)
+            await db.update(dto, space)
 
         case api.RequestType.delete:
             if request.space_name == settings.management_space:
@@ -397,12 +397,12 @@ async def serve_space(
                     ),
                 )
 
-            entity = core.EntityDTO.from_record(
+            dto = core.EntityDTO.from_record(
                 record, request.space_name, owner_shortname
             )
-            space = await operational_repo.find(entity)
+            space = await operational_repo.find(dto)
             if not await access_control.check_access(
-                entity=entity,
+                dto=dto,
                 meta=space,
                 action_type=core.ActionType.delete,
             ):
@@ -506,15 +506,15 @@ async def serve_request(
 
     for record in request.records:
         meta: core.Meta | None = None
-        entity: core.EntityDTO = core.EntityDTO.from_record(
+        dto: core.EntityDTO = core.EntityDTO.from_record(
             record, request.space_name, owner_shortname
         )
 
         if request.request_type != RequestType.create:
-            meta = await db.load_or_none(entity) # type: ignore
+            meta = await db.load_or_none(dto) # type: ignore
 
         if not await access_control.check_access(
-            entity=entity,
+            dto=dto,
             meta=meta,
             action_type=request.action_type,
             record_attributes=record.attributes,
@@ -528,13 +528,13 @@ async def serve_request(
                 ),
             )
         await plugin_manager.before_action(
-            entity.to_event_data(request.action_type, record.attributes)
+            dto.to_event_data(request.action_type, record.attributes)
         )
         try:
             match request.request_type:
                 case api.RequestType.create:
                     if (
-                        db.is_entry_exist(entity)
+                        db.is_entry_exist(dto)
                         and record.shortname != settings.auto_uuid_rule
                     ):
                         raise api.Exception(
@@ -547,19 +547,19 @@ async def serve_request(
                         )
 
                     await operational_repo.validate_uniqueness(
-                        entity, record.attributes
+                        dto, record.attributes
                     )
 
-                    meta = entity.class_type.from_record(
+                    meta = dto.class_type.from_record(
                         record=record, owner_shortname=owner_shortname
                     )
                     if not isinstance(meta, core.Meta):
                         continue
                     if record.shortname != settings.auto_uuid_rule:
-                        entity.shortname = meta.shortname
+                        dto.shortname = meta.shortname
 
                     if meta and isinstance(meta, core.Ticket):
-                        meta = await set_ticket_init_state(entity, meta)
+                        meta = await set_ticket_init_state(dto, meta)
 
                     if not is_internal or "created_at" not in record.attributes:
                         meta.created_at = datetime.now()
@@ -572,7 +572,7 @@ async def serve_request(
                         and isinstance(meta.payload.body, dict)
                     ):
                         separate_payload_data = meta.payload.body
-                        meta.payload.body = entity.shortname + ".json"
+                        meta.payload.body = dto.shortname + ".json"
 
                     if (
                         meta.payload
@@ -587,7 +587,7 @@ async def serve_request(
                             schema_shortname=meta.payload.schema_shortname,
                         )
 
-                    await db.save(entity, meta, separate_payload_data)
+                    await db.save(dto, meta, separate_payload_data)
 
                     if isinstance(meta, core.User):
                         # SMS Invitation
@@ -635,7 +635,7 @@ async def serve_request(
                                 )
 
                 case api.RequestType.update | api.RequestType.r_replace:
-                    if not meta or await operational_repo.is_locked_by_other_user(entity):
+                    if not meta or await operational_repo.is_locked_by_other_user(dto):
                         raise api.Exception(
                             status_code=status.HTTP_404_NOT_FOUND,
                             error=api.Error(
@@ -654,7 +654,7 @@ async def serve_request(
                     ):
                         try:
                             resource_payload_body = await db.load_resource_payload(
-                                entity
+                                dto
                             )
                         except api.Exception as e:
                             if request.request_type == api.RequestType.update:
@@ -669,7 +669,7 @@ async def serve_request(
                     )
 
                     await operational_repo.validate_uniqueness(
-                        entity, record.attributes, RequestType.update
+                        dto, record.attributes, RequestType.update
                     )
                     # VALIDATE SEPARATE PAYLOAD BODY
                     if (
@@ -685,9 +685,9 @@ async def serve_request(
                             schema_shortname=meta.payload.schema_shortname,
                         )
 
-                    history_diff = await db.update(entity, meta, updated_payload)
+                    history_diff = await db.update(dto, meta, updated_payload)
                     
-                    await operational_repo.delete_lock_doc(entity)
+                    await operational_repo.delete_lock_doc(dto)
 
                     if (
                         isinstance(meta, core.User)
@@ -698,7 +698,7 @@ async def serve_request(
                     record.attributes["history_diff"] = history_diff
 
                 case api.RequestType.assign:
-                    if not meta or await operational_repo.is_locked_by_other_user(entity):
+                    if not meta or await operational_repo.is_locked_by_other_user(dto):
                         raise api.Exception(
                             status_code=status.HTTP_404_NOT_FOUND,
                             error=api.Error(
@@ -727,12 +727,12 @@ async def serve_request(
                     )
                     meta.updated_at = datetime.now()
                     meta.owner_shortname = record.attributes["owner_shortname"]
-                    history_diff = await db.update(entity, meta)
-                    await operational_repo.delete_lock_doc(entity)
+                    history_diff = await db.update(dto, meta)
+                    await operational_repo.delete_lock_doc(dto)
                     record.attributes["history_diff"] = history_diff
 
                 case api.RequestType.update_acl:
-                    if not meta or await operational_repo.is_locked_by_other_user(entity):
+                    if not meta or await operational_repo.is_locked_by_other_user(dto):
                         raise api.Exception(
                             status_code=status.HTTP_404_NOT_FOUND,
                             error=api.Error(
@@ -754,14 +754,14 @@ async def serve_request(
                     meta.updated_at = datetime.now()
                     meta.acl = record.attributes["acl"]
 
-                    history_diff = await db.update(entity, meta)
+                    history_diff = await db.update(dto, meta)
                     
-                    await operational_repo.delete_lock_doc(entity)
+                    await operational_repo.delete_lock_doc(dto)
 
                     record.attributes["history_diff"] = history_diff
 
                 case api.RequestType.delete:
-                    if not meta or await operational_repo.is_locked_by_other_user(entity):
+                    if not meta or await operational_repo.is_locked_by_other_user(dto):
                         raise api.Exception(
                             status_code=status.HTTP_404_NOT_FOUND,
                             error=api.Error(
@@ -771,7 +771,7 @@ async def serve_request(
                             ),
                         )
 
-                    await db.delete(entity)
+                    await db.delete(dto)
 
                     record.attributes["entry"] = meta
 
@@ -791,7 +791,7 @@ async def serve_request(
                             ),
                         )
 
-                    if not meta or await operational_repo.is_locked_by_other_user(entity):
+                    if not meta or await operational_repo.is_locked_by_other_user(dto):
                         raise api.Exception(
                             status_code=status.HTTP_404_NOT_FOUND,
                             error=api.Error(
@@ -801,7 +801,7 @@ async def serve_request(
                             ),
                         )
 
-                    dest_entity = core.EntityDTO(
+                    dest_dto = core.EntityDTO(
                         space_name=request.space_name,
                         subpath=record.attributes.get("dest_subpath", record.subpath),
                         shortname=record.attributes.get(
@@ -812,7 +812,7 @@ async def serve_request(
                     )
 
                     if not await access_control.check_access(
-                        entity=dest_entity,
+                        dto=dest_dto,
                         action_type=core.ActionType.create,
                     ):
                         raise api.Exception(
@@ -825,7 +825,7 @@ async def serve_request(
                         )
 
                     await db.move(
-                        entity=entity,
+                        dto=dto,
                         meta=meta,
                         dest_subpath=record.attributes["dest_subpath"],
                         dest_shortname=record.attributes["dest_shortname"],
@@ -840,7 +840,7 @@ async def serve_request(
                 )
 
             await plugin_manager.after_action(
-                entity.to_event_data(request.action_type, record.attributes)
+                dto.to_event_data(request.action_type, record.attributes)
             )
         except api.Exception as e:
             failed_records.append(
@@ -896,7 +896,7 @@ async def update_state(
         (await access_control.get_user_roles(logged_in_user)).keys()
     )
 
-    entity: core.EntityDTO = core.EntityDTO(
+    dto: core.EntityDTO = core.EntityDTO(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
@@ -904,16 +904,16 @@ async def update_state(
         user_shortname=logged_in_user,
     )
 
-    ticket_obj: core.Ticket = await db.load(entity)
+    ticket_obj: core.Ticket = await db.load(dto)
 
     await plugin_manager.before_action(
-        entity.to_event_data(core.ActionType.progress_ticket)
+        dto.to_event_data(core.ActionType.progress_ticket)
     )
 
     if(
         ticket_obj.payload is None 
         or ticket_obj.payload.body is None 
-        or await operational_repo.is_locked_by_other_user(entity)
+        or await operational_repo.is_locked_by_other_user(dto)
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -925,7 +925,7 @@ async def update_state(
         )
 
     if not await access_control.check_access(
-        entity=entity,
+        dto=dto,
         meta=ticket_obj,
         action_type=core.ActionType.update,
         record_attributes={"state": "", "resolution_reason": ""},
@@ -939,20 +939,20 @@ async def update_state(
             ),
         )
     if ticket_obj.payload.content_type == ContentType.json:
-        workflow_entity = core.EntityDTO(
+        workflow_dto = core.EntityDTO(
             space_name=space_name,
             subpath="workflows",
             shortname=ticket_obj.workflow_shortname,
             resource_type=ResourceType.content,
             user_shortname=logged_in_user,
         )
-        workflows_data: core.Content = await db.load(workflow_entity)
+        workflows_data: core.Content = await db.load(workflow_dto)
 
         if (
             workflows_data.payload is not None
             and workflows_data.payload.body is not None
         ):
-            workflows_payload = await db.load_resource_payload(workflow_entity)
+            workflows_payload = await db.load_resource_payload(workflow_dto)
             if not ticket_obj.is_open:
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -1025,10 +1025,10 @@ async def update_state(
                     owner_shortname=logged_in_user,
                 )
 
-            history_diff = await db.update(entity, ticket_obj)
-            await operational_repo.delete_lock_doc(entity)
+            history_diff = await db.update(dto, ticket_obj)
+            await operational_repo.delete_lock_doc(dto)
             await plugin_manager.after_action(
-                entity.to_event_data(
+                dto.to_event_data(
                     core.ActionType.progress_ticket,
                     {
                         "history_diff": history_diff,
@@ -1067,7 +1067,7 @@ async def retrieve_entry_or_attachment_payload(
     branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
 
-    entity: core.EntityDTO = core.EntityDTO(
+    dto: core.EntityDTO = core.EntityDTO(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
@@ -1076,9 +1076,9 @@ async def retrieve_entry_or_attachment_payload(
         user_shortname=logged_in_user,
     )
 
-    meta: core.Meta = await db.load(entity)
+    meta: core.Meta = await db.load(dto)
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.view))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.view))
 
     if (
         meta.payload is None
@@ -1095,7 +1095,7 @@ async def retrieve_entry_or_attachment_payload(
         )
 
     if not await access_control.check_access(
-        entity=entity,
+        dto=dto,
         meta=meta,
         action_type=core.ActionType.view,
     ):
@@ -1108,8 +1108,8 @@ async def retrieve_entry_or_attachment_payload(
             ),
         )
 
-    payload_path = db.payload_path(entity=entity)
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.view))
+    payload_path = db.payload_path(dto=dto)
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.view))
 
     return FileResponse(payload_path / str(meta.payload.body))
 
@@ -1140,7 +1140,7 @@ async def create_or_update_resource_with_payload(
         )
     record = core.Record.model_validate_json(request_record.file.read())
 
-    entity = core.EntityDTO.from_record(record, space_name, owner_shortname)
+    dto = core.EntityDTO.from_record(record, space_name, owner_shortname)
 
     payload_filename = payload_file.filename or ""
     if payload_filename.endswith(".json"):
@@ -1176,10 +1176,10 @@ async def create_or_update_resource_with_payload(
             ),
         )
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.create))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.create))
 
     if not await access_control.check_access(
-        entity=entity,
+        dto=dto,
         action_type=core.ActionType.create,
         record_attributes=record.attributes,
     ):
@@ -1205,17 +1205,17 @@ async def create_or_update_resource_with_payload(
             ),
         )
     await payload_file.seek(0)
-    if entity.resource_type == ResourceType.ticket:
+    if dto.resource_type == ResourceType.ticket:
         record.attributes["state"] = "TEMP"
-    resource_obj: core.Meta = entity.class_type.from_record(
+    resource_obj: core.Meta = dto.class_type.from_record(
         record=record, owner_shortname=owner_shortname
     )
     
     if record.shortname != settings.auto_uuid_rule:
-        entity.shortname = resource_obj.shortname
+        dto.shortname = resource_obj.shortname
 
     if isinstance(resource_obj, core.Ticket):
-        resource_obj = await set_ticket_init_state(entity, resource_obj)
+        resource_obj = await set_ticket_init_state(dto, resource_obj)
     resource_obj.payload = core.Payload(
         content_type=resource_content_type,
         checksum=checksum,
@@ -1257,10 +1257,10 @@ async def create_or_update_resource_with_payload(
             schema_shortname=resource_obj.payload.schema_shortname,
         )
 
-    await db.save(entity, resource_obj)
-    await db.save_payload(entity, resource_obj, payload_file)
+    await db.save(dto, resource_obj)
+    await db.save_payload(dto, resource_obj, payload_file)
 
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.create))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.create))
 
     return api.Response(
         status=api.Status.success,
@@ -1289,14 +1289,14 @@ async def import_resources_from_csv(
     buffer = StringIO(decoded)
     csv_reader = csv.DictReader(buffer)
 
-    schema_entity = core.EntityDTO(
+    schema_dto = core.EntityDTO(
         space_name=space_name,
         subpath="schema",
         resource_type=ResourceType.schema,
         shortname=schema_shortname,
         user_shortname=owner_shortname,
     )
-    schema_path: FilePath = db.payload_path(schema_entity) / f"{schema_shortname}.json"
+    schema_path: FilePath = db.payload_path(schema_dto) / f"{schema_shortname}.json"
     with open(schema_path) as schema_file:
         schema_content = json.load(schema_file)
     schema_content = resolve_schema_references(schema_content)
@@ -1439,22 +1439,22 @@ async def retrieve_entry_meta(
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=space_name,
         subpath=subpath,
         resource_type=resource_type,
         shortname=shortname,
         user_shortname=logged_in_user,
     )
-    if entity.subpath == settings.root_subpath_mw:
-        entity.subpath = "/"
+    if dto.subpath == settings.root_subpath_mw:
+        dto.subpath = "/"
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.view))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.view))
 
-    meta: core.Meta = await db.load(entity)
+    meta: core.Meta = await db.load(dto)
 
     if not await access_control.check_access(
-        entity=entity,
+        dto=dto,
         meta=meta,
         action_type=core.ActionType.view,
     ):
@@ -1492,7 +1492,7 @@ async def retrieve_entry_meta(
         # include locked before returning the dictionary
         return {**meta.model_dump(exclude_none=True), "attachments": attachments}
 
-    payload_body = await db.load_resource_payload(entity)
+    payload_body = await db.load_resource_payload(dto)
 
     if meta.payload and meta.payload.schema_shortname and validate_schema:
         await validate_payload_with_schema(
@@ -1503,7 +1503,7 @@ async def retrieve_entry_meta(
         )
 
     meta.payload.body = payload_body
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.view))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.view))
     # TODO
     # include locked before returning the dictionary
     return {**meta.model_dump(exclude_none=True), "attachments": attachments}
@@ -1654,16 +1654,16 @@ async def lock_entry(
             ),
         )
 
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=space_name,
         subpath=subpath,
         resource_type=resource_type,
         shortname=shortname,
         user_shortname=logged_in_user,
     )
-    meta = await db.load(entity)
+    meta = await db.load(dto)
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.lock))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.lock))
 
     if resource_type == ResourceType.ticket:
         meta.collaborators = meta.collaborators if meta.collaborators else {}
@@ -1690,7 +1690,7 @@ async def lock_entry(
     # elif lock file exit but lock_period expired
     # elif lock file exist and lock_period isn't expired but the owner want to extend the lock
     lock_type: LockAction | None = await operational_repo.save_lock_doc(
-        entity,
+        dto,
         logged_in_user,
     )
 
@@ -1704,7 +1704,7 @@ async def lock_entry(
             ),
         )
 
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.lock))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.lock))
 
     return api.Response(
         status=api.Status.success,
@@ -1723,14 +1723,14 @@ async def cancel_lock(
     branch_name: str | None = settings.default_branch,
     logged_in_user=Depends(JWTBearer()),
 ):
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=space_name,
         branch_name=branch_name,
         subpath=subpath,
         shortname=shortname,
         user_shortname=logged_in_user,
     )
-    lock_payload = await operational_repo.get_lock_doc(entity)
+    lock_payload = await operational_repo.get_lock_doc(dto)
 
     if not lock_payload or lock_payload["owner_shortname"] != logged_in_user:
         raise api.Exception(
@@ -1742,11 +1742,11 @@ async def cancel_lock(
             ),
         )
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.unlock))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.unlock))
 
-    await operational_repo.delete_lock_doc(entity)
+    await operational_repo.delete_lock_doc(dto)
 
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.unlock))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.unlock))
 
     return api.Response(
         status=api.Status.success,
@@ -1770,8 +1770,8 @@ async def execute(
     logged_in_user=Depends(JWTBearer()),
 ):
 
-    entity = core.EntityDTO.from_record(record, space_name, logged_in_user)
-    meta: core.Meta = await db.load(entity)
+    dto = core.EntityDTO.from_record(record, space_name, logged_in_user)
+    meta: core.Meta = await db.load(dto)
 
     if (
         meta.payload is None
@@ -1787,7 +1787,7 @@ async def execute(
             ),
         )
 
-    query_dict = await db.load_resource_payload(entity)
+    query_dict = await db.load_resource_payload(dto)
 
     if meta.payload.schema_shortname == "report":
         query_dict = query_dict["query"]
@@ -1841,7 +1841,7 @@ async def apply_alteration(
     on_entry: core.Record,
     logged_in_user=Depends(JWTBearer()),
 ):
-    alteration_entity = core.EntityDTO(
+    alteration_dto = core.EntityDTO(
         space_name=space_name,
         subpath=f"{on_entry.subpath}/{on_entry.shortname}",
         shortname=alteration_name,
@@ -1849,9 +1849,9 @@ async def apply_alteration(
         user_shortname=logged_in_user,
         branch_name=on_entry.branch_name,
     )
-    alteration_meta: core.Alteration = await db.load(alteration_entity)
+    alteration_meta: core.Alteration = await db.load(alteration_dto)
 
-    parent_entity = core.EntityDTO(
+    parent_dto = core.EntityDTO(
         space_name=space_name,
         subpath=on_entry.subpath,
         shortname=on_entry.shortname,
@@ -1859,7 +1859,7 @@ async def apply_alteration(
         user_shortname=logged_in_user,
         branch_name=on_entry.branch_name,
     )
-    entry_meta: core.Meta = await db.load(parent_entity)
+    entry_meta: core.Meta = await db.load(parent_dto)
 
     record: core.Record = entry_meta.to_record(
         on_entry.subpath, on_entry.shortname, [], on_entry.branch_name
@@ -1874,7 +1874,7 @@ async def apply_alteration(
         owner_shortname=logged_in_user,
     )
 
-    await db.delete(alteration_entity)
+    await db.delete(alteration_dto)
     return response
 
 
@@ -1895,7 +1895,7 @@ async def data_asset(
     )
     files_paths: list[FilePath] = []
 
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=query.space_name,
         subpath=f"{query.subpath}/{query.shortname}",
         resource_type=query.data_asset_type,
@@ -1903,7 +1903,7 @@ async def data_asset(
         shortname="",
     )
     for attachment in attachments.get(query.data_asset_type, []):
-        file_path: FilePath = db.payload_path(entity)
+        file_path: FilePath = db.payload_path(dto)
         if (
             not isinstance(attachment.attributes.get("payload"), core.Payload)
             or not isinstance(attachment.attributes["payload"].body, str)
@@ -1993,7 +1993,7 @@ async def data_asset_single(
     logged_in_user=Depends(JWTBearer()),
     branch_name: str | None = settings.default_branch,
 ) -> StreamingResponse:
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=space_name,
         branch_name=branch_name,
         subpath=subpath,
@@ -2003,7 +2003,7 @@ async def data_asset_single(
         user_shortname=branch_name,
     )
 
-    meta: core.Meta = await db.load(entity)
+    meta: core.Meta = await db.load(dto)
     if (
         meta.payload is None
         or meta.payload.body is None
@@ -2019,7 +2019,7 @@ async def data_asset_single(
         )
 
     if not await access_control.check_access(
-        entity=entity,
+        dto=dto,
         meta=meta,
         action_type=core.ActionType.view,
     ):
@@ -2032,15 +2032,15 @@ async def data_asset_single(
             ),
         )
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.view))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.view))
 
-    payload_path = db.payload_path(entity)
+    payload_path = db.payload_path(dto)
 
     with open(payload_path / str(meta.payload.body), "r") as csv_file:
         media = "text/csv" if resource_type == ResourceType.csv else "text/plain"
         response = StreamingResponse(iter(csv_file.read()), media_type=media)
         response.headers["Content-Disposition"] = "attachment; filename=data.csv"
 
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.view))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.view))
 
     return response

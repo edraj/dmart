@@ -37,7 +37,7 @@ async def main(
             )
         )
         await operational_repo.internal_save_model(
-            entity=EntityDTO(
+            dto=EntityDTO(
                 space_name=space,
                 subpath=subpath,
                 shortname=shortname,

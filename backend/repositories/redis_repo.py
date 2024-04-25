@@ -150,23 +150,23 @@ class RedisRepo(BaseRepo):
             sort_type=query.sort_type or SortType.ascending,
         )
 
-    async def find(self, entity: EntityDTO) -> None | Meta:
-        """Return an object of the corresponding class of the entity.resource_type
-        default entity.resource_type is ResourceType.content
+    async def find(self, dto: EntityDTO) -> None | Meta:
+        """Return an object of the corresponding class of the dto.resource_type
+        default dto.resource_type is ResourceType.content
         """
-        user_document = await self.db.find(entity)
+        user_document = await self.db.find(dto)
 
         if not user_document:
             return None
 
         try:
-            return entity.class_type.model_validate(user_document) #type: ignore
+            return dto.class_type.model_validate(user_document) #type: ignore
         except Exception as _:
             return None
 
-    async def create(self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None) -> None:
+    async def create(self, dto: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None) -> None:
         meta_doc_id, meta_json = await self.db.prepare_meta_doc(
-            entity.space_name, entity.branch_name, entity.subpath, meta
+            dto.space_name, dto.branch_name, dto.subpath, meta
         )
 
         if payload is None:
@@ -177,30 +177,30 @@ class RedisRepo(BaseRepo):
             and meta.payload.content_type == ContentType.json
             and isinstance(meta.payload.body, str)
         ):
-            payload = await main_db.load_resource_payload(entity)
+            payload = await main_db.load_resource_payload(dto)
             
 
         meta_json["payload_string"] = await self.generate_payload_string(
-            entity, payload
+            dto, payload
         )
 
         await self.db.save_at_id(meta_doc_id, meta_json)
 
         if payload:
             payload_doc_id, payload_json = await self.db.prepare_payload_doc(
-                entity,
+                dto,
                 meta,
                 payload,
             )
             payload_json.update(meta_json)
             await self.db.save_at_id(payload_doc_id, payload_json)
             
-    async def update(self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None) -> None:
-        await self.create(entity, meta, payload)
+    async def update(self, dto: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None) -> None:
+        await self.create(dto, meta, payload)
 
     async def generate_payload_string(
         self,
-        entity: EntityDTO,
+        dto: EntityDTO,
         payload: dict[str, Any],
     ) -> str:
         payload_string: str = ""
@@ -215,11 +215,11 @@ class RedisRepo(BaseRepo):
 
         # Generate attachments payload string
         attachments: dict[str, list] = await main_db.get_entry_attachments(
-            subpath=f"{entity.subpath}/{entity.shortname}",
-            branch_name=entity.branch_name,
+            subpath=f"{dto.subpath}/{dto.shortname}",
+            branch_name=dto.branch_name,
             attachments_path=(
                 settings.spaces_folder
-                / f"{entity.space_name}/{branch_path(entity.branch_name)}/{entity.subpath}/.dm/{entity.shortname}"
+                / f"{dto.space_name}/{branch_path(dto.branch_name)}/{dto.subpath}/.dm/{dto.shortname}"
             ),
             retrieve_json_payload=True,
             include_fields=[
@@ -270,7 +270,7 @@ class RedisRepo(BaseRepo):
             elif key not in self.SYS_ATTRIBUTES:
                 payload_doc_content[key] = value
 
-        entity = EntityDTO(
+        dto = EntityDTO(
             space_name=space_name,
             subpath=db_entry["subpath"],
             shortname=db_entry["shortname"],
@@ -287,7 +287,7 @@ class RedisRepo(BaseRepo):
             )
 
         # Get lock data
-        locked_data = await self.get_lock_doc(entity)
+        locked_data = await self.get_lock_doc(dto)
 
         meta_doc_content["created_at"] = datetime.fromtimestamp(
             meta_doc_content["created_at"]
@@ -427,7 +427,7 @@ class RedisRepo(BaseRepo):
     #     payload_doc = await self.find_by_id(meta_doc["payload_doc_id"])
 
     #     return await self.create(
-    #         entity=EntityDTO(
+    #         dto=EntityDTO(
     #             space_name=dest_space,
     #             subpath=dest_subpath,
     #             shortname=dest_shortname,

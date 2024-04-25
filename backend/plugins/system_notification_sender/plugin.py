@@ -36,20 +36,20 @@ class Plugin(PluginBase):
             )
             return
 
-        entity = EntityDTO.from_event_data(data)
+        dto = EntityDTO.from_event_data(data)
         
         if data.action_type == ActionType.delete and data.attributes.get("entry"):
             entry = data.attributes["entry"].model_dump()
         else:
             entry = (
-                await load(entity)
+                await load(dto)
             ).model_dump() #type: ignore
             if (
                 entry["payload"]
                 and entry["payload"]["content_type"] == ContentType.json
                 and entry["payload"]["body"]
             ):
-                entry["payload"]["body"] = await load_resource_payload(entity)
+                entry["payload"]["body"] = await load_resource_payload(dto)
         entry["space_name"] = data.space_name
         entry["resource_type"] = str(data.resource_type)
         entry["subpath"] = data.subpath
@@ -93,7 +93,7 @@ class Plugin(PluginBase):
         users_objects: dict[str, dict] = {}
         for subscriber in notification_subscribers:
                 users_objects[subscriber] = await operational_repo.find_by_id(
-                    await operational_repo.entity_doc_id(EntityDTO(
+                    await operational_repo.dto_doc_id(EntityDTO(
                         space_name=settings.management_space,
                         subpath=settings.users_subpath,
                         shortname=subscriber,
@@ -121,7 +121,7 @@ class Plugin(PluginBase):
                         notification_dict, entry
                     )
                     await operational_repo.internal_save_model(
-                        entity=EntityDTO(
+                        dto=EntityDTO(
                             space_name="personal",
                             subpath=f"people/{receiver}/notifications",
                             shortname=notification_obj.shortname,

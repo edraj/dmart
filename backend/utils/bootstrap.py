@@ -28,14 +28,14 @@ async def load_permissions_and_roles() -> None:
                 continue
             shortname = match.group(1)
             try:
-                entity = core.EntityDTO(
+                dto = core.EntityDTO(
                     space_name=settings.management_space,
                     subpath=module_name,
                     shortname=shortname,
                     resource_type=ResourceType(module_class.__name__.lower()),
                     user_shortname="anonymous"
                 )
-                resource_obj : core.Meta = await db.load(entity)
+                resource_obj : core.Meta = await db.load(dto)
                 if resource_obj and resource_obj.is_active:
                     access_control_models.setdefault(module_name, [])
                     access_control_models[module_name].append(resource_obj)
@@ -61,7 +61,7 @@ async def store_modules_to_operational_db(access_control_models: dict[str, list[
     for access_control_module, models in access_control_models.items():
         for model in models:
             await operational_repo.create(
-                entity=core.EntityDTO(
+                dto=core.EntityDTO(
                     space_name=settings.management_space,
                     branch_name=settings.management_space_branch,
                     subpath=access_control_module,

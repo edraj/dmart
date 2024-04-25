@@ -6,23 +6,23 @@ import models.core as core
 from utils.internal_error_code import InternalErrorCode
 from utils.access_control import access_control
 
-async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket) -> core.Ticket:
+async def set_ticket_init_state(dto: core.EntityDTO, ticket: core.Ticket) -> core.Ticket:
 # async def set_init_state_from_request(ticket: api.Request, branch_name, logged_in_user):
     # workflow_attr = ticket.records[0].attributes
     # workflow_shortname = workflow_attr["workflow_shortname"]
-    if not entity.user_shortname:
+    if not dto.user_shortname:
         raise Exception("Missing user_shortname in the EntityDTO")
 
-    user_roles_names = list((await access_control.get_user_roles(entity.user_shortname)).keys())
+    user_roles_names = list((await access_control.get_user_roles(dto.user_shortname)).keys())
     # user_roles = _user_roles.keys()
 
-    workflow_entity = core.EntityDTO(
-        **entity.model_dump(include={"space_name", "user_shortname"}),
+    workflow_dto = core.EntityDTO(
+        **dto.model_dump(include={"space_name", "user_shortname"}),
         shortname=ticket.workflow_shortname,
         resource_type=ResourceType.content,
         subpath="workflows"
     )
-    workflows_data: core.Meta = await db.load(workflow_entity)
+    workflows_data: core.Meta = await db.load(workflow_dto)
 
     if workflows_data.payload is None:
         raise api.Exception(
@@ -34,7 +34,7 @@ async def set_ticket_init_state(entity: core.EntityDTO, ticket: core.Ticket) -> 
             ),
         )
 
-    workflows_payload = await db.load_resource_payload(workflow_entity)
+    workflows_payload = await db.load_resource_payload(workflow_dto)
     if "initial_state" not in workflows_payload or not isinstance(workflows_payload["initial_state"], list):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,

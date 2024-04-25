@@ -60,7 +60,7 @@ class Plugin(PluginBase):
 
         for folder in folders:
             await operational_repo.internal_save_model(
-                entity=EntityDTO(
+                dto=EntityDTO(
                     space_name=folder[0],
                     subpath=folder[1],
                     branch_name=data.branch_name,

@@ -169,15 +169,15 @@ class BaseRepo(ABC):
     ) -> list[dict[str, Any]]:
         return await self.db.free_search(index_name, search_str, limit, offset)
 
-    async def entity_doc_id(self, entity: EntityDTO) -> str:
-        return await self.db.entity_doc_id(entity)
+    async def dto_doc_id(self, dto: EntityDTO) -> str:
+        return await self.db.dto_doc_id(dto)
 
     @abstractmethod
-    async def find(self, entity: EntityDTO) -> None | Meta:
+    async def find(self, dto: EntityDTO) -> None | Meta:
         pass
 
-    async def find_or_fail(self, entity: EntityDTO) -> Meta:
-        item = await self.find(entity)
+    async def find_or_fail(self, dto: EntityDTO) -> Meta:
+        item = await self.find(dto)
 
         if not item:
             raise api_exception(
@@ -213,14 +213,14 @@ class BaseRepo(ABC):
 
     @abstractmethod
     async def create(
-        self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None
+        self, dto: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None
     ) -> None:
         pass
 
     @abstractmethod
     async def generate_payload_string(
         self,
-        entity: EntityDTO,
+        dto: EntityDTO,
         payload: dict[str, Any],
     ) -> str:
         pass
@@ -230,12 +230,12 @@ class BaseRepo(ABC):
 
     @abstractmethod
     async def update(
-        self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None
+        self, dto: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None
     ) -> None:
         pass
 
-    async def delete(self, entity: EntityDTO) -> bool:
-        return await self.db.delete(entity)
+    async def delete(self, dto: EntityDTO) -> bool:
+        return await self.db.delete(dto)
 
     async def move(
         self,
@@ -277,24 +277,24 @@ class BaseRepo(ABC):
     # Locking Functions
     # ================================================================================
     async def save_lock_doc(
-        self, entity: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
+        self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
-        return await self.db.save_lock_doc(entity, owner_shortname, ttl)
+        return await self.db.save_lock_doc(dto, owner_shortname, ttl)
 
-    async def get_lock_doc(self, entity: EntityDTO) -> dict[str, Any]:
-        return await self.db.get_lock_doc(entity)
+    async def get_lock_doc(self, dto: EntityDTO) -> dict[str, Any]:
+        return await self.db.get_lock_doc(dto)
 
-    async def delete_lock_doc(self, entity: EntityDTO) -> None:
-        return await self.db.delete_lock_doc(entity)
+    async def delete_lock_doc(self, dto: EntityDTO) -> None:
+        return await self.db.delete_lock_doc(dto)
 
-    async def is_locked_by_other_user(self, entity: EntityDTO) -> bool:
-        return await self.db.is_locked_by_other_user(entity)
+    async def is_locked_by_other_user(self, dto: EntityDTO) -> bool:
+        return await self.db.is_locked_by_other_user(dto)
 
-    async def validate_and_release_lock(self, entity: EntityDTO) -> bool:
-        if await self.is_locked_by_other_user(entity):
+    async def validate_and_release_lock(self, dto: EntityDTO) -> bool:
+        if await self.is_locked_by_other_user(dto):
             return False
 
-        await self.delete_lock_doc(entity)
+        await self.delete_lock_doc(dto)
 
         return True
 
@@ -486,7 +486,7 @@ class BaseRepo(ABC):
         self, query: Query, user_shortname: str | None = None
     ) -> tuple[int, list[Record]]:
         if not await access_control.check_access(
-            entity=EntityDTO(
+            dto=EntityDTO(
                 space_name=query.space_name,
                 subpath=query.subpath,
                 user_shortname=user_shortname,
@@ -527,7 +527,7 @@ class BaseRepo(ABC):
         records: list[Record] = []
         total: int = 0
         if not await access_control.check_access(
-            entity=EntityDTO(
+            dto=EntityDTO(
                 space_name=query.space_name,
                 subpath=query.subpath,
                 resource_type=ResourceType.history,
@@ -661,7 +661,7 @@ class BaseRepo(ABC):
                 break
 
             if not await access_control.check_access(
-                entity=EntityDTO(
+                dto=EntityDTO(
                     space_name=query.space_name,
                     subpath=action_obj.get("resource", {}).get("subpath", "/"),
                     resource_type=action_obj["resource"]["type"],
@@ -765,7 +765,7 @@ class BaseRepo(ABC):
                     ):
                         continue
 
-                    entity = EntityDTO(
+                    dto = EntityDTO(
                         space_name=query.space_name,
                         subpath=query.subpath,
                         shortname=shortname,
@@ -775,7 +775,7 @@ class BaseRepo(ABC):
                     )
                     # apply check access
                     if not await access_control.check_access(
-                        entity=entity,
+                        dto=dto,
                         meta=resource_obj,
                         action_type=ActionType.view,
                     ):
@@ -792,7 +792,7 @@ class BaseRepo(ABC):
                         query.branch_name,
                     )
                     if resource_base_record:
-                        locked_data = await self.get_lock_doc(entity)
+                        locked_data = await self.get_lock_doc(dto)
                         if locked_data:
                             resource_base_record.attributes["locked"] = locked_data
 
@@ -870,7 +870,7 @@ class BaseRepo(ABC):
                     continue
 
                 shortname = match.group(1)
-                entity = EntityDTO(
+                dto = EntityDTO(
                     space_name=query.space_name,
                     subpath=f"{query.subpath}/{shortname}",
                     resource_type=ResourceType.folder,
@@ -878,7 +878,7 @@ class BaseRepo(ABC):
                     user_shortname=user_shortname,
                 )
                 if not await access_control.check_access(
-                    entity=entity,
+                    dto=dto,
                     action_type=ActionType.query,
                 ):
                     continue
@@ -954,7 +954,7 @@ class BaseRepo(ABC):
     # ================================================================================
     async def validate_uniqueness(
         self,
-        entity: EntityDTO,
+        dto: EntityDTO,
         input_data: dict[str, Any],
         action: str = RequestType.create,
     ):
@@ -964,9 +964,9 @@ class BaseRepo(ABC):
         """
         folder_meta_path = (
             settings.spaces_folder
-            / entity.space_name
-            / branch_path(entity.branch_name)
-            / f"{entity.subpath[1:] if entity.subpath[0] == '/' else entity.subpath}.json"
+            / dto.space_name
+            / branch_path(dto.branch_name)
+            / f"{dto.subpath[1:] if dto.subpath[0] == '/' else dto.subpath}.json"
         )
 
         if not folder_meta_path.is_file():
@@ -1063,19 +1063,19 @@ class BaseRepo(ABC):
             if not redis_search_str:
                 continue
 
-            subpath = entity.subpath
+            subpath = dto.subpath
             if subpath[0] == "/":
                 subpath = subpath[1:]
 
             # redis_search_str += f" @subpath:{subpath}"
 
             if action == RequestType.update:
-                redis_search_str += f" (-@shortname:{entity.shortname})"
+                redis_search_str += f" (-@shortname:{dto.shortname})"
 
             schema_name = input_data.get("payload", {}).get("schema_shortname", None)
 
             for index in self.SYS_INDEXES:
-                if entity.space_name == index["space"] and index["subpath"] == subpath:
+                if dto.space_name == index["space"] and index["subpath"] == subpath:
                     schema_name = "meta"
                     break
 
@@ -1085,8 +1085,8 @@ class BaseRepo(ABC):
             search_res = await self.search(
                 Query(
                     type=QueryType.search,
-                    space_name=entity.space_name,
-                    branch_name=entity.branch_name,
+                    space_name=dto.space_name,
+                    branch_name=dto.branch_name,
                     search=redis_search_str,
                     subpath=subpath,
                     filter_schema_name=[schema_name],
@@ -1106,7 +1106,7 @@ class BaseRepo(ABC):
 
     async def internal_sys_update_model(
         self,
-        entity: EntityDTO,
+        dto: EntityDTO,
         meta: Meta,
         updates: dict,
         sync_operational_db: bool = True,
@@ -1121,7 +1121,7 @@ class BaseRepo(ABC):
         payload_updated = False
 
         if not payload_dict:
-            payload_dict = await main_db.load_resource_payload(entity)
+            payload_dict = await main_db.load_resource_payload(dto)
 
         restricted_fields = [
             "uuid",
@@ -1144,24 +1144,24 @@ class BaseRepo(ABC):
 
         if payload_updated and meta.payload and meta.payload.schema_shortname:
             await validate_payload_with_schema(
-                payload_dict, entity.space_name, meta.payload.schema_shortname
+                payload_dict, dto.space_name, meta.payload.schema_shortname
             )
 
         if meta_updated or payload_dict:
-            await main_db.save(entity, meta, payload_dict)
+            await main_db.save(dto, meta, payload_dict)
 
         if sync_operational_db:
-            await self.update(entity, meta, payload_dict)
+            await self.update(dto, meta, payload_dict)
 
     async def internal_save_model(
-        self, entity: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None
+        self, dto: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None
     ):
         """
         *To be used by the system only, not APIs*
         """
-        await main_db.save(entity, meta, payload)
+        await main_db.save(dto, meta, payload)
 
-        await self.create(entity, meta, payload)
+        await self.create(dto, meta, payload)
 
     async def get_entry_by_var(
         self,
@@ -1198,7 +1198,7 @@ class BaseRepo(ABC):
             return None
 
         if not await access_control.check_access(
-            entity=EntityDTO(
+            dto=EntityDTO(
                 space_name=entry_space,
                 subpath=entry_doc["subpath"],
                 resource_type=entry_doc["resource_type"],

@@ -237,65 +237,65 @@ async def get_entry_attachments(
     return attachments_dict
 
 
-def metapath(entity: core.EntityDTO) -> tuple[Path, str]:
+def metapath(dto: core.EntityDTO) -> tuple[Path, str]:
     """Construct the full path of the meta file"""
-    path = settings.spaces_folder / entity.space_name / branch_path(entity.branch_name)
+    path = settings.spaces_folder / dto.space_name / branch_path(dto.branch_name)
 
     filename = ""
-    subpath = copy(entity.subpath)
+    subpath = copy(dto.subpath)
     if subpath[0] == "/":
         subpath = f".{subpath}"
             
-    if issubclass(entity.class_type, core.Folder):
-        path = path / subpath / entity.shortname / ".dm"
-        filename = f"meta.{entity.class_type.__name__.lower()}.json"
-    elif issubclass(entity.class_type, core.Space):
-        path = settings.spaces_folder / entity.space_name / ".dm"
+    if issubclass(dto.class_type, core.Folder):
+        path = path / subpath / dto.shortname / ".dm"
+        filename = f"meta.{dto.class_type.__name__.lower()}.json"
+    elif issubclass(dto.class_type, core.Space):
+        path = settings.spaces_folder / dto.space_name / ".dm"
         filename = "meta.space.json"
-    elif issubclass(entity.class_type, core.Attachment):
+    elif issubclass(dto.class_type, core.Attachment):
         [parent_subpath, parent_name] = subpath.rsplit("/", 1)
         # schema_shortname = "." + schema_shortname if schema_shortname else ""
         attachment_folder = (
-            f"{parent_name}/attachments.{entity.class_type.__name__.lower()}"
+            f"{parent_name}/attachments.{dto.class_type.__name__.lower()}"
         )
         path = path / parent_subpath / ".dm" / attachment_folder
-        filename = f"meta.{entity.shortname}.json"
-    elif issubclass(entity.class_type, core.History):
+        filename = f"meta.{dto.shortname}.json"
+    elif issubclass(dto.class_type, core.History):
         [parent_subpath, parent_name] = subpath.rsplit("/", 1)
         path = path / parent_subpath / ".dm" / f"{parent_name}/history"
-        filename = f"{entity.shortname}.json"
-    elif issubclass(entity.class_type, core.Branch):
-        path = settings.spaces_folder / entity.space_name / entity.shortname / ".dm"
+        filename = f"{dto.shortname}.json"
+    elif issubclass(dto.class_type, core.Branch):
+        path = settings.spaces_folder / dto.space_name / dto.shortname / ".dm"
         filename = "meta.branch.json"
     else:
-        path = path / subpath / ".dm" / entity.shortname
-        filename = f"meta.{snake_case(entity.class_type.__name__)}.json"
+        path = path / subpath / ".dm" / dto.shortname
+        filename = f"meta.{snake_case(dto.class_type.__name__)}.json"
     return path, filename
 
 
-def payload_path(entity: core.EntityDTO) -> Path:
+def payload_path(dto: core.EntityDTO) -> Path:
     """Construct the full path of the meta file"""
-    path = settings.spaces_folder / entity.space_name / branch_path(entity.branch_name)
+    path = settings.spaces_folder / dto.space_name / branch_path(dto.branch_name)
 
-    subpath = copy(entity.subpath)
+    subpath = copy(dto.subpath)
     if subpath[0] == "/":
         subpath = f".{subpath}"
-    if issubclass(entity.class_type, core.Attachment):
+    if issubclass(dto.class_type, core.Attachment):
         [parent_subpath, parent_name] = subpath.rsplit("/", 1)
         # schema_shortname = (
-        #     "." + entity.schema_shortname if entity.schema_shortname != "meta" else ""
+        #     "." + dto.schema_shortname if dto.schema_shortname != "meta" else ""
         # )
         schema_shortname = ""
-        attachment_folder = f"{parent_name}/attachments{schema_shortname}.{entity.class_type.__name__.lower()}"
+        attachment_folder = f"{parent_name}/attachments{schema_shortname}.{dto.class_type.__name__.lower()}"
         path = path / parent_subpath / ".dm" / attachment_folder
     else:
         path = path / subpath
     return path
 
 
-async def load_or_none(entity: core.EntityDTO) -> MetaChild | None:  # type: ignore
+async def load_or_none(dto: core.EntityDTO) -> MetaChild | None:  # type: ignore
     """Load a Meta Json according to the reuqested Class type"""
-    path, filename = metapath(entity)
+    path, filename = metapath(dto)
     if not (path / filename).is_file():
         # Remove the folder
         if path.is_dir() and len(os.listdir(path)) == 0:
@@ -307,33 +307,33 @@ async def load_or_none(entity: core.EntityDTO) -> MetaChild | None:  # type: ign
     async with aiofiles.open(path, "r") as file:
         content = await file.read()
         try:
-            return entity.class_type.model_validate_json(content) # type: ignore
+            return dto.class_type.model_validate_json(content) # type: ignore
         except Exception as e:
-            logger.error(f"Failed parsing an entry. {entity = }. Error: {e.args}")
+            logger.error(f"Failed parsing an entry. {dto = }. Error: {e.args}")
             return None
 
 
-async def load(entity: core.EntityDTO) -> MetaChild:  # type: ignore
-    meta: core.Meta | None = await load_or_none(entity)  # type: ignore
+async def load(dto: core.EntityDTO) -> MetaChild:  # type: ignore
+    meta: core.Meta | None = await load_or_none(dto)  # type: ignore
     if not meta:
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
             error=api.Error(
                 type="db",
                 code=InternalErrorCode.OBJECT_NOT_FOUND,
-                message=f"Request object is not available @{entity.space_name}/{entity.subpath}/{entity.shortname} {entity.resource_type=} {entity.schema_shortname=}",
+                message=f"Request object is not available @{dto.space_name}/{dto.subpath}/{dto.shortname} {dto.resource_type=} {dto.schema_shortname=}",
             ),
         )
 
     return meta #type: ignore
 
 
-async def load_resource_payload(entity: core.EntityDTO) -> dict[str, Any]:
+async def load_resource_payload(dto: core.EntityDTO) -> dict[str, Any]:
     """Load a Meta class payload file"""
 
-    path = payload_path(entity)
+    path = payload_path(dto)
 
-    meta: core.Meta = await load(entity)
+    meta: core.Meta = await load(dto)
 
     if not meta:
         return {}
@@ -351,10 +351,10 @@ async def load_resource_payload(entity: core.EntityDTO) -> dict[str, Any]:
 
 
 async def save(
-    entity: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any] | None = None
+    dto: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any] | None = None
 ):
     """Save Meta Json to respectiv file"""
-    path, filename = metapath(entity)
+    path, filename = metapath(dto)
 
     if not path.is_dir():
         os.makedirs(path)
@@ -363,7 +363,7 @@ async def save(
         await file.write(meta.model_dump_json(exclude_none=True))
 
     if payload_data:
-        payload_file_path = payload_path(entity)
+        payload_file_path = payload_path(dto)
 
         payload_filename = f"{meta.shortname}.json"
 
@@ -372,9 +372,9 @@ async def save(
 
 
 async def create(
-    entity: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any] | None = None
+    dto: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any] | None = None
 ):
-    path, filename = metapath(entity)
+    path, filename = metapath(dto)
 
     if (path / filename).is_file():
         raise api.Exception(
@@ -386,12 +386,12 @@ async def create(
             ),
         )
 
-    await save(entity, meta, payload_data)
+    await save(dto, meta, payload_data)
 
 
-async def save_payload(entity: core.EntityDTO, meta: core.Meta, attachment):
-    path, filename = metapath(entity)
-    payload_file_path = payload_path(entity)
+async def save_payload(dto: core.EntityDTO, meta: core.Meta, attachment):
+    path, filename = metapath(dto)
+    payload_file_path = payload_path(dto)
     payload_filename = meta.shortname + Path(attachment.filename).suffix
 
     if not (path / filename).is_file():
@@ -410,10 +410,10 @@ async def save_payload(entity: core.EntityDTO, meta: core.Meta, attachment):
 
 
 async def save_payload_from_json(
-    entity: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any]
+    dto: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any]
 ):
-    path, filename = metapath(entity)
-    payload_file_path = payload_path(entity)
+    path, filename = metapath(dto)
+    payload_file_path = payload_path(dto)
 
     payload_filename = f"{meta.shortname}.json"
 
@@ -432,19 +432,19 @@ async def save_payload_from_json(
 
 
 async def update(
-    entity: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any] | None = None
+    dto: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any] | None = None
 ) -> dict:
     """Update the entry, store the difference and return it
     1. load the current file
     3. store meta at the file location
     4. store the diff between old and new file
     """
-    old_meta: core.Meta = await load(entity)
-    old_payload = await load_resource_payload(entity)
+    old_meta: core.Meta = await load(dto)
+    old_payload = await load_resource_payload(dto)
 
     meta.updated_at = datetime.now()
 
-    await save(entity, meta, payload_data)
+    await save(dto, meta, payload_data)
 
     if (
         meta.payload
@@ -452,10 +452,10 @@ async def update(
         and meta.payload.content_type == ContentType.json
         and not payload_data
     ):
-        payload_data = await load_resource_payload(entity)
+        payload_data = await load_resource_payload(dto)
         
     history_diff = await store_entry_diff(
-        entity=entity,
+        dto=dto,
         old_meta=old_meta,
         new_meta=meta,
         old_payload=old_payload,
@@ -466,7 +466,7 @@ async def update(
 
 
 async def store_entry_diff(
-    entity: core.EntityDTO,
+    dto: core.EntityDTO,
     old_meta: core.Meta,
     new_meta: core.Meta,
     old_payload: dict[str, Any] | None = None,
@@ -504,26 +504,26 @@ async def store_entry_diff(
 
     history_obj = core.History(
         shortname="history",
-        owner_shortname=entity.user_shortname or "__system__",
+        owner_shortname=dto.user_shortname or "__system__",
         timestamp=datetime.now(),
         request_headers=get_request_data().get("request_headers", {}),
         diff=history_diff,
     )
     history_path = (
-        settings.spaces_folder / entity.space_name / branch_path(entity.branch_name)
+        settings.spaces_folder / dto.space_name / branch_path(dto.branch_name)
     )
 
-    if entity.subpath == "/" and entity.resource_type == core.Space:
+    if dto.subpath == "/" and dto.resource_type == core.Space:
         history_path = Path(f"{history_path}/.dm")
     else:
-        if issubclass(entity.class_type, core.Attachment):
-            history_path = Path(f"{history_path}/.dm/{entity.subpath}")
+        if issubclass(dto.class_type, core.Attachment):
+            history_path = Path(f"{history_path}/.dm/{dto.subpath}")
         else:
-            if entity.subpath == "/":
-                history_path = Path(f"{history_path}/.dm/{entity.shortname}")
+            if dto.subpath == "/":
+                history_path = Path(f"{history_path}/.dm/{dto.shortname}")
             else:
                 history_path = Path(
-                    f"{history_path}/{entity.subpath}/.dm/{entity.shortname}"
+                    f"{history_path}/{dto.subpath}/.dm/{dto.shortname}"
                 )
 
     if not os.path.exists(history_path):
@@ -539,21 +539,21 @@ async def store_entry_diff(
 
 
 async def move(
-    entity: core.EntityDTO,
+    dto: core.EntityDTO,
     meta: core.Meta,
     dest_subpath: str | None,
     dest_shortname: str | None,
 ):
     """Move the file that match the criteria given, remove source folder if empty"""
-    dest_entity = copy(entity)
+    dest_dto = copy(dto)
 
     if dest_subpath:
-        dest_entity.subpath = dest_subpath
+        dest_dto.subpath = dest_subpath
     if dest_shortname:
-        dest_entity.shortname = dest_shortname
+        dest_dto.shortname = dest_shortname
 
-    src_path, src_filename = metapath(entity)
-    dest_path, dest_filename = metapath(dest_entity)
+    src_path, src_filename = metapath(dto)
+    dest_path, dest_filename = metapath(dest_dto)
 
     meta_updated = False
     dest_path_without_dm = dest_path
@@ -580,8 +580,8 @@ async def move(
     # Create dest dir if there's a change in the subpath AND the shortname
     # and the subpath shortname folder doesn't exist,
     if (
-        entity.shortname != dest_shortname
-        and entity.subpath != dest_subpath
+        dto.shortname != dest_shortname
+        and dto.subpath != dest_subpath
         and not os.path.isdir(dest_path_without_dm)
     ):
         os.makedirs(dest_path_without_dm)
@@ -594,9 +594,9 @@ async def move(
         and meta.payload.content_type != ContentType.text
         and isinstance(meta.payload.body, str)
     ):
-        src_payload_file_path = payload_path(entity) / meta.payload.body
+        src_payload_file_path = payload_path(dto) / meta.payload.body
         meta.payload.body = meta.shortname + "." + meta.payload.body.split(".")[-1]
-        dist_payload_file_path = payload_path(dest_entity) / meta.payload.body
+        dist_payload_file_path = payload_path(dest_dto) / meta.payload.body
         if src_payload_file_path.is_file():
             os.rename(src=src_payload_file_path, dst=dist_payload_file_path)
 
@@ -618,14 +618,14 @@ def delete_empty(path: Path):
 
 
 async def clone(
-    src_entity: core.EntityDTO,
-    dest_entity: core.EntityDTO,
+    src_dto: core.EntityDTO,
+    dest_dto: core.EntityDTO,
 ):
 
-    meta_obj: core.Meta = await load(src_entity)
+    meta_obj: core.Meta = await load(src_dto)
 
-    src_path, src_filename = metapath(src_entity)
-    dest_path, dest_filename = metapath(dest_entity)
+    src_path, src_filename = metapath(src_dto)
+    dest_path, dest_filename = metapath(dest_dto)
 
     # Create dest dir if not exist
     if not os.path.isdir(dest_path):
@@ -639,15 +639,15 @@ async def clone(
         and meta_obj.payload.content_type != ContentType.text
         and isinstance(meta_obj.payload.body, str)
     ):
-        src_payload_file_path = payload_path(src_entity) / meta_obj.payload.body
-        dist_payload_file_path = payload_path(dest_entity) / meta_obj.payload.body
+        src_payload_file_path = payload_path(src_dto) / meta_obj.payload.body
+        dist_payload_file_path = payload_path(dest_dto) / meta_obj.payload.body
         copy_file(src=src_payload_file_path, dst=dist_payload_file_path)
 
 
-async def delete(entity: core.EntityDTO):
+async def delete(dto: core.EntityDTO):
     """Delete the file that match the criteria given, remove folder if empty"""
 
-    path, filename = metapath(entity)
+    path, filename = metapath(dto)
     if not path.is_dir() or not (path / filename).is_file():
         raise api.Exception(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -658,7 +658,7 @@ async def delete(entity: core.EntityDTO):
             ),
         )
 
-    meta: core.Meta = await load(entity)
+    meta: core.Meta = await load(dto)
 
     pathname = path / filename
     if pathname.is_file():
@@ -666,13 +666,13 @@ async def delete(entity: core.EntityDTO):
 
         # Delete payload file
         if meta.payload and meta.payload.content_type not in ContentType.inline_types():
-            payload_file_path = payload_path(entity) / str(meta.payload.body)
+            payload_file_path = payload_path(dto) / str(meta.payload.body)
             if payload_file_path.exists() and payload_file_path.is_file():
                 os.remove(payload_file_path)
 
     history_path = (
-        f"{settings.spaces_folder}/{entity.space_name}/{branch_path(entity.branch_name)}"
-        + f"{entity.subpath}/.dm/{meta.shortname}"
+        f"{settings.spaces_folder}/{dto.space_name}/{branch_path(dto.branch_name)}"
+        + f"{dto.subpath}/.dm/{meta.shortname}"
     )
 
     if path.is_dir() and (
@@ -686,26 +686,26 @@ async def delete(entity: core.EntityDTO):
             shutil.rmtree(history_path)
 
 
-def is_entry_exist(entity: core.EntityDTO) -> bool:
-    subpath = copy(entity.subpath)
+def is_entry_exist(dto: core.EntityDTO) -> bool:
+    subpath = copy(dto.subpath)
     if subpath[0] == "/":
         subpath = f".{subpath}"
 
     payload_file = (
         settings.spaces_folder
-        / entity.space_name
-        / branch_path(entity.branch_name)
+        / dto.space_name
+        / branch_path(dto.branch_name)
         / subpath
-        / f"{entity.shortname}.json"
+        / f"{dto.shortname}.json"
     )
     if payload_file.is_file():
         return True
 
     for r_type in ResourceType:
         # Spaces compared with each others only
-        if r_type == ResourceType.space and r_type != entity.resource_type:
+        if r_type == ResourceType.space and r_type != dto.resource_type:
             continue
-        meta_path, meta_file = metapath(entity)
+        meta_path, meta_file = metapath(dto)
         if (meta_path / meta_file).is_file():
             return True
 

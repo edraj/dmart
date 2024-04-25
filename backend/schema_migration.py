@@ -33,14 +33,14 @@ async def change_field_type(
 ):
     # 3-update field type to new_type
     schema_properties = schema_payload["properties"]
-    entity = EntityDTO(
+    dto = EntityDTO(
         space_name=space,
         subpath="schema",
         shortname=schema_model.shortname,
         resource_type=ResourceType.schema
     )
     await operational_repo.internal_sys_update_model(
-        entity=entity,
+        dto=dto,
         meta=schema_model,
         payload_dict=schema_payload,
         updates={
@@ -58,14 +58,14 @@ async def change_field_type(
         match = FILE_PATTERN.search(str(one))
         if not match or not one.is_file():
             continue
-        one_entity = EntityDTO(
+        one_dto = EntityDTO(
             space_name=space,
             subpath=match.group(1),
             shortname=match.group(2),
             resource_type=match.group(3)
         )
         try:
-            resource_obj: Meta = await db.load(one_entity)
+            resource_obj: Meta = await db.load(one_dto)
             
             # 5-if resource.schema_shortname == schema:
             if(
@@ -76,7 +76,7 @@ async def change_field_type(
                 continue
             
             # 5.1-load payload file
-            resource_payload = await db.load_resource_payload(one_entity)
+            resource_payload = await db.load_resource_payload(one_dto)
         except Exception as ex:
             print(f"Error loading {one}", ex)
             continue
@@ -103,7 +103,7 @@ async def change_field_type(
             )
         
         await operational_repo.internal_sys_update_model(
-            entity=one_entity,
+            dto=one_dto,
             meta=resource_obj,
             payload_dict=resource_payload,
             updates={
@@ -134,13 +134,13 @@ async def main(
     """
     
     # 1-load schema
-    schema_entity = EntityDTO(
+    schema_dto = EntityDTO(
         space_name=space,
         subpath="schema",
         shortname=schema,
         resource_type=ResourceType.schema
     )
-    schema_model: Schema = await db.load(schema_entity)
+    schema_model: Schema = await db.load(schema_dto)
     if(
         not schema_model.payload or
         schema_model.payload.content_type != ContentType.json or
@@ -148,7 +148,7 @@ async def main(
     ):
         print(f"Invalid schema file: \n{schema_model.model_dump_json()}")
         return
-    schema_payload: dict = await db.load_resource_payload(schema_entity)
+    schema_payload: dict = await db.load_resource_payload(schema_dto)
     
     
     # 2-make sure field with old_type exist

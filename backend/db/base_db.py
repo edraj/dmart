@@ -58,15 +58,15 @@ class BaseDB(ABC):
         pass
 
     @abstractmethod
-    async def entity_doc_id(self, entity: EntityDTO) -> str:
+    async def dto_doc_id(self, dto: EntityDTO) -> str:
         pass
 
     @abstractmethod
-    async def find(self, entity: EntityDTO) -> None | dict[str, Any]:
+    async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
         pass
 
-    async def find_or_fail(self, entity: EntityDTO) -> dict[str, Any]:
-        item = await self.find(entity)
+    async def find_or_fail(self, dto: EntityDTO) -> dict[str, Any]:
+        item = await self.find(dto)
 
         if not item:
             raise api_exception(
@@ -119,7 +119,7 @@ class BaseDB(ABC):
     @abstractmethod
     async def prepare_payload_doc(
         self,
-        entity: EntityDTO,
+        dto: EntityDTO,
         meta: Meta,
         payload: dict[str, Any],
     ) -> tuple[str, dict[str, Any]]:
@@ -127,7 +127,7 @@ class BaseDB(ABC):
     
 
     @abstractmethod
-    async def delete(self, entity: EntityDTO) -> bool:
+    async def delete(self, dto: EntityDTO) -> bool:
         pass
 
     @abstractmethod
@@ -171,20 +171,20 @@ class BaseDB(ABC):
 
     @abstractmethod
     async def save_lock_doc(
-        self, entity: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
+        self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
         pass
 
     @abstractmethod
-    async def get_lock_doc(self, entity: EntityDTO) -> dict[str, Any]:
+    async def get_lock_doc(self, dto: EntityDTO) -> dict[str, Any]:
         pass
 
     @abstractmethod
     async def is_locked_by_other_user(
-        self, entity: EntityDTO
+        self, dto: EntityDTO
     ) -> bool:
         pass
     
     @abstractmethod
-    async def delete_lock_doc(self, entity: EntityDTO) -> None:
+    async def delete_lock_doc(self, dto: EntityDTO) -> None:
         pass

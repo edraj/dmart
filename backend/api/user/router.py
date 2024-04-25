@@ -135,13 +135,13 @@ async def create_user(record: core.Record) -> api.Response:
             ),
         )
 
-    entity = core.EntityDTO.from_record(record, MANAGEMENT_SPACE, record.shortname)
+    dto = core.EntityDTO.from_record(record, MANAGEMENT_SPACE, record.shortname)
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.create))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.create))
 
     user = core.User.from_record(record=record, owner_shortname=record.shortname)
 
-    await operational_repo.validate_uniqueness(entity, record.attributes)
+    await operational_repo.validate_uniqueness(dto, record.attributes)
 
     separate_payload_data: dict[str, Any] = {}
     if "payload" in record.attributes and "body" in record.attributes["payload"]:
@@ -167,9 +167,9 @@ async def create_user(record: core.Record) -> api.Response:
                     schema_shortname=user.payload.schema_shortname,
                 )
 
-    await db.create(entity, user, separate_payload_data)
+    await db.create(dto, user, separate_payload_data)
 
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.create))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.create))
 
     return api.Response(status=api.Status.success)
 
@@ -209,14 +209,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             channel = token_data[1]
             token_identifier = token_data[2]
 
-            entity = core.EntityDTO(
+            dto = core.EntityDTO(
                 space_name=MANAGEMENT_SPACE,
                 subpath=USERS_SUBPATH,
                 shortname=shortname,
                 resource_type=ResourceType.user,
                 user_shortname=shortname,
             )
-            user = await db.load(entity)
+            user = await db.load(dto)
 
             if (
                 user
@@ -250,14 +250,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
             if "shortname" in identifier:
                 shortname = identifier["shortname"]
-                entity = core.EntityDTO(
+                dto = core.EntityDTO(
                     space_name=MANAGEMENT_SPACE,
                     subpath=USERS_SUBPATH,
                     shortname=shortname,
                     resource_type=ResourceType.user,
                     user_shortname=shortname,
                 )
-                user = await db.load(entity)
+                user = await db.load(dto)
             else:
                 key, value = list(identifier.items())[0]
                 if isinstance(value, str) and isinstance(key, str):
@@ -343,7 +343,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 @router.get("/profile", response_model=api.Response, response_model_exclude_none=True)
 async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
 
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
@@ -351,9 +351,9 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         user_shortname=shortname,
     )
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.view))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.view))
 
-    user: core.User = await db.load(entity)
+    user: core.User = await db.load(dto)
 
     attributes: dict[str, Any] = {}
     if user.email:
@@ -410,7 +410,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         attachments=user_avatar,
     )
 
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.view))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.view))
 
     return api.Response(status=api.Status.success, records=[record])
 
@@ -434,11 +434,11 @@ async def update_profile(
             ),
         )
 
-    entity = core.EntityDTO.from_record(profile, MANAGEMENT_SPACE, shortname)
+    dto = core.EntityDTO.from_record(profile, MANAGEMENT_SPACE, shortname)
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.update))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.update))
 
-    user: core.User = await db.load(entity)
+    user: core.User = await db.load(dto)
 
     # old_version_flattend = flatten_dict(user.model_dump())
 
@@ -493,7 +493,7 @@ async def update_profile(
         elif profile_user.msisdn:
             user.is_msisdn_verified = True
     else:
-        await operational_repo.validate_uniqueness(entity, profile.attributes, RequestType.update)
+        await operational_repo.validate_uniqueness(dto, profile.attributes, RequestType.update)
         if "email" in profile.attributes and user.email != profile_user.email:
             user.email = profile_user.email
             user.is_email_verified = False
@@ -521,10 +521,10 @@ async def update_profile(
                         schema_shortname=str(user.payload.schema_shortname),
                     )
 
-    history_diff = await db.update(entity, user, separate_payload_data)
+    history_diff = await db.update(dto, user, separate_payload_data)
 
     await plugin_manager.after_action(
-        entity.to_event_data(core.ActionType.update, {"history_diff": history_diff})
+        dto.to_event_data(core.ActionType.update, {"history_diff": history_diff})
     )
 
     return api.Response(status=api.Status.success)
@@ -561,7 +561,7 @@ async def logout(
 
     await remove_redis_active_session(shortname)
     
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         resource_type=ResourceType.user,
@@ -570,10 +570,10 @@ async def logout(
         
     )
 
-    user: core.User = await db.load(entity)
+    user: core.User = await db.load(dto)
     
     if user.firebase_token:
-        await operational_repo.internal_sys_update_model(entity, user, {"firebase_token": None})
+        await operational_repo.internal_sys_update_model(dto, user, {"firebase_token": None})
 
     return api.Response(status=api.Status.success, records=[])
 
@@ -582,20 +582,20 @@ async def logout(
 async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
     """Delete own user"""
     
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         resource_type=ResourceType.user,
         user_shortname=shortname,
     )
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.delete))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.delete))
     
-    await db.delete(entity)
+    await db.delete(dto)
 
     await remove_redis_active_session(shortname)
 
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.delete))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.delete))
 
     return api.Response(status=api.Status.success)
 
@@ -613,14 +613,14 @@ async def otp_request(
     """Request new OTP"""
 
     result = user_request.check_fields()
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         resource_type=ResourceType.user,
         user_shortname=shortname,
     )
-    user: core.User = await db.load(entity)
+    user: core.User = await db.load(dto)
     
     exception = api.Exception(
         status.HTTP_401_UNAUTHORIZED,
@@ -674,7 +674,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             ),
         )
 
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=user.shortname,
@@ -684,11 +684,11 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     
     user.force_password_change = True
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.update))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.update))
 
-    await db.update(entity, user)
+    await db.update(dto, user)
 
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.update))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.update))
 
     reset_password_message = "Reset password via this link: {link}, This link can be used once and within the next 48 hours."
 
@@ -799,7 +799,7 @@ async def user_reset(
     logged_user=Depends(JWTBearer()),
 ) -> api.Response:
     
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
@@ -807,10 +807,10 @@ async def user_reset(
         user_shortname=logged_user,
     )
 
-    user: core.User = await db.load(entity)
+    user: core.User = await db.load(dto)
     
     if not await access_control.check_access(
-        entity=entity,
+        dto=dto,
         meta=user,
         action_type=ActionType.update,
     ):
@@ -824,7 +824,7 @@ async def user_reset(
         )
 
     if not user.force_password_change:
-        await operational_repo.internal_sys_update_model(entity, user, {"force_password_change": True})
+        await operational_repo.internal_sys_update_model(dto, user, {"force_password_change": True})
 
     sms_link = None
     email_link = None
@@ -873,7 +873,7 @@ async def validate_password(
     password: str, shortname=Depends(JWTBearer())
 ) -> api.Response:
     
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
@@ -881,7 +881,7 @@ async def validate_password(
         user_shortname=shortname,
     )
     
-    user: core.User = await db.load(entity)
+    user: core.User = await db.load(dto)
     
     if password_hashing.verify_password(password, user.password or ""):
         return api.Response(status=api.Status.success)
@@ -923,7 +923,7 @@ async def process_user_login(
             "type": user.type,
         },
     )
-    entity = core.EntityDTO.from_record(record, MANAGEMENT_SPACE, user.shortname)
+    dto = core.EntityDTO.from_record(record, MANAGEMENT_SPACE, user.shortname)
     if user.displayname:
         record.attributes["displayname"] = user.displayname
 
@@ -931,7 +931,7 @@ async def process_user_login(
         user_updates["firebase_token"] = firebase_token
 
     if user_updates:
-        await operational_repo.internal_sys_update_model(entity, user, user_updates)
+        await operational_repo.internal_sys_update_model(dto, user, user_updates)
 
     return record
 
@@ -1026,7 +1026,7 @@ if settings.social_login_allowed:
             setattr(user_model, f"{provider}_id", provider_user.id)
 
             await db.create(
-                entity=core.EntityDTO(
+                dto=core.EntityDTO(
                     space_name=MANAGEMENT_SPACE,
                     subpath=USERS_SUBPATH,
                     shortname=shortname,

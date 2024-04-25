@@ -29,7 +29,7 @@ async def main() -> None:
             if (settings.spaces_folder / folder[0] / folder[1] / folder[2]).is_dir():
                 continue
             await operational_repo.internal_save_model(
-                entity=EntityDTO(
+                dto=EntityDTO(
                     space_name=folder[0],
                     subpath=folder[1],
                     shortname=folder[2],

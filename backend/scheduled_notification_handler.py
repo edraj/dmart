@@ -58,7 +58,7 @@ async def trigger_admin_notifications() -> None:
                         notification_dict
                     )
                     await operational_repo.internal_save_model(
-                        entity=EntityDTO(
+                        dto=EntityDTO(
                             space_name="personal",
                             subpath=f"people/{receiver_data['shortname']}/notifications",
                             branch_name=notification_dict["branch_name"],
@@ -79,16 +79,16 @@ async def trigger_admin_notifications() -> None:
                         ),
                     )
 
-            entity = EntityDTO(
+            dto = EntityDTO(
                 space_name=settings.management_space,
                 subpath=notification_dict["subpath"],
                 shortname=notification_dict["shortname"],
                 resource_type=ResourceType.content,
                 user_shortname=notification_dict["owner_shortname"],
             )
-            notification_meta: Content = await load_meta(entity)
+            notification_meta: Content = await load_meta(dto)
             await operational_repo.internal_sys_update_model(
-                entity=entity,
+                dto=dto,
                 meta=notification_meta,
                 updates={"status": "finished"},
             )

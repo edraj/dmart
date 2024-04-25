@@ -23,12 +23,12 @@ class Plugin(PluginBase):
             logger.warning("invalid data at action_log")
             return
 
-        entity=EntityDTO.from_event_data(data)
+        dto=EntityDTO.from_event_data(data)
         
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"]
         else:
-            entry = await load(entity)
+            entry = await load(dto)
 
         action_attributes = {}
         if data.action_type == ActionType.create:
@@ -38,7 +38,7 @@ class Plugin(PluginBase):
                 entry.payload.content_type == ContentType.json
                 and entry.payload.body
             ):
-                payload = await load_resource_payload(entity)
+                payload = await load_resource_payload(dto)
             action_attributes = self.generate_create_event_attributes(entry, payload)
 
         elif data.action_type == ActionType.update:

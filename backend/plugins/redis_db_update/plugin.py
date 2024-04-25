@@ -43,14 +43,14 @@ class Plugin(PluginBase):
             await reload_redis(for_space=data.space_name)
             return
 
-        entity_dto: EntityDTO = EntityDTO.from_event_data(data)
+        dto_dto: EntityDTO = EntityDTO.from_event_data(data)
         if data.action_type == ActionType.delete:
-            await operational_repo.delete(entity_dto)
+            await operational_repo.delete(dto_dto)
 
             return
 
-        entity = EntityDTO.from_event_data(data)
-        meta = await db.load_or_none(entity) # type: ignore
+        dto = EntityDTO.from_event_data(data)
+        meta = await db.load_or_none(dto) # type: ignore
         if not meta:
             return
 
@@ -60,7 +60,7 @@ class Plugin(PluginBase):
             ActionType.progress_ticket,
         ]:
 
-            await operational_repo.create(entity_dto, meta)
+            await operational_repo.create(dto_dto, meta)
 
         elif data.action_type == ActionType.move and data.shortname is not None:
             await operational_repo.move(
@@ -80,16 +80,16 @@ class Plugin(PluginBase):
             "/".join(subpath_parts[:-1]),
             subpath_parts[-1],
         )
-        parent_entity_dto = EntityDTO(
+        parent_dto_dto = EntityDTO(
             space_name=self.data.space_name,
             branch_name=self.data.branch_name,
             schema_shortname="meta",
             shortname=parent_shortname,
             subpath=parent_subpath,
         )
-        meta: None | core.Meta = await operational_repo.find(parent_entity_dto)
+        meta: None | core.Meta = await operational_repo.find(parent_dto_dto)
 
         if not meta:
             return
 
-        await operational_repo.create(entity=parent_entity_dto, meta=meta)
+        await operational_repo.create(dto=parent_dto_dto, meta=meta)

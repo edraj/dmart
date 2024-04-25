@@ -101,7 +101,7 @@ async def generate_redis_docs(locators: list) -> list:
         try:
             # print(f"{one=}")
 
-            entity = core.EntityDTO(
+            dto = core.EntityDTO(
                 space_name=one.space_name,
                 branch_name=one.branch_name,
                 subpath=one.subpath,
@@ -109,7 +109,7 @@ async def generate_redis_docs(locators: list) -> list:
                 user_shortname="anonymous",
                 resource_type=one.type
             )
-            meta: core.Meta | None = await db.load_or_none(entity) #type: ignore
+            meta: core.Meta | None = await db.load_or_none(dto) #type: ignore
             if not meta:
                 continue
             
@@ -124,7 +124,7 @@ async def generate_redis_docs(locators: list) -> list:
                 and meta.payload.schema_shortname
             ):
                 try:
-                    payload_path = db.payload_path(entity) / str(meta.payload.body)
+                    payload_path = db.payload_path(dto) / str(meta.payload.body)
                     payload_data = json.loads(payload_path.read_text())
                     await validate_payload_with_schema(
                         payload_data=payload_data,
@@ -151,7 +151,7 @@ async def generate_redis_docs(locators: list) -> list:
                     print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
                     
             meta_data["payload_string"] = await operational_repo.generate_payload_string(
-                entity=core.EntityDTO(
+                dto=core.EntityDTO(
                     space_name=one.space_name, 
                     subpath=one.subpath, 
                     shortname=one.shortname, 

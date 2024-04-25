@@ -364,11 +364,11 @@ async def hard_health_check(space_name: str, branch_name: str):
     return res
 
 async def health_check_entry(
-    entity: EntityDTO
+    dto: EntityDTO
 ):
     
-    entry_meta_obj: core.Meta = await db.load(entity)
-    if entry_meta_obj.shortname != entity.shortname:
+    entry_meta_obj: core.Meta = await db.load(dto)
+    if entry_meta_obj.shortname != dto.shortname:
         raise Exception(
             "the shortname which got from the folder path doesn't match the shortname in the meta file."
         )
@@ -377,7 +377,7 @@ async def health_check_entry(
         entry_meta_obj.payload
         and entry_meta_obj.payload.content_type == ContentType.image
     ):
-        payload_file_path = db.payload_path(entity)
+        payload_file_path = db.payload_path(dto)
         if (
             not payload_file_path.is_file()
             or not isinstance(entry_meta_obj.payload.body, str)
@@ -396,7 +396,7 @@ async def health_check_entry(
                 )
             else:
                 raise Exception(
-                    f"can't access this payload {entity.subpath}"
+                    f"can't access this payload {dto.subpath}"
                     f"/{entry_meta_obj.shortname}"
                 )
     elif (
@@ -404,19 +404,19 @@ async def health_check_entry(
         and isinstance(entry_meta_obj.payload.body, str)
         and entry_meta_obj.payload.content_type == ContentType.json
     ):
-        payload_file_path = db.payload_path(entity)
+        payload_file_path = db.payload_path(dto)
         if not entry_meta_obj.payload.body.endswith(
             ".json"
         ) or not os.access(payload_file_path, os.W_OK):
             raise Exception(
                 f"can't access this payload {payload_file_path}"
             )
-        payload_file_content = await db.load_resource_payload(entity)
+        payload_file_content = await db.load_resource_payload(dto)
         if entry_meta_obj.payload.schema_shortname:
             await validate_payload_with_schema(
                 payload_data=payload_file_content,
-                space_name=entity.space_name,
-                branch_name=entity.branch_name or settings.default_branch,
+                space_name=dto.space_name,
+                branch_name=dto.branch_name or settings.default_branch,
                 schema_shortname=entry_meta_obj.payload.schema_shortname,
             )
 
@@ -427,7 +427,7 @@ async def health_check_entry(
         entry_meta_obj.payload.checksum != entry_meta_obj.payload.client_checksum
     ): 
         raise Exception(
-            f"payload.checksum not equal payload.client_checksum {entity.subpath}/{entry_meta_obj.shortname}"
+            f"payload.checksum not equal payload.client_checksum {dto.subpath}/{entry_meta_obj.shortname}"
         )
         
 async def validate_subpath_data(
@@ -487,7 +487,7 @@ async def validate_subpath_data(
             continue
 
         try:
-            folder_entity = EntityDTO(
+            folder_dto = EntityDTO(
                 space_name=space_name,
                 subpath=folder_name,
                 shortname="",
@@ -495,12 +495,12 @@ async def validate_subpath_data(
                 user_shortname=user_shortname,
                 branch_name=branch_name,
             )
-            folder_meta_content: Meta = await db.load(folder_entity)
+            folder_meta_content: Meta = await db.load(folder_dto)
             if (
                 folder_meta_content.payload
                 and folder_meta_content.payload.content_type == ContentType.json
             ):
-                folder_meta_payload = await db.load_resource_payload(folder_entity)
+                folder_meta_payload = await db.load_resource_payload(folder_dto)
                 if folder_meta_content.payload.schema_shortname:
                     await validate_payload_with_schema(
                         payload_data=folder_meta_payload,
@@ -809,7 +809,7 @@ async def cleanup_spaces() -> None:
             },
             "required": []
         }
-        entity = EntityDTO(
+        dto = EntityDTO(
             space_name=settings.management_space,
             subpath="schema",
             shortname=meta.shortname,
@@ -817,7 +817,7 @@ async def cleanup_spaces() -> None:
             user_shortname="dmart",
             
         )
-        await db.save(entity, meta, schema)
+        await db.save(dto, meta, schema)
 
     # clean up entries
     for folder_name in os.listdir(folder_path):

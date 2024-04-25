@@ -75,7 +75,7 @@ async def retrieve_entry_meta(
     if subpath == settings.root_subpath_mw:
         subpath = "/"
 
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=space_name,
         branch_name=branch_name,
         subpath=subpath,
@@ -83,10 +83,10 @@ async def retrieve_entry_meta(
         resource_type=resource_type,
         user_shortname="anonymous",
     )
-    meta: core.Meta = await db.load(entity)
+    meta: core.Meta = await db.load(dto)
 
     if not await access_control.check_access(
-        entity=entity,
+        dto=dto,
         meta=meta,
         action_type=core.ActionType.view,
     ):
@@ -99,7 +99,7 @@ async def retrieve_entry_meta(
             ),
         )
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.view))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.view))
 
     attachments = {}
     entry_path = (
@@ -126,7 +126,7 @@ async def retrieve_entry_meta(
         # include locked before returning the dictionary
         return {**meta.dict(exclude_none=True), "attachments": attachments}
 
-    payload_body = await db.load_resource_payload(entity)
+    payload_body = await db.load_resource_payload(dto)
 
     if meta.payload and meta.payload.schema_shortname:
         await validate_payload_with_schema(
@@ -137,7 +137,7 @@ async def retrieve_entry_meta(
         )
 
     meta.payload.body = payload_body
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.view))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.view))
 
     return {**meta.dict(exclude_none=True), "attachments": attachments}
 
@@ -156,7 +156,7 @@ async def retrieve_entry_or_attachment_payload(
     branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
     
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=space_name,
         branch_name=branch_name,
         subpath=subpath,
@@ -164,7 +164,7 @@ async def retrieve_entry_or_attachment_payload(
         resource_type=resource_type,
         user_shortname="anonymous",
     )
-    meta: core.Meta = await db.load(entity)
+    meta: core.Meta = await db.load(dto)
 
     if (
         meta.payload is None
@@ -181,7 +181,7 @@ async def retrieve_entry_or_attachment_payload(
         )
 
     if not await access_control.check_access(
-        entity=entity,
+        dto=dto,
         meta=meta,
         action_type=core.ActionType.view,
     ):
@@ -194,13 +194,13 @@ async def retrieve_entry_or_attachment_payload(
             ),
         )
         
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.view))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.view))
     
     # TODO check security labels for public access
     # assert meta.is_active
-    payload_path = db.payload_path(entity)
+    payload_path = db.payload_path(dto)
 
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.view))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.view))
 
     media_file = payload_path / str(meta.payload.body)
     return FileResponse(media_file)
@@ -280,7 +280,7 @@ async def create_entry(
 
     uuid = uuid4()
     shortname = str(uuid)[:8]
-    entity = core.EntityDTO(
+    dto = core.EntityDTO(
         space_name=space_name,
         subpath=subpath,
         user_shortname="anonymous",
@@ -289,7 +289,7 @@ async def create_entry(
         shortname=shortname
     )
     if not await access_control.check_access(
-        entity=entity,
+        dto=dto,
         action_type=core.ActionType.create,
         record_attributes=body_dict,
     ):
@@ -303,7 +303,7 @@ async def create_entry(
         )
 
     
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.create))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.create))
 
     content_obj = core.Content(
         uuid=uuid,
@@ -325,9 +325,9 @@ async def create_entry(
             schema_shortname=content_obj.payload.schema_shortname,
         )
 
-    await db.save(entity, content_obj, body_dict)
+    await db.save(dto, content_obj, body_dict)
     
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.create))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.create))
 
     return api.Response(status=api.Status.success)
 
@@ -348,10 +348,10 @@ async def create_attachment(
             ),
         )
         
-    entity = core.EntityDTO.from_record(record, space_name, "anonymous")
+    dto = core.EntityDTO.from_record(record, space_name, "anonymous")
 
     if not await access_control.check_access(
-        entity=entity,
+        dto=dto,
         action_type=core.ActionType.create,
         record_attributes=record.attributes,
     ):
@@ -364,15 +364,15 @@ async def create_attachment(
             ),
         )
 
-    await plugin_manager.before_action(entity.to_event_data(core.ActionType.create))
+    await plugin_manager.before_action(dto.to_event_data(core.ActionType.create))
 
-    attachment_obj = entity.class_type.from_record(record=record, owner_shortname="anonymous")
+    attachment_obj = dto.class_type.from_record(record=record, owner_shortname="anonymous")
     if record.shortname != settings.auto_uuid_rule:
-        entity.shortname = attachment_obj.shortname
+        dto.shortname = attachment_obj.shortname
 
-    await db.save(entity, attachment_obj)
+    await db.save(dto, attachment_obj)
 
-    await plugin_manager.after_action(entity.to_event_data(core.ActionType.create))
+    await plugin_manager.after_action(dto.to_event_data(core.ActionType.create))
 
     return api.Response(status=api.Status.success)
 
@@ -380,8 +380,8 @@ async def create_attachment(
 @router.post("/excute/{task_type}/{space_name}")
 async def excute(space_name: str, task_type: TaskType, record: core.Record):
     
-    entity = core.EntityDTO.from_record(record, space_name, "anonymous")
-    meta: core.Meta = await db.load(entity)
+    dto = core.EntityDTO.from_record(record, space_name, "anonymous")
+    meta: core.Meta = await db.load(dto)
 
     if (
         meta.payload is None
@@ -397,7 +397,7 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
             ),
         )
 
-    query_dict = await db.load_resource_payload(entity)
+    query_dict = await db.load_resource_payload(dto)
 
     for param, value in record.attributes.items():
         query_dict["search"] = query_dict["search"].replace(f"${param}", str(value))

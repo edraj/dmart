@@ -108,36 +108,36 @@ class RedisDB(BaseDB):
                 return await redis.get_count(space_name, branch_name, schema_shortname)
 
         except Exception as e:
-            logger.error(f"Error at RedisDB.entity_doc_id: {e.args}")
+            logger.error(f"Error at RedisDB.dto_doc_id: {e.args}")
             return 0
         
-    async def entity_doc_id(self, entity: EntityDTO) -> str:
-        if not entity.schema_shortname:
+    async def dto_doc_id(self, dto: EntityDTO) -> str:
+        if not dto.schema_shortname:
             raise Exception("schema_shortname is required to generate the doc_id")
 
         try:
             async with RedisServices() as redis:
                 return redis.generate_doc_id(
-                    space_name=entity.space_name,
-                    subpath=entity.subpath,
-                    branch_name=entity.branch_name,
-                    schema_shortname=entity.schema_shortname,
-                    shortname=entity.shortname,
+                    space_name=dto.space_name,
+                    subpath=dto.subpath,
+                    branch_name=dto.branch_name,
+                    schema_shortname=dto.schema_shortname,
+                    shortname=dto.shortname,
                 )
 
         except Exception as e:
-            logger.error(f"Error at RedisDB.entity_doc_id: {e.args}")
+            logger.error(f"Error at RedisDB.dto_doc_id: {e.args}")
             return ""
 
-    async def find(self, entity: EntityDTO) -> None | dict[str, Any]:
+    async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
         async with RedisServices() as redis:
             return await redis.get_doc_by_id(
                 redis.generate_doc_id(
-                    space_name=entity.space_name,
-                    branch_name=entity.branch_name,
-                    schema_shortname=entity.schema_shortname,
-                    subpath=entity.subpath,
-                    shortname=entity.shortname,
+                    space_name=dto.space_name,
+                    branch_name=dto.branch_name,
+                    schema_shortname=dto.schema_shortname,
+                    subpath=dto.subpath,
+                    shortname=dto.shortname,
                 )
             )
 
@@ -190,18 +190,18 @@ class RedisDB(BaseDB):
 
     async def prepare_payload_doc(
         self,
-        entity: EntityDTO,
+        dto: EntityDTO,
         meta: Meta,
         payload: dict[str, Any],
     ) -> tuple[str, dict[str, Any]]:
         async with RedisServices() as redis:
             return redis.prepare_payload_doc(
-                entity.space_name, 
-                entity.branch_name, 
-                entity.subpath, 
+                dto.space_name, 
+                dto.branch_name, 
+                dto.subpath, 
                 meta, 
                 payload, 
-                entity.resource_type
+                dto.resource_type
             )
 
 
@@ -223,36 +223,36 @@ class RedisDB(BaseDB):
             logger.error(f"Error at RedisDB.delete_doc_by_id: {e.args}")
             return False
 
-    async def delete(self, entity: EntityDTO) -> bool:
+    async def delete(self, dto: EntityDTO) -> bool:
         try:
             async with RedisServices() as redis:
                 doc_id = redis.generate_doc_id(
-                    entity.space_name,
-                    entity.branch_name,
+                    dto.space_name,
+                    dto.branch_name,
                     "meta",
-                    entity.shortname,
-                    entity.subpath,
+                    dto.shortname,
+                    dto.subpath,
                 )
                 meta_doc = await redis.get_doc_by_id(doc_id)
                 # Delete the meta doc
                 await redis.delete_doc(
-                    entity.space_name,
-                    entity.branch_name,
+                    dto.space_name,
+                    dto.branch_name,
                     "meta",
-                    entity.shortname,
-                    entity.subpath,
+                    dto.shortname,
+                    dto.subpath,
                 )
                 # Delete the payload doc
                 await redis.delete_doc(
-                    entity.space_name,
-                    entity.branch_name,
+                    dto.space_name,
+                    dto.branch_name,
                     (
                         meta_doc.get("payload", {}).get("schema_shortname", "meta")
                         if meta_doc
                         else "meta"
                     ),
-                    entity.shortname,
-                    entity.subpath,
+                    dto.shortname,
+                    dto.subpath,
                 )
                 return True
         except Exception as e:
@@ -351,15 +351,15 @@ class RedisDB(BaseDB):
 
     
     async def save_lock_doc(
-        self, entity: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
+        self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
         try:
             async with RedisServices() as redis:
                 return await redis.save_lock_doc(
-                    space_name=entity.space_name,
-                    branch_name=entity.branch_name,
-                    subpath=entity.subpath,
-                    payload_shortname=entity.shortname,
+                    space_name=dto.space_name,
+                    branch_name=dto.branch_name,
+                    subpath=dto.subpath,
+                    payload_shortname=dto.shortname,
                     owner_shortname=owner_shortname,
                     ttl=ttl,
                 )
@@ -368,14 +368,14 @@ class RedisDB(BaseDB):
             logger.error(f"Error at RedisDB.save_lock_doc: {e.args}")
             return None
 
-    async def get_lock_doc(self, entity: EntityDTO) -> dict[str, Any]:
+    async def get_lock_doc(self, dto: EntityDTO) -> dict[str, Any]:
         try:
             async with RedisServices() as redis:
                 return await redis.get_lock_doc(
-                    space_name=entity.space_name,
-                    branch_name=entity.branch_name,
-                    subpath=entity.subpath,
-                    payload_shortname=entity.shortname,
+                    space_name=dto.space_name,
+                    branch_name=dto.branch_name,
+                    subpath=dto.subpath,
+                    payload_shortname=dto.shortname,
                 )
 
         except Exception as e:
@@ -383,19 +383,19 @@ class RedisDB(BaseDB):
             return {}
     
     async def is_locked_by_other_user(
-        self, entity: EntityDTO
+        self, dto: EntityDTO
     ) -> bool:
         try:
             async with RedisServices() as redis:
                 lock_payload = await redis.get_lock_doc(
-                    entity.space_name, 
-                    entity.branch_name, 
-                    entity.subpath, 
-                    entity.shortname
+                    dto.space_name, 
+                    dto.branch_name, 
+                    dto.subpath, 
+                    dto.shortname
                 )
                 if lock_payload:
-                    if entity.user_shortname:
-                        return bool(lock_payload["owner_shortname"] != entity.user_shortname)
+                    if dto.user_shortname:
+                        return bool(lock_payload["owner_shortname"] != dto.user_shortname)
                     else:
                         return True
                 return False
@@ -404,14 +404,14 @@ class RedisDB(BaseDB):
             logger.error(f"Error at RedisDB.is_entry_locked: {e.args}")
             return False
     
-    async def delete_lock_doc(self, entity: EntityDTO) -> None:
+    async def delete_lock_doc(self, dto: EntityDTO) -> None:
         try:
             async with RedisServices() as redis:
                 await redis.delete_lock_doc(
-                    space_name=entity.space_name,
-                    branch_name=entity.branch_name,
-                    subpath=entity.subpath,
-                    payload_shortname=entity.shortname,
+                    space_name=dto.space_name,
+                    branch_name=dto.branch_name,
+                    subpath=dto.subpath,
+                    payload_shortname=dto.shortname,
                 )
 
         except Exception as e:
