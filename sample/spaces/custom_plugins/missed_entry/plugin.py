@@ -19,7 +19,7 @@ class Plugin(PluginBase):
 
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str) and not isinstance(data.attributes, dict):
-            logger.error(f"invalid data at missed_entry")
+            logger.error("invalid data at missed_entry")
             return
 
         spaces = await operational_repo.find_by_id("spaces")
@@ -55,11 +55,13 @@ class Plugin(PluginBase):
         if len(miss_shortname) > 32:
             miss_shortname = miss_shortname[:32]
 
+        entity.shortname = miss_shortname
+        entity.subpath = "misses"
         miss_file = (
             settings.spaces_folder / 
             data.space_name / 
             branch_path(data.branch_name) /
-            f"misses/{miss_shortname}.json"
+            f"{entity.subpath}/{entity.shortname}.json"
         )
         miss_content = {}
         if miss_file.is_file():
@@ -77,13 +79,13 @@ class Plugin(PluginBase):
             }
             
         missed_obj_meta = core.Content(
-            shortname=miss_shortname,
+            shortname=entity.shortname,
             owner_shortname=data.user_shortname,
             is_active=True,
             payload=core.Payload(
                 content_type=ContentType.json,
                 schema_shortname="miss",
-                body=miss_shortname + ".json",
+                body=entity.shortname + ".json",
             ),
         )
         
