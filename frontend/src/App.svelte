@@ -45,14 +45,17 @@
           return null;
       }
   }
-  async function prepareRouter(lang: string) {
+  async function prepareRouter() {
       return createRouter({
           routes: routes,
           urlRewrite: {
               toInternal: (url) => {
+                  url = url === "" ? "/" : url;
+
                   if (url.startsWith("/management")){
                       return url;
                   }
+                  const lang = $locale;
                   const paths = url.split("/");
                   paths.shift();
                   let fileName = paths[paths.length - 1];
@@ -144,7 +147,7 @@
 
 <div id="routify-app">
   <SvelteToast {options} />
-  {#await prepareRouter($locale) then router}
+  {#await prepareRouter() then router}
     <Router {router} />
   {/await}
 </div>
