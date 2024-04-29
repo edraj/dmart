@@ -2,7 +2,7 @@ import aiofiles
 from utils.middleware import get_request_data
 from models.core import ActionType, EntityDTO, PluginBase, Event
 from models.enums import ContentType, ResourceType
-from utils.db import load, load_resource_payload
+from utils.db import load_or_none, load_resource_payload
 from models.core import Action, Locator, Meta
 from utils.helpers import branch_path
 from utils.settings import settings
@@ -28,7 +28,9 @@ class Plugin(PluginBase):
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"]
         else:
-            entry = await load(dto)
+            entry = await load_or_none(dto)
+        if not entry:
+            return
 
         action_attributes = {}
         if data.action_type == ActionType.create:
