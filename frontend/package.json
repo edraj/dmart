@@ -7,10 +7,10 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "node md_indexer.js && vite build",
     "preview": "vite preview",
     "svelte-check": "svelte-check --no-tsconfig --ignore .routify",
-    "dev": "vite",
+    "dev": "node md_indexer.js && vite",
     "test": "vitest run --watch false"
   },
   "devDependencies": {
@@ -23,6 +23,7 @@
     "@tauri-apps/cli": "^1.5.11",
     "@types/js-yaml": "^4.0.9",
     "@types/marked": "^6.0.0",
+    "@types/node": "^20.12.7",
     "@types/prismjs": "^1.26.3",
     "@zerodevx/svelte-toast": "^0.9.5",
     "axios": "^1.6.8",
