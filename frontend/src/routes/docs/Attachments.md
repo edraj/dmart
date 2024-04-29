@@ -19,42 +19,46 @@ Create Attachment
 
 For attachments that are not files, which are: reaction, share, reply, comment, json, relationship, and alteration you can use the /managed/request API, as follows:
 
+```
 {
-"space_name": "dmart_data",
-"request_type": "create",
-"records": [
-{
-"resource_type": "comment", // Must be one of the attachment types that is not file
-"shortname": "my_comment",
-"subpath": "{parent_entry_subpath}/{parent_entry_shortname}"
-"attributes": {
-"is_active": true, // Attachments have meta fields also
-"tags": ["one", "two"],
-"body": "Very Intersting entry", // The comment
+    "space_name": "dmart_data",
+    "request_type": "create",
+    "records": [
+        {
+            "resource_type": "comment", // Must be one of the attachment types that is not file
+            "shortname": "my_comment",
+            "subpath": "{parent_entry_subpath}/{parent_entry_shortname}"
+            "attributes": {
+                "is_active": true, // Attachments have meta fields also
+                "tags": ["one", "two"],
+                "body": "Very Intersting entry", // The comment
+            }
+        }
+    ]
 }
-}
-]
-}
+```
 
 And for the file attachments, which are media and data_asset you can use the /managed/resource_with_payload API. it accepts three inputs
 
-    request_record file, consists of the record data, example
+request_record file, consists of the record data, example
 
+```
 {
-"resource_type": "csv",
-"subpath": "asset_csv/test_csv",
-"shortname": "auto",
-"attributes": {
-"is_active": true,
-"payload": {
-"content_type": "csv",
-"schema_shortname": "users",
-"body": {}
+    "resource_type": "csv",
+        "subpath": "asset_csv/test_csv",
+        "shortname": "auto",
+        "attributes": {
+        "is_active": true,
+        "payload": {
+            "content_type": "csv",
+            "schema_shortname": "users",
+            "body": {}
+        }
+    }
 }
-}
-}
+```
 
-    the attachment file itself
-    the space name
+the attachment file itself
+the space name
 
-    For more API examples refer to the Managed -> Content -> Attachment section in the Postman API collection
+For more API examples refer to the Managed -> Content -> Attachment section in the Postman API collection
