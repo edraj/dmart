@@ -1,6 +1,6 @@
 # Relationships And Locators
 
-In Dmart, "Relationships" define the connections or associations between different d ata entities.
+In Dmart, "Relationships" define the connections or associations between different data entities.
 These relationships represent the links or dependencies between data entities,
 enabling users to establish connections,
 navigate between related data, and perform complex data queries and analyses.

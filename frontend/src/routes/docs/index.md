@@ -12,12 +12,13 @@
 </style>
 
 **Why Choose DMART?**
+<img class="center" src={Logo} width="500">
 
 DMART serves as a data service layer, offering a streamlined approach for developing specific types of solutions with a moderate data footprint (less than 300 million primary entries). It is not tailored for systems handling large datasets or those necessitating complex data modeling or atomic operations (transactions).
 
 Functioning as a versatile, structure-oriented information management system, DMART is commonly referred to as Data-as-a-Service (DaaS). It functions as a low-code information inventory platform, akin to a content registry, repository, or vault. DMART facilitates the ingestion of various data types (structured, unstructured, and binary), allowing users to treat their valuable data assets as commodities. This enables seamless authoring, sharing, and extension of data, ensuring that valuable assets remain as the mastered version and serve as the definitive source of truth.
 
-**The Problem Addressed by DMART**
+**The Problem DMART attempts to solve**
 
 Organizational and personal information is increasingly becoming unwieldy:
 
