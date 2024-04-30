@@ -61,4 +61,4 @@ request_record file, consists of the record data, example
 the attachment file itself
 the space name
 
-For more API examples refer to the Managed -> Content -> Attachment section in the Postman API collection
+> For more API examples refer to the `Managed -> Content -> Attachment` section in the [Postman API collection](https://www.postman.com/galactic-desert-723527/workspace/dmart/collection/5491055-c2a1ccd1-6554-4890-b6c8-59b522983e2f)
