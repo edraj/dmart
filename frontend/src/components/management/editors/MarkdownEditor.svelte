@@ -26,6 +26,16 @@
     end = textarea.selectionEnd;
   }
 
+  const listViewInsert = "{% ListView \n" +
+      "   type=\"subpath\"\n" +
+      "   space_name=\"\" \n" +
+      "   subpath=\"/\" \n" +
+      "   is_clickable=false %}\n" +
+      "{% /ListView %}\n";
+  const tableInsert = `| Header 1 | Header 2 |
+|----------|----------|
+|  Cell1   |  Cell2   |`
+
   function handleKeyDown(event) {
       if (event.ctrlKey) {
           if (['b','i','t'].includes(event.key)) {
@@ -118,11 +128,21 @@
         <TabPane class="m-0 p-0" onClick={()=>handleFormatting("**")}><p class="text-dark p-0 m-0" slot="tab"><strong>B</strong></p></TabPane>
         <TabPane onClick={()=>handleFormatting("_")}><p class="text-dark p-0 m-0" slot="tab"><i>I</i></p></TabPane>
         <TabPane onClick={()=>handleFormatting("~~")}><p class="text-dark p-0 m-0" slot="tab"><del>S</del></p></TabPane>
-        <TabPane onClick={()=>handleFormatting("*", false, true)}><p class="text-dark p-0 m-0" slot="tab">ul</p></TabPane>
-        <TabPane onClick={()=>handleFormatting("1.", false, true)}><p class="text-dark p-0 m-0" slot="tab">ol</p></TabPane>
+        <TabPane onClick={()=>handleFormatting("*", false, true)}>
+          <Icon class="text-dark p-0 m-0" name="list-ul" slot="tab"/>
+        </TabPane>
+        <TabPane onClick={()=>handleFormatting("1.", false, true)}>
+          <Icon class="text-dark p-0 m-0" name="list-ol" slot="tab"/>
+        </TabPane>
         <TabPane onClick={()=>handleFormatting("#", false)}><p class="text-dark p-0 m-0" slot="tab">H1</p></TabPane>
         <TabPane onClick={()=>handleFormatting("##", false)}><p class="text-dark p-0 m-0" slot="tab">H2</p></TabPane>
         <TabPane onClick={()=>handleFormatting("###", false)}><p class="text-dark p-0 m-0" slot="tab">H3</p></TabPane>
+        <TabPane onClick={()=>handleFormatting(tableInsert, false)}>
+          <Icon class="text-dark p-0 m-0" name="table" slot="tab"/>
+        </TabPane>
+        <TabPane onClick={()=>handleFormatting(listViewInsert, false)}>
+          <Icon class="text-dark p-0 m-0" name="newspaper" slot="tab"/>
+        </TabPane>
         <TabPane onClick={handleSave}>
           <Icon class="text-success p-0 m-0" name="save" slot="tab"/>
         </TabPane>
