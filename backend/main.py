@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
     print('{"stage":"starting up"}')
     # , extra={"props":{
     #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
-    #    "redis_port": settings.redis_port
+    #    "redis_port": settings.operational_db_port
     #    }})
 
     openapi_schema = app.openapi()
