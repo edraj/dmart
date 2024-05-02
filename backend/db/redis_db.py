@@ -330,6 +330,14 @@ class RedisDB(BaseDB):
             logger.error(f"Error at RedisDB.create_index: {e.args}")
             return False
 
+    async def flush_all(self) -> None:
+        try:
+            async with RedisServices() as redis:
+                await redis.flushall()
+        except Exception as e:
+            logger.error(f"Error at RedisDB.flush_all: {e.args}")
+
+    
     async def create_application_indexes(
         self,
         for_space: str | None = None,
@@ -349,6 +357,17 @@ class RedisDB(BaseDB):
         except Exception as e:
             logger.error(f"Error at RedisDB.create_application_indexes: {e.args}")
 
+    async def create_custom_indices(self, for_space: str | None = None) -> None:
+        try:
+            async with RedisServices() as redis:
+                await redis.create_custom_indices(
+                    for_space=for_space
+                )
+
+        except Exception as e:
+            logger.error(f"Error at RedisDB.create_custom_indices: {e.args}")
+
+    
     
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period

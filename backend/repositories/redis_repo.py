@@ -205,7 +205,7 @@ class RedisRepo(BaseRepo):
     ) -> str:
         payload_string: str = ""
         # Remove system related attributes from payload
-        for attr in self.SYS_ATTRIBUTES:
+        for attr in self.db.SYS_ATTRIBUTES:
             if attr in payload:
                 del payload[attr]
 
@@ -267,7 +267,7 @@ class RedisRepo(BaseRepo):
         for key, value in db_entry.items():
             if key in resource_class.model_fields.keys():
                 meta_doc_content[key] = value
-            elif key not in self.SYS_ATTRIBUTES:
+            elif key not in self.db.SYS_ATTRIBUTES:
                 payload_doc_content[key] = value
 
         dto = EntityDTO(

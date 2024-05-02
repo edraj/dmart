@@ -27,12 +27,12 @@ from fastapi.logger import logger
 class RedisServices(Redis):
 
     POOL = BlockingConnectionPool(
-        host=settings.redis_host,
-        port=settings.redis_port,
-        password=settings.redis_password,
+        host=settings.operational_db_host,
+        port=settings.operational_db_port,
+        password=settings.operational_db_password,
         decode_responses=True,
         protocol=3,
-        max_connections=settings.redis_pool_max_connections,
+        max_connections=settings.operational_db_pool_max_connections,
     )
 
     META_SCHEMA = (
@@ -237,12 +237,12 @@ class RedisServices(Redis):
         if self.is_pytest:
             super().__init__(
                 connection_pool=BlockingConnectionPool(
-                    host=settings.redis_host,
-                    port=settings.redis_port,
-                    password=settings.redis_password,
+                    host=settings.operational_db_host,
+                    port=settings.operational_db_port,
+                    password=settings.operational_db_password,
                     decode_responses=True,
                     protocol=3,
-                    max_connections=settings.redis_pool_max_connections,
+                    max_connections=settings.operational_db_pool_max_connections,
                 )
             )
         else:
