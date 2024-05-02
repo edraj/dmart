@@ -12,7 +12,6 @@
 
     const docFiles = [
         'index.md',
-        'Dmart.ar.md'
         'Installation.md',
         'Space.md',
         'Subpath.md',
