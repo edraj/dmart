@@ -18,10 +18,7 @@ from models.api import Query, Exception as api_exception, Error as api_error
 from models.core import (
     EntityDTO,
     Folder,
-    Group,
     Meta,
-    Permission,
-    Role,
     Space,
     User,
     Record,
@@ -56,88 +53,7 @@ from fastapi.logger import logger
 
 
 class BaseRepo(ABC):
-    SYS_ATTRIBUTES: list[str] = [
-        "payload_string",
-        "branch_name",
-        "query_policies",
-        "subpath",
-        "resource_type",
-        "meta_doc_id",
-        "payload_doc_id",
-        "payload_string",
-        "view_acl",
-    ]
-    SYS_INDEXES: list[dict[str, Any]] = [
-        {
-            "space": "management",
-            "branch": settings.management_space_branch,
-            "subpath": "roles",
-            "class": Role,
-            "exclude_from_index": [
-                "relationships",
-                "acl",
-                "is_active",
-                "description",
-                "displayname",
-                "payload",
-            ],
-        },
-        {
-            "space": "management",
-            "branch": settings.management_space_branch,
-            "subpath": "groups",
-            "class": Group,
-            "exclude_from_index": [
-                "relationships",
-                "acl",
-                "is_active",
-                "description",
-                "displayname",
-                "payload",
-            ],
-        },
-        {
-            "space": "management",
-            "branch": settings.management_space_branch,
-            "subpath": "users",
-            "class": User,
-            "exclude_from_index": [
-                "relationships",
-                "acl",
-                "is_active",
-                "description",
-                "displayname",
-                "payload",
-                "password",
-                "is_email_verified",
-                "is_msisdn_verified",
-                "type",
-                "force_password_change",
-                "social_avatar_url",
-            ],
-        },
-        {
-            "space": "management",
-            "branch": settings.management_space_branch,
-            "subpath": "permissions",
-            "class": Permission,
-            "exclude_from_index": [
-                "relationships",
-                "acl",
-                "is_active",
-                "description",
-                "displayname",
-                "payload",
-                "subpaths",
-                "resource_types",
-                "actions",
-                "conditions",
-                "restricted_fields",
-                "allowed_fields_values",
-            ],
-        },
-    ]
-
+    
     def __init__(self, db: BaseDB) -> None:
         self.db: BaseDB = db
 
@@ -367,7 +283,7 @@ class BaseRepo(ABC):
             camel_case(resource_type),
         )
 
-        not_payload_attr = self.SYS_ATTRIBUTES + list(
+        not_payload_attr = self.db.SYS_ATTRIBUTES + list(
             resource_class.model_fields.keys()
         )
 
@@ -1084,7 +1000,7 @@ class BaseRepo(ABC):
 
             schema_name = input_data.get("payload", {}).get("schema_shortname", None)
 
-            for index in self.SYS_INDEXES:
+            for index in self.db.SYS_INDEXES:
                 if dto.space_name == index["space"] and index["subpath"] == subpath:
                     schema_name = "meta"
                     break

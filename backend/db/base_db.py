@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from models.api import Exception as api_exception, Error as api_error
-from models.core import EntityDTO, Meta
+from models.core import EntityDTO, Group, Meta, Permission, Role, User
 from models.enums import LockAction, ResourceType, SortType
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
@@ -10,6 +10,89 @@ from fastapi import status
 
 
 class BaseDB(ABC):
+    
+    SYS_ATTRIBUTES: list[str] = [
+        "payload_string",
+        "branch_name",
+        "query_policies",
+        "subpath",
+        "resource_type",
+        "meta_doc_id",
+        "payload_doc_id",
+        "payload_string",
+        "view_acl",
+    ]
+    SYS_INDEXES: list[dict[str, Any]] = [
+        {
+            "space": "management",
+            "branch": settings.management_space_branch,
+            "subpath": "roles",
+            "class": Role,
+            "exclude_from_index": [
+                "relationships",
+                "acl",
+                "is_active",
+                "description",
+                "displayname",
+                "payload",
+            ],
+        },
+        {
+            "space": "management",
+            "branch": settings.management_space_branch,
+            "subpath": "groups",
+            "class": Group,
+            "exclude_from_index": [
+                "relationships",
+                "acl",
+                "is_active",
+                "description",
+                "displayname",
+                "payload",
+            ],
+        },
+        {
+            "space": "management",
+            "branch": settings.management_space_branch,
+            "subpath": "users",
+            "class": User,
+            "exclude_from_index": [
+                "relationships",
+                "acl",
+                "is_active",
+                "description",
+                "displayname",
+                "payload",
+                "password",
+                "is_email_verified",
+                "is_msisdn_verified",
+                "type",
+                "force_password_change",
+                "social_avatar_url",
+            ],
+        },
+        {
+            "space": "management",
+            "branch": settings.management_space_branch,
+            "subpath": "permissions",
+            "class": Permission,
+            "exclude_from_index": [
+                "relationships",
+                "acl",
+                "is_active",
+                "description",
+                "displayname",
+                "payload",
+                "subpaths",
+                "resource_types",
+                "actions",
+                "conditions",
+                "restricted_fields",
+                "allowed_fields_values",
+            ],
+        },
+    ]
+
 
     # ================================================================================
     # Core CRUD Functions
