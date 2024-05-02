@@ -8,7 +8,7 @@ from utils.settings import settings
 
 class ManticoreDB(BaseDB):
     config = manticoresearch.Configuration(
-        host = "{settings.operational_db_host}:{settings.operational_db_port}",
+        host = f"{settings.operational_db_host}:{settings.operational_db_port}",
         username=settings.operational_db_user,
         password=settings.operational_db_password
     )
