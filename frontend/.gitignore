@@ -3,3 +3,4 @@ node_modules
 dist
 *.off
 dev-dist
+md_indexer.json

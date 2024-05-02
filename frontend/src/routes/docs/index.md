@@ -11,52 +11,41 @@
 }
 </style>
 
-# Why Use Dmart?
-
+**Why Choose DMART?**
 <img class="center" src={Logo} width="500">
 
-DMART is a data service layer that offers a streamlined / simplified way to develop certain class of solutions with small to medium data footprint (less than 300 million primary entries). It is not suited for systems that have large data nor systems that require heavily/complex related data modeling or requiring atomic operations (transactions).
+DMART serves as a data service layer, offering a streamlined approach for developing specific types of solutions with a moderate data footprint (less than 300 million primary entries). It is not tailored for systems handling large datasets or those necessitating complex data modeling or atomic operations (transactions).
 
-DMART serves as general-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS).
+Functioning as a versatile, structure-oriented information management system, DMART is commonly referred to as Data-as-a-Service (DaaS). It functions as a low-code information inventory platform, akin to a content registry, repository, or vault. DMART facilitates the ingestion of various data types (structured, unstructured, and binary), allowing users to treat their valuable data assets as commodities. This enables seamless authoring, sharing, and extension of data, ensuring that valuable assets remain as the mastered version and serve as the definitive source of truth.
 
-It represents a low-code information inventory platform (aka content registry/repository/vault) that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and extend. Thus, valuable data assets can be maintained as the mastered version and act as the single source of truth. 
+**The Problem DMART attempts to solve**
 
-## The problem DMART attempts to solve
+Organizational and personal information is increasingly becoming unwieldy:
 
-Valuable information (organizational and personal) is getting out of control!
+- Fragmented across numerous systems, necessitating multiple access points.
+- Challenging to consolidate and link for consumption, analysis,
+  reporting, and dashboard creation.
+- Locked into vendor-specific or application-specific data formats.
+- Chaotic and challenging to search through the accumulated data.
+- Difficult to master, deduplicate, back up, archive, and restore.
+- Prone to security vulnerabilities.
 
-- Dispersed over too many systems, requiring multiple access contexts.
-- Difficult to consolidate and link for consumption, insights, reporting and dashboards
-- Locked to vendors or application-specific data-formats
-- Chaotic and hard to discover / search the data piling up over the years
-- Difficult to master, dedup, backup, archive and restore.
-- Difficult to protect and secure
+**Key Features of DMART**
 
-## Top highlights
+**Data-as-a-Service (DaaS):** DMART acts as a backbone data store where data assets are declared and utilized across multiple applications and microservices, represented in logical and business terms rather than traditional RDBMS formats.
 
-### Data-as-a-Service 
-Backbone data store where the data assets get declared and used across multiple applications and microservices. The data assets are declared in the logical and business representation rather than classical RDBMS (physical).
+**Standardized API:** A publicly-accessible unified API layer simplifies interaction with various types of data, streamlining the work of application developers.
 
-### Standardized API
-Publicly-accessible unified api layer allowing interaction with the different types of data; and simplifying the work of application developers.
+**Data Longevity:** Data is stored in flat-files directly on the file system, ensuring resilient and time-proof storage. This enables easy access, inspection, validation, backup, and change tracking, with the capability to recreate the Redis index from the flat-files at any point.
 
-### Data longevity
-Resilient and time-proof data storage, as data is stored in flat-files directly on the file system. This opens the door for easy access, inspection, validation, backup and change tracking. At any point in time, the redis index can be recreated from the flat-files.
+**User Management and Access Control:** DMART includes comprehensive user management and access control features to alleviate the burden from application development teams.
 
-### User management and access control
-"Batteries included" to elevate the burden from application development. 
+**Microservice Friendly:** Leveraging JWT shared secrets, additional microservices can seamlessly leverage user sessions with DMART. Additionally, a compatible FastAPI skeleton Git repository facilitates the development of additional microservices.
 
-### Microservice friendly
-Leveraging JWT shared secret, additional microservices can automatically leverage the user's session with dmart. There is also a compatible FastApi skeleton git repository to facilitate the development of additional microservices.
+**Extensibility via Plugins:** Specialized logic (plugins) can be incorporated to respond to specific types of activities and content.
 
-### Extensible via plugins 
-Specialized logic (plugins) can be added to react to certain types of activities and content.
+**Entry-Oriented Approach:** Unlike document-oriented NoSQL databases, DMART focuses on consolidating coherent information units alongside their associated assets (known as "attachments"), whether textual or binary, into a single entry.
 
-### Entry-oriented 
-As opposed to document-oriented NoSQL, entry-orientation revolves around consolidating the coherent information unit alongside its belongings (known as "attachments" that can involve textual and/or binary) as one entry. 
+**Activities and Workflows:** DMART offers configurable activity (ticket) and workflow management capabilities.
 
-### Activities and workflows 
-Configurable activity (ticket) and workflow management. 
-
-### Messaging and notifications 
-Ability to trigger different types of notifications and ability to store user messages.
+**Messaging and Notifications:** Users can trigger various types of notifications and store user messages within DMART.
