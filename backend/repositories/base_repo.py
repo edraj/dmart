@@ -223,6 +223,16 @@ class BaseRepo(ABC):
         dto: EntityDTO,
         payload: dict[str, Any],
     ) -> str:
+        """Generates a string (separated by comma) of all the attributes values of the payload dict,
+        and the attachments values
+
+        Args:
+            dto (EntityDTO): the main entry's DTO
+            payload (dict[str, Any]): the payload document
+
+        Returns:
+            str: a string of keywords separated by commas
+        """
         pass
 
     async def save_at_id(self, id: str, doc: dict[str, Any] = {}) -> bool:

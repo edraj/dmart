@@ -11,6 +11,9 @@ from fastapi import status
 
 class BaseDB(ABC):
 
+    # ================================================================================
+    # Core CRUD Functions
+    # ================================================================================
     @abstractmethod
     async def search(
         self,
@@ -89,15 +92,15 @@ class BaseDB(ABC):
         pass
 
     @abstractmethod
-    async def delete_keys(self, keys: list[str]) -> bool:
-        pass
-
-    @abstractmethod
     async def find_by_id(self, id: str) -> dict[str, Any]:
         pass
     
     @abstractmethod
     async def list_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
+        pass
+    
+    @abstractmethod
+    async def delete_keys(self, keys: list[str]) -> bool:
         pass
 
     @abstractmethod
@@ -146,7 +149,12 @@ class BaseDB(ABC):
         branch_name: str | None = settings.default_branch,
     ) -> bool:
         pass
+    # ================================== END =========================================
 
+
+    # ================================================================================
+    # Indexes Functions
+    # ================================================================================
     @abstractmethod
     async def list_indexes(self) -> set[str]:
         pass
@@ -154,7 +162,11 @@ class BaseDB(ABC):
     @abstractmethod
     async def drop_index(self, name: str, delete_docs: bool) -> bool:
         pass
-
+    
+    @abstractmethod
+    async def flush_all(self) -> None:
+        pass
+    
     @abstractmethod
     async def create_index(self, name: str, fields: list[Any], **kwargs) -> bool:
         pass
@@ -167,8 +179,30 @@ class BaseDB(ABC):
         for_custom_indices: bool = True,
         del_docs: bool = True,
     ) -> None:
-        pass
+        """Scans the flat-file DB and create an index for each schema
 
+        Args:
+            for_space (str | None, optional): spaces filter. Defaults to None.
+            for_schemas (list | None, optional): schemas filter. Defaults to None.
+            for_custom_indices (bool, optional): _description_. Defaults to True.
+            del_docs (bool, optional): _description_. Defaults to True.
+        """
+        pass
+    
+    @abstractmethod
+    async def create_custom_indices(self, for_space: str | None = None) -> None:
+        """Create indexes for each class defines in self.SYS_INDEXES
+        
+        Args:
+            for_space (str | None, optional): spaces filter. Defaults to None.
+        """
+        pass
+    # ================================== END =========================================
+
+
+    # ================================================================================
+    # Locking Functions
+    # ================================================================================
     @abstractmethod
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
@@ -188,3 +222,4 @@ class BaseDB(ABC):
     @abstractmethod
     async def delete_lock_doc(self, dto: EntityDTO) -> None:
         pass
+    # ================================== END =========================================
