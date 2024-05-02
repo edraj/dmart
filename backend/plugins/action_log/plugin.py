@@ -1,11 +1,10 @@
-import sys
 import aiofiles
 from utils.middleware import get_request_data
-from models.core import ActionType, PluginBase, Event
+from models.core import ActionType, EntityDTO, PluginBase, Event
 from models.enums import ContentType, ResourceType
-from utils.db import load, load_resource_payload
+from utils.db import load_or_none, load_resource_payload
 from models.core import Action, Locator, Meta
-from utils.helpers import branch_path, camel_case
+from utils.helpers import branch_path
 from utils.settings import settings
 from datetime import datetime
 from fastapi.logger import logger
@@ -24,21 +23,14 @@ class Plugin(PluginBase):
             logger.warning("invalid data at action_log")
             return
 
-        class_type = getattr(
-            sys.modules["models.core"], camel_case(ResourceType(data.resource_type))
-        )
-
+        dto=EntityDTO.from_event_data(data)
+        
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"]
         else:
-            entry = await load(
-                space_name=data.space_name,
-                branch_name=data.branch_name,
-                subpath=data.subpath,
-                shortname=data.shortname,
-                class_type=class_type,
-                user_shortname=data.user_shortname,
-            )
+            entry = await load_or_none(dto)
+        if not entry:
+            return
 
         action_attributes = {}
         if data.action_type == ActionType.create:
@@ -48,13 +40,7 @@ class Plugin(PluginBase):
                 entry.payload.content_type == ContentType.json
                 and entry.payload.body
             ):
-                payload = load_resource_payload(
-                    space_name=data.space_name,
-                    branch_name=data.branch_name,
-                    subpath=data.subpath,
-                    filename=entry.payload.body,
-                    class_type=class_type,
-                )
+                payload = await load_resource_payload(dto)
             action_attributes = self.generate_create_event_attributes(entry, payload)
 
         elif data.action_type == ActionType.update:

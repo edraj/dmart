@@ -1,14 +1,12 @@
-import json
-from sys import modules as sys_modules
-from models.core import Notification, NotificationData, PluginBase, Event, Translation
-from utils.helpers import branch_path, camel_case
+from models.api import Query
+from models.core import Content, EntityDTO, Notification, NotificationData, PluginBase, Event, Translation
+from models.enums import QueryType, ResourceType
+from utils.helpers import branch_path
 from utils.notification import NotificationManager
-from utils.redis_services import RedisServices
-from utils.repository import internal_save_model, get_entry_attachments
 from utils.settings import settings
 from fastapi.logger import logger
-from utils.db import load, load_resource_payload, save_payload_from_json
-
+from utils.db import load, load_resource_payload, save_payload_from_json, get_entry_attachments
+from utils.operational_repo import operational_repo
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
@@ -26,46 +24,34 @@ class Plugin(PluginBase):
             )
             return
 
-        notification_request_meta = await load(
-            data.space_name,
-            data.subpath,
-            data.shortname,
-            getattr(sys_modules["models.core"], camel_case(data.resource_type)),
-            data.user_shortname,
-            data.branch_name,
-        )
-        notification_dict = notification_request_meta.dict()
+        notification_dto = EntityDTO.from_event_data(data)
+        notification_request_meta: Content = await load(notification_dto)
+        notification_dict = notification_request_meta.model_dump()
         notification_dict["subpath"] = data.subpath
         notification_dict["branch_name"] = data.branch_name
 
-        notification_request_payload = load_resource_payload(
-            data.space_name,
-            data.subpath,
-            notification_request_meta.payload.body,
-            getattr(sys_modules["models.core"], camel_case(data.resource_type)),
-            data.branch_name,
-        )
+        notification_request_payload = await load_resource_payload(notification_dto)
         notification_dict.update(notification_request_payload)
 
         if not notification_dict or notification_dict.get("scheduled_at", False):
             return
 
         # Get msisdns users
-        async with RedisServices() as redis:
-            receivers = await redis.search(
-                space_name=settings.management_space,
-                branch_name=settings.management_space_branch,
-                search=f"@subpath:users @msisdn:{'|'.join(notification_dict['msisdns'])}",
-                filters={},
-                limit=10000,
-                offset=0,
-            )
-        if not receivers or receivers.get("total", 0) == 0:
+        receivers = await operational_repo.search(Query(
+            type=QueryType.search,
+            space_name=settings.management_space,
+            branch_name=settings.management_space_branch,
+            subpath="users",
+            search=f"@msisdn:{'|'.join(notification_dict['msisdns'])}",
+            limit=10000,
+            offset=0,
+        ))
+        if not receivers or receivers[0] == 0:
             return
 
         receivers_shortnames = set()
-        for receiver in receivers["data"]:
-            receivers_shortnames.add(json.loads(receiver)["shortname"])
+        for receiver in receivers[1]:
+            receivers_shortnames.add(receiver["shortname"])
 
         # await send_notification(
         #     notification_dict=notification_dict,
@@ -76,11 +62,14 @@ class Plugin(PluginBase):
         for receiver in set(receivers_shortnames):
             if not formatted_req["push_only"]:
                 notification_obj = await Notification.from_request(notification_dict)
-                await internal_save_model(
-                    "personal",
-                    f"people/{receiver}/notifications",
-                    notification_obj,
-                    notification_dict["branch_name"],
+                await operational_repo.internal_save_model(
+                    dto=EntityDTO(
+                        space_name="personal",
+                        subpath=f"people/{receiver}/notifications",
+                        shortname=notification_obj.shortname,
+                        resource_type=ResourceType.notification
+                    ),
+                    meta=notification_obj,
                 )
 
             for platform in formatted_req["platforms"]:
@@ -96,11 +85,9 @@ class Plugin(PluginBase):
 
         notification_request_payload["status"] = "finished"
         await save_payload_from_json(
-            space_name=data.space_name,
-            subpath=data.subpath,
+            dto=notification_dto,
             meta=notification_request_meta,
             payload_data=notification_request_payload,
-            branch_name=data.branch_name,
         )
 
     async def prepare_request(self, notification_dict) -> dict:

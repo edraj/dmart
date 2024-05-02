@@ -6,9 +6,9 @@ import time
 from models.api import Error, Exception
 from utils.async_request import AsyncRequest
 from utils.internal_error_code import InternalErrorCode
-from utils.redis_services import RedisServices
 from utils.settings import settings
 from fastapi.logger import logger
+from utils.operational_repo import operational_repo
 
 # comms_api = zain backend api
 send_otp_api = urllib.parse.urljoin(settings.comms_api, "sms/otp/send")
@@ -29,8 +29,7 @@ def gen_alphanumeric(length=16):
 
 async def mock_sending_otp(msisdn) -> dict:
     key = f"users:otp:otps/{msisdn}"
-    async with RedisServices() as redis_services:
-        await redis_services.set_key(key, "123456", settings.otp_token_ttl)
+    await operational_repo.set_key(key, "123456", settings.otp_token_ttl)
     json = {"status": "success", "data": {"status": "success"}}
     return json
 
@@ -63,8 +62,7 @@ async def email_send_otp(email: str, language: str):
         return await mock_sending_otp(email)
     else:
         code = "".join(random.choice("0123456789") for _ in range(6))
-        async with RedisServices() as redis_services:
-            await redis_services.set_key(f"middleware:otp:otps/{email}", code, settings.otp_token_ttl)
+        await operational_repo.set_key(f"middleware:otp:otps/{email}", code, settings.otp_token_ttl)
         message = f"<p>Your OTP code is <b>{code}</b></p>"
         return await send_email(settings.email_sender, email, message, "OTP")
 

@@ -7,20 +7,18 @@ import re
 import traceback
 
 import models.api as api
+from utils.bootstrap import bootstrap_all
 import utils.db as db
 import models.core as core
-import sys
 from models.enums import ContentType, ResourceType
-from utils.helpers import branch_path, camel_case, divide_chunks
+from utils.helpers import branch_path, divide_chunks
 from utils.custom_validations import validate_payload_with_schema
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from utils.redis_services import RedisServices
-from utils.repository import generate_payload_string
+from utils.operational_repo import operational_repo
 from utils.settings import settings
 import utils.regex as regex
 import asyncio
-from utils.spaces import get_spaces, initialize_spaces
-from utils.access_control import access_control
 # from time import time
 from multiprocessing import Pool
 
@@ -101,17 +99,20 @@ async def generate_redis_docs(locators: list) -> list:
     redis_man : RedisServices = await RedisServices()
     for one in locators:
         try:
-            myclass = getattr(sys.modules["models.core"], camel_case(one.type))
             # print(f"{one=}")
 
-            meta = await db.load(
+            dto = core.EntityDTO(
                 space_name=one.space_name,
                 branch_name=one.branch_name,
                 subpath=one.subpath,
                 shortname=one.shortname,
-                class_type=myclass,
                 user_shortname="anonymous",
+                resource_type=one.type
             )
+            meta: core.Meta | None = await db.load_or_none(dto) #type: ignore
+            if not meta:
+                continue
+            
             meta_doc_id, meta_data = redis_man.prepate_meta_doc(
                 one.space_name, one.branch_name, one.subpath, meta
             )
@@ -123,9 +124,7 @@ async def generate_redis_docs(locators: list) -> list:
                 and meta.payload.schema_shortname
             ):
                 try:
-                    payload_path = db.payload_path(
-                        one.space_name, one.subpath, myclass, one.branch_name
-                    ) / str(meta.payload.body)
+                    payload_path = db.payload_path(dto) / str(meta.payload.body)
                     payload_data = json.loads(payload_path.read_text())
                     await validate_payload_with_schema(
                         payload_data=payload_data,
@@ -150,12 +149,15 @@ async def generate_redis_docs(locators: list) -> list:
                     )
                 except Exception as ex:
                     print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
-
-            meta_data["payload_string"] = await generate_payload_string(
-                space_name=one.space_name, 
-                subpath=one.subpath, 
-                shortname=one.shortname, 
-                branch_name=one.branch_name, 
+                    
+            meta_data["payload_string"] = await operational_repo.generate_payload_string(
+                dto=core.EntityDTO(
+                    space_name=one.space_name, 
+                    subpath=one.subpath, 
+                    shortname=one.shortname, 
+                    branch_name=one.branch_name, 
+                    resource_type=one.type,
+                ),
                 payload=payload_data,
             )
             
@@ -262,7 +264,8 @@ async def load_all_spaces_data_to_redis(
     Loop over spaces and subpaths inside it and load the data to redis of indexing_enabled for the space
     """
     loaded_data = {}
-    spaces = await get_spaces()
+    async with RedisServices() as redis:
+        spaces = await redis.get_doc_by_id("spaces")
     for space_name, space_json in spaces.items():
         space_obj = core.Space.model_validate_json(space_json)
         if (for_space and for_space != space_name) or not space_obj.indexing_enabled:
@@ -304,10 +307,10 @@ async def main(
             await redis_man.flushall()
 
         print("Intializing spaces")
-        await initialize_spaces()
+        
+        await bootstrap_all()
 
         print(f"Creating Redis indices: {for_space=} {for_schemas=}")
-        await access_control.load_permissions_and_roles()
         await redis_man.create_indices(
             for_space=for_space, 
             for_schemas=for_schemas,

@@ -2,7 +2,7 @@ import copy
 import json
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, ConfigDict
-from typing import Any
+from typing import Any, Self, Type, TypeVar
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
 from pydantic import Field
@@ -49,18 +49,18 @@ class Payload(Resource):
     client_checksum: str | None = None
     checksum: str | None = None
     body: str | dict[str, Any]
-    
+
     def __init__(self, **data):
         BaseModel.__init__(self, **data)
-        
+
         if not self.checksum and self.body:
             sha1 = hashlib_sha1()
-            
+
             if isinstance(self.body, dict):
-                sha1.update(json.dumps(self.body).encode('utf-8'))
+                sha1.update(json.dumps(self.body).encode("utf-8"))
             else:
-                sha1.update(self.body.encode('utf-8'))
-                
+                sha1.update(self.body.encode("utf-8"))
+
             self.checksum = sha1.hexdigest()
 
     def update(
@@ -106,6 +106,9 @@ class Record(BaseModel):
         BaseModel.__init__(self, **data)
         if self.subpath != "/":
             self.subpath = self.subpath.strip("/")
+
+        if self.subpath[0] != "/":
+            self.subpath = f"/{self.subpath}"
 
     def to_dict(self):
         return json.loads(self.model_dump_json())
@@ -182,6 +185,7 @@ class Relationship(Resource):
     related_to: Locator
     attributes: dict[str, Any]
 
+
 class ACL(BaseModel):
     user_shortname: str
     allowed_actions: list[ActionType]
@@ -205,24 +209,20 @@ class Meta(Resource):
 
     model_config = ConfigDict(validate_assignment=True)
 
-    @staticmethod
-    def from_record(record: Record, owner_shortname: str):
+    @classmethod
+    def from_record(cls, record: Record, owner_shortname: str) -> Self:
         if record.shortname == settings.auto_uuid_rule:
             record.uuid = uuid4()
             record.shortname = str(record.uuid)[:8]
             record.attributes["uuid"] = record.uuid
 
-        meta_class = getattr(
-            sys.modules["models.core"], camel_case(record.resource_type)
-        )
-
-        if issubclass(meta_class, User) and "password" in record.attributes:
+        if issubclass(cls, User) and "password" in record.attributes:
             hashed_pass = password_hashing.hash_password(record.attributes["password"])
             record.attributes["password"] = hashed_pass
 
         record.attributes["owner_shortname"] = owner_shortname
         record.attributes["shortname"] = record.shortname
-        meta_obj = meta_class(**remove_none(record.attributes))  # type: ignore
+        meta_obj = cls(**remove_none(record.attributes))  # type: ignore
         return meta_obj
 
     @staticmethod
@@ -311,6 +311,9 @@ class Meta(Resource):
         return Record(**record_fields)
 
 
+MetaChild = TypeVar("MetaChild", bound=Meta)
+
+
 class Space(Meta):
     root_registration_signature: str = ""
     primary_website: str = ""
@@ -384,6 +387,7 @@ class Sqlite(DataAsset):
 
 class Duckdb(DataAsset):
     pass
+
 
 class Csv(DataAsset):
     pass
@@ -483,7 +487,7 @@ class Reporter(Resource):
 
 
 class Ticket(Meta):
-    state: str
+    state: str | None = None
     is_open: bool = True
     reporter: Reporter | None = None
     workflow_shortname: str
@@ -586,4 +590,73 @@ class Notification(Meta):
             is_read=False,
             priority=notification_req["priority"],
             entry=entry_locator,
+        )
+
+
+class EntityDTO(BaseModel):
+    space_name: str
+    subpath: str
+    shortname: str
+    resource_type: ResourceType = ResourceType.content
+    branch_name: str | None = settings.default_branch
+    schema_shortname: str = "meta"
+    user_shortname: str | None = None
+
+    def __init__(self, **data):
+        """Allow passing nulls and remove them to make Pydantic set the default values"""
+
+        if "resource_type" in data and data["resource_type"] is None:
+            del data["resource_type"]
+        if "schema_shortname" in data and data["schema_shortname"] is None:
+            del data["schema_shortname"]
+
+        data["subpath"] = data["subpath"].strip("/")
+        if data["subpath"] == "":
+            data["subpath"] = "/"
+
+        BaseModel.__init__(self, **data)
+
+    @property
+    def class_type(self) -> Type[MetaChild]:  # type: ignore
+        return getattr(sys.modules["models.core"], camel_case(self.resource_type))  # type: ignore
+
+    @staticmethod
+    def from_event_data(data: Event) -> "EntityDTO":
+        return EntityDTO(
+            **data.model_dump(
+                include={
+                    "space_name",
+                    "branch_name",
+                    "subpath",
+                    "shortname",
+                    "resource_type",
+                    "schema_shortname",
+                    "user_shortname",
+                }
+            )
+        )
+
+    def to_event_data(
+        self, action_type: ActionType, additional_data: dict[str, Any] = {}
+    ) -> Event:
+        return Event(
+            **self.model_dump(), action_type=action_type, attributes=additional_data
+        )
+
+    @classmethod
+    def from_record(
+        cls,
+        record: Record,
+        space_name: str,
+        user_shortname: str | None = None,
+    ) -> Self:
+        return cls(
+            space_name=space_name,
+            schema_shortname=record.attributes.get("payload", {}).get(
+                "schema_shortname", None
+            ),
+            user_shortname=user_shortname,
+            **record.model_dump(
+                include={"branch_name", "subpath", "shortname", "resource_type"}
+            ),
         )

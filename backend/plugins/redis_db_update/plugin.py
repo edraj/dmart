@@ -1,14 +1,12 @@
 import sys
-from models.core import ActionType, Attachment, PluginBase, Event, Space
+from models.core import ActionType, Attachment, EntityDTO, PluginBase, Event, Space
 from utils.helpers import camel_case
-from utils.repository import generate_payload_string
-from utils.spaces import get_spaces
 import utils.db as db
 from models import core
-from models.enums import ContentType, ResourceType
-from utils.redis_services import RedisServices
+from models.enums import ResourceType
 from fastapi.logger import logger
 from create_index import main as reload_redis
+from utils.operational_repo import operational_repo
 
 
 class Plugin(PluginBase):
@@ -23,7 +21,7 @@ class Plugin(PluginBase):
             logger.error("invalid data at redis_db_update")
             return
 
-        spaces = await get_spaces()
+        spaces = await operational_repo.find_by_id("spaces")
         if (
             data.space_name not in spaces
             or not Space.model_validate_json(spaces[data.space_name]).indexing_enabled
@@ -38,155 +36,60 @@ class Plugin(PluginBase):
             await self.update_parent_entry_payload_string()
             return
 
-        async with RedisServices() as redis_services:
-            if data.resource_type == ResourceType.folder and data.action_type in [
-                ActionType.delete,
-                ActionType.move,
-            ]:
-                await reload_redis(for_space=data.space_name)
-                return
+        if data.resource_type == ResourceType.folder and data.action_type in [
+            ActionType.delete,
+            ActionType.move,
+        ]:
+            await reload_redis(for_space=data.space_name)
+            return
 
-            if data.action_type == ActionType.delete:
-                doc_id = redis_services.generate_doc_id(
-                    data.space_name,
-                    data.branch_name,
-                    "meta",
-                    data.shortname,
-                    data.subpath,
-                )
-                meta_doc = await redis_services.get_doc_by_id(doc_id)
-                # Delete meta doc
-                await redis_services.delete_doc(
-                    data.space_name,
-                    data.branch_name,
-                    "meta",
-                    data.shortname,
-                    data.subpath,
-                )
-                # Delete payload doc
-                await redis_services.delete_doc(
-                    data.space_name,
-                    data.branch_name,
-                    (
-                        meta_doc.get("payload", {}).get("schema_shortname", "meta")
-                        if meta_doc
-                        else "meta"
-                    ),
-                    data.shortname,
-                    data.subpath,
-                )
-                return
-            try:
-                meta = await db.load(
-                    space_name=data.space_name,
-                    subpath=data.subpath,
-                    shortname=data.shortname,
-                    class_type=class_type,
-                    user_shortname=data.user_shortname,
-                    branch_name=data.branch_name,
-                )
-            except Exception as _:
-                return
+        dto_dto: EntityDTO = EntityDTO.from_event_data(data)
+        if data.action_type == ActionType.delete:
+            await operational_repo.delete(dto_dto)
 
-            if data.action_type in [
-                ActionType.create,
-                ActionType.update,
-                ActionType.progress_ticket,
-            ]:
-                meta_doc_id, meta_json = redis_services.prepate_meta_doc(
-                    data.space_name, data.branch_name, data.subpath, meta
-                )
-                payload = {}
-                if (
-                    meta.payload
-                    and meta.payload.content_type == ContentType.json
-                    and meta.payload.body is not None
-                ):
-                    payload = db.load_resource_payload(
-                        space_name=data.space_name,
-                        subpath=data.subpath,
-                        filename=meta.payload.body,
-                        class_type=class_type,
-                        branch_name=data.branch_name,
-                    )
+            return
 
-                meta_json["payload_string"] = await generate_payload_string(
-                    space_name=data.space_name,
-                    subpath=meta_json["subpath"],
-                    shortname=meta_json["shortname"],
-                    branch_name=data.branch_name,
-                    payload=payload,
-                )
+        dto = EntityDTO.from_event_data(data)
+        meta = await db.load_or_none(dto) # type: ignore
+        if not meta:
+            return
 
-                await redis_services.save_doc(meta_doc_id, meta_json)
-                if meta.payload:
-                    payload.update(meta_json)
-                    await redis_services.save_payload_doc(
-                        data.space_name,
-                        data.branch_name,
-                        data.subpath,
-                        meta,
-                        payload,
-                        data.resource_type,
-                    )
+        if data.action_type in [
+            ActionType.create,
+            ActionType.update,
+            ActionType.progress_ticket,
+        ]:
 
-            elif data.action_type == ActionType.move:
-                await redis_services.move_meta_doc(
-                    data.space_name,
-                    data.branch_name,
-                    data.attributes["src_shortname"],
-                    data.attributes["src_subpath"],
-                    data.subpath,
-                    meta,
-                )
-                if meta.payload and meta.payload.schema_shortname:
-                    await redis_services.move_payload_doc(
-                        data.space_name,
-                        data.branch_name,
-                        meta.payload.schema_shortname,
-                        data.attributes["src_shortname"],
-                        data.attributes["src_subpath"],
-                        meta.shortname,
-                        data.subpath,
-                    )
+            await operational_repo.create(dto_dto, meta)
+
+        elif data.action_type == ActionType.move and data.shortname is not None:
+            await operational_repo.move(
+                space_name=data.space_name,
+                src_subpath=data.attributes["src_subpath"],
+                src_shortname=data.attributes["src_shortname"],
+                dest_subpath=data.subpath,
+                dest_shortname=data.shortname,
+                meta=meta,
+            )
 
     async def update_parent_entry_payload_string(self) -> None:
-        async with RedisServices() as redis_services:
-            # get the parent meta doc
-            subpath_parts = self.data.subpath.strip("/").split("/")
-            if len(subpath_parts) <= 1:
-                return
-            parent_subpath, parent_shortname = (
-                "/".join(subpath_parts[:-1]),
-                subpath_parts[-1],
-            )
-            doc_id = redis_services.generate_doc_id(
-                self.data.space_name,
-                self.data.branch_name,
-                "meta",
-                parent_shortname,
-                parent_subpath,
-            )
-            meta_doc: dict = await redis_services.get_doc_by_id(doc_id)
+        subpath_parts = self.data.subpath.strip("/").split("/")
+        if len(subpath_parts) <= 1:
+            return
+        parent_subpath, parent_shortname = (
+            "/".join(subpath_parts[:-1]),
+            subpath_parts[-1],
+        )
+        parent_dto_dto = EntityDTO(
+            space_name=self.data.space_name,
+            branch_name=self.data.branch_name,
+            schema_shortname="meta",
+            shortname=parent_shortname,
+            subpath=parent_subpath,
+        )
+        meta: None | core.Meta = await operational_repo.find(parent_dto_dto)
 
-            if meta_doc is None:
-                raise Exception("Meta doc not found")
+        if not meta:
+            return
 
-            payload = {}
-            if meta_doc.get("payload_doc_id"):
-                payload_doc = await redis_services.get_doc_by_id(
-                    meta_doc["payload_doc_id"]
-                )
-                payload = {k: v for k, v in payload_doc.items() if k not in meta_doc}
-
-            # generate the payload string
-            meta_doc["payload_string"] = await generate_payload_string(
-                space_name=self.data.space_name,
-                subpath=parent_subpath,
-                shortname=parent_shortname,
-                branch_name=self.data.branch_name,
-                payload=payload,
-            )
-
-            # update parent meta doc
-            await redis_services.save_doc(doc_id, meta_doc)
+        await operational_repo.create(dto=parent_dto_dto, meta=meta)

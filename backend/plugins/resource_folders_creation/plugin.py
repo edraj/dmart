@@ -1,8 +1,7 @@
-from models.core import Folder, PluginBase, Event
+from models.core import EntityDTO, Folder, PluginBase, Event
 from models.enums import ResourceType
-from utils.redis_services import RedisServices
-from utils.repository import internal_save_model
 from fastapi.logger import logger
+from utils.operational_repo import operational_repo
 
 
 class Plugin(PluginBase):
@@ -39,13 +38,11 @@ class Plugin(PluginBase):
             #         branch_name=data.branch_name
             #     )
 
-            async with RedisServices() as redis_services:
-                await redis_services.create_indices(
-                    for_space=data.shortname,
-                    # for_schemas=sys_schemas,
-                    for_custom_indices=False,
-                    del_docs=False,
-                )
+            await operational_repo.create_application_indexes(
+                for_space=data.shortname,
+                for_custom_indices=False,
+                del_docs=False
+            )
 
             # redis_update_plugin = RedisUpdatePlugin()
             # for schema_name in sys_schemas:
@@ -62,10 +59,14 @@ class Plugin(PluginBase):
             folders = [(data.shortname, "/", "schema")]
 
         for folder in folders:
-            await internal_save_model(
-                space_name=folder[0],
-                subpath=folder[1],
-                branch_name=data.branch_name,
+            await operational_repo.internal_save_model(
+                dto=EntityDTO(
+                    space_name=folder[0],
+                    subpath=folder[1],
+                    branch_name=data.branch_name,
+                    shortname=folder[2],
+                    resource_type=ResourceType.folder
+                ),
                 meta=Folder(
                     shortname=folder[2],
                     is_active=True,
