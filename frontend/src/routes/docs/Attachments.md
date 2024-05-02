@@ -15,7 +15,7 @@ Attachments within Dmart encompass any additional file or document linked to a d
 - **Relationship**: Establishes a link to another entry.
 - **Alteration**: Enables users to submit alteration requests for review and approval by administrators.
 
-Create Attachment
+**Create Attachment**
 
 For attachments that are not files, which are: reaction, share, reply, comment, json, relationship, and alteration you can use the /managed/request API, as follows:
 
@@ -40,7 +40,7 @@ For attachments that are not files, which are: reaction, share, reply, comment, 
 
 And for the file attachments, which are media and data_asset you can use the /managed/resource_with_payload API. it accepts three inputs
 
-request_record file, consists of the record data, example
+request_record file, consists of the record data, example:
 
 ```
 {

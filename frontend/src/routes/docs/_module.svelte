@@ -12,17 +12,25 @@
 
     const docFiles = [
         'index.md',
-        'Attachments.md',
-        'Content-Types.md',
+        'Dmart.ar.md'
         'Installation.md',
-        'Relationships.md',
+        'Space.md',
         'Subpath.md',
         'Meta-Attributes.md',
         'Schema.md',
-        'Simple-Example.md',
-        'Space.md',
-        'Todos.md',
         'Tickets.md',
+        'Content-Types.md',
+        'Attachments.md',
+        'Relationships.md',
+        'Others.md'
+        'Modules.md'
+        'Simple-Example.md',
+        'Dmart-Clients.md'
+        'Use-Cases.md'
+        'Creating-Redis-Indices.md'
+        'Health-Check-API.md'
+        'Password-Hash-Generation.md'
+        'Todos.md',
         'Universal-presence-platform.md'
     ];
 
