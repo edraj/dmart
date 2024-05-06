@@ -14,24 +14,16 @@
         'index.md',
         'Dmart.ar.md',
         'Installation.md',
-        'Space.md',
-        'Subpath.md',
-        'Meta-Attributes.md',
-        'Schema.md',
-        'Tickets.md',
-        'Content-Types.md',
-        'Attachments.md',
-        'Relationships.md',
-        'Others.md',
-        'Modules.md',
-        'Simple-Example.md',
-        'Dmart-Clients.md',
+        'Concepts.md',
+        'Data-Organization.md',
+        'Tools.md',
+     'Examples.md',
+         'Others.md',
+         'Automated-Testing.md',
+        'Dmart-Clients.md',  
         'Use-Cases.md',
-        'Creating-Redis-Indices.md',
-        'Health-Check-API.md',
-        'Password-Hash-Generation.md',
-        'Todos.md',
-        'Universal-presence-platform.md'
+        'Roadmap.md'
+        
     ];
 
     let selectedIndex = docFiles.findIndex(file => `/docs/${file.replace('.md', '').replace('index','')}`===window.location.pathname );
