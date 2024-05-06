@@ -25,9 +25,12 @@ Attachments within Dmart encompass any additional file or document linked to a d
 - **Alteration**: Enables users to submit alteration requests for review and approval by administrators.
 
 **Create Attachment**
+
 To handle attachments that are not files, such as reactions, shares, replies, comments, JSON data, relationships, and alterations, you can utilize the /managed/request API in the following manner:
 
 ```
+
+
 
 {
 "space_name": "dmart_data",
@@ -53,7 +56,9 @@ For file attachments, including media and data assets, the appropriate API to us
 1. request_record file, consists of the record data, example:
 
 ```
+
 {
+
 "resource_type": "csv",
 "subpath": "asset_csv/test_csv",
 "shortname": "auto",
@@ -63,11 +68,9 @@ For file attachments, including media and data assets, the appropriate API to us
 "content_type": "csv",
 "schema_shortname": "users",
 "body": {}
-
 }
 }
 }
-
 ```
 
 2. The attachment file itself
