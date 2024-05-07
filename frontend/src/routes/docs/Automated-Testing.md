@@ -8,7 +8,7 @@ Automated testing is a crucial practice in software development that involves us
 
 2. [Load testing with Locust](Automated-Load-Testing.md)
 
-3. [API testing with cURL.](curl-sh.md)
+3. [API testing with cURL.](Curl-sh.md)
 
 **1. Unit Testing with Pytest**
 
