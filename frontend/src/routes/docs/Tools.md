@@ -7,7 +7,7 @@ Overall, these tools and libraries play crucial roles in automating tasks, enhan
 
 - [Creating Redis Indices](Creating-Redis-Indices.md)
 - [Health Check API](Health-Check-API.md)
-- [Password Hash Generation](Password-Hash-Generation.md/)
+- [Password Hash Generation](Password-Hash-Generation.md)
 - [Schema Migration](Schema-Migration.md)
 - [Trigger Admin Notification](Trigger-Admin-Notifications.md)
 - [Set Admin Password](Set-Admin-Password.md)
