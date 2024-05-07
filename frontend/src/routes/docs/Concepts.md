@@ -3,7 +3,7 @@
 DMart encompasses various concepts that play essential roles in organizing, managing, and understanding the data within the system. Some of the key concepts include:
 
 1. [**Relationships**](Relationships.md)
-2. [**Metadata**](Metadata.md)
+2. [**Meta-Attributes**](Meta-Attributes.md)
 3. [**Content Types**](Content-Types)
 4. [**Schemas**](Schema.md)
 5. [**Tickets**](Tickets.md)
