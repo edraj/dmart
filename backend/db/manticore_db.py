@@ -293,8 +293,28 @@ class ManticoreDB(BaseDB):
         schema_name: str = "meta", 
         return_fields: list = []
     ) -> tuple[int, list[dict[str, Any]]]:
-        select_from = "*" if len(return_fields) == 0 else ",".join(return_fields)
-        result = self.utilsApi.sql(sql=f"SELECT {select_from} FROM {space_name} WHERE MATCH('{search}') ORDER BY {sort_by} {sort_type} LIMIT {limit} OFFSET {offset}")
+
+        sql_query = "SELECT"
+        if len(highlight_fields) == 0:
+            sql_query += "*" if len(return_fields) == 0 else ",".join(return_fields)
+        else:
+            sql_query += "HIGHLIGHT({}, %s) as snippet" % ",".join(highlight_fields)
+
+        sql_query += f" FROM {space_name} WHERE MATCH('{search}')"
+
+        where_filters = []
+        if len(filters.keys()) != 0:
+            sql_query += " AND "
+            for key, value in filters.items():
+                if isinstance(value, str):
+                    where_filters.append(f"{key}='{value}'")
+                else:
+                    where_filters.append(f"{key}={value}")
+
+            sql_query += " AND ".join(where_filters)
+
+        sql_query += f" ORDER BY {sort_by} {sort_type} LIMIT {limit} OFFSET {offset}"
+        result = self.utilsApi.sql(sql=sql_query)
 
         return (result[0]["total"], result[0]["data"])
 
