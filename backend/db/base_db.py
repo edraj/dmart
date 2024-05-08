@@ -262,7 +262,9 @@ class BaseDB(ABC):
         for_custom_indices: bool = True,
         del_docs: bool = True,
     ) -> None:
-        """Scans the flat-file DB and create an index for each schema
+        """Loop over all spaces, and for each one we create: (only if indexing_enabled is true for the space)
+        1-index for meta file called space_name:meta
+        2-indices for schema files called space_name:{schema_shortname}
 
         Args:
             for_space (str | None, optional): spaces filter. Defaults to None.
