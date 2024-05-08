@@ -324,21 +324,50 @@ class ManticoreDB(BaseDB):
     
     async def aggregate(self, 
         space_name: str, 
-        filters: dict[str, 
-        str | list | None], 
+        filters: dict[str, str | list | None],
         group_by: list[str], 
         reducers: list[Any], 
         search: str | None = None, 
-        max: int = 10, 
-        branch_name: str = settings.default_branch, 
+        max: int = 10,
         exact_subpath: bool = False, 
         sort_type: SortType = SortType.ascending, 
         sort_by: str | None = None, 
         schema_name: str = "meta", 
         load: list = []
     ) -> list[Any]:
-        return []
-    
+
+        sql_query = "SELECT "
+        sql_query += "*" if len(reducers) == 0 else ",".join(reducers)
+        sql_query += f" FROM {space_name}"
+
+        if search:
+            sql_query += f" WHERE MATCH('{search}')"
+
+        where_clauses = []
+        for key, value in filters.items():
+            sql_query += " AND " if "WHERE" in sql_query else "WHERE"
+            if isinstance(value, list):
+                where_clauses.append(f"{key} IN ({', '.join(map(str, value))})")
+            if isinstance(value, str):
+                where_clauses.append(f"{key}='{value}'")
+            elif value is not None:
+                where_clauses.append(f"{key} = '{value}'")
+
+        sql_query += " AND ".join(where_clauses)
+
+        sql_query += " GROUP BY "
+        group_by = ", ".join(group_by)
+        sql_query += group_by
+
+        if sort_by:
+            sql_query += f" ORDER BY {sort_by} {sort_type}"
+
+        sql_query += f" LIMIT {max}"
+
+        result = self.utilsApi.sql(sql=sql_query)
+
+        return result[0]["data"]
+
     async def get_count(self, 
         space_name: str, 
         schema_shortname: str, 

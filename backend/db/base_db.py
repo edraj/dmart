@@ -123,7 +123,6 @@ class BaseDB(ABC):
         reducers: list[Any],
         search: str | None = None,
         max: int = 10,
-        branch_name: str = settings.default_branch,
         exact_subpath: bool = False,
         sort_type: SortType = SortType.ascending,
         sort_by: str | None = None,
