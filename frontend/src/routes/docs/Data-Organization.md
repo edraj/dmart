@@ -2,7 +2,7 @@
 
 ## Introduction
 
-In DMart nodes, data is organized in a hierarchical structure to facilitate efficient management and access. This documentation outlines the data organization scheme within DMart nodes, focusing on [spaces](Space.md), [subpaths](Subpath.md) & folders, [entries](Entries.md), and [attachments](Attachments.md).
+In DMart nodes, data is organized in a hierarchical structure to facilitate efficient management and access. This documentation outlines the data organization scheme within DMart nodes, focusing on [spaces](Space), [subpaths](Subpath) & folders, [entries](Entries), and [attachments](Attachments).
 
 ## Hierarchical Structure
 
