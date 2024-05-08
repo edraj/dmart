@@ -292,17 +292,17 @@ class ManticoreDB(BaseDB):
             return_fields: list = []
     ) -> tuple[int, list[dict[str, Any]]]:
 
-        sql_query = "SELECT "
+        sql_str = "SELECT "
         if len(highlight_fields) == 0:
-            sql_query += "*" if len(return_fields) == 0 else ",".join(return_fields)
+            sql_str += "*" if len(return_fields) == 0 else ",".join(return_fields)
         else:
-            sql_query += "HIGHLIGHT({}, %s)" % ",".join(highlight_fields)
+            sql_str += "HIGHLIGHT({}, %s)" % ",".join(highlight_fields)
 
-        sql_query += f" FROM {space_name} WHERE MATCH('{search}')"
+        sql_str += f" FROM {space_name} WHERE MATCH('{search}')"
 
         where_filters = []
         if len(filters.keys()) != 0:
-            sql_query += " AND "
+            sql_str += " AND "
             for key, value in filters.items():
                 if isinstance(value, list):
                     where_filters.append(f"{key} IN ({', '.join(map(str, value))})")
@@ -311,14 +311,14 @@ class ManticoreDB(BaseDB):
                 else:
                     where_filters.append(f"{key}={value}")
 
-            sql_query += " AND ".join(where_filters)
+            sql_str += " AND ".join(where_filters)
 
         if sort_by:
-            sql_query += f" ORDER BY {sort_by} {sort_type}"
+            sql_str += f" ORDER BY {sort_by} {sort_type}"
 
-        sql_query += f"LIMIT {limit} OFFSET {offset}"
+        sql_str += f"LIMIT {limit} OFFSET {offset}"
 
-        result = self.utilsApi.sql(sql=sql_query)
+        result = self.utilsApi.sql(sql=sql_str)
 
         return (result[0]["total"], result[0]["data"])
     
@@ -336,16 +336,16 @@ class ManticoreDB(BaseDB):
         load: list = []
     ) -> list[Any]:
 
-        sql_query = "SELECT "
-        sql_query += "*" if len(reducers) == 0 else ",".join(reducers)
-        sql_query += f" FROM {space_name}"
+        sql_str = "SELECT "
+        sql_str += "*" if len(reducers) == 0 else ",".join(reducers)
+        sql_str += f" FROM {space_name}"
 
         if search:
-            sql_query += f" WHERE MATCH('{search}')"
+            sql_str += f" WHERE MATCH('{search}')"
 
         where_clauses = []
         for key, value in filters.items():
-            sql_query += " AND " if "WHERE" in sql_query else "WHERE"
+            sql_str += " AND " if "WHERE" in sql_str else "WHERE"
             if isinstance(value, list):
                 where_clauses.append(f"{key} IN ({', '.join(map(str, value))})")
             if isinstance(value, str):
@@ -353,18 +353,18 @@ class ManticoreDB(BaseDB):
             elif value is not None:
                 where_clauses.append(f"{key} = '{value}'")
 
-        sql_query += " AND ".join(where_clauses)
+        sql_str += " AND ".join(where_clauses)
 
-        sql_query += " GROUP BY "
+        sql_str += " GROUP BY "
         group_by = ", ".join(group_by)
-        sql_query += group_by
+        sql_str += group_by
 
         if sort_by:
-            sql_query += f" ORDER BY {sort_by} {sort_type}"
+            sql_str += f" ORDER BY {sort_by} {sort_type}"
 
-        sql_query += f" LIMIT {max}"
+        sql_str += f" LIMIT {max}"
 
-        result = self.utilsApi.sql(sql=sql_query)
+        result = self.utilsApi.sql(sql=sql_str)
 
         return result[0]["data"]
 
@@ -381,12 +381,12 @@ class ManticoreDB(BaseDB):
         limit: int = 20, 
         offset: int = 0
     ) -> list[dict[str, Any]]:
-        sql_query = f"SELECT * FROM {index_name}"
+        sql_str = f"SELECT * FROM {index_name}"
         if search_str:
-            sql_query += f" WHERE MATCH('{search_str}')"
-        sql_query += f"LIMIT {limit} OFFSET {offset}"
+            sql_str += f" WHERE MATCH('{search_str}')"
+        sql_str += f"LIMIT {limit} OFFSET {offset}"
 
-        result = self.utilsApi.sql(sql=sql_query)
+        result = self.utilsApi.sql(sql=sql_str)
         return result[0]["data"]
     
     async def dto_doc_id(self, dto: EntityDTO) -> str:
@@ -400,18 +400,23 @@ class ManticoreDB(BaseDB):
     
     async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
         pass
-    
+
     
     async def find_by_id(self, id: str) -> dict[str, Any]:
         try:
-            result = self.utilsApi.sql(sql=f"SELECT * FROM movies WHERE id={id}")
+            result = self.utilsApi.sql(sql=f"SELECT * FROM ? WHERE id={id}")
             return result[0]["data"][0]
         except Exception as e:
             logger.error(f"Error at ManticoreDB.find_by_id: {e.args}")
             return {}
     
     async def list_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
-        return []
+        try:
+            result = self.utilsApi.sql(sql=f"SELECT * FROM ? WHERE id IN ({", ".join(ids)})")
+            return result[0]["data"]
+        except Exception as e:
+            logger.error(f"Error at ManticoreDB.find_by_id: {e.args}")
+            return {}
     
     async def delete_keys(self, keys: list[str]) -> bool:
         return True
