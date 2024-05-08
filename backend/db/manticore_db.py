@@ -304,14 +304,20 @@ class ManticoreDB(BaseDB):
         if len(filters.keys()) != 0:
             sql_query += " AND "
             for key, value in filters.items():
-                if isinstance(value, str):
+                if isinstance(value, list):
+                    where_filters.append(f"{key} IN ({', '.join(map(str, value))})")
+                elif isinstance(value, str):
                     where_filters.append(f"{key}='{value}'")
                 else:
                     where_filters.append(f"{key}={value}")
 
             sql_query += " AND ".join(where_filters)
 
-        sql_query += f" ORDER BY {sort_by} {sort_type} LIMIT {limit} OFFSET {offset}"
+        if sort_by:
+            sql_query += f" ORDER BY {sort_by} {sort_type}"
+
+        sql_query += f"LIMIT {limit} OFFSET {offset}"
+
         result = self.utilsApi.sql(sql=sql_query)
 
         return (result[0]["total"], result[0]["data"])
