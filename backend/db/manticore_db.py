@@ -293,21 +293,24 @@ class ManticoreDB(BaseDB):
         schema_name: str = "meta", 
         return_fields: list = []
     ) -> tuple[int, list[dict[str, Any]]]:
-        return (0, [])
-    
-    async def aggregate(self, 
-        space_name: str, 
-        filters: dict[str, 
-        str | list | None], 
-        group_by: list[str], 
-        reducers: list[Any], 
-        search: str | None = None, 
-        max: int = 10, 
-        branch_name: str = settings.default_branch, 
-        exact_subpath: bool = False, 
-        sort_type: SortType = SortType.ascending, 
-        sort_by: str | None = None, 
-        schema_name: str = "meta", 
+        select_from = "*" if len(return_fields) == 0 else ",".join(return_fields)
+        result = self.utilsApi.sql(sql=f"SELECT {select_from} FROM {space_name} WHERE MATCH('{search}') ORDER BY {sort_by} {sort_type} LIMIT {limit} OFFSET {offset}")
+
+        return (result[0]["total"], result[0]["data"])
+
+    async def aggregate(self,
+        space_name: str,
+        filters: dict[str,
+        str | list | None],
+        group_by: list[str],
+        reducers: list[Any],
+        search: str | None = None,
+        max: int = 10,
+        branch_name: str = settings.default_branch,
+        exact_subpath: bool = False,
+        sort_type: SortType = SortType.ascending,
+        sort_by: str | None = None,
+        schema_name: str = "meta",
         load: list = []
     ) -> list[Any]:
         return []

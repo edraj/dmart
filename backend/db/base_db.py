@@ -107,7 +107,6 @@ class BaseDB(ABC):
         offset: int,
         exact_subpath: bool = False,
         sort_type: SortType = SortType.ascending,
-        branch_name: str | None = None,
         sort_by: str | None = None,
         highlight_fields: list[str] | None = None,
         schema_name: str = "meta",
