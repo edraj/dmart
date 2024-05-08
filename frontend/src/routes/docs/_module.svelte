@@ -12,18 +12,17 @@
 
     const docFiles = [
         'index.md',
-        'Attachments.md',
-        'Content-Types.md',
+        'Dmart.ar.md',
         'Installation.md',
-        'Relationships.md',
-        'Subpath.md',
-        'Meta-Attributes.md',
-        'Schema.md',
-        'Simple-Example.md',
-        'Space.md',
-        'Todos.md',
-        'Tickets.md',
-        'Universal-presence-platform.md'
+        'Concepts.md',
+        'Data-Organization.md',
+        'Tools.md',
+     'Examples.md',
+         'Others.md',
+         'Automated-Testing.md',
+        'Dmart-Clients.md',  
+        'Use-Cases.md',
+        'Roadmap.md'
     ];
 
     let selectedIndex = docFiles.findIndex(file => `/docs/${file.replace('.md', '').replace('index','')}`===window.location.pathname );
