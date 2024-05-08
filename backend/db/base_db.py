@@ -251,7 +251,23 @@ class BaseDB(ABC):
         pass
     
     @abstractmethod
-    async def create_index(self, name: str, fields: list[Any], **kwargs) -> bool:
+    async def create_index(self, name: str, fields: dict[str, str], **kwargs) -> bool:
+        """Create an index/table
+
+        Args:
+            name (str): name of the index/table
+            fields (dict[str, str]): key is the column name, value is the type
+                supported column types are:
+                    string,
+                    boolean,
+                    integer,
+                    number,
+                    array,
+                    text,
+
+        Returns:
+            bool: true if created successfully
+        """
         pass
 
     @abstractmethod
