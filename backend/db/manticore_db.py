@@ -22,66 +22,83 @@ class ManticoreDB(BaseDB):
     searchApi = manticoresearch.SearchApi(client)
     utilsApi = manticoresearch.UtilsApi(client)
     
-    META_SCHEMA = [
-        "document_id string",
-        "uuid string",
-        "shortname string",
-        "slug string",
-        "subpath string",
-        "exact_subpath string",
-        "resource_type string",
-        "displayname_en string",
-        "displayname_ar string",
-        "displayname_kd string",
-        "description_en string",
-        "description_ar string",
-        "description_kd string",
+    META_SCHEMA = {
+        "document_id": "string",
+        "uuid": "string",
+        "shortname": "string",
+        "slug": "string",
+        "subpath": "string",
+        "exact_subpath": "string",
+        "resource_type": "string",
+        "displayname_en": "string",
+        "displayname_ar": "string",
+        "displayname_kd": "string",
+        "description_en": "string",
+        "description_ar": "string",
+        "description_kd": "string",
 
-        "is_active bool",
+        "is_active": "bool",
 
-        "payload_content_type string",
-        "schema_shortname string",
+        "payload_content_type": "string",
+        "schema_shortname": "string",
         
-        "payload_content_type string",
-        "payload_content_type string",
+        "payload_content_type": "string",
+        "payload_content_type": "string",
         
-        "created_at timestamp",
-        "updated_at timestamp",
+        "created_at": "timestamp",
+        "updated_at": "timestamp",
         
-        "view_acl text",
-        "tags text",
-        "query_policies text",
+        "view_acl": "text",
+        "tags": "text",
+        "query_policies": "text",
         
-        "owner_shortname string",
-        "payload_content_type string",
+        "owner_shortname": "string",
+        "payload_content_type": "string",
 
 
         # User fields
-        "msisdn string",
-        "email string",
+        "msisdn": "string",
+        "email": "string",
         # Ticket fields
-        "state string",
-        "is_open bool",
-        "workflow_shortname string",
-        "collaborators_delivered_by string",
-        "collaborators_processed_by string",
-        "resolution_reason string",
+        "state": "string",
+        "is_open": "bool",
+        "workflow_shortname": "string",
+        "collaborators_delivered_by": "string",
+        "collaborators_processed_by": "string",
+        "resolution_reason": "string",
 
         # Notification fields
-        "type string",
-        "is_read string",
-        "priority string",
-        "reporter_type string",
-        "reporter_name string",
-        "reporter_channel string",
-        "reporter_distributor string",
-        "reporter_governorate string",
-        "reporter_msisdn string",
+        "type": "string",
+        "is_read": "string",
+        "priority": "string",
+        "reporter_type": "string",
+        "reporter_name": "string",
+        "reporter_channel": "string",
+        "reporter_distributor": "string",
+        "reporter_governorate": "string",
+        "reporter_msisdn": "string",
         
-        "payload_string string",
-    ]
+        "payload_string": "string",
+    }
+    
+    SCHEMA_DATA_TYPES_MAPPER = {
+        "string": "string",
+        "boolean": "bool",
+        "integer": "int",
+        "number": "int",
+        "array": "text",
+        "text": "text",
+    }
+    async def create_key_value_pairs_table(self):
+        await self.create_index(
+            "key_value_pairs",
+            {
+                "key": "string",
+                "value": "string"
+            }
+        )
 
-    async def create_index(self, name: str, fields: list[Any], **kwargs) -> bool:
+    async def create_index(self, name: str, fields: dict[str, str], **kwargs) -> bool:
         try:
             self.utilsApi.sql(f"DROP TABLE {name};")
         except Exception as _:
@@ -89,8 +106,8 @@ class ManticoreDB(BaseDB):
         
         try:
             sql_str = f"CREATE TABLE {name}("
-            for field in fields:
-                sql_str += field
+            for name, value in fields.items():
+                sql_str += f"{name} {value}"
             sql_str.strip(",")
             sql_str += ");"
             self.utilsApi.sql(sql_str)
@@ -99,25 +116,24 @@ class ManticoreDB(BaseDB):
             logger.error(f"Error at ManticoreDB.create_index: {e.args}")
             return False
             
-    def get_index_fields_from_json_schema_property(self, key_chain, property, redis_schema_definition):
+    def get_index_fields_from_json_schema_property(
+        self, 
+        key_chain: str, 
+        property: Any, 
+        db_schema_definition: dict[str, str]
+    ) -> dict[str, str]:
         """
-        takes a key and a value of a schema definition property, and returns the redis schema index
+        takes a property of the json schema definition, and returns the db schema index
         """
-        SCHEMA_DATA_TYPES_MAPPER = {
-            "string": "string",
-            "boolean": "bool",
-            "integer": "int",
-            "number": "int",
-            "array": "text",
-        }
+        
         if not isinstance(property, dict) or key_chain.endswith("."):
-            return redis_schema_definition
+            return db_schema_definition
 
         if "type" in property and property["type"] != "object":
             if property["type"] in ["null", "boolean"] or not isinstance(
                 property["type"], str
             ):
-                return redis_schema_definition
+                return db_schema_definition
 
             # property_name = key_chain.replace(".", "_")
             # sortable = True
@@ -133,33 +149,31 @@ class ManticoreDB(BaseDB):
                 ].items():
                     if property_value["type"] != "string":
                         continue
-                    redis_schema_definition.append(f"{key_chain}_{property_key} text")
-                return redis_schema_definition
+                    db_schema_definition["{key_chain}_{property_key}"] = "text"
+                return db_schema_definition
 
             # if property["type"] == "array":
             #     key_chain += ".*"
 
-            redis_schema_definition.append(
-                f"{key_chain} {SCHEMA_DATA_TYPES_MAPPER[property['type']]}"
-            )
-            return redis_schema_definition
+            db_schema_definition[key_chain] = self.SCHEMA_DATA_TYPES_MAPPER[property['type']]
+            return db_schema_definition
 
         if "oneOf" in property:
             for item in property["oneOf"]:
-                redis_schema_definition = self.get_index_fields_from_json_schema_property(
-                    key_chain, item, redis_schema_definition
+                db_schema_definition = self.get_index_fields_from_json_schema_property(
+                    key_chain, item, db_schema_definition
                 )
-            return redis_schema_definition
+            return db_schema_definition
 
         if "properties" not in property:
-            return redis_schema_definition
+            return db_schema_definition
 
         for property_key, property_value in property["properties"].items():
-            redis_schema_definition = self.get_index_fields_from_json_schema_property(
-                f"{key_chain}.{property_key}", property_value, redis_schema_definition
+            db_schema_definition = self.get_index_fields_from_json_schema_property(
+                f"{key_chain}.{property_key}", property_value, db_schema_definition
             )
 
-        return redis_schema_definition
+        return db_schema_definition
     
     def append_unique_index_fields(self, new_index: list[str], base_index: list[str]):
         unique_fields = set(base_index).union(set(new_index))
@@ -181,17 +195,11 @@ class ManticoreDB(BaseDB):
             ) or not space_obj.indexing_enabled:
                 continue
 
-            # CREATE REDIS INDEX FOR THE META FILES INSIDE THE SPACE
-            # self.redis_indices[f"{space_name}:{branch_name}"] = {}
-            # self.redis_indices[f"{space_name}:{branch_name}"]["meta"] = self.ft(
-            #     f"{space_name}:{branch_name}:meta"
-            # )
-
             await self.create_index(
                 f"{space_name}:meta", self.META_SCHEMA
             )
 
-            # CREATE REDIS INDEX FOR EACH SCHEMA DEFINITION INSIDE THE SPACE
+            # CREATE DB INDEX FOR EACH SCHEMA DEFINITION INSIDE THE SPACE
             schemas_file_pattern = re.compile(r"(\w*).json")
             schemas_glob = "*.json"
             path = (
@@ -214,37 +222,31 @@ class ManticoreDB(BaseDB):
                     continue
 
                 # GET SCHEMA PROPERTIES AND
-                # GENERATE REDIS INDEX DEFINITION BY MAPPIN SCHEMA PROPERTIES TO REDIS INDEX FIELDS
+                # GENERATE DB INDEX DEFINITION BY MAPPIN SCHEMA PROPERTIES TO DB INDEX FIELDS
                 schema_content = json.loads(schema_path.read_text())
                 schema_content = resolve_schema_references(schema_content)
-                redis_schema_definition = list(self.META_SCHEMA)
+                db_schema_definition: dict[str, str] = self.META_SCHEMA
                 if "properties" in schema_content:
                     for key, property in schema_content["properties"].items():
                         generated_schema_fields = self.get_index_fields_from_json_schema_property(
-                            key, property, []
+                            key, property, {}
                         )
-                        redis_schema_definition = self.append_unique_index_fields(
-                            generated_schema_fields, redis_schema_definition
-                        )
+                        db_schema_definition.update(generated_schema_fields)
 
                 elif "oneOf" in schema_content:
                     for item in schema_content["oneOf"]:
                         for key, property in item["properties"].items():
                             generated_schema_fields = self.get_index_fields_from_json_schema_property(
-                                key, property, []
+                                key, property, {}
                             )
-                            redis_schema_definition = (
-                                self.append_unique_index_fields(
-                                    generated_schema_fields, redis_schema_definition
-                                )
-                            )
+                            db_schema_definition.update(generated_schema_fields)
 
-                if redis_schema_definition:
-                    redis_schema_definition.append("meta_doc_id string")
+                if db_schema_definition:
+                    db_schema_definition["meta_doc_id"] = "string"
 
                     await self.create_index(
                         f"{space_name}:{schema_shortname}",
-                        redis_schema_definition
+                        db_schema_definition
                     )
 
         # if for_custom_indices:
@@ -334,14 +336,26 @@ class ManticoreDB(BaseDB):
         pass
     
     async def set_key(self, key: str, value: str, ex=None, nx: bool = False) -> bool:
+        await self.create_key_value_pairs_table()
         return True
     
     async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
         pass
     
+    def get_index_name_from_doc_id(self, doc_id: str) -> str:
+        if ":" not in doc_id:
+            return "key_value_pairs"
+        
+        doc_id_parts = doc_id.split(":")
+        
+        if len(doc_id_parts) != 3:
+            raise Exception(f"Invalid document id, {doc_id}")
+        
+        return f"{doc_id_parts[0]}:{doc_id_parts[1]}"
     
     async def find_by_id(self, id: str) -> dict[str, Any]:
         try:
+            index_name: str = self.get_index_name_from_doc_id(id)
             return {}
         except Exception as e:
             logger.error(f"Error at ManticoreDB.find_by_id: {e.args}")
@@ -361,13 +375,16 @@ class ManticoreDB(BaseDB):
 
 
     async def save_at_id(self, id: str, doc: dict[str, Any] = {}) -> bool:
+        if ":" not in id:
+            await self.set_key(id, json.dumps(doc))
+            
         return True
 
 
     async def prepare_meta_doc(
         self, space_name: str, branch_name: str | None, subpath: str, meta: Meta
     ) -> tuple[str, dict[str, Any]]:
-        return {}
+        return ("", {})
 
 
     async def prepare_payload_doc(

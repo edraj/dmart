@@ -238,7 +238,7 @@ class BaseRepo(ABC):
     async def drop_index(self, name: str, delete_docs: bool) -> bool:
         return await self.db.drop_index(name, delete_docs)
 
-    async def create_index(self, name: str, fields: list[Any], **kwargs) -> bool:
+    async def create_index(self, name: str, fields: dict[str, str], **kwargs) -> bool:
         return await self.db.create_index(name, fields, **kwargs)
 
     async def create_application_indexes(
@@ -253,7 +253,7 @@ class BaseRepo(ABC):
         )
 
     async def create_index_if_not_exist(
-        self, name: str, fields: list[Any], **kwargs
+        self, name: str, fields: dict[str, str], **kwargs
     ) -> bool:
         if await self.is_index_exist(name):
             return True
@@ -261,7 +261,7 @@ class BaseRepo(ABC):
         return await self.create_index(name, fields, **kwargs)
 
     async def create_index_drop_existing(
-        self, name: str, fields: list[Any], **kwargs
+        self, name: str, fields: dict[str, str], **kwargs
     ) -> bool:
         if await self.is_index_exist(name):
             await self.drop_index(name, kwargs.get("delete_docs", True))
