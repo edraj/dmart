@@ -381,7 +381,13 @@ class ManticoreDB(BaseDB):
         limit: int = 20, 
         offset: int = 0
     ) -> list[dict[str, Any]]:
-        return []
+        sql_query = f"SELECT * FROM {index_name}"
+        if search_str:
+            sql_query += f" WHERE MATCH('{search_str}')"
+        sql_query += f"LIMIT {limit} OFFSET {offset}"
+
+        result = self.utilsApi.sql(sql=sql_query)
+        return result[0]["data"]
     
     async def dto_doc_id(self, dto: EntityDTO) -> str:
         return ""
