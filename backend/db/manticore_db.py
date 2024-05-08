@@ -404,7 +404,8 @@ class ManticoreDB(BaseDB):
     
     async def find_by_id(self, id: str) -> dict[str, Any]:
         try:
-            return {}
+            result = self.utilsApi.sql(sql=f"SELECT * FROM movies WHERE id={id}")
+            return result[0]["data"][0]
         except Exception as e:
             logger.error(f"Error at ManticoreDB.find_by_id: {e.args}")
             return {}
