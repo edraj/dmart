@@ -292,11 +292,11 @@ class ManticoreDB(BaseDB):
             return_fields: list = []
     ) -> tuple[int, list[dict[str, Any]]]:
 
-        sql_query = "SELECT"
+        sql_query = "SELECT "
         if len(highlight_fields) == 0:
             sql_query += "*" if len(return_fields) == 0 else ",".join(return_fields)
         else:
-            sql_query += "HIGHLIGHT({}, %s) as snippet" % ",".join(highlight_fields)
+            sql_query += "HIGHLIGHT({}, %s)" % ",".join(highlight_fields)
 
         sql_query += f" FROM {space_name} WHERE MATCH('{search}')"
 
