@@ -384,7 +384,7 @@ class ManticoreDB(BaseDB):
         sql_str = f"SELECT * FROM {index_name}"
         if search_str:
             sql_str += f" WHERE MATCH('{search_str}')"
-        sql_str += f"LIMIT {limit} OFFSET {offset}"
+        sql_str += f" LIMIT {limit} OFFSET {offset}"
 
         result = self.utilsApi.sql(sql=sql_str)
         return result[0]["data"]
