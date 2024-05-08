@@ -18,7 +18,6 @@
         'Data-Organization.md',
         'Tools.md',
      'Examples.md',
-         'Others.md',
          'Automated-Testing.md',
         'Dmart-Clients.md',  
         'Use-Cases.md',
