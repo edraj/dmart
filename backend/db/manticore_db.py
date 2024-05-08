@@ -276,24 +276,45 @@ class ManticoreDB(BaseDB):
     
     async def create_custom_indices(self, for_space: str | None = None) -> None:
         pass
-        
-    
+
     async def search(
-        self, 
-        space_name: str, 
-        search: str, 
-        filters: dict[str, str | list | None], 
-        limit: int, 
-        offset: int, 
-        exact_subpath: bool = False, 
-        sort_type: SortType = SortType.ascending, 
-        branch_name: str | None = None, 
-        sort_by: str | None = None, 
-        highlight_fields: list[str] | None = None, 
-        schema_name: str = "meta", 
-        return_fields: list = []
+            self,
+            space_name: str,
+            search: str,
+            filters: dict[str, str | list | None],
+            limit: int,
+            offset: int,
+            exact_subpath: bool = False,
+            sort_type: SortType = SortType.ascending,
+            sort_by: str | None = None,
+            highlight_fields: list[str] | None = None,
+            schema_name: str = "meta",
+            return_fields: list = []
     ) -> tuple[int, list[dict[str, Any]]]:
-        return (0, [])
+
+        sql_query = "SELECT"
+        if len(highlight_fields) == 0:
+            sql_query += "*" if len(return_fields) == 0 else ",".join(return_fields)
+        else:
+            sql_query += "HIGHLIGHT({}, %s) as snippet" % ",".join(highlight_fields)
+
+        sql_query += f" FROM {space_name} WHERE MATCH('{search}')"
+
+        where_filters = []
+        if len(filters.keys()) != 0:
+            sql_query += " AND "
+            for key, value in filters.items():
+                if isinstance(value, str):
+                    where_filters.append(f"{key}='{value}'")
+                else:
+                    where_filters.append(f"{key}={value}")
+
+            sql_query += " AND ".join(where_filters)
+
+        sql_query += f" ORDER BY {sort_by} {sort_type} LIMIT {limit} OFFSET {offset}"
+        result = self.utilsApi.sql(sql=sql_query)
+
+        return (result[0]["total"], result[0]["data"])
     
     async def aggregate(self, 
         space_name: str, 
