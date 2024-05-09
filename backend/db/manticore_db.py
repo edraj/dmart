@@ -90,7 +90,24 @@ class ManticoreDB(BaseDB):
         "text": "text",
     }
 
-    # def mc_command(self, command: str) -> dict[str, Any]:
+    def mc_command(self, command: str) -> dict[str, Any] | None:
+        try:
+            result = self.utilsApi.sql(command)
+            if(
+                not isinstance(result, list) or
+                len(result) == 0 or
+                not isinstance(result[0], dict)
+            ):
+                return None
+
+            if result[0]['error'] != '':
+                raise Exception(result[0]['error'])
+
+            return result[0]
+        except Exception as e:
+            logger.error(f"Error at ManticoreDB.mc_command: {e}")
+            return None
+
 
     async def create_key_value_pairs_index(self):
         await self.create_index(
@@ -100,6 +117,14 @@ class ManticoreDB(BaseDB):
                 "value": "string"
             }
         )
+
+    def is_index_exist(self, name: str)-> bool:
+        res = self.mc_command(f"show tables like '{name}'")
+        if res is not None and res['total'] == 0:
+            return True
+
+        return False
+
 
     async def create_index(self, name: str, fields: dict[str, str], **kwargs) -> bool:
         name = name.replace(":", "__")
@@ -112,8 +137,7 @@ class ManticoreDB(BaseDB):
 
             sql_str = sql_str.strip(",")
             sql_str += ")"
-            self.utilsApi.sql(sql_str)
-            return True
+            return bool(self.mc_command(sql_str))
         except Exception as e:
             logger.error(f"Error at ManticoreDB.create_index: {e.args}")
             return False
@@ -323,54 +347,25 @@ class ManticoreDB(BaseDB):
         #     )
     
     async def flush_all(self) -> None:
-        try:
-            tables = self.utilsApi.sql('SHOW TABLES') 
-            if(
-                not isinstance(tables, list) or 
-                len(tables) == 0 or 
-                not isinstance(tables[0], dict)
-            ):
-                return
-            
-            for table in tables[0].get('data', []):
-                self.utilsApi.sql(f'DROP TABLE {table['Index']}')
-                
-        except Exception as e:
-            logger.error(f"Error at ManticoreDB.flush_all: {e.args}")
+        tables: dict[str, Any] | None = self.mc_command('SHOW TABLES')
+        if tables is None:
+            return
 
+        for table in tables.get('data', []):
+            self.mc_command(f'DROP TABLE {table['Index']}')
+                    
     async def list_indexes(self) -> set[str]:
-        try:
-            tables = self.utilsApi.sql('SHOW TABLES')
-            if(
-                not isinstance(tables, list) or
-                len(tables) == 0 or
-                not isinstance(tables[0], dict) or
-                'data' not in tables[0]
-            ):
-                raise Exception(f"Invalid type returned from Manticore. {type(tables) = }. {tables = }")
-
-            return set([item['Index'] for item in tables[0]['data']])
-
-
-        except Exception as e:
-            logger.error(f"Error at ManticoreDB.list_indexes: {e}")
+        tables = self.mc_command('SHOW TABLES')
+        if tables is None:
             return set()
+
+        return set([item['Index'] for item in tables['data']])
 
 
     async def drop_index(self, name: str, delete_docs: bool) -> bool:
-        try:
-            self.utilsApi.sql(f"DROP TABLE {name}")
-            return True
-        except Exception as _:
-            return False
+        return bool(self.mc_command(f"DROP TABLE {name}"))
         
     
-        return True
-
-
-    async def create_custom_indices(self, for_space: str | None = None) -> None:
-        pass
-
     async def search(
             self,
             space_name: str,
