@@ -4,11 +4,11 @@
 
 Automated testing is a crucial practice in software development that involves using tools and scripts to automatically execute test cases, validate software functionality, and detect defects early in the development process. This documentation provides an overview of different types of automated testing, including
 
-1. [Unit testing with Pytest](Automated-Testing-Pytest.md)
+1. [Unit testing with Pytest](Automated-Testing-Pytest)
 
-2. [Load testing with Locust](Automated-Load-Testing.md)
+2. [Load testing with Locust](Automated-Load-Testing)
 
-3. [API testing with cURL.](Curl-sh.md)
+3. [API testing with cURL.](Curl-sh)
 
 **1. Unit Testing with Pytest**
 

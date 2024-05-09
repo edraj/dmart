@@ -1,3 +1,16 @@
+<script>
+    import Logo from "./assets/data-mart.jpg";
+</script>
+
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
+
 **لماذا استخدام DMART؟**
 
 <img class="center" src={Logo} width="500">
