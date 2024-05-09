@@ -1,6 +1,6 @@
-## Concepts Associated with DMart
+## Concepts Associated with Dmart
 
-DMart encompasses various concepts that play essential roles in organizing, managing, and understanding the data within the system. Some of the key concepts include:
+Dmart encompasses various concepts that play essential roles in organizing, managing, and understanding the data within the system. Some of the key concepts include:
 
 1. [**Relationships**](Relationships)
 2. [**Meta-Attributes**](Meta-Attributes)
