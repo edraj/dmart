@@ -407,9 +407,9 @@ class ManticoreDB(BaseDB):
 
         sql_str += f"LIMIT {limit} OFFSET {offset}"
 
-        result = self.utilsApi.sql(sql=sql_str)
+        result = self.mc_command(sql_str)
 
-        return (result[0]["total"], result[0]["data"])
+        return result[0]["total"], result[0]["data"]
     
     async def aggregate(self, 
         space_name: str, 
@@ -453,7 +453,7 @@ class ManticoreDB(BaseDB):
 
         sql_str += f" LIMIT {max}"
 
-        result = self.utilsApi.sql(sql=sql_str)
+        result = self.mc_command(sql_str)
 
         return result[0]["data"]
 
@@ -475,7 +475,7 @@ class ManticoreDB(BaseDB):
             sql_str += f" WHERE MATCH('{search_str}')"
         sql_str += f" LIMIT {limit} OFFSET {offset}"
 
-        result = self.utilsApi.sql(sql=sql_str)
+        result = self.mc_command(sql_str)
         return result[0]["data"]
     
     async def dto_doc_id(self, dto: EntityDTO) -> str:
@@ -501,15 +501,12 @@ class ManticoreDB(BaseDB):
             raise Exception(f"Invalid document id, {doc_id}")
         
         return f"{doc_id_parts[0]}__{doc_id_parts[1]}"
-    
-
-        return f"{doc_id_parts[0]}:{doc_id_parts[1]}"
 
 
     async def find_by_id(self, id: str) -> dict[str, Any]:
         try:
             index_name: str = self.get_index_name_from_doc_id(id)
-            result = self.utilsApi.sql(sql=f"SELECT * FROM ? WHERE id={id}")
+            result = self.mc_command(f"SELECT * FROM ? WHERE uuid='{id}'")
             return result[0]["data"][0]
         except Exception as e:
             logger.error(f"Error at ManticoreDB.find_by_id: {e.args}")
@@ -517,7 +514,7 @@ class ManticoreDB(BaseDB):
 
     async def list_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
         try:
-            result = self.utilsApi.sql(sql=f"SELECT * FROM ? WHERE id IN ({", ".join(ids)})")
+            result = self.mc_command(f"SELECT * FROM ? WHERE uuid IN ({", ".join(ids)})")
             return result[0]["data"]
         except Exception as e:
             logger.error(f"Error at ManticoreDB.find_by_id: {e.args}")
