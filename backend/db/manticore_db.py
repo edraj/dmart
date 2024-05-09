@@ -110,6 +110,9 @@ class ManticoreDB(BaseDB):
             
     
     async def create_key_value_pairs_index(self):
+        if self.is_index_exist("key_value_pairs"):
+            return
+        
         await self.create_index(
             "key_value_pairs",
             {
@@ -120,7 +123,7 @@ class ManticoreDB(BaseDB):
         
     def is_index_exist(self, name: str)-> bool:
         res = self.mc_command(f"show tables like '{name}'")
-        if res is not None and res['total'] == 0:
+        if res is not None and res['total'] > 0:
             return True
         
         return False
@@ -352,7 +355,7 @@ class ManticoreDB(BaseDB):
             return
         
         for table in tables.get('data', []):
-            self.mc_command(f'DROP TABLE {table['Index']}')
+            await self.drop_index(table['Index'], True)
                     
     async def list_indexes(self) -> set[str]:
         tables = self.mc_command('SHOW TABLES') 
@@ -419,11 +422,30 @@ class ManticoreDB(BaseDB):
         return ""
     
     async def find_key(self, key: str) -> str | None:
-        pass
+        res = self.mc_command(f"select * from key_value_pairs where key = '{key}' limit 1")
+        if res is None or res['total'] == 0:
+            return None
+        
+        return res['data'][0]['value']
     
     async def set_key(self, key: str, value: str, ex=None, nx: bool = False) -> bool:
         await self.create_key_value_pairs_index()
-        return True
+        
+        statement = {
+            "index": "key_value_pairs",
+            "doc": {
+                "key": key, "value": value
+            }
+        }
+        find_res = self.mc_command(f"select * from key_value_pairs where key = '{key}' limit 1")
+        if find_res is None or find_res['total'] == 0:
+            res = self.indexApi.insert(statement)
+        else:
+            statement["id"] = find_res['data'][0]['id']
+            res = self.indexApi.replace(statement)
+            
+        
+        return bool(res)
     
     async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
         pass
