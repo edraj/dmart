@@ -26,9 +26,9 @@ class Settings(BaseSettings):
     listening_host: str = "0.0.0.0"
     listening_port: int = 8282
     operational_db_host: str = "127.0.0.1"
-    operational_db_user: str = ""
-    operational_db_password: str = ""
-    operational_db_port: int = 6379
+    operational_db_user: str | None = None
+    operational_db_password: str | None = None
+    operational_db_port: int = 9308
     operational_db_pool_max_connections: int = 20
     one_session_per_user: bool = False
     management_space: str = "management"
