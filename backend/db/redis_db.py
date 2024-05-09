@@ -8,11 +8,21 @@ from models.core import EntityDTO, Meta
 from models.enums import LockAction, ResourceType, SortType
 from utils.redis_services import RedisServices
 from utils.settings import settings
-from redis.commands.search.indexDefinition import IndexDefinition
+from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query as RedisQuery
+from redis.commands.search.field import TextField, NumericField, TagField
 
 
 class RedisDB(BaseDB):
+
+    SCHEMA_DATA_TYPES_MAPPER = {
+        "string": TextField,
+        "boolean": TagField,
+        "integer": NumericField,
+        "number": NumericField,
+        "array": TagField,
+        "text": TextField,
+    }
 
     async def search(
         self,
@@ -45,7 +55,7 @@ class RedisDB(BaseDB):
                 return_fields,
             )
             return res[0], [json.loads(item) for item in res[1]]
-        
+
     async def aggregate(
         self,
         space_name: str,
@@ -63,18 +73,18 @@ class RedisDB(BaseDB):
     ) -> list[Any]:
         async with RedisServices() as redis:
             res = await redis.aggregate(
-            space_name,
-            search if search else "",
-            filters,
-            group_by,
-            reducers,
-            max,
-            branch_name,
-            exact_subpath,
-            sort_type,
-            sort_by,
-            schema_name,
-            load,
+                space_name,
+                search if search else "",
+                filters,
+                group_by,
+                reducers,
+                max,
+                branch_name,
+                exact_subpath,
+                sort_type,
+                sort_by,
+                schema_name,
+                load,
             )
         return res
 
@@ -102,7 +112,12 @@ class RedisDB(BaseDB):
             logger.error(f"Error at RedisDB.free_search: {e.args}")
             return []
 
-    async def get_count(self, space_name: str, schema_shortname: str, branch_name: str = settings.default_branch) -> int:
+    async def get_count(
+        self,
+        space_name: str,
+        schema_shortname: str,
+        branch_name: str = settings.default_branch,
+    ) -> int:
         try:
             async with RedisServices() as redis:
                 return await redis.get_count(space_name, branch_name, schema_shortname)
@@ -110,7 +125,7 @@ class RedisDB(BaseDB):
         except Exception as e:
             logger.error(f"Error at RedisDB.dto_doc_id: {e.args}")
             return 0
-        
+
     async def dto_doc_id(self, dto: EntityDTO) -> str:
         if not dto.schema_shortname:
             raise Exception("schema_shortname is required to generate the doc_id")
@@ -171,7 +186,7 @@ class RedisDB(BaseDB):
     async def find_by_id(self, id: str) -> dict[str, Any]:
         async with RedisServices() as redis:
             return await redis.get_doc_by_id(id)
-        
+
     async def list_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
         async with RedisServices() as redis:
             return await redis.get_docs_by_ids(ids)
@@ -196,14 +211,13 @@ class RedisDB(BaseDB):
     ) -> tuple[str, dict[str, Any]]:
         async with RedisServices() as redis:
             return redis.prepare_payload_doc(
-                dto.space_name, 
-                dto.branch_name, 
-                dto.subpath, 
-                meta, 
-                payload, 
-                dto.resource_type
+                dto.space_name,
+                dto.branch_name,
+                dto.subpath,
+                meta,
+                payload,
+                dto.resource_type,
             )
-
 
     async def save_at_id(self, id: str, doc: dict[str, Any] = {}) -> bool:
         try:
@@ -312,18 +326,24 @@ class RedisDB(BaseDB):
             logger.error(f"Error at RedisDB.drop_index: {e.args}")
             return False
 
-    async def create_index(self, name: str, fields: list[Any], **kwargs) -> bool:
+    async def create_index(self, name: str, fields: dict[str, str], **kwargs) -> bool:
 
-        if "definition" not in kwargs or not isinstance(
-            kwargs["definition"], IndexDefinition
-        ):
+        if "prefix" not in kwargs or not isinstance(kwargs["prefix"], str):
             return False
 
+        definition = IndexDefinition(
+            prefix=["users_permissions"],
+            index_type=IndexType.JSON,
+        )
         try:
-            async with RedisServices() as redis:
-                await redis.create_index_direct(
-                    name, tuple(fields), kwargs["definition"]
+            redis_fields = [
+                self.SCHEMA_DATA_TYPES_MAPPER[type](
+                    f"$.{name}", sortable=True, as_name=name
                 )
+                for name, type in fields.items()
+            ]
+            async with RedisServices() as redis:
+                await redis.create_index_direct(name, tuple(redis_fields), definition)
 
             return True
         except Exception as e:
@@ -337,7 +357,6 @@ class RedisDB(BaseDB):
         except Exception as e:
             logger.error(f"Error at RedisDB.flush_all: {e.args}")
 
-    
     async def create_application_indexes(
         self,
         for_space: str | None = None,
@@ -360,15 +379,11 @@ class RedisDB(BaseDB):
     async def create_custom_indices(self, for_space: str | None = None) -> None:
         try:
             async with RedisServices() as redis:
-                await redis.create_custom_indices(
-                    for_space=for_space
-                )
+                await redis.create_custom_indices(for_space=for_space)
 
         except Exception as e:
             logger.error(f"Error at RedisDB.create_custom_indices: {e.args}")
 
-    
-    
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
@@ -400,21 +415,18 @@ class RedisDB(BaseDB):
         except Exception as e:
             logger.error(f"Error at RedisDB.get_lock_doc: {e.args}")
             return {}
-    
-    async def is_locked_by_other_user(
-        self, dto: EntityDTO
-    ) -> bool:
+
+    async def is_locked_by_other_user(self, dto: EntityDTO) -> bool:
         try:
             async with RedisServices() as redis:
                 lock_payload = await redis.get_lock_doc(
-                    dto.space_name, 
-                    dto.branch_name, 
-                    dto.subpath, 
-                    dto.shortname
+                    dto.space_name, dto.branch_name, dto.subpath, dto.shortname
                 )
                 if lock_payload:
                     if dto.user_shortname:
-                        return bool(lock_payload["owner_shortname"] != dto.user_shortname)
+                        return bool(
+                            lock_payload["owner_shortname"] != dto.user_shortname
+                        )
                     else:
                         return True
                 return False
@@ -422,7 +434,7 @@ class RedisDB(BaseDB):
         except Exception as e:
             logger.error(f"Error at RedisDB.is_entry_locked: {e.args}")
             return False
-    
+
     async def delete_lock_doc(self, dto: EntityDTO) -> None:
         try:
             async with RedisServices() as redis:

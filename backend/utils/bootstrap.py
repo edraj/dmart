@@ -1,6 +1,4 @@
 import asyncio
-from redis.commands.search.field import TextField
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from models.enums import ResourceType
 from utils.settings import settings
 import models.core as core
@@ -49,11 +47,8 @@ async def load_permissions_and_roles() -> None:
 async def create_user_permission_index_and_data() -> None:
     await operational_repo.create_index_drop_existing(
         name="user_permission",
-        fields=[TextField("name")],
-        definition=IndexDefinition(
-            prefix=["users_permissions"],
-            index_type=IndexType.JSON,
-        ),
+        fields={"name": "string"},
+        prefix="users_permissions",
         delete_docs=True
     )
     
