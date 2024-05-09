@@ -89,7 +89,10 @@ class ManticoreDB(BaseDB):
         "array": "text",
         "text": "text",
     }
-    async def create_key_value_pairs_table(self):
+    
+    # def mc_command(self, command: str) -> dict[str, Any]:
+    
+    async def create_key_value_pairs_index(self):
         await self.create_index(
             "key_value_pairs",
             {
@@ -99,17 +102,16 @@ class ManticoreDB(BaseDB):
         )
 
     async def create_index(self, name: str, fields: dict[str, str], **kwargs) -> bool:
-        try:
-            self.utilsApi.sql(f"DROP TABLE {name};")
-        except Exception as _:
-            pass
+        name = name.replace(":", "__")
+        await self.drop_index(name, False)
         
         try:
             sql_str = f"CREATE TABLE {name}("
             for name, value in fields.items():
-                sql_str += f"{name} {value}"
-            sql_str.strip(",")
-            sql_str += ");"
+                sql_str += f"{name} {value},"
+            
+            sql_str = sql_str.strip(",")
+            sql_str += ")"
             self.utilsApi.sql(sql_str)
             return True
         except Exception as e:
@@ -174,10 +176,6 @@ class ManticoreDB(BaseDB):
             )
 
         return db_schema_definition
-    
-    def append_unique_index_fields(self, new_index: list[str], base_index: list[str]):
-        unique_fields = set(base_index).union(set(new_index))
-        return list(unique_fields)
     
     async def create_application_indexes(
         self, 
@@ -249,8 +247,80 @@ class ManticoreDB(BaseDB):
                         db_schema_definition
                     )
 
-        # if for_custom_indices:
-        #     await self.create_custom_indices(for_space)
+        if for_custom_indices:
+            await self.create_custom_indices(for_space)
+    
+    def generate_db_index_from_class(
+        self, class_ref: type[Meta], exclude_from_index: list
+    ) -> dict[str, str]:
+        class_types_to_db_column_type_map = {
+            "str": "string",
+            "bool": "bool",
+            "UUID": "string",
+            "list": "json",
+            "datetime": "timestamp",
+            "set": "json",
+            "dict": "json",
+        }
+
+        db_schema: dict[str, str] = {}
+        for field_name, model_field in class_ref.model_fields.items():
+            if field_name in exclude_from_index:
+                continue
+
+            mapper_key = None
+            for allowed_type in list(class_types_to_db_column_type_map.keys()):
+                if str(model_field.annotation).startswith(allowed_type):
+                    mapper_key = allowed_type
+                    break
+            if not mapper_key:
+                continue
+            db_schema[field_name] = class_types_to_db_column_type_map[mapper_key]
+
+        return db_schema
+    
+    async def create_custom_indices(self, for_space: str | None = None) -> None:
+        # redis_schemas: dict[str, list] = {}
+        for i, index in enumerate(self.SYS_INDEXES):
+            if (
+                for_space
+                and index["space"] != for_space
+                or not isinstance(index["exclude_from_index"], list)
+            ):
+                continue
+
+            # exclude_from_index: list = index["exclude_from_index"]
+
+            # redis_schemas.setdefault(f"{index['space']}:{index['branch']}", [])
+            # self.redis_indices.setdefault(
+            #     f"{index['space']}:{index['branch']}:meta", {}
+            # )
+
+            generated_schema_fields = self.generate_db_index_from_class(
+                index["class"], index["exclude_from_index"]
+            )
+            
+            generated_schema_fields.update(self.META_SCHEMA)
+            
+            await self.create_index(f"{index['space']}:meta", generated_schema_fields)
+
+            # redis_schemas[f"{index['space']}:{index['branch']}"] = (
+            #     self.append_unique_index_fields(
+            #         generated_schema_fields,
+            #         redis_schemas[f"{index['space']}:{index['branch']}"],
+            #     )
+            # )
+
+        # for space_branch, redis_schema in redis_schemas.items():
+        #     redis_schema = self.append_unique_index_fields(
+        #         tuple(redis_schema),
+        #         list(self.META_SCHEMA),
+        #     )
+        #     await self.create_index(
+        #         f"{space_branch}",
+        #         "meta",
+        #         tuple(redis_schema),
+        #     )
     
     async def flush_all(self) -> None:
         try:
@@ -267,17 +337,32 @@ class ManticoreDB(BaseDB):
                 
         except Exception as e:
             logger.error(f"Error at ManticoreDB.flush_all: {e.args}")
-            
-            
+                    
     async def list_indexes(self) -> set[str]:
-        return set("")
+        try:
+            tables = self.utilsApi.sql('SHOW TABLES') 
+            if(
+                not isinstance(tables, list) or 
+                len(tables) == 0 or
+                not isinstance(tables[0], dict) or
+                'data' not in tables[0]
+            ):
+                raise Exception(f"Invalid type returned from Manticore. {type(tables) = }. {tables = }")
+            
+            return set([item['Index'] for item in tables[0]['data']])
+            
+            
+        except Exception as e:
+            logger.error(f"Error at ManticoreDB.list_indexes: {e}")
+            return set()
+
 
     async def drop_index(self, name: str, delete_docs: bool) -> bool:
-        return True
-    
-    
-    async def create_custom_indices(self, for_space: str | None = None) -> None:
-        pass
+        try:
+            self.utilsApi.sql(f"DROP TABLE {name}")
+            return True
+        except Exception as _:
+            return False
         
     
     async def search(
@@ -336,7 +421,7 @@ class ManticoreDB(BaseDB):
         pass
     
     async def set_key(self, key: str, value: str, ex=None, nx: bool = False) -> bool:
-        await self.create_key_value_pairs_table()
+        await self.create_key_value_pairs_index()
         return True
     
     async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
@@ -351,7 +436,7 @@ class ManticoreDB(BaseDB):
         if len(doc_id_parts) != 3:
             raise Exception(f"Invalid document id, {doc_id}")
         
-        return f"{doc_id_parts[0]}:{doc_id_parts[1]}"
+        return f"{doc_id_parts[0]}__{doc_id_parts[1]}"
     
     async def find_by_id(self, id: str) -> dict[str, Any]:
         try:
