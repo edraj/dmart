@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+import datetime
 from typing import Any
 
+import api
 from models.api import Exception as api_exception, Error as api_error
 from models.core import EntityDTO, Group, Meta, Permission, Role, User
 from models.enums import LockAction, ResourceType, SortType
@@ -292,19 +294,54 @@ class BaseDB(ABC):
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
-        pass
+        lock_doc_id = self.generate_doc_id(
+            dto.space_name, dto.branch_name, "lock", dto.payload_shortname, dto.subpath
+        )
+        lock_data = await self.get_lock_doc(
+            dto.space_name, dto.branch_name, dto.subpath, dto.payload_shortname
+        )
+        if not lock_data:
+            payload = {
+                "owner_shortname": owner_shortname,
+                "lock_time": str(datetime.now().isoformat()),
+            }
+            result = await self.save_doc(lock_doc_id, payload, nx=True)
+            if result is None:
+                lock_payload = await self.get_lock_doc(
+                    dto.space_name, dto.branch_name, dto.subpath, dto.payload_shortname
+                )
+                if lock_payload["owner_shortname"] != owner_shortname:
+                    raise api.Exception(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        error=api.Error(
+                            type="lock",
+                            code=InternalErrorCode.LOCKED_ENTRY,
+                            message=f"Entry is already locked by {lock_payload['owner_shortname']}",
+                        ),
+                    )
+            lock_type = LockAction.lock
+        else:
+            lock_type = LockAction.extend
+        await self.set_ttl(lock_doc_id, ttl)
+        return lock_type
 
+ 
     @abstractmethod
     async def get_lock_doc(self, dto: EntityDTO) -> dict[str, Any]:
-        pass
+        lock_doc_id = self.generate_doc_id(
+            dto.space_name, dto.branch_name, "lock", dto.payload_shortname, dto.subpath
+        )
+        return await self.get_doc_by_id(lock_doc_id)
+
 
     @abstractmethod
-    async def is_locked_by_other_user(
-        self, dto: EntityDTO
-    ) -> bool:
+    async def is_locked_by_other_user( self, dto: EntityDTO ) -> bool:
         pass
     
     @abstractmethod
     async def delete_lock_doc(self, dto: EntityDTO) -> None:
-        pass
+        await self.delete_doc( # ??
+            dto.space_name, dto.branch_name, "lock", dto.payload_shortname, dto.subpath
+        )
+
     # ================================== END =========================================

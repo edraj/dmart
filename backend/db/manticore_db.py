@@ -318,7 +318,7 @@ class ManticoreDB(BaseDB):
         branch_name: str = settings.default_branch
     ) -> int:
         return 0
-   #ok 
+    
     async def free_search(self, 
         index_name: str, 
         search_str: str, 
@@ -377,7 +377,6 @@ class ManticoreDB(BaseDB):
         payload: dict[str, Any],
     ) -> tuple[str, dict[str, Any]]:
         return ("", {})
-    
 
 
     async def delete(self, dto: EntityDTO) -> bool:
@@ -399,24 +398,73 @@ class ManticoreDB(BaseDB):
     ) -> bool:
         return True
     
-    
 
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
-        pass
+        try:
+            async with BaseDB() as base:
+                return await base.save_lock_doc(
+                    space_name=dto.space_name,
+                    branch_name=dto.branch_name,
+                    subpath=dto.subpath,
+                    payload_shortname=dto.shortname,
+                    owner_shortname=owner_shortname,
+                    ttl=ttl,
+                )
+        except Exception as e:
+            logger.error(f"Error at BaseDB.save_lock_doc: {e.args}")
+            return None
 
 
     async def get_lock_doc(self, dto: EntityDTO) -> dict[str, Any]:
-        return {}
+        try:
+            async with BaseDB() as base:
+                return await base.get_lock_doc(
+                    space_name=dto.space_name,
+                    branch_name=dto.branch_name,
+                    subpath=dto.subpath,
+                    payload_shortname=dto.shortname,
+                )
 
+        except Exception as e:
+            logger.error(f"Error at BaseDB.get_lock_doc: {e.args}")
+            return {}
+ 
 
     async def is_locked_by_other_user(
         self, dto: EntityDTO
     ) -> bool:
-        return True
-    
+        try:
+            async with BaseDB() as base:
+                lock_payload = await base.get_lock_doc(
+                    dto.space_name, 
+                    dto.branch_name, 
+                    dto.subpath, 
+                    dto.shortname
+                )
+                if lock_payload:
+                    if dto.user_shortname:
+                        return bool(lock_payload["owner_shortname"] != dto.user_shortname)
+                    else:
+                        return True
+                return False
+
+        except Exception as e:
+            logger.error(f"Error at BaseDB.is_entry_locked: {e.args}")
+            return False
+ 
 
     async def delete_lock_doc(self, dto: EntityDTO) -> None:
-        pass
-        
+        try:
+            async with BaseDB() as base:
+                await base.delete_lock_doc(
+                    space_name=dto.space_name,
+                    branch_name=dto.branch_name,
+                    subpath=dto.subpath,
+                    payload_shortname=dto.shortname,
+                )
+
+        except Exception as e:
+            logger.error(f"Error at BaseD.delete_lock_doc: {e.args}")
+            return None
