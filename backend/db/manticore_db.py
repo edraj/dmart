@@ -318,7 +318,7 @@ class ManticoreDB(BaseDB):
         branch_name: str = settings.default_branch
     ) -> int:
         return 0
-    
+   #ok 
     async def free_search(self, 
         index_name: str, 
         search_str: str, 

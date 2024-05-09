@@ -15,6 +15,7 @@ config.ini
 .env
 secrets.env
 backend/config.env
+backend/env
 workspace.xml
 settings.json
 backend/version.txt
