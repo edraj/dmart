@@ -1,9 +1,11 @@
 from repositories.base_repo import BaseRepo
+from repositories.manticore_repo import ManticoreRepo
 from repositories.redis_repo import RedisRepo
 from utils.settings import settings
 
 AVAILABLE_OPERATIONAL_REPOSITORIES: dict[str, BaseRepo] = {
-    'redis': RedisRepo()
+    'redis': RedisRepo(),
+    'manticore': ManticoreRepo()
 }
 
 class OperationalRepo:

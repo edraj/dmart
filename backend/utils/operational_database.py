@@ -1,9 +1,11 @@
 from db.base_db import BaseDB
+from db.manticore_db import ManticoreDB
 from db.redis_db import RedisDB
 from utils.settings import settings
 
 AVAILABLE_OPERATIONAL_DATABASES: dict[str, BaseDB] = {
-    'redis': RedisDB()
+    'redis': RedisDB(),
+    'manticore': ManticoreDB(),
 }
 
 class OperationalDatabase:
