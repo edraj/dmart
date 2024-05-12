@@ -216,7 +216,7 @@ class BaseDB(ABC):
 
     @abstractmethod
     async def delete(self, dto: EntityDTO) -> bool:
-        return True 
+        pass 
 
     @abstractmethod
     async def delete_doc_by_id(self, id: str) -> bool:
