@@ -379,12 +379,26 @@ class ManticoreDB(BaseDB):
         return ("", {})
 
 
+    # not yet
     async def delete(self, dto: EntityDTO) -> bool:
+
+        # DELETE FROM <name_space> WHERE id=100;
+        command = f"DELETE FROM {dto.space_name} WHERE match('{dto.uuid}');"
+        try:
+            self.utilsApi.sql(command)
+        except Exception as e:
+            logger.error(f"Error at ManticoreDB.delete: {e.args}")
+            return False 
         return True
 
 
 
     async def delete_doc_by_id(self, id: str) -> bool:
+        try:
+            self.delete(key=id) # .json().
+        except Exception as e:
+            logger.error(f"Error at ManticorDB.delete_doc_by_id: {e.args}")
+            return False
         return True
     
     async def move(

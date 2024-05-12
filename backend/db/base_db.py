@@ -216,7 +216,7 @@ class BaseDB(ABC):
 
     @abstractmethod
     async def delete(self, dto: EntityDTO) -> bool:
-        pass
+        return True 
 
     @abstractmethod
     async def delete_doc_by_id(self, id: str) -> bool:
@@ -345,3 +345,20 @@ class BaseDB(ABC):
         )
 
     # ================================== END =========================================
+
+
+    # we need this method
+    def generate_doc_id(
+        self,
+        space_name: str,
+        branch_name: str | None,
+        schema_shortname: str,
+        shortname: str,
+        subpath: str,
+    ) -> str:
+        # if subpath[0] == "/":
+        #     subpath = subpath[1:]
+        # if subpath[-1] == "/":
+        #     subpath = subpath[:-1]
+        subpath = subpath.strip("/")
+        return f"{space_name}:{branch_name}:{schema_shortname}:{subpath}/{shortname}"
