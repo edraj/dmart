@@ -380,40 +380,7 @@ class ManticoreDB(BaseDB):
 
 
     async def delete(self, dto: EntityDTO) -> bool:
-        try:
-            async with BaseDB() as base:
-                doc_id = base.generate_doc_id(
-                    dto.space_name,
-                    dto.branch_name,
-                    "meta",
-                    dto.shortname,
-                    dto.subpath,
-                )
-                meta_doc = await base.get_doc_by_id(doc_id)
-                # Delete the meta doc
-                await base.delete_doc(
-                    dto.space_name,
-                    dto.branch_name,
-                    "meta",
-                    dto.shortname,
-                    dto.subpath,
-                )
-                # Delete the payload doc
-                await base.delete_doc(
-                    dto.space_name,
-                    dto.branch_name,
-                    (
-                        meta_doc.get("payload", {}).get("schema_shortname", "meta")
-                        if meta_doc
-                        else "meta"
-                    ),
-                    dto.shortname,
-                    dto.subpath,
-                )
-                return True
-        except Exception as e:
-            logger.error(f"Error at BaseDB.delete: {e.args}")
-            return False
+        return True
 
 
 
