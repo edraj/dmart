@@ -21,7 +21,7 @@ class ManticoreDB(BaseDB):
     indexApi = manticoresearch.IndexApi(client)
     searchApi = manticoresearch.SearchApi(client)
     utilsApi = manticoresearch.UtilsApi(client)
-    
+
     META_SCHEMA = {
         "document_id": "string",
         "uuid": "string",
@@ -41,17 +41,17 @@ class ManticoreDB(BaseDB):
 
         "payload_content_type": "string",
         "schema_shortname": "string",
-        
+
         "payload_content_type": "string",
         "payload_content_type": "string",
-        
+
         "created_at": "timestamp",
         "updated_at": "timestamp",
-        
+
         "view_acl": "text",
         "tags": "text",
         "query_policies": "text",
-        
+
         "owner_shortname": "string",
         "payload_content_type": "string",
 
@@ -77,10 +77,10 @@ class ManticoreDB(BaseDB):
         "reporter_distributor": "string",
         "reporter_governorate": "string",
         "reporter_msisdn": "string",
-        
+
         "payload_string": "string",
     }
-    
+
     SCHEMA_DATA_TYPES_MAPPER = {
         "string": "string",
         "boolean": "bool",
@@ -129,7 +129,7 @@ class ManticoreDB(BaseDB):
     async def create_index(self, name: str, fields: dict[str, str], **kwargs) -> bool:
         name = name.replace(":", "__")
         await self.drop_index(name, False)
-        
+
         try:
             sql_str = f"CREATE TABLE {name}("
             for name, value in fields.items():
@@ -141,7 +141,7 @@ class ManticoreDB(BaseDB):
         except Exception as e:
             logger.error(f"Error at ManticoreDB.create_index: {e.args}")
             return False
-            
+
     def get_index_fields_from_json_schema_property(
         self,
         key_chain: str,
@@ -202,13 +202,13 @@ class ManticoreDB(BaseDB):
         return db_schema_definition
 
     async def create_application_indexes(
-        self, 
-        for_space: str | None = None, 
-        for_schemas: list | None = None, 
-        for_custom_indices: bool = True, 
+        self,
+        for_space: str | None = None,
+        for_schemas: list | None = None,
+        for_custom_indices: bool = True,
         del_docs: bool = True
     ) -> None:
-        
+
         spaces = await self.find_by_id("spaces")
         for space_name in spaces:
             space_obj = Space.model_validate_json(spaces[space_name])
@@ -345,7 +345,7 @@ class ManticoreDB(BaseDB):
         #         "meta",
         #         tuple(redis_schema),
         #     )
-    
+
     async def flush_all(self) -> None:
         tables: dict[str, Any] | None = self.mc_command('SHOW TABLES')
         if tables is None:
@@ -353,7 +353,7 @@ class ManticoreDB(BaseDB):
 
         for table in tables.get('data', []):
             self.mc_command(f'DROP TABLE {table['Index']}')
-                    
+
     async def list_indexes(self) -> set[str]:
         tables = self.mc_command('SHOW TABLES')
         if tables is None:
@@ -364,8 +364,8 @@ class ManticoreDB(BaseDB):
 
     async def drop_index(self, name: str, delete_docs: bool) -> bool:
         return bool(self.mc_command(f"DROP TABLE {name}"))
-        
-    
+
+
     async def search(
             self,
             space_name: str,
@@ -410,18 +410,18 @@ class ManticoreDB(BaseDB):
         result = self.mc_command(sql_str)
 
         return result[0]["total"], result[0]["data"]
-    
-    async def aggregate(self, 
-        space_name: str, 
+
+    async def aggregate(self,
+        space_name: str,
         filters: dict[str, str | list | None],
-        group_by: list[str], 
-        reducers: list[Any], 
-        search: str | None = None, 
+        group_by: list[str],
+        reducers: list[Any],
+        search: str | None = None,
         max: int = 10,
-        exact_subpath: bool = False, 
-        sort_type: SortType = SortType.ascending, 
-        sort_by: str | None = None, 
-        schema_name: str = "meta", 
+        exact_subpath: bool = False,
+        sort_type: SortType = SortType.ascending,
+        sort_by: str | None = None,
+        schema_name: str = "meta",
         load: list = []
     ) -> list[Any]:
 
@@ -457,17 +457,17 @@ class ManticoreDB(BaseDB):
 
         return result[0]["data"]
 
-    async def get_count(self, 
-        space_name: str, 
-        schema_shortname: str, 
+    async def get_count(self,
+        space_name: str,
+        schema_shortname: str,
         branch_name: str = settings.default_branch
     ) -> int:
         return 0
-    
-    async def free_search(self, 
-        index_name: str, 
-        search_str: str, 
-        limit: int = 20, 
+
+    async def free_search(self,
+        index_name: str,
+        search_str: str,
+        limit: int = 20,
         offset: int = 0
     ) -> list[dict[str, Any]]:
         sql_str = f"SELECT * FROM {index_name}"
@@ -477,17 +477,17 @@ class ManticoreDB(BaseDB):
 
         result = self.mc_command(sql_str)
         return result[0]["data"]
-    
+
     async def dto_doc_id(self, dto: EntityDTO) -> str:
         return ""
-    
+
     async def find_key(self, key: str) -> str | None:
         pass
-    
+
     async def set_key(self, key: str, value: str, ex=None, nx: bool = False) -> bool:
         await self.create_key_value_pairs_index()
         return True
-    
+
     async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
         pass
 
@@ -499,14 +499,13 @@ class ManticoreDB(BaseDB):
 
         if len(doc_id_parts) != 3:
             raise Exception(f"Invalid document id, {doc_id}")
-        
-        return f"{doc_id_parts[0]}__{doc_id_parts[1]}"
 
+        return f"{doc_id_parts[0]}__{doc_id_parts[1]}"
 
     async def find_by_id(self, id: str) -> dict[str, Any]:
         try:
             index_name: str = self.get_index_name_from_doc_id(id)
-            result = self.mc_command(f"SELECT * FROM ? WHERE uuid='{id}'")
+            result = self.mc_command(f"SELECT * FROM {index_name}")
             return result[0]["data"][0]
         except Exception as e:
             logger.error(f"Error at ManticoreDB.find_by_id: {e.args}")
@@ -514,18 +513,22 @@ class ManticoreDB(BaseDB):
 
     async def list_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
         try:
-            result = self.mc_command(f"SELECT * FROM ? WHERE uuid IN ({", ".join(ids)})")
-            return result[0]["data"]
+            data = []
+            for id in ids:
+                index_name: str = self.get_index_name_from_doc_id(id)
+                result = self.mc_command(f"SELECT * FROM {index_name}")
+                data.append(result[0]["data"])
+            return data
         except Exception as e:
             logger.error(f"Error at ManticoreDB.find_by_id: {e.args}")
             return {}
-    
+
     async def list_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
         return []
-    
+
     async def delete_keys(self, keys: list[str]) -> bool:
         return True
-    
+
 
     async def find_payload_data_by_id(
         self, id: str, resource_type: ResourceType
@@ -553,7 +556,7 @@ class ManticoreDB(BaseDB):
         payload: dict[str, Any],
     ) -> tuple[str, dict[str, Any]]:
         return ("", {})
-    
+
 
 
     async def delete(self, dto: EntityDTO) -> bool:
@@ -562,7 +565,7 @@ class ManticoreDB(BaseDB):
 
     async def delete_doc_by_id(self, id: str) -> bool:
         return True
-    
+
     async def move(
         self,
         space_name: str,
@@ -574,8 +577,8 @@ class ManticoreDB(BaseDB):
         branch_name: str | None = settings.default_branch,
     ) -> bool:
         return True
-    
-    
+
+
 
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
@@ -591,8 +594,8 @@ class ManticoreDB(BaseDB):
         self, dto: EntityDTO
     ) -> bool:
         return True
-    
+
 
     async def delete_lock_doc(self, dto: EntityDTO) -> None:
         pass
-        
+
