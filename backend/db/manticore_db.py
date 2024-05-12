@@ -385,16 +385,46 @@ class ManticoreDB(BaseDB):
             schema_name: str = "meta",
             return_fields: list = []
     ) -> tuple[int, list[dict[str, Any]]]:
-        return (0, [])
+        sql_str = "SELECT "
+        if len(highlight_fields) == 0:
+            sql_str += "*" if len(return_fields) == 0 else ",".join(return_fields)
+        else:
+            sql_str += "HIGHLIGHT({}, %s)" % ",".join(highlight_fields)
+
+        sql_str += f" FROM {space_name}__{branch_name}__{schema_name}"
+
+        if search:
+            sql_str += f" WHERE MATCH('{search}')"
+
+        where_filters = []
+        if len(filters.keys()) != 0:
+            sql_str += " AND "
+            for key, value in filters.items():
+                if isinstance(value, list):
+                    where_filters.append(f"{key} IN ({', '.join(map(str, value))})")
+                elif isinstance(value, str):
+                    where_filters.append(f"{key}='{value}'")
+                else:
+                    where_filters.append(f"{key}={value}")
+
+            sql_str += " AND ".join(where_filters)
+
+        if sort_by:
+            sql_str += f" ORDER BY {sort_by} {'asc' if sort_type == SortType.ascending else 'desc'}"
+
+        sql_str += f" LIMIT {limit} OFFSET {offset}"
+
+        result = self.mc_command(sql_str)
+
+        return result["total"], result["data"]
 
     async def aggregate(self,
                         space_name: str,
-                        filters: dict[str,
-                        str | list | None],
+                        filters: dict[str, str | list | None],
                         group_by: list[str],
                         reducers: list[Any],
                         search: str | None = None,
-                        max: int = 10,
+                        limit: int = 10,
                         branch_name: str = settings.default_branch,
                         exact_subpath: bool = False,
                         sort_type: SortType = SortType.ascending,
@@ -402,14 +432,53 @@ class ManticoreDB(BaseDB):
                         schema_name: str = "meta",
                         load: list = []
                         ) -> list[Any]:
-        return []
+        sql_str = "SELECT "
+        if len(reducers) == 0:
+            sql_str += "*"
+        else:
+            for reducer_index in range(len(reducers)):
+                for operation, fields in reducers[reducer_index].items():
+                    sql_str += f'{operation}({",".join(fields)})'
+                    if reducer_index < len(reducers) - 1:
+                        sql_str += ", "
+
+        sql_str += f" FROM {space_name}__{branch_name}__{schema_name}"
+
+        if search:
+            sql_str += f" WHERE MATCH('{search}')"
+
+        where_clauses = []
+        for key, value in filters.items():
+            sql_str += " AND " if "WHERE" in sql_str else "WHERE"
+            if isinstance(value, list):
+                where_clauses.append(f"{key} IN ({', '.join(map(str, value))})")
+            if isinstance(value, str):
+                where_clauses.append(f"{key}='{value}'")
+            elif value is not None:
+                where_clauses.append(f"{key} = '{value}'")
+
+        sql_str += " AND ".join(where_clauses)
+
+        sql_str += " GROUP BY "
+        group_by = ", ".join(group_by)
+        sql_str += group_by
+
+        if sort_by:
+            sql_str += f" ORDER BY {sort_by} {sort_type}"
+
+        sql_str += f" LIMIT {limit}"
+
+        result = self.mc_command(sql_str)
+
+        return result["data"]
 
     async def get_count(self,
                         space_name: str,
                         schema_shortname: str,
                         branch_name: str = settings.default_branch
                         ) -> int:
-        return 0
+        result = self.mc_command(f"SELECT COUNT(*) as c FROM {space_name}__{branch_name}__{schema_shortname}")
+        return result["data"][0]["c"]
 
     async def free_search(self,
                           index_name: str,
@@ -417,10 +486,16 @@ class ManticoreDB(BaseDB):
                           limit: int = 20,
                           offset: int = 0
                           ) -> list[dict[str, Any]]:
-        return []
+        sql_str = f"SELECT * FROM {index_name}"
+        if search_str:
+            sql_str += f" WHERE MATCH('{search_str}')"
+        sql_str += f" LIMIT {limit} OFFSET {offset}"
+
+        result = self.mc_command(sql_str)
+        return result["data"]
 
     async def dto_doc_id(self, dto: EntityDTO) -> str:
-        return ""
+        return f"{dto.space_name}__{dto.branch_name}__{dto.schema_shortname}"
 
     async def find_key(self, key: str) -> str | None:
         res = self.mc_command(f"select * from key_value_pairs where key = '{key}' limit 1")
@@ -448,7 +523,11 @@ class ManticoreDB(BaseDB):
         return bool(res)
 
     async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
-        pass
+        sql_str = f"SELECT * FROM {EntityDTO.space_name}__{EntityDTO.branch_name}__{EntityDTO.schema_shortname}"
+        sql_str += f" WHERE shortname='{EntityDTO.shortname}') AND resource_type='{EntityDTO.resource_type}'"
+
+        result = self.mc_command(sql_str)
+        return result["data"]
 
     def get_index_name_from_doc_id(self, doc_id: str) -> str:
         if ":" not in doc_id:
