@@ -198,56 +198,7 @@ class RedisRepo(BaseRepo):
     async def update(self, dto: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None) -> None:
         await self.create(dto, meta, payload)
 
-    async def generate_payload_string(
-        self,
-        dto: EntityDTO,
-        payload: dict[str, Any],
-    ) -> str:
-        payload_string: str = ""
-        # Remove system related attributes from payload
-        for attr in self.db.SYS_ATTRIBUTES:
-            if attr in payload:
-                del payload[attr]
-
-        # Generate direct payload string
-        payload_values = set(flatten_all(payload).values())
-        payload_string += ",".join([str(i) for i in payload_values if i is not None])
-
-        # Generate attachments payload string
-        attachments: dict[str, list] = await main_db.get_entry_attachments(
-            subpath=f"{dto.subpath}/{dto.shortname}",
-            branch_name=dto.branch_name,
-            attachments_path=(
-                settings.spaces_folder
-                / f"{dto.space_name}/{branch_path(dto.branch_name)}/{dto.subpath}/.dm/{dto.shortname}"
-            ),
-            retrieve_json_payload=True,
-            include_fields=[
-                "shortname",
-                "displayname",
-                "description",
-                "payload",
-                "tags",
-                "owner_shortname",
-                "owner_group_shortname",
-                "body",
-                "state",
-            ],
-        )
-        if not attachments:
-            return payload_string.strip(",")
-
-        # Convert Record objects to dict
-        dict_attachments = {}
-        for k, v in attachments.items():
-            dict_attachments[k] = [i.model_dump() for i in v]
-
-        attachments_values = set(flatten_all(dict_attachments).values())
-        attachments_payload_string = ",".join(
-            [str(i) for i in attachments_values if i is not None]
-        )
-        payload_string += attachments_payload_string
-        return payload_string.strip(",")
+    
 
     async def db_doc_to_record(
         self,

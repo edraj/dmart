@@ -92,8 +92,9 @@ async def load_spaces() -> None:
         
         
 async def bootstrap_all():
-    await load_permissions_and_roles()
     await load_spaces()
+    await operational_repo.create_application_indexes()
+    await load_permissions_and_roles()
     
     
 if __name__ == "__main__":

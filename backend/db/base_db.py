@@ -3,7 +3,7 @@ from typing import Any
 
 from models.api import Exception as api_exception, Error as api_error
 from models.core import EntityDTO, Group, Meta, Permission, Role, User
-from models.enums import LockAction, ResourceType, SortType
+from models.enums import ActionType, LockAction, ResourceType, SortType
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
 from fastapi import status
@@ -324,3 +324,80 @@ class BaseDB(ABC):
     async def delete_lock_doc(self, dto: EntityDTO) -> None:
         pass
     # ================================== END =========================================
+
+
+    def generate_doc_id(
+        self,
+        space_name: str,
+        branch_name: str | None,
+        schema_shortname: str,
+        shortname: str,
+        subpath: str,
+    ) -> str:
+        subpath = subpath.strip("/")
+        return f"{space_name}:{branch_name}:{schema_shortname}:{subpath}/{shortname}"
+
+
+    def generate_query_policies(
+        self,
+        space_name: str,
+        subpath: str,
+        resource_type: str,
+        is_active: bool,
+        owner_shortname: str,
+        owner_group_shortname: str | None,
+        entry_shortname: str | None = None,
+    ) -> list:
+        subpath_parts = ["/"]
+        subpath_parts += subpath.strip("/").split("/")
+
+        if resource_type == ResourceType.folder and entry_shortname:
+            subpath_parts.append(entry_shortname)
+
+        query_policies: list = []
+        full_subpath = ""
+        for subpath_part in subpath_parts:
+            full_subpath += subpath_part
+            query_policies.append(
+                f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}:{owner_shortname}"
+            )
+            if owner_group_shortname is None:
+                query_policies.append(
+                    f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}"
+                )
+            else:
+                query_policies.append(
+                    f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}:{owner_group_shortname}"
+                )
+
+            full_subpath_parts = full_subpath.split("/")
+            if len(full_subpath_parts) > 1:
+                subpath_with_magic_keyword = (
+                    "/".join(full_subpath_parts[:1]) + "/" + settings.all_subpaths_mw
+                )
+                if len(full_subpath_parts) > 2:
+                    subpath_with_magic_keyword += "/" + "/".join(full_subpath_parts[2:])
+                query_policies.append(
+                    f"{space_name}:{subpath_with_magic_keyword.strip('/')}:{resource_type}:{str(is_active).lower()}"
+                )
+
+            if full_subpath == "/":
+                full_subpath = ""
+            else:
+                full_subpath += "/"
+
+        return query_policies
+    
+    def generate_view_acl(self, acl: list[dict[str, Any]] | None) -> list[str] | None:
+        if not acl:
+            return None
+
+        view_acl: list[str] = []
+
+        for access in acl:
+            if ActionType.view in access.get(
+                "allowed_actions", []
+            ) or ActionType.query in access.get("allowed_actions", []):
+                view_acl.append(access["user_shortname"])
+
+        return view_acl
