@@ -195,6 +195,13 @@ class BaseDB(ABC):
     @abstractmethod
     async def save_at_id(self, id: str, doc: dict[str, Any] = {}) -> bool:
         pass
+    
+    @abstractmethod
+    async def save_bulk(self, index: str, docs: list[dict[str, Any]]) -> int:
+        # for doc in docs:
+        #     await self.save_at_id(doc["id"], doc)
+        # return True
+        pass
 
     @abstractmethod
     async def prepare_meta_doc(

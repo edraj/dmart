@@ -10,7 +10,7 @@ from models.core import EntityDTO, Meta, Space
 from models.enums import LockAction, ResourceType, SortType
 from utils.helpers import delete_none, resolve_schema_references
 from utils.settings import settings
-
+from manticoresearch.model.bulk_response import BulkResponse
 
 class ManticoreDB(BaseDB):
     config = manticoresearch.Configuration(
@@ -517,6 +517,25 @@ class ManticoreDB(BaseDB):
         except Exception as e:
             logger.error(f"Error at ManticoreDB.save_at_id: {e}")
             return False
+
+    async def save_bulk(self, index: str, docs: list[dict[str, Any]]) -> int:
+        try:
+
+            docs = [{"insert": {"index": index, "doc": doc}} for doc in docs]
+            
+            res: BulkResponse = self.indexApi.bulk('\n'.join(map(json.dumps,docs))) # type: ignore
+            
+            if res.errors is not False:
+                raise Exception(res.errors)
+            
+            if not isinstance(res.items, list) or not isinstance(res.items[0], dict):
+                raise Exception("Invalid response " + str(res.items))
+            
+            
+            return res.items[0]['bulk']['created']
+        except Exception as e:
+            logger.error(f"Error at ManticoreDB.save_bulk: {e}")
+            return 0
 
     async def prepare_meta_doc(
         self, space_name: str, branch_name: str | None, subpath: str, meta: Meta

@@ -224,6 +224,9 @@ class BaseRepo(ABC):
     async def create_index(self, name: str, fields: dict[str, str], **kwargs) -> bool:
         return await self.db.create_index(name, fields, **kwargs)
 
+    async def save_bulk(self, index: str, docs: list[dict[str, Any]]) -> int:
+        return await self.db.save_bulk(index, docs)
+    
     async def create_application_indexes(
         self,
         for_space: str | None = None,

@@ -228,6 +228,9 @@ class RedisDB(BaseDB):
             logger.error(f"Error at RedisDB.save_at_id: {e.args}")
             return False
 
+    async def save_bulk(self, index: str, docs: list[dict[str, Any]]) -> int:
+        return 0
+    
     async def delete_doc_by_id(self, id: str) -> bool:
         try:
             async with RedisServices() as redis:
