@@ -348,7 +348,6 @@ class BaseDB(ABC):
     # ================================== END =========================================
 
 
-    # we need this method
     def generate_doc_id(
         self,
         space_name: str,
@@ -357,9 +356,70 @@ class BaseDB(ABC):
         shortname: str,
         subpath: str,
     ) -> str:
-        # if subpath[0] == "/":
-        #     subpath = subpath[1:]
-        # if subpath[-1] == "/":
-        #     subpath = subpath[:-1]
         subpath = subpath.strip("/")
         return f"{space_name}:{branch_name}:{schema_shortname}:{subpath}/{shortname}"
+
+
+    def generate_query_policies(
+        self,
+        space_name: str,
+        subpath: str,
+        resource_type: str,
+        is_active: bool,
+        owner_shortname: str,
+        owner_group_shortname: str | None,
+        entry_shortname: str | None = None,
+    ) -> list:
+        subpath_parts = ["/"]
+        subpath_parts += subpath.strip("/").split("/")
+
+        if resource_type == ResourceType.folder and entry_shortname:
+            subpath_parts.append(entry_shortname)
+
+        query_policies: list = []
+        full_subpath = ""
+        for subpath_part in subpath_parts:
+            full_subpath += subpath_part
+            query_policies.append(
+                f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}:{owner_shortname}"
+            )
+            if owner_group_shortname is None:
+                query_policies.append(
+                    f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}"
+                )
+            else:
+                query_policies.append(
+                    f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}:{owner_group_shortname}"
+                )
+
+            full_subpath_parts = full_subpath.split("/")
+            if len(full_subpath_parts) > 1:
+                subpath_with_magic_keyword = (
+                    "/".join(full_subpath_parts[:1]) + "/" + settings.all_subpaths_mw
+                )
+                if len(full_subpath_parts) > 2:
+                    subpath_with_magic_keyword += "/" + "/".join(full_subpath_parts[2:])
+                query_policies.append(
+                    f"{space_name}:{subpath_with_magic_keyword.strip('/')}:{resource_type}:{str(is_active).lower()}"
+                )
+
+            if full_subpath == "/":
+                full_subpath = ""
+            else:
+                full_subpath += "/"
+
+        return query_policies
+    
+    def generate_view_acl(self, acl: list[dict[str, Any]] | None) -> list[str] | None:
+        if not acl:
+            return None
+
+        view_acl: list[str] = []
+
+        for access in acl:
+            if ActionType.view in access.get(
+                "allowed_actions", []
+            ) or ActionType.query in access.get("allowed_actions", []):
+                view_acl.append(access["user_shortname"])
+
+        return view_acl

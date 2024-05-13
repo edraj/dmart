@@ -351,6 +351,7 @@ class ManticoreDB(BaseDB):
         return []
     
     async def delete_keys(self, keys: list[str]) -> bool:
+        # self.mc_command(sql_str)
         return True
     
 
@@ -379,11 +380,12 @@ class ManticoreDB(BaseDB):
         return ("", {})
 
 
-    # not yet
     async def delete(self, dto: EntityDTO) -> bool:
 
         # DELETE FROM <name_space> WHERE id=100;
-        command = f"DELETE FROM {dto.space_name} WHERE match('{dto.uuid}');"
+        # command = f"DELETE FROM {dto.space_name} WHERE match('{dto.uuid}');"
+        id = self.generate_doc_id(dto)
+        command = f"DELETE FROM {dto.space_name} WHERE id = {id});"
         try:
             self.utilsApi.sql(command)
         except Exception as e:
@@ -418,15 +420,14 @@ class ManticoreDB(BaseDB):
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
         try:
-            async with BaseDB() as base:
-                return await base.save_lock_doc(
-                    space_name=dto.space_name,
-                    branch_name=dto.branch_name,
-                    subpath=dto.subpath,
-                    payload_shortname=dto.shortname,
-                    owner_shortname=owner_shortname,
-                    ttl=ttl,
-                )
+            return await self.save_lock_doc(
+                space_name=dto.space_name,
+                branch_name=dto.branch_name,
+                subpath=dto.subpath,
+                payload_shortname=dto.shortname,
+                owner_shortname=owner_shortname,
+                ttl=ttl,
+            )
         except Exception as e:
             logger.error(f"Error at BaseDB.save_lock_doc: {e.args}")
             return None
@@ -434,13 +435,12 @@ class ManticoreDB(BaseDB):
 
     async def get_lock_doc(self, dto: EntityDTO) -> dict[str, Any]:
         try:
-            async with BaseDB() as base:
-                return await base.get_lock_doc(
-                    space_name=dto.space_name,
-                    branch_name=dto.branch_name,
-                    subpath=dto.subpath,
-                    payload_shortname=dto.shortname,
-                )
+            return await self.get_lock_doc(
+                space_name=dto.space_name,
+                branch_name=dto.branch_name,
+                subpath=dto.subpath,
+                payload_shortname=dto.shortname,
+            )
 
         except Exception as e:
             logger.error(f"Error at BaseDB.get_lock_doc: {e.args}")
@@ -451,19 +451,18 @@ class ManticoreDB(BaseDB):
         self, dto: EntityDTO
     ) -> bool:
         try:
-            async with BaseDB() as base:
-                lock_payload = await base.get_lock_doc(
-                    dto.space_name, 
-                    dto.branch_name, 
-                    dto.subpath, 
-                    dto.shortname
-                )
-                if lock_payload:
-                    if dto.user_shortname:
-                        return bool(lock_payload["owner_shortname"] != dto.user_shortname)
-                    else:
-                        return True
-                return False
+            lock_payload = await self.get_lock_doc(
+                dto.space_name, 
+                dto.branch_name, 
+                dto.subpath, 
+                dto.shortname
+            )
+            if lock_payload:
+                if dto.user_shortname:
+                    return bool(lock_payload["owner_shortname"] != dto.user_shortname)
+                else:
+                    return True
+            return False
 
         except Exception as e:
             logger.error(f"Error at BaseDB.is_entry_locked: {e.args}")
@@ -472,13 +471,12 @@ class ManticoreDB(BaseDB):
 
     async def delete_lock_doc(self, dto: EntityDTO) -> None:
         try:
-            async with BaseDB() as base:
-                await base.delete_lock_doc(
-                    space_name=dto.space_name,
-                    branch_name=dto.branch_name,
-                    subpath=dto.subpath,
-                    payload_shortname=dto.shortname,
-                )
+            await self.delete_lock_doc(
+                space_name=dto.space_name,
+                branch_name=dto.branch_name,
+                subpath=dto.subpath,
+                payload_shortname=dto.shortname,
+            )
 
         except Exception as e:
             logger.error(f"Error at BaseD.delete_lock_doc: {e.args}")
