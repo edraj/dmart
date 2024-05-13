@@ -9,7 +9,7 @@ from models.core import EntityDTO, Meta, Space
 from models.enums import LockAction, ResourceType, SortType
 from utils.helpers import delete_none, resolve_schema_references
 from utils.settings import settings
-
+from manticoresearch.model.bulk_response import BulkResponse
 
 class ManticoreDB(BaseDB):
     config = manticoresearch.Configuration(
@@ -83,53 +83,63 @@ class ManticoreDB(BaseDB):
     def mc_command(self, command: str) -> dict[str, Any] | None:
         try:
             result = self.utilsApi.sql(command)
-            if (
-                not isinstance(result, list)
-                or len(result) == 0
-                or not isinstance(result[0], dict)
+            if(
+                not isinstance(result, list) or 
+                len(result) == 0 or 
+                not isinstance(result[0], dict)
             ):
                 return None
-
-            if result[0]["error"] != "":
-                raise Exception(result[0]["error"])
-
+            
+            if result[0]['error'] != '':
+                raise Exception(result[0]['error'])
+            
             return result[0]
         except Exception as e:
             logger.error(f"Error at ManticoreDB.mc_command: {e}")
             return None
-
+            
+    
     async def create_key_value_pairs_index(self):
         if self.is_index_exist("key_value_pairs"):
             return
-
-        await self.create_index("key_value_pairs", {"key": "string", "value": "string"})
-
-    def is_index_exist(self, name: str) -> bool:
+        
+        await self.create_index(
+            "key_value_pairs",
+            {
+                "key": "string",
+                "value": "string"
+            }
+        )
+        
+    def is_index_exist(self, name: str)-> bool:
         res = self.mc_command(f"show tables like '{name}'")
-        if res is not None and res["total"] > 0:
+        if res is not None and res['total'] > 0:
             return True
-
+        
         return False
 
     async def create_index(self, name: str, fields: dict[str, str], **kwargs) -> bool:
         name = name.replace(":", "__")
         if self.is_index_exist(name):
             await self.drop_index(name, False)
-
+        
         try:
             sql_str = f"CREATE TABLE {name}("
             for name, value in fields.items():
                 sql_str += f"{name} {value},"
-
+            
             sql_str = sql_str.strip(",")
             sql_str += ")"
             return bool(self.mc_command(sql_str))
         except Exception as e:
             logger.error(f"Error at ManticoreDB.create_index: {e.args}")
             return False
-
+            
     def get_index_fields_from_json_schema_property(
-        self, key_chain: str, property: Any, db_schema_definition: dict[str, str]
+        self, 
+        key_chain: str, 
+        property: Any, 
+        db_schema_definition: dict[str, str]
     ) -> dict[str, str]:
         """
         takes a property of the json schema definition, and returns the db schema index
@@ -164,9 +174,7 @@ class ManticoreDB(BaseDB):
             # if property["type"] == "array":
             #     key_chain += ".*"
 
-            db_schema_definition[key_chain] = self.SCHEMA_DATA_TYPES_MAPPER[
-                property["type"]
-            ]
+            db_schema_definition[key_chain] = self.SCHEMA_DATA_TYPES_MAPPER[property['type']]
             return db_schema_definition
 
         if "oneOf" in property:
@@ -187,22 +195,23 @@ class ManticoreDB(BaseDB):
         return db_schema_definition
 
     async def create_application_indexes(
-        self,
-        for_space: str | None = None,
-        for_schemas: list | None = None,
-        for_custom_indices: bool = True,
-        del_docs: bool = True,
+        self, 
+        for_space: str | None = None, 
+        for_schemas: list | None = None, 
+        for_custom_indices: bool = True, 
+        del_docs: bool = True
     ) -> None:
-
+        
         spaces = await self.find_by_id("spaces")
-        branch_name = "master"
-
+        branch_name = 'master'
+        
+        folder_rendering_schema = None
+        
         await self.create_custom_indices()
         for space_name in spaces:
-            space_obj = Space.model_validate_json(spaces[space_name])
             if (
                 for_space and for_space != space_name
-            ) or not space_obj.indexing_enabled:
+            ):
                 continue
 
             await self.create_index(
@@ -212,7 +221,11 @@ class ManticoreDB(BaseDB):
             # CREATE DB INDEX FOR EACH SCHEMA DEFINITION INSIDE THE SPACE
             schemas_file_pattern = re.compile(r"(\w*).json")
             schemas_glob = "*.json"
-            path = settings.spaces_folder / space_name / "schema"
+            path = (
+                settings.spaces_folder
+                / space_name
+                / "schema"
+            )
 
             for schema_path in path.glob(schemas_glob):
                 # GET SCHEMA SHORTNAME
@@ -228,40 +241,50 @@ class ManticoreDB(BaseDB):
                     continue
 
                 # GET SCHEMA PROPERTIES AND
-                # GENERATE DB INDEX DEFINITION BY MAPPIN SCHEMA PROPERTIES TO DB INDEX FIELDS
+                # GENERATE DB INDEX DEFINITION BY MAPPING SCHEMA PROPERTIES TO DB INDEX FIELDS
                 schema_content = json.loads(schema_path.read_text())
                 schema_content = resolve_schema_references(schema_content)
                 db_schema_definition: dict[str, str] = copy(self.META_SCHEMA)
                 if "properties" in schema_content:
                     for key, property in schema_content["properties"].items():
-                        generated_schema_fields = (
-                            self.get_index_fields_from_json_schema_property(
-                                key, property, {}
-                            )
+                        generated_schema_fields = self.get_index_fields_from_json_schema_property(
+                            key, property, {}
                         )
                         db_schema_definition.update(generated_schema_fields)
 
                 elif "oneOf" in schema_content:
                     for item in schema_content["oneOf"]:
                         for key, property in item["properties"].items():
-                            generated_schema_fields = (
-                                self.get_index_fields_from_json_schema_property(
-                                    key, property, {}
-                                )
+                            generated_schema_fields = self.get_index_fields_from_json_schema_property(
+                                key, property, {}
                             )
                             db_schema_definition.update(generated_schema_fields)
 
                 if db_schema_definition:
                     db_schema_definition["meta_doc_id"] = "string"
+                    
+                    if schema_shortname == "folder_rendering":
+                        folder_rendering_schema = db_schema_definition
 
                     await self.create_index(
                         f"{space_name}:{branch_name}:{schema_shortname}",
-                        db_schema_definition,
+                        db_schema_definition
                     )
 
-        if for_custom_indices:
-            await self.create_custom_indices(for_space)
+        if folder_rendering_schema is None:
+            return
+        
+        for space_name in spaces:
+            if (
+                for_space and for_space != space_name
+            ):
+                continue
 
+            await self.create_index(
+                f"{space_name}:{branch_name}:folder_rendering", folder_rendering_schema
+            )
+
+    
     def generate_db_index_from_class(
         self, class_ref: type[Meta], exclude_from_index: list
     ) -> dict[str, str]:
@@ -334,39 +357,41 @@ class ManticoreDB(BaseDB):
         #         "meta",
         #         tuple(redis_schema),
         #     )
-
+    
     async def flush_all(self) -> None:
-        tables: dict[str, Any] | None = self.mc_command("SHOW TABLES")
+        tables: dict[str, Any] | None = self.mc_command('SHOW TABLES') 
         if tables is None:
             return
-
-        for table in tables.get("data", []):
-            await self.drop_index(table["Index"], True)
-
+        
+        for table in tables.get('data', []):
+            await self.drop_index(table['Index'], True)
+                    
     async def list_indexes(self) -> set[str]:
-        tables = self.mc_command("SHOW TABLES")
+        tables = self.mc_command('SHOW TABLES') 
         if tables is None:
             return set()
+        
+        return set([item['Index'] for item in tables['data']])
 
-        return set([item["Index"] for item in tables["data"]])
 
     async def drop_index(self, name: str, delete_docs: bool) -> bool:
         return bool(self.mc_command(f"DROP TABLE {name}"))
-
+        
+    
     async def search(
-        self,
-        space_name: str,
-        search: str,
-        filters: dict[str, str | list | None],
-        limit: int,
-        offset: int,
-        exact_subpath: bool = False,
-        sort_type: SortType = SortType.ascending,
-        branch_name: str | None = None,
-        sort_by: str | None = None,
-        highlight_fields: list[str] | None = None,
-        schema_name: str = "meta",
-        return_fields: list = [],
+        self, 
+        space_name: str, 
+        search: str, 
+        filters: dict[str, str | list | None], 
+        limit: int, 
+        offset: int, 
+        exact_subpath: bool = False, 
+        sort_type: SortType = SortType.ascending, 
+        branch_name: str | None = None, 
+        sort_by: str | None = None, 
+        highlight_fields: list[str] | None = None, 
+        schema_name: str = "meta", 
+        return_fields: list = []
     ) -> tuple[int, list[dict[str, Any]]]:
         sql_str = "SELECT "
         sql_str += "*" if len(return_fields) == 0 else ",".join(return_fields)
@@ -484,29 +509,31 @@ class ManticoreDB(BaseDB):
         return f"{dto.space_name}__{dto.branch_name}__{dto.schema_shortname}"
 
     async def find_key(self, key: str) -> str | None:
-        res = self.mc_command(
-            f"select * from key_value_pairs where key = '{key}' limit 1"
-        )
-        if res is None or res["total"] == 0:
+        res = self.mc_command(f"select * from key_value_pairs where key = '{key}' limit 1")
+        if res is None or res['total'] == 0:
             return None
-
-        return res["data"][0]["value"]
-
+        
+        return res['data'][0]['value']
+    
     async def set_key(self, key: str, value: str, ex=None, nx: bool = False) -> bool:
         await self.create_key_value_pairs_index()
-
-        statement = {"index": "key_value_pairs", "doc": {"key": key, "value": value}}
-        find_res = self.mc_command(
-            f"select * from key_value_pairs where key = '{key}' limit 1"
-        )
-        if find_res is None or find_res["total"] == 0:
+        
+        statement = {
+            "index": "key_value_pairs",
+            "doc": {
+                "key": key, "value": value
+            }
+        }
+        find_res = self.mc_command(f"select * from key_value_pairs where key = '{key}' limit 1")
+        if find_res is None or find_res['total'] == 0:
             res = self.indexApi.insert(statement)
         else:
-            statement["id"] = find_res["data"][0]["id"]
+            statement["id"] = find_res['data'][0]['id']
             res = self.indexApi.replace(statement)
-
+            
+        
         return bool(res)
-
+    
     async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
         sql_str = f"SELECT * FROM {EntityDTO.space_name}__{EntityDTO.branch_name}__{EntityDTO.schema_shortname}"
         sql_str += f" WHERE shortname='{EntityDTO.shortname}') AND resource_type='{EntityDTO.resource_type}'"
@@ -517,14 +544,18 @@ class ManticoreDB(BaseDB):
     def get_index_name_from_doc_id(self, doc_id: str) -> str:
         if ":" not in doc_id:
             return "key_value_pairs"
-
+        
         doc_id_parts = doc_id.split(":")
-
+        
         if len(doc_id_parts) < 3:
             raise Exception(f"Invalid document id, {doc_id}")
-
-        return f"{doc_id_parts[0]}__{doc_id_parts[1]}__{doc_id_parts[2]}"
-
+        
+        schema_name = doc_id_parts[2]
+        if schema_name == "meta_schema":
+            schema_name = "meta"
+        return f"{doc_id_parts[0]}__{doc_id_parts[1]}__{schema_name}"
+    
+    
     async def find_by_id(self, id: str) -> dict[str, Any]:
         try:
             index_name: str = self.get_index_name_from_doc_id(id)
@@ -547,10 +578,10 @@ class ManticoreDB(BaseDB):
         except Exception as e:
             logger.error(f"Error at ManticoreDB.find_by_id: {e.args}")
             return {}
-
+    
     async def list_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
         return []
-
+    
     async def delete_keys(self, keys: list[str]) -> bool:
         return True
 
@@ -562,15 +593,39 @@ class ManticoreDB(BaseDB):
     async def save_at_id(self, id: str, doc: dict[str, Any] = {}) -> bool:
         if ":" not in id:
             await self.set_key(id, json.dumps(doc))
-
+            
         try:
-            doc["document_id"] = id
+            doc['document_id'] = id
             index = self.get_index_name_from_doc_id(id)
-            self.indexApi.insert({"index": index, "doc": doc})
+            self.indexApi.insert({
+                "index": index,
+                "doc": doc
+            })
             return True
         except Exception as e:
             logger.error(f"Error at ManticoreDB.save_at_id: {e}")
             return False
+
+    async def save_bulk(self, index: str, docs: list[dict[str, Any]]) -> int:
+        if len(docs) == 0:
+            return 0
+        try:
+
+            docs = [{"insert": {"index": index, "doc": doc}} for doc in docs]
+            
+            res: BulkResponse = self.indexApi.bulk('\n'.join(map(json.dumps,docs))) # type: ignore
+            
+            if res.errors is not False:
+                raise Exception(res.errors)
+            
+            if not isinstance(res.items, list) or not isinstance(res.items[0], dict):
+                raise Exception("Invalid response " + str(res.items))
+            
+            
+            return res.items[0]['bulk']['created']
+        except Exception as e:
+            logger.error(f"Error at ManticoreDB.save_bulk. {index = }. {len(docs)}. {docs[0] = }: {e}")
+            return 0
 
     async def prepare_meta_doc(
         self, space_name: str, branch_name: str | None, subpath: str, meta: Meta
@@ -605,32 +660,27 @@ class ManticoreDB(BaseDB):
         meta_json["created_at"] = meta.created_at.timestamp()
         meta_json["updated_at"] = meta.updated_at.timestamp()
         meta_json["payload_doc_id"] = payload_doc_id
-
+        
         meta_json = self.filter_unindexed_attributes(meta_json, meta_doc_id)
-
+        
         # Encode list to json string
-        meta_json = {
-            key: json.dumps(value) if isinstance(value, list) else value
-            for key, value in meta_json.items()
-        }
+        meta_json = {key: json.dumps(value) if isinstance(value, list) else value for key, value in meta_json.items()}
 
         return meta_doc_id, meta_json
 
-    def filter_unindexed_attributes(
-        self, doc: dict[str, Any], id: str
-    ) -> dict[str, Any]:
+    def filter_unindexed_attributes(self, doc: dict[str, Any], id: str) -> dict[str, Any]:
         # pp(before_filter__doc=doc, id=id)
         filtered_doc = {
-            "document_data": doc,
+            'document_data': doc,
         }
 
         index_name = self.get_index_name_from_doc_id(id)
         res = self.mc_command(f"describe {index_name}")
         if not res:
             return filtered_doc
-
-        index_schema = res["data"]
-        index_fields = {field["Field"] for field in index_schema}
+        
+        index_schema = res['data']
+        index_fields = {field['Field'] for field in index_schema}
         # pp(index_schema=index_schema)
         filtered_doc = {field: doc[field] for field in doc if field in index_fields}
         # pp(after_filter__doc=doc, id=id)
@@ -710,17 +760,25 @@ class ManticoreDB(BaseDB):
         branch_name: str | None = settings.default_branch,
     ) -> bool:
         return True
+    
+    
 
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
         pass
 
+
     async def get_lock_doc(self, dto: EntityDTO) -> dict[str, Any]:
         return {}
 
-    async def is_locked_by_other_user(self, dto: EntityDTO) -> bool:
+
+    async def is_locked_by_other_user(
+        self, dto: EntityDTO
+    ) -> bool:
         return True
+    
 
     async def delete_lock_doc(self, dto: EntityDTO) -> None:
         pass
+        

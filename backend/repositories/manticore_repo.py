@@ -30,7 +30,6 @@ class ManticoreRepo(BaseRepo):
         meta_doc_id, meta_json = await self.db.prepare_meta_doc(
             dto.space_name, dto.branch_name, dto.subpath, meta
         )
-        print("META DOC ID: ", meta_doc_id)
 
         if payload is None:
             payload = {}
