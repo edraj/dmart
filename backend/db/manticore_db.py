@@ -554,8 +554,7 @@ class ManticoreDB(BaseDB):
         if schema_name == "meta_schema":
             schema_name = "meta"
         return f"{doc_id_parts[0]}__{doc_id_parts[1]}__{schema_name}"
-    
-    
+
     async def find_by_id(self, id: str) -> dict[str, Any]:
         try:
             index_name: str = self.get_index_name_from_doc_id(id)
@@ -760,25 +759,19 @@ class ManticoreDB(BaseDB):
         branch_name: str | None = settings.default_branch,
     ) -> bool:
         return True
-    
-    
 
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
         pass
 
-
     async def get_lock_doc(self, dto: EntityDTO) -> dict[str, Any]:
         return {}
-
 
     async def is_locked_by_other_user(
         self, dto: EntityDTO
     ) -> bool:
         return True
-    
 
     async def delete_lock_doc(self, dto: EntityDTO) -> None:
         pass
-        
