@@ -479,6 +479,8 @@ class ManticoreDB(BaseDB):
         return result["data"]
 
     async def dto_doc_id(self, dto: EntityDTO) -> str:
+        if dto.schema_shortname == "meta_schema":
+            return f"{dto.space_name}__{dto.branch_name}__meta"
         return f"{dto.space_name}__{dto.branch_name}__{dto.schema_shortname}"
 
     async def find_key(self, key: str) -> str | None:
