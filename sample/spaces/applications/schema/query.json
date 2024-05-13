@@ -87,11 +87,11 @@
       "type": "object",
       "properties": {}
     },
-    "offset": {
+    "query_offset": {
       "title": "Offset",
       "type": "integer"
     },
-    "limit": {
+    "query_limit": {
       "title": "Limit",
       "type": "integer"
     },

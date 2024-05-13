@@ -85,10 +85,9 @@ async def load_data_to_redis(
     
     for db_docs_chunk in db_docs_chunks:
         for schema, chunk in db_docs_chunk.items():
-            # pp(branch_name=branch_name)
-            c = await operational_repo.save_bulk(f"{space_name}__{branch_name}__{schema}", chunk)
-            # pp(saving_at=f"{space_name}__{branch_name}__{schema}", chunk_size=len(chunk), c=c)
-            saved_docs_count += c
+            if schema == "meta_schema":
+                schema = "meta"
+            saved_docs_count += await operational_repo.save_bulk(f"{space_name}__{branch_name}__{schema}", chunk)
 
     # pp(subpath=subpath, saved_docs_count=saved_docs_count)
     # x = 1/0

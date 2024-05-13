@@ -217,12 +217,13 @@ class ManticoreDB(BaseDB):
         spaces = await self.find_by_id("spaces")
         branch_name = 'master'
         
+        folder_rendering_schema = None
+        
         await self.create_custom_indices()
         for space_name in spaces:
-            space_obj = Space.model_validate_json(spaces[space_name])
             if (
                 for_space and for_space != space_name
-            ) or not space_obj.indexing_enabled:
+            ):
                 continue
 
             await self.create_index(
@@ -252,7 +253,7 @@ class ManticoreDB(BaseDB):
                     continue
 
                 # GET SCHEMA PROPERTIES AND
-                # GENERATE DB INDEX DEFINITION BY MAPPIN SCHEMA PROPERTIES TO DB INDEX FIELDS
+                # GENERATE DB INDEX DEFINITION BY MAPPING SCHEMA PROPERTIES TO DB INDEX FIELDS
                 schema_content = json.loads(schema_path.read_text())
                 schema_content = resolve_schema_references(schema_content)
                 db_schema_definition: dict[str, str] = copy(self.META_SCHEMA)
@@ -273,14 +274,28 @@ class ManticoreDB(BaseDB):
 
                 if db_schema_definition:
                     db_schema_definition["meta_doc_id"] = "string"
+                    
+                    if schema_shortname == "folder_rendering":
+                        folder_rendering_schema = db_schema_definition
 
                     await self.create_index(
                         f"{space_name}:{branch_name}:{schema_shortname}",
                         db_schema_definition
                     )
 
-        if for_custom_indices:
-            await self.create_custom_indices(for_space)
+        if folder_rendering_schema is None:
+            return
+        
+        for space_name in spaces:
+            if (
+                for_space and for_space != space_name
+            ):
+                continue
+
+            await self.create_index(
+                f"{space_name}:{branch_name}:folder_rendering", folder_rendering_schema
+            )
+
     
     def generate_db_index_from_class(
         self, class_ref: type[Meta], exclude_from_index: list
@@ -465,7 +480,10 @@ class ManticoreDB(BaseDB):
         if len(doc_id_parts) < 3:
             raise Exception(f"Invalid document id, {doc_id}")
         
-        return f"{doc_id_parts[0]}__{doc_id_parts[1]}__{doc_id_parts[2]}"
+        schema_name = doc_id_parts[2]
+        if schema_name == "meta_schema":
+            schema_name = "meta"
+        return f"{doc_id_parts[0]}__{doc_id_parts[1]}__{schema_name}"
     
     
     async def find_by_id(self, id: str) -> dict[str, Any]:
@@ -519,6 +537,8 @@ class ManticoreDB(BaseDB):
             return False
 
     async def save_bulk(self, index: str, docs: list[dict[str, Any]]) -> int:
+        if len(docs) == 0:
+            return 0
         try:
 
             docs = [{"insert": {"index": index, "doc": doc}} for doc in docs]
@@ -534,7 +554,7 @@ class ManticoreDB(BaseDB):
             
             return res.items[0]['bulk']['created']
         except Exception as e:
-            logger.error(f"Error at ManticoreDB.save_bulk: {e}")
+            logger.error(f"Error at ManticoreDB.save_bulk. {index = }. {len(docs)}. {docs[0] = }: {e}")
             return 0
 
     async def prepare_meta_doc(
@@ -583,7 +603,6 @@ class ManticoreDB(BaseDB):
         filtered_doc = {
             'document_data': doc,
         }
-        
         index_name = self.get_index_name_from_doc_id(id)
         res = self.mc_command(f"describe {index_name}")
         if not res:
