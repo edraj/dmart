@@ -1,3 +1,4 @@
+import json
 import sys
 from typing import Any
 from datetime import datetime
@@ -55,7 +56,6 @@ class ManticoreRepo(BaseRepo):
                     "tags": query.filter_tags or [],
                     "subpath": [query.subpath],
                     "query_policies": query_policies,
-                    "user_shortname": user_shortname,
                 },
                 exact_subpath=query.exact_subpath,
                 limit=limit,
@@ -237,6 +237,19 @@ class ManticoreRepo(BaseRepo):
         meta_doc_content["updated_at"] = datetime.fromtimestamp(
             meta_doc_content["updated_at"]
         )
+
+        meta_doc_content["displayname"] = json.loads(meta_doc_content["displayname"]) if meta_doc_content[
+                                                                                         "displayname"] != '' else None
+        meta_doc_content["description"] = json.loads(meta_doc_content["description"]) if meta_doc_content[
+                                                                                         "description"] != '' else None
+        meta_doc_content["groups"] = json.loads(meta_doc_content["groups"])
+        meta_doc_content["roles"] = json.loads(meta_doc_content["roles"])
+        meta_doc_content["tags"] = json.loads(meta_doc_content["tags"])
+        meta_doc_content["slug"] = meta_doc_content["slug"] if meta_doc_content["slug"] else None
+        meta_doc_content["msisdn"] = meta_doc_content["msisdn"] if meta_doc_content["msisdn"] else None
+
+        db_entry["branch_name"] = db_entry.get("branch_name", "master")
+
         resource_obj = resource_class.model_validate(meta_doc_content)
         resource_base_record = resource_obj.to_record(
             db_entry["subpath"],

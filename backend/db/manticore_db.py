@@ -45,6 +45,7 @@ class ManticoreDB(BaseDB):
         "tags": "json",
         "query_policies": "json",
         "owner_shortname": "string",
+        "user_shortname": "string",
         # User fields
         "msisdn": "string",
         "email": "string",
@@ -409,7 +410,8 @@ class ManticoreDB(BaseDB):
             sql_str += " AND " if search else " WHERE "
             for key, value in filters.items():
                 if isinstance(value, list):
-                    where_filters.append(f"{key} IN ({', '.join(map(str, value))})")
+                    if len(value):
+                        where_filters.append(f"{key} IN ('{"', '".join(map(str, value))}')")
                 elif isinstance(value, str):
                     where_filters.append(f"{key}='{value}'")
                 else:
