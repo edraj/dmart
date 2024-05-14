@@ -12,7 +12,7 @@ LABEL org.label-schema.name="dmart" \
 
 # RUN set -eux 
 RUN set -eux \
-  && apk add git \
+  && apk add git curl openssh-client \
   && git clone --depth 1 https://github.com/edraj/dmart.git /home/ \
   && mkdir -p /home/redis /home/logs/dmart /home/logs/redis \
   && cp /home/admin_scripts/docker/alpine@imx.sh-5f19b383.rsa.pub /etc/apk/keys/ \
