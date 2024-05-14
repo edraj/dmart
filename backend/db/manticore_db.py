@@ -551,18 +551,20 @@ class ManticoreDB(BaseDB):
         result = self.mc_command(sql_str)
         if not result:
             return None
-        record_data = {'meta': {}, 'payload': {}}
-        record_data['meta'] = result["data"][0] if result["total"] > 0 else {}
         
-        payload_index_name = self.get_index_name_from_dto(dto)
-        sql_str = f"SELECT * FROM {payload_index_name}"
-        sql_str += f" WHERE shortname='{dto.shortname}' AND resource_type='{dto.resource_type}'"
-        result = self.mc_command(sql_str)
-        if not result:
-            return record_data
-        record_data['payload'] = result["data"][0] if result["total"] > 0 else {}
+        return result["data"][0] if result["total"] > 0 else {}
+        # record_data = {'meta': {}, 'payload': {}}
+        # record_data['meta'] = result["data"][0] if result["total"] > 0 else {}
         
-        return record_data
+        # payload_index_name = self.get_index_name_from_dto(dto)
+        # sql_str = f"SELECT * FROM {payload_index_name}"
+        # sql_str += f" WHERE shortname='{dto.shortname}' AND resource_type='{dto.resource_type}'"
+        # result = self.mc_command(sql_str)
+        # if not result:
+        #     return record_data
+        # record_data['payload'] = result["data"][0] if result["total"] > 0 else {}
+        
+        # return record_data
 
     def get_index_name_from_doc_id(self, doc_id: str) -> str:
         if ":" not in doc_id:
