@@ -218,6 +218,9 @@ class BaseDB(ABC):
     ) -> tuple[str, dict[str, Any]]:
         pass
     
+    @abstractmethod
+    async def replace(self, document_id: str, db_id: int, doc: dict[str, Any]) -> bool:
+        pass
 
     @abstractmethod
     async def delete(self, dto: EntityDTO) -> bool:

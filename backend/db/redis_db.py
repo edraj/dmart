@@ -63,7 +63,7 @@ class RedisDB(BaseDB):
         group_by: list[str],
         reducers: list[Any],
         search: str | None = None,
-        max: int = 10,
+        limit: int = 10,
         branch_name: str = settings.default_branch,
         exact_subpath: bool = False,
         sort_type: SortType = SortType.ascending,
@@ -78,7 +78,7 @@ class RedisDB(BaseDB):
                 filters,
                 group_by,
                 reducers,
-                max,
+                limit,
                 branch_name,
                 exact_subpath,
                 sort_type,
@@ -231,6 +231,9 @@ class RedisDB(BaseDB):
     async def save_bulk(self, index: str, docs: list[dict[str, Any]]) -> int:
         return 0
     
+    async def replace(self, document_id: str, db_id: int, doc: dict[str, Any]) -> bool:
+        return False
+
     async def delete_doc_by_id(self, id: str) -> bool:
         try:
             async with RedisServices() as redis:

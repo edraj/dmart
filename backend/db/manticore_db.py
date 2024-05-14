@@ -534,12 +534,35 @@ class ManticoreDB(BaseDB):
         
         return bool(res)
     
+    def get_index_name_from_dto(self, dto: EntityDTO) -> str:
+        return f"{dto.space_name}__{dto.branch_name}__{dto.schema_shortname}"
+    
+    def get_meta_index_name_from_dto(self, dto: EntityDTO) -> str:
+        return f"{dto.space_name}__{dto.branch_name}__meta"
+    
+    
     async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
-        sql_str = f"SELECT * FROM {EntityDTO.space_name}__{EntityDTO.branch_name}__{EntityDTO.schema_shortname}"
-        sql_str += f" WHERE shortname='{EntityDTO.shortname}') AND resource_type='{EntityDTO.resource_type}'"
+        
+        
+        meta_index_name = self.get_meta_index_name_from_dto(dto)
+        sql_str = f"SELECT * FROM {meta_index_name}"
+        sql_str += f" WHERE shortname='{dto.shortname}' AND resource_type='{dto.resource_type}'"
 
         result = self.mc_command(sql_str)
-        return result["data"]
+        if not result:
+            return None
+        record_data = {'meta': {}, 'payload': {}}
+        record_data['meta'] = result["data"][0] if result["total"] > 0 else {}
+        
+        payload_index_name = self.get_index_name_from_dto(dto)
+        sql_str = f"SELECT * FROM {payload_index_name}"
+        sql_str += f" WHERE shortname='{dto.shortname}' AND resource_type='{dto.resource_type}'"
+        result = self.mc_command(sql_str)
+        if not result:
+            return record_data
+        record_data['payload'] = result["data"][0] if result["total"] > 0 else {}
+        
+        return record_data
 
     def get_index_name_from_doc_id(self, doc_id: str) -> str:
         if ":" not in doc_id:
@@ -588,6 +611,19 @@ class ManticoreDB(BaseDB):
         self, id: str, resource_type: ResourceType
     ) -> dict[str, Any]:
         return {}
+    
+    async def replace(self, document_id: str, db_id: int, doc: dict[str, Any]) -> bool:
+        try:
+            index = self.get_index_name_from_doc_id(document_id)
+            res = self.indexApi.replace({
+                "index": index,
+                "id": db_id,
+                "doc": doc
+            })
+            return bool(res)
+        except Exception as e:
+            logger.error(f"Error at ManticoreDB.replace: {e}")
+            return False
 
     async def save_at_id(self, id: str, doc: dict[str, Any] = {}) -> bool:
         if ":" not in id:
