@@ -1,7 +1,12 @@
 from copy import copy
+import datetime
 import json
 import re
 from typing import Any
+
+import api
+from fastapi import FastAPI, status
+from backend.utils.internal_error_code import InternalErrorCode
 from db.base_db import BaseDB
 import manticoresearch
 from fastapi.logger import logger
@@ -604,8 +609,16 @@ class ManticoreDB(BaseDB):
     async def list_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
         return []
     
-    async def delete_keys(self, keys: list[str]) -> bool:
+
+    async def delete_keys(self, keys: list[str]) -> bool: # return error !
+        for key in range(list):
+            try:
+                sql_str = "delete from key_value_pairs where key = '{key}'" 
+                self.utilsApi.sql(sql_str)
+            except:
+                return False
         return True
+
 
     async def find_payload_data_by_id(
         self, id: str, resource_type: ResourceType
@@ -779,10 +792,45 @@ class ManticoreDB(BaseDB):
         return docid, payload
 
     async def delete(self, dto: EntityDTO) -> bool:
+        id = self.generate_doc_id(dto)
+        command = f"DELETE FROM key_value_pairs WHERE key = '{id}');"
+        try:
+            self.utilsApi.sql(command)
+        except Exception as e:
+            logger.error(f"Error at ManticoreDB.delete: {e.args}")
+            return False 
         return True
 
-    async def delete_doc_by_id(self, id: str) -> bool:
+    async def delete_keys(self, keys: list[str]) -> bool: # return error !
+        for key in range(list):
+            try:
+                sql_str = "delete from key_value_pairs where key = '{key}'" 
+                self.utilsApi.sql(sql_str)
+            except:
+                return False
         return True
+ 
+
+    async def delete_doc_by_id(self, id: str) -> bool:
+        command = f"DELETE FROM key_value_pairs WHERE id = {id}"
+        try:
+            self.utilsApi.sql(command)
+        except Exception as e:
+            logger.error(f"Error at ManticoreDB.delete_doc_by_id: {e.args}")
+            return False 
+        return True
+
+    async def delete_lock_doc(self, dto: EntityDTO) -> None:
+
+        docid = self.generate_doc_id(
+            dto.space_name, dto.branch_name, "lock", dto.shortname, dto.subpath
+        )
+
+        try:
+            await self.delete(key=docid)
+        except Exception as e:
+            logger.warning(f"Error at redis_services.delete_doc: {e}")
+
 
     async def move(
         self,
@@ -833,19 +881,88 @@ class ManticoreDB(BaseDB):
             await self.delete_doc_by_id(src_payload_doc_id)
         
         return True
-    
+
+ 
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
-        pass
+        lock_doc_id = self.generate_doc_id(
+            dto.space_name, dto.branch_name, "lock", dto.payload_shortname, dto.subpath
+        )
+        lock_data = await self.get_lock_doc(
+            dto.space_name, dto.branch_name, dto.subpath, dto.payload_shortname
+        )
+        if not lock_data:
+            payload = {
+                "owner_shortname": owner_shortname,
+                "lock_time": str(datetime.now().isoformat()),
+            }
+            result = await self.save_doc(lock_doc_id, payload, nx=True)
+            if result is None:
+                lock_payload = await self.get_lock_doc(
+                    dto.space_name, dto.branch_name, dto.subpath, dto.payload_shortname
+                )
+                if lock_payload["owner_shortname"] != owner_shortname:
+                    raise api.Exception(
+                        status_code=FastAPI.HTTP_403_FORBIDDEN,
+                        error=FastAPI.Error(
+                            type="lock",
+                            code=InternalErrorCode.LOCKED_ENTRY,
+                            message=f"Entry is already locked by {lock_payload['owner_shortname']}",
+                        ),
+                    )
+            lock_type = LockAction.lock
+        else:
+            lock_type = LockAction.extend
+        return lock_type
 
-    async def get_lock_doc(self, dto: EntityDTO) -> dict[str, Any]:
-        return {}
+
+    async def get_lock_doc(
+        self,
+        space_name: str,
+        branch_name: str | None,
+        subpath: str,
+        payload_shortname: str,
+    ) -> dict[str, Any]:
+        lock_doc_id = self.generate_doc_id(
+            space_name, branch_name, "lock", payload_shortname, subpath
+        )
+        return await self.get_doc_by_id(lock_doc_id)
+
 
     async def is_locked_by_other_user(
         self, dto: EntityDTO
     ) -> bool:
-        return True
+        try:
+            lock_payload = await self.get_lock_doc(
+                dto.space_name, 
+                dto.branch_name, 
+                dto.subpath, 
+                dto.shortname
+            )
+            if lock_payload:
+                if dto.user_shortname:
+                    return bool(lock_payload["owner_shortname"] != dto.user_shortname)
+                else:
+                    return True
+            return False
+
+        except Exception as e:
+            logger.error(f"Error at BaseDB.is_entry_locked: {e.args}")
+            return False
+ 
 
     async def delete_lock_doc(self, dto: EntityDTO) -> None:
-        pass
+
+        docid = self.generate_doc_id(
+            dto.space_name, dto.branch_name, "lock", dto.shortname, dto.subpath
+        )
+
+        try:
+            await self.delete(key=docid)
+        except Exception as e:
+            logger.warning(f"Error at redis_services.delete_doc: {e}")
+
+
+
+ 
