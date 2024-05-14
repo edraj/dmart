@@ -7,7 +7,7 @@ import manticoresearch
 from fastapi.logger import logger
 from models.core import EntityDTO, Meta, Space
 from models.enums import LockAction, ResourceType, SortType
-from utils.helpers import delete_none, resolve_schema_references
+from utils.helpers import delete_empty_strings, delete_none, resolve_schema_references
 from utils.settings import settings
 from manticoresearch.model.bulk_response import BulkResponse
 
@@ -396,7 +396,7 @@ class ManticoreDB(BaseDB):
         sql_str = "SELECT "
         sql_str += "*" if len(return_fields) == 0 else ",".join(return_fields)
 
-        if len(highlight_fields) != 0:
+        if highlight_fields and len(highlight_fields) != 0:
             sql_str += ", HIGHLIGHT({}, %s)" % ",".join(highlight_fields)
 
         sql_str += f" FROM {space_name}__{branch_name}__{schema_name}"
@@ -423,6 +423,8 @@ class ManticoreDB(BaseDB):
         sql_str += f" LIMIT {limit} OFFSET {offset}"
 
         result = self.mc_command(sql_str)
+        if not result:
+            return 0, []
 
         return result["total"], result["data"]
 
@@ -552,7 +554,31 @@ class ManticoreDB(BaseDB):
         if not result:
             return None
         
-        return result["data"][0] if result["total"] > 0 else {}
+        data = result["data"][0] if result["total"] > 0 else {}
+        return self.decode_db_data(data)
+    
+    def decode_db_data(self, data: dict[str, Any]) -> dict[str, Any]:
+        data = delete_empty_strings(data)
+        json_columns = [
+            "displayname", 
+            "description", 
+            "tags", 
+            "collaborators", 
+            "reporter", 
+            "roles", 
+            "groups",
+            "permissions",
+            "subpaths",
+            "resource_types",
+            "actions",
+            "conditions",
+            "restricted_fields",
+            "allowed_fields_values",
+        ]
+        for column in json_columns:
+            if column in data:
+                data[column] = json.loads(data[column])
+        return data
         # record_data = {'meta': {}, 'payload': {}}
         # record_data['meta'] = result["data"][0] if result["total"] > 0 else {}
         
@@ -569,6 +595,9 @@ class ManticoreDB(BaseDB):
     def get_index_name_from_doc_id(self, doc_id: str) -> str:
         if ":" not in doc_id:
             return "key_value_pairs"
+        
+        # if doc_id.startswith("user_permissions"):
+        #     return "user_permission"
         
         doc_id_parts = doc_id.split(":")
         
