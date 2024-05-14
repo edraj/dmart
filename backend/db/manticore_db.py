@@ -610,16 +610,6 @@ class ManticoreDB(BaseDB):
         return []
     
 
-    async def delete_keys(self, keys: list[str]) -> bool: # return error !
-        for key in range(list):
-            try:
-                sql_str = "delete from key_value_pairs where key = '{key}'" 
-                self.utilsApi.sql(sql_str)
-            except:
-                return False
-        return True
-
-
     async def find_payload_data_by_id(
         self, id: str, resource_type: ResourceType
     ) -> dict[str, Any]:
@@ -793,6 +783,7 @@ class ManticoreDB(BaseDB):
 
     async def delete(self, dto: EntityDTO) -> bool:
         id = self.generate_doc_id(dto)
+        idx_name = self.get_index_name_from_doc_id(id)
         command = f"DELETE FROM key_value_pairs WHERE key = '{id}');"
         try:
             self.utilsApi.sql(command)
@@ -829,7 +820,7 @@ class ManticoreDB(BaseDB):
         try:
             await self.delete(key=docid)
         except Exception as e:
-            logger.warning(f"Error at redis_services.delete_doc: {e}")
+            logger.warning(f"Error at ManticoreDb.delete_doc: {e}")
 
 
     async def move(
@@ -897,7 +888,9 @@ class ManticoreDB(BaseDB):
                 "owner_shortname": owner_shortname,
                 "lock_time": str(datetime.now().isoformat()),
             }
-            result = await self.save_doc(lock_doc_id, payload, nx=True)
+
+            # alternaticr
+            result = await self.save_at_id(lock_doc_id, payload, nx=True)
             if result is None:
                 lock_payload = await self.get_lock_doc(
                     dto.space_name, dto.branch_name, dto.subpath, dto.payload_shortname
@@ -948,7 +941,7 @@ class ManticoreDB(BaseDB):
             return False
 
         except Exception as e:
-            logger.error(f"Error at BaseDB.is_entry_locked: {e.args}")
+            logger.error(f"Error at BaseDB.is_locked_by_other: {e.args}")
             return False
  
 
@@ -961,7 +954,7 @@ class ManticoreDB(BaseDB):
         try:
             await self.delete(key=docid)
         except Exception as e:
-            logger.warning(f"Error at redis_services.delete_doc: {e}")
+            logger.warning(f"Error at ManticoreDB.delete_lock_doc: {e}")
 
 
 
