@@ -794,8 +794,46 @@ class ManticoreDB(BaseDB):
         meta: Meta,
         branch_name: str | None = settings.default_branch,
     ) -> bool:
-        return True
+        src_meta_doc_id = self.generate_doc_id(
+            space_name, branch_name, "meta", src_shortname, src_subpath
+        )
 
+        dest_shortname = dest_shortname or src_shortname
+        dest_subpath = dest_subpath or src_subpath
+        
+        dest_meta_doc_id = self.generate_doc_id(
+            space_name, branch_name, "meta", dest_shortname, dest_subpath
+        )
+        
+        # Move meta document
+        meta_doc = await self.find_by_id(src_meta_doc_id)
+        if not meta_doc:
+            return False
+        meta_doc["subpath"] = dest_subpath
+        meta_doc["shortname"] = dest_shortname
+        meta_doc["branch_name"] = branch_name
+        await self.save_at_id(dest_meta_doc_id, meta_doc)
+        await self.delete_doc_by_id(src_meta_doc_id)
+        
+        # Move payload document
+        if meta.payload and meta.payload.schema_shortname:
+            src_payload_doc_id = self.generate_doc_id(
+                space_name, branch_name, meta.payload.schema_shortname, src_shortname, src_subpath
+            )
+            dest_payload_doc_id = self.generate_doc_id(
+                space_name, branch_name, meta.payload.schema_shortname, dest_shortname, dest_subpath
+            )
+            payload_doc = await self.find_by_id(src_payload_doc_id)
+            if not payload_doc:
+                return False
+            payload_doc["subpath"] = dest_subpath
+            payload_doc["shortname"] = dest_shortname
+            payload_doc["branch_name"] = branch_name
+            await self.save_at_id(dest_payload_doc_id, payload_doc)
+            await self.delete_doc_by_id(src_payload_doc_id)
+        
+        return True
+    
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:

@@ -61,7 +61,40 @@ class ManticoreRepo(BaseRepo):
     async def update(
         self, dto: EntityDTO, meta: Meta, payload: dict[str, Any] | None = None
     ) -> None:
-        pass
+        db_record = await self.db.find(dto)
+        if not db_record:
+            return
+        print(db_record)
+        meta_doc_id, meta_json = await self.db.prepare_meta_doc(
+            dto.space_name, dto.branch_name, dto.subpath, meta
+        )
+
+        if payload is None:
+            payload = {}
+        if (
+            not payload
+            and meta.payload
+            and meta.payload.content_type == ContentType.json
+            and isinstance(meta.payload.body, str)
+        ):
+            payload = await main_db.load_resource_payload(dto)
+            
+
+        meta_json["payload_string"] = await self.generate_payload_string(
+            dto, payload
+        )
+
+        await self.db.replace(meta_doc_id, db_record['meta']['id'], meta_json)
+
+        if payload and db_record['payload']:
+            payload_doc_id, payload_json = await self.db.prepare_payload_doc(
+                dto,
+                meta,
+                payload,
+            )
+            payload_json.update(meta_json)
+            
+            await self.db.replace(payload_doc_id, db_record['payload']['id'], payload_json)
     
     async def db_doc_to_record(
         self,
