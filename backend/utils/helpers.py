@@ -348,3 +348,15 @@ def delete_none(_dict):
                     delete_none(v_i)
 
     return _dict
+
+def delete_empty_strings(d: dict[str, Any]) -> dict[str, Any]:
+    for key, value in list(d.items()):
+        if isinstance(value, dict):
+            delete_empty_strings(value)
+        elif isinstance(value, str) and value == "":
+            del d[key]
+        elif isinstance(value, list):
+            for v in value:
+                if isinstance(v, dict):
+                    delete_empty_strings(v)
+    return d

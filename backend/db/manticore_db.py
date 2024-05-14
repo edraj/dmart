@@ -7,7 +7,7 @@ import manticoresearch
 from fastapi.logger import logger
 from models.core import EntityDTO, Meta, Space
 from models.enums import LockAction, ResourceType, SortType
-from utils.helpers import delete_none, resolve_schema_references
+from utils.helpers import delete_empty_strings, delete_none, resolve_schema_references
 from utils.settings import settings
 from manticoresearch.model.bulk_response import BulkResponse
 
@@ -396,7 +396,7 @@ class ManticoreDB(BaseDB):
         sql_str = "SELECT "
         sql_str += "*" if len(return_fields) == 0 else ",".join(return_fields)
 
-        if len(highlight_fields) != 0:
+        if highlight_fields and len(highlight_fields) != 0:
             sql_str += ", HIGHLIGHT({}, %s)" % ",".join(highlight_fields)
 
         sql_str += f" FROM {space_name}__{branch_name}__{schema_name}"
@@ -423,6 +423,8 @@ class ManticoreDB(BaseDB):
         sql_str += f" LIMIT {limit} OFFSET {offset}"
 
         result = self.mc_command(sql_str)
+        if not result:
+            return 0, []
 
         return result["total"], result["data"]
 
@@ -551,22 +553,51 @@ class ManticoreDB(BaseDB):
         result = self.mc_command(sql_str)
         if not result:
             return None
-        record_data = {'meta': {}, 'payload': {}}
-        record_data['meta'] = result["data"][0] if result["total"] > 0 else {}
         
-        payload_index_name = self.get_index_name_from_dto(dto)
-        sql_str = f"SELECT * FROM {payload_index_name}"
-        sql_str += f" WHERE shortname='{dto.shortname}' AND resource_type='{dto.resource_type}'"
-        result = self.mc_command(sql_str)
-        if not result:
-            return record_data
-        record_data['payload'] = result["data"][0] if result["total"] > 0 else {}
+        data = result["data"][0] if result["total"] > 0 else {}
+        return self.decode_db_data(data)
+    
+    def decode_db_data(self, data: dict[str, Any]) -> dict[str, Any]:
+        data = delete_empty_strings(data)
+        json_columns = [
+            "displayname", 
+            "description", 
+            "tags", 
+            "collaborators", 
+            "reporter", 
+            "roles", 
+            "groups",
+            "permissions",
+            "subpaths",
+            "resource_types",
+            "actions",
+            "conditions",
+            "restricted_fields",
+            "allowed_fields_values",
+        ]
+        for column in json_columns:
+            if column in data:
+                data[column] = json.loads(data[column])
+        return data
+        # record_data = {'meta': {}, 'payload': {}}
+        # record_data['meta'] = result["data"][0] if result["total"] > 0 else {}
         
-        return record_data
+        # payload_index_name = self.get_index_name_from_dto(dto)
+        # sql_str = f"SELECT * FROM {payload_index_name}"
+        # sql_str += f" WHERE shortname='{dto.shortname}' AND resource_type='{dto.resource_type}'"
+        # result = self.mc_command(sql_str)
+        # if not result:
+        #     return record_data
+        # record_data['payload'] = result["data"][0] if result["total"] > 0 else {}
+        
+        # return record_data
 
     def get_index_name_from_doc_id(self, doc_id: str) -> str:
         if ":" not in doc_id:
             return "key_value_pairs"
+        
+        # if doc_id.startswith("user_permissions"):
+        #     return "user_permission"
         
         doc_id_parts = doc_id.split(":")
         
@@ -610,7 +641,8 @@ class ManticoreDB(BaseDB):
     async def find_payload_data_by_id(
         self, id: str, resource_type: ResourceType
     ) -> dict[str, Any]:
-        return {}
+        return await self.find_by_id(id)
+
     
     async def replace(self, document_id: str, db_id: int, doc: dict[str, Any]) -> bool:
         try:
@@ -794,8 +826,46 @@ class ManticoreDB(BaseDB):
         meta: Meta,
         branch_name: str | None = settings.default_branch,
     ) -> bool:
-        return True
+        src_meta_doc_id = self.generate_doc_id(
+            space_name, branch_name, "meta", src_shortname, src_subpath
+        )
 
+        dest_shortname = dest_shortname or src_shortname
+        dest_subpath = dest_subpath or src_subpath
+        
+        dest_meta_doc_id = self.generate_doc_id(
+            space_name, branch_name, "meta", dest_shortname, dest_subpath
+        )
+        
+        # Move meta document
+        meta_doc = await self.find_by_id(src_meta_doc_id)
+        if not meta_doc:
+            return False
+        meta_doc["subpath"] = dest_subpath
+        meta_doc["shortname"] = dest_shortname
+        meta_doc["branch_name"] = branch_name
+        await self.save_at_id(dest_meta_doc_id, meta_doc)
+        await self.delete_doc_by_id(src_meta_doc_id)
+        
+        # Move payload document
+        if meta.payload and meta.payload.schema_shortname:
+            src_payload_doc_id = self.generate_doc_id(
+                space_name, branch_name, meta.payload.schema_shortname, src_shortname, src_subpath
+            )
+            dest_payload_doc_id = self.generate_doc_id(
+                space_name, branch_name, meta.payload.schema_shortname, dest_shortname, dest_subpath
+            )
+            payload_doc = await self.find_by_id(src_payload_doc_id)
+            if not payload_doc:
+                return False
+            payload_doc["subpath"] = dest_subpath
+            payload_doc["shortname"] = dest_shortname
+            payload_doc["branch_name"] = branch_name
+            await self.save_at_id(dest_payload_doc_id, payload_doc)
+            await self.delete_doc_by_id(src_payload_doc_id)
+        
+        return True
+    
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
