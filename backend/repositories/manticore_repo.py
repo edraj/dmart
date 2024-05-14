@@ -2,7 +2,7 @@ from typing import Any
 from db.manticore_db import ManticoreDB
 from models.api import Query
 from models.core import EntityDTO, Meta, Record
-from models.enums import ContentType
+from models.enums import ContentType, ResourceType
 from repositories.base_repo import BaseRepo
 from utils import db as main_db
 
@@ -109,7 +109,22 @@ class ManticoreRepo(BaseRepo):
     async def tags_query(
         self, query: Query, user_shortname: str | None = None
     ) -> tuple[int, list[Record]]:
-        return (0, [])
+        query.sort_by = "tags"
+        query.aggregation_data = RedisAggregate(
+            group_by=["@tags"],
+            reducers=[RedisReducer(reducer_name="r_count", alias="freq")],
+        )
+        rows = await self.aggregate(query=query, user_shortname=user_shortname)
+        
+
+        return 1, [
+            Record(
+                resource_type=ResourceType.content,
+                shortname="tags_frequency",
+                subpath=query.subpath,
+                attributes={"result": rows},
+            )
+        ]
 
     async def random_query(
         self, query: Query, user_shortname: str | None = None
