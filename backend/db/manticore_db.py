@@ -577,17 +577,6 @@ class ManticoreDB(BaseDB):
         if schema_name == "meta_schema":
             schema_name = "meta"
         return f"{doc_id_parts[0]}__{doc_id_parts[1]}__{schema_name}"
-    
-    def get_meta_index_name_from_doc_id(self, doc_id: str) -> str:
-        if ":" not in doc_id:
-            return "key_value_pairs"
-        
-        doc_id_parts = doc_id.split(":")
-        
-        if len(doc_id_parts) < 3:
-            raise Exception(f"Invalid document id, {doc_id}")
-
-        return f"{doc_id_parts[0]}__{doc_id_parts[1]}__meta"
 
     async def find_by_id(self, id: str) -> dict[str, Any]:
         try:
