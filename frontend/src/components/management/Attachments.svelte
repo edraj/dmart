@@ -18,14 +18,15 @@
   import { Level, showToast } from "@/utils/toast";
   import Media from "./Media.svelte";
   import {
-    Button,
-    Col,
-    Input,
-    Label,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    ModalHeader,
+      Alert,
+      Button,
+      Col,
+      Input,
+      Label,
+      Modal,
+      ModalBody,
+      ModalFooter,
+      ModalHeader,
   } from "sveltestrap";
   import { JSONEditor, Mode } from "svelte-jsoneditor";
   import { jsonToFile } from "@/utils/jsonToFile";
@@ -59,6 +60,9 @@
             code: r.response.data?.error?.code,
             message: r.response.data?.error?.message,
           };
+          if(r.response.data?.error?.info.length > 0) {
+              attachment.dataAsset.details = r.response.data?.error?.info[0].msg;
+          }
         }
       } else if (attachment.resource_type === "sqlite") {
         const tables = await fetchDataAsset(
@@ -676,15 +680,22 @@
                  && attachment.dataAsset
             }
               {#if [ResourceType.parquet, ResourceType.csv].includes(attachment.resource_type)}
-                <table class="table table-striped table-sm">
-                  <thead>
+                {#if Object.keys(attachment.dataAsset).includes('code')}
+                  <Alert class="w-100" color="danger">
+                    <h4>{attachment.dataAsset.code}</h4>
+                    <p>{attachment.dataAsset.message}</p>
+                    <p>{attachment.dataAsset?.details}</p>
+                  </Alert>
+                  {:else}
+                  <table class="table table-striped table-sm">
+                    <thead>
                     <tr>
                       {#each Object.keys(attachment.dataAsset[0]) as header (header)}
                         <th>{header}</th>
                       {/each}
                     </tr>
-                  </thead>
-                  <tbody>
+                    </thead>
+                    <tbody>
                     {#each attachment.dataAsset as item}
                       <tr>
                         {#each Object.keys(attachment.dataAsset[0]) as key (key)}
@@ -694,8 +705,9 @@
                         {/each}
                       </tr>
                     {/each}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                {/if}
               {:else if attachment.resource_type === ResourceType.sqlite}
                 <Col>
                   {#each attachment.dataAsset ?? [] as dataAsset}
