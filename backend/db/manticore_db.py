@@ -332,7 +332,6 @@ class ManticoreDB(BaseDB):
 
             # exclude_from_index: list = index["exclude_from_index"]
 
-#
             # redis_schemas.setdefault(f"{index['space']}:{index['branch']}", [])
             # self.redis_indices.setdefault(
             #     f"{index['space']}:{index['branch']}:meta", {}
