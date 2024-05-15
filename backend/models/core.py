@@ -601,6 +601,7 @@ class EntityDTO(BaseModel):
     branch_name: str | None = settings.default_branch
     schema_shortname: str = "meta"
     user_shortname: str | None = None
+    payload_shortname: str | None = None
 
     def __init__(self, **data):
         """Allow passing nulls and remove them to make Pydantic set the default values"""

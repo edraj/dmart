@@ -1,12 +1,12 @@
 from copy import copy
-import datetime
+from datetime import datetime
 import json
 import re
 from typing import Any
 
 import api
 from fastapi import FastAPI, status
-from backend.utils.internal_error_code import InternalErrorCode
+# from backend.utils.internal_error_code import InternalErrorCode
 from db.base_db import BaseDB
 import manticoresearch
 from fastapi.logger import logger
@@ -112,12 +112,13 @@ class ManticoreDB(BaseDB):
             "key_value_pairs",
             {
                 "key": "string",
-                "value": "string"
+                "value": "string" # I think it should be :text so it gets indexed.
             }
         )
         
     def is_index_exist(self, name: str)-> bool:
         res = self.mc_command(f"show tables like '{name}'")
+        print("table name : ", name)
         if res is not None and res['total'] > 0:
             return True
         
@@ -792,16 +793,21 @@ class ManticoreDB(BaseDB):
             return False 
         return True
 
-    async def delete_keys(self, keys: list[str]) -> bool: # return error !
-        for key in range(list):
+    # deletes docs by provided keys & returns false if not success
+    async def delete_keys(self, keys: list[str]) -> bool: 
+        # delete_by_keys
+        # TODO delete in (...) instead for loop
+        for key in keys:
             try:
-                sql_str = "delete from key_value_pairs where key = '{key}'" 
+                sql_str = f"delete from key_value_pairs where key = '{key}'" 
+                print("sql : ", sql_str)
                 self.utilsApi.sql(sql_str)
             except:
                 return False
         return True
  
 
+    # delete doc by manticor id. true is done  
     async def delete_doc_by_id(self, id: str) -> bool:
         command = f"DELETE FROM key_value_pairs WHERE id = {id}"
         try:
@@ -816,6 +822,7 @@ class ManticoreDB(BaseDB):
         docid = self.generate_doc_id(
             dto.space_name, dto.branch_name, "lock", dto.shortname, dto.subpath
         )
+        print("docid : ", docid)
 
         try:
             await self.delete(key=docid)
@@ -873,7 +880,14 @@ class ManticoreDB(BaseDB):
         
         return True
 
- 
+    async def create_lock_index(self):
+        try:
+            self.mc_command("create table if not exists management__master__lock(key string, lock text) morphology='stem_en'")
+            print("creating lock_index success")
+            return True
+        except:
+            return False 
+
     async def save_lock_doc(
         self, dto: EntityDTO, owner_shortname: str, ttl: int = settings.lock_period
     ) -> LockAction | None:
@@ -890,7 +904,7 @@ class ManticoreDB(BaseDB):
             }
 
             # alternaticr
-            result = await self.save_at_id(lock_doc_id, payload, nx=True)
+            result = await self.save_at_id(lock_doc_id, payload) # , nx=True
             if result is None:
                 lock_payload = await self.get_lock_doc(
                     dto.space_name, dto.branch_name, dto.subpath, dto.payload_shortname
@@ -900,7 +914,7 @@ class ManticoreDB(BaseDB):
                         status_code=FastAPI.HTTP_403_FORBIDDEN,
                         error=FastAPI.Error(
                             type="lock",
-                            code=InternalErrorCode.LOCKED_ENTRY,
+                            code= 31, # InternalErrorCode.LOCKED_ENTRY,
                             message=f"Entry is already locked by {lock_payload['owner_shortname']}",
                         ),
                     )
@@ -920,7 +934,8 @@ class ManticoreDB(BaseDB):
         lock_doc_id = self.generate_doc_id(
             space_name, branch_name, "lock", payload_shortname, subpath
         )
-        return await self.get_doc_by_id(lock_doc_id)
+        print("lock_doc_id: ", lock_doc_id)
+        return await self.find_by_id(lock_doc_id)
 
 
     async def is_locked_by_other_user(
@@ -933,6 +948,7 @@ class ManticoreDB(BaseDB):
                 dto.subpath, 
                 dto.shortname
             )
+            print("lock_payload: ", lock_payload)
             if lock_payload:
                 if dto.user_shortname:
                     return bool(lock_payload["owner_shortname"] != dto.user_shortname)
