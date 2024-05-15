@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Any
 from models.enums import ResourceType, ActionType, ConditionType
@@ -240,7 +241,6 @@ class AccessControl:
             shortname=user_shortname,
             resource_type=ResourceType.user,
         ))
-        
         return core.User(**user_doc)
 
 
@@ -312,7 +312,8 @@ class AccessControl:
         groups_search = await operational_db.search(
             space_name=settings.management_space,
             branch_name=settings.management_space_branch,
-            search="@shortname:(" + "|".join(user_meta.groups) + ")",
+            # search="@shortname:(" + "|".join(user_meta.groups) + ")",
+            search=f"shortname IN  ('{'\', \''.join(user_meta.groups)}')",
             filters={"subpath": ["groups"]},
             limit=10000,
             offset=0,
@@ -343,7 +344,7 @@ class AccessControl:
         permissions_search = await operational_db.search(
             space_name=settings.management_space,
             branch_name=settings.management_space_branch,
-            search=f"@shortname:{permissions_options}",
+            search=f"shortname IN ('{permissions_options.replace('|', "', '")}')",
             filters={"subpath": ["permissions"]},
             limit=10000,
             offset=0,
@@ -354,6 +355,15 @@ class AccessControl:
         role_permissions: list[core.Permission] = []
 
         for permission_doc in permissions_search[1]:
+
+            permission_doc["subpaths"] = json.loads(permission_doc["subpaths"]) if permission_doc.get("subpaths", False) else {}
+            permission_doc["resource_types"] = json.loads(permission_doc["resource_types"]) if permission_doc.get("resource_types", False) else []
+            permission_doc["actions"] = json.loads(permission_doc["actions"]) if permission_doc.get("actions", False) else []
+            permission_doc["displayname"] = json.loads(permission_doc["displayname"]) if permission_doc["displayname"] != '' else None
+            permission_doc["description"] = json.loads(permission_doc["description"]) if permission_doc["description"] != '' else None
+            permission_doc["tags"] = json.loads(permission_doc["tags"])
+            permission_doc["slug"] = permission_doc["slug"] if permission_doc["slug"] else None
+
             permission = core.Permission.model_validate(permission_doc)
             role_permissions.append(permission)
 
@@ -367,11 +377,13 @@ class AccessControl:
         roles_search = await operational_db.search(
             space_name=settings.management_space,
             branch_name=settings.management_space_branch,
-            search="@shortname:(" + "|".join(user_associated_roles) + ")",
+            search=f"shortname IN  ('{'\', \''.join(user_associated_roles)}')",
             filters={"subpath": ["roles"]},
             limit=10000,
             offset=0,
         )
+        if roles_search[0] != 0:
+            roles_search = roles_search[1]
 
         user_roles_from_groups: list[core.Role] = await self.get_user_roles_from_groups(user_meta)
         if not roles_search and not user_roles_from_groups:
@@ -380,7 +392,13 @@ class AccessControl:
         user_roles: dict[str, core.Role] = {}
 
         all_user_roles_from_redis: list[core.Role] = []
-        for redis_document in roles_search[1]:
+        for redis_document in roles_search:
+            redis_document["permissions"] = json.loads(redis_document["permissions"])
+            redis_document["query_policies"] = json.loads(redis_document["query_policies"])
+            redis_document["displayname"] = json.loads(redis_document["displayname"]) if redis_document["displayname"] != '' else None
+            redis_document["description"] = json.loads(redis_document["description"]) if redis_document["description"] != '' else None
+            redis_document["tags"] = json.loads(redis_document["tags"])
+            redis_document["slug"] = redis_document["slug"] if redis_document["slug"] else None
             all_user_roles_from_redis.append(core.Role.model_validate(redis_document))
 
         all_user_roles_from_redis.extend(user_roles_from_groups)
