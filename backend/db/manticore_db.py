@@ -5,7 +5,7 @@ from typing import Any
 from db.base_db import BaseDB
 import manticoresearch
 from fastapi.logger import logger
-from models.core import EntityDTO, Meta, Space
+from models.core import EntityDTO, Meta
 from models.enums import LockAction, ResourceType, SortType
 from utils.helpers import delete_empty_strings, delete_none, resolve_schema_references
 from utils.settings import settings
@@ -28,6 +28,7 @@ class ManticoreDB(BaseDB):
         "shortname": "string",
         "slug": "string",
         "subpath": "string",
+        "branch_name": "string",
         "exact_subpath": "string",
         "resource_type": "string",
         "displayname": "json",
@@ -37,15 +38,15 @@ class ManticoreDB(BaseDB):
         # "description_ar": "string",
         # "description_kd": "string",
         "is_active": "bool",
+        "payload": "json",
         "payload_content_type": "string",
         "schema_shortname": "string",
         "created_at": "timestamp",
         "updated_at": "timestamp",
         "view_acl": "text",
-        "tags": "json",
-        "query_policies": "json",
+        "tags": "text",
+        "query_policies": "text",
         "owner_shortname": "string",
-        "user_shortname": "string",
         # User fields
         "msisdn": "string",
         "email": "string",
@@ -68,8 +69,10 @@ class ManticoreDB(BaseDB):
         # "reporter_distributor": "string",
         # "reporter_governorate": "string",
         # "reporter_msisdn": "string",
+        "payload_doc_id": "string",
+        "meta_doc_id": "string",
         "payload_string": "string",
-        "document_data": "json",
+        # "document_data": "text",
     }
 
     SCHEMA_DATA_TYPES_MAPPER = {
@@ -79,6 +82,7 @@ class ManticoreDB(BaseDB):
         "number": "int",
         "array": "text",
         "text": "text",
+        "object": "json",
     }
 
     def mc_command(self, command: str) -> dict[str, Any] | None:
@@ -126,8 +130,8 @@ class ManticoreDB(BaseDB):
         
         try:
             sql_str = f"CREATE TABLE {name}("
-            for name, value in fields.items():
-                sql_str += f"{name} {value},"
+            for key, value in fields.items():
+                sql_str += f"{key} {value},"
             
             sql_str = sql_str.strip(",")
             sql_str += ")"
@@ -145,12 +149,11 @@ class ManticoreDB(BaseDB):
         """
         takes a property of the json schema definition, and returns the db schema index
         """
-        # pp(key_chain, property, db_schema_definition)
         if not isinstance(property, dict) or key_chain.endswith("_"):
             return db_schema_definition
 
-        if "type" in property and property["type"] != "object":
-            if property["type"] in ["null", "boolean"] or not isinstance(
+        if "type" in property:
+            if property["type"] == "null" or not isinstance(
                 property["type"], str
             ):
                 return db_schema_definition
@@ -158,19 +161,19 @@ class ManticoreDB(BaseDB):
             # property_name = key_chain.replace(".", "_")
             # sortable = True
 
-            if (
-                property["type"] == "array"
-                and property.get("items", {}).get("type", None) == "object"
-                and "items" in property
-                and "properties" in property["items"]
-            ):
-                for property_key, property_value in property["items"][
-                    "properties"
-                ].items():
-                    if property_value["type"] != "string":
-                        continue
-                    db_schema_definition[f"{key_chain}_{property_key}"] = "text"
-                return db_schema_definition
+            # INDEX ARRAY OF OBJECTS AS A JSON COLUMN
+            # if (
+            #     property["type"] == "array"
+            #     and property.get("items", {}).get("type", None) == "object"
+            #     and "properties" in property["items"]
+            # ):
+            #     for property_key, property_value in property["items"][
+            #         "properties"
+            #     ].items():
+            #         if property_value["type"] != "string":
+            #             continue
+            #         db_schema_definition[f"{key_chain}_{property_key}"] = "text"
+            #     return db_schema_definition
 
             # if property["type"] == "array":
             #     key_chain += ".*"
@@ -293,22 +296,26 @@ class ManticoreDB(BaseDB):
             "str": "string",
             "bool": "bool",
             "UUID": "string",
-            "list": "json",
+            "list": "text",
             "datetime": "timestamp",
-            "set": "json",
+            "set": "text",
             "dict": "json",
+            "enum": "string",
         }
 
         db_schema: dict[str, str] = {}
         for field_name, model_field in class_ref.model_fields.items():
-            if field_name in exclude_from_index:
-                continue
+            # Index everything, create a column for all the attributes
+            # if field_name in exclude_from_index:
+            #     continue
 
             mapper_key = None
+            
             for allowed_type in list(class_types_to_db_column_type_map.keys()):
-                if str(model_field.annotation).startswith(allowed_type):
+                if allowed_type in str(model_field.annotation):
                     mapper_key = allowed_type
                     break
+
             if not mapper_key:
                 continue
             db_schema[field_name] = class_types_to_db_column_type_map[mapper_key]
@@ -322,7 +329,6 @@ class ManticoreDB(BaseDB):
             if (
                 for_space
                 and index["space"] != for_space
-                or not isinstance(index["exclude_from_index"], list)
             ):
                 continue
 
@@ -508,9 +514,7 @@ class ManticoreDB(BaseDB):
         return result["data"]
 
     async def dto_doc_id(self, dto: EntityDTO) -> str:
-        if dto.schema_shortname == "meta_schema":
-            return f"{dto.space_name}__{dto.branch_name}__meta"
-        return f"{dto.space_name}__{dto.branch_name}__{dto.schema_shortname}"
+        return self.generate_doc_id(dto.space_name, dto.branch_name, dto.schema_shortname, dto.shortname, dto.subpath)
 
     async def find_key(self, key: str) -> str | None:
         res = self.mc_command(f"select * from key_value_pairs where key = '{key}' limit 1")
@@ -538,26 +542,31 @@ class ManticoreDB(BaseDB):
         
         return bool(res)
     
-    def get_index_name_from_dto(self, dto: EntityDTO) -> str:
-        return f"{dto.space_name}__{dto.branch_name}__{dto.schema_shortname}"
-    
-    def get_meta_index_name_from_dto(self, dto: EntityDTO) -> str:
-        return f"{dto.space_name}__{dto.branch_name}__meta"
-    
+    def parse_db_record(self, record: dict[str, Any]) -> dict[str, Any]:
+        document = record["data"][0]["value"] if "value" in record["data"][0] else record["data"][0]
+        if isinstance(document, dict):
+            return document
+        elif isinstance(document, str):
+            return json.loads(document)
+        else:
+            raise Exception(f"Invalid data type {type(document)}")
+        
     
     async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
         
         
-        meta_index_name = self.get_meta_index_name_from_dto(dto)
-        sql_str = f"SELECT * FROM {meta_index_name}"
-        sql_str += f" WHERE shortname='{dto.shortname}' AND resource_type='{dto.resource_type}'"
-
+        document_id = await self.dto_doc_id(dto)
+        index_name = self.get_index_name_from_doc_id(document_id)
+        identifier = "document_id"
+        if index_name == "key_value_pairs":
+            identifier = "key"
+        sql_str = f"SELECT * FROM {index_name}"
+        sql_str += f" WHERE {identifier}='{document_id}'"
         result = self.mc_command(sql_str)
         if not result:
             return None
         
-        data = result["data"][0] if result["total"] > 0 else {}
-        return self.decode_db_data(data)
+        return self.parse_db_record(result)
     
     def decode_db_data(self, data: dict[str, Any]) -> dict[str, Any]:
         data = delete_empty_strings(data)
@@ -584,7 +593,7 @@ class ManticoreDB(BaseDB):
         # record_data = {'meta': {}, 'payload': {}}
         # record_data['meta'] = result["data"][0] if result["total"] > 0 else {}
         
-        # payload_index_name = self.get_index_name_from_dto(dto)
+        # payload_index_name = await self.dto_doc_id(dto)
         # sql_str = f"SELECT * FROM {payload_index_name}"
         # sql_str += f" WHERE shortname='{dto.shortname}' AND resource_type='{dto.resource_type}'"
         # result = self.mc_command(sql_str)
@@ -598,17 +607,15 @@ class ManticoreDB(BaseDB):
         if ":" not in doc_id:
             return "key_value_pairs"
         
-        # if doc_id.startswith("user_permissions"):
-        #     return "user_permission"
-        
         doc_id_parts = doc_id.split(":")
         
         if len(doc_id_parts) < 3:
             raise Exception(f"Invalid document id, {doc_id}")
         
         schema_name = doc_id_parts[2]
+        # Store schema payload docs in key_value_pairs table
         if schema_name == "meta_schema":
-            schema_name = "meta"
+            return "key_value_pairs"
         return f"{doc_id_parts[0]}__{doc_id_parts[1]}__{schema_name}"
 
     async def find_by_id(self, id: str) -> dict[str, Any]:
@@ -623,13 +630,8 @@ class ManticoreDB(BaseDB):
 
             if not find_res or find_res["total"] == 0 or len(find_res["data"]) == 0:
                 return {}
-
-            if isinstance(find_res["data"][0]["value"], dict):
-                return find_res["data"][0]["value"]
-            elif isinstance(find_res["data"][0]["value"], str):
-                return json.loads(find_res["data"][0]["value"])
-            else:
-                raise Exception(f"Invalid data type {type(find_res['data'][0])}")
+            
+            return self.parse_db_record(find_res)
         except Exception as e:
             logger.error(f"Error at ManticoreDB.find_by_id: {e.args}")
             return {}
@@ -679,7 +681,11 @@ class ManticoreDB(BaseDB):
         if len(docs) == 0:
             return 0
         try:
-
+            # Store schema payload docs in key_value_pairs table
+            if index.endswith("meta_schema"):
+                index = "key_value_pairs"
+                docs = [{"key": doc['document_id'], "value": json.dumps(doc)} for doc in docs]
+            
             docs = [{"insert": {"index": index, "doc": doc}} for doc in docs]
             
             res: BulkResponse = self.indexApi.bulk('\n'.join(map(json.dumps,docs))) # type: ignore
@@ -730,18 +736,16 @@ class ManticoreDB(BaseDB):
         meta_json["updated_at"] = meta.updated_at.timestamp()
         meta_json["payload_doc_id"] = payload_doc_id
         
-        meta_json = self.filter_unindexed_attributes(meta_json, meta_doc_id)
+        meta_json = self.encode_doc(meta_json, meta_doc_id)
         
         # Encode list to json string
         meta_json = {key: json.dumps(value) if isinstance(value, list) else value for key, value in meta_json.items()}
 
         return meta_doc_id, meta_json
 
-    def filter_unindexed_attributes(self, doc: dict[str, Any], id: str) -> dict[str, Any]:
-        # pp(before_filter__doc=doc, id=id)
-        filtered_doc = {
-            'document_data': doc,
-        }
+    def encode_doc(self, doc: dict[str, Any], id: str) -> dict[str, Any]:
+        
+        filtered_doc={}
 
         index_name = self.get_index_name_from_doc_id(id)
         res = self.mc_command(f"describe {index_name}")
@@ -750,9 +754,14 @@ class ManticoreDB(BaseDB):
         
         index_schema = res['data']
         index_fields = {field['Field'] for field in index_schema}
-        # pp(index_schema=index_schema)
         filtered_doc = {field: doc[field] for field in doc if field in index_fields}
-        # pp(after_filter__doc=doc, id=id)
+        
+        # Encode list to json string
+        filtered_doc = {
+            key: json.dumps(value) if isinstance(value, list) else value
+            for key, value in filtered_doc.items()
+        }
+        
         return delete_none(filtered_doc)
 
     async def prepare_payload_doc(
@@ -802,13 +811,9 @@ class ManticoreDB(BaseDB):
         payload["shortname"] = payload_shortname
         payload["meta_doc_id"] = meta_doc_id
 
-        payload = self.filter_unindexed_attributes(payload, docid)
+        payload = self.encode_doc(payload, docid)
 
-        # Encode list to json string
-        payload = {
-            key: json.dumps(value) if isinstance(value, list) else value
-            for key, value in payload.items()
-        }
+        
 
         return docid, payload
 

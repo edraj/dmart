@@ -85,8 +85,8 @@ async def load_data_to_redis(
     
     for db_docs_chunk in db_docs_chunks:
         for schema, chunk in db_docs_chunk.items():
-            if schema == "meta_schema":
-                schema = "meta"
+            # if schema == "meta_schema":
+            #     schema = "meta"
             saved_docs_count += await operational_repo.save_bulk(f"{space_name}__{branch_name}__{schema}", chunk)
 
     # pp(subpath=subpath, saved_docs_count=saved_docs_count)
@@ -266,7 +266,6 @@ async def migrate_data_to_operational_db(
     """
     loaded_data = {}
     spaces = await operational_repo.find_by_id("spaces")
-
     for space_name, space_json in spaces.items():
         space_obj = Space.model_validate_json(space_json)
         if (for_space and for_space != space_name) or not space_obj.indexing_enabled:
