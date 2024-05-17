@@ -2,6 +2,7 @@ import json
 import sys
 from typing import Any
 from datetime import datetime
+from fastapi.logger import logger
 from db.manticore_db import ManticoreDB
 from models.api import Query
 from models.core import EntityDTO, Meta, Record
@@ -115,8 +116,9 @@ class ManticoreRepo(BaseRepo):
             return None
 
         try:
-            return dto.class_type.model_validate(user_document)  # type: ignore
-        except Exception as _:
+            return dto.class_type.model_validate(user_document) #type: ignore
+        except Exception as e:
+            logger.error(f"Error validating at ManticoreRepo.find {dto.resource_type} {dto.shortname}. Error {e}")   
             return None
         # return Meta(shortname="", owner_shortname="")
     

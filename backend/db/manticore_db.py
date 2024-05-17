@@ -542,14 +542,22 @@ class ManticoreDB(BaseDB):
         
         return bool(res)
     
-    def parse_db_record(self, record: dict[str, Any]) -> dict[str, Any]:
-        document = record["data"][0]["value"] if "value" in record["data"][0] else record["data"][0]
+    def parse_db_record(self, db_record: dict[str, Any]) -> dict[str, Any]:
+        if db_record['total'] == 0:
+            return {}
+        document = db_record["data"][0]["value"] if "value" in db_record["data"][0] else db_record["data"][0]
         if isinstance(document, dict):
-            return document
+            document = document
         elif isinstance(document, str):
-            return json.loads(document)
+            document = json.loads(document)
         else:
             raise Exception(f"Invalid data type {type(document)}")
+        
+        # Don't attempt to decode the spaces document
+        if 'key' in db_record["data"][0] and db_record["data"][0]["key"] == "spaces":
+            return document
+        
+        return self.decode_db_data(document)
         
     
     async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
@@ -570,38 +578,14 @@ class ManticoreDB(BaseDB):
     
     def decode_db_data(self, data: dict[str, Any]) -> dict[str, Any]:
         data = delete_empty_strings(data)
-        json_columns = [
-            "displayname", 
-            "description", 
-            "tags", 
-            "collaborators", 
-            "reporter", 
-            "roles", 
-            "groups",
-            "permissions",
-            "subpaths",
-            "resource_types",
-            "actions",
-            "conditions",
-            "restricted_fields",
-            "allowed_fields_values",
-        ]
-        for column in json_columns:
-            if column in data:
-                data[column] = json.loads(data[column])
-        return data
-        # record_data = {'meta': {}, 'payload': {}}
-        # record_data['meta'] = result["data"][0] if result["total"] > 0 else {}
-        
-        # payload_index_name = await self.dto_doc_id(dto)
-        # sql_str = f"SELECT * FROM {payload_index_name}"
-        # sql_str += f" WHERE shortname='{dto.shortname}' AND resource_type='{dto.resource_type}'"
-        # result = self.mc_command(sql_str)
-        # if not result:
-        #     return record_data
-        # record_data['payload'] = result["data"][0] if result["total"] > 0 else {}
-        
-        # return record_data
+        decoded_data = data
+        for key, value in data.items():
+            if isinstance(value, str) and (value.startswith("{") or value.startswith("[")):
+                decoded_data[key] = json.loads(value)
+            else:
+                decoded_data[key] = value
+
+        return decoded_data
 
     def get_index_name_from_doc_id(self, doc_id: str) -> str:
         if ":" not in doc_id:
