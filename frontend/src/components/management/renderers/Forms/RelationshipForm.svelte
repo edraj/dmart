@@ -1,24 +1,29 @@
-<script>
-    import {Card, CardBody, Form, FormGroup, Label, Input, Button, Icon} from 'sveltestrap';
+<script lang="ts">
+    import {Card, CardBody, Form, FormGroup, Label, Input, Button, Icon, Alert} from 'sveltestrap';
     import {ResourceType} from "@/dmart";
     import {onMount} from "svelte";
+    import {JSONEditor, Mode} from "svelte-jsoneditor";
+
 
     export let content = null;
-    onMount(()=>{
-        if (content === null) {
-            content = [
-                {
-                    branch_name: "master",
-                    type: "",
-                    space_name: "",
-                    subpath: "",
-                    shortname: ""
-                }
-            ];
-        } else {
-            content = (content ?? []).map(c=>c.related_to);
-        }
-    });
+
+    if (content === null) {
+        content = [
+            {
+                type: "",
+                space_name: "",
+                subpath: "",
+                shortname: "",
+                attributes: {json: {}}
+            }
+        ];
+    } else {
+        content = (content ?? [])
+            .map(c => c.related_to)
+            .map(c => ({
+                ...c, attributes: {json: c.attributes ?? {}}
+            }))
+    }
 
 
     // Add a new item to the array
@@ -26,11 +31,11 @@
         content = [
             ...content,
             {
-                branch_name: "master",
                 type: "",
                 space_name: "",
                 subpath: "",
-                shortname: ""
+                shortname: "",
+                attributes: {json: {}}
             }
         ];
     };
@@ -47,49 +52,57 @@
 </script>
 
 <Card>
-    <Form on:submit={handleSubmit}>
-      {#if content}
+  <Form on:submit={handleSubmit}>
+    {#if content}
       {#each content as item, index}
-        <Card>
+        <Card style={item.error ? "border: solid red" : ""}>
           <CardBody>
             <div class="form-item">
-            <FormGroup>
-              <div class="d-flex justify-content-between">
-                <Label>Branch name</Label>
-                <Icon
-                  class="mx-1"
-                  name="trash-fill"
-                  style={"font-size: 1.5rem;"}
-                  onclick={() => removeItem(index)}
+              <FormGroup>
+                {#if item.error}
+                  <Alert color="danger">
+                    {item.error}
+                  </Alert>
+                {/if}
+                <div class="d-flex justify-content-between mb-2">
+                  <Label>Resource Type</Label>
+                  <Icon
+                          class="mx-1"
+                          name="trash-fill"
+                          style={"font-size: 1.5rem;"}
+                          onclick={() => removeItem(index)}
+                  />
+                </div>
+                <Input type="select" bind:value={item.type}>
+                  {#each Object.keys(ResourceType) as resourceType}
+                    <option value={resourceType}>{resourceType}</option>
+                  {/each}
+                </Input>
+              </FormGroup>
+              <FormGroup>
+                <Label>Space name</Label>
+                <Input bind:value={item.space_name}/>
+              </FormGroup>
+              <FormGroup>
+                <Label>Subpath</Label>
+                <Input bind:value={item.subpath}/>
+              </FormGroup>
+              <FormGroup>
+                <Label>Shortname</Label>
+                <Input bind:value={item.shortname}/>
+              </FormGroup>
+              <FormGroup>
+                <Label>attributes</Label>
+                <JSONEditor
+                        bind:content={item.attributes}
+                        mode={Mode.text}
                 />
-              </div>
-              <Input bind:value={item.branch_name} />
-            </FormGroup>
-            <FormGroup>
-              <Label>Resource Type</Label>
-              <Input type="select" bind:value={item.type}>
-                {#each Object.keys(ResourceType) as resourceType}
-                  <option value={resourceType}>{resourceType}</option>
-                {/each}
-              </Input>
-            </FormGroup>
-            <FormGroup>
-              <Label>Space name</Label>
-              <Input bind:value={item.space_name} />
-            </FormGroup>
-            <FormGroup>
-              <Label>Subpath</Label>
-              <Input bind:value={item.subpath} />
-            </FormGroup>
-            <FormGroup>
-              <Label>Shortname</Label>
-              <Input bind:value={item.shortname} />
-            </FormGroup>
-          </div>
+              </FormGroup>
+            </div>
           </CardBody>
         </Card>
       {/each}
-      {/if}
-      <Button color="primary" class="w-100" on:click={addNewItem}>Add Relation</Button>
-    </Form>
+    {/if}
+    <Button color="primary" class="w-100 mt-2" on:click={addNewItem}>Add Relation</Button>
+  </Form>
 </Card>
