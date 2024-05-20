@@ -84,7 +84,7 @@ class ManticoreDB(BaseDB):
         "string": "string",
         "boolean": "bool",
         "integer": "int",
-        "number": "int",
+        "number": "float",
         "array": "text",
         "text": "text",
         "object": "json",
@@ -105,7 +105,7 @@ class ManticoreDB(BaseDB):
             
             return result[0]
         except Exception as e:
-            logger.error(f"Error at ManticoreDB.mc_command: {e}")
+            logger.error(f"Error at ManticoreDB.mc_command: {command}. Error: {e}")
             return None
             
     
@@ -118,7 +118,7 @@ class ManticoreDB(BaseDB):
             {
                 "key": "string",
                 "value": "string"
-            }
+            }, del_docs=True
         )
         
     def is_index_exist(self, name: str)-> bool:
@@ -130,11 +130,11 @@ class ManticoreDB(BaseDB):
 
     async def create_index(self, name: str, fields: dict[str, str], **kwargs) -> bool:
         name = name.replace(":", "__")
-        if self.is_index_exist(name):
+        if ("del_docs" in kwargs and kwargs["del_docs"] is True) and self.is_index_exist(name):
             await self.drop_index(name, False)
         
         try:
-            sql_str = f"CREATE TABLE {name}("
+            sql_str = f"CREATE TABLE if not exists  {name}("
             for key, value in fields.items():
                 sql_str += f"{key} {value},"
             
@@ -210,6 +210,7 @@ class ManticoreDB(BaseDB):
         for_custom_indices: bool = True, 
         del_docs: bool = True
     ) -> None:
+        pp("create_application_indexescreate_application_indexes")
         
         spaces = await self.find_by_id("spaces")
         branch_name = 'master'
@@ -224,7 +225,7 @@ class ManticoreDB(BaseDB):
                 continue
 
             await self.create_index(
-                f"{space_name}:{branch_name}:meta", self.META_SCHEMA
+                f"{space_name}:{branch_name}:meta", self.META_SCHEMA, del_docs=del_docs
             )
 
             # CREATE DB INDEX FOR EACH SCHEMA DEFINITION INSIDE THE SPACE
@@ -268,7 +269,7 @@ class ManticoreDB(BaseDB):
                                 key, property, {}
                             )
                             db_schema_definition.update(generated_schema_fields)
-
+                                            
                 if db_schema_definition:
                     db_schema_definition["meta_doc_id"] = "string"
                     
@@ -277,7 +278,8 @@ class ManticoreDB(BaseDB):
 
                     await self.create_index(
                         f"{space_name}:{branch_name}:{schema_shortname}",
-                        db_schema_definition
+                        db_schema_definition,
+                        del_docs=del_docs
                     )
 
         if folder_rendering_schema is None:
@@ -290,7 +292,7 @@ class ManticoreDB(BaseDB):
                 continue
 
             await self.create_index(
-                f"{space_name}:{branch_name}:folder_rendering", folder_rendering_schema
+                f"{space_name}:{branch_name}:folder_rendering", folder_rendering_schema, del_docs=del_docs
             )
 
     
@@ -674,7 +676,7 @@ class ManticoreDB(BaseDB):
         
         return bool(res)
     
-    def parse_db_record(self, db_record: dict[str, Any]) -> dict[str, Any]:
+    def parse_db_record(self, db_record: dict[str, Any], is_source: bool = False) -> dict[str, Any]:
         if db_record['total'] == 0:
             return {}
         document = db_record["data"][0]["value"] if "value" in db_record["data"][0] else db_record["data"][0]
@@ -686,15 +688,13 @@ class ManticoreDB(BaseDB):
             raise Exception(f"Invalid data type {type(document)}")
         
         # Don't attempt to decode the spaces document
-        if 'key' in db_record["data"][0] and db_record["data"][0]["key"] == "spaces":
+        if is_source or ('key' in db_record["data"][0] and db_record["data"][0]["key"] == "spaces"):
             return document
         
         return self.decode_db_data(document)
-        
+                
     
     async def find(self, dto: EntityDTO) -> None | dict[str, Any]:
-        
-        
         document_id = await self.dto_doc_id(dto)
         index_name = self.get_index_name_from_doc_id(document_id)
         identifier = "document_id"
@@ -702,6 +702,7 @@ class ManticoreDB(BaseDB):
             identifier = "key"
         sql_str = f"SELECT * FROM {index_name}"
         sql_str += f" WHERE {identifier}='{document_id}'"
+        # pp(FIND____sql_str=sql_str)
         result = self.mc_command(sql_str)
         if not result:
             return None
@@ -780,6 +781,22 @@ class ManticoreDB(BaseDB):
             logger.error(f"Error at ManticoreDB.replace: {e}")
             return False
 
+    def is_entry_exist(self, id: str):
+        try:
+            index_name: str = self.get_index_name_from_doc_id(id)
+            identifier = "document_id"
+            if index_name == "key_value_pairs":
+                identifier = "key"
+            find_res = self.mc_command(
+                f"select * from {index_name} where {identifier} = '{id}' limit 1"
+            )
+            if not find_res:
+                return {}
+            return self.parse_db_record(find_res, True)
+        except Exception as e:
+            logger.error(f"Error at ManticoreDB.is_entry_exist {e}")
+        
+            
     async def save_at_id(self, id: str, doc: dict[str, Any] = {}) -> bool:
         if ":" not in id:
             await self.set_key(id, json.dumps(doc))
@@ -787,10 +804,18 @@ class ManticoreDB(BaseDB):
         try:
             doc['document_id'] = id
             index = self.get_index_name_from_doc_id(id)
-            res = self.indexApi.insert({
-                "index": index,
-                "doc": doc
-            })
+            existing_entry = self.is_entry_exist(id)
+            if existing_entry and "id" in existing_entry:
+                res = self.indexApi.replace({
+                    "index": index,
+                    "id": existing_entry["id"],
+                    "doc": doc
+                })
+            else:
+                res = self.indexApi.insert({
+                    "index": index,
+                    "doc": doc
+                })
             if not res or not isinstance(res, dict):
                 return False
             

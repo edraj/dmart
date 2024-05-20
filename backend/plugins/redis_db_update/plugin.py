@@ -37,12 +37,15 @@ class Plugin(PluginBase):
             await self.update_parent_entry_payload_string()
             return
 
-        if data.resource_type == ResourceType.folder and data.action_type in [
+        if data.resource_type in ResourceType.folder and data.action_type in [
             ActionType.delete,
             ActionType.move,
         ]:
             await reload_redis(for_space=data.space_name)
             return
+        
+        if data.resource_type in ResourceType.schema and data.action_type == ActionType.create:
+            await operational_repo.create_application_indexes(for_space=data.space_name, del_docs=False)
 
         dto_dto: EntityDTO = EntityDTO.from_event_data(data)
         if data.action_type == ActionType.delete:

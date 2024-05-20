@@ -160,7 +160,7 @@ class BaseDB(ABC):
                 error=api_error(
                     type="find",
                     code=InternalErrorCode.OBJECT_NOT_FOUND,
-                    message="Request object is not available",
+                    message=f"Request object is not available. {dto.space_name}/{dto.subpath}/{dto.shortname}",
                 ),
             )
 

@@ -85,8 +85,6 @@ async def load_data_to_redis(
     
     for db_docs_chunk in db_docs_chunks:
         for schema, chunk in db_docs_chunk.items():
-            # if schema == "meta_schema":
-            #     schema = "meta"
             saved_docs_count += await operational_repo.save_bulk(f"{space_name}__{branch_name}__{schema}", chunk)
 
     # pp(subpath=subpath, saved_docs_count=saved_docs_count)
@@ -135,17 +133,16 @@ async def generate_db_docs(locators: list) -> dict[str, list[Any]]:
                         branch_name=one.branch_name,
                         schema_shortname=meta.payload.schema_shortname,
                     )
-                    doc_id, payload = await operational_db.prepare_payload_doc(
+                    payload_doc_id, payload = await operational_db.prepare_payload_doc(
                         dto,
                         meta,
                         payload=copy(payload_data),
                     )
                     payload.update(meta_data)
-                    payload["document_id"] = doc_id
+                    payload["document_id"] = payload_doc_id
                     
                     db_docs.setdefault(meta.payload.schema_shortname, [])
                     db_docs[meta.payload.schema_shortname].append(payload)
-                    # db_docs.append({"doc_id": doc_id, "payload": payload})
                 except SchemaValidationError as _:
                     print(
                         f"Error: @{one.space_name}/{one.subpath}/{meta.shortname} "
@@ -167,7 +164,6 @@ async def generate_db_docs(locators: list) -> dict[str, list[Any]]:
             
             meta_data["document_id"] = meta_doc_id
             db_docs["meta"].append(meta_data)   
-            # db_docs.append({"doc_id": meta_doc_id, "payload": meta_data})
 
         except Exception:
             print(f"path: {one.space_name}/{one.subpath}/{one.shortname} ({one.type})")
@@ -304,7 +300,7 @@ async def main(
         print("FLUSHALL")
         await manticore_db.flush_all()
     
-    await bootstrap_all(reload_db=True)
+    await bootstrap_all(reload_db=True, for_space=for_space, flushall=flushall)
     
     res = await migrate_data_to_operational_db(for_space, for_subpaths)
     # res = {
@@ -319,6 +315,7 @@ async def main(
         if loaded_data:
             for item in loaded_data:
                 print(f"{item['documents']}\tRegular {space_name}/{item['subpath']}")
+
 
 
 if __name__ == "__main__":

@@ -91,11 +91,11 @@ async def load_spaces() -> None:
     await operational_repo.save_at_id("spaces", spaces)
         
         
-async def bootstrap_all(reload_db: bool = False):
+async def bootstrap_all(reload_db: bool = False, for_space: str | None = None, flushall: bool = False):
     await load_spaces()
     
     if not await operational_repo.is_index_exist("user_permission") or reload_db:
-        await operational_repo.create_application_indexes()
+        await operational_repo.create_application_indexes(for_space=for_space, del_docs=flushall)
     
     await load_permissions_and_roles()
     

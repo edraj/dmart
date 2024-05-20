@@ -654,7 +654,7 @@ async def delete(dto: core.EntityDTO):
             error=api.Error(
                 type="delete",
                 code=InternalErrorCode.OBJECT_NOT_FOUND,
-                message="Request object is not available",
+                message=f"Request object is not available {(path / filename)}",
             ),
         )
 
