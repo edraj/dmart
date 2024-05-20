@@ -48,7 +48,7 @@ class ManticoreDB(BaseDB):
         "created_at": "timestamp",
         "updated_at": "timestamp",
         "acl": "text",
-        "view_acl": "string",
+        "view_acl": "text",
         "tags": "text",
         "query_policies": "text",
         "owner_shortname": "string",
@@ -351,26 +351,6 @@ class ManticoreDB(BaseDB):
             )
 
             self.META_SCHEMA.update(generated_schema_fields)
-
-            # await self.create_index(f"{index['space']}:{branch_name}:meta", generated_schema_fields)
-
-            # redis_schemas[f"{index['space']}:{index['branch']}"] = (
-            #     self.append_unique_index_fields(
-            #         generated_schema_fields,
-            #         redis_schemas[f"{index['space']}:{index['branch']}"],
-            #     )
-            # )
-
-        # for space_branch, redis_schema in redis_schemas.items():
-        #     redis_schema = self.append_unique_index_fields(
-        #         tuple(redis_schema),
-        #         list(self.META_SCHEMA),
-        #     )
-        #     await self.create_index(
-        #         f"{space_branch}",
-        #         "meta",
-        #         tuple(redis_schema),
-        #     )
     
     async def flush_all(self) -> None:
         tables: dict[str, Any] | None = self.mc_command('SHOW TABLES') 
@@ -391,7 +371,63 @@ class ManticoreDB(BaseDB):
     async def drop_index(self, name: str, delete_docs: bool) -> bool:
         return bool(self.mc_command(f"DROP TABLE {name}"))
         
+    def redis_search_str_to_manticore_search_str(self, search: str, filters: dict[str, str | list | None]) -> tuple[str, dict[str, str | list[Any] | None]]:
+        """
+        Converts a Redis search string to a Manticore search string.
+        """
+        
+        meta_fields = set(self.META_SCHEMA.keys())
+        
+        
+        keys_locations = []
+        for idx, char in enumerate(search):
+            if char == "@" and (idx == 0 or search[idx-1] != '\\'):
+                keys_locations.append(idx)
+        
+        for keys_idx, key in enumerate(keys_locations):
+            idx = search.index(":", key)
+            key_name = search[key+1:idx]
+            if key_name not in meta_fields:
+                continue
+            value_end = len(search) - 1
+            if keys_idx + 1 < len(keys_locations):
+                value_end = keys_locations[keys_idx+1] - 1
+            value_substr = search[idx+1:value_end]
+            filters.setdefault(key_name, [])
+            print(key_name, filters[key_name], type(filters[key_name]))
+            if isinstance(filters[key_name], str):
+                filters[key_name] = [filters[key_name]]
+            filters[key_name].extend(value_substr.replace("{", "").replace("}", "").split(" "))
     
+        for key in keys_locations[::-1]:
+            idx = search.index(":", key)
+            key_name = search[key+1:idx]
+            if key_name not in meta_fields:
+                continue
+            value_end = len(search) - 1
+            if key + 1 < len(search):
+                try:
+                    value_end = search.index("@", key + 1) - 1
+                except:
+                    value_end = len(search) - 1
+            search = search[:key] + search[value_end+1:]
+        
+        search = search.replace("email_unescaped", "email")
+        
+        # Remove '@' symbols not prefixed by '\'
+        search = re.sub(r'(?<!\\)@', '', search)
+        
+        # Replace ':' with '=' and enclose the following word in single quotes
+        search = re.sub(r':([^ ]+)', r"='\1' AND", search)
+        search = search.rstrip(' AND')    
+        
+        # Replace '{' and '}' with single quotes
+        search = re.sub(r'\{(.+)\}', r"\1", search)
+        
+        return search, filters
+        
+            
+            
     async def search(
         self, 
         space_name: str, 
@@ -407,6 +443,7 @@ class ManticoreDB(BaseDB):
         schema_name: str = "meta", 
         return_fields: list = []
     ) -> tuple[int, list[dict[str, Any]]]:
+        search, filters = self.redis_search_str_to_manticore_search_str(search, filters)
         subpath_query = ""
         if "subpath" in filters:
             requests_subpaths = ""
@@ -425,7 +462,6 @@ class ManticoreDB(BaseDB):
         
         sql_str = f"SELECT {subpath_query} "
         sql_str += "*" if len(return_fields) == 0 else ",".join(return_fields)
-
         if highlight_fields and len(highlight_fields) != 0:
             sql_str += ", HIGHLIGHT({}, %s)" % ",".join(highlight_fields)
 
@@ -439,16 +475,17 @@ class ManticoreDB(BaseDB):
         where_filters = []
         if len(filters.keys()) != 0:
             for key, value in filters.items():
-                if key in ["tags", "query_policies"] and value is not None:
-                    match_query += f" @{key} {' '.join(value)} "
+                if key in ["tags", "query_policies"] and value:
+                    value = ['"'+item+'"' for item in value]
+                    match_query += f" @{key} {'|'.join(value)} "
                     if filters.get("user_shortname", None) is not None and key == "query_policies":
-                        match_query += f" @view_acl {filters['user_shortname']} "
-                if isinstance(value, list):
+                        match_query += f" | @view_acl {filters['user_shortname']} "
+                elif isinstance(value, list) and value:
                     if len(value):
                         where_filters.append(f"{key} IN ('{"', '".join(map(str, value))}')")
-                elif isinstance(value, str):
+                elif isinstance(value, str) and value and key != "user_shortname":
                     where_filters.append(f"{key}='{value}'")
-                else:
+                elif value and key != "user_shortname":
                     where_filters.append(f"{key}={value}")
 
 
@@ -458,8 +495,14 @@ class ManticoreDB(BaseDB):
             search = search.replace("match('", f"{match_query}")
         else:
             search += f" AND {match_query}')"
-        sql_str += f" WHERE {search} AND subpath_match = 1"
+        sql_str += f" WHERE {search}"
+        if subpath_query:
+            sql_str += " AND subpath_match = 1 "
         
+        
+        if where_filters:
+           sql_str += " AND " 
+           
         sql_str += " AND ".join(where_filters)
         
             
@@ -468,7 +511,6 @@ class ManticoreDB(BaseDB):
 
         sql_str += f" LIMIT {limit} OFFSET {offset}"
         
-        # pp(sql_str=sql_str)
 
         result = self.mc_command(sql_str)
         if not result:
@@ -495,12 +537,22 @@ class ManticoreDB(BaseDB):
         schema_name: str = "meta",
         load: list = [],
     ) -> list[Any]:
+        if not search:
+            search = ""
+        search, filters = self.redis_search_str_to_manticore_search_str(search, filters)
         subpath_query = ""
         if "subpath" in filters:
+            requests_subpaths = ""
+            if isinstance(filters["subpath"], str):
+                requests_subpaths = filters["subpath"]
+            elif isinstance(filters["subpath"], list):
+                requests_subpaths = "("
+                requests_subpaths += "|".join(filters["subpath"])
+                requests_subpaths += ")"
             if exact_subpath:
-                subpath_query = f"REGEX(subpath, '^\\/?{filters['subpath']}$') as subpath_match, "
+                subpath_query = f"REGEX(subpath, '^\\/?{requests_subpaths}$') as subpath_match, "
             else:
-                subpath_query = f"REGEX(subpath, '^\\/?{filters['subpath']}(\\/([A-Za-z0-9_])*)?$') as subpath_match, "
+                subpath_query = f"REGEX(subpath, '^\\/?{requests_subpaths}(\\/([A-Za-z0-9_])*)?$') as subpath_match, "
                 
             del filters["subpath"]
         
@@ -528,12 +580,12 @@ class ManticoreDB(BaseDB):
             if key in ["tags", "query_policies"] and value is not None:
                 match_query += f" @{key} {' '.join(value)} "
                 if filters.get("user_shortname", None) is not None and key == "query_policies":
-                    match_query += f" @view_acl {filters['user_shortname']} "
-            if isinstance(value, list):
+                    match_query += f" | @view_acl {filters['user_shortname']} "
+            elif isinstance(value, list) and value:
                 where_clauses.append(f"{key} IN ({', '.join(map(str, value))})")
-            if isinstance(value, str):
+            elif isinstance(value, str) and value and key != "user_shortname":
                 where_clauses.append(f"{key}='{value}'")
-            elif value is not None:
+            elif value and key != "user_shortname":
                 where_clauses.append(f"{key} = '{value}'")
 
         
@@ -543,8 +595,11 @@ class ManticoreDB(BaseDB):
             search = search.replace("match('", f"{match_query}")
         else:
             search += f" AND {match_query}')"
-        sql_str += f" WHERE {search} AND subpath_match = 1"
-        
+        sql_str += f" WHERE {search} "
+        if subpath_query:
+            sql_str += " AND subpath_match = 1 "
+        if where_clauses:
+           sql_str += " AND " 
         sql_str += " AND ".join(where_clauses)
         
 
@@ -655,8 +710,10 @@ class ManticoreDB(BaseDB):
     
     def decode_db_data(self, data: dict[str, Any]) -> dict[str, Any]:
         data = delete_empty_strings(data)
-        decoded_data = data
+        decoded_data = {}
         for key, value in data.items():
+            if key in ["subpath_match", "id"]:
+                continue
             if isinstance(value, str) and (value.startswith("{") or value.startswith("[")):
                 decoded_data[key] = json.loads(value)
             else:
@@ -730,7 +787,6 @@ class ManticoreDB(BaseDB):
         try:
             doc['document_id'] = id
             index = self.get_index_name_from_doc_id(id)
-            # pp(save_at_id______index=index, save_at_id______doc=doc)
             res = self.indexApi.insert({
                 "index": index,
                 "doc": doc
@@ -1012,7 +1068,6 @@ class ManticoreDB(BaseDB):
         if not lock_doc:
             self.mc_command(f"create table if not exists {dto.space_name}__master__lock(owner_shortname string, lock_time string, document_id string) morphology='stem_en'")
             
-        pp(lock_doc=lock_doc)
         return lock_doc
 
     async def is_locked_by_other_user(

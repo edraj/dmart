@@ -124,7 +124,7 @@ class Query(BaseModel):
     jq_filter: str | None = None
     limit: int = 10
     offset: int = 0
-    aggregation_data: RedisAggregate | None = None
+    aggregation_data: RedisAggregate | dict[str, Any] | None = None
 
     # Replace -1 limit by settings.max_query_limit
     def __init__(self, **data):

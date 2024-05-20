@@ -271,7 +271,7 @@ class BaseRepo(ABC):
 
         not_payload_attr = self.db.SYS_ATTRIBUTES + list(
             resource_class.model_fields.keys()
-        )
+        ) + list(self.db.META_SCHEMA.keys())
 
         filtered_doc: dict[str, Any] = {}
         for key, value in doc.items():

@@ -100,9 +100,9 @@ class ManticoreRepo(BaseRepo):
                 "subpath": [query.subpath],
                 "query_policies": query_policies,
             },
-            load=query.aggregation_data.load,
-            group_by=query.aggregation_data.group_by,
-            reducers=query.aggregation_data.reducers,
+            load=query.aggregation_data.get('load', []) if isinstance(query.aggregation_data, dict) else [],
+            group_by=query.aggregation_data.get('group_by', []) if isinstance(query.aggregation_data, dict) else [],
+            reducers=query.aggregation_data.get('reducers', []) if isinstance(query.aggregation_data, dict) else [],
             exact_subpath=query.exact_subpath,
             sort_by=query.sort_by,
             limit=query.limit,
@@ -212,7 +212,7 @@ class ManticoreRepo(BaseRepo):
         for key, value in db_entry.items():
             if key in resource_class.model_fields.keys():
                 meta_doc_content[key] = value
-            elif key not in self.db.SYS_ATTRIBUTES:
+            elif key not in self.db.SYS_ATTRIBUTES and key not in list(self.db.META_SCHEMA.keys()):
                 payload_doc_content[key] = value
 
         dto = EntityDTO(
@@ -223,9 +223,9 @@ class ManticoreRepo(BaseRepo):
         )
         # Get payload db_entry
         if (
-                not payload_doc_content
-                and retrieve_json_payload
-                and "payload_doc_id" in db_entry
+            not payload_doc_content
+            and retrieve_json_payload
+            and "payload_doc_id" in db_entry
         ):
             payload_doc_content = await self.get_payload_doc(
                 db_entry["payload_doc_id"], db_entry["resource_type"]
@@ -241,15 +241,15 @@ class ManticoreRepo(BaseRepo):
             meta_doc_content["updated_at"]
         )
 
-        meta_doc_content["displayname"] = json.loads(meta_doc_content["displayname"]) if meta_doc_content[
-                                                                                         "displayname"] != '' else None
-        meta_doc_content["description"] = json.loads(meta_doc_content["description"]) if meta_doc_content[
-                                                                                         "description"] != '' else None
-        meta_doc_content["groups"] = json.loads(meta_doc_content["groups"])
-        meta_doc_content["roles"] = json.loads(meta_doc_content["roles"])
-        meta_doc_content["tags"] = json.loads(meta_doc_content["tags"])
-        meta_doc_content["slug"] = meta_doc_content["slug"] if meta_doc_content["slug"] else None
-        meta_doc_content["msisdn"] = meta_doc_content["msisdn"] if meta_doc_content["msisdn"] else None
+        # meta_doc_content["displayname"] = json.loads(meta_doc_content["displayname"]) if meta_doc_content[
+        #                                                                                  "displayname"] != '' else None
+        # meta_doc_content["description"] = json.loads(meta_doc_content["description"]) if meta_doc_content[
+        #                                                                                  "description"] != '' else None
+        # meta_doc_content["groups"] = json.loads(meta_doc_content["groups"])
+        # meta_doc_content["roles"] = json.loads(meta_doc_content["roles"])
+        # meta_doc_content["tags"] = json.loads(meta_doc_content["tags"])
+        # meta_doc_content["slug"] = meta_doc_content["slug"] if meta_doc_content["slug"] else None
+        # meta_doc_content["msisdn"] = meta_doc_content["msisdn"] if meta_doc_content["msisdn"] else None
 
         db_entry["branch_name"] = db_entry.get("branch_name", "master")
 
@@ -295,10 +295,15 @@ class ManticoreRepo(BaseRepo):
         self, query: Query, user_shortname: str | None = None
     ) -> tuple[int, list[Record]]:
         query.sort_by = "tags"
-        query.aggregation_data = RedisAggregate(
-            group_by=["@tags"],
-            reducers=[RedisReducer(reducer_name="r_count", alias="freq")],
-        )
+        # [{"COUNT": ["distinct is_active"]},{"AVG": ["is_active"]}]
+        query.aggregation_data = {
+            "group_by": ["tags"],
+            "reducers": [{"COUNT": ["tags"]}]
+        }
+        # query.aggregation_data = RedisAggregate(
+        #     group_by=["@tags"],
+        #     reducers=[RedisReducer(reducer_name="r_count", alias="freq")],
+        # )
         rows = await self.aggregate(query=query, user_shortname=user_shortname)
 
 

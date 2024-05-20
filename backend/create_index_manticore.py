@@ -304,7 +304,7 @@ async def main(
         print("FLUSHALL")
         await manticore_db.flush_all()
     
-    await bootstrap_all()
+    await bootstrap_all(reload_db=True)
     
     res = await migrate_data_to_operational_db(for_space, for_subpaths)
     # res = {

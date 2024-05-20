@@ -5,7 +5,8 @@ import utils.db as db
 from models import core
 from models.enums import ResourceType
 from fastapi.logger import logger
-from create_index import main as reload_redis
+# from create_index import main as reload_redis
+from create_index_manticore import main as reload_redis
 from utils.operational_repo import operational_repo
 
 
