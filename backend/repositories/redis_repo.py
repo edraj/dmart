@@ -7,7 +7,7 @@ from typing import Any
 from models.api import Query, RedisAggregate, RedisReducer
 from models.core import EntityDTO, Meta, Record
 from models.enums import ContentType, QueryType, ResourceType, SortType
-from utils.helpers import branch_path, camel_case, flatten_all
+from utils.helpers import branch_path, camel_case
 from utils.settings import settings
 from utils import db as main_db
 from utils.access_control import access_control
@@ -141,12 +141,12 @@ class RedisRepo(BaseRepo):
                 "query_policies": query_policies,
                 "created_at": created_at_search,
             },
-            load=query.aggregation_data.load,
-            group_by=query.aggregation_data.group_by,
-            reducers=query.aggregation_data.reducers,
+            load=query.aggregation_data.load if isinstance(query.aggregation_data, RedisAggregate) else [],
+            group_by=query.aggregation_data.group_by if isinstance(query.aggregation_data, RedisAggregate) else [],
+            reducers=query.aggregation_data.reducers if isinstance(query.aggregation_data, RedisAggregate) else [],
             exact_subpath=query.exact_subpath,
             sort_by=query.sort_by,
-            max=query.limit,
+            limit=query.limit,
             sort_type=query.sort_type or SortType.ascending,
         )
 

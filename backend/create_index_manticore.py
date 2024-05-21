@@ -95,7 +95,7 @@ def generate_db_docs_process(locators: list):
     return asyncio.run(generate_db_docs(locators))
 
 async def generate_db_docs(locators: list) -> dict[str, list[Any]]:
-    db_docs = {
+    db_docs: dict[str, list[Any]] = {
         "meta": [],
     }
     for one in locators:

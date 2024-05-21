@@ -20,7 +20,7 @@ async def main(
         print("Invalid schema file path")
 
     
-    faker = JSF.from_json(schema_path)
+    faker = JSF.from_json(Path(schema_path))
     for i in range(0, num):
         payload = faker.generate()
         uuid = uuid4()

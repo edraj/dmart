@@ -335,7 +335,7 @@ def trans_magic_words(subpath: str, user_shortname: str) -> str:
         return subpath
     
 
-def delete_none(_dict):
+def delete_none(_dict: dict[str, Any]) -> dict[str, Any]:
     """Delete None values recursively from all of the dictionaries"""
     for key, value in list(_dict.items()):
         if isinstance(value, dict):

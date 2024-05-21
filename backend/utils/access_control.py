@@ -1,4 +1,3 @@
-import json
 import re
 from typing import Any
 from models.enums import ResourceType, ActionType, ConditionType
@@ -374,7 +373,7 @@ class AccessControl:
         user_associated_roles: list[str] = user_meta.roles
         user_associated_roles.append("logged_in")
 
-        roles_search = await operational_db.search(
+        roles_search_res = await operational_db.search(
             space_name=settings.management_space,
             branch_name=settings.management_space_branch,
             search=f"shortname IN  ('{'\', \''.join(user_associated_roles)}')",
@@ -382,11 +381,11 @@ class AccessControl:
             limit=10000,
             offset=0,
         )
-        # pp(roles_search=roles_search)
-        if roles_search[0] == 0:
+        # pp(roles_search_res=roles_search_res)
+        if roles_search_res[0] == 0:
             return {}
         
-        roles_search = roles_search[1]
+        roles_search = roles_search_res[1]
 
         user_roles_from_groups: list[core.Role] = await self.get_user_roles_from_groups(user_meta)
         if not roles_search and not user_roles_from_groups:

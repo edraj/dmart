@@ -4,13 +4,13 @@ import json
 import re
 from typing import Any
 from db.base_db import BaseDB
-import manticoresearch
+import manticoresearch # type: ignore
 from fastapi.logger import logger
 from models.core import EntityDTO, Meta
 from models.enums import LockAction, ResourceType, SortType
 from utils.helpers import delete_empty_strings, delete_none, resolve_schema_references
 from utils.settings import settings
-from manticoresearch.model.bulk_response import BulkResponse
+from manticoresearch.model.bulk_response import BulkResponse  # type: ignore
 import models.api as api
 from fastapi import status
 
@@ -210,7 +210,6 @@ class ManticoreDB(BaseDB):
         for_custom_indices: bool = True, 
         del_docs: bool = True
     ) -> None:
-        pp("create_application_indexescreate_application_indexes")
         
         spaces = await self.find_by_id("spaces")
         branch_name = 'master'
@@ -396,10 +395,11 @@ class ManticoreDB(BaseDB):
                 value_end = keys_locations[keys_idx+1] - 1
             value_substr = search[idx+1:value_end]
             filters.setdefault(key_name, [])
-            print(key_name, filters[key_name], type(filters[key_name]))
+            # print(key_name, filters[key_name], type(filters[key_name]))
             if isinstance(filters[key_name], str):
                 filters[key_name] = [filters[key_name]]
-            filters[key_name].extend(value_substr.replace("{", "").replace("}", "").split(" "))
+            elif isinstance(filters[key_name], list):
+                filters[key_name].extend(value_substr.replace("{", "").replace("}", "").split(" ")) #type: ignore
     
         for key in keys_locations[::-1]:
             idx = search.index(":", key)
@@ -410,7 +410,7 @@ class ManticoreDB(BaseDB):
             if key + 1 < len(search):
                 try:
                     value_end = search.index("@", key + 1) - 1
-                except:
+                except Exception as _:
                     value_end = len(search) - 1
             search = search[:key] + search[value_end+1:]
         
@@ -616,7 +616,7 @@ class ManticoreDB(BaseDB):
 
         result = self.mc_command(sql_str)
 
-        if not result:
+        if not result or "data" not in result or not isinstance(result["data"], list):
             return []
 
         return result["data"]
@@ -630,7 +630,8 @@ class ManticoreDB(BaseDB):
         result = self.mc_command(
             f"SELECT COUNT(*) as c FROM {space_name}__{branch_name}__{schema_shortname}"
         )
-        if not result:
+        
+        if not result or "data" not in result or not isinstance(result["data"], list) or not isinstance(result["data"][0]["c"], int):
             return 0
         return result["data"][0]["c"]
 
@@ -643,7 +644,7 @@ class ManticoreDB(BaseDB):
         sql_str += f" LIMIT {limit} OFFSET {offset}"
 
         result = self.mc_command(sql_str)
-        if not result:
+        if not result or "data" not in result or not isinstance(result["data"], list):
             return []
         return result["data"]
 
@@ -655,7 +656,7 @@ class ManticoreDB(BaseDB):
         if res is None or res['total'] == 0:
             return None
         
-        return res['data'][0]['value']
+        return str(res['data'][0]['value'])
     
     async def set_key(self, key: str, value: str, ex=None, nx: bool = False) -> bool:
         await self.create_key_value_pairs_index()
@@ -679,7 +680,7 @@ class ManticoreDB(BaseDB):
     def parse_db_record(self, db_record: dict[str, Any], is_source: bool = False) -> dict[str, Any]:
         if db_record['total'] == 0:
             return {}
-        document = db_record["data"][0]["value"] if "value" in db_record["data"][0] else db_record["data"][0]
+        document: dict[str, Any] = db_record["data"][0]["value"] if "value" in db_record["data"][0] else db_record["data"][0]
         if isinstance(document, dict):
             document = document
         elif isinstance(document, str):
@@ -702,7 +703,6 @@ class ManticoreDB(BaseDB):
             identifier = "key"
         sql_str = f"SELECT * FROM {index_name}"
         sql_str += f" WHERE {identifier}='{document_id}'"
-        # pp(FIND____sql_str=sql_str)
         result = self.mc_command(sql_str)
         if not result:
             return None
@@ -746,7 +746,6 @@ class ManticoreDB(BaseDB):
             find_res = self.mc_command(
                 f"select * from {index_name} where {identifier} = '{id}' limit 1"
             )
-            # pp(command=f"select * from {index_name} where {identifier} = '{id}' limit 1")
 
             if not find_res or find_res["total"] == 0 or len(find_res["data"]) == 0:
                 return {}
@@ -844,7 +843,7 @@ class ManticoreDB(BaseDB):
                 raise Exception("Invalid response " + str(res.items))
             
             
-            return res.items[0]['bulk']['created']
+            return int(res.items[0]['bulk']['created'])
         except Exception as e:
             logger.error(f"Error at ManticoreDB.save_bulk. {index = }. {len(docs)}. {docs[0] = }: {e}")
             return 0
@@ -892,7 +891,7 @@ class ManticoreDB(BaseDB):
 
     def encode_doc(self, doc: dict[str, Any], id: str) -> dict[str, Any]:
         
-        filtered_doc={}
+        filtered_doc: dict[str, Any] = {}
 
         index_name = self.get_index_name_from_doc_id(id)
         res = self.mc_command(f"describe {index_name}")
@@ -1051,7 +1050,6 @@ class ManticoreDB(BaseDB):
             dto
         )
         # idx = self.dto_doc_id(dto)
-        # pp(SAVE_LOCK_lock_data_INITIAL=lock_data, lock_doc_id=lock_doc_id)
         if not lock_data:
             payload = {
                 "owner_shortname": owner_shortname,
@@ -1060,7 +1058,6 @@ class ManticoreDB(BaseDB):
 
             # alternaticr
             result = await self.save_at_id(lock_doc_id, payload) # , nx=True
-            # pp(payload=payload, result=result)
             if result is None:
                 lock_payload = await self.get_lock_doc(
                     dto
