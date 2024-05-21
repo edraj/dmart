@@ -29,7 +29,7 @@ RUN set -eux \
   && source /home/venv/bin/activate \
   && pip install -r /home/backend/requirements.txt \
   && pip cache purge \
-  && cd /home/frontend/ && npm install && npm run build && rm -rf node_modules && npm cache clean --force \
+  && cd /home/frontend/ && npm install -g yarn && yarn && yarn build&& npm run build && rm -rf node_modules && npm cache clean --force \
   && apk del buildpkgs \
   && rm -rf /tmp/js-offline \
   && rm -rf /root/.cache /root/.local  /var/cache/apk/ \
