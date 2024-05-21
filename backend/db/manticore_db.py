@@ -414,17 +414,17 @@ class ManticoreDB(BaseDB):
                     value_end = len(search) - 1
             search = search[:key] + search[value_end+1:]
         
-        search = search.replace("email_unescaped", "email")
-        
-        # Remove '@' symbols not prefixed by '\'
-        search = re.sub(r'(?<!\\)@', '', search)
-        
-        # Replace ':' with '=' and enclose the following word in single quotes
-        search = re.sub(r':([^ ]+)', r"='\1' AND", search)
-        search = search.rstrip(' AND')    
-        
-        # Replace '{' and '}' with single quotes
-        search = re.sub(r'\{(.+)\}', r"\1", search)
+        if search:
+            search = search.replace("email_unescaped", "email")
+            # Remove '@' symbols not prefixed by '\'
+            search = re.sub(r'(?<!\\)@', '', search)
+            
+            # Replace ':' with '=' and enclose the following word in single quotes
+            search = re.sub(r':([^ ]+)', r"='\1' AND", search)
+            search = search.rstrip(' AND')    
+            
+            # Replace '{' and '}' with single quotes
+            search = re.sub(r'\{(.+)\}', r"\1", search)
         
         return search, filters
         

@@ -1093,7 +1093,8 @@ class BaseRepo(ABC):
                 search_res: tuple[int, list[dict[str, Any]]] = await self.db.search(
                     space_name=space_name,
                     branch_name=branch,
-                    search=f"@{key}:{val}*",
+                    search=f"@{key}:{val}*" if settings.active_operational_db == 'redis' else f"{key}_match = 1",
+                    return_fields=[] if settings.active_operational_db == 'redis' else [f"*, REGEX({key}, '^{val}([A-Za-z0-9_])*') as {key}_match"],
                     limit=1,
                     offset=0,
                     filters={},
