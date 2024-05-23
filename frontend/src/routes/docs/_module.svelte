@@ -12,13 +12,15 @@
 
     const docFiles = [
         'index.md',
-        'Installation.md',
-        'Concepts.md',
+        'Features-of-DMART.md',
+        'Important-Terms.md',
+        'Installation-and-Setup-Instructions.md',
+        'Detailed-Concepts.md',
         'Data-Organization.md',
         'Tools.md',
      'Examples.md',
          'Automated-Testing.md',
-        'Dmart-Clients.md',  
+        'Clients-and-Libraries.md',  
         'Use-Cases.md',
         'Roadmap.md'
     ];

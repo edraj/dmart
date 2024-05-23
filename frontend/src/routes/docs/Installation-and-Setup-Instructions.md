@@ -15,15 +15,16 @@
 }
 </style>
 
-## Installation
+## Installation and Setup Instructions
 
 ### Container (recommended)
 
 Using podman (or docker), dmart can be fully setup and configured in few minutes.
 
-You only need a command line console, git and podman (or docker). 
+You only need a command line console, git and podman (or docker).
 
 #### Steps
+
 ```
 # Clone the git repo
 git clone https://github.com/edraj/dmart.git
@@ -41,10 +42,10 @@ podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 ./set_admin_pas
 # Load the sample spaces data
 podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
 
-# Run the auto tests 
+# Run the auto tests
 podman exec -it -w /home/backend dmart ./curl.sh
 
-# Open the browser to login to the admin tool and click on login. 
+# Open the browser to login to the admin tool and click on login.
 # User name: dmart
 # Password: The password you entered in the set_admin_passwd step above.
 # Url : http://localhost:8000
@@ -52,6 +53,7 @@ podman exec -it -w /home/backend dmart ./curl.sh
 ```
 
 ### Manual (for advanced users)
+
 #### Requirements
 
 - git
@@ -63,8 +65,7 @@ podman exec -it -w /home/backend dmart ./curl.sh
 - RediSearch >= 2.8
 - python venv
 
-
-### Steps 
+### Steps
 
 ```bash
 
@@ -80,7 +81,7 @@ sudo systemctl start redis
 
 git clone https://github.com/edraj/dmart.git
 
-cd dmart 
+cd dmart
 
 # Make logs folder
 mkdir logs
@@ -132,7 +133,6 @@ python -m pytest
 
 <img class="center" src={CLITest} width="300">
 <img class="center" src={PYTest} width="450">
-
 
 #### Using the Admin UI tool
 
