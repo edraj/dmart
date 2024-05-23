@@ -5,9 +5,10 @@ Overall, these tools and libraries play crucial roles in automating tasks, enhan
 
 **Examples of used tools in Dmart:**
 
-- [Creating Redis Indices](Creating-Redis-Indices.md)
-- [Health Check API](Health-Check-API.md)
-- [Password Hash Generation](Password-Hash-Generation.md)
-- [Schema Migration](Schema-Migration.md)
-- [Trigger Admin Notification](Trigger-Admin-Notifications.md)
-- [Set Admin Password](Set-Admin-Password.md)
+- [Creating Redis Indices](Creating-Redis-Indices)
+- [Health Check API](Health-Check-API)
+- [Password Hash Generation](Password-Hash-Generation)
+- [Schema Migration](Schema-Migration)
+- [Trigger Admin Notification](Trigger-Admin-Notifications)
+- [Set Admin Password](Set-Admin-Password)
+- [Data Generator](Data-Generator)

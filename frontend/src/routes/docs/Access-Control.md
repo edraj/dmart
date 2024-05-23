@@ -1,4 +1,4 @@
-## **Access Controls**
+## Access Controls
 
 Access controls are a fundamental security feature within dmart. This module governs user permissions and determines what actions users can perform on your data assets. It ensures data security and integrity by restricting access based on predefined roles or user groups.
 

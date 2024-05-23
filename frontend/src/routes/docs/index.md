@@ -14,38 +14,56 @@
 **Why Choose DMART?**
 <img class="center" src={Logo} width="500">
 
-DMART serves as a data service layer, offering a streamlined approach for developing specific types of solutions with a moderate data footprint (less than 300 million primary entries). It is not tailored for systems handling large datasets or those necessitating complex data modeling or atomic operations (transactions).
+### Introduction
 
-Functioning as a versatile, structure-oriented information management system, DMART is commonly referred to as Data-as-a-Service (DaaS). It functions as a low-code information inventory platform, akin to a content registry, repository, or vault. DMART facilitates the ingestion of various data types (structured, unstructured, and binary), allowing users to treat their valuable data assets as commodities. This enables seamless authoring, sharing, and extension of data, ensuring that valuable assets remain as the mastered version and serve as the definitive source of truth.
+#### What is DMART?
 
-**The Problem DMART attempts to solve**
+DMART is an open-source, general-purpose, low-code data platform capable of assimilating and servicing a wide variety of data. It offers several unique features that simplify backend setup and data management. Designed to provide a unified API, DMART seamlessly integrates with web and mobile frontends, making it an ideal choice for developers and organizations looking for a versatile and efficient data management solution.
 
-Organizational and personal information is increasingly becoming unwieldy:
+#### Why Choose DMART?
 
-- Fragmented across numerous systems, necessitating multiple access points.
-- Challenging to consolidate and link for consumption, analysis,
-  reporting, and dashboard creation.
-- Locked into vendor-specific or application-specific data formats.
-- Chaotic and challenging to search through the accumulated data.
-- Difficult to master, deduplicate, back up, archive, and restore.
-- Prone to security vulnerabilities.
+DMART serves as a streamlined data service layer, offering a versatile structure-oriented information management system. It facilitates the ingestion of various data types, including structured, unstructured, and binary data, enabling seamless authoring, sharing, and extension of data. DMART is particularly suited for solutions with a moderate data footprint, making it an excellent choice for organizations and individuals seeking to establish their online presence or manage their data assets efficiently.
 
-**Key Features of DMART**
+### Problems DMART Tries to Solve
 
-**Data-as-a-Service (DaaS):** DMART acts as a backbone data store where data assets are declared and utilized across multiple applications and microservices, represented in logical and business terms rather than traditional RDBMS formats.
+DMART addresses several key challenges faced by individuals, small businesses, NGOs, and other organizations in managing their data and establishing their online presence. Here are the primary problems DMART aims to solve:
 
-**Standardized API:** A publicly-accessible unified API layer simplifies interaction with various types of data, streamlining the work of application developers.
+#### 1. Complex Backend Setup
 
-**Data Longevity:** Data is stored in flat-files directly on the file system, ensuring resilient and time-proof storage. This enables easy access, inspection, validation, backup, and change tracking, with the capability to recreate the Redis index from the flat-files at any point.
+**Problem:** Setting up a robust and scalable backend infrastructure can be complex and time-consuming, especially for small businesses and individual content creators without extensive technical expertise. **Solution:** DMART provides a low-code platform that simplifies backend setup. Its unified API, built-in user management, and security features allow users to quickly set up and manage their backend with minimal effort.
 
-**User Management and Access Control:** DMART includes comprehensive user management and access control features to alleviate the burden from application development teams.
+#### 2. Data Management and Integration
 
-**Microservice Friendly:** Leveraging JWT shared secrets, additional microservices can seamlessly leverage user sessions with DMART. Additionally, a compatible FastAPI skeleton Git repository facilitates the development of additional microservices.
+**Problem:** Managing various types of data (structured, unstructured, and binary) and integrating them into a cohesive system can be challenging. **Solution:** DMART's entry-based data definitions and flexible metadata allow for the seamless integration and management of different data types. The operational store and reconstruction capabilities ensure data integrity and easy data retrieval.
 
-**Extensibility via Plugins:** Specialized logic (plugins) can be incorporated to respond to specific types of activities and content.
+#### 3. User and Security Management
 
-**Entry-Oriented Approach:** Unlike document-oriented NoSQL databases, DMART focuses on consolidating coherent information units alongside their associated assets (known as "attachments"), whether textual or binary, into a single entry.
+**Problem:** Ensuring secure user management and access control is critical but can be complex to implement. **Solution:** DMART includes built-in user management and security management features, including permission and role-based access control, to ensure that users have appropriate access to data and functionality.
 
-**Activities and Workflows:** DMART offers configurable activity (ticket) and workflow management capabilities.
+#### 4. Real-Time Communication and Updates
 
-**Messaging and Notifications:** Users can trigger various types of notifications and store user messages within DMART.
+**Problem:** Providing real-time updates and communication to users is essential for many applications but can be difficult to implement. **Solution:** DMART uses WebSockets to enable real-time communication between the server and clients, facilitating instant updates and interactions.
+
+#### 5. Data Extensibility and Customization
+
+**Problem:** Adapting a data management system to specific business needs often requires extensive customization and development effort. **Solution:** DMART's extensibility through plugins or micro-services allows users to customize and extend its capabilities to meet specific business needs, leveraging JWT for secure communication.
+
+#### 6. Content Management and Publishing
+
+**Problem:** Efficiently managing and publishing content, such as websites, blogs, and media, can be complex, especially for small businesses and individual creators. **Solution:** DMART provides a robust Content Management System (CMS) that allows users to organize and publish content, manage digital assets, and engage with users through comments, reactions, and shares.
+
+#### 7. Collaboration and Community Building
+
+**Problem:** Facilitating collaboration and building an online community can be challenging without the right tools and infrastructure. **Solution:** DMART includes features for forums, polls, planned activities, and contact forms, enabling users to collaborate and engage with their community effectively.
+
+#### 8. Data Security and Privacy
+
+**Problem:** Protecting sensitive information from unauthorized access and ensuring compliance with data privacy regulations is a significant concern. **Solution:** DMART's built-in security management, including permission and role-based access control, ensures that data is protected and accessible only to authorized users.
+
+#### 9. Scalability and Adaptability
+
+**Problem:** Many data management systems struggle to scale and adapt to changing business needs. **Solution:** DMART's flexible and scalable architecture allows it to accommodate growth and evolving requirements, making it suitable for a wide range of use cases from small businesses to larger organizations.
+
+#### 10. Ease of Use and Accessibility
+
+**Problem:** Ensuring that a data management platform is user-friendly and accessible to non-technical users is critical for widespread adoption. **Solution:** DMART's low-code approach, comprehensive documentation, and intuitive user interface make it easy for users with varying levels of technical expertise to set up and manage their data effectively.
