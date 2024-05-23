@@ -12,7 +12,7 @@
 
     const docFiles = [
         'index.md',
-        'Features-of-DMART.md',
+        'Features-and-Technology-Stack.md',
         'Important-Terms.md',
         'Installation-and-Setup-Instructions.md',
         'Detailed-Concepts.md',
@@ -51,7 +51,7 @@
                 ? "nav-item selected" : "nav-item"
               }>
               <a href="/docs/{file.replace('.md', '').replace('index','')}" class="nav-link link-dark">
-                {file.replaceAll('-', ' ').replace('.md', '').replace('index','Why Dmart ?')}
+                {file.replaceAll('-', ' ').replace('.md', '').replace('index','Introduction to DMART')}
               </a>
             </li>
             <hr class="p-0 m-0">
