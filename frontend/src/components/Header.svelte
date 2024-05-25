@@ -1,6 +1,15 @@
 <script lang="ts">
   // import { Form, Input, Button, Navbar, NavbarBrand, Nav, NavLink } from "sveltestrap";
-  import {Navbar, NavbarBrand, Nav, NavLink, NavItem, Collapse} from "sveltestrap";
+  import {
+      Navbar,
+      NavbarBrand,
+      Nav,
+      NavLink,
+      Collapse,
+      Dropdown,
+      DropdownToggle,
+      DropdownMenu, DropdownItem
+  } from "sveltestrap";
   import { _ } from "@/i18n";
   // import { website } from "@/config";
   // import Icon from "@/components/Icon.svelte";
@@ -63,22 +72,19 @@
 <Navbar color="light" light expand="md" class="px-2 w-100 py-0" style="border-bottom: solid #cecece">
   <NavbarBrand href="/" title="{$_('home')}">{$_('home')}</NavbarBrand>
   <Collapse {isOpen} navbar expand="md" on:update={handleUpdate}>
-  <Nav class="w-100" navbar>
+  <Nav class="w-100 align-items-center" navbar>
     <NavLink href="/docs" title="{$_('docs')}">{$_('docs')}</NavLink>
-    {#if $user && $user.signedin}
-      <NavLink class="w-25" href="/management/content">{$user.localized_displayname}</NavLink>
-    {/if}
-  <div class="w-100 d-flex justify-content-end">
-    <div class="position-relative w-50 align-content-center">
+    <div class="w-100 d-flex justify-content-end">
+      <div class="position-relative w-50 align-content-center">
       <input type="text" class="form-control" placeholder="Search..."
-             bind:value={term}
-             on:input={handleInputChange}
-             on:focusout={()=>{
-              setTimeout(()=>{
-                  suggestions = [];
-              }, 200);
-           }}
-             on:focusin={handleInputChange}>
+       bind:value={term}
+       on:input={handleInputChange}
+       on:focusout={()=>{
+        setTimeout(()=>{
+            suggestions = [];
+        }, 200);
+     }}
+       on:focusin={handleInputChange}>
       {#if suggestions.length > 0}
         <ul class="list-group suggestion-list">
           {#each suggestions as suggestion}
@@ -91,11 +97,19 @@
         </ul>
       {/if}
     </div>
-  </div>
-    {#if !$user || !$user.signedin}
-      <NavLink href="/management/content" title="{$_('login')}">{$_('login')}</NavLink>
+    </div>
+    {#if $user?.signedin}
+      <NavLink href="/management/content"></NavLink>
+      <Dropdown>
+        <DropdownToggle caret>{$user.localized_displayname}</DropdownToggle>
+        <DropdownMenu end>
+          <DropdownItem title="{$_('logout')}" on:click="{signout}">
+            {$_('logout')}
+          </DropdownItem>
+        </DropdownMenu>
+      </Dropdown>
     {:else}
-      <NavLink href="#" title="{$_('logout')}" on:click="{signout}"> {$_('logout')} </NavLink>
+      <NavLink href="/management/content" title="{$_('login')}">{$_('login')}</NavLink>
     {/if}
   </Nav>
   </Collapse>
