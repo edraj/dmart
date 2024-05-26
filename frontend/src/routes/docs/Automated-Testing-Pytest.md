@@ -22,7 +22,6 @@ Pytest follows a simple syntax for writing tests, using functions prefixed with 
 python
 
     # test_myapp.py
-
     import json
     from fastapi.testclient import TestClient
     from main import app
@@ -42,26 +41,30 @@ python
 python
 
     def test_set_superman_cookie():
-        # Test logic goes here...
+        response = client.post("/set_superman_cookie")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.cookies.get("superman") is not None
 
     def test_set_alibaba_cookie():
-        # Test logic goes here...
+        response = client.post("/set_alibaba_cookie")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.cookies.get("alibaba") is not None
 
     def test_init_test_db():
-        # Test logic goes here...
-
-    # More test functions...
+        response = client.post("/init_test_db")
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json() == {"status": "success"}
 
 **Test Setup and Teardown**
 
-Pytest allows you to define setup and teardown functions using the `setup_method` and `teardown_method` decorators. These functions run before and after each test function, respectively.
+Pytest allows you to define setup and teardown functions using fixtures. These functions run before and after each test function, respectively.
 
 python
 
     import pytest
 
     @pytest.fixture(autouse=True)
-    def setup():
+    def setup_and_teardown():
         # Setup logic goes here...
         yield
         # Teardown logic goes here...
@@ -80,6 +83,57 @@ To run tests using Pytest, navigate to the directory containing your test files 
 
 bash
 
-`pytest`
+    pytest
 
 Pytest will automatically discover and execute all test functions within the directory.
+
+**Example Usage**
+
+Here’s a comprehensive example illustrating the concepts discussed:
+
+**Test File: `test_myapp.py`**
+
+python
+
+    import json
+    from fastapi.testclient import TestClient
+    from main import app
+    from utils.redis_services import RedisServices
+    from utils.plugin_manager import plugin_manager
+    from utils.settings import settings
+    from fastapi import status
+    from models.api import Query
+    from models.enums import QueryType, ResourceType
+
+    client = TestClient(app)
+
+    def test_set_superman_cookie():
+        response = client.post("/set_superman_cookie")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.cookies.get("superman") is not None
+
+    def test_set_alibaba_cookie():
+        response = client.post("/set_alibaba_cookie")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.cookies.get("alibaba") is not None
+
+    def test_init_test_db():
+        response = client.post("/init_test_db")
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json() == {"status": "success"}
+
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown():
+        # Setup logic, e.g., initializing test database, configuring environment
+        yield
+        # Teardown logic, e.g., cleaning up database, resetting configurations
+
+**Running Tests**
+
+To run the tests, navigate to the directory containing your test file and execute:
+
+bash
+
+    pytest
+
+Pytest will discover all the test functions prefixed with `test_` and execute them, providing you with a summary of the test results.
