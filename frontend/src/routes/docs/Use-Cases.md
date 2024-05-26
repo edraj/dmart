@@ -1,4 +1,4 @@
-## Special Use Cases in DMART
+### Special Use Cases in DMART
 
 **1 ) Generalized QR Code Solution for E-commerce**
 
