@@ -9,7 +9,10 @@ Before writing load tests, ensure that you have Locust installed in your Python 
 
 bash
 
+```
     pip install locust
+
+```
 
 **Writing Load Tests**
 
@@ -17,13 +20,22 @@ Locust allows you to define user behavior as tasks within a Python class. These 
 
 python
 
-    # my_load_test.py
-    import time from locust import HttpUser, between, task
-    class MyUser(HttpUser):
+```
+
+# my_load_test.py
+
+import time
+from locust import HttpUser, between, task
+
+class MyUser(HttpUser):
     wait_time = between(1, 2)
+
     @task
     def my_task(self):
-    self.client.get("/my-endpoint")
+        self.client.get("/my-endpoint")
+
+
+```
 
 In the above example, `MyUser` is a subclass of `HttpUser`, representing a virtual user. The `wait_time` attribute defines the wait time between each task execution. The `@task` decorator defines a user task, which in this case is making a GET request to the `/my-endpoint` endpoint.
 
@@ -35,6 +47,9 @@ To run load tests using Locust, navigate to the directory containing your test f
 
 bash
 
+```
     locust -f my_load_test.py
+
+```
 
 This will start the Locust web interface on `http://localhost:8089`, where you can specify the number of users to simulate and the hatch rate (i.e., how quickly users are spawned). Once you start the test, Locust will distribute user tasks across available workers and measure the performance of your application.
