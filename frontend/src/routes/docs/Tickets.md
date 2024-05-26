@@ -39,35 +39,39 @@ First you need to define the workflow of the ticket, please check the Workflow s
 ```
 
 {
-"space_name": "damrt_data",
-"request_type": "create",
-"records": [
-{
-"resource_type": "ticket",
-"shortname": "auto",
-"branch_name": "master",
-"subpath": "tickets",
-"attributes": {
-"is_active": true,
-"tags": ["me"],
-"payload": {
-"content_type": "json",
-"schema_shortname": "schema",
-// Ticket body goes here
-"body": {}},
-"is_open": true,
-"reporter": {
-"type": "admin_lite",
-"name": "Foo Bar",
-"channel": "HQTest",
-"distributor": "Doo",
-"governorate": "",
-"msisdn": "1111111111",
-"channel_address": {}
-},
-"workflow_shortname": "workflow_101"
-}}
-]
+    "space_name": "damrt_data",
+    "request_type": "create",
+    "records": [
+        {
+            "resource_type": "ticket",
+            "shortname": "auto",
+            "branch_name": "master",
+            "subpath": "tickets",
+            "attributes": {
+                "is_active": true,
+                "tags": [
+                    "me"
+                ],
+                "payload": {
+                    "content_type": "json",
+                    "schema_shortname": "schema",
+                    // Ticket body goes here
+                    "body": {}
+                },
+                "is_open": true,
+                "reporter": {
+                    "type": "admin_lite",
+                    "name": "Foo Bar",
+                    "channel": "HQTest",
+                    "distributor": "Doo",
+                    "governorate": "",
+                    "msisdn": "1111111111",
+                    "channel_address": {}
+                },
+                "workflow_shortname": "workflow_101"
+            }
+        }
+    ]
 }
 
 ```

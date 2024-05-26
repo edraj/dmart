@@ -50,25 +50,29 @@ so, you need to update the `parent` entry to add the relationship attachment to 
 
 ```
 {
- "space_name": "dmart_data",
- "request_type": "update",
-"records": [
-{
-"resource_type": "content",
-"shortname": "parent_entry",
-"subpath": "/content",
-"attributes": {
-"relationships": [
-{
-"related_to": {
-"type": "content",
-"space_name": "dmart_data",
-"subpath": "children",
-"shortname": "child_entry"
-},
-"attributes": {
-"note": "An important link"
-}}]}}]
+    "space_name": "dmart_data",
+    "request_type": "update",
+    "records": [
+        {
+            "resource_type": "content",
+            "shortname": "parent_entry",
+            "subpath": "/content",
+            "attributes": {
+                "relationships": [
+                    {
+                        "related_to": {
+                            "type": "content",
+                            "space_name": "dmart_data",
+                            "subpath": "children",
+                            "shortname": "child_entry"
+                        },
+                        "attributes": {
+                            "note": "An important link"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
 }
-
 ```

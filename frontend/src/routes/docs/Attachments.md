@@ -27,11 +27,11 @@ For attachments that are not files, which are: reaction, share, reply, comment, 
         {
             "resource_type": "comment", // Must be one of the attachment types that is not file
             "shortname": "my_comment",
-            "subpath": "{parent_entry_subpath}/{parent_entry_shortname}"
+            "subpath": "{parent_entry_subpath}/{parent_entry_shortname}",
             "attributes": {
                 "is_active": true, // Attachments have meta fields also
                 "tags": ["one", "two"],
-                "body": "Very Intersting entry", // The comment
+                "body": "Very Intersting entry" // The comment
             }
         }
     ]
