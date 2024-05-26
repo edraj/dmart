@@ -2,15 +2,11 @@
 
 In Dmart, "Relationships" define the connections or associations between different data entities.
 
-These relationships represent the links or dependencies between data entities,
-
-enabling users to establish connections,
-
-navigate between related data, and perform complex data queries and analyses.
+These relationships represent the links or dependencies between data entities, enabling users to establish connections, navigate between related data, and perform complex data queries and analyses.
 
 **Relationship Attributes**
 
-1.  **related_to**: An object of type Locator\*
+1.  **related_to**: An object of type Locator
 
 2.  **attributes**: A flexible dictionary allowing users to associate additional data with the relationship.
 
@@ -53,57 +49,26 @@ and you want to add a link inside it to a child entry under `space = dmart_data`
 so, you need to update the `parent` entry to add the relationship attachment to it, the request body would be as follows
 
 ```
-
 {
-
-"space_name": "dmart_data",
-
-"request_type": "update",
-
+ "space_name": "dmart_data",
+ "request_type": "update",
 "records": [
-
 {
-
 "resource_type": "content",
-
 "shortname": "parent_entry",
-
 "subpath": "/content",
-
 "attributes": {
-
 "relationships": [
-
 {
-
 "related_to": {
-
 "type": "content",
-
 "space_name": "dmart_data",
-
 "subpath": "children",
-
 "shortname": "child_entry"
-
 },
-
 "attributes": {
-
 "note": "An important link"
-
-}
-
-}
-
-]
-
-}
-
-}
-
-]
-
+}}]}}]
 }
 
 ```
