@@ -1,6 +1,6 @@
 ### DMART CLIENTS
 
-### 1) TypeScript client library for DMART\*\*
+### 1) TypeScript client library for DMART
 
 A TypeScript implementation of the Dmart that depends on axios.
 
@@ -53,7 +53,7 @@ A TypeScript implementation of the Dmart that depends on axios.
 
 > [https://github.com/edraj/tsdmart](https://github.com/edraj/tsdmart)
 
-### 2) Flutter client library for DMART\*\*
+### 2) Flutter client library for DMART
 
 **Dart client for Dmart**
 
@@ -359,7 +359,7 @@ var (respLogout, _) = await  Dmart.logout();
 
 > https://pub.dev/packages/dmart
 
-### 3) Python client library for DMART\*\*
+### 3) Python client library for DMART
 
 **Pydmart**
 

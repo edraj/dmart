@@ -1,4 +1,4 @@
-## Operational Database:
+### Operational Database:
 
 **Redis [Optional Operation DB]**
 
