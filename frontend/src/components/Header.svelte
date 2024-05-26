@@ -103,6 +103,9 @@
       <Dropdown>
         <DropdownToggle caret>{$user.localized_displayname}</DropdownToggle>
         <DropdownMenu end>
+          <DropdownItem href="/management/content" title="{$_('login')}">
+            {$_('dashboard')}
+          </DropdownItem>
           <DropdownItem title="{$_('logout')}" on:click="{signout}">
             {$_('logout')}
           </DropdownItem>
