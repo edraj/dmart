@@ -4,7 +4,7 @@
 
 1. Hashed history : like git, only one change can be applied at a time.
 
-2. Add relations to meta : array of relations to other locators.
+2. Add relations to meta : array of relations to other locators
 
 3. Add attributes to meta : general purpsoe key-value section
 
@@ -20,9 +20,9 @@
 
 9. New api end point : like /managed/entry api :
 
-a. /{managemed,public}/byuuid/{uuid}
+a. `/{managemed,public}/byuuid/{uuid}`
 
-b. /{managemed,public}/byslug/{slug}
+b. `/{managemed,public}/byslug/{slug}`
 
 **A : To create one large index for all entries across all spaces ...**
 
