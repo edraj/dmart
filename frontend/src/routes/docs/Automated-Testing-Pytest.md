@@ -1,4 +1,4 @@
-**Automated Testing Documentation using Pytest**
+**Automated Testing using Pytest**
 
 **Introduction**
 
@@ -9,8 +9,11 @@ Automated testing is a critical aspect of software development, ensuring that ch
 Before writing tests, ensure that your environment is properly configured for testing. You will need:
 
 - Python environment with Pytest installed
+
 - FastAPI application with appropriate endpoints
+
 - Test client for making HTTP requests to the FastAPI application
+
 - Redis and plugin manager configurations (if applicable)
 
 **Writing Tests**
@@ -21,57 +24,78 @@ Pytest follows a simple syntax for writing tests, using functions prefixed with 
 
 python
 
-    # test_myapp.py
+```
 
-    import json
-    from fastapi.testclient import TestClient
-    from main import app
-    from utils.redis_services import RedisServices
-    from utils.plugin_manager import plugin_manager
-    from utils.settings import settings
-    from fastapi import status
-    from models.api import Query
-    from models.enums import QueryType, ResourceType
+# test_myapp.py
 
-    client = TestClient(app)
+import json
+from fastapi.testclient import TestClient
+from main import app
+from utils.redis_services import RedisServices
+from utils.plugin_manager import plugin_manager
+from utils.settings import settings
+from fastapi import status
+from models.api import Query
+from models.enums import QueryType, ResourceType
 
-    # Test cases go here...
+client = TestClient(app)
+
+# Test cases go here...
+
+```
 
 **Example Test Functions**
 
 python
 
-    def test_set_superman_cookie():
-        # Test logic goes here...
+```
 
-    def test_set_alibaba_cookie():
-        # Test logic goes here...
+def test_set_superman_cookie():
+response = client.post("/set_superman_cookie")
+assert response.status_code == status.HTTP_200_OK
+assert response.cookies.get("superman") is not None
 
-    def test_init_test_db():
-        # Test logic goes here...
+def test_set_alibaba_cookie():
+response = client.post("/set_alibaba_cookie")
+assert response.status_code == status.HTTP_200_OK
+assert response.cookies.get("alibaba") is not None
 
-    # More test functions...
+
+def test_init_test_db():
+response = client.post("/init_test_db")
+assert response.status_code == status.HTTP_201_CREATED
+assert response.json() == {"status": "success"}
+
+
+```
 
 **Test Setup and Teardown**
 
-Pytest allows you to define setup and teardown functions using the `setup_method` and `teardown_method` decorators. These functions run before and after each test function, respectively.
+Pytest allows you to define setup and teardown functions using fixtures. These functions run before and after each test function, respectively.
 
 python
 
-    import pytest
+```
 
-    @pytest.fixture(autouse=True)
-    def setup():
-        # Setup logic goes here...
-        yield
-        # Teardown logic goes here...
+import pytest
+
+@pytest.fixture(autouse=True)
+def setup():
+    # Setup logic goes here...
+    yield
+    # Teardown logic goes here...
+
+
+```
 
 **Example Assertion Functions**
 
 Pytest provides various assertion functions to validate test outcomes. Some common assertions include:
 
 - `assert response.status_code == 200`: Verify HTTP status code
+
 - `assert response.json()['status'] == 'success'`: Verify JSON response attributes
+
 - `assert 'error' not in response.json()`: Verify absence of errors
 
 **Running Tests**
@@ -80,6 +104,9 @@ To run tests using Pytest, navigate to the directory containing your test files 
 
 bash
 
-`pytest`
+```
+pytest
+
+```
 
 Pytest will automatically discover and execute all test functions within the directory.

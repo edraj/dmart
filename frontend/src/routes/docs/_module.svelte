@@ -18,6 +18,7 @@
         'Detailed-Concepts.md',
         'Data-Organization.md',
         'Tools.md',
+        'System-Admin-Tool.md',
      'Examples.md',
          'Automated-Testing.md',
         'Clients-and-Libraries.md',  

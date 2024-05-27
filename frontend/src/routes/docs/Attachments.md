@@ -1,4 +1,4 @@
-**Attachments**
+## Attachments
 
 Attachments within Dmart encompass any additional file or document linked to a data entity within a Space. These attachments enrich the associated data by providing relevant files such as images, documents, spreadsheets, or multimedia, thereby enhancing the comprehensiveness and utility of the data.
 
@@ -27,11 +27,11 @@ For attachments that are not files, which are: reaction, share, reply, comment, 
         {
             "resource_type": "comment", // Must be one of the attachment types that is not file
             "shortname": "my_comment",
-            "subpath": "{parent_entry_subpath}/{parent_entry_shortname}"
+            "subpath": "{parent_entry_subpath}/{parent_entry_shortname}",
             "attributes": {
                 "is_active": true, // Attachments have meta fields also
                 "tags": ["one", "two"],
-                "body": "Very Intersting entry", // The comment
+                "body": "Very Intersting entry" // The comment
             }
         }
     ]
