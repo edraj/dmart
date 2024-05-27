@@ -34,18 +34,18 @@
 
 DMART caters to a variety of users and organizations looking to establish their online presence or manage their data efficiently. The platform is designed to be flexible and adaptable to the needs of different providers, including:
 
-#### Individuals
+**Individuals**
 
 - **Content Creators and Influencers:** Individuals who produce content such as blogs, videos, and social media posts.
 - **Self-Run Service Providers:** Professionals like tutors, doctors, and consultants who offer their services independently.
 
-#### Small Businesses
+**Small Businesses**
 
 - **Restaurants and Shops:** Local businesses looking to manage their inventory, take orders, and engage with customers online.
 - **Healthcare Providers:** Clinics and individual practitioners who need to manage patient records and appointments.
 - **Educational Providers:** Schools, tutors, and educational institutions that need to manage courses, students, and educational content.
 
-#### NGOs and SIGs
+**NGOs and SIGs**
 
 - **Non-Governmental Organizations (NGOs):** Organizations focused on social, environmental, or humanitarian efforts.
 - **Special-Interest Groups (SIGs):** Groups formed around shared interests, such as sports clubs, political parties, and community organizations.
