@@ -7,7 +7,7 @@ import subprocess
 
 SPACE_NAME = "applications"
 BASE_PATH = os.path.dirname(os.getcwd())
-LOGIN_CREDS="./login_creds.sh"
+LOGIN_CREDS="../login_creds.sh"
 pipe = subprocess.Popen(['/bin/bash', '-c', f"grep 'export SUPERMAN' {LOGIN_CREDS} | cut -f2 -d \"'\" | jq -r .password"], stdout=subprocess.PIPE)
 if not os.path.exists(LOGIN_CREDS) or not os.path.isfile(LOGIN_CREDS) or not pipe or not pipe.stdout:
     print("Failed to get the dmart password needed for testing")
