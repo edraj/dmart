@@ -1,4 +1,4 @@
-## Data Organization in DMart Nodes
+## Data Organization in Dmart
 
 In DMart nodes, data is organized in a hierarchical structure to facilitate efficient management and access. This documentation outlines the data organization scheme within DMart nodes, focusing on [spaces](Space), [subpaths](Subpath) & folders, [entries](Entries), and [attachments](Attachments).
 
