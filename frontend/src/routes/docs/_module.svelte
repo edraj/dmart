@@ -13,7 +13,6 @@
     const docFiles = [
         'index.md',
         'Features-and-Technology-Stack.md',
-        'Important-Terms.md',
         'Installation-and-Setup-Instructions.md',
         'Detailed-Concepts.md',
         'Data-Organization.md',

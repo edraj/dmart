@@ -1,10 +1,8 @@
-### Command Line Tools (CLI)
+### Tools
 
-Command Line Tools (CLI) are essential utilities that allow developers and administrators to manage, maintain, and interact with their applications directly from the terminal. These tools provide a streamlined and efficient way to perform various administrative and operational tasks without the need for a graphical interface.
+In software development, efficiency and reliability are crucial. To streamline tasks and boost productivity, developers use various tools and libraries that aid different aspects of the development process. In this section, we'll examine some of the scripts used to generate passwords, generate fake data or create indices.
 
-The CLI tools documented here cover a range of functionalities necessary for the smooth operation of the application. From creating indices in Redis to ensure fast data retrieval, to checking the health of the application, generating secure password hashes, migrating database schemas, setting administrative passwords, and generating test data, these commands facilitate comprehensive management and maintenance of the application environment.
-
-By leveraging these command line tools, users can automate routine tasks, enhance security, ensure the application’s reliability, and maintain a consistent development workflow.
+These tools and libraries are essential for automating tasks, enhancing security, and improving the development workflow. By effectively leveraging these tools, developers can streamline processes, mitigate risks, and deliver high-quality software solutions efficiently.
 
 **Examples of used tools in Dmart:**
 
@@ -14,3 +12,4 @@ By leveraging these command line tools, users can automate routine tasks, enhanc
 - [Schema Migration](Schema-Migration)
 - [Set Admin Password](Set-Admin-Password)
 - [Data Generator](Data-Generator)
+- [Commaned Line Interface](Automated-Cli-Tool)

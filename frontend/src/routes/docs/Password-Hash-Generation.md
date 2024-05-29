@@ -1,4 +1,6 @@
-**Password Hash Generation Script**
+### **Password Hash Generation Script**
+
+---
 
 **Introduction:** This script facilitates the generation of secure password hashes using a cryptographic hashing algorithm. It allows users to input a password interactively and generates its corresponding hash, which can be stored securely in databases or user authentication systems. This documentation provides an overview of the script's functionality, usage, and key components.
 

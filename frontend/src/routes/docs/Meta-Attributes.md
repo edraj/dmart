@@ -1,4 +1,6 @@
-## Meta Attributes
+### **Meta Attributes**
+
+---
 
 In Dmart, the concept of "Meta Class" or "Meta fields" refers to the metadata associated with data entities within a Space. These metadata fields provide supplementary information about the data, such as creation timestamp, modification timestamp, creator user ID, or any other relevant information that describes the characteristics or history of the data entity.
 

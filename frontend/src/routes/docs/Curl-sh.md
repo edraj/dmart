@@ -1,4 +1,6 @@
-**Automated Testing using curl.sh**
+### **Automated Testing using curl.sh**
+
+---
 
 **Overview:**
 Automated testing is an essential practice in modern software development workflows to ensure the reliability, functionality, and performance of applications. In the context of APIs and web services, automated testing involves systematically sending requests to API endpoints and verifying the responses against expected outcomes. The curl.sh script provided here exemplifies an approach to automated testing using the cURL command-line tool, a powerful utility for making HTTP requests.

@@ -1,4 +1,6 @@
-**Automated Load Testing using Locust**
+### **Automated Load Testing using Locust**
+
+---
 
 **Introduction**
 Load testing is a crucial aspect of performance testing in software development, ensuring that the application can handle a certain level of traffic without performance degradation. Locust is a popular open-source load testing tool written in Python that allows you to define user behavior as code. This documentation provides guidelines and examples for automated load testing using Locust in the context of a web application.
@@ -7,9 +9,8 @@ Load testing is a crucial aspect of performance testing in software development,
 
 Before writing load tests, ensure that you have Locust installed in your Python environment. You can install Locust via pip:
 
-bash
+```bash
 
-```
     pip install locust
 
 ```
@@ -18,9 +19,7 @@ bash
 
 Locust allows you to define user behavior as tasks within a Python class. These tasks simulate user actions, such as making HTTP requests to your application endpoints. Here's an example of a Locust test file:
 
-python
-
-```
+```python
 
 # my_load_test.py
 
@@ -45,9 +44,7 @@ You can define multiple tasks within the user class to simulate various user beh
 
 To run load tests using Locust, navigate to the directory containing your test file and run the following command:
 
-bash
-
-```
+```bash
     locust -f my_load_test.py
 
 ```

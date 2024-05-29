@@ -10,7 +10,8 @@ Automated testing is a crucial practice in software development that involves us
 
 3. [API testing with cURL.](Curl-sh)
 
-**1. Unit Testing with Pytest**
+4. [Automated testing with Pylint.](pylint)
+   **1. Unit Testing with Pytest**
 
 **What is Pytest?**
 

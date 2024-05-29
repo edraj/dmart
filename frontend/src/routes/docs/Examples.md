@@ -3,34 +3,18 @@
   import ListView from "@/components/management/ListView.svelte";
   import Tree from "./assets/tree.png"
 </script>
-<style>
-.center {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  width: 50%;
-}
-</style>
 
-# Simple Example
+## Examples
 
-## Important terms
-**Each term has a dedicated section with a detailed explanation**
-- **Space**: Top-level business category that facilitates grouping of relevant content.
-- **Subpath**: aka folder, The path within space that leads to an entry
-- **Meta**: Meta information associated with the entry such as owner, shortname, unique uuid, creation/update timestamp, tags ..etc
-- **Schema**: The JSON schema definition of the entry
-- **Payload**: The actual content associated with the entry
-
-<img class="center" src={Tree} width="500">
-
-*In this example we will use those attributes*
+_In this example we will use those attributes_
 `space = dmart_data`
 `subpath = content`
 `schema = product`
 
 ## 1. Define your Schema (Model)
+
 Let's say we need to define a Product model with the following fields:
+
 - title
 - description
 - price
@@ -38,6 +22,7 @@ Let's say we need to define a Product model with the following fields:
 - image
 
 Using [JSON schema definition](https://json-schema.org/) our schema would be:
+
 ```
 {
   "title": "Product",
@@ -63,10 +48,12 @@ Using [JSON schema definition](https://json-schema.org/) our schema would be:
 }
 ```
 
-*Please note all schemas must be created under the `schema` subpath*
+_Please note all schemas must be created under the `schema` subpath_
 
 ## 2. Create an entry
+
 Specify the location, the Meta data, and the Payload (actual product data) data
+
 ```
 {
     "space_name": "dmart_data",
@@ -102,6 +89,7 @@ Now the system retrieves the schema you provided in `attributes.payload.schema_s
 if it's valid, the system stores the entry under `dmart_data/products`.
 
 ## 3. Search
+
 Now you can do a full text search or an attribute based search for that field.
 for example, lets say we want to retrieve all sub-folders under **mysapce** space
 
@@ -126,10 +114,9 @@ we call the `/query` API with the following request body
 And the results would be:
 
 <ListView
-    type={QueryType.subpath}
-    space_name={"myspace"}
-    subpath={"/"}
-    is_clickable={false}
-    scope={"public"}
+type={QueryType.subpath}
+space_name={"myspace"}
+subpath={"/"}
+is_clickable={false}
+scope={"public"}
 />
-

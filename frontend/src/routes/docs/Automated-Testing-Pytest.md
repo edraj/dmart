@@ -1,4 +1,6 @@
-**Automated Testing using Pytest**
+## **Automated Testing using Pytest**
+
+---
 
 **Introduction**
 
@@ -22,9 +24,7 @@ Pytest follows a simple syntax for writing tests, using functions prefixed with 
 
 **Example Test File Structure**
 
-python
-
-```
+```python
 
 # test_myapp.py
 
@@ -46,9 +46,7 @@ client = TestClient(app)
 
 **Example Test Functions**
 
-python
-
-```
+```python
 
 def test_set_superman_cookie():
 response = client.post("/set_superman_cookie")
@@ -73,9 +71,7 @@ assert response.json() == {"status": "success"}
 
 Pytest allows you to define setup and teardown functions using fixtures. These functions run before and after each test function, respectively.
 
-python
-
-```
+```python
 
 import pytest
 
@@ -102,9 +98,7 @@ Pytest provides various assertion functions to validate test outcomes. Some comm
 
 To run tests using Pytest, navigate to the directory containing your test files and run the following command:
 
-bash
-
-```
+```bash
 pytest
 
 ```
