@@ -15,15 +15,17 @@
 }
 </style>
 
-## Installation and Setup Instructions
+### **Installation and Setup Instructions**
 
-### Container (recommended)
+---
+
+**Container (recommended)**
 
 Using podman (or docker), dmart can be fully setup and configured in few minutes.
 
 You only need a command line console, git and podman (or docker).
 
-#### Steps
+**Steps**
 
 ```
 # Clone the git repo
@@ -52,9 +54,9 @@ podman exec -it -w /home/backend dmart ./curl.sh
 
 ```
 
-### Manual (for advanced users)
+**Manual (for advanced users)**
 
-#### Requirements
+**Requirements**
 
 - git
 - jq
@@ -65,7 +67,7 @@ podman exec -it -w /home/backend dmart ./curl.sh
 - RediSearch >= 2.8
 - python venv
 
-### Steps
+**Steps**
 
 ```bash
 
@@ -115,15 +117,15 @@ cp config.env.sample config.env
 
 ```
 
-#### Automated testing
+**Automated testing**
 
-#### Installing python dependencies
+**Installing python dependencies**
 
 ```bash
 pip install --user -r test-requirements.txt
 ```
 
-#### Running
+**Running**
 
 ```bash
 cd backend
@@ -134,7 +136,7 @@ python -m pytest
 <img class="center" src={CLITest} width="300">
 <img class="center" src={PYTest} width="450">
 
-#### Using the Admin UI tool
+**Using the Admin UI tool**
 
 DMART has a comprehensive Admin UI that interacts with the backend entirely via the formal API. It is built with Svelte, Routify3 and SvelteStrap.
 
@@ -152,7 +154,7 @@ yarn build
 caddy run
 ```
 
-### Building tauri binary (Linux AppImage)
+**Building tauri binary (Linux AppImage)**
 
 This allows packaging the admin tool as a desktop application.
 
@@ -168,7 +170,7 @@ yarn tauri build --bundles appimage --debug
 <img class="center" src={AdminUI1}>
 <img class="center" src={AdminUI2}>
 
-### Using the command line tool
+**Using the command line tool**
 
 DMART comes with a command line tool that can run from anywhere. It communicates with DMART over the api.
 

@@ -1,4 +1,6 @@
-## Relationships And Locators
+### **Relationships And Locators**
+
+---
 
 In Dmart, "Relationships" define the connections or associations between different data entities.
 
@@ -40,7 +42,7 @@ These relationships represent the links or dependencies between data entities, e
 
 - **ku**: Kurdish version of the data.
 
-### Create Relationship
+**Create Relationship**
 
 Lets say you have an entry under `space = dmart_data`, `subpath = content`, and `shortname = parent_entry`
 

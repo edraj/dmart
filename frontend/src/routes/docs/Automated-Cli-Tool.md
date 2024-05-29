@@ -1,51 +1,52 @@
-# CLI Tool
+### **Command Line Interface Tool**
 
-## Overview
+---
 
-The Dmart CLI tool provides an interactive command-line interface to manage and interact with a the server. It supports various commands to create, update, delete, and query resources on the server.
+**Overview**
 
-### Key Features:
+Dmart CLI tool provides an interactive command-line interface to manage and interact with the server. It supports various commands to create, update, delete, and query resources on the server.
+
+**Key Features:**
 
 - Interactive command prompt with auto-completion.
 - Manage spaces and resources within spaces.
 - Upload and manipulate schemas, folders, and files.
 - Execute commands in REPL, CMD, or SCRIPT mode.
 
-## Setup and Dependencies
+**Setup and Dependencies**
 
-### Requirements:
+**Requirements:**
 
 - Python 3.6+
 - Dependencies listed in requirements.txt
 
-### Install Dependencies:
+**Install Dependencies:**
 
-bash
-
-```
+```bash
 pip install -r requirements.txt
+
 ```
 
-### Environment Configuration:
+**Environment Configuration:**
 
 Create a config.ini file or set the environment variable BACKEND_ENV to point to your configuration file.
 
-## Code Structure
+**Code Structure**
 
-### Main Components:
+**Main Components:**
 
 1. _Settings Configuration_: Manages application settings from environment variables.
 2. _CLI Modes_: Different modes of running the CLI (REPL, CMD, SCRIPT).
-3. _DMart Class_: Core functionalities for interacting with the DMart server.
+3. _dmart Class_: Core functionalities for interacting with the dmart server.
 4. _CustomCompleter_: Provides auto-completion for commands.
 5. _Action Dispatcher_: Handles execution of various commands.
 6. _Prompt Session_: Manages the interactive REPL session.
 
-## Code Explanation
+**Code Explanation**
 
-### Settings Class
+**Settings Class**
 
-Manages configuration settings for the DMart CLI.
+Manages configuration settings for the dmart CLI.
 python
 class Settings(BaseSettings):
 url: str = "http://localhost:8282"
@@ -58,14 +59,13 @@ pagination: int = 5
 
     model_config = SettingsConfigDict(env_file=os.getenv("BACKEND_ENV", "config.ini"), env_file_encoding="utf-8")
 
-### DMart Class
+**Dmart Class**
 
-Provides methods to interact with the DMart server, including CRUD operations and authentication.
-python
+Provides methods to interact with the dmart server, including CRUD operations and authentication.
 
-```
+```python
 @dataclass
-class DMart:
+class Dmart:
 session = requests.Session()
 headers = {"Content-Type": "application/json"}
 dmart_spaces = []
@@ -139,20 +139,20 @@ current_subpath_entries = []
         # Implementation...
 ```
 
-### CustomCompleter
+**CustomCompleter**
 
 Provides auto-completion for commands and arguments.
 python
 class CustomCompleter(Completer):
 def get*completions(self, document, *): # Implementation...
 
-### Action Dispatcher
+**Action Dispatcher**
 
 Executes commands based on user input.
 python
 def action(text: str): # Command parsing and execution logic
 
-### Interactive Session
+**Interactive Session**
 
 Manages the REPL session with prompt-toolkit.
 python
@@ -172,9 +172,9 @@ session = PromptSession(style=style, completer=CustomCompleter(), history=FileHi
                 break
 ```
 
-## Command Reference
+**Command Reference**
 
-### General Commands
+**General Commands**
 
 - _help_: Displays the help table.
 - _pwd_: Prints the current subpath.
@@ -190,30 +190,24 @@ session = PromptSession(style=style, completer=CustomCompleter(), history=FileHi
 - _progress <args>_: Progresses a ticket into a new state.
 - _switch <space_name>_: Switches the current space.
 
-## Usage Examples
+**Usage Examples**
 
-### Starting the CLI
+**Starting the CLI**
 
-bash
-
-```
+```bash
 ./dmart_cli.py
 ```
 
-### Running a Command
+**Running a Command**
 
-bash
-
-```
+```bash
 ./dmart_cli.py c "create folder new_folder"
 
 ```
 
-### Using the REPL
+**Using the REPL**
 
-bash
-
-```
+```bash
 
 ./dmart_cli.py
 ❯ ls
@@ -221,9 +215,9 @@ bash
 
 ```
 
-## Conclusion
+**Conclusion**
 
-The DMart CLI tool is a powerful interface for managing resources on a DMart server. With its interactive prompt, command auto-completion, and robust set of commands, it simplifies the management of spaces and resources.
+This tool is a powerful interface for managing resources on the server. With its interactive prompt, command auto-completion, and robust set of commands, it simplifies the management of spaces and resources.
 
 ```
 

@@ -1,4 +1,6 @@
-## Roadmap
+### **Roadmap**
+
+---
 
 **Planned improvements**
 

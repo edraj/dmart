@@ -1,4 +1,6 @@
-### Others
+### **Others**
+
+---
 
 **Locators**
 
