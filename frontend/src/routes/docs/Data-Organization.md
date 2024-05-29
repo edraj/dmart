@@ -1,4 +1,30 @@
+<script>
+  import {QueryType} from "@/dmart";
+  import ListView from "@/components/management/ListView.svelte";
+  import Tree from "./assets/tree.png"
+</script>
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
+
 ## Data Organization in Dmart
+
+## Important terms
+
+**Each term has a dedicated section with a detailed explanation**
+
+- **Space**: Top-level business category that facilitates grouping of relevant content.
+- **Subpath**: aka folder, The path within space that leads to an entry
+- **Meta**: Meta information associated with the entry such as owner, shortname, unique uuid, creation/update timestamp, tags ..etc
+- **Schema**: The JSON schema definition of the entry
+- **Payload**: The actual content associated with the entry
+
+<img class="center" src={Tree} width="500">
 
 In DMart nodes, data is organized in a hierarchical structure to facilitate efficient management and access. This documentation outlines the data organization scheme within DMart nodes, focusing on [spaces](Space), [subpaths](Subpath) & folders, [entries](Entries), and [attachments](Attachments).
 
