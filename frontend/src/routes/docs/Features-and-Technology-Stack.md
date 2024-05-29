@@ -1,4 +1,10 @@
-### Features of DMART
+## Table of Contents
+
+- [Features of DMART](#features-of-dmart)
+- [Design Principles](#design-principles)
+- [Technology Stack](#technology-stack)
+
+## Features of DMART
 
 **Unified API (Data-as-a-Service)**
 
@@ -24,7 +30,9 @@
 
 - **Benefits:** Allows for customization and extension of DMART's capabilities to meet specific business needs.
 
-### Design Principles
+---
+
+## Design Principles
 
 **Entry-Based Business-Oriented Data Definitions**
 
@@ -44,7 +52,9 @@
 
 - **Benefits:** Facilitates collaboration and data sharing across different DMART instances, enhancing the platform's versatility and reach.
 
-### Technology Stack
+---
+
+## Technology Stack
 
 **Backend Technologies**
 

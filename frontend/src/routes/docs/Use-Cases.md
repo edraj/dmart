@@ -1,6 +1,6 @@
 ### Special Use Cases in DMART
 
-**1 ) Generalized QR Code Solution for E-commerce**
+**1 ) Transforming User Experience in E-commerce:**
 
 **Step 1: System Setup**
 
@@ -43,6 +43,8 @@
 **Step 7: Customer Feedback and Ratings**
 
 14. Feedback and Ratings: After the shopping experience, invite customers to provide feedback. Use this feedback to improve service quality and product offerings.
+
+---
 
 **Subcase/Special example for E-commerce:**
 
@@ -106,6 +108,8 @@ For example:
 
 17. System Maintenance: Regularly update and maintain the platform to ensure it operates smoothly, securely, and efficiently
 
+---
+
 **2) Dmart as a Solution for General Content Management System (CMS)**
 
 **Key Features and Advantages:**
@@ -137,6 +141,8 @@ For example:
 13. **Multilingual Support**: Provide support for multiple languages and localization options, allowing organizations to reach a global audience and cater to diverse user preferences.
 
 14. **Scalability**: Ensure scalability to accommodate growth and evolving business needs, allowing organizations to expand their content management capabilities as their requirements change over time.
+
+---
 
 **3) Dmart as a Social Media Interaction Platform**
 
@@ -176,6 +182,8 @@ A query that tells what is the trending ( most interactions / most viewed )
 
 14. **Customization [TBD]:** Allow users to customize their profiles and select themes to personalize their experience.
 
+---
+
 **4) Dmart as a Solution for Blogging Platform**
 
 **Key Features and Advantages:**
@@ -195,6 +203,8 @@ A query that tells what is the trending ( most interactions / most viewed )
 7.  **Media Management:** Provide tools for managing and organizing media files, including images, videos, and audio clips, allowing bloggers to easily add multimedia content to their blog posts and enhance visual appeal.
 
 8.  **Community Building:** Foster a sense of community among blog readers and contributors through features such as forums, discussion boards, and user-generated content submissions, creating a vibrant and engaged blogging community.
+
+---
 
 **5) Dmart as a Ticketing system**
 

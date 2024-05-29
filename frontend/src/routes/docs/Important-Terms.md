@@ -1,35 +1,3 @@
-### Important Terms
-
-**Space:**
-
-- **Definition:** A top-level business category that facilitates grouping of relevant content.
-- **Purpose:** Spaces provide a high-level organizational structure for grouping similar data within a DMART instance.
-- **Characteristics:** Each instance of DMART being self-hosted consists of multiple spaces. Spaces serve as independent containers for organizing data.
-
-**Subpath (aka Folder):**
-
-- **Definition:** The path within a space that leads to an entry.
-- **Purpose:** Subpaths help in organizing data into hierarchical structures within spaces, providing a logical structure for data management.
-- **Characteristics:** Subpaths exist within spaces and can contain other subpaths or entries.
-
-**Meta:**
-
-- **Definition:** Meta information associated with an entry, such as owner shortname, unique UUID, creation/update timestamp, tags, etc.
-- **Purpose:** Meta information provides supplementary details about data entities, facilitating management, auditing, and tracking of data changes.
-- **Characteristics:** Meta fields capture common attributes like creation and modification timestamps, user IDs, tags, and more.
-
-**Schema:**
-
-- **Definition:** The JSON schema definition of an entry.
-- **Purpose:** Schemas define the structure and organization of data within a subpath, ensuring consistency and coherence across datasets.
-- **Characteristics:** Schemas specify the attributes, data types, and validation rules for data stored in DMART.
-
-**Payload:**
-
-- **Definition:** The actual content associated with an entry.
-- **Purpose:** The payload contains the substantive data for an entry, adhering to the structure defined by its schema.
-- **Characteristics:** Payload attributes include content type, schema shortname, client checksum, and the body (actual data of the entry).
-
 ### Target Providers
 
 DMART caters to a variety of users and organizations looking to establish their online presence or manage their data efficiently. The platform is designed to be flexible and adaptable to the needs of different providers, including:

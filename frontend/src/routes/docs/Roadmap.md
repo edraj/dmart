@@ -1,4 +1,4 @@
-## Tasks
+## Roadmap
 
 **Planned improvements**
 
@@ -75,6 +75,8 @@ b. `/{managemed,public}/byslug/{slug}`
 - Create a schema definition for the combined meta data, to make it easy to validate meta.
 
 - Why space_name,subpath,resource_type,schema_shortname...etc is not indexed in meta? Saad
+
+---
 
 **Future improvements**
 
