@@ -1,4 +1,6 @@
-## Automated Testing Documentation
+## **Automated Testing Documentation**
+
+---
 
 **Introduction**
 
@@ -11,7 +13,6 @@ Automated testing is a crucial practice in software development that involves us
 3. [API testing with cURL.](Curl-sh)
 
 4. [Automated testing with Pylint.](pylint)
-   **1. Unit Testing with Pytest**
 
 **What is Pytest?**
 
