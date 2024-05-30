@@ -331,8 +331,10 @@ pip download -d ~/.pipi/ $(cat *requirements.txt) virtualenv pip
 rsync -av ~/.pipi/ TARGET_OFFLINE_SERVER:~/.pipi
 
 # On the "offline" target server
+rmdir ~/.pipi
+rmdir ~/.venv
 pip install --no-index --find-links=~/.pipi virtualenv
-virtualenv ~/.venv
+virtualenv --python=/usr/bin/python3.11 ~/.venv # or your favorate py env virtualization tool
 source ~/.venv/bin/activate
 pip install --no-index --find-links=~/.pipi --upgrade pip
 pip install --no-index --find-links=~/.pipi -r requirements.txt -r test-requirements.txt -r plugins-requirements.txt
