@@ -22,6 +22,7 @@
          'Automated-Testing.md',
         'Clients-and-Libraries.md',  
         'Use-Cases.md',
+        'Starter-Kits.md',
         'Roadmap.md'
     ];
 
