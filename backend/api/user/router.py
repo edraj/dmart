@@ -1,6 +1,7 @@
 """ Session Apis """
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 import aiofiles
@@ -323,6 +324,19 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
         ):
             record = await process_user_login(user, response, user_updates, request.firebase_token)
 
+            old_version_flattend = flatten_dict(user.model_dump())
+            user.last_login = datetime.now()
+            new_version_flattend = flatten_dict(user.model_dump())
+            history_diff = await db.update(
+                MANAGEMENT_SPACE,
+                USERS_SUBPATH,
+                user,
+                old_version_flattend,
+                new_version_flattend,
+                list({"last_login": datetime.now()}),
+                MANAGEMENT_BRANCH,
+                shortname,
+            )
             await plugin_manager.after_action(
                 core.Event(
                     space_name=MANAGEMENT_SPACE,
@@ -332,6 +346,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     action_type=core.ActionType.update,
                     resource_type=ResourceType.user,
                     user_shortname=shortname,
+                    attributes={"history_diff": history_diff},
                 )
             )
             return api.Response(status=api.Status.success, records=[record])
@@ -406,6 +421,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     attributes["is_email_verified"] = user.is_email_verified
     attributes["is_msisdn_verified"] = user.is_msisdn_verified
     attributes["force_password_change"] = user.force_password_change
+    attributes["last_login"] = user.last_login
 
     attributes["permissions"] = await access_control.get_user_permissions(shortname)
     attributes["roles"] = user.roles
