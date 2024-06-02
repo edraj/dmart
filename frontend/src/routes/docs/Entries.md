@@ -1,10 +1,12 @@
-# Entries Documentation
+### **Entries Documentation**
 
-## Introduction
+---
+
+#### **Introduction**
 
 Entries in the DMart ecosystem serve as coherent information units or data assets, encapsulating various types of business information. This documentation outlines the key features and use cases of entries within the DMart framework.
 
-## 1) Purpose of Entries
+**1) Purpose of Entries**
 
 Entries serve as fundamental units within the DMart ecosystem, designed to encapsulate and manage coherent information units or data assets. The primary purposes of entries include:
 
@@ -18,7 +20,7 @@ Entries serve as fundamental units within the DMart ecosystem, designed to encap
 - **Support for Arbitrary Attachments**: Entries can include arbitrary attachments, which may be binary or otherwise. These attachments complement the core information stored within entries, providing additional context or supporting data to enrich the data asset.
 - **Hierarchical Folder Structure**: Entries are stored and organized within an arbitrary hierarchical folder structure, commonly referred to as categories, on the file system. This organization facilitates folder-based routes, enabling users to navigate and access entries based on their folder hierarchy.
 
-## 2) Use Cases for Entries
+**2) Use Cases for Entries**
 
 Entries offer a wide range of use cases and functionalities within the DMart ecosystem:
 
