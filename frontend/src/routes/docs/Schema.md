@@ -1,4 +1,6 @@
-## Schema
+### **Schema**
+
+---
 
 In Dmart, a "Schema" defines the structure and organization of data within a Space. It serves as a blueprint or template for how data is stored, organized, and accessed within the system. Think of a Schema as a set of rules or guidelines that dictate the format, data types, and structure of the data stored in a Subpath.
 
