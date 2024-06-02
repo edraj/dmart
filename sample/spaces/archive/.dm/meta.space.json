@@ -1,9 +1,9 @@
 {
-    "uuid": "1ef1131f-53f7-45d8-9565-4c884b1eac71",
-    "shortname": "applications",
+    "uuid": "4a001e1f-a844-4bb9-a340-7f8eb1a77480",
+    "shortname": "archive",
     "is_active": true,
     "displayname": {
-        "en": "Applications"
+        "en": "archive"
     },
     "tags": [],
     "created_at": "2024-09-02T12:55:00.899747",
