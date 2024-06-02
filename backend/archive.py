@@ -2,7 +2,6 @@ import asyncio
 from datetime import datetime
 import json
 from time import time
-from models.core import Meta
 import os
 import shutil
 import sys
