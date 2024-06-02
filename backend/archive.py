@@ -12,9 +12,6 @@ from utils.redis_services import RedisServices
 from utils.settings import settings
 
 
-SPACES_PATH = "../sample/spaces"
-
-
 def redis_doc_to_meta(doc: dict) -> Meta:
     meta_doc_content = {}
     resource_class = getattr(
@@ -76,19 +73,19 @@ async def archive(space: str, subpath: str, schema: str, timewindow: int):
                     continue
 
                 # Move payload file
-                os.makedirs(f"{SPACES_PATH}/archive/{space}/{subpath}", exist_ok=True)
+                os.makedirs(f"{settings.spaces_folder}/archive/{space}/{subpath}", exist_ok=True)
                 shutil.move(
-                    src=f"{SPACES_PATH}/{space}/{subpath}/{record.get('shortname')}.json",
-                    dst=f"{SPACES_PATH}/archive/{space}/{subpath}/{record.get('shortname')}.json",
+                    src=f"{settings.spaces_folder}/{space}/{subpath}/{record.get('shortname')}.json",
+                    dst=f"{settings.spaces_folder}/archive/{space}/{subpath}/{record.get('shortname')}.json",
                 )
 
                 # Move meta folder / files
                 os.makedirs(
-                    f"{SPACES_PATH}/archive/{space}/{subpath}/.dm", exist_ok=True
+                    f"{settings.spaces_folder}/archive/{space}/{subpath}/.dm", exist_ok=True
                 )
                 shutil.move(
-                    src=f"{SPACES_PATH}/{space}/{subpath}/.dm/{record.get('shortname')}",
-                    dst=f"{SPACES_PATH}/archive/{space}/{subpath}/.dm",
+                    src=f"{settings.spaces_folder}/{space}/{subpath}/.dm/{record.get('shortname')}",
+                    dst=f"{settings.spaces_folder}/archive/{space}/{subpath}/.dm",
                 )
 
                 # Delete Payload Doc from Redis
