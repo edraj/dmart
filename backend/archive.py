@@ -72,23 +72,33 @@ async def archive(space: str, subpath: str, schema: str, timewindow: int):
 
                 try:
                     # Move payload file
-                    os.makedirs(f"{settings.spaces_folder}/archive/{space}/{subpath}", exist_ok=True)
-                    shutil.move(
-                        src=f"{settings.spaces_folder}/{space}/{subpath}/{record.get('shortname')}.json",
-                        dst=f"{settings.spaces_folder}/archive/{space}/{subpath}/{record.get('shortname')}.json",
-                    )
+                    payload_file = f"{settings.spaces_folder}/{space}/{record['subpath']}/{record.get('shortname')}.json"
+                    if os.path.exists(payload_file):
+                        os.makedirs(f"{settings.spaces_folder}/archive/{space}/{record['subpath']}", exist_ok=True)
+                        shutil.move(
+                            src=payload_file,
+                            dst=f"{settings.spaces_folder}/archive/{space}/{record['subpath']}/{record.get('shortname')}.json",
+                        )
 
                     # Move meta folder / files
+                    meta_folder = f"{settings.spaces_folder}/{space}/{record['subpath']}"
+                    dest_folder = f"{settings.spaces_folder}/archive/{space}/{record['subpath']}"
+                    if record["resource_type"] != "folder":
+                        meta_folder += "/.dm"
+                        dest_folder += "/.dm"
+                        
+                        
                     os.makedirs(
-                        f"{settings.spaces_folder}/archive/{space}/{subpath}/.dm", exist_ok=True
+                        f"{dest_folder}", exist_ok=True
                     )
                     shutil.move(
-                        src=f"{settings.spaces_folder}/{space}/{subpath}/.dm/{record.get('shortname')}",
-                        dst=f"{settings.spaces_folder}/archive/{space}/{subpath}/.dm",
+                        src = f"{meta_folder}/{record.get('shortname')}",
+                        dst=f"{dest_folder}",
                     )
 
                     # Delete Payload Doc from Redis
-                    await redis_services.json().delete(key=record.get("payload_doc_id"))  # type: ignore
+                    if record.get("payload_doc_id"):
+                        await redis_services.json().delete(key=record.get("payload_doc_id"))  # type: ignore
 
                     # Delete Meta Doc from Redis
                     if "meta_doc_id" in record:
@@ -102,7 +112,7 @@ async def archive(space: str, subpath: str, schema: str, timewindow: int):
                             record["subpath"],
                         )
                 except Exception as e:
-                    print(f"Error archiving {record.get('shortname')}: {e}")
+                    print(f"Error archiving {record.get('shortname')}: {e} at line {sys.exc_info()[-1].tb_lineno}") # type: ignore
                     continue
 
 
