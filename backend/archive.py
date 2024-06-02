@@ -1,5 +1,3 @@
-#!/usr/bin/env -S BACKEND_ENV=config.env python3
-
 import asyncio
 from datetime import datetime
 import json
@@ -43,13 +41,12 @@ async def archive(space: str, subpath: str, schema: str, timewindow: int):
     Returns:
         None
     """
-    limit = 1000
+    limit = 10000
     offset = 0
-    total = 10000
 
     timestamp = int(time()) - (timewindow * 24 * 60 * 60)
     async with RedisServices() as redis_services:
-        while offset < total:
+        while True:
             redis_res = await redis_services.search(
                 space_name=space,
                 branch_name=settings.default_branch,
