@@ -12,7 +12,7 @@ from utils.redis_services import RedisServices
 from utils.settings import settings
 
 
-def redis_doc_to_meta(doc: dict) -> Meta:
+def redis_doc_to_meta(doc: dict):
     meta_doc_content = {}
     resource_class = getattr(
         sys.modules["models.core"],
