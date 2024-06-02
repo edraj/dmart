@@ -1,3 +1,5 @@
+#!/usr/bin/env -S BACKEND_ENV=config.env python3
+
 import asyncio
 from datetime import datetime
 import json
