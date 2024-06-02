@@ -28,33 +28,29 @@
 
 <img class="center" src={Tree} width="500">
 
-In dmart, data is organized in a hierarchical structure to facilitate efficient management and access. This documentation outlines the data organization scheme within dmart, focusing on [spaces](Space), [subpaths](Subpath) & folders, [entries](Entries), and [attachments](Attachments).
-
-#### **Hierarchical Structure**
-
-At the top level of the data organization hierarchy are **spaces**. Spaces represent broad categories or business breakdowns of information groups. Each space serves as a container for organizing related data and resources.
+In dmart, data is organized in a hierarchical structure to facilitate efficient management and access. This documentation outlines the data organization scheme within dmart.
 
 #### **Components of Data Organization**
 
-**Spaces**
+**[Spaces](Space)**
 
 - **Definition:** Spaces are top-level containers that categorize and organize related information groups.
 - **Purpose:** Spaces provide a high-level organizational structure for grouping similar data.
 - **Characteristics:** Each instance of DMart, being self-hosted, consists of multiple spaces. Spaces serve as independent containers for organizing data within a DMart node.
 
-**Folders**
+**[Subpaths & Folders](Subpath)**
 
 - **Definition:** Folders are hierarchical structures within spaces used for further categorization and organization of data.
 - **Purpose:** Folders help in organizing data into subcategories, providing a logical structure for data management.
 - **Characteristics:** Folders exist within spaces and can contain other folders or entries.
 
-**Entries**
+**[Entries](Entries)**
 
 - **Definition:** Entries are individual units of business-relevant information stored within folders.
 - **Purpose:** Entries represent specific data points or pieces of information relevant to the business context.
 - **Characteristics:** Entries can include various attributes and metadata associated with the stored information.
 
-**Attachments**
+**[Attachments](Attachments)**
 
 - **Definition:** Attachments are extensible pieces of information and blobs associated with entries.
 - **Purpose:** Attachments complement entries by providing additional context or supporting data.

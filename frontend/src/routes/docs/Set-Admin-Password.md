@@ -1,4 +1,6 @@
-**Password Generation and Storage**
+### **Password Generation and Storage**
+
+---
 
 **Purpose:**
 
