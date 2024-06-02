@@ -4,7 +4,7 @@ from pathlib import Path
 from uuid import uuid4
 from models.core import Content, Payload
 from models.enums import ContentType
-from jsf import JSF
+from jsf import JSF # type: ignore
 from utils.repository import internal_save_model
 
 
