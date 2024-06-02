@@ -62,7 +62,6 @@ async def archive(space: str, subpath: str, schema: str, timewindow: int):
             )
             if not redis_res or redis_res["total"] == 0:
                 break
-            offset += limit
             
             search_res = redis_res["data"]
 
