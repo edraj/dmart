@@ -4,14 +4,16 @@
   import Tree from "./assets/tree.png"
 </script>
 
-## Examples
+### **Examples**
+
+---
 
 _In this example we will use those attributes_
 `space = dmart_data`
 `subpath = content`
 `schema = product`
 
-## 1. Define your Schema (Model)
+**1. Define your Schema (Model)**
 
 Let's say we need to define a Product model with the following fields:
 
@@ -50,7 +52,7 @@ Using [JSON schema definition](https://json-schema.org/) our schema would be:
 
 _Please note all schemas must be created under the `schema` subpath_
 
-## 2. Create an entry
+**2. Create an entry**
 
 Specify the location, the Meta data, and the Payload (actual product data) data
 
@@ -88,7 +90,7 @@ Specify the location, the Meta data, and the Payload (actual product data) data
 Now the system retrieves the schema you provided in `attributes.payload.schema_shortname` form the same space and the `schema` subpath, and validates the `attributes.payload.body` against it,
 if it's valid, the system stores the entry under `dmart_data/products`.
 
-## 3. Search
+**3. Search**
 
 Now you can do a full text search or an attribute based search for that field.
 for example, lets say we want to retrieve all sub-folders under **mysapce** space

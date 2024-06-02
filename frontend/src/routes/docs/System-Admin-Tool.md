@@ -1,3 +1,20 @@
+<script>
+    import Permission from "./assets/create_permission.png";
+     import Role from "./assets/create_role.png";
+      import Schema from "./assets/create_schema.png";
+       import User from "./assets/create_user.png";
+        import Entry from "./assets/create_entry.png";
+</script>
+
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
+
 ### System Admin Tool (GUI)
 
 **Introduction**
@@ -7,8 +24,10 @@ The System Admin Tool (GUI) is a powerful administrative interface designed to f
 **Key Features**
 
 1.  **Entry Management**: System administrators can create, view, update, and delete entries within the system. This includes the ability to manage various types of entries such as content, tickets, and attachments.
+
 2.  **Schema Definition**: The tool allows users to define schemas, which serve as templates for organizing and structuring data. Administrators can create custom schemas to suit the specific requirements of their organization.
 3.  **Workflow Configuration**: Administrators can define workflows within the system, specifying the steps and processes required to complete tasks or resolve issues. Users can then create tickets associated with these workflows.
+
 4.  **Role and Permission Management**: The tool provides functionality for defining new roles and permissions within the system. Administrators can assign roles to users, control their access levels, and manage permissions based on organizational requirements.
 5.  **User Management**: Using the management space, administrators can create, activate, deactivate, update, and delete user accounts. This includes managing user information, roles, and permissions.
 6.  **Application Configuration**: Administrators can manage various application settings and configurations within the system. This includes updating logs, translations, configurations, announcements, and other system-related parameters.
@@ -16,6 +35,7 @@ The System Admin Tool (GUI) is a powerful administrative interface designed to f
 **Usage**
 
 **Entry Management**
+<img class="center" src={Entry} width="500">
 
 1.  **View Entries**: Navigate to the appropriate space and folder to view existing entries within the system.
 2.  **Create Entry**: Select the desired space and folder, then create a new entry by providing relevant details and attachments.
@@ -23,17 +43,21 @@ The System Admin Tool (GUI) is a powerful administrative interface designed to f
 4.  **Delete Entry**: Remove entries from the system by selecting the entry and confirming the deletion action.
 
 **Schema and Workflow Configuration**
+<img class="center" src={Schema} width="500">
 
 1.  **Define Schema**: Access the schema management interface to define new schemas tailored to specific data structures and requirements.
 2.  **Configure Workflow**: Define workflows by specifying the sequence of steps and actions required to complete tasks or resolve issues.
 
 **Role and Permission Management**
+<img class="center" src={Permission} width="500">
+<img class="center" src={Role} width="500">
 
 1.  **Create Role**: Define new roles within the system by specifying their name, description, and associated permissions.
 2.  **Assign Role**: Assign roles to users by selecting the user and assigning the desired role(s) from the available options.
 3.  **Manage Permissions**: Control user access levels and permissions by modifying role assignments and permissions settings.
 
 **User Management**
+<img class="center" src={User} width="500">
 
 1.  **Create User**: Add new users to the system by providing their details, including username, password, email, and role assignments.
 2.  **Activate/Deactivate User**: Enable or disable user accounts based on organizational requirements.

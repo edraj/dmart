@@ -11,7 +11,9 @@
 }
 </style>
 
-### Introduction
+### **Introduction**
+
+---
 
 <img class="center" src={Logo} width="500">
 

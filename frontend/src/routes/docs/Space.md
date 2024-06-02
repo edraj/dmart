@@ -1,4 +1,6 @@
-### Space
+### **Space**
+
+---
 
 In Dmart, a "Space" refers to a logical partition or container within the system where data is organized, stored, and managed.
 

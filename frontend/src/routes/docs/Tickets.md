@@ -1,4 +1,6 @@
-## Concept of Tickets in Dmart
+### **Concept of Tickets in Dmart**
+
+---
 
 In Dmart, "Tickets" represent units of work or requests submitted to the system for performing specific actions, such as data operations, system modifications, or user requests. Tickets serve as a means of communication and coordination between users and the system, enabling efficient management of tasks and activities within a Space.
 
