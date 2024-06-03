@@ -104,14 +104,18 @@ async def generate_redis_docs(locators: list) -> list:
             myclass = getattr(sys.modules["models.core"], camel_case(one.type))
             # print(f"{one=}")
 
-            meta = await db.load(
-                space_name=one.space_name,
-                branch_name=one.branch_name,
-                subpath=one.subpath,
-                shortname=one.shortname,
-                class_type=myclass,
-                user_shortname="anonymous",
-            )
+            try:
+                meta = await db.load(
+                    space_name=one.space_name,
+                    branch_name=one.branch_name,
+                    subpath=one.subpath,
+                    shortname=one.shortname,
+                    class_type=myclass,
+                    user_shortname="anonymous",
+                )
+            except Exception as e:
+                print(e)
+                continue
             meta_doc_id, meta_data = redis_man.prepate_meta_doc(
                 one.space_name, one.branch_name, one.subpath, meta
             )
