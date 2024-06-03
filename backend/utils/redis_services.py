@@ -293,7 +293,7 @@ class RedisServices(Redis):
             return redis_schema_definition
 
         if "type" in property and property["type"] != "object":
-            if property["type"] in ["null", "boolean"] or not isinstance(
+            if property["type"] == "null" or not isinstance(
                 property["type"], str
             ):
                 return redis_schema_definition
