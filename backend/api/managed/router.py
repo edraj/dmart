@@ -325,13 +325,14 @@ async def serve_space(
             )
 
             resource_obj.is_active = True
-            resource_obj.indexing_enabled = True
             resource_obj.shortname = request.space_name
-            resource_obj.active_plugins = [
+            if isinstance(resource_obj, core.Space) :
+                resource_obj.indexing_enabled = True
+                resource_obj.active_plugins = [
                 "action_log",
                 "redis_db_update",
                 "resource_folders_creation",
-            ]
+                ]
             await db.save(
                 request.space_name,
                 record.subpath,

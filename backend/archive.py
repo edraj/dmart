@@ -1,3 +1,5 @@
+#!/usr/bin/env -S BACKEND_ENV=config.env python3
+
 import asyncio
 from datetime import datetime
 import json
@@ -9,6 +11,7 @@ import argparse
 from utils.helpers import camel_case
 from utils.redis_services import RedisServices
 from utils.settings import settings
+from typing import Awaitable
 
 
 def redis_doc_to_meta(doc: dict):
@@ -29,7 +32,7 @@ def redis_doc_to_meta(doc: dict):
     return resource_class.model_validate(meta_doc_content)
 
 
-async def archive(space: str, subpath: str, schema: str, timewindow: int):
+async def archive(space: str, subpath: str, schema: str, olderthan: int):
     """
     Archives records from a specific space, subpath, and schema.
 
@@ -42,9 +45,9 @@ async def archive(space: str, subpath: str, schema: str, timewindow: int):
         None
     """
     limit = 10000
-    offset = 0
+    counter = 0
 
-    timestamp = int(time()) - (timewindow * 24 * 60 * 60)
+    timestamp = int(time()) - (olderthan * 24 * 60 * 60)
     async with RedisServices() as redis_services:
         while True:
             redis_res = await redis_services.search(
@@ -57,11 +60,13 @@ async def archive(space: str, subpath: str, schema: str, timewindow: int):
                 },
                 exact_subpath=True,
                 limit=limit,
-                offset=offset,
+                offset=0,
 
             )
             if not redis_res or redis_res["total"] == 0:
+                print(f"No more data left. {redis_res=}")
                 break
+            counter += redis_res["total"]
             
             search_res = redis_res["data"]
 
@@ -96,11 +101,15 @@ async def archive(space: str, subpath: str, schema: str, timewindow: int):
 
                     # Delete Payload Doc from Redis
                     if record.get("payload_doc_id"):
-                        await redis_services.json().delete(key=record.get("payload_doc_id"))  # type: ignore
+                        x = redis_services.json().delete(key=record.get("payload_doc_id"))
+                        if isinstance(x, Awaitable):
+                            await x
 
                     # Delete Meta Doc from Redis
                     if "meta_doc_id" in record:
-                        await redis_services.json().delete(key=record.get("meta_doc_id"))  # type: ignore
+                        y = redis_services.json().delete(key=record.get("meta_doc_id"))
+                        if isinstance(y, Awaitable):
+                            await y
                     else:
                         await redis_services.delete_doc(
                             space,
@@ -112,6 +121,7 @@ async def archive(space: str, subpath: str, schema: str, timewindow: int):
                 except Exception as e:
                     print(f"Error archiving {record.get('shortname')}: {e} at line {sys.exc_info()[-1].tb_lineno}") # type: ignore
                     continue
+            print(f'Processed {counter}')
 
 
     await RedisServices.POOL.aclose()
@@ -131,16 +141,16 @@ if __name__ == "__main__":
         nargs="?",
     )
     parser.add_argument(
-        "timewindow",
+        "olderthan",
         type=int,
-        help="Time window in days to consider for archiving.",
+        help="The number of day, older than which, the entries will be archived (based on updated_at)",
     )
 
     args = parser.parse_args()
     space = args.space
     subpath = args.subpath
-    timewindow = args.timewindow
+    olderthan = args.olderthan
     schema = args.schema or "meta"
 
-    asyncio.run(archive(space, subpath, schema, timewindow))
+    asyncio.run(archive(space, subpath, schema, olderthan))
     print("Done.")
