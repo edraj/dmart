@@ -1,9 +1,9 @@
 # Stage 1: Build stage
-FROM alpine:3.18 AS builder
+FROM alpine:3.20 AS builder
 
 # Install necessary packages for building
 RUN set -eux \
-  && apk add git curl openssh-client \
+  && apk add git curl openssh-client openrc \
   && git clone --depth 1 https://github.com/edraj/dmart.git /home/ \
   && mkdir -p /home/redis /home/logs/dmart /home/logs/redis \
   && cp /home/admin_scripts/docker/alpine@imx.sh-5f19b383.rsa.pub /etc/apk/keys/ \
@@ -16,7 +16,7 @@ RUN set -eux \
   && apk add --virtual buildpkgs nodejs npm gcc libffi-dev make g++ musl-dev py3-pip python3-dev py3-wheel py3-setuptools \
   && apk add redis redisearch redisjson --repository=https://apk.imx.sh/packages \
   && cp /home/admin_scripts/docker/Caddyfile /etc/caddy/ \
-  && virtualenv --python=/usr/bin/python3.11 /home/venv \
+  && virtualenv /home/venv \
   && source /home/venv/bin/activate \
   && pip install -r /home/backend/requirements.txt \
   && pip cache purge \
@@ -33,7 +33,7 @@ RUN set -eux \
   && rm -rf /root/.cache /root/.local /var/cache/apk/
 
 # Stage 2: Final stage
-FROM alpine:3.18
+FROM alpine:3.20
 
 # Copy necessary files from build stage
 COPY --from=builder /home /home
