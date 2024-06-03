@@ -1,4 +1,6 @@
-### Tools
+### **Tools**
+
+---
 
 In software development, efficiency and reliability are crucial. To streamline tasks and boost productivity, developers use various tools and libraries that aid different aspects of the development process. In this section, we'll examine some of the scripts used to generate passwords, generate fake data or create indices.
 

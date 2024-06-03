@@ -1,3 +1,16 @@
+<script>
+  import CLITest from "./assets/curl-test.png";
+</script>
+
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
+
 ### **Automated Testing using curl.sh**
 
 ---
@@ -37,3 +50,4 @@ To use the curl.sh script:
 **Conclusion:**
 
 The curl.sh script serves as a valuable tool for automating the testing of API endpoints, enabling developers to rapidly verify the correctness and stability of their web services. By systematically exercising various functionalities and scenarios, automated testing helps identify bugs, regressions, and performance issues early in the development lifecycle, contributing to overall software quality and reliability.
+<img class="center" src={CLITest} width="300">

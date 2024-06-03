@@ -1,3 +1,18 @@
+<script>
+
+  import PYTest from "./assets/pytest.png";
+
+</script>
+
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
+
 ## **Automated Testing using Pytest**
 
 ---
@@ -104,3 +119,5 @@ pytest
 ```
 
 Pytest will automatically discover and execute all test functions within the directory.
+
+<img class="center" src={PYTest} width="450">

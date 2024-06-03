@@ -1,10 +1,15 @@
 ### **DMART CLIENTS**
 
-- [ TypeScript client library for DMART](#typescript-client-library-for-dmart)
-- [Flutter client library for DMART](#flutter-client-library-for-dmart)
-- [Python client library for DMART](#python-client-library-for-dmart)
-
 ---
+
+<div style="float:right; width:20%; padding-left:10px; border-left:1px solid gray;">
+    <h3>Table of Contents</h3>
+    <ul>
+        <li><a href="#typescript-client-library-for-dmartt">TypeScript client library for DMART</a></li>
+        <li><a href="#flutter-client-library-for-dmart">Flutter client library for DMART</a></li>
+        <li><a href="#python-client-library-for-dmart">Python client library for DMART</a></li>
+    </ul>
+</div>
 
 ##### **1) TypeScript client library for DMART**
 

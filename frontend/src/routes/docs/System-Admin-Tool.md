@@ -3,6 +3,8 @@
      import Role from "./assets/create_role.png";
       import Schema from "./assets/create_schema.png";
        import User from "./assets/create_user.png";
+         import AdminUI1 from "./assets/admin_ui_1.png";
+  import AdminUI2 from "./assets/admin_ui_2.png";
         import Entry from "./assets/create_entry.png";
 </script>
 
@@ -21,7 +23,37 @@
 
 **Introduction**
 
-The System Admin Tool (GUI) is a powerful administrative interface designed to facilitate the management of entries within a system. It provides system administrators with the ability to view, update, and delete entries based on their role and associated permissions. This tool serves as a centralized platform for accessing and manipulating data, similar to interacting with a database.
+The System Admin Tool (GUI) is a powerful administrative interface designed to facilitate the management of entries within a system. It provides system administrators with the ability to view, update, and delete entries based on their role and associated permissions. This tool serves as a centralized platform for accessing and manipulating data, similar to interacting with a database.DMART has a comprehensive Admin UI that interacts with the backend entirely via the formal API. It is built with Svelte, Routify3 and SvelteStrap.\
+
+```bash
+cd dmart/frontend
+yarn install
+
+# Configure the dmart server backend url in src/config.ts
+
+# To run in Development mode
+yarn dev
+
+# To build and run in production / static file serving mode (i.e. w/o nodejs) using Caddy
+yarn build
+caddy run
+```
+
+**Building tauri binary (Linux AppImage)**
+
+This allows packaging the admin tool as a desktop application.
+
+```
+# Regular build without inspection
+yarn tauri build --bundles appimage
+
+# To add inspection (right mouse click -> inspect)
+yarn tauri build --bundles appimage --debug
+
+```
+
+<img class="center" src={AdminUI1}>
+<img class="center" src={AdminUI2}>
 
 **Key Features**
 

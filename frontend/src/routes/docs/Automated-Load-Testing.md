@@ -15,6 +15,18 @@ Before writing load tests, ensure that you have Locust installed in your Python 
 
 ```
 
+**Getting Started with Locust:**
+
+1. **Installation:** Use pip to install Locust: `pip install locust`
+2. **Running the Test:** Run the command `locust` in your terminal `path_to/dmart/backend` to launch the Locust web UI, ande run : `locust` as command line, then open: `0.0.0.0:8089` on your browser.
+3. **Web UI Interaction:** Within the web UI, configure your test parameters (number of users, duration) and initiate the load test.
+4. **Analyzing Results:** After running the test, Locust generates reports with detailed performance metrics for analysis.
+
+**Additional Resources:**
+
+- Locust Documentation: [https://docs.locust.io/](https://docs.locust.io/)
+- Locust Examples: [https://docs.locust.io/](https://docs.locust.io/)
+
 **Writing Load Tests**
 
 Locust allows you to define user behavior as tasks within a Python class. These tasks simulate user actions, such as making HTTP requests to your application endpoints. Here's an example of a Locust test file:

@@ -6,25 +6,15 @@
 
 1. Hashed history : like git, only one change can be applied at a time.
 
-2. Add relations to meta : array of relations to other locators
+2. Add attributes to meta : general purpsoe key-value section
 
-3. Add attributes to meta : general purpsoe key-value section
+3. Export : export.json (export date/space/subpath/ notes ...) + meta + payload + history + attachments ...
 
-4. Export : export.json (export date/space/subpath/ notes ...) + meta + payload + history + attachments ...
+4. Create/Edit/Update lock (file or redis)
 
-5. Create/Edit/Update lock (file or redis)
+5. Change ticket reporter to relation
 
-6. Change ticket reporter to relation
-
-7. Maqola : fix author, editor/owner, profiles/authors ...etc
-
-8. Uuid : each entry (folder/space/content ... ) has unique uuid
-
-9. New api end point : like /managed/entry api :
-
-a. `/{managemed,public}/byuuid/{uuid}`
-
-b. `/{managemed,public}/byslug/{slug}`
+6. Maqola : fix author, editor/owner, profiles/authors ...etc
 
 **A : To create one large index for all entries across all spaces ...**
 
