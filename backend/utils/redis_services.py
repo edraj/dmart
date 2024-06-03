@@ -1177,10 +1177,12 @@ class RedisServices(Redis):
         
         for offset in range(0, total_docs, batch_size):
             query = Query(search_str).paging(offset, batch_size)
-            results = await ft_index.search(query)
+            results = ft_index.search(query)
+            if results and isinstance(results, Awaitable):
+                results = await results
             
             if 'results' not in results or not isinstance(results['results'], list):
                 break
-            document_ids.extend([doc['id'] for doc in results['results']])
+            document_ids.extend([doc['id'] for doc in results['results']]) #type: ignore
         
         return document_ids
