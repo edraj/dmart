@@ -241,7 +241,7 @@ async def load(
         try:
             return class_type.model_validate_json(content)
         except Exception as e:
-            raise Exception(f"Error Invalid Entry: {e}. At: {path}")
+            raise Exception(f"Error Invalid Entry At: {path}. Error {e}")
 
 
 def load_resource_payload(
