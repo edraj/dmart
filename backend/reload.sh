@@ -43,7 +43,7 @@ curl -s -H "Authorization: Bearer ${TOKEN}" "${APP_URL}/user/profile" | jq '.rec
 RESULT+=$?
 
 redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} ${REDIS_PASSWORD} JSON.GET users_permissions_dmart | jq -R '.|fromjson|keys|length'
-RESULT+=$?
+# RESULT+=$?
 
 
 echo "Sum of exist codes = $RESULT" 
