@@ -1127,7 +1127,7 @@ class RedisServices(Redis):
         try:
             return await self.delete(*keys)
         except Exception as e:
-            logger.warning(f"Error at redis_services.def_keys {keys}: {e}")
+            logger.warning(f"Error at redis_services.del_keys {keys}: {e}")
             return False
 
     async def get_key(self, key) -> str | None:
@@ -1162,3 +1162,27 @@ class RedisServices(Redis):
         x = self.ft().execute_command("FT._LIST")
         if x and isinstance(x, Awaitable):
             return await x
+        
+    
+    
+    async def get_all_document_ids(self, index: str, search_str: str = "*") -> list[str]:        
+        # Initialize the list to hold document IDs
+        document_ids = []
+        
+        # Fetch all document IDs
+        ft_index = self.ft(index)
+        total_docs = int((await ft_index.info())['num_docs'])
+        
+        batch_size = 10000  # You can adjust the batch size based on your needs
+        
+        for offset in range(0, total_docs, batch_size):
+            query = Query(search_str).paging(offset, batch_size)
+            results = ft_index.search(query)
+            if results and isinstance(results, Awaitable):
+                results = await results
+            
+            if 'results' not in results or not isinstance(results['results'], list):
+                break
+            document_ids.extend([doc['id'] for doc in results['results']]) #type: ignore
+        
+        return document_ids
