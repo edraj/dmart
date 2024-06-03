@@ -2,12 +2,17 @@
 
 ---
 
-- [Transforming User Experience in E-commerce](#transforming-user-experience-in-e-commerce)
-- [QR Code Order System](#qr-code-order-system)
-- [DMART as a Solution for Content Management System (CMS)](#dmart-as-a-solution-for-content-management-system-cms)
-- [DMART as a Social Media Interaction Platform](#dmart-as-a-social-media-interaction-platform)
-- [DMART as a Solution for Blogging Platform](#dmart-as-a-solution-for-blogging-platform)
-- [DMART as a Ticketing System](#dmart-as-a-ticketing-system)
+<div style="float:right; width:16%; padding-left:10px; border-left:1px solid gray;">
+    <h3>Table of Contents</h3>
+    <ul>
+        <li><a href="#transforming-user-experience-in-e-commerce">Transforming User Experience in E-commerce</a></li>
+        <li><a href="#qr-code-order-system">QR Code Order System</a></li>
+        <li><a href="#dmart-as-a-solution-for-content-management-system-cms">DMART as a Solution for Content Management System (CMS)</a></li>
+          <li><a href="#dmart-as-a-social-media-interaction-platform">DMART as a Social Media Interaction Platform</a></li>
+            <li><a href="#dmart-as-a-solution-for-blogging-platform">DMART as a Solution for Blogging Platform</a></li>
+              <li><a href="#dmart-as-a-ticketing-system">DMART as a Ticketing System</a></li>
+    </ul>
+</div>
 
 ### Diverse User Base of DMART
 

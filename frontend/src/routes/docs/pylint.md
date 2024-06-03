@@ -34,6 +34,7 @@ Pylint is a static code analyzer that helps identify programming errors, enforce
 To customize Pylint’s behavior, generate a `.pylintrc` configuration file:
 
 bash
+./
 
 ```
 pylint --generate-rcfile > .pylintrc
@@ -119,61 +120,14 @@ bash
 ./run_linters.sh
 ```
 
-** Integrating with Continuous Integration (CI)**
+**Another Example to run it**
 
-Automate the linting and static analysis process by integrating the script into your CI/CD pipeline. Below is an example of a GitHub Actions workflow configuration:
+```bash
+cd backend
 
-**GitHub Actions Workflow**
-
-Create a file named `.github/workflows/lint-and-test.yml` with the following content:
-
+# Start the pylint
+./pylint.sh
 ```
-
-
-
-name: Lint and Test
-
-
-
-on: [push, pull_request]
-
-jobs:
-
-lint:
-
-runs-on: ubuntu-latest
-
-steps:
-
-- name: Checkout code
-
-uses: actions/checkout@v2
-
-
-
-- name: Set up Python
-
-uses: actions/setup-python@v2
-
-with:
-
-python-version: '3.x'
-
-- name: Install dependencies
-
-run: |
-
-python -m pip install --upgrade pip
-
-pip install pylint pyright ruff mypy
-
-- name: Run linters
-
-run: ./run_linters.sh
-
-```
-
-This workflow runs the `run_linters.sh` script on every push and pull request, ensuring that your codebase remains consistent and adheres to the defined quality standards.
 
 **Conclusion**
 

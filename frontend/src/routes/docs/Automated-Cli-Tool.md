@@ -1,10 +1,24 @@
+<script>
+
+  import CLI from "./assets/cli.png";
+</script>
+
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
+
 ### **Command Line Interface Tool**
 
 ---
 
 **Overview**
 
-Dmart CLI tool provides an interactive command-line interface to manage and interact with the server. It supports various commands to create, update, delete, and query resources on the server.
+DMART comes with a command line tool that can run from anywhere. It communicates with DMART over the api.
 
 **Key Features:**
 
@@ -30,50 +44,6 @@ pip install -r requirements.txt
 **Environment Configuration:**
 
 Create a config.ini file or set the environment variable BACKEND_ENV to point to your configuration file.
-
-**Code Structure**
-
-**Main Components:**
-
-1. _Settings Configuration_: Manages application settings from environment variables.
-2. _CLI Modes_: Different modes of running the CLI (REPL, CMD, SCRIPT).
-3. _dmart Class_: Core functionalities for interacting with the dmart server.
-4. _CustomCompleter_: Provides auto-completion for commands.
-5. _Action Dispatcher_: Handles execution of various commands.
-6. _Prompt Session_: Manages the interactive REPL session.
-
-**CustomCompleter**
-
-Provides auto-completion for commands and arguments.
-python
-class CustomCompleter(Completer):
-def get*completions(self, document, *): # Implementation...
-
-**Action Dispatcher**
-
-Executes commands based on user input.
-python
-def action(text: str): # Command parsing and execution logic
-
-**Interactive Session**
-
-Manages the REPL session with prompt-toolkit.
-python
-
-```
-if **name** == "**main**":
-session = PromptSession(style=style, completer=CustomCompleter(), history=FileHistory(".cli_history"))
-
-    if len(sys.argv) >= 2:
-        # Handle CMD or SCRIPT mode
-    else:
-        while True:
-            try:
-                text = session.prompt([("class:prompt", "❯ ")], cursor=CursorShape.BLINKING_UNDERLINE, bottom_toolbar=bottom_toolbar, complete_in_thread=True, complete_while_typing=True)
-                action(text)
-            except (KeyboardInterrupt, EOFError):
-                break
-```
 
 **Command Reference**
 
@@ -117,6 +87,23 @@ session = PromptSession(style=style, completer=CustomCompleter(), history=FileHi
 ❯ create folder new_folder
 
 ```
+
+**Other Example Usage**
+
+```bash
+cd cli
+
+# Create config.ini with proper access details (url, credentials ...etc)
+cp config.ini.sample config.ini
+
+# Install additional packages
+pip install --user  -r requirements.txt
+
+# Start the cli tool
+./cli.py
+```
+
+<img class="center" src={CLI} width="450">
 
 **Conclusion**
 
