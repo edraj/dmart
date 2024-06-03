@@ -238,7 +238,10 @@ async def load(
     path /= filename
     async with aiofiles.open(path, "r") as file:
         content = await file.read()
-        return class_type.model_validate_json(content)
+        try:
+            return class_type.model_validate_json(content)
+        except Exception as e:
+            raise Exception(f"Error Invalid Entry At: {path}. Error {e}")
 
 
 def load_resource_payload(
