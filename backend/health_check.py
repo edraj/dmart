@@ -34,6 +34,15 @@ spaces_schemas: dict[str, dict[str, dict]] = {}
 
 
 async def main(health_type: str, space_param: str, schemas_param: list, branch_name: str):
+    spaces = await get_spaces()
+    if space_param not in spaces:
+        print("space name is not found")
+        return None
+    space_obj = core.Space.model_validate_json(spaces[space_param])
+    if not space_obj.check_health:
+        print(f"EARLY EXIT, health check disabled for space {space_param}")
+        return None
+    
     await cleanup_spaces()
     is_full: bool = True if not args.space or args.space == 'all' else False
     print_header()
@@ -329,7 +338,7 @@ async def hard_health_check(space_name: str, branch_name: str):
     # remove checking check_health value from meta space
     # space_obj = core.Space.model_validate_json(spaces[space_name])
     # if not space_obj.check_health:
-    #     print("EARLY EXIT")
+    #     print(f"EARLY EXIT, health check disabled for space {space_name}")
     #     return None
 
     invalid_folders : list = []
