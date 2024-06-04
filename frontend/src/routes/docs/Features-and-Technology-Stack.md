@@ -1,4 +1,29 @@
-### Features of DMART
+<script>
+
+  import BACKEND from "./assets/backend.png";
+</script>
+
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
+
+<div style="float:right; width:12%; padding-left:10px; border-left:1px solid gray;">
+    <h3>Table of Contents</h3>
+    <ul>
+        <li><a href="#features-of-dmart">Features of DMART</a></li>
+        <li><a href="#design-principles">Design Principles</a></li>
+        <li><a href="#technology-stack">Technology Stack</a></li>
+    </ul>
+</div>
+
+### **Features of DMART**
+
+---
 
 **Unified API (Data-as-a-Service)**
 
@@ -24,7 +49,9 @@
 
 - **Benefits:** Allows for customization and extension of DMART's capabilities to meet specific business needs.
 
-### Design Principles
+---
+
+## Design Principles
 
 **Entry-Based Business-Oriented Data Definitions**
 
@@ -44,8 +71,11 @@
 
 - **Benefits:** Facilitates collaboration and data sharing across different DMART instances, enhancing the platform's versatility and reach.
 
-### Technology Stack
+---
 
+## Technology Stack
+
+<img class="center" src={BACKEND} width="300">
 **Backend Technologies**
 
 - **Programming Language:** Python 3.11 (latest revision)

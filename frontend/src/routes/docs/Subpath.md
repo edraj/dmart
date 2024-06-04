@@ -1,4 +1,6 @@
-## Subpath
+### **Subpath**
+
+---
 
 In Dmart, a "Subpath" represents a hierarchical structure within a Space that helps organize and categorize data further. It serves as a way to create a nested hierarchy of folders or directories within a Space, allowing users to group related data together in a logical manner. Think of a Subpath as a subdirectory or subfolder within a Space, enabling finer-grained organization and management of data.
 

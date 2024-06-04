@@ -1,8 +1,10 @@
-## Meta Attributes
+### **Meta Attributes**
+
+---
 
 In Dmart, the concept of "Meta Class" or "Meta fields" refers to the metadata associated with data entities within a Space. These metadata fields provide supplementary information about the data, such as creation timestamp, modification timestamp, creator user ID, or any other relevant information that describes the characteristics or history of the data entity.
 
-### Purpose of Meta Class
+**Purpose of Meta Class**
 
 1.  **Metadata Management**: Meta fields in Dmart allow for the management of metadata associated with data entities within a Space. This metadata can include information about the data entity's creation, modification, ownership, or any other relevant attributes.
 
@@ -12,7 +14,7 @@ In Dmart, the concept of "Meta Class" or "Meta fields" refers to the metadata as
 
 4.  **Customization and Extensibility**: Meta fields offer flexibility for customization and extensibility of metadata based on specific requirements. Users can define custom meta fields to capture additional information relevant to their use case, allowing for a tailored approach to metadata management.
 
-### Key Features of Meta Class
+**Key Features of Meta Class**
 
 1.  **Standard Meta Fields**: Dmart provides a set of standard meta fields that capture common metadata attributes such as creation timestamp, modification timestamp, and user ID. These standard fields serve as a baseline for metadata management within a Space.
 
@@ -20,7 +22,7 @@ In Dmart, the concept of "Meta Class" or "Meta fields" refers to the metadata as
 
 3.  **Metadata Indexing**: Dmart supports indexing of meta fields, enabling efficient querying and retrieval of metadata information. Indexing meta fields improves query performance and facilitates advanced metadata-based searches within a Space.
 
-### Attributes
+**Attributes**
 
 1.  **uuid**: The auto-generated unique identifier of the entry
 
@@ -46,10 +48,10 @@ In Dmart, the concept of "Meta Class" or "Meta fields" refers to the metadata as
 
 12. **payload**: Contains the following attributes
 
-12.1. **content_type**: the type of the data, supported types are listed below
+- 12.1. **content_type**: the type of the data, supported types are listed below
 
-12.2. **schema_shortname**: the shortname of the schema of this entry
+- 12.2. **schema_shortname**: the shortname of the schema of this entry
 
-12.3. **client_checksum**: optional field the client can provide and the system would validate the entry's data actual checksum according to the provided value
+- 12.3. **client_checksum**: optional field the client can provide and the system would validate the entry's data actual checksum according to the provided value
 
-12.4. **body**: The actual data of the entry
+- 12.4. **body**: The actual data of the entry

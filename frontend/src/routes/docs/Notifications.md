@@ -1,4 +1,6 @@
-## Notifications
+### **Notifications**
+
+---
 
 The notification module keeps users informed about important events or activities within your dmart application. It allows for sending targeted messages to users based on various criteria.
 
