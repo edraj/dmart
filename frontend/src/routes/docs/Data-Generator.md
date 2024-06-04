@@ -1,4 +1,6 @@
-**Data Faker Tool / Data Generator**
+### **Data Faker Tool / Data Generator**
+
+---
 
 The Data Faker Tool is a script designed to generate fake records based on a specified schema. It creates resources of type `Content` and stores the data in a flat-file database and Redis. This documentation provides an overview of the tool, its usage, and a detailed explanation of its components.
 

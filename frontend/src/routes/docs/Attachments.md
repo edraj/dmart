@@ -1,4 +1,6 @@
-## Attachments
+### **Attachments**
+
+---
 
 Attachments within Dmart encompass any additional file or document linked to a data entity within a Space. These attachments enrich the associated data by providing relevant files such as images, documents, spreadsheets, or multimedia, thereby enhancing the comprehensiveness and utility of the data.
 

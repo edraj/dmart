@@ -1,4 +1,6 @@
-## Automated Testing Documentation
+## **Automated Testing Documentation**
+
+---
 
 **Introduction**
 
@@ -6,11 +8,11 @@ Automated testing is a crucial practice in software development that involves us
 
 1. [Unit testing with Pytest](Automated-Testing-Pytest)
 
-2. [Load testing with Locust](Automated-Load-Testing)
+2. [Automated Load testing](Automated-Load-Testing)
 
 3. [API testing with cURL.](Curl-sh)
 
-**1. Unit Testing with Pytest**
+4. [Automated testing with Pylint.](pylint)
 
 **What is Pytest?**
 
