@@ -1,3 +1,17 @@
+<script>
+
+  import BACKEND from "./assets/backend.png";
+</script>
+
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
+
 <div style="float:right; width:12%; padding-left:10px; border-left:1px solid gray;">
     <h3>Table of Contents</h3>
     <ul>
@@ -61,6 +75,7 @@
 
 ## Technology Stack
 
+<img class="center" src={BACKEND} width="300">
 **Backend Technologies**
 
 - **Programming Language:** Python 3.11 (latest revision)
