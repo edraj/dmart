@@ -17,7 +17,7 @@ from utils.helpers import branch_path, replace_message_vars
 # from utils.notification import NotificationContext, send_notification
 from utils.settings import settings
 from fastapi.logger import logger
-from utils.db import load, load_resource_payload, get_entry_attachments
+from utils.data_repo import data_adapter as db
 from utils.operational_repo import operational_repo
 
 class Plugin(PluginBase):
@@ -42,14 +42,14 @@ class Plugin(PluginBase):
             entry = data.attributes["entry"].model_dump()
         else:
             entry = (
-                await load(dto)
+                await db.load(dto)
             ).model_dump() #type: ignore
             if (
                 entry["payload"]
                 and entry["payload"]["content_type"] == ContentType.json
                 and entry["payload"]["body"]
             ):
-                entry["payload"]["body"] = await load_resource_payload(dto)
+                entry["payload"]["body"] = await db.load_resource_payload(dto)
         entry["space_name"] = data.space_name
         entry["resource_type"] = str(data.resource_type)
         entry["subpath"] = data.subpath
@@ -157,7 +157,7 @@ class Plugin(PluginBase):
             / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}"
             f"/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
-        notification_attachments = await get_entry_attachments(
+        notification_attachments = await db.get_entry_attachments(
             subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
             branch_name=notification_dict["branch_name"],
             attachments_path=attachments_path,

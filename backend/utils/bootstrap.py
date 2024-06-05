@@ -4,7 +4,8 @@ from utils.settings import settings
 import models.core as core
 from utils.regex import FILE_PATTERN, SPACES_PATTERN
 from utils.operational_repo import operational_repo
-from utils import db
+from utils.data_repo import data_adapter as db
+
 
 async def load_permissions_and_roles() -> None:
     management_path = settings.spaces_folder / settings.management_space
@@ -33,11 +34,14 @@ async def load_permissions_and_roles() -> None:
                     resource_type=ResourceType(module_class.__name__.lower()),
                     user_shortname="anonymous"
                 )
-                resource_obj : core.Meta = await db.load(dto)
+                print("@@@", dto)
+                resource_obj: core.Meta = await db.load(dto)
+                print("@@", resource_obj.is_active)
                 if resource_obj and resource_obj.is_active:
                     access_control_models.setdefault(module_name, [])
                     access_control_models[module_name].append(resource_obj)
             except Exception as ex:
+                print(ex)
                 print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
                 raise ex
 

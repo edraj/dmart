@@ -1,7 +1,7 @@
 import sys
 from models.core import ActionType, Attachment, EntityDTO, PluginBase, Event, Space
 from utils.helpers import camel_case
-import utils.db as db
+from utils.data_repo import data_adapter as db
 from models import core
 from models.enums import ResourceType
 from fastapi.logger import logger

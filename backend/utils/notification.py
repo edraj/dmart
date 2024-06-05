@@ -6,7 +6,7 @@ from models.core import EntityDTO, NotificationData
 from models.enums import ResourceType
 from utils.settings import settings
 from models.core import User
-from utils.db import load
+from utils.data_repo import data_adapter as db
 from fastapi.logger import logger
 
 
@@ -18,7 +18,7 @@ class Notifier(ABC):
 
     async def _load_user(self, shortname: str) -> User:
         if not hasattr(self, "user"):
-            self.user: User = await load(EntityDTO(
+            self.user: User = await db.load(EntityDTO(
                 space_name=settings.management_space,
                 subpath=settings.users_subpath,
                 shortname=shortname,

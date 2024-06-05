@@ -5,7 +5,7 @@ from utils.helpers import branch_path
 from utils.notification import NotificationManager
 from utils.settings import settings
 from fastapi.logger import logger
-from utils.db import load, load_resource_payload, save_payload_from_json, get_entry_attachments
+from utils.data_repo import data_adapter as db
 from utils.operational_repo import operational_repo
 
 class Plugin(PluginBase):
@@ -25,12 +25,12 @@ class Plugin(PluginBase):
             return
 
         notification_dto = EntityDTO.from_event_data(data)
-        notification_request_meta: Content = await load(notification_dto)
+        notification_request_meta: Content = await db.load(notification_dto)
         notification_dict = notification_request_meta.model_dump()
         notification_dict["subpath"] = data.subpath
         notification_dict["branch_name"] = data.branch_name
 
-        notification_request_payload = await load_resource_payload(notification_dto)
+        notification_request_payload = await db.load_resource_payload(notification_dto)
         notification_dict.update(notification_request_payload)
 
         if not notification_dict or notification_dict.get("scheduled_at", False):
@@ -84,7 +84,7 @@ class Plugin(PluginBase):
                 )
 
         notification_request_payload["status"] = "finished"
-        await save_payload_from_json(
+        await db.save_payload_from_json(
             dto=notification_dto,
             meta=notification_request_meta,
             payload_data=notification_request_payload,
@@ -97,7 +97,7 @@ class Plugin(PluginBase):
             / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}/"
             f"{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
-        notification_attachments = await get_entry_attachments(
+        notification_attachments = await db.get_entry_attachments(
             subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
             branch_name=notification_dict["branch_name"],
             attachments_path=attachments_path,

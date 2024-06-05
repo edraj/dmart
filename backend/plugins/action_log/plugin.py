@@ -2,7 +2,7 @@ import aiofiles
 from utils.middleware import get_request_data
 from models.core import ActionType, EntityDTO, PluginBase, Event
 from models.enums import ContentType, ResourceType
-from utils.db import load_or_none, load_resource_payload
+from utils.data_repo import data_adapter as db
 from models.core import Action, Locator, Meta
 from utils.helpers import branch_path
 from utils.settings import settings
@@ -23,12 +23,12 @@ class Plugin(PluginBase):
             logger.warning("invalid data at action_log")
             return
 
-        dto=EntityDTO.from_event_data(data)
+        dto = EntityDTO.from_event_data(data)
         
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"]
         else:
-            entry = await load_or_none(dto)
+            entry = await db.load_or_none(dto)
         if not entry:
             return
 
@@ -40,7 +40,7 @@ class Plugin(PluginBase):
                 entry.payload.content_type == ContentType.json
                 and entry.payload.body
             ):
-                payload = await load_resource_payload(dto)
+                payload = await db.load_resource_payload(dto)
             action_attributes = self.generate_create_event_attributes(entry, payload)
 
         elif data.action_type == ActionType.update:

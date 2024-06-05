@@ -2,7 +2,7 @@ from fastapi.logger import logger
 from models.core import EntityDTO, Event, PluginBase, User
 from models.enums import ActionType, ResourceType
 from utils.settings import settings
-from utils.db import load
+from smtg.db import load
 
 from ldap3 import AUTO_BIND_NO_TLS, MODIFY_REPLACE, Server, Connection, ALL
 
