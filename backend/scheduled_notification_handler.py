@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from models.api import Query
 from models.core import Content, EntityDTO, Notification, NotificationData, Translation
 from models.enums import QueryType, ResourceType
-from utils.db import load as load_meta, get_entry_attachments
+from utils.data_repo import data_adapter as db
 from utils.helpers import branch_path
 from utils.notification import NotificationManager
 from utils.operational_repo import operational_repo
@@ -86,7 +86,7 @@ async def trigger_admin_notifications() -> None:
                 resource_type=ResourceType.content,
                 user_shortname=notification_dict["owner_shortname"],
             )
-            notification_meta: Content = await load_meta(dto)
+            notification_meta: Content = await db.load_meta(dto)
             await operational_repo.internal_sys_update_model(
                 dto=dto,
                 meta=notification_meta,
@@ -106,7 +106,7 @@ async def prepare_request(notification_dict) -> dict:
         / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}"
         f"/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
     )
-    notification_attachments = await get_entry_attachments(
+    notification_attachments = await db.get_entry_attachments(
         subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
         branch_name=notification_dict["branch_name"],
         attachments_path=attachments_path,

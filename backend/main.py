@@ -17,7 +17,7 @@ from pydantic import  ValidationError
 from languages.loader import load_langs
 from utils.bootstrap import bootstrap_all
 from utils.middleware import CustomRequestMiddleware
-from utils.jwt import JWTBearer
+from utils.jwt import JWTBearer, decode_jwt
 from utils.plugin_manager import plugin_manager
 from utils.redis_services import RedisServices
 from fastapi import Depends, FastAPI, Request, Response, status
@@ -322,7 +322,10 @@ async def middle(request: Request, call_next):
             },
         }
     }
-
+    token = request.headers.get("authorization", None)
+    if token:
+        token = token.replace("Bearer ", "")
+        extra["props"]["request"]["token"] = decode_jwt(token)
     if exception_data is not None:
         extra["props"]["exception"] = exception_data
     if (hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict) 

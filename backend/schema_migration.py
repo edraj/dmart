@@ -3,7 +3,8 @@ import asyncio
 from enum import Enum
 import re
 from models.enums import ContentType, ResourceType
-from utils import db, helpers
+from utils import helpers
+from utils.data_repo import data_adapter as db
 from models.core import EntityDTO, Meta, Schema
 from utils.redis_services import RedisServices
 from utils.settings import settings

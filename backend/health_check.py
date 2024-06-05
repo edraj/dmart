@@ -16,7 +16,7 @@ from jsonschema.validators import Draft7Validator
 
 from api.managed.router import serve_request
 from models.core import EntityDTO, Folder, Meta
-from utils import db
+from utils.data_repo import data_adapter as db
 from utils.custom_validations import get_schema_path, validate_payload_with_schema
 from utils.helpers import camel_case, branch_path
 from models import core, api
