@@ -69,7 +69,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
 
     elif not health_type or health_type == 'hard':
         print("Running hard healthcheck")
-        spaces  : dict = {space_param : {}}
+        spaces = {space_param : {}}
         if is_full:
             spaces = await get_spaces()
         for space in spaces:
