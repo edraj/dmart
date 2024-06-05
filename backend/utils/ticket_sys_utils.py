@@ -1,7 +1,7 @@
 import models.api as api
 from fastapi import status
 from models.enums import ResourceType
-import utils.db as db
+from utils.data_repo import data_adapter as db
 import models.core as core
 from utils.internal_error_code import InternalErrorCode
 from utils.access_control import access_control

@@ -293,7 +293,7 @@ class Meta(Resource):
             )
 
         record_fields = {
-            "resource_type": snake_case(type(self).__name__),
+            "resource_type": self.resource_type if hasattr(self, "resource_type") else snake_case(type(self).__name__),
             "uuid": self.uuid,
             "shortname": self.shortname,
             "subpath": subpath,
@@ -303,6 +303,8 @@ class Meta(Resource):
 
         attributes = {}
         for key, value in self.__dict__.items():
+            if key == '_sa_instance_state':
+                continue
             if (not include or key in include) and key not in record_fields:
                 attributes[key] = copy.deepcopy(value)
 

@@ -2,7 +2,7 @@ from re import sub as res_sub
 from uuid import uuid4
 from fastapi import APIRouter, Body, Query, Path, status, Depends
 from models.enums import AttachmentType, ContentType, ResourceType, TaskType
-import utils.db as db
+from utils.data_repo import data_adapter as db
 import models.api as api
 from utils.helpers import branch_path
 from utils.custom_validations import validate_payload_with_schema

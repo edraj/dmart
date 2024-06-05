@@ -6,8 +6,7 @@ from db.manticore_db import ManticoreDB
 from models.api import Query
 from models.core import EntityDTO, Meta, Record
 from models.enums import ContentType, SortType, QueryType, ResourceType
-from repositories.base_repo import BaseRepo
-from utils import db as main_db
+from operational_adapters.base_repo import BaseRepo
 from utils.helpers import branch_path, camel_case
 from utils.access_control import access_control
 from utils.settings import settings

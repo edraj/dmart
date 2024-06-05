@@ -31,13 +31,13 @@ from models.enums import (
     DataAssetType,
     TaskType,
 )
-import utils.db as db
 import utils.regex as regex
 import sys
 import json
 from utils.jwt import JWTBearer, GetJWTToken, remove_redis_active_session
 from utils.access_control import access_control
 from utils.operational_repo import operational_repo
+from utils.data_repo import data_adapter as db
 from typing import Any
 from utils.helpers import (
     branch_path,

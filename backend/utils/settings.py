@@ -73,11 +73,20 @@ class Settings(BaseSettings):
     facebook_client_id: str = ""
     facebook_client_secret: str = ""
     
-    active_operational_db: str = "redis" # allowed values: redis, manticore
+    active_operational_db: str = "manticore" # allowed values: redis, manticore
+    active_data_db: str = "file" # allowed values: file, pgsql
+
+    database_driver: str = 'postgresql'
+    database_username: str = 'postgres'
+    database_password: str = 'tenno1515'
+    database_host: str = 'localhost'
+    database_port: int = 5432
 
     model_config = SettingsConfigDict(
         env_file=os.getenv("BACKEND_ENV", "config.env"), env_file_encoding="utf-8"
     )
+
+
 
 
 settings = Settings()

@@ -1,6 +1,6 @@
-from repositories.base_repo import BaseRepo
-from repositories.manticore_repo import ManticoreRepo
-from repositories.redis_repo import RedisRepo
+from operational_adapters.base_repo import BaseRepo
+from operational_adapters.manticore_repo import ManticoreRepo
+from operational_adapters.redis_repo import RedisRepo
 from utils.settings import settings
 
 AVAILABLE_OPERATIONAL_REPOSITORIES: dict[str, BaseRepo] = {
@@ -12,9 +12,7 @@ class OperationalRepo:
     def __init__(self, repo: BaseRepo) -> None:
         self.repo = repo
 
-active_repo: BaseRepo = RedisRepo()
+active_operational_repo = AVAILABLE_OPERATIONAL_REPOSITORIES[settings.active_operational_db]
+operational_repo: BaseRepo = OperationalRepo(active_operational_repo).repo
 
-if settings.active_operational_db != "redis" and settings.active_operational_db in AVAILABLE_OPERATIONAL_REPOSITORIES.keys():
-    active_repo = AVAILABLE_OPERATIONAL_REPOSITORIES[settings.active_operational_db]
 
-operational_repo: BaseRepo = OperationalRepo(active_repo).repo

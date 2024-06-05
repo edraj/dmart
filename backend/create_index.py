@@ -8,7 +8,7 @@ import traceback
 
 import models.api as api
 from utils.bootstrap import bootstrap_all
-import utils.db as db
+from utils.data_repo import data_adapter as db
 import models.core as core
 from models.enums import ContentType, ResourceType
 from utils.helpers import branch_path, divide_chunks

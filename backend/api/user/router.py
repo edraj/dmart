@@ -11,7 +11,7 @@ from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
 from models.enums import ActionType, QueryType, RequestType, ResourceType, ContentType
-import utils.db as db
+from utils.data_repo import data_adapter as db
 from utils.access_control import access_control
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode

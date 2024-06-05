@@ -17,7 +17,7 @@ from utils.operational_repo import operational_repo
 from utils.operational_database import operational_db
 from utils.settings import settings
 from utils import regex
-from utils import db
+from utils.data_repo import data_adapter as db
 from multiprocessing import Pool
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from copy import copy
