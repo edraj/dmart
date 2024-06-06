@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     
     active_operational_db: str = "manticore" # allowed values: redis, manticore
     active_data_db: str = "file" # allowed values: file, pgsql
-
+    is_central_db: bool = False
     database_driver: str = 'postgresql'
     database_username: str = 'postgres'
     database_password: str = 'tenno1515'
