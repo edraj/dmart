@@ -1,5 +1,4 @@
-# Stage 1: Build stage
-FROM alpine:3.20 AS builder
+FROM alpine:3.20
 
 # Install necessary packages for building
 RUN set -eux \
@@ -11,9 +10,8 @@ RUN set -eux \
   && cp /home/admin_scripts/docker/gitconfig /etc/gitconfig \
   && cp /home/admin_scripts/docker/config.ts /home/frontend/src/ \
   && cp /home/admin_scripts/docker/config.env /home/backend/ \
-  && echo "https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
   && apk add git su-exec tzdata openrc jq curl python3 py3-virtualenv caddy bash coreutils file \
-  && apk add --virtual buildpkgs nodejs npm gcc libffi-dev make g++ musl-dev py3-pip python3-dev py3-wheel py3-setuptools \
+  && apk add --virtual buildpkgs nodejs yarn gcc libffi-dev make g++ musl-dev py3-pip python3-dev py3-wheel py3-setuptools \
   && apk add redis redisearch redisjson --repository=https://apk.imx.sh/packages \
   && cp /home/admin_scripts/docker/Caddyfile /etc/caddy/ \
   && virtualenv /home/venv \
@@ -21,27 +19,13 @@ RUN set -eux \
   && pip install -r /home/backend/requirements.txt \
   && pip cache purge \
   && cd /home/frontend/ \
-  && npm config set fetch-retries 5 \
-  && npm config set fetch-retry-mintimeout 20000 \
-  && npm config set fetch-retry-maxtimeout 120000 \
-  && npm install \
-  && npm run build \
+  && yarn \
+  && yarn build \
   && rm -rf node_modules \
-  && npm cache clean --force \
+  && yarn cache clean --all \
   && apk del buildpkgs \
   && rm -rf /tmp/js-offline \
   && rm -rf /root/.cache /root/.local /var/cache/apk/
-
-# Stage 2: Final stage
-FROM alpine:3.20
-
-# Copy necessary files from build stage
-COPY --from=builder /home /home
-COPY --from=builder /etc/apk/keys/alpine@imx.sh-5f19b383.rsa.pub /etc/apk/keys/
-COPY --from=builder /etc/init.d/dmart /etc/init.d/dmart
-COPY --from=builder /etc/gitconfig /etc/gitconfig
-COPY --from=builder /home/venv /home/venv
-COPY --from=builder /etc/caddy/Caddyfile /etc/caddy/
 
 # Install runtime dependencies
 RUN set -eux \
