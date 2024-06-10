@@ -4,7 +4,7 @@ from typing import Optional, Any, Dict
 from uuid import UUID
 from sqlalchemy import Column, JSON
 from sqlmodel import SQLModel, create_engine, Field, Enum
-from models.core import Meta, User
+from models.core import Meta, User, Space, Folder
 from utils import regex
 from utils.settings import settings
 
@@ -18,7 +18,8 @@ class MetaF(Meta, SQLModel, table=False):
     payload: dict | None = Field(default_factory=None, sa_type=JSON)
     relationships: list[dict] | None = Field(default=[], sa_type=JSON)
 
-    space_name: str = Field(regex=regex.SPACENAME, exclude=not settings.is_central_db)
+    resource_type: str = Field()
+    space_name: str = Field(regex=regex.SPACENAME)
 
 
 class Users(MetaF, User, SQLModel, table=True):
@@ -29,14 +30,14 @@ class Users(MetaF, User, SQLModel, table=True):
     type: str = Field()
     language: str = Field()
 
-    space_name: str = Field(regex=regex.SPACENAME, exclude=not settings.is_central_db)
+    space_name: str = Field(regex=regex.SPACENAME)
 
 
 class Roles(MetaF, SQLModel, table=True):
     permissions: list[str] = Field(default_factory=dict, sa_type=JSON)
     subpath: str = Field(regex=regex.SUBPATH)
 
-    space_name: str = Field(regex=regex.SPACENAME, exclude=not settings.is_central_db)
+    space_name: str = Field(regex=regex.SPACENAME)
 
 
 class Permissions(MetaF, SQLModel, table=True):
@@ -48,19 +49,19 @@ class Permissions(MetaF, SQLModel, table=True):
     allowed_fields_values: dict | list[dict] | None = Field(default_factory=None, sa_type=JSON)
     subpath: str = Field(regex=regex.SUBPATH)
 
-    space_name: str = Field(regex=regex.SPACENAME, exclude=not settings.is_central_db)
+    space_name: str = Field(regex=regex.SPACENAME)
+
 
 class Entries(MetaF, SQLModel, table=True):
     subpath: str = Field(regex=regex.SUBPATH)
-    resource_type: str = Field()
 
-    space_name: str = Field(regex=regex.SPACENAME, exclude=not settings.is_central_db)
+    space_name: str = Field(regex=regex.SPACENAME)
 
 
 class Attachments(MetaF, SQLModel, table=True):
     subpath: str = Field(regex=regex.SUBPATH)
 
-    space_name: str = Field(regex=regex.SPACENAME, exclude=not settings.is_central_db)
+    space_name: str = Field(regex=regex.SPACENAME)
 
 
 class Histories(SQLModel, table=True):
@@ -71,10 +72,26 @@ class Histories(SQLModel, table=True):
     diff: dict = Field(default_factory=dict, sa_type=JSON)
     timestamp: datetime = Field(default_factory=datetime.now)
 
-    space_name: str = Field(regex=regex.SPACENAME, exclude=not settings.is_central_db)
+    space_name: str = Field(regex=regex.SPACENAME)
 
 
-def generate_tables(space_name):
-    postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{space_name}"
+class Spaces(MetaF, Space, SQLModel, table=True):
+    root_registration_signature: str = ""
+    primary_website: str = ""
+    indexing_enabled: bool = False
+    capture_misses: bool = False
+    check_health: bool = False
+    languages: list[str] | None = Field(default_factory=None, sa_type=JSON)
+    icon: str = ""
+    mirrors: list[str] | None = Field(default_factory=None, sa_type=JSON)
+    hide_folders: list[str] | None = Field(default_factory=None, sa_type=JSON)
+    hide_space: bool | None = None
+    active_plugins: list[str] | None = Field(default_factory=None, sa_type=JSON)
+    branches: list[str] | None = Field(default_factory=None, sa_type=JSON)
+    ordinal: int | None = None
+
+
+def generate_tables():
+    postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
     engine = create_engine(postgresql_url, echo=True)
     SQLModel.metadata.create_all(engine)

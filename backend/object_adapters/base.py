@@ -45,7 +45,7 @@ class BaseObjectAdapter(ABC):
     ):
         pass
 
-
+    @abstractmethod
     async def get_entry_attachments(
         self,
         subpath: str,
@@ -56,84 +56,7 @@ class BaseObjectAdapter(ABC):
         filter_shortnames: list | None = None,
         retrieve_json_payload: bool = False,
     ) -> dict:
-        if not attachments_path.is_dir():
-            return {}
-        attachments_iterator = os.scandir(attachments_path)
-        attachments_dict: dict[str, list] = {}
-        for attachment_entry in attachments_iterator:
-            # TODO: Filter types on the parent attachment type folder layer
-            if not attachment_entry.is_dir():
-                continue
-
-            attachments_files = os.scandir(attachment_entry)
-            for attachments_file in attachments_files:
-                match = ATTACHMENT_PATTERN.search(str(attachments_file.path))
-                if not match or not attachments_file.is_file():
-                    continue
-
-                attach_shortname = match.group(2)
-                attach_resource_name = match.group(1).lower()
-                if filter_shortnames and attach_shortname not in filter_shortnames:
-                    continue
-
-                if filter_types and ResourceType(attach_resource_name) not in filter_types:
-                    continue
-
-                resource_class = getattr(
-                    sys.modules["models.core"], camel_case(attach_resource_name)
-                )
-                resource_obj = None
-                async with aiofiles.open(attachments_file, "r") as meta_file:
-                    try:
-                        resource_obj = resource_class.model_validate_json(
-                            await meta_file.read()
-                        )
-                    except Exception as e:
-                        raise Exception(
-                            f"Bad attachment ... {attachments_file.path=}. Resource class: {resource_class}"
-                        ) from e
-
-                resource_record_obj = resource_obj.to_record(
-                    subpath, attach_shortname, include_fields, branch_name
-                )
-                if (
-                    retrieve_json_payload
-                    and resource_obj
-                    and resource_record_obj
-                    and resource_obj.payload
-                    and resource_obj.payload.content_type
-                    and resource_obj.payload.content_type == ContentType.json
-                    and Path(
-                        f"{attachment_entry.path}/{resource_obj.payload.body}"
-                    ).is_file()
-                ):
-                    async with aiofiles.open(
-                        f"{attachment_entry.path}/{resource_obj.payload.body}", "r"
-                    ) as payload_file_content:
-                        resource_record_obj.attributes["payload"].body = json.loads(
-                            await payload_file_content.read()
-                        )
-
-                if attach_resource_name in attachments_dict:
-                    attachments_dict[attach_resource_name].append(resource_record_obj)
-                else:
-                    attachments_dict[attach_resource_name] = [resource_record_obj]
-            attachments_files.close()
-        attachments_iterator.close()
-
-        # SORT ALTERATION ATTACHMENTS BY ALTERATION.CREATED_AT
-        for attachment_name, attachments in attachments_dict.items():
-            try:
-                if attachment_name == ResourceType.alteration:
-                    attachments_dict[attachment_name] = sorted(
-                        attachments, key=lambda d: d.attributes["created_at"]
-                    )
-            except Exception as e:
-                logger.error(
-                    f"Invalid attachment entry:{attachments_path/attachment_name}. Error: {e.args}"
-                )
-
-        return attachments_dict
+        pass
 
     @abstractmethod
     def metapath(self, dto: core.EntityDTO) -> tuple[Path, str]:

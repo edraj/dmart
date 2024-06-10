@@ -16,7 +16,7 @@ from models.core import (
 )
 from models.enums import ResourceType, PluginType
 from utils.settings import settings
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 from importlib.util import find_spec, module_from_spec
 import sys
 from fastapi.logger import logger

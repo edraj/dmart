@@ -1,7 +1,7 @@
 from models.core import EntityDTO, Folder, PluginBase, Event
 from models.enums import ResourceType
 from fastapi.logger import logger
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 
 
 class Plugin(PluginBase):

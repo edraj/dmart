@@ -1,5 +1,7 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 """ Main module """
+import ssl
+
 # from logging import handlers
 from starlette.datastructures import UploadFile
 from contextlib import asynccontextmanager
@@ -434,7 +436,13 @@ async def main():
 
     config.logconfig_dict = logging_schema
     config.errorlog = logger
-    await serve(app, config)  # type: ignore
+
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_context.load_cert_chain('./../xxx/cert.pem', keyfile='./../xxx/key.pem')
+
+    config.certfile = './../xxx/cert.pem'
+    config.keyfile = './../xxx/key.pem'
+    await serve(app, config)
 
 
 if __name__ == "__main__":

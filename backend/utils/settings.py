@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     one_session_per_user: bool = False
     management_space: str = "management"
     users_subpath: str = "users"
-    spaces_folder: Path = Path("../sample/spaces/")
+    spaces_folder: Path = Path("../../spaces")
     lock_period: int = 300
     servername: str = ""  # This is for print purposes only.
     auto_uuid_rule: str = "auto"  # Used to generate a shortname from UUID
@@ -75,12 +75,12 @@ class Settings(BaseSettings):
     
     active_operational_db: str = "manticore" # allowed values: redis, manticore
     active_data_db: str = "file" # allowed values: file, pgsql
-    is_central_db: bool = False
     database_driver: str = 'postgresql'
     database_username: str = 'postgres'
     database_password: str = 'tenno1515'
     database_host: str = 'localhost'
     database_port: int = 5432
+    database_name: str = 'dmart'
 
     model_config = SettingsConfigDict(
         env_file=os.getenv("BACKEND_ENV", "config.env"), env_file_encoding="utf-8"

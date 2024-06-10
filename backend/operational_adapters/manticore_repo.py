@@ -7,6 +7,7 @@ from models.api import Query
 from models.core import EntityDTO, Meta, Record
 from models.enums import ContentType, SortType, QueryType, ResourceType
 from operational_adapters.base_repo import BaseRepo
+from utils.data_database import data_adapter as main_db
 from utils.helpers import branch_path, camel_case
 from utils.access_control import access_control
 from utils.settings import settings

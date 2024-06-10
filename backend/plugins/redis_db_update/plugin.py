@@ -1,13 +1,13 @@
 import sys
 from models.core import ActionType, Attachment, EntityDTO, PluginBase, Event, Space
 from utils.helpers import camel_case
-from utils.data_repo import data_adapter as db
+from utils.data_database import data_adapter as db
 from models import core
 from models.enums import ResourceType
 from fastapi.logger import logger
 # from create_index import main as reload_redis
 from create_index_manticore import main as reload_redis
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 
 
 class Plugin(PluginBase):

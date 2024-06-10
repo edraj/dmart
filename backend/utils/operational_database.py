@@ -11,7 +11,8 @@ AVAILABLE_OPERATIONAL_DATABASES: dict[str, BaseDB] = {
 class OperationalDatabase:
     def __init__(self, database: BaseDB) -> None:
         self.db = database
-        
+
+
 active_db: BaseDB = RedisDB()
 
 if settings.active_operational_db != "redis" and settings.active_operational_db in AVAILABLE_OPERATIONAL_DATABASES.keys():

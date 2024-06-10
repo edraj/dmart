@@ -8,7 +8,7 @@ from utils.async_request import AsyncRequest
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
 from fastapi.logger import logger
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 
 # comms_api = zain backend api
 send_otp_api = urllib.parse.urljoin(settings.comms_api, "sms/otp/send")

@@ -1,17 +1,22 @@
-from sqlalchemy import text
-from sqlmodel import SQLModel, create_engine, Field, Session
+from sqlmodel import create_engine, Session, select, func
+from database.create_tables import Permissions
+from utils.settings import settings
 
-from database.create_tables import Entries
+try:
+    postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+    engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=True)
 
-postgresql_url = "postgresql://postgres:tenno1515@localhost:5432/management"
-engine = create_engine(postgresql_url, echo=True)
-s = Session(engine)
-r = s.exec(
-    text(
-        f"select * from entries where subpath='schema' and shortname='view';"
-    )
-).all()
-print(
-    Entries.model_validate(r[0]).model_dump()
-)
-print(Entries.model_validate(r[0]).model_dump().get('payload', {}))
+    with Session(engine) as session:
+        # r = session.query(Permissions).filter(Permissions.displayname['en'] == 'manage_sub_dealer').all()
+        # r = select(Permissions).filter(
+        #     func.to_tsvector(getattr(Permissions, 'displayname')).match('manage_sub_dealer')
+        # )
+        # r = select(Permissions).filter('manage_sub_dealer')
+        r = select(Permissions).filter(
+            func.to_tsvector(getattr(Permissions, 'displayname')).match('manage_sub_dealer')
+        )
+        x = session.exec(r).all()
+        print(x)
+
+except Exception as e:
+    print(e)

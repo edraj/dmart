@@ -2,15 +2,16 @@ from datetime import datetime
 import sys
 
 from db.redis_db import RedisDB
-from utils.operational_repo import BaseRepo
+from utils.operational_repository import BaseRepo
 from typing import Any
 from models.api import Query, RedisAggregate, RedisReducer
 from models.core import EntityDTO, Meta, Record
 from models.enums import ContentType, QueryType, ResourceType, SortType
 from utils.helpers import branch_path, camel_case
 from utils.settings import settings
-from utils.data_repo import data_adapter as main_db
+from utils.data_database import data_adapter as main_db
 from utils.access_control import access_control
+
 
 class RedisRepo(BaseRepo):
 

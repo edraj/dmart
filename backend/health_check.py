@@ -16,7 +16,7 @@ from jsonschema.validators import Draft7Validator
 
 from api.managed.router import serve_request
 from models.core import EntityDTO, Folder, Meta
-from utils.data_repo import data_adapter as db
+from utils.data_database import data_adapter as db
 from utils.custom_validations import get_schema_path, validate_payload_with_schema
 from utils.helpers import camel_case, branch_path
 from models import core, api
@@ -24,7 +24,7 @@ from models.enums import ContentType, RequestType, ResourceType
 from utils.redis_services import RedisServices
 from utils.regex import ATTACHMENT_PATTERN, FILE_PATTERN, IMG_EXT
 from utils.settings import settings
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 
 duplicated_entries : dict= {}
 key_entries: dict = {}

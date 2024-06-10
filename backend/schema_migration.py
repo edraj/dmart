@@ -4,11 +4,11 @@ from enum import Enum
 import re
 from models.enums import ContentType, ResourceType
 from utils import helpers
-from utils.data_repo import data_adapter as db
+from utils.data_database import data_adapter as db
 from models.core import EntityDTO, Meta, Schema
 from utils.redis_services import RedisServices
 from utils.settings import settings
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 
 class FieldType(Enum):
     string = "string"

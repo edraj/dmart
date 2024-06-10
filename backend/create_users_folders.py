@@ -1,7 +1,7 @@
 import asyncio
 import os
 from models.enums import ResourceType
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 from models.core import EntityDTO, Folder
 from utils.settings import settings
 

@@ -3,10 +3,10 @@ from datetime import datetime, timedelta
 from models.api import Query
 from models.core import Content, EntityDTO, Notification, NotificationData, Translation
 from models.enums import QueryType, ResourceType
-from utils.data_repo import data_adapter as db
+from utils.data_database import data_adapter as db
 from utils.helpers import branch_path
 from utils.notification import NotificationManager
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 from utils.settings import settings
 from fastapi.logger import logger
 import asyncio

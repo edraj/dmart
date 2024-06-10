@@ -2,7 +2,7 @@ from re import sub as res_sub
 from uuid import uuid4
 from fastapi import APIRouter, Body, Query, Path, status, Depends
 from models.enums import AttachmentType, ContentType, ResourceType, TaskType
-from utils.data_repo import data_adapter as db
+from utils.data_database import data_adapter as db
 import models.api as api
 from utils.helpers import branch_path
 from utils.custom_validations import validate_payload_with_schema
@@ -14,7 +14,7 @@ from typing import Any
 from utils.access_control import access_control
 from utils.plugin_manager import plugin_manager
 from utils.settings import settings
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 
 router = APIRouter()
 

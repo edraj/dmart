@@ -11,13 +11,13 @@ from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
 from models.enums import ActionType, QueryType, RequestType, ResourceType, ContentType
-from utils.data_repo import data_adapter as db
+from utils.data_database import data_adapter as db
 from utils.access_control import access_control
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, remove_redis_active_session, sign_jwt
 from typing import Any
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 from utils.settings import settings
 from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
@@ -354,7 +354,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     await plugin_manager.before_action(dto.to_event_data(core.ActionType.view))
 
     user: core.User = await db.load(dto)
-
+    print('@', user)
     attributes: dict[str, Any] = {}
     if user.email:
         attributes["email"] = user.email
@@ -362,7 +362,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         attributes["displayname"] = user.displayname
     if user.msisdn:
         attributes["msisdn"] = user.msisdn
-    if user.payload:
+    if settings.active_data_db == 'file' and user.payload:
         attributes["payload"] = user.payload
         path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
         if (

@@ -8,14 +8,14 @@ import traceback
 
 import models.api as api
 from utils.bootstrap import bootstrap_all
-from utils.data_repo import data_adapter as db
+from utils.data_database import data_adapter as db
 import models.core as core
 from models.enums import ContentType, ResourceType
 from utils.helpers import branch_path, divide_chunks
 from utils.custom_validations import validate_payload_with_schema
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from utils.redis_services import RedisServices
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 from utils.settings import settings
 import utils.regex as regex
 import asyncio

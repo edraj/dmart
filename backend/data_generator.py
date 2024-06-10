@@ -1,3 +1,4 @@
+#!/usr/bin/env -S BACKEND_ENV=config.env python3
 import argparse
 import asyncio
 from pathlib import Path
@@ -5,8 +6,11 @@ from uuid import uuid4
 from models.core import Content, EntityDTO, Payload
 from models.enums import ContentType, ResourceType
 from jsf import JSF # type: ignore
-from utils.operational_repo import operational_repo
+
+from utils.settings import settings
+from utils.operational_repository import operational_repo
 from utils.redis_services import RedisServices
+from utils.data_database import data_adapter as main_db
 
 
 async def main(
@@ -36,18 +40,22 @@ async def main(
                 body=f"{shortname}.json"
             )
         )
-        await operational_repo.internal_save_model(
-            dto=EntityDTO(
-                space_name=space,
-                subpath=subpath,
-                shortname=shortname,
-                resource_type=ResourceType.content,
-                schema_shortname=schema_path.split("/")[-1].split(".")[0],
-                user_shortname="generator_script"
-            ),
-            meta=meta,
-            payload=payload
+        dto = EntityDTO(
+            space_name=space,
+            subpath=subpath,
+            shortname=shortname,
+            resource_type=ResourceType.content,
+            schema_shortname=schema_path.split("/")[-1].split(".")[0],
+            user_shortname="generator_script"
         )
+        if settings.active_data_db != "file":
+            await main_db.save(dto, meta, payload)
+        else:
+            await operational_repo.internal_save_model(
+                dto=dto,
+                meta=meta,
+                payload=payload
+            )
         print(f"Generated new doc with shortname: {shortname}")
         
     print("====================================================")

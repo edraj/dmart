@@ -8,11 +8,11 @@ AVAILABLE_OPERATIONAL_REPOSITORIES: dict[str, BaseRepo] = {
     'manticore': ManticoreRepo()
 }
 
+
 class OperationalRepo:
     def __init__(self, repo: BaseRepo) -> None:
         self.repo = repo
 
+
 active_operational_repo = AVAILABLE_OPERATIONAL_REPOSITORIES[settings.active_operational_db]
 operational_repo: BaseRepo = OperationalRepo(active_operational_repo).repo
-
-

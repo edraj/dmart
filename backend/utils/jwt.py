@@ -8,7 +8,7 @@ from utils.password_hashing import hash_password, verify_password
 
 from utils.settings import settings
 import models.api as api
-from utils.operational_repo import operational_repo
+from utils.operational_repository import operational_repo
 
 def decode_jwt(token: str) -> dict[str, Any]:
     decoded_token: dict

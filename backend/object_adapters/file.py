@@ -149,14 +149,14 @@ class FileAdapter(BaseObjectAdapter):
             return f"{settings.spaces_folder}/{space_name}{subpath}/{shortname}"
 
     async def get_entry_attachments(
-            self,
-            subpath: str,
-            attachments_path: Path,
-            branch_name: str | None = None,
-            filter_types: list | None = None,
-            include_fields: list | None = None,
-            filter_shortnames: list | None = None,
-            retrieve_json_payload: bool = False,
+        self,
+        subpath: str,
+        attachments_path: Path,
+        branch_name: str | None = None,
+        filter_types: list | None = None,
+        include_fields: list | None = None,
+        filter_shortnames: list | None = None,
+        retrieve_json_payload: bool = False,
     ) -> dict:
         if not attachments_path.is_dir():
             return {}
@@ -169,7 +169,9 @@ class FileAdapter(BaseObjectAdapter):
 
             attachments_files = os.scandir(attachment_entry)
             for attachments_file in attachments_files:
+                print(f"{attachments_file=}")
                 match = ATTACHMENT_PATTERN.search(str(attachments_file.path))
+                print(f"{match=}")
                 if not match or not attachments_file.is_file():
                     continue
 
@@ -185,6 +187,7 @@ class FileAdapter(BaseObjectAdapter):
                     sys.modules["models.core"], camel_case(attach_resource_name)
                 )
                 resource_obj = None
+                print(f"{attachments_file=}")
                 async with aiofiles.open(attachments_file, "r") as meta_file:
                     try:
                         resource_obj = resource_class.model_validate_json(
@@ -210,7 +213,7 @@ class FileAdapter(BaseObjectAdapter):
                     ).is_file()
                 ):
                     async with aiofiles.open(
-                            f"{attachment_entry.path}/{resource_obj.payload.body}", "r"
+                        f"{attachment_entry.path}/{resource_obj.payload.body}", "r"
                     ) as payload_file_content:
                         resource_record_obj.attributes["payload"].body = json.loads(
                             await payload_file_content.read()
@@ -232,7 +235,7 @@ class FileAdapter(BaseObjectAdapter):
                     )
             except Exception as e:
                 logger.error(
-                    f"Invalid attachment entry:{attachments_path / attachment_name}. Error: {e.args}"
+                    f"Invalid attachment entry:{attachments_path/attachment_name}. Error: {e.args}"
                 )
 
         return attachments_dict

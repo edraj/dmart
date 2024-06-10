@@ -2,7 +2,7 @@ import aiofiles
 from utils.middleware import get_request_data
 from models.core import ActionType, EntityDTO, PluginBase, Event
 from models.enums import ContentType, ResourceType
-from utils.data_repo import data_adapter as db
+from utils.data_database import data_adapter as db
 from models.core import Action, Locator, Meta
 from utils.helpers import branch_path
 from utils.settings import settings

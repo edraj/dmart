@@ -8,6 +8,8 @@ from time import time
 from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, status
 from fastapi.responses import FileResponse
 from starlette.responses import StreamingResponse
+
+from database.create_tables import Spaces
 from utils.bootstrap import bootstrap_all, load_permissions_and_roles
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.custom_validations import (
@@ -29,15 +31,15 @@ from models.enums import (
     ResourceType,
     LockAction,
     DataAssetType,
-    TaskType,
+    TaskType, QueryType,
 )
 import utils.regex as regex
 import sys
 import json
 from utils.jwt import JWTBearer, GetJWTToken, remove_redis_active_session
 from utils.access_control import access_control
-from utils.operational_repo import operational_repo
-from utils.data_repo import data_adapter as db
+from utils.operational_repository import operational_repo
+from utils.data_database import data_adapter as db
 from typing import Any
 from utils.helpers import (
     branch_path,
@@ -280,12 +282,15 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 async def serve_space(
     request: api.Request, owner_shortname=Depends(JWTBearer())
 ) -> api.Response:
-    spaces = await operational_repo.find_by_id("spaces")
+    if settings.active_data_db == "file":
+        spaces = await operational_repo.find_by_id("spaces")
+    else:
+        spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
     record = request.records[0]
     history_diff: dict[str, Any] = {}
     match request.request_type:
         case api.RequestType.create:
-            if request.space_name in spaces:
+            if request.space_name in [space.shortname for space in spaces]:
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
@@ -464,8 +469,11 @@ async def query_entries(
             attributes={"filter_shortnames": query.filter_shortnames},
         )
     )
-
-    total, records = await operational_repo.query_handler(query, user_shortname)
+    if settings.active_data_db == "file":
+        total, records = await operational_repo.query_handler(query, user_shortname)
+    else:
+        records = await db.query(query)
+        total = len(records)
 
     await plugin_manager.after_action(
         core.Event(
@@ -490,8 +498,11 @@ async def serve_request(
     owner_shortname=Depends(JWTBearer()),
     is_internal: bool = False,
 ) -> api.Response:
-    spaces = await operational_repo.find_by_id("spaces")
-    if request.space_name not in spaces:
+    if settings.active_data_db == "file":
+        spaces = await operational_repo.find_by_id("spaces")
+    else:
+        spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+    if request.space_name not in [space.shortname for space in spaces]:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
@@ -761,16 +772,17 @@ async def serve_request(
                     record.attributes["history_diff"] = history_diff
 
                 case api.RequestType.delete:
-                    if not meta or await operational_repo.is_locked_by_other_user(dto):
-                        raise api.Exception(
-                            status_code=status.HTTP_404_NOT_FOUND,
-                            error=api.Error(
-                                type="db",
-                                code=InternalErrorCode.OBJECT_NOT_FOUND,
-                                message="Request object is not available or locked",
-                            ),
-                        )
-
+                    #TODO - Check if the object is locked by another user
+                    # if not meta or await operational_repo.is_locked_by_other_user(dto):
+                    #     raise api.Exception(
+                    #         status_code=status.HTTP_404_NOT_FOUND,
+                    #         error=api.Error(
+                    #             type="db",
+                    #             code=InternalErrorCode.OBJECT_NOT_FOUND,
+                    #             message="Request object is not available or locked",
+                    #         ),
+                    #     )
+                    print("@", f"{dto=}")
                     await db.delete(dto)
 
                     record.attributes["entry"] = meta
@@ -882,8 +894,11 @@ async def update_state(
     comment: str | None = Body(None, embed=True, examples=["Nice ticket"]),
     branch_name: str | None = settings.default_branch,
 ) -> api.Response:
-    spaces = await operational_repo.find_by_id("spaces")
-    if space_name not in spaces:
+    if settings.active_data_db == "file":
+        spaces = await operational_repo.find_by_id("spaces")
+    else:
+        spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+    if space_name not in [space.shortname for space in spaces]:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
@@ -1077,9 +1092,9 @@ async def retrieve_entry_or_attachment_payload(
     )
 
     meta: core.Meta = await db.load(dto)
-
+    print(f"{meta=}")
     await plugin_manager.before_action(dto.to_event_data(core.ActionType.view))
-
+    print("###", meta.payload.body, f"{shortname}.{ext}")
     if (
         meta.payload is None
         or meta.payload.body is None
@@ -1110,7 +1125,7 @@ async def retrieve_entry_or_attachment_payload(
 
     payload_path = db.payload_path(dto=dto)
     await plugin_manager.after_action(dto.to_event_data(core.ActionType.view))
-
+    print("@@@", payload_path / str(meta.payload.body))
     return FileResponse(payload_path / str(meta.payload.body))
 
 
@@ -1128,8 +1143,11 @@ async def create_or_update_resource_with_payload(
 ):
     # NOTE We currently make no distinction between create and update.
     # in such case update should contain all the data every time.
-    spaces = await operational_repo.find_by_id("spaces")
-    if space_name not in spaces:
+    if settings.active_data_db == "file":
+        spaces = await operational_repo.find_by_id("spaces")
+    else:
+        spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+    if space_name not in [space.shortname for space in spaces]:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             api.Error(
@@ -1474,7 +1492,7 @@ async def retrieve_entry_meta(
     )
     if retrieve_attachments:
         attachments = await db.get_entry_attachments(
-            subpath=subpath,
+            subpath=subpath if settings.active_data_db == "file" else f"{subpath}/{shortname}",
             attachments_path=entry_path,
             branch_name=branch_name,
             retrieve_json_payload=retrieve_json_payload,
@@ -1601,8 +1619,12 @@ async def get_space_report(
             ),
         )
 
-    spaces = await operational_repo.find_by_id("spaces")
-    if space_name not in spaces and space_name != "all":
+    if settings.active_data_db == "file":
+        spaces = await operational_repo.find_by_id("spaces")
+    else:
+        spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+
+    if space_name not in [space.shortname for space in spaces] and space_name != "all":
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(

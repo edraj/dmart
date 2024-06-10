@@ -6,7 +6,7 @@ from models.core import EntityDTO, NotificationData
 from models.enums import ResourceType
 from utils.settings import settings
 from models.core import User
-from utils.data_repo import data_adapter as db
+from utils.data_database import data_adapter as db
 from fastapi.logger import logger
 
 

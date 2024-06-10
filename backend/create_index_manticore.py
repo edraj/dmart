@@ -6,18 +6,17 @@ import json
 import re
 import traceback
 from typing import Any
-from db.manticore_db import ManticoreDB
+from operational_adapters.manticore_repo import ManticoreRepo
 from models.api import Query
 from models.core import EntityDTO, Locator, Space, Meta
 from models.enums import ContentType, QueryType, ResourceType
 from utils.bootstrap import bootstrap_all
 from utils.custom_validations import validate_payload_with_schema
 from utils.helpers import branch_path, divide_chunks
-from utils.operational_repo import operational_repo
 from utils.operational_database import operational_db
 from utils.settings import settings
 from utils import regex
-from utils.data_repo import data_adapter as db
+from utils.data_database import data_adapter as db
 from multiprocessing import Pool
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from copy import copy
@@ -85,7 +84,7 @@ async def load_data_to_redis(
     
     for db_docs_chunk in db_docs_chunks:
         for schema, chunk in db_docs_chunk.items():
-            saved_docs_count += await operational_repo.save_bulk(f"{space_name}__{branch_name}__{schema}", chunk)
+            saved_docs_count += await operational_db.save_bulk(f"{space_name}__{branch_name}__{schema}", chunk)
 
     # pp(subpath=subpath, saved_docs_count=saved_docs_count)
     # x = 1/0
@@ -151,7 +150,7 @@ async def generate_db_docs(locators: list) -> dict[str, list[Any]]:
                 except Exception as ex:
                     print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
                     
-            meta_data["payload_string"] = await operational_repo.generate_payload_string(
+            meta_data["payload_string"] = await operational_db.generate_payload_string(
                 dto=EntityDTO(
                     space_name=one.space_name, 
                     subpath=one.subpath, 
@@ -261,7 +260,7 @@ async def migrate_data_to_operational_db(
     Loop over spaces and subpaths inside it and load the data to redis of indexing_enabled for the space
     """
     loaded_data = {}
-    spaces = await operational_repo.find_by_id("spaces")
+    spaces = await operational_db.find_by_id("spaces")
     for space_name, space_json in spaces.items():
         space_obj = Space.model_validate_json(space_json)
         if (for_space and for_space != space_name) or not space_obj.indexing_enabled:
@@ -295,7 +294,7 @@ async def main(
     for_subpaths: list | None = None,
     flushall: bool = False
 ):
-    manticore_db = ManticoreDB()
+    manticore_db = ManticoreRepo()
     if flushall:
         print("FLUSHALL")
         await manticore_db.flush_all()

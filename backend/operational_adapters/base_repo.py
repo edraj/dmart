@@ -47,7 +47,7 @@ from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
 from fastapi import status
 from utils import regex
-from utils.data_repo import data_adapter as main_db
+from utils.data_database import data_adapter as main_db
 from utils.access_control import access_control
 from models.api import Exception as API_Exception, Error as API_Error
 from fastapi.logger import logger
