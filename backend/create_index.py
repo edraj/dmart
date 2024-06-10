@@ -161,7 +161,7 @@ async def generate_redis_docs(locators: list) -> list:
                 shortname=one.shortname, 
                 branch_name=one.branch_name, 
                 payload=payload_data,
-            )
+            ) if settings.store_payload_string else ""
             
             redis_docs.append({"doc_id": meta_doc_id, "payload": meta_data})
 
