@@ -169,9 +169,7 @@ class FileAdapter(BaseObjectAdapter):
 
             attachments_files = os.scandir(attachment_entry)
             for attachments_file in attachments_files:
-                print(f"{attachments_file=}")
                 match = ATTACHMENT_PATTERN.search(str(attachments_file.path))
-                print(f"{match=}")
                 if not match or not attachments_file.is_file():
                     continue
 
@@ -187,7 +185,6 @@ class FileAdapter(BaseObjectAdapter):
                     sys.modules["models.core"], camel_case(attach_resource_name)
                 )
                 resource_obj = None
-                print(f"{attachments_file=}")
                 async with aiofiles.open(attachments_file, "r") as meta_file:
                     try:
                         resource_obj = resource_class.model_validate_json(

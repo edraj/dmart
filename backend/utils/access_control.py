@@ -473,13 +473,11 @@ class AccessControl:
             user_roles = await self.get_user_roles_using_operational_db(user_shortname)
         else:
             user_roles = await self.get_user_roles_using_data_db(user_shortname)
-        print(f"{user_roles=}")
         for _, role in user_roles.items():
             if settings.active_data_db == 'file':
                 role_permissions = await self.get_role_permissions_using_operational_db(role)
             else:
                 role_permissions = await self.get_role_permissions_using_data_db(role)
-            print(f"{role_permissions=}")
             for permission in role_permissions:
                 for space_name, permission_subpaths in permission.subpaths.items():
                     for permission_subpath in permission_subpaths:
@@ -496,7 +494,6 @@ class AccessControl:
                                 old_perm = user_permissions[
                                     f"{space_name}:{permission_subpath}:{permission_resource_types}"
                                 ]
-                                print(actions, conditions)
 
                                 if isinstance(actions, list):
                                     actions = set(actions)
@@ -530,7 +527,7 @@ class AccessControl:
 
         if not user_permissions:
             return await self.generate_user_permissions_doc(user_shortname)
-        print(user_permissions)
+
         return user_permissions
 
 

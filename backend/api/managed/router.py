@@ -284,8 +284,28 @@ async def serve_space(
 ) -> api.Response:
     if settings.active_data_db == "file":
         spaces = await operational_repo.find_by_id("spaces")
+        if request.space_name not in spaces:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_SPACE_NAME,
+                    message="Space name provided is empty or invalid [3]",
+                ),
+            )
+
     else:
         spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+        if request.space_name not in [space.shortname for space in spaces]:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_SPACE_NAME,
+                    message="Space name provided is empty or invalid [3]",
+                ),
+            )
+
     record = request.records[0]
     history_diff: dict[str, Any] = {}
     match request.request_type:
@@ -500,17 +520,27 @@ async def serve_request(
 ) -> api.Response:
     if settings.active_data_db == "file":
         spaces = await operational_repo.find_by_id("spaces")
+        if request.space_name not in spaces:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_SPACE_NAME,
+                    message="Space name provided is empty or invalid [3]",
+                ),
+            )
+
     else:
         spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
-    if request.space_name not in [space.shortname for space in spaces]:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            api.Error(
-                type="request",
-                code=InternalErrorCode.INVALID_SPACE_NAME,
-                message="Space name provided is empty or invalid [3]",
-            ),
-        )
+        if request.space_name not in [space.shortname for space in spaces]:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_SPACE_NAME,
+                    message="Space name provided is empty or invalid [3]",
+                ),
+            )
 
     records = []
     failed_records = []
@@ -782,7 +812,6 @@ async def serve_request(
                     #             message="Request object is not available or locked",
                     #         ),
                     #     )
-                    print("@", f"{dto=}")
                     await db.delete(dto)
 
                     record.attributes["entry"] = meta
@@ -896,17 +925,28 @@ async def update_state(
 ) -> api.Response:
     if settings.active_data_db == "file":
         spaces = await operational_repo.find_by_id("spaces")
+        if space_name not in spaces:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_SPACE_NAME,
+                    message="Space name provided is empty or invalid [3]",
+                ),
+            )
+
     else:
         spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
-    if space_name not in [space.shortname for space in spaces]:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            api.Error(
-                type="request",
-                code=InternalErrorCode.INVALID_SPACE_NAME,
-                message="Space name provided is empty or invalid [4]",
-            ),
-        )
+        if space_name not in [space.shortname for space in spaces]:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_SPACE_NAME,
+                    message="Space name provided is empty or invalid [3]",
+                ),
+            )
+
     user_roles: list[str] = list(
         (await access_control.get_user_roles(logged_in_user)).keys()
     )
@@ -1145,17 +1185,27 @@ async def create_or_update_resource_with_payload(
     # in such case update should contain all the data every time.
     if settings.active_data_db == "file":
         spaces = await operational_repo.find_by_id("spaces")
+        if space_name not in spaces:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_SPACE_NAME,
+                    message="Space name provided is empty or invalid [3]",
+                ),
+            )
+
     else:
         spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
-    if space_name not in [space.shortname for space in spaces]:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            api.Error(
-                type="request",
-                code=InternalErrorCode.INVALID_SPACE_NAME,
-                message="Space name provided is empty or invalid [5]",
-            ),
-        )
+        if space_name not in [space.shortname for space in spaces]:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_SPACE_NAME,
+                    message="Space name provided is empty or invalid [3]",
+                ),
+            )
     record = core.Record.model_validate_json(request_record.file.read())
 
     dto = core.EntityDTO.from_record(record, space_name, owner_shortname)
@@ -1621,18 +1671,27 @@ async def get_space_report(
 
     if settings.active_data_db == "file":
         spaces = await operational_repo.find_by_id("spaces")
+        if space_name not in spaces:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_SPACE_NAME,
+                    message="Space name provided is empty or invalid [3]",
+                ),
+            )
     else:
         spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+        if space_name not in [space.shortname for space in spaces]:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_SPACE_NAME,
+                    message="Space name provided is empty or invalid [3]",
+                ),
+            )
 
-    if space_name not in [space.shortname for space in spaces] and space_name != "all":
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="media",
-                code=InternalErrorCode.INVALID_SPACE_NAME,
-                message="Space name provided is empty or invalid",
-            ),
-        )
     if health_type not in ["soft", "hard"]:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,

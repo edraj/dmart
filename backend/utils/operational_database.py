@@ -8,6 +8,7 @@ AVAILABLE_OPERATIONAL_DATABASES: dict[str, BaseDB] = {
     'manticore': ManticoreDB(),
 }
 
+
 class OperationalDatabase:
     def __init__(self, database: BaseDB) -> None:
         self.db = database

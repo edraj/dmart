@@ -354,7 +354,6 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     await plugin_manager.before_action(dto.to_event_data(core.ActionType.view))
 
     user: core.User = await db.load(dto)
-    print('@', user)
     attributes: dict[str, Any] = {}
     if user.email:
         attributes["email"] = user.email

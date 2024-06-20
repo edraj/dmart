@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     operational_db_host: str = "127.0.0.1"
     operational_db_user: str | None = None
     operational_db_password: str | None = None
-    operational_db_port: int = 9308
+    operational_db_port: int = 6379  # 6379 9308
     operational_db_pool_max_connections: int = 20
     one_session_per_user: bool = False
     management_space: str = "management"
@@ -73,8 +73,8 @@ class Settings(BaseSettings):
     facebook_client_id: str = ""
     facebook_client_secret: str = ""
     
-    active_operational_db: str = "manticore" # allowed values: redis, manticore
-    active_data_db: str = "file" # allowed values: file, pgsql
+    active_operational_db: str = "manticore"  # allowed values: redis, manticore
+    active_data_db: str = "file"  # allowed values: file, pgsql
     database_driver: str = 'postgresql'
     database_username: str = 'postgres'
     database_password: str = 'tenno1515'
@@ -85,8 +85,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=os.getenv("BACKEND_ENV", "config.env"), env_file_encoding="utf-8"
     )
-
-
 
 
 settings = Settings()
