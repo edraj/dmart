@@ -22,7 +22,7 @@ podman build -t dmart -f Dockerfile
 podman run --name dmart -p 8000:8000 -d -it dmart
 
 # Set the admin password
-podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 ./set_admin_passwd.py
+podman exec -it -w /home/backend dmart /home/venv/bin/python3 ./set_admin_passwd.py
 
 # Load the sample spaces data
 podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
@@ -43,7 +43,7 @@ podman exec -it -w /home/backend dmart ./curl.sh
 
 - git
 - jq
-- python == 3.11
+- python >= 3.11
 - pip
 - redis >= 7.2
 - RedisJSON (rejson) >= 2.6
