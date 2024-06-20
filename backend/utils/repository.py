@@ -532,7 +532,7 @@ async def serve_query(
                     ),
                 )
 
-            path = Path(f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}"
+            path = Path(f"{settings.spaces_folder}/{query.space_name}/"
                         f"{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
 
             if path.is_file():
@@ -551,7 +551,7 @@ async def serve_query(
                     )
 
                 r, _ = subprocess.Popen(
-                        [f"wc -l < {path}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                        f"wc -l < {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 ).communicate()
 
                 if r is None:
@@ -580,7 +580,7 @@ async def serve_query(
                 trimmed_subpath = trimmed_subpath[1:]
 
             path = Path(
-                f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl")
+                f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
             if path.is_file():
                 result = []
                 if query.search:
@@ -635,7 +635,7 @@ async def serve_query(
                     )
                 else:
                     r, _ = subprocess.Popen(
-                        [f"wc -l < {path}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                        f"wc -l < {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
                     ).communicate()
 
                     if r is None:
