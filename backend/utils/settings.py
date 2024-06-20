@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     
     enable_channel_auth: bool = False
     channels: dict = {}
+    store_payload_string: bool = True
 
     model_config = SettingsConfigDict(
         env_file=os.getenv("BACKEND_ENV", "config.env"), env_file_encoding="utf-8"

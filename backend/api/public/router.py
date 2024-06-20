@@ -1,6 +1,6 @@
 from re import sub as res_sub
 from uuid import uuid4
-from fastapi import APIRouter, Query, Request, Path, status, Depends
+from fastapi import APIRouter, Body, Query, Path, status, Depends
 from models.enums import AttachmentType, ContentType, ResourceType, TaskType
 import utils.db as db
 import models.api as api
@@ -337,16 +337,16 @@ async def query_via_urlparams(
     )
 
 
-@router.post("/submit/{space_name}/{schema_shortname}/{subpath}")
+@router.post("/submit/{space_name}/{schema_shortname}/{subpath:path}")
 async def create_entry(
-    space_name: str,
-    schema_shortname: str,
-    subpath: str,
-    body: Request,
+    space_name: str = Path(...),
+    schema_shortname: str = Path(...),
+    subpath: str = Path(..., regex=regex.SUBPATH),
+    body_dict: dict[str, Any] = Body(...),
     branch_name: str | None = settings.default_branch,
 ):
     allowed_models = {
-        "applications": ["log", "feedback"]
+        "applications": ["log", "feedback", "cancellation_survey"]
     }
     if (
         space_name not in allowed_models
@@ -361,7 +361,6 @@ async def create_entry(
             ),
         )
 
-    body_dict = await body.json()
     if not await access_control.check_access(
         user_shortname="anonymous",
         space_name=space_name,
@@ -534,6 +533,12 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
         branch_name=record.branch_name,
     )
 
+    if meta.payload.schema_shortname == "report":
+        query_dict = query_dict["query"]
+    else:
+        query_dict["subpath"] = query_dict["query_subpath"]
+        query_dict.pop("query_subpath")
+        
     for param, value in record.attributes.items():
         query_dict["search"] = query_dict["search"].replace(
             f"${param}", str(value))
@@ -547,9 +552,14 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
 
     if "limit" in record.attributes:
         query_dict["limit"] = record.attributes["limit"]
+        
+    if "from_date" in record.attributes:
+        query_dict["from_date"] = record.attributes["from_date"]
 
-    query_dict["subpath"] = query_dict["query_subpath"]
-    query_dict.pop("query_subpath")
+    if "to_date" in record.attributes:
+        query_dict["to_date"] = record.attributes["to_date"]
+
+
     filter_shortnames = record.attributes.get("filter_shortnames", [])
     query_dict["filter_shortnames"] = filter_shortnames if isinstance(
         filter_shortnames, list) else []

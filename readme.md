@@ -60,7 +60,7 @@ Valuable information (organizational and personal) is getting out of control!
 - **Activities and workflows** : Configurable activity (ticket) and workflow management. 
 - **Messaging and notifications** : Ability to trigger different types of notifications and ability to store user messages.
 
-<img src="./docs/data-mart.jpg" width="500">
+<img src="./frontend/src/routes/docs/assets/data-mart.jpg" width="500">
 
 
 ## Core concepts
@@ -77,7 +77,7 @@ Valuable information (organizational and personal) is getting out of control!
 
 DMART is a "Data-first" platform to management your valuable data/information; allowing you to transform your perception of data from liability into assets.
 
-<img src="./docs/tree.png" width="500">
+<img src="./frontend/src/routes/docs/assets/tree.png" width="500">
 
 ## API layer (REST-like, JSON-API)
 
@@ -89,10 +89,10 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
 
 ## Architecture and technology stack
 
-<img src="./docs/backend.png" width="650"> 
+<img src="./frontend/src/routes/docs/assets/backend.png" width="650"> 
 
   - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files. 
-  - Python 3.11 with emphasis on 
+  - Python 3.12 with emphasis on 
     - asyncio : maximizing scalability and leverage of server resources and enabling background jobs (post api service time).
     - type hinting and stringent linting (pyright).
   - FastAPI as the api micro-framework (based on our _curated_ fastapi skeleton) and full leverage of Pydantic and OpenApi version 3. 
@@ -100,7 +100,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
   - Redis as the operational data store. With specific leverage of RediSearch RedisJSON modules.
   - Intensive json-based logging for easier insights.
 
-<img src="./docs/datamart-one.png" width="50"> <img src="./docs/datamart-two.png" width="50"> <img src="./docs/datamart-three.png" width="50"> <img src="./docs/datamart-four.png" width="50">
+<img src="./frontend/src/routes/docs/assets/datamart-one.png" width="50"> <img src="./frontend/src/routes/docs/assets/datamart-two.png" width="50"> <img src="./frontend/src/routes/docs/assets/datamart-three.png" width="50"> <img src="./frontend/src/routes/docs/assets/datamart-four.png" width="50">
 
 ## Terminology 
 
@@ -166,7 +166,7 @@ podman build -t dmart -f Dockerfile
 podman run --name dmart -p 8000:8000 -d -it dmart
 
 # Set the admin password
-podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 ./set_admin_passwd.py
+podman exec -it -w /home/backend dmart /home/venv/bin/python3 ./set_admin_passwd.py
 
 # Load the sample spaces data
 podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
@@ -186,7 +186,7 @@ podman exec -it -w /home/backend dmart ./curl.sh
 
 - git
 - jq
-- python == 3.11
+- python >= 3.11
 - pip
 - redis >= 7.2
 - RedisJSON (rejson) >= 2.6
@@ -260,8 +260,8 @@ cd backend
 python -m pytest
 ```
 
-<img src="./docs/curl-test.png" width="300">
-<img src="./docs/pytest.png" width="450">
+<img src="./frontend/src/routes/docs/assets/curl-test.png" width="300">
+<img src="./frontend/src/routes/docs/assets/pytest.png" width="450">
 
 
 #### Using the Admin UI tool
@@ -295,8 +295,8 @@ yarn tauri build --bundles appimage --debug
 
 ```
 
-<img src="./docs/admin_ui_1.png" width="800">
-<img src="./docs/admin_ui_2.png" width="800">
+<img src="./frontend/src/routes/docs/assets/admin_ui_1.png" width="800">
+<img src="./frontend/src/routes/docs/assets/admin_ui_2.png" width="800">
 
 ### Using the command line tool
 
@@ -315,7 +315,7 @@ pip install --user  -r requirements.txt
 ./cli.py
 ```
 
-<img src="./docs/cli.png" width="450">
+<img src="./frontend/src/routes/docs/assets/cli.png" width="450">
 
 ### Offline (aka airgapped) deployment
 
@@ -323,7 +323,7 @@ pip install --user  -r requirements.txt
 # On the "online" computer
 rmdir ~/.pipi
 rmdir ~/.venv
-virtualenv --python=/usr/bin/python3.11 ~/.venv # or your favorate py env virtualization tool
+virtualenv --python=/usr/bin/python3 ~/.venv # or your favorate py env virtualization tool
 source ~/.venv/bin/activate
 mkdir ~/.pipi
 # under dmart/backend
@@ -331,8 +331,10 @@ pip download -d ~/.pipi/ $(cat *requirements.txt) virtualenv pip
 rsync -av ~/.pipi/ TARGET_OFFLINE_SERVER:~/.pipi
 
 # On the "offline" target server
+rmdir ~/.pipi
+rmdir ~/.venv
 pip install --no-index --find-links=~/.pipi virtualenv
-virtualenv ~/.venv
+virtualenv --python=/usr/bin/python3 ~/.venv # or your favorate py env virtualization tool
 source ~/.venv/bin/activate
 pip install --no-index --find-links=~/.pipi --upgrade pip
 pip install --no-index --find-links=~/.pipi -r requirements.txt -r test-requirements.txt -r plugins-requirements.txt

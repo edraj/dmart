@@ -9,7 +9,7 @@ from models.enums import ContentType, ResourceType
 from utils.redis_services import RedisServices
 from fastapi.logger import logger
 from create_index import main as reload_redis
-
+from utils.settings import settings
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
@@ -116,7 +116,7 @@ class Plugin(PluginBase):
                     shortname=meta_json["shortname"],
                     branch_name=data.branch_name,
                     payload=payload,
-                )
+                ) if settings.store_payload_string else ""
 
                 await redis_services.save_doc(meta_doc_id, meta_json)
                 if meta.payload:
@@ -186,7 +186,7 @@ class Plugin(PluginBase):
                 shortname=parent_shortname,
                 branch_name=self.data.branch_name,
                 payload=payload,
-            )
+            ) if settings.store_payload_string else ""
 
             # update parent meta doc
             await redis_services.save_doc(doc_id, meta_doc)

@@ -238,7 +238,10 @@ async def load(
     path /= filename
     async with aiofiles.open(path, "r") as file:
         content = await file.read()
-        return class_type.model_validate_json(content)
+        try:
+            return class_type.model_validate_json(content)
+        except Exception as e:
+            raise Exception(f"Error Invalid Entry At: {path}. Error {e}")
 
 
 def load_resource_payload(
@@ -279,8 +282,9 @@ async def save(
     if not path.is_dir():
         os.makedirs(path)
 
+    meta_json = meta.model_dump_json(exclude_none=True)
     async with aiofiles.open(path / filename, "w") as file:
-        await file.write(meta.model_dump_json(exclude_none=True))
+        await file.write(meta_json)
 
 
 async def create(
@@ -321,8 +325,8 @@ async def save_payload(
                 type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
         )
 
+    content = await attachment.read()
     async with aiofiles.open(payload_file_path / payload_filename, "wb") as file:
-        content = await attachment.read()
         await file.write(content)
 
 
@@ -358,8 +362,9 @@ async def save_payload_from_json(
                 type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
         )
 
+    payload_json = json.dumps(payload_data)
     async with aiofiles.open(payload_file_path / payload_filename, "w") as file:
-        await file.write(json.dumps(payload_data))
+        await file.write(payload_json)
 
 
 async def update(
@@ -417,8 +422,9 @@ async def update(
             )
 
     meta.updated_at = datetime.now()
+    meta_json = meta.model_dump_json(exclude_none=True)
     async with aiofiles.open(path / filename, "w") as file:
-        await file.write(meta.model_dump_json(exclude_none=True))
+        await file.write(meta_json)
 
     history_diff = await store_entry_diff(
         space_name,
@@ -603,8 +609,9 @@ async def move(
             os.rename(src=src_payload_file_path, dst=dist_payload_file_path)
 
     if meta_updated:
+        meta_json = meta.model_dump_json(exclude_none=True)
         async with aiofiles.open(dest_path / dest_filename, "w") as opened_file:
-            await opened_file.write(meta.model_dump_json(exclude_none=True))
+            await opened_file.write(meta_json)
 
     # Delete Src path if empty
     if src_path.parent.is_dir():

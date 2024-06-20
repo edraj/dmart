@@ -6,7 +6,7 @@ supervisor=supervise-daemon
 name="DMART Backend service"
 description="Headless content respository"
 
-command="/home/venv/bin/python3.11"
+command="/home/venv/bin/python3"
 # To run as a single process/thread mode
 command_args="/home/backend/main.py"
 # TO RUN via hypercorn (multi process)
