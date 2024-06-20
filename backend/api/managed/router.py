@@ -514,7 +514,6 @@ async def query_entries(
 @router.post("/request", response_model=api.Response, response_model_exclude_none=True)
 async def serve_request(
     request: api.Request,
-    token=Depends(GetJWTToken()),
     owner_shortname=Depends(JWTBearer()),
     is_internal: bool = False,
 ) -> api.Response:
