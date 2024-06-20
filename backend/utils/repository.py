@@ -537,23 +537,30 @@ async def serve_query(
 
             if path.is_file():
                 cmd = f"tail -n +{query.offset} {path} | head -n {query.limit} | tac"
-                result = list(
-                    filter(
-                        None,
-                        subprocess.run(
-                            [cmd], capture_output=True, text=True, shell=True
-                        ).stdout.split("\n"),
+                r, _ = subprocess.Popen(
+                            cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                ).communicate()
+                if r is None:
+                    result = []
+                else:
+                    result = list(
+                        filter(
+                            None,
+                            r.decode().split("\n"),
+                        )
                     )
-                )
-                total = int(
-                    subprocess.run(
-                        [f"wc -l < {path}"],
-                        capture_output=True,
-                        text=True,
-                        shell=True,
-                    ).stdout,
-                    10,
-                )
+
+                r, _ = subprocess.Popen(
+                        [f"wc -l < {path}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                ).communicate()
+
+                if r is None:
+                    total = 0
+                else:
+                    total = int(
+                        r.decode().strip(),
+                        10,
+                    )
                 for line in result:
                     action_obj = json.loads(line)
 
@@ -600,14 +607,19 @@ async def serve_query(
                     cmd = f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
                     if query.offset > 0:
                         cmd += f" | sed '1,{query.offset}d'"
-                    result = list(
-                        filter(
-                            None,
-                            subprocess.run(
-                                [cmd], capture_output=True, text=True, shell=True
-                            ).stdout.split("\n"),
+
+                    r, _ = subprocess.Popen(
+                        cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    ).communicate()
+                    if r is None:
+                        result = []
+                    else:
+                        result = list(
+                            filter(
+                                None,
+                                r.decode().split("\n"),
+                            )
                         )
-                    )
 
                 if query.search:
                     p1 = subprocess.Popen(
@@ -622,15 +634,18 @@ async def serve_query(
                         10,
                     )
                 else:
-                    total = int(
-                        subprocess.run(
-                            [f"wc -l < {path}"],
-                            capture_output=True,
-                            text=True,
-                            shell=True,
-                        ).stdout,
-                        10,
-                    )
+                    r, _ = subprocess.Popen(
+                        [f"wc -l < {path}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    ).communicate()
+
+                    if r is None:
+                        total = 0
+                    else:
+                        total = int(
+                            r.decode().strip(),
+                            10,
+                        )
+
                 for line in result:
                     action_obj = json.loads(line)
 
