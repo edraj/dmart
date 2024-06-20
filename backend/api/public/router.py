@@ -533,6 +533,12 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
         branch_name=record.branch_name,
     )
 
+    if meta.payload.schema_shortname == "report":
+        query_dict = query_dict["query"]
+    else:
+        query_dict["subpath"] = query_dict["query_subpath"]
+        query_dict.pop("query_subpath")
+        
     for param, value in record.attributes.items():
         query_dict["search"] = query_dict["search"].replace(
             f"${param}", str(value))
@@ -546,9 +552,14 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
 
     if "limit" in record.attributes:
         query_dict["limit"] = record.attributes["limit"]
+        
+    if "from_date" in record.attributes:
+        query_dict["from_date"] = record.attributes["from_date"]
 
-    query_dict["subpath"] = query_dict["query_subpath"]
-    query_dict.pop("query_subpath")
+    if "to_date" in record.attributes:
+        query_dict["to_date"] = record.attributes["to_date"]
+
+
     filter_shortnames = record.attributes.get("filter_shortnames", [])
     query_dict["filter_shortnames"] = filter_shortnames if isinstance(
         filter_shortnames, list) else []
