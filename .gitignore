@@ -4,6 +4,7 @@ logs
 .coverage
 **/*.log
 node_modules
+frontend/yarn.lock
 .routify
 .DS_Store
 *.tgz
@@ -13,6 +14,7 @@ mycookies.jar
 config.ini
 
 .env
+backend/env/
 secrets.env
 backend/config.env
 workspace.xml
