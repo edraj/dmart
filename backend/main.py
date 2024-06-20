@@ -377,8 +377,8 @@ async def space_backup(key: str):
         cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
     ).communicate()
     attributes = {
-        "stdout": result_stdout.split("\n"),
-        "stderr": result_stderr.split("\n"),
+        "stdout": result_stdout.decode().split("\n"),
+        "stderr": result_stderr.decode().split("\n"),
     }
     return api.Response(status=api.Status.success, attributes=attributes)
 
