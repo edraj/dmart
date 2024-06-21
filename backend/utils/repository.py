@@ -560,7 +560,7 @@ async def serve_query(
                     )
 
                 r, _ = subprocess.Popen(
-                        f"wc -l < {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                        f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 ).communicate()
 
                 if r is None:
@@ -614,28 +614,24 @@ async def serve_query(
                     r, _ = p.communicate()
                     result = list(filter(None, r.decode("utf-8").split("\n")))
                 else:
-                    r = subprocess.Popen(
+                    r1 = subprocess.Popen(
                         shlex.split(f"tail -n {query.limit + query.offset} {path}"), stdout=subprocess.PIPE,
                     )
 
-                    # r1 = subprocess.Popen(
-                    #     ["echo"], stdin=r.stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                    # )
-
                     if query.offset > 0:
-                        r = subprocess.Popen(
-                            shlex.split(f"sed '1,{query.offset}d'"), stdin=r.stdin, stdout=subprocess.PIPE,
+                        r1 = subprocess.Popen(
+                            shlex.split(f"sed '1,{query.offset}d'"), stdin=r1.stdin, stdout=subprocess.PIPE,
                         )
-                    r, _ = subprocess.Popen(
-                        ["tac"], stdin=r.stdout, stdout=subprocess.PIPE,
+                    r6, _ = subprocess.Popen(
+                        ["tac"], stdin=r1.stdout, stdout=subprocess.PIPE,
                     ).communicate()
-                    if r is None:
+                    if r6 is None:
                         result = []
                     else:
                         result = list(
                             filter(
                                 None,
-                                r.decode().split("\n"),
+                                r6.decode().split("\n"),
                             )
                         )
 
@@ -653,7 +649,7 @@ async def serve_query(
                     )
                 else:
                     r, _ = subprocess.Popen(
-                        f"wc -l < {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                        f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
                     ).communicate()
 
                     if r is None:
