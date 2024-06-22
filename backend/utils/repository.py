@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import shlex
 import subprocess
 import sys
 from datetime import datetime
@@ -540,13 +539,16 @@ async def serve_query(
                         f"{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
             if path.is_file():
                 r1 = subprocess.Popen(
-                    shlex.split(f"tail -n +{query.offset} {path}"), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    ["tail", "-n", f"+{query.offset}", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                )
+                rn = subprocess.Popen(
+                    ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
                 )
                 r2 = subprocess.Popen(
-                    shlex.split(f"head -n {query.limit}"), stdin=r1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    ["head", "-n", f"{query.limit}"], stdin=rn.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 )
                 r3 = subprocess.Popen(
-                    shlex.split("tac"), stdin=r2.stdout, stdout=subprocess.PIPE,
+                    ["tac"], stdin=r2.stdout, stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
                 r4, _ = r3.communicate()
@@ -616,16 +618,21 @@ async def serve_query(
                     result = list(filter(None, r.decode("utf-8").split("\n")))
                 else:
                     r1 = subprocess.Popen(
-                        shlex.split(f"tail -n {query.limit + query.offset} {path}"), stdout=subprocess.PIPE,
+                        ["tail", "-n", f"{query.limit + query.offset}", path], stdout=subprocess.PIPE,
                     )
 
+                    r1 = subprocess.Popen(
+                        ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
+                    )
                     if query.offset > 0:
                         r1 = subprocess.Popen(
-                            shlex.split(f"sed '1,{query.offset}d'"), stdin=r1.stdin, stdout=subprocess.PIPE,
+                            ["head", "-n", f"{query.limit}"], stdin=r1.stdout, stdout=subprocess.PIPE,
                         )
+
                     r6, _ = subprocess.Popen(
                         ["tac"], stdin=r1.stdout, stdout=subprocess.PIPE,
                     ).communicate()
+
                     if r6 is None:
                         result = []
                     else:
@@ -636,30 +643,17 @@ async def serve_query(
                             )
                         )
 
-                if query.search:
-                    p1 = subprocess.Popen(
-                        ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-                    )
-                    p2 = subprocess.Popen(
-                        ["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE
-                    )
-                    r, _ = p2.communicate()
+                r, _ = subprocess.Popen(
+                    f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                ).communicate()
+
+                if r is None:
+                    total = 0
+                else:
                     total = int(
                         r.decode().split()[0],
                         10,
                     )
-                else:
-                    r, _ = subprocess.Popen(
-                        f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                    ).communicate()
-
-                    if r is None:
-                        total = 0
-                    else:
-                        total = int(
-                            r.decode().split()[0],
-                            10,
-                        )
 
                 for line in result:
                     action_obj = json.loads(line)
@@ -685,7 +679,6 @@ async def serve_query(
                         action_type=core.ActionType(action_obj["request"]),
                     ):
                         continue
-
                     records.append(
                         core.Record(
                             resource_type=action_obj["resource"]["type"],
