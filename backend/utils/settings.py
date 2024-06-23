@@ -37,8 +37,6 @@ class Settings(BaseSettings):
     servername: str = ""  # This is for print purposes only.
     auto_uuid_rule: str = "auto"  # Used to generate a shortname from UUID
     google_application_credentials: str = ""
-    default_branch: str = "master"
-    management_space_branch: str = "master"
     is_registrable: bool = True
     social_login_allowed: bool = True
     all_spaces_mw: str = (

@@ -26,8 +26,5 @@
         "redis_db_update",
         "system_notification_sender"
     ],
-    "branches": [
-        "master"
-    ],
     "ordinal": 1
 }

@@ -22,7 +22,6 @@ class Plugin(PluginBase):
 
         entry = await load(
             space_name=data.space_name,
-            branch_name=data.branch_name,
             subpath=data.subpath,
             shortname=data.shortname,
             class_type=class_type,
@@ -48,7 +47,6 @@ class Plugin(PluginBase):
             "personal",
             f"people/{entry.owner_shortname}/notifications",
             meta_obj,
-            data.branch_name,
         )
 
         notification_obj = {
@@ -64,5 +62,4 @@ class Plugin(PluginBase):
             f"people/{entry.owner_shortname}/notifications",
             meta_obj,
             notification_obj,  # type: ignore
-            data.branch_name,
         )

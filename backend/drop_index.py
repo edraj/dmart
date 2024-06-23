@@ -13,7 +13,7 @@ async def drop_index(space: str, schema: str) -> None:
         async with RedisServices() as redis_services:
             print("Dropping Meta Docs")
             # Delete Meta docs
-            document_ids = await redis_services.get_all_document_ids(f"{space}:{settings.default_branch}:meta", f"@schema_shortname:{schema}")
+            document_ids = await redis_services.get_all_document_ids(f"{space}:meta", f"@schema_shortname:{schema}")
             for id in document_ids:
                 x = redis_services.json().delete(id)
                 if x and isinstance(x, Awaitable):
@@ -22,7 +22,7 @@ async def drop_index(space: str, schema: str) -> None:
                     
             # Drop the index and delete it's docs
             print("Dropping The Index")
-            await redis_services.drop_index(f"{space}:{settings.default_branch}:{schema}", True)
+            await redis_services.drop_index(f"{space}:{schema}", True)
             print("DONE.")
     except Exception as e:
         print(f"Error: {e}")
