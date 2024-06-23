@@ -1,5 +1,4 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
-import os
 import PyInstaller.__main__
 
 PyInstaller.__main__.run([
