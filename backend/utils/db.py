@@ -408,7 +408,7 @@ async def update(
     branch_name: str | None,
     user_shortname: str,
     schema_shortname: str | None = None,
-    retrieve_lock_status: bool = False,
+    retrieve_lock_status: bool | None = False,
 ) -> dict:
     """Update the entry, store the difference and return it"""
     path, filename = metapath(
