@@ -2,9 +2,10 @@ from copy import copy
 import shutil
 from utils.helpers import arr_remove_common, branch_path, snake_case
 from datetime import datetime
-from models.enums import ContentType, ResourceType
+from models.enums import ContentType, ResourceType, LockAction
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
+from utils.redis_services import RedisServices
 from utils.settings import settings
 import models.core as core
 from typing import TypeVar, Type, Any
@@ -407,6 +408,7 @@ async def update(
     branch_name: str | None,
     user_shortname: str,
     schema_shortname: str | None = None,
+    retrieve_lock_status: bool = False,
 ) -> dict:
     """Update the entry, store the difference and return it"""
     path, filename = metapath(
@@ -423,6 +425,34 @@ async def update(
             error=api.Error(type="update", code=InternalErrorCode.OBJECT_NOT_FOUND,
                             message="Request object is not available"),
         )
+    if retrieve_lock_status:
+        async with RedisServices() as redis_services:
+            if await redis_services.is_entry_locked(
+                space_name, branch_name, subpath, meta.shortname, user_shortname
+            ):
+                raise api.Exception(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    error=api.Error(
+                        type="update", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
+                )
+            elif await redis_services.get_lock_doc(
+                space_name, branch_name, subpath, meta.shortname
+            ):
+                # if the current can release the lock that means he is the right user
+                await redis_services.delete_lock_doc(
+                    space_name, branch_name, subpath, meta.shortname
+                )
+                await store_entry_diff(
+                    space_name,
+                    branch_name,
+                    "/" + subpath,
+                    meta.shortname,
+                    user_shortname,
+                    {},
+                    {"lock_type": LockAction.unlock},
+                    ["lock_type"],
+                    core.Content,
+                )
 
     meta.updated_at = datetime.now()
     meta_json = meta.model_dump_json(exclude_none=True)
@@ -695,6 +725,7 @@ async def delete(
     branch_name: str | None,
     user_shortname: str,
     schema_shortname: str | None = None,
+    retrieve_lock_status: bool | None = False,
 ):
     """Delete the file that match the criteria given, remove folder if empty
 
@@ -725,6 +756,21 @@ async def delete(
             error=api.Error(
                 type="delete", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"),
         )
+    if retrieve_lock_status:
+        async with RedisServices() as redis_services:
+            if await redis_services.is_entry_locked(
+                    space_name, branch_name, subpath, meta.shortname, user_shortname
+            ):
+                raise api.Exception(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    error=api.Error(
+                        type="delete", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
+                )
+            else:
+                # if the current can release the lock that means he is the right user
+                await redis_services.delete_lock_doc(
+                    space_name, branch_name, subpath, meta.shortname
+                )
 
     pathname = path / filename
     if pathname.is_file():
