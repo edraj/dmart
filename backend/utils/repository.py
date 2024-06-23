@@ -12,7 +12,6 @@ import jq  # type: ignore
 from fastapi import status
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
-from pydantic.fields import Field
 import models.api as api
 import models.core as core
 import utils.db as db
@@ -24,7 +23,6 @@ from utils.helpers import (
     alter_dict_keys,
     camel_case,
     flatten_all,
-    pp,
     snake_case,
     str_to_datetime,
 )
