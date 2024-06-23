@@ -2,7 +2,7 @@
 import PyInstaller.__main__
 
 PyInstaller.__main__.run([
-    'main.py',
+    'dmart.py',
     '--name=dmart',
     '--onefile',
     '--runtime-tmpdir=.',
@@ -13,4 +13,3 @@ PyInstaller.__main__.run([
     '--collect-submodules=concurrent_log_handler',
     '--clean',
 ])
-
