@@ -52,7 +52,6 @@ async def archive(space: str, subpath: str, schema: str, olderthan: int):
         while True:
             redis_res = await redis_services.search(
                 space_name=space,
-                branch_name=settings.default_branch,
                 schema_name=schema,
                 search=f"(@updated_at:[-inf {timestamp}])",
                 filters={
@@ -113,7 +112,6 @@ async def archive(space: str, subpath: str, schema: str, olderthan: int):
                     else:
                         await redis_services.delete_doc(
                             space,
-                            settings.default_branch,
                             "meta",
                             record.get("shortname"),
                             record["subpath"],

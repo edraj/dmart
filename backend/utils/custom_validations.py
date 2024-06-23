@@ -4,7 +4,7 @@ import aiofiles
 from fastapi import status
 from models.core import Record
 from models.enums import RequestType
-from utils.helpers import branch_path, csv_file_to_json, flatten_dict, flatten_list_of_dicts_in_dict
+from utils.helpers import csv_file_to_json, flatten_dict, flatten_list_of_dicts_in_dict
 from utils.internal_error_code import InternalErrorCode
 from utils.redis_services import RedisServices
 from models.api import Exception as API_Exception, Error as API_Error
@@ -18,7 +18,6 @@ async def validate_payload_with_schema(
     payload_data: UploadFile | dict,
     space_name: str,
     schema_shortname: str,
-    branch_name: str | None = settings.default_branch,
 ):
 
     if not isinstance(payload_data, (dict, UploadFile)):
@@ -33,7 +32,6 @@ async def validate_payload_with_schema(
 
     schema_path = get_schema_path(
         space_name=space_name,
-        branch_name=branch_name,
         schema_shortname=f"{schema_shortname}.json",
     )
 
@@ -48,12 +46,11 @@ async def validate_payload_with_schema(
     Draft7Validator(schema).validate(data)
 
 
-def get_schema_path(space_name: str, branch_name: str | None, schema_shortname: str):
+def get_schema_path(space_name: str, schema_shortname: str):
     # Tries to get the schema from the management space first
     schema_path = (
         settings.spaces_folder / 
         settings.management_space / 
-        branch_path(settings.management_space_branch) / 
         "schema" /
         schema_shortname
     )
@@ -64,7 +61,6 @@ def get_schema_path(space_name: str, branch_name: str | None, schema_shortname: 
     schema_path = (
         settings.spaces_folder / 
         space_name / 
-        branch_path(branch_name) / 
         "schema" /
         schema_shortname
     )
@@ -86,7 +82,6 @@ async def validate_uniqueness(
     folder_meta_path = (
         settings.spaces_folder
         / space_name
-        / branch_path(record.branch_name)
         / f"{record.subpath[1:] if record.subpath[0] == '/' else record.subpath}.json"
     )
 
@@ -207,7 +202,6 @@ async def validate_uniqueness(
         async with RedisServices() as redis_services:
             redis_search_res = await redis_services.search(
                 space_name=space_name,
-                branch_name=record.branch_name,
                 search=redis_search_str,
                 limit=1,
                 offset=0,
@@ -230,12 +224,10 @@ async def validate_jsonl_with_schema(
     file_path: FSPath,
     space_name: str,
     schema_shortname: str,
-    branch_name: str | None = settings.default_branch,
 ) -> None:
 
     schema_path = get_schema_path(
         space_name=space_name,
-        branch_name=branch_name,
         schema_shortname=f"{schema_shortname}.json",
     )
 
@@ -251,12 +243,10 @@ async def validate_csv_with_schema(
     file_path: FSPath,
     space_name: str,
     schema_shortname: str,
-    branch_name: str | None = settings.default_branch,
 ) -> None:
 
     schema_path = get_schema_path(
         space_name=space_name,
-        branch_name=branch_name,
         schema_shortname=f"{schema_shortname}.json",
     )
 

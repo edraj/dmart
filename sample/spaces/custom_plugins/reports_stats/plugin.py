@@ -5,10 +5,8 @@ from utils.access_control import access_control
 from utils.db import load, load_resource_payload
 from models.core import Content
 from models.api import Query
-from utils.helpers import branch_path
 from utils.repository import get_last_updated_entry, serve_query, internal_sys_update_model
 from utils.settings import settings
-from utils.helpers import pp
 
 
 
@@ -19,7 +17,6 @@ class Plugin(PluginBase):
         reports_path = (
             settings.spaces_folder
             / data.space_name
-            / branch_path(data.branch_name)
             / data.subpath
         )
 
@@ -38,7 +35,6 @@ class Plugin(PluginBase):
                     shortname=shortname,  # type: ignore
                     class_type=class_type,
                     user_shortname=data.user_shortname,
-                    branch_name=data.branch_name,
                 )
 
                 report_payload = load_resource_payload(
@@ -46,7 +42,6 @@ class Plugin(PluginBase):
                     subpath=subpath,
                     filename=report_meta.payload.body,  # type: ignore
                     class_type=class_type,
-                    branch_name=data.branch_name,
                 )
             except Exception:
                 continue
@@ -65,7 +60,6 @@ class Plugin(PluginBase):
             )
             report_last_updated_entry = await get_last_updated_entry(
                 data.space_name,
-                data.branch_name or settings.default_branch,
                 report_payload["query"]["filter_schema_names"],
                 False,
                 data.user_shortname,
@@ -83,7 +77,6 @@ class Plugin(PluginBase):
                 data.space_name,
                 "reports",
                 report_meta,
-                data.branch_name,
                 report_updates
             )
 

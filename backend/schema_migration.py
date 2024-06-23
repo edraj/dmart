@@ -41,7 +41,6 @@ async def change_field_type(
         updates={
             "properties": schema_properties
         },
-        branch_name=settings.default_branch
     )
     
     updated_num = 0
@@ -109,7 +108,6 @@ async def change_field_type(
             updates={
                 field_tree[0]: main_field
             },
-            branch_name=settings.default_branch
         )
         updated_num += 1
         

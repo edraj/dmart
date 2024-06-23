@@ -25,7 +25,6 @@ MANAGEMENT_SPACE: str = f"{settings.management_space}"
 USERS_SUBPATH: str = "users"
 DEMO_SPACE: str = "test"
 DEMO_SUBPATH: str = "content"
-DEFAULT_BRANCH: str = settings.default_branch
 RedisServices.is_pytest = True
 plugin_manager.is_pytest = True
 
