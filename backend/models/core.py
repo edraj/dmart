@@ -95,9 +95,6 @@ class Record(BaseModel):
     resource_type: ResourceType
     uuid: UUID | None = None
     shortname: str = Field(pattern=regex.SHORTNAME)
-    branch_name: str | None = Field(
-        default=settings.default_branch, pattern=regex.SHORTNAME
-    )
     subpath: str = Field(pattern=regex.SUBPATH)
     attributes: dict[str, Any]
     attachments: dict[ResourceType, list[Any]] | None = None
@@ -168,9 +165,6 @@ class Locator(Resource):
     domain: str | None = None
     type: ResourceType
     space_name: str
-    branch_name: str | None = Field(
-        default=settings.default_branch, pattern=regex.SHORTNAME
-    )
     subpath: str
     shortname: str
     schema_shortname: str | None = None
@@ -284,7 +278,6 @@ class Meta(Resource):
         subpath: str,
         shortname: str,
         include: list[str] = [],
-        branch_name: str | None = None,
     ) -> Record:
         # Sanity check
 
@@ -299,8 +292,6 @@ class Meta(Resource):
             "shortname": self.shortname,
             "subpath": subpath,
         }
-        if branch_name:
-            record_fields["branch_name"] = branch_name
 
         attributes = {}
         for key, value in self.__dict__.items():
@@ -324,7 +315,6 @@ class Space(Meta):
     hide_folders: list[str] = []
     hide_space: bool | None = None
     active_plugins: list[str] = []
-    branches: list[str] = []
     ordinal: int | None = None
 
 
@@ -451,9 +441,6 @@ class Folder(Meta):
     pass
 
 
-class Branch(Folder):
-    pass
-
 
 class Permission(Meta):
     subpaths: dict[str, set[str]]  # {"space_name": ["subpath_one", "subpath_two"]}
@@ -498,9 +485,6 @@ class Post(Content):
 
 class Event(BaseModel):
     space_name: str
-    branch_name: str | None = Field(
-        default=settings.default_branch, pattern=regex.SHORTNAME
-    )
     subpath: str = Field(pattern=regex.SUBPATH)
     shortname: str | None = Field(default=None, pattern=regex.SHORTNAME)
     action_type: ActionType
@@ -568,7 +552,6 @@ class Notification(Meta):
         if entry:
             entry_locator = Locator(
                 space_name=entry["space_name"],
-                branch_name=entry["branch_name"],
                 type=entry["resource_type"],
                 schema_shortname=entry["payload"]["schema_shortname"],
                 subpath=entry["subpath"],

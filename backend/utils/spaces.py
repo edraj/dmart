@@ -17,14 +17,7 @@ async def initialize_spaces() -> None:
             continue
         space_name = match.group(1)
 
-        branches_path = settings.spaces_folder / space_name / "branches"
-        branches_names = [settings.default_branch]
-        for branch in branches_path.glob("*/.dm/meta.branch.json"):
-            branch_obj = core.Branch.model_validate_json(branch.read_text())
-            branches_names.append(branch_obj.shortname)
-
         space_obj = core.Space.model_validate_json(one.read_text())
-        space_obj.branches = branches_names
         spaces[space_name] = space_obj.model_dump_json()
 
     async with RedisServices() as redis_services:
