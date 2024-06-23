@@ -237,20 +237,13 @@ async def load(
         )
 
     path /= filename
+    content = ""
     try: 
         async with aiofiles.open(path, "r") as file:
             content = await file.read()
             return class_type.model_validate_json(content)
-    except Exception as _:
-        await asyncio.sleep(0.001)
-        async with aiofiles.open(path, "r") as file:
-            content = await file.read()
-            try:
-                return class_type.model_validate_json(content)
-            except Exception as e:
-                raise Exception(f"Error Invalid Entry At: {path}. Error {e} {content=}")
-
-
+    except Exception as e:
+        raise Exception(f"Error Invalid Entry At: {path}. Error {e} {content=}")
 
 
 def load_resource_payload(
@@ -268,25 +261,15 @@ def load_resource_payload(
     path /= filename
     if not path.is_file():
         return {}
-        # raise api.Exception(
-        #     status_code=status.HTTP_404_NOT_FOUND,
-        #     error=api.Error(type="db", code=12, message="Request object is not available"),
-        # )
     try: 
         bytes = path.read_bytes()
         data = json.loads(bytes)
         return data
     except Exception as _:
-        time.sleep(0.001)
-        bytes = path.read_bytes()
-        try:
-            data = json.loads(bytes)
-            return data
-        except Exception as _:
-            raise api.Exception(
-              status_code=status.HTTP_404_NOT_FOUND,
-              error=api.Error(type="db", code=12, message=f"Request object is not available {bytes.decode()}"),
-                    )
+        raise api.Exception(
+          status_code=status.HTTP_404_NOT_FOUND,
+          error=api.Error(type="db", code=12, message=f"Request object is not available {path}"),
+        )
 
 
 async def save(
