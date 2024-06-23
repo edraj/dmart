@@ -16,8 +16,6 @@ from fastapi import status
 import aiofiles
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN
 from shutil import copy2 as copy_file
-import time
-import asyncio
 import os
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
