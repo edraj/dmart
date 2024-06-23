@@ -18,6 +18,9 @@ from fastapi import status
 import aiofiles
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN
 from shutil import copy2 as copy_file
+import time
+import asyncio
+import os
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
 
@@ -236,12 +239,20 @@ async def load(
         )
 
     path /= filename
-    async with aiofiles.open(path, "r") as file:
-        content = await file.read()
-        try:
+    try: 
+        async with aiofiles.open(path, "r") as file:
+            content = await file.read()
             return class_type.model_validate_json(content)
-        except Exception as e:
-            raise Exception(f"Error Invalid Entry At: {path}. Error {e}")
+    except Exception as e:
+        await asyncio.sleep(0.001)
+        async with aiofiles.open(path, "r") as file:
+            content = await file.read()
+            try:
+                return class_type.model_validate_json(content)
+            except Exception as e:
+                raise Exception(f"Error Invalid Entry At: {path}. Error {e} {content=}")
+
+
 
 
 def load_resource_payload(
@@ -263,7 +274,21 @@ def load_resource_payload(
         #     status_code=status.HTTP_404_NOT_FOUND,
         #     error=api.Error(type="db", code=12, message="Request object is not available"),
         # )
-    return json.loads(path.read_bytes())
+    try: 
+        bytes = path.read_bytes()
+        data = json.loads(bytes)
+        return data
+    except Exception as e:
+        time.sleep(0.001)
+        bytes = path.read_bytes()
+        try:
+            data = json.loads(bytes)
+            return data
+        except Exception as ee:
+            raise api.Exception(
+              status_code=status.HTTP_404_NOT_FOUND,
+              error=api.Error(type="db", code=12, message=f"Request object is not available {bytes.decode()}"),
+                    )
 
 
 async def save(
@@ -283,8 +308,10 @@ async def save(
         os.makedirs(path)
 
     meta_json = meta.model_dump_json(exclude_none=True)
-    async with aiofiles.open(path / filename, "w") as file:
-        await file.write(meta_json)
+    with open(path / filename, "w") as file:
+        file.write(meta_json)
+        file.flush()
+        os.fsync(file)
 
 
 async def create(
@@ -304,8 +331,10 @@ async def create(
     if not path.is_dir():
         os.makedirs(path)
 
-    async with aiofiles.open(path / filename, "w") as file:
-        await file.write(meta.model_dump_json(exclude_none=True))
+    with open(path / filename, "w") as file:
+        file.write(meta.model_dump_json(exclude_none=True))
+        file.flush()
+        os.fsync(file)
 
 
 async def save_payload(
@@ -326,8 +355,10 @@ async def save_payload(
         )
 
     content = await attachment.read()
-    async with aiofiles.open(payload_file_path / payload_filename, "wb") as file:
-        await file.write(content)
+    with open(payload_file_path / payload_filename, "wb") as file:
+        file.write(content)
+        file.flush()
+        os.fsync(file)
 
 
 async def save_payload_from_json(
@@ -363,8 +394,10 @@ async def save_payload_from_json(
         )
 
     payload_json = json.dumps(payload_data)
-    async with aiofiles.open(payload_file_path / payload_filename, "w") as file:
-        await file.write(payload_json)
+    with open(payload_file_path / payload_filename, "w") as file:
+        file.write(payload_json)
+        file.flush()
+        os.fsync(file)
 
 
 async def update(
@@ -393,38 +426,13 @@ async def update(
             error=api.Error(type="update", code=InternalErrorCode.OBJECT_NOT_FOUND,
                             message="Request object is not available"),
         )
-    async with RedisServices() as redis_services:
-        if await redis_services.is_entry_locked(
-            space_name, branch_name, subpath, meta.shortname, user_shortname
-        ):
-            raise api.Exception(
-                status_code=status.HTTP_403_FORBIDDEN,
-                error=api.Error(
-                    type="update", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
-            )
-        elif await redis_services.get_lock_doc(
-            space_name, branch_name, subpath, meta.shortname
-        ):
-            # if the current can release the lock that means he is the right user
-            await redis_services.delete_lock_doc(
-                space_name, branch_name, subpath, meta.shortname
-            )
-            await store_entry_diff(
-                space_name,
-                branch_name,
-                "/" + subpath,
-                meta.shortname,
-                user_shortname,
-                {},
-                {"lock_type": LockAction.unlock},
-                ["lock_type"],
-                core.Content,
-            )
 
     meta.updated_at = datetime.now()
     meta_json = meta.model_dump_json(exclude_none=True)
-    async with aiofiles.open(path / filename, "w") as file:
-        await file.write(meta_json)
+    with open(path / filename, "w") as file:
+        file.write(meta_json)
+        file.flush()
+        os.fsync(file)
 
     history_diff = await store_entry_diff(
         space_name,
@@ -610,8 +618,10 @@ async def move(
 
     if meta_updated:
         meta_json = meta.model_dump_json(exclude_none=True)
-        async with aiofiles.open(dest_path / dest_filename, "w") as opened_file:
-            await opened_file.write(meta_json)
+        with open(dest_path / dest_filename, "w") as opened_file:
+            opened_file.write(meta_json)
+            opened_file.flush()
+            os.fsync(opened_file)
 
     # Delete Src path if empty
     if src_path.parent.is_dir():
@@ -718,20 +728,6 @@ async def delete(
             error=api.Error(
                 type="delete", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"),
         )
-    async with RedisServices() as redis_services:
-        if await redis_services.is_entry_locked(
-            space_name, branch_name, subpath, meta.shortname, user_shortname
-        ):
-            raise api.Exception(
-                status_code=status.HTTP_403_FORBIDDEN,
-                error=api.Error(
-                    type="delete", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
-            )
-        else:
-            # if the current can release the lock that means he is the right user
-            await redis_services.delete_lock_doc(
-                space_name, branch_name, subpath, meta.shortname
-            )
 
     pathname = path / filename
     if pathname.is_file():
