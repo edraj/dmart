@@ -572,7 +572,7 @@ async def get_entry_by_uuid(
     uuid: str,
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
-    has_lock: bool = False
+    retrieve_lock_status: bool = False
 ):
     return await repository.get_entry_by_var(
         "uuid",
@@ -580,7 +580,7 @@ async def get_entry_by_uuid(
         "anonymous",
         retrieve_json_payload,
         retrieve_attachments,
-        has_lock,
+        retrieve_lock_status,
     )
 
 
@@ -589,7 +589,7 @@ async def get_entry_by_slug(
     slug: str,
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
-    has_lock: bool = False,
+    retrieve_lock_status: bool = False,
 ):
     return await repository.get_entry_by_var(
         "slug",
@@ -597,5 +597,5 @@ async def get_entry_by_slug(
         "anonymous",
         retrieve_json_payload,
         retrieve_attachments,
-        has_lock,
+        retrieve_lock_status,
     )

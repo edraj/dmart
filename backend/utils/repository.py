@@ -129,7 +129,7 @@ async def serve_query(
                             retrieve_attachments=query.retrieve_attachments,
                             validate_schema=query.validate_schema,
                             filter_types=query.filter_types,
-                            has_lock=query.has_lock,
+                            retrieve_lock_status=query.retrieve_lock_status,
                         )
                     except Exception:
                         # Incase of schema validation error
@@ -242,7 +242,7 @@ async def serve_query(
                                 query.include_fields,
                                 query.branch_name,
                             )
-                            if query.has_lock and resource_base_record:
+                            if query.retrieve_lock_status and resource_base_record:
                                locked_data = await redis_services.get_lock_doc(
                                    query.space_name,
                                    query.branch_name,
@@ -1526,7 +1526,7 @@ async def get_record_from_redis_doc(
     filter_types: list | None = None,
     branch_name: str = Field(
         default=settings.default_branch, pattern=regex.SHORTNAME),
-    has_lock: bool = False,
+    retrieve_lock_status: bool = False,
 ) -> core.Record:
     meta_doc_content = {}
     payload_doc_content = {}
@@ -1567,7 +1567,7 @@ async def get_record_from_redis_doc(
     )
 
     # Get lock data
-    if has_lock:
+    if retrieve_lock_status:
         locked_data = await redis_services.get_lock_doc(
             space_name,
             branch_name,
@@ -1626,7 +1626,7 @@ async def get_entry_by_var(
     logged_in_user,
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
-    has_lock: bool = False,
+    retrieve_lock_status: bool = False,
 ):
     spaces = await get_spaces()
     entry_doc = None
@@ -1699,7 +1699,7 @@ async def get_entry_by_var(
         retrieve_json_payload=retrieve_json_payload,
         retrieve_attachments=retrieve_attachments,
         validate_schema=True,
-        has_lock=has_lock,
+        retrieve_lock_status=retrieve_lock_status,
     )
 
     await plugin_manager.after_action(
