@@ -12,7 +12,7 @@ from models.core import (
 from utils.notification import NotificationManager
 
 # from plugins.web_notification import WebNotifier, websocket_push
-from utils.helpers import branch_path, camel_case, replace_message_vars
+from utils.helpers import camel_case, replace_message_vars
 
 # from utils.notification import NotificationContext, send_notification
 from utils.redis_services import RedisServices
@@ -48,7 +48,6 @@ class Plugin(PluginBase):
                     data.shortname,
                     getattr(sys_modules["models.core"], camel_case(data.resource_type)),
                     data.user_shortname,
-                    data.branch_name,
                 )
             ).model_dump()
             if (
@@ -63,19 +62,16 @@ class Plugin(PluginBase):
                     class_type=getattr(
                         sys_modules["models.core"], camel_case(data.resource_type)
                     ),
-                    branch_name=data.branch_name,
                 )
         entry["space_name"] = data.space_name
         entry["resource_type"] = str(data.resource_type)
         entry["subpath"] = data.subpath
-        entry["branch_name"] = str(data.branch_name)
 
         # 1- get the matching SystemNotificationRequests
         search_subpaths = list(filter(None, data.subpath.split("/")))
         async with await RedisServices() as redis:
             matching_notification_requests = await redis.search(
                 space_name=settings.management_space,
-                branch_name=data.branch_name,
                 schema_name="system_notification_request",
                 filters={"subpath": ["notifications/system"]},
                 limit=30,
@@ -105,7 +101,6 @@ class Plugin(PluginBase):
                 users_objects[subscriber] = await redis.get_doc_by_id(
                     redis.generate_doc_id(
                         settings.management_space,
-                        settings.management_space_branch,
                         "meta",
                         subscriber,
                         settings.users_subpath,
@@ -133,7 +128,6 @@ class Plugin(PluginBase):
                         "personal",
                         f"people/{receiver}/notifications",
                         notification_obj,
-                        notification_dict["branch_name"],
                     )
 
                 for platform in formatted_req["platforms"]:
@@ -160,12 +154,11 @@ class Plugin(PluginBase):
         # Get Notification Request Images
         attachments_path = (
             settings.spaces_folder
-            / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}"
+            / f"{settings.management_space}"
             f"/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
         notification_attachments = await get_entry_attachments(
             subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
-            branch_name=notification_dict["branch_name"],
             attachments_path=attachments_path,
         )
         notification_images = {

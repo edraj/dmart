@@ -6,7 +6,7 @@ from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode
 
 
-async def set_init_state_from_request(ticket: api.Request, branch_name, logged_in_user):
+async def set_init_state_from_request(ticket: api.Request, logged_in_user):
     workflow_attr = ticket.records[0].attributes
     workflow_shortname = workflow_attr["workflow_shortname"]
 
@@ -19,7 +19,6 @@ async def set_init_state_from_request(ticket: api.Request, branch_name, logged_i
         shortname=workflow_shortname,
         class_type=core.Content,
         user_shortname=logged_in_user,
-        branch_name=branch_name,
     )
 
     if workflows_data is not None and workflows_data.payload is not None:
@@ -28,7 +27,6 @@ async def set_init_state_from_request(ticket: api.Request, branch_name, logged_i
             subpath="workflows",
             filename=str(workflows_data.payload.body),
             class_type=core.Content,
-            branch_name=branch_name,
         )
 
         initial_state = None
@@ -57,7 +55,7 @@ async def set_init_state_from_request(ticket: api.Request, branch_name, logged_i
 
 
 async def set_init_state_from_record(
-    ticket: core.Record, branch_name, logged_in_user, space_name
+    ticket: core.Record, logged_in_user, space_name
 ):
     workflow_attr = ticket.attributes
     workflow_shortname = workflow_attr["workflow_shortname"]
@@ -68,7 +66,6 @@ async def set_init_state_from_record(
         shortname=workflow_shortname,
         class_type=core.Content,
         user_shortname=logged_in_user,
-        branch_name=branch_name,
     )
 
     if workflows_data is not None and workflows_data.payload is not None:
@@ -77,7 +74,6 @@ async def set_init_state_from_record(
             subpath="workflows",
             filename=str(workflows_data.payload.body),
             class_type=core.Content,
-            branch_name=branch_name,
         )
         ticket.attributes = {
             **workflow_attr,

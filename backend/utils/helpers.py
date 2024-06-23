@@ -10,7 +10,6 @@ from jsonschema.validators import _RefResolver as RefResolver  # type: ignore
 # TBD import referencing.jsonschema
 from collections.abc import MutableMapping
 from models.enums import Language
-from utils.settings import settings
 from typing import Any
 from languages.loader import languages
 
@@ -226,12 +225,6 @@ def alter_dict_keys(
             result[k] = target[k]
 
     return result
-
-
-def branch_path(branch_name: str | None = settings.default_branch) -> str:
-    return (
-        (f"branches/{branch_name}") if branch_name != settings.default_branch else "./"
-    )
 
 
 def json_flater(data: dict[str, Any]) -> dict[str, Any]:

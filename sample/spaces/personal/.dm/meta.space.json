@@ -13,7 +13,6 @@
   "capture_misses": false,
   "mirrors": [],
   "check_health": true,
-  "branches": [],
   "hide_space": true,
   "active_plugins": [
     "action_log",

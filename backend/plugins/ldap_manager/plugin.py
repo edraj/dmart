@@ -44,7 +44,6 @@ class Plugin(PluginBase):
         user_model: User = await load(
             space_name=settings.management_space,
             subpath=data.subpath,
-            branch_name=settings.management_space_branch,
             shortname=data.shortname,
             class_type=User
         )
