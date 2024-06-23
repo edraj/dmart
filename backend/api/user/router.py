@@ -581,6 +581,7 @@ async def update_profile(
         list(profile.attributes.keys()),
         MANAGEMENT_BRANCH,
         shortname,
+        retrieve_lock_status=profile.retrieve_lock_status,
     )
 
     await plugin_manager.after_action(

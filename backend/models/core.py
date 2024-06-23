@@ -101,6 +101,7 @@ class Record(BaseModel):
     subpath: str = Field(pattern=regex.SUBPATH)
     attributes: dict[str, Any]
     attachments: dict[ResourceType, list[Any]] | None = None
+    retrieve_lock_status: bool = False
 
     def __init__(self, **data):
         BaseModel.__init__(self, **data)

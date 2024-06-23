@@ -406,6 +406,7 @@ async def serve_space(
                 ),
                 branch_name=record.branch_name,
                 user_shortname=owner_shortname,
+                retrieve_lock_status=record.retrieve_lock_status,
             )
 
         case api.RequestType.delete:
@@ -532,6 +533,7 @@ async def serve_request(
         is_internal: bool = False,
 ) -> api.Response:
     spaces = await get_spaces()
+
     if request.space_name not in spaces:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -890,6 +892,7 @@ async def serve_request(
                     branch_name=record.branch_name,
                     user_shortname=owner_shortname,
                     schema_shortname=schema_shortname,
+                    retrieve_lock_status=record.retrieve_lock_status,
                 )
                 if new_resource_payload_data is not None:
                     await db.save_payload_from_json(
@@ -1019,6 +1022,7 @@ async def serve_request(
                     branch_name=record.branch_name,
                     user_shortname=owner_shortname,
                     schema_shortname=schema_shortname,
+                    retrieve_lock_status=record.retrieve_lock_status,
                 )
 
 
@@ -1128,6 +1132,7 @@ async def serve_request(
                     branch_name=record.branch_name,
                     user_shortname=owner_shortname,
                     schema_shortname=schema_shortname,
+                    retrieve_lock_status=record.retrieve_lock_status,
                 )
 
 
@@ -1213,6 +1218,7 @@ async def serve_request(
                     branch_name=record.branch_name,
                     user_shortname=owner_shortname,
                     schema_shortname=schema_shortname,
+                    retrieve_lock_status=record.retrieve_lock_status,
                 )
 
                 await plugin_manager.after_action(
@@ -1355,6 +1361,7 @@ async def update_state(
             "Ticket state resolution"]),
         comment: str | None = Body(None, embed=True, examples=["Nice ticket"]),
         branch_name: str | None = settings.default_branch,
+        retrieve_lock_status: bool | None = False,
 ) -> api.Response:
     spaces = await get_spaces()
     if space_name not in spaces:
@@ -1530,6 +1537,7 @@ async def update_state(
                 ["state", "resolution_reason", "comment"],
                 branch_name,
                 logged_in_user,
+                retrieve_lock_status=retrieve_lock_status,
             )
             await plugin_manager.after_action(
                 core.Event(
@@ -2554,6 +2562,7 @@ async def apply_alteration(
         meta=alteration_meta,
         branch_name=on_entry.branch_name,
         user_shortname=logged_in_user,
+        retrieve_lock_status=on_entry.retrieve_lock_status,
     )
     return response
 
