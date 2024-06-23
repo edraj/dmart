@@ -101,6 +101,7 @@ class Query(BaseModel):
     retrieve_json_payload: bool = False
     retrieve_attachments: bool = False
     validate_schema: bool = True
+    retrieve_lock_status: bool = False
     jq_filter: str | None = None
     limit: int = 10
     offset: int = 0
