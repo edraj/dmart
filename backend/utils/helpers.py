@@ -10,7 +10,6 @@ from jsonschema.validators import _RefResolver as RefResolver  # type: ignore
 # TBD import referencing.jsonschema
 from collections.abc import MutableMapping
 from models.enums import Language
-from utils.settings import settings
 from typing import Any
 from languages.loader import languages
 
