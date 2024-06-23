@@ -1,29 +1,25 @@
-from datetime import datetime
 import json
 import os
-from pathlib import Path
 import re
+import subprocess
 import sys
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
+import aiofiles
 import jq  # type: ignore
+from fastapi import status
 from fastapi.encoders import jsonable_encoder
+from fastapi.logger import logger
 from pydantic.fields import Field
+import models.api as api
+import models.core as core
+import utils.db as db
+import utils.regex as regex
 from models.enums import ContentType, Language, ResourceType
 from utils.access_control import access_control
-from utils.internal_error_code import InternalErrorCode
-from utils.jwt import generate_jwt
-from utils.plugin_manager import plugin_manager
-from utils.spaces import get_spaces
-from utils.settings import settings
-import utils.regex as regex
-import models.core as core
-import models.api as api
-import utils.db as db
-from utils.redis_services import RedisServices
-import aiofiles
-from fastapi import status
-from fastapi.logger import logger
+from utils.custom_validations import validate_payload_with_schema
 from utils.helpers import (
     alter_dict_keys,
     branch_path,
@@ -32,8 +28,14 @@ from utils.helpers import (
     snake_case,
     str_to_datetime,
 )
-from utils.custom_validations import validate_payload_with_schema
-import subprocess
+from utils.internal_error_code import InternalErrorCode
+from utils.jwt import generate_jwt
+from utils.plugin_manager import plugin_manager
+from utils.redis_services import RedisServices
+from utils.settings import settings
+from utils.spaces import get_spaces
+
+
 # import redis.commands.search.reducers as reducers
 
 
@@ -533,28 +535,45 @@ async def serve_query(
                     ),
                 )
 
-            path = Path(f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}"
+            path = Path(f"{settings.spaces_folder}/{query.space_name}/"
                         f"{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
-
             if path.is_file():
-                cmd = f"tail -n +{query.offset} {path} | head -n {query.limit} | tac"
-                result = list(
-                    filter(
-                        None,
-                        subprocess.run(
-                            [cmd], capture_output=True, text=True, shell=True
-                        ).stdout.split("\n"),
+                r1 = subprocess.Popen(
+                    ["tail", "-n", f"+{query.offset}", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                )
+                rn = subprocess.Popen(
+                    ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
+                )
+                r2 = subprocess.Popen(
+                    ["head", "-n", f"{query.limit}"], stdin=rn.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                )
+                r3 = subprocess.Popen(
+                    ["tac"], stdin=r2.stdout, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                r4, _ = r3.communicate()
+                if r4 is None:
+                    result = []
+                else:
+                    result = list(
+                        filter(
+                            None,
+                            r4.decode().split("\n"),
+                        )
                     )
-                )
-                total = int(
-                    subprocess.run(
-                        [f"wc -l < {path}"],
-                        capture_output=True,
-                        text=True,
-                        shell=True,
-                    ).stdout,
-                    10,
-                )
+
+                r, _ = subprocess.Popen(
+                        f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                ).communicate()
+
+                if r is None:
+                    total = 0
+                else:
+                    total = int(
+                        r.decode().split()[0],
+                        10,
+                    )
+
                 for line in result:
                     action_obj = json.loads(line)
 
@@ -574,7 +593,7 @@ async def serve_query(
                 trimmed_subpath = trimmed_subpath[1:]
 
             path = Path(
-                f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl")
+                f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
             if path.is_file():
                 result = []
                 if query.search:
@@ -598,40 +617,44 @@ async def serve_query(
                     r, _ = p.communicate()
                     result = list(filter(None, r.decode("utf-8").split("\n")))
                 else:
-                    cmd = f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
-                    if query.offset > 0:
-                        cmd += f" | sed '1,{query.offset}d'"
-                    result = list(
-                        filter(
-                            None,
-                            subprocess.run(
-                                [cmd], capture_output=True, text=True, shell=True
-                            ).stdout.split("\n"),
-                        )
+                    r1 = subprocess.Popen(
+                        ["tail", "-n", f"{query.limit + query.offset}", path], stdout=subprocess.PIPE,
                     )
 
-                if query.search:
-                    p1 = subprocess.Popen(
-                        ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
+                    r1 = subprocess.Popen(
+                        ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
                     )
-                    p2 = subprocess.Popen(
-                        ["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE
-                    )
-                    r, _ = p2.communicate()
-                    total = int(
-                        r.decode(),
-                        10,
-                    )
+                    if query.offset > 0:
+                        r1 = subprocess.Popen(
+                            ["head", "-n", f"{query.limit}"], stdin=r1.stdout, stdout=subprocess.PIPE,
+                        )
+
+                    r6, _ = subprocess.Popen(
+                        ["tac"], stdin=r1.stdout, stdout=subprocess.PIPE,
+                    ).communicate()
+
+                    if r6 is None:
+                        result = []
+                    else:
+                        result = list(
+                            filter(
+                                None,
+                                r6.decode().split("\n"),
+                            )
+                        )
+
+                r, _ = subprocess.Popen(
+                    f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                ).communicate()
+
+                if r is None:
+                    total = 0
                 else:
                     total = int(
-                        subprocess.run(
-                            [f"wc -l < {path}"],
-                            capture_output=True,
-                            text=True,
-                            shell=True,
-                        ).stdout,
+                        r.decode().split()[0],
                         10,
                     )
+
                 for line in result:
                     action_obj = json.loads(line)
 
@@ -656,7 +679,6 @@ async def serve_query(
                         action_type=core.ActionType(action_obj["request"]),
                     ):
                         continue
-
                     records.append(
                         core.Record(
                             resource_type=action_obj["resource"]["type"],
