@@ -15,7 +15,6 @@ import os
 import shutil
 import sys
 import time
-
 from utils.settings import settings
 from create_index import main as create_index
 from main import main as server
@@ -49,14 +48,11 @@ match sys.argv[0]:
         )
         parser.add_argument("-t", "--type", help="type of health check (soft or hard)")
         parser.add_argument("-s", "--space", help="hit the target space or pass (all) to make the full health check")
-        parser.add_argument("-b", "--branch", help="target a specific branch")
         parser.add_argument("-m", "--schemas", nargs="*", help="hit the target schema inside the space")
 
         args = parser.parse_args()
-        if not args.branch:
-            args.branch = settings.default_branch
         before_time = time.time()
-        asyncio.run(health_check(args.type, args.space, args.schemas, args.branch))
+        asyncio.run(health_check(args.type, args.space, args.schemas, "master"))
         print(f'total time: {"{:.2f}".format(time.time() - before_time)} sec')
     case "create-index":
         parser = argparse.ArgumentParser(
