@@ -51,7 +51,6 @@ class ResourceType(StrEnum):
     alteration = "alteration"
     history = "history"
     space = "space"
-    branch = "branch"
     permission = "permission"
     role = "role"
     ticket = "ticket"

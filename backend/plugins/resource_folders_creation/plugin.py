@@ -36,7 +36,6 @@ class Plugin(PluginBase):
             #         dest_subpath="schema",
             #         dest_shortname=schema_name,
             #         class_type=Schema,
-            #         branch_name=data.branch_name
             #     )
 
             async with RedisServices() as redis_services:
@@ -51,7 +50,6 @@ class Plugin(PluginBase):
             # for schema_name in sys_schemas:
             #     await redis_update_plugin.hook(Event(
             #         space_name=data.shortname,
-            #         branch_name=data.branch_name,
             #         subpath="schema",
             #         shortname=schema_name,
             #         action_type=ActionType.create,
@@ -65,7 +63,6 @@ class Plugin(PluginBase):
             await internal_save_model(
                 space_name=folder[0],
                 subpath=folder[1],
-                branch_name=data.branch_name,
                 meta=Folder(
                     shortname=folder[2],
                     is_active=True,
