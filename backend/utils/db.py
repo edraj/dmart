@@ -1,17 +1,14 @@
 from copy import copy
 import shutil
-from models.enums import LockAction
 from utils.helpers import arr_remove_common, branch_path, snake_case
 from datetime import datetime
 from models.enums import ContentType, ResourceType
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
-from utils.redis_services import RedisServices
 from utils.settings import settings
 import models.core as core
 from typing import TypeVar, Type, Any
 import models.api as api
-import os
 import json
 from pathlib import Path
 from fastapi import status
@@ -243,7 +240,7 @@ async def load(
         async with aiofiles.open(path, "r") as file:
             content = await file.read()
             return class_type.model_validate_json(content)
-    except Exception as e:
+    except Exception as _:
         await asyncio.sleep(0.001)
         async with aiofiles.open(path, "r") as file:
             content = await file.read()
@@ -278,13 +275,13 @@ def load_resource_payload(
         bytes = path.read_bytes()
         data = json.loads(bytes)
         return data
-    except Exception as e:
+    except Exception as _:
         time.sleep(0.001)
         bytes = path.read_bytes()
         try:
             data = json.loads(bytes)
             return data
-        except Exception as ee:
+        except Exception as _:
             raise api.Exception(
               status_code=status.HTTP_404_NOT_FOUND,
               error=api.Error(type="db", code=12, message=f"Request object is not available {bytes.decode()}"),
