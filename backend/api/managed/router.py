@@ -2118,6 +2118,7 @@ async def get_entry_by_uuid(
         uuid: str,
         retrieve_json_payload: bool = False,
         retrieve_attachments: bool = False,
+        retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
     return await repository.get_entry_by_var(
@@ -2126,6 +2127,7 @@ async def get_entry_by_uuid(
         logged_in_user,
         retrieve_json_payload,
         retrieve_attachments,
+        retrieve_lock_status,
     )
 
 
@@ -2134,6 +2136,7 @@ async def get_entry_by_slug(
         slug: str,
         retrieve_json_payload: bool = False,
         retrieve_attachments: bool = False,
+        retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
     return await repository.get_entry_by_var(
@@ -2142,6 +2145,7 @@ async def get_entry_by_slug(
         logged_in_user,
         retrieve_json_payload,
         retrieve_attachments,
+        retrieve_lock_status,
     )
 
 

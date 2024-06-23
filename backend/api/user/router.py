@@ -1097,8 +1097,9 @@ if settings.social_login_allowed:
         access_token: str = Body(default=...),
         firebase_token: str = Body(default=None),
         facebook_sso: FacebookSSO = Depends(get_facebook_sso),
+        retrieve_lock_status: bool = Body(default=False),
     ):
-        user_model = await social_login(access_token, facebook_sso, "facebook")
+        user_model = await social_login(access_token, facebook_sso, "facebook", retrieve_lock_status)
 
         record = await process_user_login(
             user=user_model,
@@ -1109,7 +1110,7 @@ if settings.social_login_allowed:
         return api.Response(status=api.Status.success, records=[record])
 
 
-    async def social_login(access_token: str, sso: SSOBase, provider: str) -> core.User:
+    async def social_login(access_token: str, sso: SSOBase, provider: str, retrieve_lock_status: bool = False) -> core.User:
         async with AsyncRequest() as session:
             user_profile_endpoint = await sso.userinfo_endpoint
             if not user_profile_endpoint:
@@ -1162,7 +1163,8 @@ if settings.social_login_allowed:
                 space_name=MANAGEMENT_SPACE,
                 branch_name=MANAGEMENT_BRANCH,
                 doc=redis_doc_dict,
-                retrieve_json_payload=True
+                retrieve_json_payload=True,
+                retrieve_lock_status=retrieve_lock_status,
             )
             user_model = core.User.from_record(user_record, owner_shortname=redis_doc_dict.get("owner_shortname"))
             
