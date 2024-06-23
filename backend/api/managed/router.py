@@ -533,7 +533,7 @@ async def serve_request(
         is_internal: bool = False,
 ) -> api.Response:
     spaces = await get_spaces()
-    print(spaces)
+
     if request.space_name not in spaces:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
