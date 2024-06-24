@@ -1,18 +1,10 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
-"""
-server (which is on hold for now until saad fixes the dynamic plugins),
-health-check,
-create-index,
-export
-settings
-set password
-archive
-"""
 import argparse
 import asyncio
 import json
 import os
 import shutil
+import subprocess
 import sys
 import time
 from utils.settings import settings
@@ -23,19 +15,22 @@ from utils.exporter import main as exporter, exit_with_error, OUTPUT_FOLDER_NAME
 from archive import archive
 
 
-sys.argv = sys.argv[1:]
-if len(sys.argv) == 0:
-    print("You must provide a command to run:")
-    print(
-"""    server
+commands = """    server
     health-check
     create-index
     export
     settings
-    set password
+    set-password
     archive
+    help
+    version 
+    info
 """
-    )
+
+sys.argv = sys.argv[1:]
+if len(sys.argv) == 0:
+    print("You must provide a command to run:")
+    print(commands)
     sys.exit(1)
 
 match sys.argv[0]:
@@ -155,3 +150,47 @@ match sys.argv[0]:
 
         asyncio.run(archive(space, subpath, schema, olderthan))
         print("Done.")
+    case "help":
+        print("Available commands:")
+        print(commands)
+    case "version":
+        if __file__.endswith(".pyc"):
+            with open("info.json") as info:
+                print(json.load(info).get("tag"))
+        else:
+            tag_cmd = "git describe --tags"
+            result, _ = subprocess.Popen(tag_cmd.split(" "), stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE).communicate()
+            tag = None if result is None or len(result) == 0 else result.decode().strip()
+            print(tag)
+    case "info":
+        if __file__.endswith(".pyc"):
+            with open("info.json") as info:
+                print(json.load(info))
+        else:
+            branch_cmd = "git rev-parse --abbrev-ref HEAD"
+            result, _ = subprocess.Popen(branch_cmd.split(" "), stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE).communicate()
+            branch = None if result is None or len(result) == 0 else result.decode().strip()
+
+            version_cmd = "git rev-parse --short HEAD"
+            result, _ = subprocess.Popen(version_cmd.split(" "), stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE).communicate()
+            version = None if result is None or len(result) == 0 else result.decode().strip()
+
+            tag_cmd = "git describe --tags"
+            result, _ = subprocess.Popen(tag_cmd.split(" "), stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE).communicate()
+            tag = None if result is None or len(result) == 0 else result.decode().strip()
+
+            version_date_cmd = "git show --pretty=format:'%ad'"
+            result, _ = subprocess.Popen(version_date_cmd.split(" "), stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE).communicate()
+            version_date = None if result is None or len(result) == 0 else result.decode().split("\n")[0]
+
+            print({
+                "commit_hash": version,
+                "date": version_date,
+                "branch": branch,
+                "tag": tag
+            })
