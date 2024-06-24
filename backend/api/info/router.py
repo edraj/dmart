@@ -1,7 +1,6 @@
 import asyncio
 import json
 from pathlib import Path
-
 from fastapi import APIRouter, Depends, status
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
@@ -12,27 +11,37 @@ from os import getpid
 import socket
 from utils.jwt import JWTBearer
 
-
 router = APIRouter()
 
-info = open(Path(__file__).resolve().parent.parent.parent / "info.json")
+git_info = None
+if __file__.endswith(".pyc"):
+    info = open(Path(__file__).resolve().parent.parent.parent / "info.json")
+    git_info = json.load(info)
+else:
+    service_start_time: datetime = datetime.now()
+    branch_cmd = "git rev-parse --abbrev-ref HEAD"
+    result, _ = subprocess.Popen(branch_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    branch = None if result is None or len(result) == 0 else result.decode().strip()
 
-service_start_time: datetime = datetime.now()
-branch_cmd = "git rev-parse --abbrev-ref HEAD"
-result, _ = subprocess.Popen(branch_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-branch = None if result is None or len(result) == 0 else result.decode().strip()
+    version_cmd = "git rev-parse --short HEAD"
+    result, _ = subprocess.Popen(version_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    version = None if result is None or len(result) == 0 else result.decode().strip()
 
-version_cmd = "git rev-parse --short HEAD"
-result, _ = subprocess.Popen(version_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-version = None if result is None or len(result) == 0 else result.decode().strip()
+    tag_cmd = "git describe --tags"
+    result, _ = subprocess.Popen(tag_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    tag = None if result is None or len(result) == 0 else result.decode().strip()
 
-tag_cmd = "git describe --tags"
-result, _ = subprocess.Popen(tag_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-tag = None if result is None or len(result) == 0 else result.decode().strip()
+    version_date_cmd = "git show --pretty=format:'%ad'"
+    result, _ = subprocess.Popen(version_date_cmd.split(" "), stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE).communicate()
+    version_date = None if result is None or len(result) == 0 else result.decode().split("\n")[0]
 
-version_date_cmd = "git show --pretty=format:'%ad'"
-result, _ = subprocess.Popen(version_date_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-version_date = None if result is None or len(result) == 0 else result.decode().split("\n")[0]
+    git_info = {
+        "commit_hash": version,
+        "date": version_date,
+        "branch": branch,
+        "tag": tag
+    }
 
 server = socket.gethostname()
 
@@ -64,18 +73,13 @@ async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
         "type": "microservice",
         "description": "Structured CMS/IMS",
         "service_details": {
-                "server": server,
-                "process_id": getpid(),
-                "start_time": service_start_time.isoformat(),
-                "current_time": now.isoformat(),
-                "running_for": str(now - service_start_time)
+            "server": server,
+            "process_id": getpid(),
+            "start_time": service_start_time.isoformat(),
+            "current_time": now.isoformat(),
+            "running_for": str(now - service_start_time)
         },
-        "git": info if __file__.endswith("router.pyc") else {
-            "commit_hash": version,
-            "date": version_date,
-            "branch": branch,
-            "tag": tag
-        }
+        "git": git_info,
     }
     return api.Response(status=api.Status.success,
                         attributes=manifest)
