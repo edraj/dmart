@@ -36,7 +36,6 @@ PyInstaller.__main__.run([
     '--onefile',
     '--runtime-tmpdir=.',
     '--distpath=.',
-    '--add-data=./config.env:.',
     '--add-data=./info.json:.',
     '--noconfirm',
     '--collect-submodules=concurrent_log_handler',
