@@ -1,4 +1,7 @@
 import asyncio
+import json
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, status
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
@@ -11,6 +14,8 @@ from utils.jwt import JWTBearer
 
 
 router = APIRouter()
+
+info = open(Path(__file__).resolve().parent.parent.parent / "info.json")
 
 service_start_time: datetime = datetime.now()
 branch_cmd = "git rev-parse --abbrev-ref HEAD"
@@ -65,7 +70,7 @@ async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
                 "current_time": now.isoformat(),
                 "running_for": str(now - service_start_time)
         },
-        "git": {
+        "git": info if __file__.endswith("router.pyc") else {
             "commit_hash": version,
             "date": version_date,
             "branch": branch,
