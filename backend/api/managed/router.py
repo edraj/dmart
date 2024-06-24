@@ -2407,7 +2407,7 @@ async def execute(
             ),
         )
 
-    query_dict = db.load_resource_payload(
+    query_dict: dict[str, Any] = db.load_resource_payload(
         space_name=space_name,
         subpath=record.subpath,
         filename=str(meta.payload.body),

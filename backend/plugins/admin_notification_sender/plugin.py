@@ -1,5 +1,6 @@
 import json
 from sys import modules as sys_modules
+from typing import Any
 from models.core import Notification, NotificationData, PluginBase, Event, Translation
 from utils.helpers import camel_case
 from utils.notification import NotificationManager
@@ -36,7 +37,7 @@ class Plugin(PluginBase):
         notification_dict = notification_request_meta.dict()
         notification_dict["subpath"] = data.subpath
 
-        notification_request_payload = load_resource_payload(
+        notification_request_payload: dict[str, Any] = load_resource_payload(
             data.space_name,
             data.subpath,
             notification_request_meta.payload.body,
