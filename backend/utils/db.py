@@ -235,7 +235,7 @@ def load_resource_payload(
     filename: str,
     class_type: Type[MetaChild],
     schema_shortname: str | None = None,
-) -> dict[str, Any]:
+):
     """Load a Meta class payload file"""
 
     path = payload_path(space_name, subpath, class_type, schema_shortname)
