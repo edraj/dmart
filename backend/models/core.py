@@ -436,6 +436,8 @@ class Schema(Meta):
 class Content(Meta):
     pass
 
+class Log(Meta):
+    pass
 
 class Folder(Meta):
     pass

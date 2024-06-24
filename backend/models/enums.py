@@ -42,6 +42,7 @@ class ResourceType(StrEnum):
     folder = "folder"
     schema = "schema"
     content = "content"
+    log = "log"
     acl = "acl"
     comment = "comment"
     media = "media"
