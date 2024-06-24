@@ -73,7 +73,10 @@ class Settings(BaseSettings):
     store_payload_string: bool = True
 
     model_config = SettingsConfigDict(
-        env_file=os.getenv("BACKEND_ENV", "config.env"), env_file_encoding="utf-8"
+        env_file=os.getenv(
+            "BACKEND_ENV",
+            str(Path(__file__).resolve().parent.parent.parent / "config.env") if __file__.endswith(".pyc") else "config.env"
+        ), env_file_encoding="utf-8"
     )
 
 
