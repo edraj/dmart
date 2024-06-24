@@ -830,7 +830,7 @@ async def serve_request(
                         "body", {}
                     )
                 else:
-                    new_resource_payload_data: dict | None = (
+                    new_resource_payload_data = (
                         resource_obj.update_from_record(
                             record=record,
                             old_body=old_resource_payload_body,
