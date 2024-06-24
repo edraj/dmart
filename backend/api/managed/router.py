@@ -631,7 +631,8 @@ async def serve_request(
                             and resource_obj.payload.body is not None
                     ):
                         separate_payload_data = resource_obj.payload.body
-                        resource_obj.payload.body = body_shortname + ".json"
+                        resource_obj.payload.body = body_shortname + (".json" if record.resource_type != ResourceType.log else ".jsonl")
+                        
 
                     if (
                             resource_obj.payload
@@ -796,9 +797,10 @@ async def serve_request(
                 old_version_flattend = flatten_dict(
                     old_resource_obj.model_dump())
                 if (
-                        old_resource_obj.payload
-                        and old_resource_obj.payload.content_type == ContentType.json
-                        and isinstance(old_resource_obj.payload.body, str)
+                    record.resource_type != ResourceType.log
+                    and old_resource_obj.payload
+                    and old_resource_obj.payload.content_type == ContentType.json
+                    and isinstance(old_resource_obj.payload.body, str)
                 ):
                     try:
                         old_resource_payload_body = db.load_resource_payload(
@@ -820,23 +822,31 @@ async def serve_request(
                 # GENERATE NEW RESOURCE OBJECT
                 resource_obj = old_resource_obj
                 resource_obj.updated_at = datetime.now()
-                new_resource_payload_data: dict | None = (
-                    resource_obj.update_from_record(
-                        record=record,
-                        old_body=old_resource_payload_body,
-                        replace=request.request_type == api.RequestType.r_replace,
+                
+                new_version_flattend = {}
+                
+                if record.resource_type == ResourceType.log:
+                    new_resource_payload_data = record.attributes.get("payload", {}).get(
+                        "body", {}
                     )
-                )
-                new_version_flattend = flatten_dict(resource_obj.model_dump())
-                if new_resource_payload_data:
-                    new_version_flattend.update(
-                        flatten_dict(
-                            {"payload.body": new_resource_payload_data})
+                else:
+                    new_resource_payload_data: dict | None = (
+                        resource_obj.update_from_record(
+                            record=record,
+                            old_body=old_resource_payload_body,
+                            replace=request.request_type == api.RequestType.r_replace,
+                        )
                     )
+                    new_version_flattend = flatten_dict(resource_obj.model_dump())
+                    if new_resource_payload_data:
+                        new_version_flattend.update(
+                            flatten_dict(
+                                {"payload.body": new_resource_payload_data})
+                        )
 
-                await validate_uniqueness(
-                    request.space_name, record, RequestType.update
-                )
+                    await validate_uniqueness(
+                        request.space_name, record, RequestType.update
+                    )
                 # VALIDATE SEPARATE PAYLOAD BODY
                 if (
                         resource_obj.payload
@@ -849,26 +859,39 @@ async def serve_request(
                         space_name=request.space_name,
                         schema_shortname=resource_obj.payload.schema_shortname,
                     )
-
-                updated_attributes_flattend = list(
-                    flatten_dict(record.attributes).keys()
-                )
-                if request.request_type == RequestType.r_replace:
-                    updated_attributes_flattend = (
-                            list(old_version_flattend.keys()) +
-                            list(new_version_flattend.keys())
+                
+                if record.resource_type == ResourceType.log:
+                    history_diff = await db.update(
+                        space_name=request.space_name,
+                        subpath=record.subpath,
+                        meta=resource_obj,
+                        old_version_flattend={},
+                        new_version_flattend={},
+                        updated_attributes_flattend=[],
+                        user_shortname=owner_shortname,
+                        schema_shortname=schema_shortname,
+                        retrieve_lock_status=record.retrieve_lock_status,
                     )
-                history_diff = await db.update(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    meta=resource_obj,
-                    old_version_flattend=old_version_flattend,
-                    new_version_flattend=new_version_flattend,
-                    updated_attributes_flattend=updated_attributes_flattend,
-                    user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
-                    retrieve_lock_status=record.retrieve_lock_status,
-                )
+                else:
+                    updated_attributes_flattend = list(
+                        flatten_dict(record.attributes).keys()
+                    )
+                    if request.request_type == RequestType.r_replace:
+                        updated_attributes_flattend = (
+                                list(old_version_flattend.keys()) +
+                                list(new_version_flattend.keys())
+                        )
+                    history_diff = await db.update(
+                        space_name=request.space_name,
+                        subpath=record.subpath,
+                        meta=resource_obj,
+                        old_version_flattend=old_version_flattend,
+                        new_version_flattend=new_version_flattend,
+                        updated_attributes_flattend=updated_attributes_flattend,
+                        user_shortname=owner_shortname,
+                        schema_shortname=schema_shortname,
+                        retrieve_lock_status=record.retrieve_lock_status,
+                    )
                 if new_resource_payload_data is not None:
                     await db.save_payload_from_json(
                         request.space_name,
@@ -878,8 +901,8 @@ async def serve_request(
                     )
 
                 if (
-                        isinstance(resource_obj, core.User) and
-                        record.attributes.get("is_active") is False
+                    isinstance(resource_obj, core.User) and
+                    record.attributes.get("is_active") is False
                 ):
                     await remove_redis_active_session(record.shortname)
 

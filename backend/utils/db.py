@@ -1,6 +1,6 @@
 from copy import copy
 import shutil
-from utils.helpers import arr_remove_common, snake_case
+from utils.helpers import arr_remove_common, read_jsonl_file, snake_case
 from datetime import datetime
 from models.enums import ContentType, ResourceType, LockAction
 from utils.internal_error_code import InternalErrorCode
@@ -243,9 +243,11 @@ def load_resource_payload(
     if not path.is_file():
         return {}
     try: 
+        if class_type == core.Log:
+            return {"log_entry_items": read_jsonl_file(path)}
+        
         bytes = path.read_bytes()
-        data = json.loads(bytes)
-        return data
+        return json.loads(bytes)
     except Exception as _:
         raise api.Exception(
           status_code=status.HTTP_404_NOT_FOUND,
@@ -344,7 +346,7 @@ async def save_payload_from_json(
         meta.payload.schema_shortname if meta.payload else None,
     )
 
-    payload_filename = f"{meta.shortname}.json"
+    payload_filename = f"{meta.shortname}.json" if not issubclass(meta.__class__, core.Log) else f"{meta.shortname}.jsonl"
 
     if not (path / filename).is_file():
         raise api.Exception(
@@ -354,10 +356,16 @@ async def save_payload_from_json(
         )
 
     payload_json = json.dumps(payload_data)
-    with open(payload_file_path / payload_filename, "w") as file:
-        file.write(payload_json)
-        file.flush()
-        os.fsync(file)
+    if issubclass(meta.__class__, core.Log) and (payload_file_path / payload_filename).is_file():
+        with open(payload_file_path / payload_filename, "a") as file:
+            file.write(f"\n{payload_json}")
+            file.flush()
+            os.fsync(file)
+    else:
+        with open(payload_file_path / payload_filename, "w") as file:
+            file.write(payload_json)
+            file.flush()
+            os.fsync(file)
 
 
 async def update(
@@ -422,6 +430,9 @@ async def update(
         file.flush()
         os.fsync(file)
 
+    if issubclass(meta.__class__, core.Log):
+        return {}
+    
     history_diff = await store_entry_diff(
         space_name,
         

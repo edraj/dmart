@@ -1,6 +1,7 @@
 from copy import deepcopy
 import csv
 from datetime import datetime
+import json
 from pathlib import Path
 from re import sub as re_sub
 import aiofiles
@@ -314,3 +315,9 @@ async def csv_file_to_json(csv_file_path: Path) -> list[dict[str, Any]]:
 
     return data
 
+def read_jsonl_file(file_path):
+    data = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            data.append(json.loads(line))
+    return data

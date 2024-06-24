@@ -55,14 +55,17 @@ class Plugin(PluginBase):
                 and entry["payload"]["content_type"] == ContentType.json
                 and entry["payload"]["body"]
             ):
-                entry["payload"]["body"] = load_resource_payload(
-                    space_name=data.space_name,
-                    subpath=data.subpath,
-                    filename=entry["payload"]["body"],
-                    class_type=getattr(
-                        sys_modules["models.core"], camel_case(data.resource_type)
-                    ),
-                )
+                try:
+                    entry["payload"]["body"] = load_resource_payload(
+                        space_name=data.space_name,
+                        subpath=data.subpath,
+                        filename=entry["payload"]["body"],
+                        class_type=getattr(
+                            sys_modules["models.core"], camel_case(data.resource_type)
+                        ),
+                    )
+                except Exception as _:
+                    return
         entry["space_name"] = data.space_name
         entry["resource_type"] = str(data.resource_type)
         entry["subpath"] = data.subpath
