@@ -1,3 +1,18 @@
+<script>
+    import Flutter from "./assets/flutter.png";
+</script>
+
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
+
+<img class="center" src={Flutter} width="500">
+
 ### ** Flutter Client Library for DMART**
 
 ---

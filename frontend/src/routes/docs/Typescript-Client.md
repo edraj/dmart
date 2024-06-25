@@ -10,12 +10,11 @@
   width: 50%;
 }
 </style>
+<img class="center" src={TypeScript} width="500">
 
 ### **TypeScript Client Library for DMART**
 
 ---
-
-<img class="center" src={TypeScript} width="500">
 
 A TypeScript implementation of the Dmart that depends on axios.
 
