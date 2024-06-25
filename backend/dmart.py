@@ -12,7 +12,6 @@ import sys
 import time
 import warnings
 from multiprocessing import freeze_support
-from typing import Optional
 
 from hypercorn.config import Config
 from hypercorn.run import run
@@ -47,15 +46,6 @@ if len(sys.argv) == 0:
 
 
 sentinel = object()
-def _load_config(config_path: Optional[str]) -> Config:
-    if config_path is None:
-        return Config()
-    elif config_path.startswith("python:"):
-        return Config.from_object(config_path[len("python:") :])
-    elif config_path.startswith("file:"):
-        return Config.from_pyfile(config_path[len("file:") :])
-    else:
-        return Config.from_toml(config_path)
 
 
 def hypercorn_main() -> int:
@@ -251,7 +241,7 @@ def hypercorn_main() -> int:
         type=int,
     )
     args = parser.parse_args(sys.argv[1:])
-    config = _load_config(args.config)
+    config = Config.from_toml(args.config)
     config.application_path = args.application
 
     if args.log_level is not sentinel:
@@ -341,6 +331,11 @@ def hypercorn_main() -> int:
 
 match sys.argv[0]:
     case "hyper":
+        if len(sys.argv) == 1:
+            print("Running Hypercorn with default settings")
+            default_params = " main:app -b localhost:8282 --log-config json_log.ini --config hypercorn_config.toml"
+            print(f">{default_params}")
+            sys.argv = default_params.split(" ")
         hypercorn_main()
     case "server":
         asyncio.run(server())
