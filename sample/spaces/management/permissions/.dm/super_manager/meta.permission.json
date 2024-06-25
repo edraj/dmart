@@ -16,6 +16,7 @@
     "comment",
     "space",
     "content",
+    "log",
     "acl",
     "history",
     "json",

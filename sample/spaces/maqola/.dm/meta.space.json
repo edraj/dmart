@@ -29,6 +29,5 @@
     "redis_db_update",
     "realtime_updates_notifier"
   ],
-  "ordinal": 11,
-  "branches": []
+  "ordinal": 11
 }
