@@ -15,6 +15,7 @@ locust
 types-psutil
 
 jsf
+ldap3
 
 # types-ujson
 # types-pyOpenSSL
