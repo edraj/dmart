@@ -18,7 +18,7 @@ from api.managed.router import serve_request
 from models.core import Folder
 from utils import repository, db
 from utils.custom_validations import get_schema_path
-from utils.helpers import camel_case, branch_path
+from utils.helpers import camel_case
 from utils.redis_services import RedisServices
 from models import core, api
 from models.enums import ContentType, RequestType, ResourceType
@@ -33,7 +33,7 @@ MAX_INVALID_SIZE = 100
 spaces_schemas: dict[str, dict[str, dict]] = {}
 
 
-async def main(health_type: str, space_param: str, schemas_param: list, branch_name: str):
+async def main(health_type: str, space_param: str, schemas_param: list):
     spaces = await get_spaces()
     if space_param not in spaces:
         print("space name is not found")
@@ -52,7 +52,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
             print('Add the space name and at least one schema')
             return
         if is_full:
-            params = await load_spaces_schemas(branch_name, space_param)
+            params = await load_spaces_schemas(space_param)
         else:
             params = {space_param: schemas_param}
         for space in params:
@@ -60,7 +60,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
             before_time = time.time()
             health_check : dict[str, list|dict] | None = {'invalid_folders': [], 'folders_report': {}}
             for schema in params.get(space, []):
-                health_check_res = await soft_health_check(space, schema, branch_name)
+                health_check_res = await soft_health_check(space, schema)
                 if health_check_res and health_check and isinstance(health_check['folders_report'], dict):
                     health_check['folders_report'].update(health_check_res.get('folders_report', {}))
             print_health_check(health_check)
@@ -75,7 +75,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
         for space in spaces:
             print(f'>>>> Processing {space:<10} <<<<')
             before_time = time.time()
-            health_check = await hard_health_check(space, branch_name)
+            health_check = await hard_health_check(space)
             if health_check:
                 await save_health_check_entry(health_check, space)
             print_health_check(health_check)
@@ -83,7 +83,7 @@ async def main(health_type: str, space_param: str, schemas_param: list, branch_n
     else:
         print("Wrong mode specify [soft or hard]")
         return
-    await save_duplicated_entries(branch_name)
+    await save_duplicated_entries()
 
 
 def print_header() -> None:
@@ -113,22 +113,22 @@ def print_health_check(health_check):
         print(f"\t\t\t\t {val}")
 
 
-async def load_spaces_schemas(branch_name: str, for_space: str | None = None) -> dict:
+async def load_spaces_schemas(for_space: str | None = None) -> dict:
     global spaces_schemas
     if spaces_schemas:
         return spaces_schemas
     spaces = await get_spaces()
     if for_space and for_space != "all" and for_space in spaces:
-        spaces_schemas[for_space] = load_space_schemas(for_space, branch_name)
+        spaces_schemas[for_space] = load_space_schemas(for_space)
         return spaces_schemas
     for space_name in spaces:
-        schemas = load_space_schemas(space_name, branch_name)
+        schemas = load_space_schemas(space_name)
         if schemas:
             spaces_schemas[space_name] = schemas
     return spaces_schemas
 
 
-def load_space_schemas(space_name: str, branch_name: str) -> dict[str, dict]:
+def load_space_schemas(space_name: str) -> dict[str, dict]:
     schemas: dict[str, dict] = {}
     schemas_path = Path(settings.spaces_folder / space_name / "schema" / ".dm")
     if not schemas_path.is_dir():
@@ -145,7 +145,6 @@ def load_space_schemas(space_name: str, branch_name: str) -> dict[str, dict]:
         if schema_meta.get("payload", {}).get('body'):
             schema_path_body = get_schema_path(
                 space_name=space_name,
-                branch_name=branch_name,
                 schema_shortname=schema_meta.get("payload").get('body'),
             )
             if schema_path_body.is_file():
@@ -156,11 +155,10 @@ def load_space_schemas(space_name: str, branch_name: str) -> dict[str, dict]:
 async def soft_health_check(
         space_name: str,
         schema_name: str,
-        branch_name: str = settings.default_branch
 ):
     global spaces_schemas
     if space_name not in spaces_schemas:
-        await load_spaces_schemas(branch_name, space_name)
+        await load_spaces_schemas(space_name)
         
     schemas = spaces_schemas[space_name]
     
@@ -169,11 +167,11 @@ async def soft_health_check(
     folders_report : dict = {}
     async with RedisServices() as redis:
         try:
-            ft_index = redis.ft(f"{space_name}:{branch_name}:{schema_name}")
+            ft_index = redis.ft(f"{space_name}:{schema_name}")
             await ft_index.info()
         except Exception:
             if 'meta_schema' not in schema_name:
-                print(f"can't find index: `{space_name}:{branch_name}:{schema_name}`")
+                print(f"can't find index: `{space_name}:{schema_name}`")
             return None
         while True:
             search_query = Query(query_string="*")
@@ -197,7 +195,6 @@ async def soft_health_check(
                 )
                 system_attributes = [
                     "payload_string",
-                    "branch_name",
                     "query_policies",
                     "subpath",
                     "resource_type",
@@ -296,41 +293,40 @@ async def collect_duplicated_with_key(key, value) -> None:
     async with RedisServices() as redis:
         for space_name, space_data in spaces.items():
             space_data = json.loads(space_data)
-            for branch in space_data["branches"]:
-                try:
-                    ft_index = redis.ft(f"{space_name}:{branch}:meta")
-                    await ft_index.info()
-                except Exception:
-                    continue
-                search_query = Query(query_string=f"@{key}:{value}*")
-                search_query.paging(0, 1000)
-                x = await ft_index.search(query=search_query)
-                if x and isinstance(x, Result):
-                    res_data: Result = x
-                    for redis_doc_dict in res_data.docs:
-                        redis_doc_dict = json.loads(redis_doc_dict.json)
-                        if isinstance(redis_doc_dict, dict):
-                            if redis_doc_dict['subpath'] == '/':
-                                redis_doc_dict['subpath'] = ''
-                            loc = space_name + "/" + redis_doc_dict['subpath']
-                            if key not in key_entries:
-                                key_entries[key] = {}
-                            if not key_entries[key].get(value):
-                                key_entries[key][value] = loc
-                            else:
-                                if not duplicated_entries.get(key):
-                                    duplicated_entries[key] = {}
-                                if not duplicated_entries[key].get(value) or \
-                                        key_entries[key][value] not in duplicated_entries[key][value]['loc']:
-                                    duplicated_entries[key][value] = {}
-                                    duplicated_entries[key][value]['loc'] = [key_entries[key][value]]
-                                    duplicated_entries[key][value]['total'] = 1
-                                if loc not in duplicated_entries[key][value]['loc']:
-                                    duplicated_entries[key][value]['total'] += 1
-                                    duplicated_entries[key][value]['loc'].append(loc)
+            try:
+                ft_index = redis.ft(f"{space_name}:meta")
+                await ft_index.info()
+            except Exception:
+                continue
+            search_query = Query(query_string=f"@{key}:{value}*")
+            search_query.paging(0, 1000)
+            x = await ft_index.search(query=search_query)
+            if x and isinstance(x, Result):
+                res_data: Result = x
+                for redis_doc_dict in res_data.docs:
+                    redis_doc_dict = json.loads(redis_doc_dict.json)
+                    if isinstance(redis_doc_dict, dict):
+                        if redis_doc_dict['subpath'] == '/':
+                            redis_doc_dict['subpath'] = ''
+                        loc = space_name + "/" + redis_doc_dict['subpath']
+                        if key not in key_entries:
+                            key_entries[key] = {}
+                        if not key_entries[key].get(value):
+                            key_entries[key][value] = loc
+                        else:
+                            if not duplicated_entries.get(key):
+                                duplicated_entries[key] = {}
+                            if not duplicated_entries[key].get(value) or \
+                                    key_entries[key][value] not in duplicated_entries[key][value]['loc']:
+                                duplicated_entries[key][value] = {}
+                                duplicated_entries[key][value]['loc'] = [key_entries[key][value]]
+                                duplicated_entries[key][value]['total'] = 1
+                            if loc not in duplicated_entries[key][value]['loc']:
+                                duplicated_entries[key][value]['total'] += 1
+                                duplicated_entries[key][value]['loc'].append(loc)
 
 
-async def hard_health_check(space_name: str, branch_name: str):
+async def hard_health_check(space_name: str):
     spaces = await get_spaces()
     if space_name not in spaces:
         print("space name is not found")
@@ -345,7 +341,7 @@ async def hard_health_check(space_name: str, branch_name: str):
     folders_report: dict[str, dict] = {}
     meta_folders_health: list = []
 
-    path = settings.spaces_folder / space_name / branch_path(branch_name)
+    path = settings.spaces_folder / space_name
 
     subpaths = os.scandir(path)
     # print(f"{path=} {subpaths=}")
@@ -356,7 +352,6 @@ async def hard_health_check(space_name: str, branch_name: str):
         await repository.validate_subpath_data(
             space_name=space_name,
             subpath=subpath.path,
-            branch_name=branch_name,
             user_shortname='dmart',
             invalid_folders=invalid_folders,
             folders_report=folders_report,
@@ -369,7 +364,7 @@ async def hard_health_check(space_name: str, branch_name: str):
     return res
 
 
-async def save_health_check_entry(health_check, space_name: str, branch_name: str = 'master'):
+async def save_health_check_entry(health_check, space_name: str):
     meta_path = Path(settings.spaces_folder / "management/health_check/.dm" / space_name)
     entry_path = Path(settings.spaces_folder / "management/health_check" / f"{space_name}.json")
     if meta_path.is_dir():
@@ -385,7 +380,6 @@ async def save_health_check_entry(health_check, space_name: str, branch_name: st
                     resource_type=ResourceType.content,
                     shortname=space_name,
                     subpath="/health_check",
-                    branch_name=branch_name,
                     attributes={
                         "is_active": True,
                         "updated_at": str(datetime.now()),
@@ -402,9 +396,7 @@ async def save_health_check_entry(health_check, space_name: str, branch_name: st
     )
 
 
-async def save_duplicated_entries(
-    branch_name: str = settings.default_branch
-):
+async def save_duplicated_entries():
     print('>>>> Processing UUID duplication <<<<')
     before_time = time.time()
     uuid_scanned_entries = set()
@@ -416,50 +408,49 @@ async def save_duplicated_entries(
     async with RedisServices() as redis:
         for space_name, space_data in spaces.items():
             space_data = json.loads(space_data)
-            for branch in space_data["branches"]:
-                try:
-                    ft_index = redis.ft(f"{space_name}:{branch}:meta")
-                    index_info = await ft_index.info()
-                except Exception:
-                    continue
-                for i in range(0, int(index_info["num_docs"]), 10000):
-                    search_query = Query(query_string="*")
-                    search_query.paging(i, 10000)
-                    x = await ft_index.search(query=search_query)
-                    if x and isinstance(x, dict) and "results" in x:
-                        res_data : list = [ one["extra_attributes"]["$"] for one in x["results"] if 'extra_attributes' in one]
-                        for redis_doc_dict in res_data:
-                            redis_doc_dict = json.loads(redis_doc_dict)
-                            if isinstance(redis_doc_dict, dict):
-                                if "uuid" in redis_doc_dict:
-                                    # Handle UUID
-                                    if "uuid" in redis_doc_dict and redis_doc_dict["uuid"] in uuid_scanned_entries:
-                                        short_uuid = redis_doc_dict["uuid"][:8]
-                                        uuid_duplicated_entries.setdefault(
-                                            short_uuid, {"loc": [], "total": 0}
-                                        )
-                                        uuid_duplicated_entries[short_uuid]["loc"].append(
-                                            space_name + "/" + redis_doc_dict['subpath'] + "/" + redis_doc_dict['shortname']
-                                        )
-                                        uuid_duplicated_entries[short_uuid]["total"]+=1
-                                    else:
-                                        uuid_scanned_entries.add(redis_doc_dict["uuid"])
-                                else:
-                                    print ("UUID is missing", redis_doc_dict)
-                            
-                                # Handle Slug
-                                if "slug" in redis_doc_dict and redis_doc_dict["slug"] in slug_scanned_entries:
-                                    slug_duplicated_entries.setdefault(
-                                        "slug", {"loc": [], "total": 0}
+            try:
+                ft_index = redis.ft(f"{space_name}:meta")
+                index_info = await ft_index.info()
+            except Exception:
+                continue
+            for i in range(0, int(index_info["num_docs"]), 10000):
+                search_query = Query(query_string="*")
+                search_query.paging(i, 10000)
+                x = await ft_index.search(query=search_query)
+                if x and isinstance(x, dict) and "results" in x:
+                    res_data : list = [ one["extra_attributes"]["$"] for one in x["results"] if 'extra_attributes' in one]
+                    for redis_doc_dict in res_data:
+                        redis_doc_dict = json.loads(redis_doc_dict)
+                        if isinstance(redis_doc_dict, dict):
+                            if "uuid" in redis_doc_dict:
+                                # Handle UUID
+                                if "uuid" in redis_doc_dict and redis_doc_dict["uuid"] in uuid_scanned_entries:
+                                    short_uuid = redis_doc_dict["uuid"][:8]
+                                    uuid_duplicated_entries.setdefault(
+                                        short_uuid, {"loc": [], "total": 0}
                                     )
-                                    slug_duplicated_entries["slug"]["loc"].append(
+                                    uuid_duplicated_entries[short_uuid]["loc"].append(
                                         space_name + "/" + redis_doc_dict['subpath'] + "/" + redis_doc_dict['shortname']
                                     )
-                                    slug_duplicated_entries["slug"]["total"]+=1
-                                elif "slug" in redis_doc_dict:
-                                    slug_scanned_entries.add(redis_doc_dict["slug"])
+                                    uuid_duplicated_entries[short_uuid]["total"]+=1
+                                else:
+                                    uuid_scanned_entries.add(redis_doc_dict["uuid"])
                             else:
-                                print("Loaded document is not a proper dictionary")
+                                print ("UUID is missing", redis_doc_dict)
+                        
+                            # Handle Slug
+                            if "slug" in redis_doc_dict and redis_doc_dict["slug"] in slug_scanned_entries:
+                                slug_duplicated_entries.setdefault(
+                                    "slug", {"loc": [], "total": 0}
+                                )
+                                slug_duplicated_entries["slug"]["loc"].append(
+                                    space_name + "/" + redis_doc_dict['subpath'] + "/" + redis_doc_dict['shortname']
+                                )
+                                slug_duplicated_entries["slug"]["total"]+=1
+                            elif "slug" in redis_doc_dict:
+                                slug_scanned_entries.add(redis_doc_dict["slug"])
+                        else:
+                            print("Loaded document is not a proper dictionary")
                         
                         
 
@@ -477,7 +468,6 @@ async def save_duplicated_entries(
                     resource_type=ResourceType.content,
                     shortname="duplicated_entries",
                     subpath="/health_check",
-                    branch_name=branch_name,
                     attributes={
                         "is_active": True,
                         "updated_at": str(datetime.now()),
@@ -537,8 +527,8 @@ async def cleanup_spaces() -> None:
             },
             "required": []
         }
-        await db.save("management", "schema", meta, settings.default_branch)
-        await db.save_payload_from_json("management", "schema", meta, schema, settings.default_branch)
+        await db.save("management", "schema", meta)
+        await db.save_payload_from_json("management", "schema", meta, schema)
 
     # clean up entries
     for folder_name in os.listdir(folder_path):
@@ -555,12 +545,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("-t", "--type", help="type of health check (soft or hard)")
     parser.add_argument("-s", "--space", help="hit the target space or pass (all) to make the full health check")
-    parser.add_argument("-b", "--branch", help="target a specific branch")
     parser.add_argument("-m", "--schemas", nargs="*", help="hit the target schema inside the space")
 
     args = parser.parse_args()
-    if not args.branch:
-        args.branch = settings.default_branch
     before_time = time.time()
-    asyncio.run(main(args.type, args.space, args.schemas, args.branch))
+    asyncio.run(main(args.type, args.space, args.schemas))
     print(f'total time: {"{:.2f}".format(time.time() - before_time)} sec')

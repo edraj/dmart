@@ -41,7 +41,6 @@ async def change_field_type(
         updates={
             "properties": schema_properties
         },
-        branch_name=settings.default_branch
     )
     
     updated_num = 0
@@ -97,10 +96,8 @@ async def change_field_type(
         main_field = resource_payload[field_tree[0]]
         field_to_update = main_field
         for i in range(1, last_idx):
-            field_to_update = main_field[field_tree[i]]
-        field_to_update[field_tree[last_idx]] = FIELD_TYPE_PARSER[new_type](
-            field_to_update[field_tree[last_idx]]
-        )
+            field_to_update = main_field[field_tree[i]] #type: ignore
+        field_to_update[field_tree[last_idx]] = FIELD_TYPE_PARSER[new_type](field_to_update[field_tree[last_idx]])#type: ignore
         await internal_sys_update_model(
             space_name=space,
             subpath=subpath,
@@ -109,7 +106,6 @@ async def change_field_type(
             updates={
                 field_tree[0]: main_field
             },
-            branch_name=settings.default_branch
         )
         updated_num += 1
         

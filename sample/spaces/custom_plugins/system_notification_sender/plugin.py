@@ -36,7 +36,6 @@ class Plugin(PluginBase):
                     data.shortname,
                     getattr(sys_modules["models.core"], camel_case(data.resource_type)),
                     data.user_shortname,
-                    data.branch_name,
                 )
             ).dict()
             if (
@@ -50,19 +49,16 @@ class Plugin(PluginBase):
                     class_type=getattr(
                         sys_modules["models.core"], camel_case(data.resource_type)
                     ),
-                    branch_name=data.branch_name,
                 )
         entry["space_name"] = data.space_name
         entry["resource_type"] = str(data.resource_type)
         entry["subpath"] = data.subpath
-        entry["branch_name"] = str(data.branch_name)
 
         # 1- get the matching SystemNotificationRequests
         search_subpaths = list(filter(None, data.subpath.split("/")))
         async with RedisServices() as redis:
             matching_notification_requests = await redis.search(
                 space_name=settings.management_space,
-                branch_name=data.branch_name,
                 schema_name="system_notification_request",
                 filters={"subpath": ["notifications/system"]},
                 limit=30,

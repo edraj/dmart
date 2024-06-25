@@ -20,7 +20,6 @@ class AccessControl:
     users: dict[str, User] = {}
 
     async def load_permissions_and_roles(self) -> None:
-        management_branch = settings.management_space_branch
         management_path = settings.spaces_folder / settings.management_space
 
         management_modules : dict[str, type[core.Meta]] = {
@@ -46,7 +45,6 @@ class AccessControl:
                         shortname,
                         module_value,
                         "anonymous",
-                        management_branch,
                     )
                     if resource_obj.is_active:
                         self_module[shortname] = resource_obj  # store in redis doc
@@ -86,7 +84,6 @@ class AccessControl:
                 for _, object in class_var.items():
                     await redis_services.save_meta_doc(
                         space_name=settings.management_space,
-                        branch_name=settings.management_space_branch,
                         subpath=module_name,
                         meta=object,
                     )
@@ -423,7 +420,6 @@ class AccessControl:
         async with RedisServices() as redis_services:
             permissions_search = await redis_services.search(
                 space_name=settings.management_space,
-                branch_name=settings.management_space_branch,
                 search=f"@shortname:{permissions_options}",
                 filters={"subpath": ["permissions"]},
                 limit=10000,
@@ -447,7 +443,6 @@ class AccessControl:
         async with RedisServices() as redis_services:
             roles_search = await redis_services.search(
                 space_name=settings.management_space,
-                branch_name=settings.management_space_branch,
                 search="@shortname:(" + "|".join(user_associated_roles) + ")",
                 filters={"subpath": ["roles"]},
                 limit=10000,
@@ -475,7 +470,6 @@ class AccessControl:
         async with RedisServices() as redis_services:
             user_meta_doc_id = redis_services.generate_doc_id(
                 space_name=settings.management_space,
-                branch_name=settings.management_space_branch,
                 schema_shortname="meta",
                 subpath="users",
                 shortname=user_shortname,
@@ -484,7 +478,6 @@ class AccessControl:
             if not value: 
                 user = await db.load(
                     space_name=settings.management_space,
-                    branch_name=settings.management_space_branch,
                     shortname=user_shortname,
                     subpath="users",
                     class_type=core.User,
@@ -492,7 +485,6 @@ class AccessControl:
                 )
                 await redis_services.save_meta_doc(
                     settings.management_space,
-                    settings.management_space_branch,
                     "users",
                     user,
                 )
@@ -506,7 +498,6 @@ class AccessControl:
         async with RedisServices() as redis_services:
             user_search = await redis_services.search(
                 space_name=settings.management_space,
-                branch_name=settings.management_space_branch,
                 search=f"@{key}:({value.replace('@','?')})",
                 filters={"subpath": ["users"]},
                 limit=10000,
@@ -529,7 +520,6 @@ class AccessControl:
         async with RedisServices() as redis_services:
             groups_search = await redis_services.search(
                 space_name=settings.management_space,
-                branch_name=settings.management_space_branch,
                 search="@shortname:(" + "|".join(user_meta.groups) + ")",
                 filters={"subpath": ["groups"]},
                 limit=10000,
@@ -545,7 +535,6 @@ class AccessControl:
                     role = await redis_services.get_doc_by_id(
                         redis_services.generate_doc_id(
                             space_name=settings.management_space, 
-                            branch_name=settings.management_space_branch,
                             schema_shortname="meta",
                             shortname=role_shortname,
                             subpath="roles"

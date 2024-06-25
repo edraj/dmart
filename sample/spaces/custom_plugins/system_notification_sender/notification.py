@@ -2,7 +2,7 @@ import json
 import requests
 from uuid import uuid4
 from api.user.service import send_sms
-from api.user.router import MANAGEMENT_BRANCH, MANAGEMENT_SPACE, USERS_SUBPATH
+from api.user.router import MANAGEMENT_SPACE, USERS_SUBPATH
 from models.core import Notification, Locator, Translation, User
 from models.enums import NotificationType
 from utils.db import save
@@ -24,7 +24,6 @@ async def send_notification(
     entry: dict = {},
 ):
     notification_required_keys = [
-        "branch_name",
         "displayname",
         "description",
         "priority",
@@ -79,7 +78,6 @@ async def send_notification(
                     shortname=receiver,
                     class_type=User,
                     user_shortname="dmart",
-                    branch_name=MANAGEMENT_BRANCH,
                 )
                 await send_notification_firebase(user, notification_dict, entry)
             except Exception as e:
@@ -103,7 +101,6 @@ async def send_notification(
                         shortname=receiver,
                         class_type=User,
                         user_shortname="dmart",
-                        branch_name=MANAGEMENT_BRANCH,
                     )
                 )
                 user_lang_code = lang_code(user.language)
@@ -145,7 +142,6 @@ async def store_notification(
     if entry:
         entry_locator = Locator(
             space_name=entry["space_name"],
-            branch_name=entry["branch_name"],
             type=entry["resource_type"],
             schema_shortname=entry["payload"]["schema_shortname"],
             subpath=entry["subpath"],
@@ -170,13 +166,11 @@ async def store_notification(
         space_name="personal",
         subpath=f"people/{receiver_shortname}/notifications",
         meta=notification_obj,
-        branch_name=notification_dict["branch_name"],
     )
 
     async with await RedisServices() as redis:
         await redis.save_meta_doc(
             "personal",
-            notification_dict["branch_name"],
             f"people/{receiver_shortname}/notifications",
             notification_obj,
         )

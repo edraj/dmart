@@ -22,3 +22,5 @@ pydantic-settings
 fastapi-sso >= 0.9.1
 duckdb
 jsf
+types-psutil
+types-pyinstaller

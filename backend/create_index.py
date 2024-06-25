@@ -11,7 +11,7 @@ import utils.db as db
 import models.core as core
 import sys
 from models.enums import ContentType, ResourceType
-from utils.helpers import branch_path, camel_case, divide_chunks
+from utils.helpers import camel_case, divide_chunks
 from utils.custom_validations import validate_payload_with_schema
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from utils.redis_services import RedisServices
@@ -27,7 +27,6 @@ from multiprocessing import Pool
 
 async def load_data_to_redis(
     space_name, 
-    branch_name, 
     subpath, 
     allowed_resource_types
 ) -> dict:
@@ -43,7 +42,6 @@ async def load_data_to_redis(
     locators_len, locators = db.locators_query(
         api.Query(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             type=api.QueryType.subpath,
             limit=10000000,
@@ -58,7 +56,6 @@ async def load_data_to_redis(
         folder_locator = core.Locator(
             type=ResourceType.folder,
             space_name=space_name,
-            branch_name=branch_name,
             subpath="/".join(folder_parts[:-1]) or "/",
             shortname=folder_parts[-1]
         )
@@ -107,7 +104,6 @@ async def generate_redis_docs(locators: list) -> list:
             try:
                 meta = await db.load(
                     space_name=one.space_name,
-                    branch_name=one.branch_name,
                     subpath=one.subpath,
                     shortname=one.shortname,
                     class_type=myclass,
@@ -117,7 +113,7 @@ async def generate_redis_docs(locators: list) -> list:
                 print(e)
                 continue
             meta_doc_id, meta_data = redis_man.prepate_meta_doc(
-                one.space_name, one.branch_name, one.subpath, meta
+                one.space_name, one.subpath, meta
             )
             payload_data = {}
             if (
@@ -128,18 +124,16 @@ async def generate_redis_docs(locators: list) -> list:
             ):
                 try:
                     payload_path = db.payload_path(
-                        one.space_name, one.subpath, myclass, one.branch_name
+                        one.space_name, one.subpath, myclass
                     ) / str(meta.payload.body)
                     payload_data = json.loads(payload_path.read_text())
                     await validate_payload_with_schema(
                         payload_data=payload_data,
                         space_name=one.space_name,
-                        branch_name=one.branch_name,
                         schema_shortname=meta.payload.schema_shortname,
                     )
                     doc_id, payload = redis_man.prepare_payload_doc(
                         space_name=one.space_name,
-                        branch_name=one.branch_name,
                         subpath=one.subpath,
                         resource_type=one.type,
                         payload=copy(payload_data),
@@ -159,7 +153,6 @@ async def generate_redis_docs(locators: list) -> list:
                 space_name=one.space_name, 
                 subpath=one.subpath, 
                 shortname=one.shortname, 
-                branch_name=one.branch_name, 
                 payload=payload_data,
             ) if settings.store_payload_string else ""
             
@@ -185,39 +178,26 @@ async def load_custom_indices_data(for_space: str | None = None):
         if i < len(RedisServices.CUSTOM_CLASSES) and issubclass(RedisServices.CUSTOM_CLASSES[i], core.Meta):
             res = await load_data_to_redis(
                 index["space"],
-                index["branch"],
                 index["subpath"],
                 [ResourceType(RedisServices.CUSTOM_CLASSES[i].__name__.lower())],
             )
             print(
-                f"{res['documents']}\tCustom  {index['space']}:{index['branch']}:meta:{index['subpath']}"
+                f"{res['documents']}\tCustom  {index['space']}:meta:{index['subpath']}"
             )
 
 
 async def traverse_subpaths_entries(
     path,
     space_name,
-    branch_name,
     loaded_data,
-    space_branches,
     for_subpaths: list | None = None,
 ):
-    space_parts_count = len(settings.spaces_folder.parts)
-    if branch_name == settings.default_branch:
-        subpath_index = space_parts_count + 1
-    else:
-        subpath_index = space_parts_count + 3
-
-
     # print(f"{subpath_index=} @{space_name} {path=}")
+    space_parts_count = len(settings.spaces_folder.parts)
+    subpath_index = space_parts_count + 1
 
     for subpath in path.iterdir():
         # print(f"{subpath=} 1")
-        if (
-            branch_name == settings.default_branch
-            and subpath.parts[space_parts_count + 1] == "branches"
-        ):
-            continue
 
         # print(f"{subpath=} 2 {subpath.is_dir()} {re.match(regex.SUBPATH, subpath.name)}")
 
@@ -225,9 +205,7 @@ async def traverse_subpaths_entries(
             await traverse_subpaths_entries(
                 subpath,
                 space_name,
-                branch_name,
                 loaded_data,
-                space_branches,
                 for_subpaths,
             )
 
@@ -244,7 +222,6 @@ async def traverse_subpaths_entries(
             loaded_data.append(
                 await load_data_to_redis(
                     space_name,
-                    branch_name,
                     subpath_name,
                     [
                         ResourceType.content,
@@ -280,15 +257,14 @@ async def load_all_spaces_data_to_redis(
         if not space_meta_file.is_file():
             continue
 
-        for branch_name in space_obj.branches:
-            print(f"Checking space name: {space_name}, branch name: {branch_name}")
-            path = settings.spaces_folder / space_name / branch_path(branch_name)
+        print(f"Checking space name: {space_name}")
+        path = settings.spaces_folder / space_name
 
-            loaded_data[
-                f"{space_name}:{branch_name}"
-            ] = await traverse_subpaths_entries(
-                path, space_name, branch_name, [], space_obj.branches, for_subpaths
-            )
+        loaded_data[
+            f"{space_name}"
+        ] = await traverse_subpaths_entries(
+            path, space_name, [], for_subpaths
+        )
 
     await load_custom_indices_data(for_space)
 

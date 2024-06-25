@@ -2,7 +2,6 @@ import asyncio
 from inspect import iscoroutine
 import os
 from pathlib import Path
-
 import aiofiles
 from fastapi import Depends, FastAPI
 from models.core import (
@@ -21,19 +20,23 @@ from importlib.util import find_spec, module_from_spec
 import sys
 from fastapi.logger import logger
 
-
 CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
+
 # Allow python to search for modules inside the custom plugins
 # be including the path to the parent folder of the custom plugins to sys.path
 back_out_of_project = 2
 back_to_spaces = 0
+
 for part in CUSTOM_PLUGINS_PATH.parts:
     if part == "..":
         back_to_spaces += 1
 
+if __file__.endswith(".pyc"):
+    back_out_of_project += 1
+
 sys.path.append(
     "/".join(__file__.split("/")[:-(back_out_of_project+back_to_spaces)]) + 
-    "/" + 
+    "/" +
     "/".join(CUSTOM_PLUGINS_PATH.parts[back_to_spaces:-1])
 )
 

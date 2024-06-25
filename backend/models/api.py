@@ -83,7 +83,6 @@ class Query(BaseModel):
     space_name: str = Field(..., pattern=regex.SPACENAME)
     subpath: str = Field(..., pattern=regex.SUBPATH)
     exact_subpath: bool = False
-    branch_name: str = Field(default=settings.default_branch, pattern=regex.SHORTNAME)
     filter_types: list[ResourceType] | None = None
     filter_schema_names: list[str] = ["meta"]
     filter_shortnames: list[
@@ -101,6 +100,7 @@ class Query(BaseModel):
     retrieve_json_payload: bool = False
     retrieve_attachments: bool = False
     validate_schema: bool = True
+    retrieve_lock_status: bool = False
     jq_filter: str | None = None
     limit: int = 10
     offset: int = 0
@@ -173,7 +173,6 @@ class DataAssetQuery(BaseModel):
     shortname: str = Field(..., pattern=regex.SHORTNAME, examples=["data_csv"])
     filter_data_assets: list[str] | None = Field(default=None, examples=["csv_chunk_3"])
     data_asset_type: DataAssetType
-    branch_name: str = Field(default=settings.default_branch, pattern=regex.SHORTNAME)
     query_string: str = Field(..., examples=["SELECT * FROM file"])
 
     @field_validator("data_asset_type")
