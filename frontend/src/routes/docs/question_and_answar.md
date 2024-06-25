@@ -40,4 +40,6 @@
 3. **Inspect intermediate stages:** You can use the `podman image inspect` command to examine the contents of intermediate images created during the build process. This can help pinpoint where things go wrong.
 4. **Break down the Dockerfile:** Try building your container using a simplified Dockerfile that only includes essential instructions one by one. This can help isolate the problematic step. 
 
-By understanding these common causes and troubleshooting steps, you can effectively address container build failures and ensure your containerized applications build successfully.
+Have another question?
+Be sure to read the relevant documentation [here](dmart.cc/docs), or add your question [here](dmart.cc/newqustion).
+We will answer your question as soon as possible
