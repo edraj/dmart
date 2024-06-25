@@ -40,6 +40,17 @@
 3. **Inspect intermediate stages:** You can use the `podman image inspect` command to examine the contents of intermediate images created during the build process. This can help pinpoint where things go wrong.
 4. **Break down the Dockerfile:** Try building your container using a simplified Dockerfile that only includes essential instructions one by one. This can help isolate the problematic step. 
 
-Have another question?
+
+**How can I delete img dmart ?**
+
+**A:**
+just type this command:
+```bash
+podman rmi -f dmart
+```
+and you can rebuild your dmart system from scratch successfly.
+
+**Have another question?**
 Be sure to read the relevant documentation [here](dmart.cc/docs), or add your question [here](dmart.cc/newqustion).
 We will answer your question as soon as possible
+
