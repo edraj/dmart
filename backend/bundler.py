@@ -39,5 +39,6 @@ PyInstaller.__main__.run([
     '--add-data=./info.json:.',
     '--noconfirm',
     '--collect-submodules=concurrent_log_handler',
+    '--collect-submodules=pythonjsonlogger',
     '--clean',
 ])
