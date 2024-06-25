@@ -1,3 +1,17 @@
+<script>
+    import Python from "./assets/python.png";
+</script>
+
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+</style>
+<img class="center" src={Python} width="500">
+
 ### **Python Client Library for DMART**
 
 ---
