@@ -12,9 +12,10 @@ import sys
 import time
 import warnings
 from multiprocessing import freeze_support
-from typing import Optional
+
 from hypercorn.config import Config
 from hypercorn.run import run
+
 from archive import archive
 from create_index import main as create_index
 from health_check import main as health_check
