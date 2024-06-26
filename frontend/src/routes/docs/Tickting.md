@@ -1,4 +1,39 @@
-### **DMART as a Ticketing System**
+<script>
+    import Ticket from "./assets/ticketing-system.png";
+</script>
+
+<style>
+/* .center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 44%;
+  bacground-img 
+} */
+
+.bg-img {
+background-image: url('./assets/ticketing-system.png');
+	background-size: cover;
+	width: 100%;
+	height: 529px;
+
+}
+
+.h2, h2 {
+
+	margin-left: 15em;
+	margin-top: 0em;
+	padding-top: 23px;
+	font-size: bold;
+	font-weight: 700;
+}
+</style>
+<div class=bg-img>
+<h2> DMART as a Ticketing System </h2>
+
+</div>
+
+<!-- <img class="center" src={Ticket} width="500"> -->
 
 ---
 

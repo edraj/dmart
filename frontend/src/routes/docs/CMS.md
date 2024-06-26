@@ -1,4 +1,35 @@
-### **DMART as a Solution for Content Management System (CMS)**
+<script>
+    import CMS from "./assets/cms.jpg";
+</script>
+
+<style>
+/* .center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 44%;
+  bacground-img 
+} */
+
+.bg-img {
+	background-image: url('/src/routes/docs/assets/cms.jpg');
+	background-size: cover;
+	width: 80%;
+	height: 557px;
+	margin: auto;
+    margin-bottom: 2em;
+
+}
+
+
+</style>
+<div class=bg-img>
+
+</div>
+
+### **DMART as a Solution for** <br/>
+
+### **Content Management System (CMS)**
 
 ---
 

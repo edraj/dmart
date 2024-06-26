@@ -7,7 +7,7 @@
   display: block;
   margin-left: auto;
   margin-right: auto;
-  width: 50%;
+  width: 44%;
 }
 </style>
 <img class="center" src={Python} width="500">
