@@ -1,4 +1,16 @@
-### **Transforming User Experience in E-commerce**
+<script>
+    import Python from "./assets/ecommerce_payment.png";
+</script>
+
+<style>
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 86%;
+}
+</style>
+<img class="center" src={Python} width="500">
 
 ---
 

@@ -1,3 +1,17 @@
+<script>
+    import Social from "./assets/Social-Mediaa.png";
+</script>
+
+<style>
+.center {
+
+	width: 100%;
+	height: 424px;
+	margin-bottom: 2em;
+}
+</style>
+<img class="center" src={Social} width="500">
+
 ### **DMART as a Social Media Interaction Platform**
 
 ---
