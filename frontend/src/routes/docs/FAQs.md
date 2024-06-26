@@ -27,9 +27,22 @@
 
 **A:** Several factors might contribute to slow container build times:
 
-1. **Large base image:** Using a large base image as a starting point for your container can significantly increase build time. Consider using a smaller base image if possible.
-2. **Downloading dependencies:** If your Dockerfile involves downloading large dependencies during the build process, it can slow things down. Explore ways to optimize dependency downloading or use pre-built images with the required dependencies already included.
-3. **Inefficient build steps:** Review your Dockerfile for unnecessary steps or inefficient commands. Optimize your build process by focusing on only essential instructions.
+Building a container can take some time, but if it feels excessively slow, here are some things to consider:
+
+* **Missing Dependencies:**  Sometimes, the system can't find pre-built versions of some dependency your container needs, that match your specific setup (processor, operating system). In these cases, it has to build them from scratch, which takes longer.
+
+* **Limited Resources:**  If your docker-podman is low on memory (RAM) or processing power (CPU), it can slow down the build process. You can try adjusting your podman-docker settings to allocate more resources to the build process.
+
+<!--
+* **Pre-built Images !**  Many tools offer pre-built container images that already include common dependencies. Using a pre-built image specifically designed for your project (like "dmart" in this case) can significantly speed up the process.
+-->
+By following these tips, you can get your container up and running much faster!
+
+
+
+
+
+
 
 **Q: How can I debug a container build failure more effectively?**
 
