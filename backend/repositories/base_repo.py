@@ -1001,7 +1001,7 @@ class BaseRepo(ABC):
                     branch_name=dto.branch_name,
                     search=redis_search_str,
                     subpath=subpath,
-                    filter_schema_name=[schema_name],
+                    filter_schema_names=[schema_name],
                     limit=1,
                 )
             )

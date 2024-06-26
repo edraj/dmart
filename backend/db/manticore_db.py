@@ -117,7 +117,9 @@ class ManticoreDB(BaseDB):
             "key_value_pairs",
             {
                 "key": "string",
-                "value": "string"
+                "value": "string",
+                "ex": "int",
+                "created_at": "timestamp"
             }, del_docs=True
         )
         
@@ -450,15 +452,19 @@ class ManticoreDB(BaseDB):
         if "subpath" in filters:
             requests_subpaths = ""
             if isinstance(filters["subpath"], str):
-                requests_subpaths = filters["subpath"]
+                requests_subpaths = filters["subpath"].strip("/")
             elif isinstance(filters["subpath"], list):
+                filters["subpath"] = [item.strip("/") for item in filters["subpath"]]
                 requests_subpaths = "("
                 requests_subpaths += "|".join(filters["subpath"])
                 requests_subpaths += ")"
             if exact_subpath:
                 subpath_query = f"REGEX(subpath, '^\\/?{requests_subpaths}$') as subpath_match, "
             else:
-                subpath_query = f"REGEX(subpath, '^\\/?{requests_subpaths}(\\/([A-Za-z0-9_])*)?$') as subpath_match, "
+                if requests_subpaths == "()":
+                    requests_subpaths = ""
+                suffix: str = "(\\/([A-Za-z0-9_])*)" if requests_subpaths != "" else "([A-Za-z0-9_]*)"
+                subpath_query = f"REGEX(subpath, '^\\/?{requests_subpaths}{suffix}?$') as subpath_match, "
                 
             del filters["subpath"]
         
@@ -484,7 +490,8 @@ class ManticoreDB(BaseDB):
                         match_query += f" | @view_acl {filters['user_shortname']} "
                 elif isinstance(value, list) and value:
                     if len(value):
-                        where_filters.append(f"{key} IN ('{"', '".join(map(str, value))}')")
+                        values_str = "', '".join(map(str, value))
+                        where_filters.append(f"{key} IN ('{values_str}')")
                 elif isinstance(value, str) and value and key != "user_shortname":
                     where_filters.append(f"{key}='{value}'")
                 elif value and key != "user_shortname":
@@ -656,6 +663,10 @@ class ManticoreDB(BaseDB):
         if res is None or res['total'] == 0:
             return None
         
+        if res['data'][0]['ex'] and ((res['data'][0]['created_at'] + res['data'][0]['ex']) < datetime.now()):
+            await self.delete_doc_by_id(key)
+            return None
+        
         return str(res['data'][0]['value'])
     
     async def set_key(self, key: str, value: str, ex=None, nx: bool = False) -> bool:
@@ -664,7 +675,7 @@ class ManticoreDB(BaseDB):
         statement = {
             "index": "key_value_pairs",
             "doc": {
-                "key": key, "value": value
+                "key": key, "value": value, "ex": ex if ex else 0, "created_at": datetime.now().timestamp()
             }
         }
         find_res = self.mc_command(f"select * from key_value_pairs where key = '{key}' limit 1")

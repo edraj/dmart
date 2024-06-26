@@ -308,11 +308,13 @@ class AccessControl:
         if not user_meta.groups:
             return []
 
+
+        groups = '\', \''.join(user_meta.groups)
         groups_search = await operational_db.search(
             space_name=settings.management_space,
             branch_name=settings.management_space_branch,
             # search="@shortname:(" + "|".join(user_meta.groups) + ")",
-            search=f"shortname IN  ('{'\', \''.join(user_meta.groups)}')",
+            search=f"shortname IN  ('{groups}')",
             filters={"subpath": ["groups"]},
             limit=10000,
             offset=0,
@@ -343,7 +345,7 @@ class AccessControl:
         permissions_search = await operational_db.search(
             space_name=settings.management_space,
             branch_name=settings.management_space_branch,
-            search=f"shortname IN ('{permissions_options.replace('|', "', '")}')",
+            search="shortname IN ('" + permissions_options.replace('|', "', '") + "')",
             filters={"subpath": ["permissions"]},
             limit=10000,
             offset=0,
@@ -376,7 +378,7 @@ class AccessControl:
         roles_search_res = await operational_db.search(
             space_name=settings.management_space,
             branch_name=settings.management_space_branch,
-            search=f"shortname IN  ('{'\', \''.join(user_associated_roles)}')",
+            search="shortname IN  ('" + '\', \''.join(user_associated_roles) + "')",
             filters={"subpath": ["roles"]},
             limit=10000,
             offset=0,

@@ -1788,6 +1788,7 @@ async def execute(
         )
 
     query_dict = await db.load_resource_payload(dto)
+    # pprint(query_dict)
 
     if meta.payload.schema_shortname == "report":
         query_dict = query_dict["query"]
@@ -1802,11 +1803,13 @@ async def execute(
         r"@\w*\:({|\()?\$\w*(}|\))?", "", query_dict["search"]
     )
 
-    if "offset" in record.attributes:
-        query_dict["offset"] = record.attributes["offset"]
+    if "query_offset" in record.attributes:
+        query_dict.pop("query_offset")
+        query_dict["offset"] = record.attributes["query_offset"]
 
-    if "limit" in record.attributes:
-        query_dict["limit"] = record.attributes["limit"]
+    if "query_limit" in record.attributes:
+        query_dict.pop("query_limit")
+        query_dict["limit"] = record.attributes["query_limit"]
 
     if "from_date" in record.attributes:
         query_dict["from_date"] = record.attributes["from_date"]
