@@ -11,7 +11,7 @@
 
   const userRoles = JSON.parse(localStorage.getItem("roles"));
 
-
+  let ticketElement: any = null;
   let ticket_status = null;
   let ticket_action = null;
   let resolution = null;
@@ -103,8 +103,6 @@
           resolution = null;
       }
   }
-
-    export let ticketElement;
 </script>
 
 <Form class="d-flex flex-column justify-content-between w-100 p-5" on:submit={handleTicketSubmit}>
