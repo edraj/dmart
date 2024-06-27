@@ -67,6 +67,6 @@ One initial category of usecases targets organizations and individuals to establ
 - Heavy leverage of type hinting
 - Automated tests via pytest and curl (curl.sh) tests
 - Full compliance with pyright, ruff and mypi (pylint.sh)
-- Load testing with vegeta
+- Load testing with  locust vegeta and ab (appache bench tool)
 
 </Col></Row><!--/Container-->
