@@ -9,7 +9,7 @@ from models.enums import ContentType, ResourceType
 from utils.redis_services import RedisServices
 from fastapi.logger import logger
 from create_index import main as reload_redis
-
+from utils.settings import settings
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
@@ -49,7 +49,6 @@ class Plugin(PluginBase):
             if data.action_type == ActionType.delete:
                 doc_id = redis_services.generate_doc_id(
                     data.space_name,
-                    data.branch_name,
                     "meta",
                     data.shortname,
                     data.subpath,
@@ -58,7 +57,6 @@ class Plugin(PluginBase):
                 # Delete meta doc
                 await redis_services.delete_doc(
                     data.space_name,
-                    data.branch_name,
                     "meta",
                     data.shortname,
                     data.subpath,
@@ -66,7 +64,6 @@ class Plugin(PluginBase):
                 # Delete payload doc
                 await redis_services.delete_doc(
                     data.space_name,
-                    data.branch_name,
                     (
                         meta_doc.get("payload", {}).get("schema_shortname", "meta")
                         if meta_doc
@@ -83,7 +80,6 @@ class Plugin(PluginBase):
                     shortname=data.shortname,
                     class_type=class_type,
                     user_shortname=data.user_shortname,
-                    branch_name=data.branch_name,
                 )
             except Exception as _:
                 return
@@ -94,7 +90,7 @@ class Plugin(PluginBase):
                 ActionType.progress_ticket,
             ]:
                 meta_doc_id, meta_json = redis_services.prepate_meta_doc(
-                    data.space_name, data.branch_name, data.subpath, meta
+                    data.space_name, data.subpath, meta
                 )
                 payload = {}
                 if (
@@ -107,23 +103,20 @@ class Plugin(PluginBase):
                         subpath=data.subpath,
                         filename=meta.payload.body,
                         class_type=class_type,
-                        branch_name=data.branch_name,
                     )
 
                 meta_json["payload_string"] = await generate_payload_string(
                     space_name=data.space_name,
                     subpath=meta_json["subpath"],
                     shortname=meta_json["shortname"],
-                    branch_name=data.branch_name,
                     payload=payload,
-                )
+                ) if settings.store_payload_string else ""
 
                 await redis_services.save_doc(meta_doc_id, meta_json)
                 if meta.payload:
                     payload.update(meta_json)
                     await redis_services.save_payload_doc(
                         data.space_name,
-                        data.branch_name,
                         data.subpath,
                         meta,
                         payload,
@@ -133,7 +126,6 @@ class Plugin(PluginBase):
             elif data.action_type == ActionType.move:
                 await redis_services.move_meta_doc(
                     data.space_name,
-                    data.branch_name,
                     data.attributes["src_shortname"],
                     data.attributes["src_subpath"],
                     data.subpath,
@@ -142,7 +134,6 @@ class Plugin(PluginBase):
                 if meta.payload and meta.payload.schema_shortname:
                     await redis_services.move_payload_doc(
                         data.space_name,
-                        data.branch_name,
                         meta.payload.schema_shortname,
                         data.attributes["src_shortname"],
                         data.attributes["src_subpath"],
@@ -162,7 +153,6 @@ class Plugin(PluginBase):
             )
             doc_id = redis_services.generate_doc_id(
                 self.data.space_name,
-                self.data.branch_name,
                 "meta",
                 parent_shortname,
                 parent_subpath,
@@ -184,9 +174,8 @@ class Plugin(PluginBase):
                 space_name=self.data.space_name,
                 subpath=parent_subpath,
                 shortname=parent_shortname,
-                branch_name=self.data.branch_name,
                 payload=payload,
-            )
+            ) if settings.store_payload_string else ""
 
             # update parent meta doc
             await redis_services.save_doc(doc_id, meta_doc)

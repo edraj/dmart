@@ -18,7 +18,7 @@ from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import JWTBearer, remove_redis_active_session, sign_jwt, decode_jwt
+from utils.jwt import JWTBearer, remove_redis_active_session, remove_redis_user_session, sign_jwt, decode_jwt
 from typing import Any
 from utils.settings import settings
 import utils.repository as repository
@@ -49,7 +49,6 @@ from fastapi_sso.sso.base import SSOBase
 router = APIRouter()
 
 MANAGEMENT_SPACE: str = settings.management_space
-MANAGEMENT_BRANCH: str = settings.management_space_branch
 USERS_SUBPATH: str = "users"
 
 
@@ -81,7 +80,6 @@ async def check_existing_user_fields(
                 value = f"{{{value}}}"
             redis_search_res = await redis_man.search(
                 space_name=MANAGEMENT_SPACE,
-                branch_name=MANAGEMENT_BRANCH,
                 search=search_str + f" @{key}:{value}",
                 limit=1,
                 offset=0,
@@ -140,7 +138,6 @@ async def create_user(record: core.Record) -> api.Response:
     await plugin_manager.before_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
             shortname=record.shortname,
             action_type=core.ActionType.create,
@@ -175,16 +172,14 @@ async def create_user(record: core.Record) -> api.Response:
                     await validate_payload_with_schema(
                         payload_data=separate_payload_data,
                         space_name=MANAGEMENT_SPACE,
-                        branch_name=MANAGEMENT_BRANCH,
                         schema_shortname=user.payload.schema_shortname,
                     )
 
-    await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user, MANAGEMENT_BRANCH)
+    await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
 
     await plugin_manager.after_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
             shortname=record.shortname,
             action_type=core.ActionType.create,
@@ -240,7 +235,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 shortname=shortname,
                 class_type=core.User,
                 user_shortname=shortname,
-                branch_name=MANAGEMENT_BRANCH,
             )
             if (
                 request.shortname != user.shortname
@@ -309,7 +303,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 shortname=shortname,
                 class_type=core.User,
                 user_shortname=shortname,
-                branch_name=MANAGEMENT_BRANCH,
             )
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
         if (
@@ -340,7 +333,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             await plugin_manager.after_action(
                 core.Event(
                     space_name=MANAGEMENT_SPACE,
-                    branch_name=MANAGEMENT_BRANCH,
                     subpath=USERS_SUBPATH,
                     shortname=shortname,
                     action_type=core.ActionType.update,
@@ -376,7 +368,6 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     await plugin_manager.before_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             action_type=core.ActionType.view,
@@ -391,7 +382,6 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
     )
     attributes: dict[str, Any] = {}
     if user.email:
@@ -437,7 +427,6 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     user_avatar = await repository.get_entry_attachments(
         subpath=f"{USERS_SUBPATH}/{user.shortname}",
         attachments_path=attachments_path,
-        branch_name=MANAGEMENT_BRANCH,
         filter_shortnames=["avatar"],
     )
 
@@ -452,7 +441,6 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     await plugin_manager.after_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             action_type=core.ActionType.view,
@@ -485,7 +473,6 @@ async def update_profile(
     await plugin_manager.before_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             action_type=core.ActionType.update,
@@ -500,7 +487,6 @@ async def update_profile(
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
     )
 
     old_version_flattend = flatten_dict(user.model_dump())
@@ -575,7 +561,6 @@ async def update_profile(
                     await validate_payload_with_schema(
                         payload_data=separate_payload_data,
                         space_name=MANAGEMENT_SPACE,
-                        branch_name=MANAGEMENT_BRANCH,
                         schema_shortname=str(user.payload.schema_shortname),
                     )
 
@@ -585,7 +570,6 @@ async def update_profile(
                     USERS_SUBPATH,
                     user,
                     separate_payload_data,
-                    MANAGEMENT_BRANCH,
                 )
 
     history_diff = await db.update(
@@ -595,14 +579,13 @@ async def update_profile(
         old_version_flattend,
         flatten_dict(user.model_dump()),
         list(profile.attributes.keys()),
-        MANAGEMENT_BRANCH,
         shortname,
+        retrieve_lock_status=profile.retrieve_lock_status,
     )
 
     await plugin_manager.after_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             action_type=core.ActionType.update,
@@ -639,21 +622,20 @@ async def logout(
                         httponly=True, secure=True, samesite="none")
 
     await remove_redis_active_session(shortname)
-    
+    await remove_redis_user_session(shortname)
+
     user = await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
     )
     if user.firebase_token:
         await repository.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             meta=user,
-            branch_name=MANAGEMENT_BRANCH,
             updates={
                 "firebase_token": None
             }
@@ -669,7 +651,6 @@ async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
     await plugin_manager.before_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             action_type=core.ActionType.delete,
@@ -683,16 +664,15 @@ async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
     )
-    await db.delete(MANAGEMENT_SPACE, USERS_SUBPATH, user, MANAGEMENT_BRANCH, shortname)
+    await db.delete(MANAGEMENT_SPACE, USERS_SUBPATH, user, shortname)
 
     await remove_redis_active_session(shortname)
-    
+    await remove_redis_user_session(shortname)
+
     await plugin_manager.after_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             action_type=core.ActionType.delete,
@@ -723,7 +703,6 @@ async def otp_request(
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
     )
     exception = api.Exception(
         status.HTTP_401_UNAUTHORIZED,
@@ -783,7 +762,6 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
     )
 
     old_version_flattend = flatten_dict(user.model_dump())
@@ -792,7 +770,6 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     await plugin_manager.before_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             action_type=core.ActionType.update,
@@ -808,14 +785,12 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
         old_version_flattend,
         flatten_dict(user.model_dump()),
         ["force_password_change"],
-        MANAGEMENT_BRANCH,
         shortname,
     )
 
     await plugin_manager.after_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
-            branch_name=MANAGEMENT_BRANCH,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             action_type=core.ActionType.update,
@@ -944,7 +919,6 @@ async def user_reset(
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-        branch_name=MANAGEMENT_BRANCH,
     )
     if not await access_control.check_access(
         user_shortname=logged_user,
@@ -970,7 +944,6 @@ async def user_reset(
         await repository.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
-            branch_name=MANAGEMENT_BRANCH,
             meta=user,
             updates={"force_password_change": True}
         )
@@ -1080,7 +1053,6 @@ async def process_user_login(
         await repository.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
-            branch_name=MANAGEMENT_BRANCH,
             meta=user,
             updates=user_updates,
             sync_redis=False,
@@ -1113,8 +1085,9 @@ if settings.social_login_allowed:
         access_token: str = Body(default=...),
         firebase_token: str = Body(default=None),
         facebook_sso: FacebookSSO = Depends(get_facebook_sso),
+        retrieve_lock_status: bool = Body(default=False),
     ):
-        user_model = await social_login(access_token, facebook_sso, "facebook")
+        user_model = await social_login(access_token, facebook_sso, "facebook", retrieve_lock_status)
 
         record = await process_user_login(
             user=user_model,
@@ -1125,7 +1098,7 @@ if settings.social_login_allowed:
         return api.Response(status=api.Status.success, records=[record])
 
 
-    async def social_login(access_token: str, sso: SSOBase, provider: str) -> core.User:
+    async def social_login(access_token: str, sso: SSOBase, provider: str, retrieve_lock_status: bool = False) -> core.User:
         async with AsyncRequest() as session:
             user_profile_endpoint = await sso.userinfo_endpoint
             if not user_profile_endpoint:
@@ -1148,7 +1121,6 @@ if settings.social_login_allowed:
         async with RedisServices() as redis_man:
             redis_search_res = await redis_man.search(
                 space_name=MANAGEMENT_SPACE,
-                branch_name=MANAGEMENT_BRANCH,
                 search=f"@{provider}_id:{provider_user.id}",
                 limit=1,
                 offset=0,
@@ -1170,15 +1142,15 @@ if settings.social_login_allowed:
             )
             setattr(user_model, f"{provider}_id", provider_user.id)
 
-            await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user_model, MANAGEMENT_BRANCH)
+            await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user_model)
 
         else:
             redis_doc_dict = json.loads(redis_search_res["data"][0])
             user_record = await repository.get_record_from_redis_doc(
                 space_name=MANAGEMENT_SPACE,
-                branch_name=MANAGEMENT_BRANCH,
                 doc=redis_doc_dict,
-                retrieve_json_payload=True
+                retrieve_json_payload=True,
+                retrieve_lock_status=retrieve_lock_status,
             )
             user_model = core.User.from_record(user_record, owner_shortname=redis_doc_dict.get("owner_shortname"))
             

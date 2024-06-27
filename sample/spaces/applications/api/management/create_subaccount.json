@@ -4,7 +4,6 @@
   "request_body": {
     "space_name": "management",
     "request_type": "create",
-    "branch_name": "master",
     "records": [
       {
         "resource_type": "user",

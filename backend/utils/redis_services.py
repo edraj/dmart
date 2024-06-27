@@ -16,7 +16,7 @@ from datetime import datetime
 # from redis.commands.search.reducers import count as count_reducer
 from redis.commands.search import Search, aggregation
 from redis.commands.search.query import Query
-from utils.helpers import branch_path, camel_case, resolve_schema_references
+from utils.helpers import camel_case, resolve_schema_references
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
 import models.api as api
@@ -37,7 +37,6 @@ class RedisServices(Redis):
 
     META_SCHEMA = (
         TextField("$.uuid", no_stem=True, as_name="uuid"),
-        TextField("$.branch_name", no_stem=True, as_name="branch_name"),
         TextField("$.shortname", sortable=True, no_stem=True, as_name="shortname"),
         TextField("$.slug", sortable=True, no_stem=True, as_name="slug"),
         TextField("$.subpath", sortable=True, no_stem=True, as_name="subpath"),
@@ -146,7 +145,6 @@ class RedisServices(Redis):
     CUSTOM_INDICES = [
         {
             "space": "management",
-            "branch": settings.management_space_branch,
             "subpath": "roles",
             "class": core.Role,
             "exclude_from_index": [
@@ -160,7 +158,6 @@ class RedisServices(Redis):
         },
         {
             "space": "management",
-            "branch": settings.management_space_branch,
             "subpath": "groups",
             "class": core.Group,
             "exclude_from_index": [
@@ -174,7 +171,6 @@ class RedisServices(Redis):
         },
         {
             "space": "management",
-            "branch": settings.management_space_branch,
             "subpath": "users",
             "class": core.User,
             "exclude_from_index": [
@@ -194,7 +190,6 @@ class RedisServices(Redis):
         },
         {
             "space": "management",
-            "branch": settings.management_space_branch,
             "subpath": "permissions",
             "class": core.Permission,
             "exclude_from_index": [
@@ -216,7 +211,6 @@ class RedisServices(Redis):
 
     SYS_ATTRIBUTES = [
         "payload_string",
-        "branch_name",
         "query_policies",
         "subpath",
         "resource_type",
@@ -250,7 +244,7 @@ class RedisServices(Redis):
 
     async def create_index(
         self,
-        space_branch_name: str,
+        space_name: str,
         schema_name: str,
         redis_schema: tuple,
         del_docs: bool = True,
@@ -259,19 +253,19 @@ class RedisServices(Redis):
         create redis schema index, drop it if exist first
         """
         try:
-            await self.redis_indices[space_branch_name][schema_name].dropindex(
+            await self.redis_indices[space_name][schema_name].dropindex(
                 delete_documents=del_docs
             )
         except Exception as _:
             pass
             # logger.error(f"Error at redis_services.create_index: {e}")
 
-        await self.redis_indices[space_branch_name][schema_name].create_index(
+        await self.redis_indices[space_name][schema_name].create_index(
             redis_schema,
             definition=IndexDefinition(
                 prefix=[
-                    f"{space_branch_name}:{schema_name}:",
-                    f"{space_branch_name}:{schema_name}/",
+                    f"{space_name}:{schema_name}:",
+                    f"{space_name}:{schema_name}/",
                 ],
                 index_type=IndexType.JSON,
             ),
@@ -293,7 +287,7 @@ class RedisServices(Redis):
             return redis_schema_definition
 
         if "type" in property and property["type"] != "object":
-            if property["type"] in ["null", "boolean"] or not isinstance(
+            if property["type"] == "null" or not isinstance(
                 property["type"], str
             ):
                 return redis_schema_definition
@@ -397,29 +391,29 @@ class RedisServices(Redis):
 
             exclude_from_index: list = index["exclude_from_index"]
 
-            redis_schemas.setdefault(f"{index['space']}:{index['branch']}", [])
+            redis_schemas.setdefault(f"{index['space']}", [])
             self.redis_indices.setdefault(
-                f"{index['space']}:{index['branch']}:meta", {}
+                f"{index['space']}:meta", {}
             )
 
             generated_schema_fields = self.generate_redis_index_from_class(
                 self.CUSTOM_CLASSES[i], exclude_from_index
             )
 
-            redis_schemas[f"{index['space']}:{index['branch']}"] = (
+            redis_schemas[f"{index['space']}"] = (
                 self.append_unique_index_fields(
                     generated_schema_fields,
-                    redis_schemas[f"{index['space']}:{index['branch']}"],
+                    redis_schemas[f"{index['space']}"],
                 )
             )
 
-        for space_branch, redis_schema in redis_schemas.items():
+        for space_name, redis_schema in redis_schemas.items():
             redis_schema = self.append_unique_index_fields(
                 tuple(redis_schema),
                 list(self.META_SCHEMA),
             )
             await self.create_index(
-                f"{space_branch}",
+                f"{space_name}",
                 "meta",
                 tuple(redis_schema),
             )
@@ -444,82 +438,80 @@ class RedisServices(Redis):
             ) or not space_obj.indexing_enabled:
                 continue
 
-            for branch_name in space_obj.branches:
-                # CREATE REDIS INDEX FOR THE META FILES INSIDE THE SPACE
-                self.redis_indices[f"{space_name}:{branch_name}"] = {}
-                self.redis_indices[f"{space_name}:{branch_name}"]["meta"] = self.ft(
-                    f"{space_name}:{branch_name}:meta"
-                )
+            # CREATE REDIS INDEX FOR THE META FILES INSIDE THE SPACE
+            self.redis_indices[f"{space_name}"] = {}
+            self.redis_indices[f"{space_name}"]["meta"] = self.ft(
+                f"{space_name}:meta"
+            )
 
-                await self.create_index(
-                    f"{space_name}:{branch_name}", "meta", self.META_SCHEMA, del_docs
-                )
+            await self.create_index(
+                f"{space_name}", "meta", self.META_SCHEMA, del_docs
+            )
 
-                # CREATE REDIS INDEX FOR EACH SCHEMA DEFINITION INSIDE THE SPACE
-                schemas_file_pattern = re.compile(r"(\w*).json")
-                schemas_glob = "*.json"
-                path = (
-                    settings.spaces_folder
-                    / space_name
-                    / branch_path(branch_name)
-                    / "schema"
-                )
+            # CREATE REDIS INDEX FOR EACH SCHEMA DEFINITION INSIDE THE SPACE
+            schemas_file_pattern = re.compile(r"(\w*).json")
+            schemas_glob = "*.json"
+            path = (
+                settings.spaces_folder
+                / space_name
+                / "schema"
+            )
 
-                for schema_path in path.glob(schemas_glob):
-                    # GET SCHEMA SHORTNAME
-                    match = schemas_file_pattern.search(str(schema_path))
-                    if not match or not schema_path.is_file():
-                        continue
-                    schema_shortname = match.group(1)
+            for schema_path in path.glob(schemas_glob):
+                # GET SCHEMA SHORTNAME
+                match = schemas_file_pattern.search(str(schema_path))
+                if not match or not schema_path.is_file():
+                    continue
+                schema_shortname = match.group(1)
 
-                    if for_schemas and schema_shortname not in for_schemas:
-                        continue
+                if for_schemas and schema_shortname not in for_schemas:
+                    continue
 
-                    if schema_shortname in ["meta_schema", "meta"]:
-                        continue
+                if schema_shortname in ["meta_schema", "meta"]:
+                    continue
 
-                    # GET SCHEMA PROPERTIES AND
-                    # GENERATE REDIS INDEX DEFINITION BY MAPPIN SCHEMA PROPERTIES TO REDIS INDEX FIELDS
-                    schema_content = json.loads(schema_path.read_text())
-                    schema_content = resolve_schema_references(schema_content)
-                    redis_schema_definition = list(self.META_SCHEMA)
-                    if "properties" in schema_content:
-                        for key, property in schema_content["properties"].items():
+                # GET SCHEMA PROPERTIES AND
+                # GENERATE REDIS INDEX DEFINITION BY MAPPIN SCHEMA PROPERTIES TO REDIS INDEX FIELDS
+                schema_content = json.loads(schema_path.read_text())
+                schema_content = resolve_schema_references(schema_content)
+                redis_schema_definition = list(self.META_SCHEMA)
+                if "properties" in schema_content:
+                    for key, property in schema_content["properties"].items():
+                        generated_schema_fields = self.get_redis_index_fields(
+                            key, property, []
+                        )
+                        redis_schema_definition = self.append_unique_index_fields(
+                            generated_schema_fields, redis_schema_definition
+                        )
+
+                elif "oneOf" in schema_content:
+                    for item in schema_content["oneOf"]:
+                        for key, property in item["properties"].items():
                             generated_schema_fields = self.get_redis_index_fields(
                                 key, property, []
                             )
-                            redis_schema_definition = self.append_unique_index_fields(
-                                generated_schema_fields, redis_schema_definition
+                            redis_schema_definition = (
+                                self.append_unique_index_fields(
+                                    generated_schema_fields, redis_schema_definition
+                                )
                             )
 
-                    elif "oneOf" in schema_content:
-                        for item in schema_content["oneOf"]:
-                            for key, property in item["properties"].items():
-                                generated_schema_fields = self.get_redis_index_fields(
-                                    key, property, []
-                                )
-                                redis_schema_definition = (
-                                    self.append_unique_index_fields(
-                                        generated_schema_fields, redis_schema_definition
-                                    )
-                                )
-
-                    if redis_schema_definition:
-                        self.redis_indices[f"{space_name}:{branch_name}"][
-                            schema_shortname
-                        ] = self.ft(f"{space_name}:{branch_name}:{schema_shortname}")
-                        redis_schema_definition.append(
-                            TextField(
-                                "$.meta_doc_id", no_stem=True, as_name="meta_doc_id"
-                            )
+                if redis_schema_definition:
+                    self.redis_indices[f"{space_name}"][
+                        schema_shortname
+                    ] = self.ft(f"{space_name}:{schema_shortname}")
+                    redis_schema_definition.append(
+                        TextField(
+                            "$.meta_doc_id", no_stem=True, as_name="meta_doc_id"
                         )
+                    )
 
-                        await self.create_index(
-                            f"{space_name}:{branch_name}",
-                            schema_shortname,
-                            tuple(redis_schema_definition),
-                            del_docs,
-                        )
+                    await self.create_index(
+                        f"{space_name}",
+                        schema_shortname,
+                        tuple(redis_schema_definition),
+                        del_docs,
+                    )
 
         if for_custom_indices:
             await self.create_custom_indices(for_space)
@@ -543,7 +535,6 @@ class RedisServices(Redis):
     def generate_doc_id(
         self,
         space_name: str,
-        branch_name: str | None,
         schema_shortname: str,
         shortname: str,
         subpath: str,
@@ -553,7 +544,7 @@ class RedisServices(Redis):
         # if subpath[-1] == "/":
         #     subpath = subpath[:-1]
         subpath = subpath.strip("/")
-        return f"{space_name}:{branch_name}:{schema_shortname}:{subpath}/{shortname}"
+        return f"{space_name}:{schema_shortname}:{subpath}/{shortname}"
 
     def generate_query_policies(
         self,
@@ -606,17 +597,16 @@ class RedisServices(Redis):
         return query_policies
 
     def prepate_meta_doc(
-        self, space_name: str, branch_name: str | None, subpath: str, meta: core.Meta
+        self, space_name: str, subpath: str, meta: core.Meta
     ):
         resource_type = meta.__class__.__name__.lower()
         meta_doc_id = self.generate_doc_id(
-            space_name, branch_name, "meta", meta.shortname, subpath
+            space_name, "meta", meta.shortname, subpath
         )
         payload_doc_id = None
         if meta.payload and meta.payload.schema_shortname:
             payload_doc_id = self.generate_doc_id(
                 space_name,
-                branch_name,
                 meta.payload.schema_shortname,
                 meta.shortname,
                 subpath,
@@ -633,7 +623,6 @@ class RedisServices(Redis):
         )
         meta_json["view_acl"] = self.generate_view_acl(meta_json.get("acl"))
         meta_json["subpath"] = subpath
-        meta_json["branch_name"] = branch_name
         meta_json["resource_type"] = resource_type
         meta_json["created_at"] = meta.created_at.timestamp()
         meta_json["updated_at"] = meta.updated_at.timestamp()
@@ -654,10 +643,10 @@ class RedisServices(Redis):
         return view_acl
 
     async def save_meta_doc(
-        self, space_name: str, branch_name: str | None, subpath: str, meta: core.Meta
+        self, space_name: str, subpath: str, meta: core.Meta
     ):
         meta_doc_id, meta_json = self.prepate_meta_doc(
-            space_name, branch_name, subpath, meta
+            space_name, subpath, meta
         )
         await self.save_doc(meta_doc_id, meta_json)
         return meta_doc_id, meta_json
@@ -665,7 +654,6 @@ class RedisServices(Redis):
     def prepare_payload_doc(
         self,
         space_name: str,
-        branch_name: str | None,
         subpath: str,
         meta: core.Meta,
         payload: dict,
@@ -673,12 +661,12 @@ class RedisServices(Redis):
     ):
         if meta.payload is None:
             print(
-                f"Missing payload for {space_name}/{branch_name}/{subpath} of type {resource_type}"
+                f"Missing payload for {space_name}/{subpath} of type {resource_type}"
             )
             return "", {}
         if meta.payload.body is None:
             print(
-                f"Missing body for {space_name}/{branch_name}/{subpath} of type {resource_type}"
+                f"Missing body for {space_name}/{subpath} of type {resource_type}"
             )
             return "", {}
         if not isinstance(meta.payload.body, str):
@@ -686,11 +674,10 @@ class RedisServices(Redis):
             return "", {}
         payload_shortname = meta.payload.body.split(".")[0]
         meta_doc_id = self.generate_doc_id(
-            space_name, branch_name, "meta", payload_shortname, subpath
+            space_name, "meta", payload_shortname, subpath
         )
         docid = self.generate_doc_id(
             space_name,
-            branch_name,
             meta.payload.schema_shortname or "",
             payload_shortname,
             subpath,
@@ -710,7 +697,6 @@ class RedisServices(Redis):
                 f"Warning: this entry `{space_name}/{subpath}/{meta.shortname}` can't be accessed"
             )
         payload["subpath"] = subpath
-        payload["branch_name"] = branch_name
         payload["resource_type"] = resource_type
         payload["shortname"] = payload_shortname
         payload["meta_doc_id"] = meta_doc_id
@@ -720,14 +706,13 @@ class RedisServices(Redis):
     async def save_payload_doc(
         self,
         space_name: str,
-        branch_name: str | None,
         subpath: str,
         meta: core.Meta,
         payload: dict,
         resource_type: ResourceType = ResourceType.content,
     ):
         docid, payload = self.prepare_payload_doc(
-            space_name, branch_name, subpath, meta, payload, resource_type
+            space_name, subpath, meta, payload, resource_type
         )
         if docid == "":
             return
@@ -754,17 +739,16 @@ class RedisServices(Redis):
     async def save_lock_doc(
         self,
         space_name: str,
-        branch_name: str | None,
         subpath: str,
         payload_shortname: str,
         owner_shortname: str,
         ttl: int,
     ):
         lock_doc_id = self.generate_doc_id(
-            space_name, branch_name, "lock", payload_shortname, subpath
+            space_name, "lock", payload_shortname, subpath
         )
         lock_data = await self.get_lock_doc(
-            space_name, branch_name, subpath, payload_shortname
+            space_name, subpath, payload_shortname
         )
         if not lock_data:
             payload = {
@@ -774,7 +758,7 @@ class RedisServices(Redis):
             result = await self.save_doc(lock_doc_id, payload, nx=True)
             if result is None:
                 lock_payload = await self.get_lock_doc(
-                    space_name, branch_name, subpath, payload_shortname
+                    space_name, subpath, payload_shortname
                 )
                 if lock_payload["owner_shortname"] != owner_shortname:
                     raise api.Exception(
@@ -794,36 +778,33 @@ class RedisServices(Redis):
     async def get_lock_doc(
         self,
         space_name: str,
-        branch_name: str | None,
         subpath: str,
         payload_shortname: str,
     ):
         lock_doc_id = self.generate_doc_id(
-            space_name, branch_name, "lock", payload_shortname, subpath
+            space_name, "lock", payload_shortname, subpath
         )
         return await self.get_doc_by_id(lock_doc_id)
 
     async def delete_lock_doc(
         self,
         space_name: str,
-        branch_name: str | None,
         subpath: str,
         payload_shortname: str,
     ):
         await self.delete_doc(
-            space_name, branch_name, "lock", payload_shortname, subpath
+            space_name, "lock", payload_shortname, subpath
         )
 
     async def is_entry_locked(
         self,
         space_name: str,
-        branch_name: str | None,
         subpath: str,
         shortname: str,
         user_shortname: str,
     ):
         lock_payload = await self.get_lock_doc(
-            space_name, branch_name, subpath, shortname
+            space_name, subpath, shortname
         )
         if lock_payload:
             if user_shortname:
@@ -845,8 +826,8 @@ class RedisServices(Redis):
             pipe.json().set(document["doc_id"], path, document["payload"])
         return await pipe.execute()
 
-    async def get_count(self, space_name: str, branch_name: str, schema_shortname: str):
-        ft_index = self.ft(f"{space_name}:{branch_name}:{schema_shortname}")
+    async def get_count(self, space_name: str, schema_shortname: str):
+        ft_index = self.ft(f"{space_name}:{schema_shortname}")
 
         try:
             info = await ft_index.info()
@@ -862,7 +843,6 @@ class RedisServices(Redis):
     async def search(
         self,
         space_name: str,
-        branch_name: str | None,
         search: str,
         filters: dict[str, str | list],
         limit: int,
@@ -876,11 +856,11 @@ class RedisServices(Redis):
     ):
         # Tries to get the index from the provided space
         try:
-            ft_index = self.ft(f"{space_name}:{branch_name}:{schema_name}")
+            ft_index = self.ft(f"{space_name}:{schema_name}")
             await ft_index.info()
         except Exception as e:
             logger.error(
-                f"Error accessing index: {space_name}:{branch_name}:{schema_name}, at redis_services.search: {e}"
+                f"Error accessing index: {space_name}:{schema_name}, at redis_services.search: {e}"
             )
             return {"data": [], "total": 0}
 
@@ -929,7 +909,6 @@ class RedisServices(Redis):
         group_by: list[str],
         reducers: list[RedisReducer],
         max: int = 10,
-        branch_name: str = settings.default_branch,
         exact_subpath: bool = False,
         sort_type: SortType = SortType.ascending,
         sort_by: str | None = None,
@@ -938,7 +917,7 @@ class RedisServices(Redis):
     ) -> list:
         # Tries to get the index from the provided space
         try:
-            ft_index = self.ft(f"{space_name}:{branch_name}:{schema_name}")
+            ft_index = self.ft(f"{space_name}:{schema_name}")
             await ft_index.info()
         except Exception:
             return []
@@ -1063,10 +1042,10 @@ class RedisServices(Redis):
             return ""
 
     async def delete_doc(
-        self, space_name, branch_name, schema_shortname, shortname, subpath
+        self, space_name, schema_shortname, shortname, subpath
     ):
         docid = self.generate_doc_id(
-            space_name, branch_name, schema_shortname, shortname, subpath
+            space_name, schema_shortname, shortname, subpath
         )
         try:
             x = self.json().delete(key=docid)
@@ -1078,7 +1057,6 @@ class RedisServices(Redis):
     async def move_payload_doc(
         self,
         space_name,
-        branch_name,
         schema_shortname,
         src_shortname,
         src_subpath,
@@ -1086,17 +1064,17 @@ class RedisServices(Redis):
         dest_subpath,
     ):
         docid = self.generate_doc_id(
-            space_name, branch_name, schema_shortname, src_shortname, src_subpath
+            space_name, schema_shortname, src_shortname, src_subpath
         )
 
         try:
             doc_content = await self.get_doc_by_id(docid)
             await self.delete_doc(
-                space_name, branch_name, schema_shortname, src_shortname, src_subpath
+                space_name, schema_shortname, src_shortname, src_subpath
             )
 
             new_docid = self.generate_doc_id(
-                space_name, branch_name, schema_shortname, dest_shortname, dest_subpath
+                space_name, schema_shortname, dest_shortname, dest_subpath
             )
             await self.save_doc(new_docid, doc_content)
 
@@ -1104,13 +1082,13 @@ class RedisServices(Redis):
             logger.warning(f"Error at redis_services.move_payload_doc: {e}")
 
     async def move_meta_doc(
-        self, space_name, branch_name, src_shortname, src_subpath, dest_subpath, meta
+        self, space_name, src_shortname, src_subpath, dest_subpath, meta
     ):
         try:
             await self.delete_doc(
-                space_name, branch_name, "meta", src_shortname, src_subpath
+                space_name, "meta", src_shortname, src_subpath
             )
-            await self.save_meta_doc(space_name, branch_name, dest_subpath, meta)
+            await self.save_meta_doc(space_name, dest_subpath, meta)
         except Exception as e:
             logger.warning(f"Error at redis_services.move_meta_doc: {e}")
 
@@ -1127,7 +1105,7 @@ class RedisServices(Redis):
         try:
             return await self.delete(*keys)
         except Exception as e:
-            logger.warning(f"Error at redis_services.def_keys {keys}: {e}")
+            logger.warning(f"Error at redis_services.del_keys {keys}: {e}")
             return False
 
     async def get_key(self, key) -> str | None:
@@ -1162,3 +1140,27 @@ class RedisServices(Redis):
         x = self.ft().execute_command("FT._LIST")
         if x and isinstance(x, Awaitable):
             return await x
+        
+    
+    
+    async def get_all_document_ids(self, index: str, search_str: str = "*") -> list[str]:        
+        # Initialize the list to hold document IDs
+        document_ids = []
+        
+        # Fetch all document IDs
+        ft_index = self.ft(index)
+        total_docs = int((await ft_index.info())['num_docs'])
+        
+        batch_size = 10000  # You can adjust the batch size based on your needs
+        
+        for offset in range(0, total_docs, batch_size):
+            query = Query(search_str).paging(offset, batch_size)
+            results = ft_index.search(query)
+            if results and isinstance(results, Awaitable):
+                results = await results
+            
+            if 'results' not in results or not isinstance(results['results'], list):
+                break
+            document_ids.extend([doc['id'] for doc in results['results']]) #type: ignore
+        
+        return document_ids

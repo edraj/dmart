@@ -23,9 +23,9 @@ def decode_jwt(token: str) -> dict[str, Any]:
             api.Error(type="jwtauth", code=InternalErrorCode.INVALID_TOKEN, message="Invalid Token [1]"),
         )
     if (
-        not decoded_token
-        or "data" not in decoded_token
-        or "expires" not in decoded_token
+            not decoded_token
+            or "data" not in decoded_token
+            or "expires" not in decoded_token
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -36,11 +36,10 @@ def decode_jwt(token: str) -> dict[str, Any]:
             status.HTTP_401_UNAUTHORIZED,
             api.Error(type="jwtauth", code=InternalErrorCode.EXPIRED_TOKEN, message="Expired Token"),
         )
-        
 
-    if(
-        isinstance(decoded_token["data"], dict) 
-        and decoded_token["data"].get("username") is not None
+    if (
+            isinstance(decoded_token["data"], dict)
+            and decoded_token["data"].get("username") is not None
     ):
         return decoded_token["data"]
     else:
@@ -58,8 +57,8 @@ class JWTBearer(HTTPBearer):
         self.is_required = is_required
 
     async def __call__(self, request: Request) -> str | None:  # type: ignore
-        user_shortname : str | None = None
-        auth_token : str | None = None
+        user_shortname: str | None = None
+        auth_token: str | None = None
         try:
             # Handle token received in Auth header
             credentials: Optional[HTTPAuthorizationCredentials] = await super(
@@ -67,17 +66,17 @@ class JWTBearer(HTTPBearer):
             ).__call__(request)
             if credentials and credentials.scheme == "Bearer":
                 auth_token = credentials.credentials
-                
+
         except Exception:
             # Handle token received in the cookie
             auth_token = request.cookies.get("auth_token")
-            
+
         if not auth_token:
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [1]"),
             )
-            
+
         decoded = decode_jwt(auth_token)
         user_shortname = decoded["username"]
         if not user_shortname:
@@ -85,11 +84,11 @@ class JWTBearer(HTTPBearer):
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [2]"),
             )
-        
+
         if settings.one_session_per_user:
             active_session_token = await get_redis_active_session(user_shortname)
             if not isinstance(active_session_token, str) or not verify_password(
-                auth_token, active_session_token
+                    auth_token, active_session_token
             ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -97,9 +96,18 @@ class JWTBearer(HTTPBearer):
                         type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [3]"
                     ),
                 )
-                
+
             await set_redis_active_session(user_shortname, active_session_token)
-        
+
+        user_session_token = await get_redis_user_session(user_shortname)
+        if not isinstance(user_session_token, str):
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [3]"
+                ),
+            )
+
         return user_shortname
 
 
@@ -118,12 +126,15 @@ class GetJWTToken(HTTPBearer):
             return request.cookies.get("auth_token")
         return None
 
+
 def generate_jwt(data: dict, expires: int = 86400) -> str:
     payload = {"data": data, "expires": time() + expires}
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
+
 async def sign_jwt(data: dict, expires: int = 86400) -> str:
     token = generate_jwt(data, expires)
+    await set_redis_user_session(data["username"], token)
     if settings.one_session_per_user:
         await set_redis_active_session(data["username"], token)
     return token
@@ -136,11 +147,28 @@ async def set_redis_active_session(user_shortname: str, token: str) -> bool:
             value=hash_password(token),
             ex=settings.session_inactivity_ttl,
         ))
-        
+
+
+async def set_redis_user_session(user_shortname: str, token: str) -> bool:
+    async with RedisServices() as redis:
+        return bool(await redis.set_key(
+            key=f"user_session:{user_shortname}",
+            value=hash_password(token),
+            ex=settings.session_inactivity_ttl,
+        ))
+
+
 async def get_redis_active_session(user_shortname: str):
     async with RedisServices() as redis:
         return await redis.get_key(
             f"active_session:{user_shortname}"
+        )
+
+
+async def get_redis_user_session(user_shortname: str):
+    async with RedisServices() as redis:
+        return await redis.get_key(
+            f"user_session:{user_shortname}"
         )
 
 
@@ -151,10 +179,8 @@ async def remove_redis_active_session(user_shortname: str) -> bool:
         )
 
 
-# if __name__ == "__main__":
-    # import os
-    # mport binascii
-
-    # Generate secret
-    # print(binascii.hexlify(os.urandom(24)))
-#    pass
+async def remove_redis_user_session(user_shortname: str) -> bool:
+    async with RedisServices() as redis:
+        return bool(
+            await redis.del_keys([f"user_session:{user_shortname}"])
+        )

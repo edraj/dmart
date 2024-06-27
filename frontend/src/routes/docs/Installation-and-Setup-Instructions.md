@@ -1,29 +1,14 @@
-<script>
-  import CLITest from "./assets/curl-test.png";
-  import PYTest from "./assets/pytest.png";
-  import AdminUI1 from "./assets/admin_ui_1.png";
-  import AdminUI2 from "./assets/admin_ui_2.png";
-  import CLI from "./assets/cli.png";
-</script>
+### **Installation and Setup Instructions**
 
-<style>
-.center {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  width: 50%;
-}
-</style>
+---
 
-## Installation and Setup Instructions
-
-### Container (recommended)
+**Container (recommended)**
 
 Using podman (or docker), dmart can be fully setup and configured in few minutes.
 
 You only need a command line console, git and podman (or docker).
 
-#### Steps
+**Steps**
 
 ```
 # Clone the git repo
@@ -37,7 +22,7 @@ podman build -t dmart -f Dockerfile
 podman run --name dmart -p 8000:8000 -d -it dmart
 
 # Set the admin password
-podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 ./set_admin_passwd.py
+podman exec -it -w /home/backend dmart /home/venv/bin/python3 ./set_admin_passwd.py
 
 # Load the sample spaces data
 podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
@@ -52,20 +37,20 @@ podman exec -it -w /home/backend dmart ./curl.sh
 
 ```
 
-### Manual (for advanced users)
+**Manual (for advanced users)**
 
-#### Requirements
+**Requirements**
 
 - git
 - jq
-- python == 3.11
+- python >= 3.11
 - pip
 - redis >= 7.2
 - RedisJSON (rejson) >= 2.6
 - RediSearch >= 2.8
 - python venv
 
-### Steps
+**Steps**
 
 ```bash
 
@@ -114,75 +99,3 @@ cp config.env.sample config.env
 # Optionally: check admin folder for systemd scripts
 
 ```
-
-#### Automated testing
-
-#### Installing python dependencies
-
-```bash
-pip install --user -r test-requirements.txt
-```
-
-#### Running
-
-```bash
-cd backend
-./curl.sh
-python -m pytest
-```
-
-<img class="center" src={CLITest} width="300">
-<img class="center" src={PYTest} width="450">
-
-#### Using the Admin UI tool
-
-DMART has a comprehensive Admin UI that interacts with the backend entirely via the formal API. It is built with Svelte, Routify3 and SvelteStrap.
-
-```bash
-cd dmart/frontend
-yarn install
-
-# Configure the dmart server backend url in src/config.ts
-
-# To run in Development mode
-yarn dev
-
-# To build and run in production / static file serving mode (i.e. w/o nodejs) using Caddy
-yarn build
-caddy run
-```
-
-### Building tauri binary (Linux AppImage)
-
-This allows packaging the admin tool as a desktop application.
-
-```
-# Regular build without inspection
-yarn tauri build --bundles appimage
-
-# To add inspection (right mouse click -> inspect)
-yarn tauri build --bundles appimage --debug
-
-```
-
-<img class="center" src={AdminUI1}>
-<img class="center" src={AdminUI2}>
-
-### Using the command line tool
-
-DMART comes with a command line tool that can run from anywhere. It communicates with DMART over the api.
-
-```bash
-cd cli
-
-# Create config.ini with proper access details (url, credentials ...etc)
-cp config.ini.sample config.ini
-
-# Install additional packages
-pip install --user  -r requirements.txt
-
-# Start the cli tool
-./cli.py
-```
-
-<img class="center" src={CLI} width="450">

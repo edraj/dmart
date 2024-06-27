@@ -24,7 +24,6 @@ class Notifier(ABC):
                 shortname=shortname,
                 class_type=User,
                 user_shortname="__system__",
-                branch_name=settings.management_space_branch,
             )
         return self.user
 

@@ -1,7 +1,8 @@
 import json
 from sys import modules as sys_modules
+from typing import Any
 from models.core import Notification, NotificationData, PluginBase, Event, Translation
-from utils.helpers import branch_path, camel_case
+from utils.helpers import camel_case
 from utils.notification import NotificationManager
 from utils.redis_services import RedisServices
 from utils.repository import internal_save_model, get_entry_attachments
@@ -32,18 +33,15 @@ class Plugin(PluginBase):
             data.shortname,
             getattr(sys_modules["models.core"], camel_case(data.resource_type)),
             data.user_shortname,
-            data.branch_name,
         )
         notification_dict = notification_request_meta.dict()
         notification_dict["subpath"] = data.subpath
-        notification_dict["branch_name"] = data.branch_name
 
-        notification_request_payload = load_resource_payload(
+        notification_request_payload: dict[str, Any] = load_resource_payload(
             data.space_name,
             data.subpath,
             notification_request_meta.payload.body,
             getattr(sys_modules["models.core"], camel_case(data.resource_type)),
-            data.branch_name,
         )
         notification_dict.update(notification_request_payload)
 
@@ -54,7 +52,6 @@ class Plugin(PluginBase):
         async with RedisServices() as redis:
             receivers = await redis.search(
                 space_name=settings.management_space,
-                branch_name=settings.management_space_branch,
                 search=f"@subpath:users @msisdn:{'|'.join(notification_dict['msisdns'])}",
                 filters={},
                 limit=10000,
@@ -80,9 +77,7 @@ class Plugin(PluginBase):
                     "personal",
                     f"people/{receiver}/notifications",
                     notification_obj,
-                    notification_dict["branch_name"],
                 )
-
             for platform in formatted_req["platforms"]:
                 await notification_manager.send(
                     platform=platform,
@@ -94,25 +89,24 @@ class Plugin(PluginBase):
                     ),
                 )
 
+
         notification_request_payload["status"] = "finished"
         await save_payload_from_json(
             space_name=data.space_name,
             subpath=data.subpath,
             meta=notification_request_meta,
             payload_data=notification_request_payload,
-            branch_name=data.branch_name,
         )
 
     async def prepare_request(self, notification_dict) -> dict:
         # Get Notification Request Images
         attachments_path = (
             settings.spaces_folder
-            / f"{settings.management_space}/{branch_path(notification_dict['branch_name'])}/"
+            / f"{settings.management_space}/"
             f"{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
         notification_attachments = await get_entry_attachments(
             subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
-            branch_name=notification_dict["branch_name"],
             attachments_path=attachments_path,
         )
         notification_images = {

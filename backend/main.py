@@ -373,10 +373,12 @@ async def space_backup(key: str):
     cmd = "/usr/bin/bash -c 'cd .. && ./spaces-backup.sh'"
     # cmd = "../git-update.sh"
 
-    result = subprocess.run([cmd], capture_output=True, text=True, shell=True)
+    result_stdout, result_stderr = subprocess.Popen(
+        cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ).communicate()
     attributes = {
-        "stdout": result.stdout.split("\n"),
-        "stderr": result.stderr.split("\n"),
+        "stdout": result_stdout.decode().split("\n"),
+        "stderr": result_stderr.decode().split("\n"),
     }
     return api.Response(status=api.Status.success, attributes=attributes)
 

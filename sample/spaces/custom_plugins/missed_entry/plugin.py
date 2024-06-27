@@ -2,7 +2,7 @@ import json
 import sys
 import aiofiles
 from models.core import ActionType, PluginBase, Event, Space
-from utils.helpers import branch_path, camel_case
+from utils.helpers import camel_case
 from utils.redis_services import RedisServices
 from utils.spaces import get_spaces
 import utils.db as db
@@ -48,7 +48,7 @@ class Plugin(PluginBase):
         class_type = getattr(
             sys.modules["models.core"], camel_case(core.ResourceType(data.resource_type))
         )
-        path, filename = db.metapath(data.space_name, data.subpath, data.shortname, class_type, data.branch_name)
+        path, filename = db.metapath(data.space_name, data.subpath, data.shortname, class_type)
         if (path/filename).is_file():
             return
 
@@ -62,7 +62,6 @@ class Plugin(PluginBase):
         miss_file = (
             settings.spaces_folder / 
             data.space_name / 
-            branch_path(data.branch_name) /
             f"misses/{miss_shortname}.json"
         )
         miss_content = None
@@ -82,10 +81,10 @@ class Plugin(PluginBase):
         )
         async with RedisServices() as redis_services:
             meta_doc_id, meta_json = redis_services.prepate_meta_doc(
-                data.space_name, data.branch_name, "misses", missed_obj_meta
+                data.space_name, "misses", missed_obj_meta
             )
             if not miss_content:
-                await db.save(data.space_name, "misses", missed_obj_meta, data.branch_name)
+                await db.save(data.space_name, "misses", missed_obj_meta)
                 await redis_services.save_doc(meta_doc_id, meta_json)
                 num_of_requests = 1
 
@@ -102,7 +101,6 @@ class Plugin(PluginBase):
                     "num_of_requests": num_of_requests,
                     "actioned": "No",
                 },
-                data.branch_name
             )
             payload_dict = {
                 **meta_json,
@@ -114,7 +112,6 @@ class Plugin(PluginBase):
             }
             await redis_services.save_payload_doc(
                 space_name=data.space_name,
-                branch_name=data.branch_name,
                 subpath="misses",
                 meta=missed_obj_meta,
                 payload=payload_dict,

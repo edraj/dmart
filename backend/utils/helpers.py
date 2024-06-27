@@ -1,6 +1,7 @@
 from copy import deepcopy
 import csv
 from datetime import datetime
+import json
 from pathlib import Path
 from re import sub as re_sub
 import aiofiles
@@ -10,7 +11,6 @@ from jsonschema.validators import _RefResolver as RefResolver  # type: ignore
 # TBD import referencing.jsonschema
 from collections.abc import MutableMapping
 from models.enums import Language
-from utils.settings import settings
 from typing import Any
 from languages.loader import languages
 
@@ -228,12 +228,6 @@ def alter_dict_keys(
     return result
 
 
-def branch_path(branch_name: str | None = settings.default_branch) -> str:
-    return (
-        (f"branches/{branch_name}") if branch_name != settings.default_branch else "./"
-    )
-
-
 def json_flater(data: dict[str, Any]) -> dict[str, Any]:
     flatened_data = {}
     for k, v in data.items():
@@ -321,3 +315,9 @@ async def csv_file_to_json(csv_file_path: Path) -> list[dict[str, Any]]:
 
     return data
 
+def read_jsonl_file(file_path):
+    data = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            data.append(json.loads(line))
+    return data

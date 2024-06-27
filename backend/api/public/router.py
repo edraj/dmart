@@ -4,7 +4,7 @@ from fastapi import APIRouter, Body, Query, Path, status, Depends
 from models.enums import AttachmentType, ContentType, ResourceType, TaskType
 import utils.db as db
 import models.api as api
-from utils.helpers import branch_path, camel_case
+from utils.helpers import camel_case
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
 import utils.regex as regex
@@ -29,7 +29,6 @@ async def query_entries(query: api.Query) -> api.Response:
     await plugin_manager.before_action(
         core.Event(
             space_name=query.space_name,
-            branch_name=query.branch_name,
             subpath=query.subpath,
             action_type=core.ActionType.query,
             user_shortname="anonymous",
@@ -50,7 +49,6 @@ async def query_entries(query: api.Query) -> api.Response:
     await plugin_manager.after_action(
         core.Event(
             space_name=query.space_name,
-            branch_name=query.branch_name,
             subpath=query.subpath,
             action_type=core.ActionType.query,
             user_shortname="anonymous",
@@ -77,7 +75,6 @@ async def retrieve_entry_meta(
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
     filter_attachments_types: list = Query(default=[], examples=["media", "comment", "json"]),
-    branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
 
     if subpath == settings.root_subpath_mw:
@@ -86,7 +83,6 @@ async def retrieve_entry_meta(
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.view,
@@ -103,7 +99,6 @@ async def retrieve_entry_meta(
         shortname=shortname,
         class_type=resource_class,
         user_shortname="anonymous",
-        branch_name=branch_name,
     )
     if meta is None:
         raise api.Exception(
@@ -136,13 +131,12 @@ async def retrieve_entry_meta(
     attachments = {}
     entry_path = (
         settings.spaces_folder
-        / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
+        / f"{space_name}/{subpath}/.dm/{shortname}"
     )
     if retrieve_attachments:
         attachments = await repository.get_entry_attachments(
             subpath=subpath,
             attachments_path=entry_path,
-            branch_name=branch_name,
             retrieve_json_payload=retrieve_json_payload,
             filter_types=filter_attachments_types
         )
@@ -165,14 +159,12 @@ async def retrieve_entry_meta(
         subpath=subpath,
         filename=meta.payload.body,
         class_type=resource_class,
-        branch_name=branch_name,
     )
 
     if meta.payload and meta.payload.schema_shortname:
         await validate_payload_with_schema(
             payload_data=payload_body,
             space_name=space_name,
-            branch_name=branch_name or settings.default_branch,
             schema_shortname=meta.payload.schema_shortname,
         )
 
@@ -180,7 +172,6 @@ async def retrieve_entry_meta(
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.view,
@@ -206,13 +197,11 @@ async def retrieve_entry_or_attachment_payload(
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
     ext: str = Path(..., pattern=regex.EXT),
-    branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
 
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.view,
@@ -229,7 +218,6 @@ async def retrieve_entry_or_attachment_payload(
         shortname=shortname,
         class_type=resource_class,
         user_shortname="anonymous",
-        branch_name=branch_name,
     )
     if (
         meta.payload is None
@@ -265,12 +253,11 @@ async def retrieve_entry_or_attachment_payload(
     # TODO check security labels for pubblic access
     # assert meta.is_active
     payload_path = db.payload_path(
-        space_name, subpath, resource_class, branch_name)
+        space_name, subpath, resource_class)
 
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.view,
@@ -302,7 +289,6 @@ async def query_via_urlparams(
     await plugin_manager.before_action(
         core.Event(
             space_name=query.space_name,
-            branch_name=query.branch_name,
             subpath=query.subpath,
             action_type=core.ActionType.query,
             user_shortname="anonymous",
@@ -322,7 +308,6 @@ async def query_via_urlparams(
     await plugin_manager.after_action(
         core.Event(
             space_name=query.space_name,
-            branch_name=query.branch_name,
             subpath=query.subpath,
             action_type=core.ActionType.query,
             user_shortname="anonymous",
@@ -343,7 +328,6 @@ async def create_entry(
     schema_shortname: str = Path(...),
     subpath: str = Path(..., regex=regex.SUBPATH),
     body_dict: dict[str, Any] = Body(...),
-    branch_name: str | None = settings.default_branch,
 ):
     allowed_models = {
         "applications": ["log", "feedback", "cancellation_survey"]
@@ -383,7 +367,6 @@ async def create_entry(
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.create,
@@ -409,19 +392,17 @@ async def create_entry(
         await validate_payload_with_schema(
             payload_data=body_dict,
             space_name=space_name,
-            branch_name=branch_name or settings.default_branch,
             schema_shortname=content_obj.payload.schema_shortname,
         )
 
-    await db.save(space_name, subpath, content_obj, branch_name)
+    await db.save(space_name, subpath, content_obj)
     await db.save_payload_from_json(
-        space_name, subpath, content_obj, body_dict, branch_name
+        space_name, subpath, content_obj, body_dict
     )
 
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.create,
@@ -438,8 +419,7 @@ async def create_entry(
 @router.post("/attach/{space_name}")
 async def create_attachment(
     space_name: str,
-    record: core.Record,
-    branch_name: str | None = settings.default_branch,
+    record: core.Record
 ):
     if record.resource_type not in AttachmentType.__members__:
         raise api.Exception(
@@ -471,7 +451,6 @@ async def create_attachment(
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=record.subpath,
             action_type=core.ActionType.create,
             resource_type=record.resource_type,
@@ -483,12 +462,11 @@ async def create_attachment(
         record=record, owner_shortname="anonymous"
     )
 
-    await db.save(space_name, record.subpath, attachment_obj, branch_name)
+    await db.save(space_name, record.subpath, attachment_obj)
 
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=record.subpath,
             shortname=attachment_obj.shortname,
             action_type=core.ActionType.create,
@@ -509,8 +487,7 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
         subpath=record.subpath,
         shortname=record.shortname,
         class_type=core.Content,
-        user_shortname="anonymous",
-        branch_name=record.branch_name,
+        user_shortname="anonymous"
     )
 
     if (
@@ -525,14 +502,19 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
             ),
         )
 
-    query_dict = db.load_resource_payload(
+    query_dict: dict[str, Any] = db.load_resource_payload(
         space_name=space_name,
         subpath=record.subpath,
         filename=str(meta.payload.body),
         class_type=core.Content,
-        branch_name=record.branch_name,
     )
 
+    if meta.payload.schema_shortname == "report":
+        query_dict = query_dict["query"]
+    else:
+        query_dict["subpath"] = query_dict["query_subpath"]
+        query_dict.pop("query_subpath")
+        
     for param, value in record.attributes.items():
         query_dict["search"] = query_dict["search"].replace(
             f"${param}", str(value))
@@ -546,9 +528,14 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
 
     if "limit" in record.attributes:
         query_dict["limit"] = record.attributes["limit"]
+        
+    if "from_date" in record.attributes:
+        query_dict["from_date"] = record.attributes["from_date"]
 
-    query_dict["subpath"] = query_dict["query_subpath"]
-    query_dict.pop("query_subpath")
+    if "to_date" in record.attributes:
+        query_dict["to_date"] = record.attributes["to_date"]
+
+
     filter_shortnames = record.attributes.get("filter_shortnames", [])
     query_dict["filter_shortnames"] = filter_shortnames if isinstance(
         filter_shortnames, list) else []
@@ -560,7 +547,8 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
 async def get_entry_by_uuid(
     uuid: str,
     retrieve_json_payload: bool = False,
-    retrieve_attachments: bool = False
+    retrieve_attachments: bool = False,
+    retrieve_lock_status: bool = False
 ):
     return await repository.get_entry_by_var(
         "uuid",
@@ -568,6 +556,7 @@ async def get_entry_by_uuid(
         "anonymous",
         retrieve_json_payload,
         retrieve_attachments,
+        retrieve_lock_status,
     )
 
 
@@ -575,7 +564,8 @@ async def get_entry_by_uuid(
 async def get_entry_by_slug(
     slug: str,
     retrieve_json_payload: bool = False,
-    retrieve_attachments: bool = False
+    retrieve_attachments: bool = False,
+    retrieve_lock_status: bool = False,
 ):
     return await repository.get_entry_by_var(
         "slug",
@@ -583,4 +573,5 @@ async def get_entry_by_slug(
         "anonymous",
         retrieve_json_payload,
         retrieve_attachments,
+        retrieve_lock_status,
     )
