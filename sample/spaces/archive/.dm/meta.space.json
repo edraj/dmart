@@ -1,0 +1,27 @@
+{
+    "uuid": "4a001e1f-a844-4bb9-a340-7f8eb1a77480",
+    "shortname": "archive",
+    "is_active": true,
+    "displayname": {
+        "en": "archive"
+    },
+    "tags": [],
+    "created_at": "2024-09-02T12:55:00.899747",
+    "updated_at": "2024-09-02T12:55:00.906988",
+    "owner_shortname": "dmart",
+    "root_registration_signature": "",
+    "primary_website": "",
+    "indexing_enabled": false,
+    "capture_misses": false,
+    "check_health": false,
+    "languages": [
+        "english"
+    ],
+    "icon": "",
+    "mirrors": [],
+    "hide_folders": [],
+    "hide_space": true,
+    "active_plugins": [
+    ],
+    "ordinal": 1
+}

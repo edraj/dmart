@@ -38,7 +38,6 @@ from utils.spaces import get_spaces, initialize_spaces
 from typing import Any
 import utils.repository as repository
 from utils.helpers import (
-    branch_path,
     camel_case,
     csv_file_to_json,
     flatten_dict,
@@ -118,7 +117,6 @@ async def generate_csv_from_report_saved_query(
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            branch_name=record.branch_name,
             subpath=record.subpath,
             action_type=core.ActionType.query,
             user_shortname=user_shortname,
@@ -137,7 +135,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     await plugin_manager.before_action(
         core.Event(
             space_name=query.space_name,
-            branch_name=query.branch_name,
             subpath=query.subpath,
             action_type=core.ActionType.query,
             user_shortname=user_shortname,
@@ -155,7 +152,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         "",
         core.Folder,
         user_shortname,
-        query.branch_name,
     )
 
     folder_payload = db.load_resource_payload(
@@ -163,7 +159,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         "/",
         f"{folder.shortname}.json",
         core.Folder,
-        query.branch_name,
     )
     folder_views = folder_payload.get("csv_columns", [])
     if not folder_views:
@@ -253,7 +248,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     await plugin_manager.after_action(
         core.Event(
             space_name=query.space_name,
-            branch_name=query.branch_name,
             subpath=query.subpath,
             action_type=core.ActionType.query,
             user_shortname=user_shortname,
@@ -325,18 +319,18 @@ async def serve_space(
             )
 
             resource_obj.is_active = True
-            resource_obj.indexing_enabled = True
             resource_obj.shortname = request.space_name
-            resource_obj.active_plugins = [
+            if isinstance(resource_obj, core.Space) :
+                resource_obj.indexing_enabled = True
+                resource_obj.active_plugins = [
                 "action_log",
                 "redis_db_update",
                 "resource_folders_creation",
-            ]
+                ]
             await db.save(
                 request.space_name,
                 record.subpath,
                 resource_obj,
-                settings.default_branch,
             )
 
         case api.RequestType.update:
@@ -377,7 +371,6 @@ async def serve_space(
             await plugin_manager.before_action(
                 core.Event(
                     space_name=space.shortname,
-                    branch_name=record.branch_name,
                     subpath=record.subpath,
                     shortname=space.shortname,
                     action_type=core.ActionType.update,
@@ -392,7 +385,6 @@ async def serve_space(
                 shortname=space.shortname,
                 class_type=core.Space,
                 user_shortname=owner_shortname,
-                branch_name=record.branch_name,
             )
             history_diff = await db.update(
                 space_name=space.shortname,
@@ -403,8 +395,8 @@ async def serve_space(
                 updated_attributes_flattend=list(
                     flatten_dict(record.attributes).keys()
                 ),
-                branch_name=record.branch_name,
                 user_shortname=owner_shortname,
+                retrieve_lock_status=record.retrieve_lock_status,
             )
 
         case api.RequestType.delete:
@@ -471,7 +463,6 @@ async def serve_space(
     await plugin_manager.after_action(
         core.Event(
             space_name=record.shortname,
-            branch_name=record.branch_name,
             subpath=record.subpath,
             shortname=record.shortname,
             action_type=core.ActionType(request.request_type),
@@ -491,7 +482,6 @@ async def query_entries(
     await plugin_manager.before_action(
         core.Event(
             space_name=query.space_name,
-            branch_name=query.branch_name,
             subpath=query.subpath,
             action_type=core.ActionType.query,
             user_shortname=user_shortname,
@@ -510,7 +500,6 @@ async def query_entries(
     await plugin_manager.after_action(
         core.Event(
             space_name=query.space_name,
-            branch_name=query.branch_name,
             subpath=query.subpath,
             action_type=core.ActionType.query,
             user_shortname=user_shortname,
@@ -531,6 +520,7 @@ async def serve_request(
         is_internal: bool = False,
 ) -> api.Response:
     spaces = await get_spaces()
+
     if request.space_name not in spaces:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -570,7 +560,6 @@ async def serve_request(
                     await plugin_manager.before_action(
                         core.Event(
                             space_name=request.space_name,
-                            branch_name=record.branch_name,
                             subpath=record.subpath,
                             shortname=record.shortname,
                             action_type=core.ActionType.create,
@@ -599,7 +588,7 @@ async def serve_request(
 
                     if record.resource_type == ResourceType.ticket:
                         record = await set_init_state_from_request(
-                            request, record.branch_name, owner_shortname
+                            request, owner_shortname
                         )
 
                     resource_cls = getattr(
@@ -612,7 +601,6 @@ async def serve_request(
                         subpath=record.subpath,
                         shortname=record.shortname,
                         resource_type=record.resource_type,
-                        branch_name=record.branch_name,
                         schema_shortname=record.attributes.get(
                             "schema_shortname", None)
                     )
@@ -643,7 +631,8 @@ async def serve_request(
                             and resource_obj.payload.body is not None
                     ):
                         separate_payload_data = resource_obj.payload.body
-                        resource_obj.payload.body = body_shortname + ".json"
+                        resource_obj.payload.body = body_shortname + (".json" if record.resource_type != ResourceType.log else ".jsonl")
+                        
 
                     if (
                             resource_obj.payload
@@ -654,7 +643,6 @@ async def serve_request(
                         await validate_payload_with_schema(
                             payload_data=separate_payload_data,
                             space_name=request.space_name,
-                            branch_name=record.branch_name,
                             schema_shortname=resource_obj.payload.schema_shortname,
                         )
 
@@ -662,7 +650,6 @@ async def serve_request(
                         request.space_name,
                         record.subpath,
                         resource_obj,
-                        record.branch_name,
                     )
 
                     if isinstance(resource_obj, core.User):
@@ -714,7 +701,6 @@ async def serve_request(
                             record.subpath,
                             resource_obj,
                             separate_payload_data,
-                            record.branch_name,
                         )
 
                     records.append(
@@ -722,14 +708,12 @@ async def serve_request(
                             record.subpath,
                             resource_obj.shortname,
                             [],
-                            record.branch_name,
                         )
                     )
                     record.attributes["logged_in_user_token"] = token
                     await plugin_manager.after_action(
                         core.Event(
                             space_name=request.space_name,
-                            branch_name=record.branch_name,
                             subpath=record.subpath,
                             shortname=resource_obj.shortname,
                             action_type=core.ActionType.create,
@@ -759,7 +743,6 @@ async def serve_request(
                 await plugin_manager.before_action(
                     core.Event(
                         space_name=request.space_name,
-                        branch_name=record.branch_name,
                         subpath=record.subpath,
                         shortname=record.shortname,
                         schema_shortname=record.attributes.get("payload", {}).get(
@@ -784,7 +767,6 @@ async def serve_request(
                     shortname=record.shortname,
                     class_type=resource_cls,
                     user_shortname=owner_shortname,
-                    branch_name=record.branch_name,
                     schema_shortname=schema_shortname,
                 )
 
@@ -815,9 +797,10 @@ async def serve_request(
                 old_version_flattend = flatten_dict(
                     old_resource_obj.model_dump())
                 if (
-                        old_resource_obj.payload
-                        and old_resource_obj.payload.content_type == ContentType.json
-                        and isinstance(old_resource_obj.payload.body, str)
+                    record.resource_type != ResourceType.log
+                    and old_resource_obj.payload
+                    and old_resource_obj.payload.content_type == ContentType.json
+                    and isinstance(old_resource_obj.payload.body, str)
                 ):
                     try:
                         old_resource_payload_body = db.load_resource_payload(
@@ -825,7 +808,6 @@ async def serve_request(
                             subpath=record.subpath,
                             filename=old_resource_obj.payload.body,
                             class_type=resource_cls,
-                            branch_name=record.branch_name,
                             schema_shortname=schema_shortname,
                         )
                     except api.Exception as e:
@@ -840,23 +822,31 @@ async def serve_request(
                 # GENERATE NEW RESOURCE OBJECT
                 resource_obj = old_resource_obj
                 resource_obj.updated_at = datetime.now()
-                new_resource_payload_data: dict | None = (
-                    resource_obj.update_from_record(
-                        record=record,
-                        old_body=old_resource_payload_body,
-                        replace=request.request_type == api.RequestType.r_replace,
+                
+                new_version_flattend = {}
+                
+                if record.resource_type == ResourceType.log:
+                    new_resource_payload_data = record.attributes.get("payload", {}).get(
+                        "body", {}
                     )
-                )
-                new_version_flattend = flatten_dict(resource_obj.model_dump())
-                if new_resource_payload_data:
-                    new_version_flattend.update(
-                        flatten_dict(
-                            {"payload.body": new_resource_payload_data})
+                else:
+                    new_resource_payload_data = (
+                        resource_obj.update_from_record(
+                            record=record,
+                            old_body=old_resource_payload_body,
+                            replace=request.request_type == api.RequestType.r_replace,
+                        )
                     )
+                    new_version_flattend = flatten_dict(resource_obj.model_dump())
+                    if new_resource_payload_data:
+                        new_version_flattend.update(
+                            flatten_dict(
+                                {"payload.body": new_resource_payload_data})
+                        )
 
-                await validate_uniqueness(
-                    request.space_name, record, RequestType.update
-                )
+                    await validate_uniqueness(
+                        request.space_name, record, RequestType.update
+                    )
                 # VALIDATE SEPARATE PAYLOAD BODY
                 if (
                         resource_obj.payload
@@ -867,54 +857,64 @@ async def serve_request(
                     await validate_payload_with_schema(
                         payload_data=new_resource_payload_data,
                         space_name=request.space_name,
-                        branch_name=record.branch_name or settings.default_branch,
                         schema_shortname=resource_obj.payload.schema_shortname,
                     )
-
-                updated_attributes_flattend = list(
-                    flatten_dict(record.attributes).keys()
-                )
-                if request.request_type == RequestType.r_replace:
-                    updated_attributes_flattend = (
-                            list(old_version_flattend.keys()) +
-                            list(new_version_flattend.keys())
+                
+                if record.resource_type == ResourceType.log:
+                    history_diff = await db.update(
+                        space_name=request.space_name,
+                        subpath=record.subpath,
+                        meta=resource_obj,
+                        old_version_flattend={},
+                        new_version_flattend={},
+                        updated_attributes_flattend=[],
+                        user_shortname=owner_shortname,
+                        schema_shortname=schema_shortname,
+                        retrieve_lock_status=record.retrieve_lock_status,
                     )
-                history_diff = await db.update(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    meta=resource_obj,
-                    old_version_flattend=old_version_flattend,
-                    new_version_flattend=new_version_flattend,
-                    updated_attributes_flattend=updated_attributes_flattend,
-                    branch_name=record.branch_name,
-                    user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
-                )
+                else:
+                    updated_attributes_flattend = list(
+                        flatten_dict(record.attributes).keys()
+                    )
+                    if request.request_type == RequestType.r_replace:
+                        updated_attributes_flattend = (
+                                list(old_version_flattend.keys()) +
+                                list(new_version_flattend.keys())
+                        )
+                    history_diff = await db.update(
+                        space_name=request.space_name,
+                        subpath=record.subpath,
+                        meta=resource_obj,
+                        old_version_flattend=old_version_flattend,
+                        new_version_flattend=new_version_flattend,
+                        updated_attributes_flattend=updated_attributes_flattend,
+                        user_shortname=owner_shortname,
+                        schema_shortname=schema_shortname,
+                        retrieve_lock_status=record.retrieve_lock_status,
+                    )
                 if new_resource_payload_data is not None:
                     await db.save_payload_from_json(
                         request.space_name,
                         record.subpath,
                         resource_obj,
                         new_resource_payload_data,
-                        record.branch_name,
                     )
 
                 if (
-                        isinstance(resource_obj, core.User) and
-                        record.attributes.get("is_active") is False
+                    isinstance(resource_obj, core.User) and
+                    record.attributes.get("is_active") is False
                 ):
                     await remove_redis_active_session(record.shortname)
 
                 records.append(
                     resource_obj.to_record(
-                        record.subpath, resource_obj.shortname, [], record.branch_name
+                        record.subpath, resource_obj.shortname, []
                     )
                 )
 
                 await plugin_manager.after_action(
                     core.Event(
                         space_name=request.space_name,
-                        branch_name=record.branch_name,
                         subpath=record.subpath,
                         shortname=record.shortname,
                         schema_shortname=record.attributes.get("payload", {}).get(
@@ -943,7 +943,6 @@ async def serve_request(
                     subpath=settings.users_subpath,
                     shortname=record.attributes["owner_shortname"],
                     class_type=core.User,
-                    branch_name=record.branch_name
                 )
                     
                 if record.subpath[0] != "/":
@@ -951,7 +950,6 @@ async def serve_request(
                 await plugin_manager.before_action(
                     core.Event(
                         space_name=request.space_name,
-                        branch_name=record.branch_name,
                         subpath=record.subpath,
                         shortname=record.shortname,
                         schema_shortname=record.attributes.get("payload", {}).get(
@@ -976,7 +974,6 @@ async def serve_request(
                     shortname=record.shortname,
                     class_type=resource_cls,
                     user_shortname=owner_shortname,
-                    branch_name=record.branch_name,
                     schema_shortname=schema_shortname,
                 )
 
@@ -1015,22 +1012,21 @@ async def serve_request(
                     old_version_flattend=old_version_flattend,
                     new_version_flattend=flatten_dict(resource_obj.model_dump()),
                     updated_attributes_flattend=["owner_shortname"],
-                    branch_name=record.branch_name,
                     user_shortname=owner_shortname,
                     schema_shortname=schema_shortname,
+                    retrieve_lock_status=record.retrieve_lock_status,
                 )
 
 
                 records.append(
                     resource_obj.to_record(
-                        record.subpath, resource_obj.shortname, [], record.branch_name
+                        record.subpath, resource_obj.shortname, []
                     )
                 )
 
                 await plugin_manager.after_action(
                     core.Event(
                         space_name=request.space_name,
-                        branch_name=record.branch_name,
                         subpath=record.subpath,
                         shortname=record.shortname,
                         schema_shortname=record.attributes.get("payload", {}).get(
@@ -1061,7 +1057,6 @@ async def serve_request(
                 await plugin_manager.before_action(
                     core.Event(
                         space_name=request.space_name,
-                        branch_name=record.branch_name,
                         subpath=record.subpath,
                         shortname=record.shortname,
                         schema_shortname=record.attributes.get("payload", {}).get(
@@ -1086,7 +1081,6 @@ async def serve_request(
                     shortname=record.shortname,
                     class_type=resource_cls,
                     user_shortname=owner_shortname,
-                    branch_name=record.branch_name,
                     schema_shortname=schema_shortname,
                 )
 
@@ -1124,22 +1118,21 @@ async def serve_request(
                     old_version_flattend=old_version_flattend,
                     new_version_flattend=flatten_dict(resource_obj.model_dump()),
                     updated_attributes_flattend=["acl"],
-                    branch_name=record.branch_name,
                     user_shortname=owner_shortname,
                     schema_shortname=schema_shortname,
+                    retrieve_lock_status=record.retrieve_lock_status,
                 )
 
 
                 records.append(
                     resource_obj.to_record(
-                        record.subpath, resource_obj.shortname, [], record.branch_name
+                        record.subpath, resource_obj.shortname, []
                     )
                 )
 
                 await plugin_manager.after_action(
                     core.Event(
                         space_name=request.space_name,
-                        branch_name=record.branch_name,
                         subpath=record.subpath,
                         shortname=record.shortname,
                         schema_shortname=record.attributes.get("payload", {}).get(
@@ -1160,7 +1153,6 @@ async def serve_request(
                 await plugin_manager.before_action(
                     core.Event(
                         space_name=request.space_name,
-                        branch_name=record.branch_name,
                         subpath=record.subpath,
                         shortname=record.shortname,
                         action_type=core.ActionType.delete,
@@ -1182,7 +1174,6 @@ async def serve_request(
                     shortname=record.shortname,
                     class_type=resource_cls,
                     user_shortname=owner_shortname,
-                    branch_name=record.branch_name,
                     schema_shortname=schema_shortname,
                 )
                 if not await access_control.check_access(
@@ -1209,15 +1200,14 @@ async def serve_request(
                     space_name=request.space_name,
                     subpath=record.subpath,
                     meta=resource_obj,
-                    branch_name=record.branch_name,
                     user_shortname=owner_shortname,
                     schema_shortname=schema_shortname,
+                    retrieve_lock_status=record.retrieve_lock_status,
                 )
 
                 await plugin_manager.after_action(
                     core.Event(
                         space_name=request.space_name,
-                        branch_name=record.branch_name,
                         subpath=record.subpath,
                         shortname=record.shortname,
                         action_type=core.ActionType.delete,
@@ -1250,7 +1240,6 @@ async def serve_request(
                 await plugin_manager.before_action(
                     core.Event(
                         space_name=request.space_name,
-                        branch_name=record.branch_name,
                         subpath=record.attributes["src_subpath"],
                         shortname=record.attributes["src_shortname"],
                         action_type=core.ActionType.move,
@@ -1271,7 +1260,6 @@ async def serve_request(
                     shortname=record.attributes["src_shortname"],
                     class_type=resource_cls,
                     user_shortname=owner_shortname,
-                    branch_name=record.branch_name,
                 )
                 if not await access_control.check_access(
                         user_shortname=owner_shortname,
@@ -1305,13 +1293,11 @@ async def serve_request(
                     record.attributes["dest_subpath"],
                     record.attributes["dest_shortname"],
                     resource_obj,
-                    record.branch_name,
                 )
 
                 await plugin_manager.after_action(
                     core.Event(
                         space_name=request.space_name,
-                        branch_name=record.branch_name,
                         subpath=record.attributes["dest_subpath"],
                         shortname=record.attributes["dest_shortname"],
                         action_type=core.ActionType.move,
@@ -1353,7 +1339,7 @@ async def update_state(
         resolution: str | None = Body(None, embed=True, examples=[
             "Ticket state resolution"]),
         comment: str | None = Body(None, embed=True, examples=["Nice ticket"]),
-        branch_name: str | None = settings.default_branch,
+        retrieve_lock_status: bool | None = False,
 ) -> api.Response:
     spaces = await get_spaces()
     if space_name not in spaces:
@@ -1371,7 +1357,6 @@ async def update_state(
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.progress_ticket,
@@ -1386,7 +1371,6 @@ async def update_state(
         shortname=shortname,
         class_type=core.Ticket,
         user_shortname=logged_in_user,
-        branch_name=branch_name,
     )
     if ticket_obj.payload is None or ticket_obj.payload.body is None:
         raise api.Exception(
@@ -1423,7 +1407,6 @@ async def update_state(
             shortname=ticket_obj.workflow_shortname,
             class_type=core.Content,
             user_shortname=logged_in_user,
-            branch_name=branch_name,
         )
 
         if (
@@ -1435,7 +1418,6 @@ async def update_state(
                 subpath="workflows",
                 filename=str(workflows_data.payload.body),
                 class_type=core.Content,
-                branch_name=branch_name,
             )
             if not ticket_obj.is_open:
                 raise api.Exception(
@@ -1527,13 +1509,13 @@ async def update_state(
                 old_version_flattend,
                 new_version_flattend,
                 ["state", "resolution_reason", "comment"],
-                branch_name,
+                
                 logged_in_user,
+                retrieve_lock_status=retrieve_lock_status,
             )
             await plugin_manager.after_action(
                 core.Event(
                     space_name=space_name,
-                    branch_name=branch_name,
                     subpath=subpath,
                     shortname=shortname,
                     action_type=core.ActionType.progress_ticket,
@@ -1574,12 +1556,10 @@ async def retrieve_entry_or_attachment_payload(
         schema_shortname: str | None = None,
         ext: str = Path(..., pattern=regex.EXT, examples=["png"]),
         logged_in_user=Depends(JWTBearer()),
-        branch_name: str | None = settings.default_branch,
 ) -> FileResponse:
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.view,
@@ -1595,7 +1575,6 @@ async def retrieve_entry_or_attachment_payload(
         shortname=shortname,
         class_type=cls,
         user_shortname=logged_in_user,
-        branch_name=branch_name,
         schema_shortname=schema_shortname,
     )
     if (
@@ -1634,13 +1613,11 @@ async def retrieve_entry_or_attachment_payload(
         space_name=space_name,
         subpath=subpath,
         class_type=cls,
-        branch_name=branch_name,
         schema_shortname=schema_shortname,
     )
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.view,
@@ -1715,7 +1692,6 @@ async def create_or_update_resource_with_payload(
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            branch_name=record.branch_name,
             subpath=record.subpath,
             shortname=record.shortname,
             action_type=core.ActionType.create,
@@ -1760,13 +1736,13 @@ async def create_or_update_resource_with_payload(
     await payload_file.seek(0)
     if record.resource_type == ResourceType.ticket:
         record = await set_init_state_from_record(
-            record, record.branch_name, owner_shortname, space_name
+            record, owner_shortname, space_name
         )
     resource_obj = core.Meta.from_record(
         record=record, owner_shortname=owner_shortname)
     if record.resource_type == ResourceType.ticket:
         record = await set_init_state_from_record(
-            record, record.branch_name, owner_shortname, space_name
+            record, owner_shortname, space_name
         )
     resource_obj.payload = core.Payload(
         content_type=resource_content_type,
@@ -1802,19 +1778,17 @@ async def create_or_update_resource_with_payload(
         await validate_payload_with_schema(
             payload_data=payload_file,
             space_name=space_name,
-            branch_name=record.branch_name or settings.default_branch,
             schema_shortname=resource_obj.payload.schema_shortname,
         )
 
-    await db.save(space_name, record.subpath, resource_obj, record.branch_name)
+    await db.save(space_name, record.subpath, resource_obj)
     await db.save_payload(
-        space_name, record.subpath, resource_obj, payload_file, record.branch_name
+        space_name, record.subpath, resource_obj, payload_file
     )
 
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            branch_name=record.branch_name,
             subpath=record.subpath,
             shortname=record.shortname,
             action_type=core.ActionType.create,
@@ -1845,7 +1819,6 @@ async def import_resources_from_csv(
         schema_shortname: str = Path(..., pattern=regex.SHORTNAME, examples=[
             "model_schema"]),
         owner_shortname=Depends(JWTBearer()),
-        branch_name: str | None = settings.default_branch,
 ):
     contents = await resources_file.read()
     decoded = contents.decode()
@@ -1853,7 +1826,7 @@ async def import_resources_from_csv(
     csv_reader = csv.DictReader(buffer)
 
     schema_path = (
-            db.payload_path(space_name, "schema", core.Schema, branch_name)
+            db.payload_path(space_name, "schema", core.Schema)
             / f"{schema_shortname}.json"
     )
     with open(schema_path) as schema_file:
@@ -1958,7 +1931,6 @@ async def import_resources_from_csv(
                 resource_type=resource_type,
                 shortname=shortname,
                 subpath=subpath,
-                branch_name=branch_name,
                 attributes=attributes,
             )
             try:
@@ -1999,7 +1971,6 @@ async def retrieve_entry_meta(
         filter_attachments_types: list = Query(default=[], examples=["media", "comment", "json"]),
         validate_schema: bool = True,
         logged_in_user=Depends(JWTBearer()),
-        branch_name: str | None = settings.default_branch,
 ) -> dict[str, Any]:
     if subpath == settings.root_subpath_mw:
         subpath = "/"
@@ -2007,7 +1978,6 @@ async def retrieve_entry_meta(
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.view,
@@ -2024,7 +1994,6 @@ async def retrieve_entry_meta(
         shortname=shortname,
         class_type=resource_class,
         user_shortname=logged_in_user,
-        branch_name=branch_name,
     )
     if meta is None:
         raise api.Exception(
@@ -2057,13 +2026,12 @@ async def retrieve_entry_meta(
     attachments = {}
     entry_path = (
             settings.spaces_folder
-            / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
+            / f"{space_name}/{subpath}/.dm/{shortname}"
     )
     if retrieve_attachments:
         attachments = await repository.get_entry_attachments(
             subpath=subpath,
             attachments_path=entry_path,
-            branch_name=branch_name,
             retrieve_json_payload=retrieve_json_payload,
             filter_types=filter_attachments_types,
         )
@@ -2084,14 +2052,12 @@ async def retrieve_entry_meta(
         subpath=subpath,
         filename=meta.payload.body,
         class_type=resource_class,
-        branch_name=branch_name,
     )
 
     if meta.payload and meta.payload.schema_shortname and validate_schema:
         await validate_payload_with_schema(
             payload_data=payload_body,
             space_name=space_name,
-            branch_name=branch_name or settings.default_branch,
             schema_shortname=meta.payload.schema_shortname,
         )
 
@@ -2099,7 +2065,6 @@ async def retrieve_entry_meta(
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.view,
@@ -2117,6 +2082,7 @@ async def get_entry_by_uuid(
         uuid: str,
         retrieve_json_payload: bool = False,
         retrieve_attachments: bool = False,
+        retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
     return await repository.get_entry_by_var(
@@ -2125,6 +2091,7 @@ async def get_entry_by_uuid(
         logged_in_user,
         retrieve_json_payload,
         retrieve_attachments,
+        retrieve_lock_status,
     )
 
 
@@ -2133,6 +2100,7 @@ async def get_entry_by_slug(
         slug: str,
         retrieve_json_payload: bool = False,
         retrieve_attachments: bool = False,
+        retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
     return await repository.get_entry_by_var(
@@ -2141,6 +2109,7 @@ async def get_entry_by_slug(
         logged_in_user,
         retrieve_json_payload,
         retrieve_attachments,
+        retrieve_lock_status,
     )
 
 
@@ -2192,7 +2161,6 @@ async def get_space_report(
         space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
         health_type: str = Path(..., examples=["soft", "hard"]),
         logged_in_user=Depends(JWTBearer()),
-        branch_name: str | None = settings.default_branch,
 ):
     if logged_in_user != "dmart":
         raise api.Exception(
@@ -2225,7 +2193,7 @@ async def get_space_report(
         )
 
     os.system(
-        f"./health_check.py -t {health_type} -b {branch_name} -s {space_name} &")
+        f"./health_check.py -t {health_type} -s {space_name} &")
     return api.Response(
         status=api.Status.success,
     )
@@ -2236,14 +2204,12 @@ async def lock_entry(
         space_name: str = Path(..., pattern=regex.SPACENAME),
         subpath: str = Path(..., pattern=regex.SUBPATH),
         shortname: str = Path(..., pattern=regex.SHORTNAME),
-        branch_name: str | None = settings.default_branch,
         resource_type: ResourceType | None = ResourceType.ticket,
         logged_in_user=Depends(JWTBearer()),
 ):
     folder_meta_path = (
             settings.spaces_folder
             / space_name
-            / branch_path(branch_name)
             / subpath
             / ".dm"
             / shortname
@@ -2259,7 +2225,6 @@ async def lock_entry(
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.lock,
@@ -2302,7 +2267,7 @@ async def lock_entry(
     async with RedisServices() as redis_services:
         lock_type = await redis_services.save_lock_doc(
             space_name,
-            branch_name,
+            
             subpath,
             shortname,
             logged_in_user,
@@ -2311,7 +2276,7 @@ async def lock_entry(
 
     await db.store_entry_diff(
         space_name,
-        branch_name,
+        
         "/" + subpath,
         shortname,
         logged_in_user,
@@ -2324,7 +2289,6 @@ async def lock_entry(
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             resource_type=ResourceType.ticket,
@@ -2347,12 +2311,11 @@ async def cancel_lock(
         space_name: str = Path(..., pattern=regex.SPACENAME),
         subpath: str = Path(..., pattern=regex.SUBPATH),
         shortname: str = Path(..., pattern=regex.SHORTNAME),
-        branch_name: str | None = settings.default_branch,
         logged_in_user=Depends(JWTBearer()),
 ):
     async with RedisServices() as redis_services:
         lock_payload = await redis_services.get_lock_doc(
-            space_name, branch_name, subpath, shortname
+            space_name,  subpath, shortname
         )
 
     if not lock_payload or lock_payload["owner_shortname"] != logged_in_user:
@@ -2368,7 +2331,6 @@ async def cancel_lock(
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.unlock,
@@ -2378,12 +2340,12 @@ async def cancel_lock(
 
     async with RedisServices() as redis_services:
         await redis_services.delete_lock_doc(
-            space_name, branch_name, subpath, shortname
+            space_name,  subpath, shortname
         )
 
     await db.store_entry_diff(
         space_name,
-        branch_name,
+        
         "/" + subpath,
         shortname,
         logged_in_user,
@@ -2396,7 +2358,6 @@ async def cancel_lock(
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             resource_type=ResourceType.ticket,
@@ -2423,7 +2384,6 @@ async def execute(
         space_name: str,
         task_type: TaskType,
         record: core.Record,
-        branch_name: str | None = settings.default_branch,
         logged_in_user=Depends(JWTBearer()),
 ):
     task_type = task_type
@@ -2433,7 +2393,6 @@ async def execute(
         shortname=record.shortname,
         class_type=core.Content,
         user_shortname=logged_in_user,
-        branch_name=branch_name,
     )
 
     if (
@@ -2448,12 +2407,11 @@ async def execute(
             ),
         )
 
-    query_dict = db.load_resource_payload(
+    query_dict: dict[str, Any] = db.load_resource_payload(
         space_name=space_name,
         subpath=record.subpath,
         filename=str(meta.payload.body),
         class_type=core.Content,
-        branch_name=branch_name,
     )
 
     if meta.payload.schema_shortname == "report":
@@ -2516,7 +2474,6 @@ async def apply_alteration(
         shortname=alteration_name,
         class_type=core.Alteration,
         user_shortname=logged_in_user,
-        branch_name=on_entry.branch_name,
     )
     entry_meta: core.Meta = await db.load(
         space_name=space_name,
@@ -2526,11 +2483,10 @@ async def apply_alteration(
             sys.modules["models.core"], camel_case(on_entry.resource_type)
         ),
         user_shortname=logged_in_user,
-        branch_name=on_entry.branch_name,
     )
 
     record: core.Record = entry_meta.to_record(
-        on_entry.subpath, on_entry.shortname, [], on_entry.branch_name
+        on_entry.subpath, on_entry.shortname, []
     )
     record.attributes["payload"] = record.attributes["payload"].__dict__
     record.attributes["payload"]["body"] = alteration_meta.requested_update
@@ -2547,8 +2503,8 @@ async def apply_alteration(
         space_name=space_name,
         subpath=f"{on_entry.subpath}/{on_entry.shortname}",
         meta=alteration_meta,
-        branch_name=on_entry.branch_name,
         user_shortname=logged_in_user,
+        retrieve_lock_status=on_entry.retrieve_lock_status,
     )
     return response
 
@@ -2560,10 +2516,9 @@ async def data_asset(
 ):    
     attachments: dict[str, list[core.Record]] = await repository.get_entry_attachments(
         subpath=f"{query.subpath}/{query.shortname}",
-        branch_name=query.branch_name,
         attachments_path=(
                 settings.spaces_folder
-                / f"{query.space_name}/{branch_path(query.branch_name)}/{query.subpath}/.dm/{query.shortname}"
+                / f"{query.space_name}/{query.subpath}/.dm/{query.shortname}"
         ),
         filter_types=[query.data_asset_type],
         filter_shortnames=query.filter_data_assets
@@ -2574,7 +2529,6 @@ async def data_asset(
             space_name=query.space_name,
             subpath=f"{query.subpath}/{query.shortname}",
             class_type=getattr(sys.modules["models.core"], camel_case(query.data_asset_type)),
-            branch_name=query.branch_name,
         )
         if (
                 not isinstance(attachment.attributes.get("payload"), core.Payload)
@@ -2667,12 +2621,10 @@ async def data_asset_single(
         schema_shortname: str | None = None,
         ext: str = Path(..., pattern=regex.EXT, examples=["png"]),
         logged_in_user=Depends(JWTBearer()),
-        branch_name: str | None = settings.default_branch,
 ) -> StreamingResponse:
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.view,
@@ -2688,7 +2640,6 @@ async def data_asset_single(
         shortname=shortname,
         class_type=cls,
         user_shortname=logged_in_user,
-        branch_name=branch_name,
         schema_shortname=schema_shortname,
     )
     if (
@@ -2727,13 +2678,11 @@ async def data_asset_single(
         space_name=space_name,
         subpath=subpath,
         class_type=cls,
-        branch_name=branch_name,
         schema_shortname=schema_shortname,
     )
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            branch_name=branch_name,
             subpath=subpath,
             shortname=shortname,
             action_type=core.ActionType.view,

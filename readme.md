@@ -92,7 +92,7 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
 <img src="./frontend/src/routes/docs/assets/backend.png" width="650"> 
 
   - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files. 
-  - Python 3.11 with emphasis on 
+  - Python 3.12 with emphasis on 
     - asyncio : maximizing scalability and leverage of server resources and enabling background jobs (post api service time).
     - type hinting and stringent linting (pyright).
   - FastAPI as the api micro-framework (based on our _curated_ fastapi skeleton) and full leverage of Pydantic and OpenApi version 3. 
@@ -166,7 +166,7 @@ podman build -t dmart -f Dockerfile
 podman run --name dmart -p 8000:8000 -d -it dmart
 
 # Set the admin password
-podman exec -it -w /home/backend dmart /home/venv/bin/python3.11 ./set_admin_passwd.py
+podman exec -it -w /home/backend dmart /home/venv/bin/python3 ./set_admin_passwd.py
 
 # Load the sample spaces data
 podman exec -it -w /home/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
@@ -186,7 +186,7 @@ podman exec -it -w /home/backend dmart ./curl.sh
 
 - git
 - jq
-- python == 3.11
+- python >= 3.11
 - pip
 - redis >= 7.2
 - RedisJSON (rejson) >= 2.6
@@ -323,7 +323,7 @@ pip install --user  -r requirements.txt
 # On the "online" computer
 rmdir ~/.pipi
 rmdir ~/.venv
-virtualenv --python=/usr/bin/python3.11 ~/.venv # or your favorate py env virtualization tool
+virtualenv --python=/usr/bin/python3 ~/.venv # or your favorate py env virtualization tool
 source ~/.venv/bin/activate
 mkdir ~/.pipi
 # under dmart/backend
@@ -331,8 +331,10 @@ pip download -d ~/.pipi/ $(cat *requirements.txt) virtualenv pip
 rsync -av ~/.pipi/ TARGET_OFFLINE_SERVER:~/.pipi
 
 # On the "offline" target server
+rmdir ~/.pipi
+rmdir ~/.venv
 pip install --no-index --find-links=~/.pipi virtualenv
-virtualenv ~/.venv
+virtualenv --python=/usr/bin/python3 ~/.venv # or your favorate py env virtualization tool
 source ~/.venv/bin/activate
 pip install --no-index --find-links=~/.pipi --upgrade pip
 pip install --no-index --find-links=~/.pipi -r requirements.txt -r test-requirements.txt -r plugins-requirements.txt

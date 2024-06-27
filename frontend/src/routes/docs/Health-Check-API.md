@@ -1,4 +1,6 @@
-**Health Check API:**
+### **Health Check API**
+
+---
 
 **Overview:** Health Check API is a Python script designed for conducting health checks on a system. The script is intended to evaluate the health and integrity of data stored . It supports two modes of operation: soft and hard health checks.
 

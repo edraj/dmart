@@ -1,39 +1,39 @@
-from datetime import datetime
 import json
 import os
-from pathlib import Path
 import re
+import subprocess
 import sys
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
+import aiofiles
 import jq  # type: ignore
+from fastapi import status
 from fastapi.encoders import jsonable_encoder
-from pydantic.fields import Field
+from fastapi.logger import logger
+import models.api as api
+import models.core as core
+import utils.db as db
+import utils.regex as regex
 from models.enums import ContentType, Language, ResourceType
 from utils.access_control import access_control
-from utils.internal_error_code import InternalErrorCode
-from utils.jwt import generate_jwt
-from utils.plugin_manager import plugin_manager
-from utils.spaces import get_spaces
-from utils.settings import settings
-import utils.regex as regex
-import models.core as core
-import models.api as api
-import utils.db as db
-from utils.redis_services import RedisServices
-import aiofiles
-from fastapi import status
-from fastapi.logger import logger
+from utils.custom_validations import validate_payload_with_schema
 from utils.helpers import (
     alter_dict_keys,
-    branch_path,
     camel_case,
     flatten_all,
     snake_case,
     str_to_datetime,
 )
-from utils.custom_validations import validate_payload_with_schema
-import subprocess
+from utils.internal_error_code import InternalErrorCode
+from utils.jwt import generate_jwt
+from utils.plugin_manager import plugin_manager
+from utils.redis_services import RedisServices
+from utils.settings import settings
+from utils.spaces import get_spaces
+
+
 # import redis.commands.search.reducers as reducers
 
 
@@ -83,7 +83,6 @@ async def serve_query(
                             query.subpath,
                             space.shortname,
                             query.include_fields if query.include_fields else [],
-                            query.branch_name,
                         )
                     )
             if not query.sort_by:
@@ -123,12 +122,12 @@ async def serve_query(
                     try:
                         resource_base_record = await get_record_from_redis_doc(
                             space_name=query.space_name,
-                            branch_name=query.branch_name,
                             doc=redis_doc_dict,
                             retrieve_json_payload=query.retrieve_json_payload,
                             retrieve_attachments=query.retrieve_attachments,
                             validate_schema=query.validate_schema,
                             filter_types=query.filter_types,
+                            retrieve_lock_status=query.retrieve_lock_status,
                         )
                     except Exception:
                         # Incase of schema validation error
@@ -160,7 +159,6 @@ async def serve_query(
             path = (
                 settings.spaces_folder
                 / query.space_name
-                / branch_path(query.branch_name)
                 / subpath
             )
 
@@ -239,19 +237,17 @@ async def serve_query(
                                 query.subpath,
                                 shortname,
                                 query.include_fields,
-                                query.branch_name,
                             )
-                            if resource_base_record:
-                                locked_data = await redis_services.get_lock_doc(
-                                    query.space_name,
-                                    query.branch_name,
-                                    query.subpath,
-                                    resource_obj.shortname,
-                                )
-                                if locked_data:
-                                    resource_base_record.attributes[
-                                        "locked"
-                                    ] = locked_data
+                            if query.retrieve_lock_status and resource_base_record:
+                               locked_data = await redis_services.get_lock_doc(
+                                   query.space_name,
+                                   query.subpath,
+                                   resource_obj.shortname,
+                               )
+                               if locked_data:
+                                   resource_base_record.attributes[
+                                       "locked"
+                                   ] = locked_data
 
                             if (
                                 query.retrieve_json_payload
@@ -290,7 +286,6 @@ async def serve_query(
                                         await validate_payload_with_schema(
                                             payload_data=payload_body,
                                             space_name=query.space_name,
-                                            branch_name=query.branch_name,
                                             schema_shortname=resource_obj.payload.schema_shortname,
                                         )
                                 except Exception:
@@ -299,7 +294,6 @@ async def serve_query(
                             resource_base_record.attachments = (
                                 await get_entry_attachments(
                                     subpath=f"{query.subpath}/{shortname}",
-                                    branch_name=query.branch_name,
                                     attachments_path=(meta_path / shortname),
                                     filter_types=query.filter_types,
                                     include_fields=query.include_fields,
@@ -353,7 +347,6 @@ async def serve_query(
                         query.subpath,
                         shortname,
                         query.include_fields,
-                        query.branch_name,
                     )
                     if (
                         query.retrieve_json_payload
@@ -372,7 +365,6 @@ async def serve_query(
                             if os.path.exists(meta_path / shortname):
                                 folder_record.attachments = await get_entry_attachments(
                                     subpath=f"{query.subpath if query.subpath != '/' else ''}/{shortname}",
-                                    branch_name=query.branch_name,
                                     attachments_path=(meta_path / shortname),
                                     filter_types=query.filter_types,
                                     include_fields=query.include_fields,
@@ -423,7 +415,6 @@ async def serve_query(
                 for schema_name in query.filter_schema_names:
                     redis_res = await redis_services.get_count(
                         space_name=query.space_name,
-                        branch_name=query.branch_name,
                         schema_shortname=schema_name,
                     )
                     total += int(redis_res)
@@ -486,18 +477,16 @@ async def serve_query(
                         shortname=doc["shortname"],
                         resource_type=doc["resource_type"],
                         uuid=doc["uuid"],
-                        branch_name=doc["branch_name"],
                         subpath=doc["subpath"],
                         attributes={"payload": doc.get("payload")},
                     )
                     entry_path = (
                         settings.spaces_folder
-                        / f"{query.space_name}/{branch_path(doc['branch_name'])}/{doc['subpath']}/.dm/{doc['shortname']}"
+                        / f"{query.space_name}/{doc['subpath']}/.dm/{doc['shortname']}"
                     )
                     if query.retrieve_attachments and entry_path.is_dir():
                         record.attachments = await get_entry_attachments(
                             subpath=f"{doc['subpath']}/{doc['shortname']}",
-                            branch_name=doc["branch_name"],
                             attachments_path=entry_path,
                             filter_types=query.filter_types,
                             include_fields=query.include_fields,
@@ -532,28 +521,45 @@ async def serve_query(
                     ),
                 )
 
-            path = Path(f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}"
+            path = Path(f"{settings.spaces_folder}/{query.space_name}/"
                         f"{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
-
             if path.is_file():
-                cmd = f"tail -n +{query.offset} {path} | head -n {query.limit} | tac"
-                result = list(
-                    filter(
-                        None,
-                        subprocess.run(
-                            [cmd], capture_output=True, text=True, shell=True
-                        ).stdout.split("\n"),
+                r1 = subprocess.Popen(
+                    ["tail", "-n", f"+{query.offset}", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                )
+                rn = subprocess.Popen(
+                    ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
+                )
+                r2 = subprocess.Popen(
+                    ["head", "-n", f"{query.limit}"], stdin=rn.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                )
+                r3 = subprocess.Popen(
+                    ["tac"], stdin=r2.stdout, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                r4, _ = r3.communicate()
+                if r4 is None:
+                    result = []
+                else:
+                    result = list(
+                        filter(
+                            None,
+                            r4.decode().split("\n"),
+                        )
                     )
-                )
-                total = int(
-                    subprocess.run(
-                        [f"wc -l < {path}"],
-                        capture_output=True,
-                        text=True,
-                        shell=True,
-                    ).stdout,
-                    10,
-                )
+
+                r, _ = subprocess.Popen(
+                        f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                ).communicate()
+
+                if r is None:
+                    total = 0
+                else:
+                    total = int(
+                        r.decode().split()[0],
+                        10,
+                    )
+
                 for line in result:
                     action_obj = json.loads(line)
 
@@ -563,7 +569,6 @@ async def serve_query(
                             shortname=query.filter_shortnames[0],
                             subpath=query.subpath,
                             attributes=action_obj,
-                            branch_name=query.branch_name,
                         ),
                     )
 
@@ -573,7 +578,7 @@ async def serve_query(
                 trimmed_subpath = trimmed_subpath[1:]
 
             path = Path(
-                f"{settings.spaces_folder}/{query.space_name}/{branch_path(query.branch_name)}/.dm/events.jsonl")
+                f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
             if path.is_file():
                 result = []
                 if query.search:
@@ -597,40 +602,44 @@ async def serve_query(
                     r, _ = p.communicate()
                     result = list(filter(None, r.decode("utf-8").split("\n")))
                 else:
-                    cmd = f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
-                    if query.offset > 0:
-                        cmd += f" | sed '1,{query.offset}d'"
-                    result = list(
-                        filter(
-                            None,
-                            subprocess.run(
-                                [cmd], capture_output=True, text=True, shell=True
-                            ).stdout.split("\n"),
-                        )
+                    r1 = subprocess.Popen(
+                        ["tail", "-n", f"{query.limit + query.offset}", path], stdout=subprocess.PIPE,
                     )
 
-                if query.search:
-                    p1 = subprocess.Popen(
-                        ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
+                    r1 = subprocess.Popen(
+                        ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
                     )
-                    p2 = subprocess.Popen(
-                        ["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE
-                    )
-                    r, _ = p2.communicate()
-                    total = int(
-                        r.decode(),
-                        10,
-                    )
+                    if query.offset > 0:
+                        r1 = subprocess.Popen(
+                            ["head", "-n", f"{query.limit}"], stdin=r1.stdout, stdout=subprocess.PIPE,
+                        )
+
+                    r6, _ = subprocess.Popen(
+                        ["tac"], stdin=r1.stdout, stdout=subprocess.PIPE,
+                    ).communicate()
+
+                    if r6 is None:
+                        result = []
+                    else:
+                        result = list(
+                            filter(
+                                None,
+                                r6.decode().split("\n"),
+                            )
+                        )
+
+                r, _ = subprocess.Popen(
+                    f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                ).communicate()
+
+                if r is None:
+                    total = 0
                 else:
                     total = int(
-                        subprocess.run(
-                            [f"wc -l < {path}"],
-                            capture_output=True,
-                            text=True,
-                            shell=True,
-                        ).stdout,
+                        r.decode().split()[0],
                         10,
                     )
+
                 for line in result:
                     action_obj = json.loads(line)
 
@@ -655,7 +664,6 @@ async def serve_query(
                         action_type=core.ActionType(action_obj["request"]),
                     ):
                         continue
-
                     records.append(
                         core.Record(
                             resource_type=action_obj["resource"]["type"],
@@ -690,7 +698,6 @@ async def serve_query(
 
 async def get_last_updated_entry(
     space_name: str,
-    branch_name: str,
     schema_names: list,
     retrieve_json_payload: bool,
     logged_in_user: str,
@@ -698,7 +705,6 @@ async def get_last_updated_entry(
     report_query = api.Query(
         type=api.QueryType.search,
         space_name=space_name,
-        branch_name=branch_name,
         subpath="/",
         search=f"@schema_shortname:{'|'.join(schema_names)}",
         filter_schema_names=["meta"],
@@ -715,7 +721,6 @@ async def get_last_updated_entry(
 async def get_entry_attachments(
     subpath: str,
     attachments_path: Path,
-    branch_name: str | None = None,
     filter_types: list | None = None,
     include_fields: list | None = None,
     filter_shortnames: list | None = None,
@@ -756,7 +761,7 @@ async def get_entry_attachments(
                         f"Bad attachment ... {attachments_file=}") from e
 
             resource_record_obj = resource_obj.to_record(
-                subpath, attach_shortname, include_fields, branch_name
+                subpath, attach_shortname, include_fields
             )
             if (
                 retrieve_json_payload
@@ -838,7 +843,6 @@ async def redis_query_aggregate(
     async with RedisServices() as redis_services:
         value = await redis_services.aggregate(
             space_name=query.space_name,
-            branch_name=query.branch_name,
             schema_name=query.filter_schema_names[0],
             search=str(query.search),
             filters={
@@ -902,7 +906,6 @@ async def redis_query_search(
         for schema_name in query.filter_schema_names:
             redis_res = await redis_services.search(
                 space_name=query.space_name,
-                branch_name=query.branch_name,
                 schema_name=schema_name,
                 search=str(query.search),
                 filters={
@@ -933,7 +936,6 @@ def is_entry_exist(
     subpath: str,
     shortname: str,
     resource_type: ResourceType,
-    branch_name: str | None = settings.default_branch,
     schema_shortname: str | None = None,
 ) -> bool:
     """Check if an entry with the given name already exist or not in the given path
@@ -943,7 +945,6 @@ def is_entry_exist(
         subpath (str): The target subpath
         shortname (str): the target shortname
         class_type (core.Meta): The target class of the entry
-        branch_name (str | None, optional): The target branch under the target space. Defaults to settings.default_branch.
         schema_shortname (str | None, optional): schema shortname of the entry. Defaults to None.
 
     Returns:
@@ -953,7 +954,7 @@ def is_entry_exist(
         subpath = f".{subpath}"
 
     payload_file = settings.spaces_folder / space_name / \
-        branch_path(branch_name) / subpath / f"{shortname}.json"
+        subpath / f"{shortname}.json"
     if payload_file.is_file():
         return True
 
@@ -967,7 +968,7 @@ def is_entry_exist(
         if not resource_cls:
             continue
         meta_path, meta_file = db.metapath(
-            space_name, subpath, shortname, resource_cls, branch_name, schema_shortname)
+            space_name, subpath, shortname, resource_cls, schema_shortname)
         if (meta_path/meta_file).is_file():
             return True
 
@@ -977,7 +978,6 @@ def is_entry_exist(
 async def get_resource_obj_or_none(
     *,
     space_name: str,
-    branch_name: str | None,
     subpath: str,
     shortname: str,
     resource_type: str,
@@ -992,7 +992,6 @@ async def get_resource_obj_or_none(
             shortname=shortname,
             class_type=resource_cls,
             user_shortname=user_shortname,
-            branch_name=branch_name,
         )
     except Exception:
         return None
@@ -1001,7 +1000,6 @@ async def get_resource_obj_or_none(
 def get_payload_obj_or_none(
     *,
     space_name: str,
-    branch_name: str | None,
     subpath: str,
     filename: str,
     resource_type: str,
@@ -1014,7 +1012,6 @@ def get_payload_obj_or_none(
             subpath=subpath,
             filename=filename,
             class_type=resource_cls,
-            branch_name=branch_name,
         )
     except Exception:
         return None
@@ -1024,7 +1021,6 @@ async def get_group_users(group_name: str):
     async with RedisServices() as redis_services:
         users_docs = await redis_services.search(
             space_name=settings.management_space,
-            branch_name=settings.management_space_branch,
             schema_name="meta",
             filters={"subpath": ["users"]},
             limit=10000,
@@ -1041,7 +1037,6 @@ async def get_group_users(group_name: str):
 async def validate_subpath_data(
     space_name: str,
     subpath: str,
-    branch_name: str | None,
     user_shortname: str,
     invalid_folders: list[str],
     folders_report: dict[str, dict[str, Any]],
@@ -1077,7 +1072,6 @@ async def validate_subpath_data(
             await validate_subpath_data(
                 space_name,
                 folder.path,
-                branch_name,
                 user_shortname,
                 invalid_folders,
                 folders_report,
@@ -1103,7 +1097,6 @@ async def validate_subpath_data(
                 shortname="",
                 class_type=core.Folder,
                 user_shortname=user_shortname,
-                branch_name=branch_name,
             )
             if (
                 folder_meta_content.payload
@@ -1119,13 +1112,11 @@ async def validate_subpath_data(
                     payload_path,
                     str(folder_meta_content.payload.body),
                     core.Folder,
-                    branch_name,
                 )
                 if folder_meta_content.payload.schema_shortname:
                     await validate_payload_with_schema(
                         payload_data=folder_meta_payload,
                         space_name=space_name,
-                        branch_name=branch_name or settings.default_branch,
                         schema_shortname=folder_meta_content.payload.schema_shortname,
                     )
         except Exception:
@@ -1185,7 +1176,6 @@ async def validate_subpath_data(
                     shortname=entry_shortname,
                     resource_type=entry_resource_type,
                     user_shortname=user_shortname,
-                    branch_name=branch_name,
                 )
                     
                 # VALIDATE ENTRY ATTACHMENTS
@@ -1220,7 +1210,6 @@ async def validate_subpath_data(
                             shortname=attachment_shortname,
                             resource_type=attachment_resource_type,
                             user_shortname=user_shortname,
-                            branch_name=branch_name,
                         )
 
                 if "valid_entries" not in folders_report[folder_name]:
@@ -1265,7 +1254,6 @@ async def health_check_entry(
     resource_type: str,
     shortname: str,
     user_shortname: str,
-    branch_name: str | None = None
 ):
     resource_class = getattr(
         sys.modules["models.core"], camel_case(resource_type)
@@ -1276,7 +1264,6 @@ async def health_check_entry(
         shortname=shortname,
         class_type=resource_class,
         user_shortname=user_shortname,
-        branch_name=branch_name,
     )
     if entry_meta_obj.shortname != shortname:
         raise Exception(
@@ -1325,13 +1312,11 @@ async def health_check_entry(
             subpath,
             entry_meta_obj.payload.body,
             resource_class,
-            branch_name,
         )
         if entry_meta_obj.payload.schema_shortname:
             await validate_payload_with_schema(
                 payload_data=payload_file_content,
                 space_name=space_name,
-                branch_name=branch_name or settings.default_branch,
                 schema_shortname=entry_meta_obj.payload.schema_shortname,
             )
 
@@ -1349,7 +1334,6 @@ async def internal_sys_update_model(
     space_name: str,
     subpath: str,
     meta: core.Meta,
-    branch_name: str | None,
     updates: dict,
     sync_redis: bool = True,
     payload_dict: dict = {},
@@ -1367,7 +1351,7 @@ async def internal_sys_update_model(
         try:
             body = str(meta.payload.body) if meta and meta.payload else ""
             payload_dict = db.load_resource_payload(
-                space_name, subpath, body, core.Content, branch_name
+                space_name, subpath, body, core.Content
             )
         except Exception:
             pass
@@ -1392,25 +1376,24 @@ async def internal_sys_update_model(
             payload_updated = True
 
     if meta_updated:
-        await db.save(space_name, subpath, meta, branch_name)
+        await db.save(space_name, subpath, meta)
     if payload_updated and meta.payload and meta.payload.schema_shortname:
         await validate_payload_with_schema(
-            payload_dict, space_name, meta.payload.schema_shortname, branch_name
+            payload_dict, space_name, meta.payload.schema_shortname
         )
         await db.save_payload_from_json(
-            space_name, subpath, meta, payload_dict, branch_name
+            space_name, subpath, meta, payload_dict
         )
 
     if not sync_redis:
         return True
 
     async with RedisServices() as redis_services:
-        await redis_services.save_meta_doc(space_name, branch_name, subpath, meta)
+        await redis_services.save_meta_doc(space_name, subpath, meta)
         if payload_updated:
             payload_dict.update(json.loads(meta.model_dump_json()))
             await redis_services.save_payload_doc(
                 space_name,
-                branch_name,
                 subpath,
                 meta,
                 payload_dict,
@@ -1424,20 +1407,17 @@ async def internal_save_model(
     space_name: str,
     subpath: str,
     meta: core.Meta,
-    branch_name: str | None = settings.default_branch,
     payload: dict | None = None
 ):
     await db.save(
         space_name=space_name,
         subpath=subpath,
         meta=meta,
-        branch_name=branch_name,
     )
 
     async with RedisServices() as redis:
         await redis.save_meta_doc(
             space_name,
-            branch_name,
             subpath,
             meta,
         )
@@ -1448,12 +1428,10 @@ async def internal_save_model(
                 subpath=subpath,
                 meta=meta,
                 payload_data=payload,
-                branch_name=branch_name
             )
             payload.update(json.loads(meta.json()))
             await redis.save_payload_doc(
                 space_name, 
-                branch_name, 
                 subpath, 
                 meta, 
                 payload, 
@@ -1466,7 +1444,6 @@ async def generate_payload_string(
     subpath: str,
     shortname: str,
     payload: dict,
-    branch_name: str | None = None,
 ):
     payload_string = ""
     # Remove system related attributes from payload
@@ -1482,10 +1459,9 @@ async def generate_payload_string(
     # Generate attachments payload string
     attachments: dict[str, list] = await get_entry_attachments(
         subpath=f"{subpath}/{shortname}",
-        branch_name=branch_name,
         attachments_path=(
             settings.spaces_folder
-            / f"{space_name}/{branch_path(branch_name)}/{subpath}/.dm/{shortname}"
+            / f"{space_name}/{subpath}/.dm/{shortname}"
         ),
         retrieve_json_payload=True,
         include_fields=[
@@ -1523,8 +1499,7 @@ async def get_record_from_redis_doc(
     retrieve_attachments: bool = False,
     validate_schema: bool = False,
     filter_types: list | None = None,
-    branch_name: str = Field(
-        default=settings.default_branch, pattern=regex.SHORTNAME),
+    retrieve_lock_status: bool = False,
 ) -> core.Record:
     meta_doc_content = {}
     payload_doc_content = {}
@@ -1550,14 +1525,6 @@ async def get_record_from_redis_doc(
                 doc["payload_doc_id"], doc["resource_type"]
             )
 
-        # Get lock data
-        locked_data = await redis_services.get_lock_doc(
-            space_name,
-            branch_name,
-            doc["subpath"],
-            doc["shortname"],
-        )
-
     meta_doc_content["created_at"] = datetime.fromtimestamp(
         meta_doc_content["created_at"]
     )
@@ -1569,21 +1536,27 @@ async def get_record_from_redis_doc(
         doc["subpath"],
         meta_doc_content["shortname"],
         [],
-        doc["branch_name"],
     )
 
-    if locked_data:
-        resource_base_record.attributes["locked"] = locked_data
+    # Get lock data
+    if retrieve_lock_status:
+        locked_data = await redis_services.get_lock_doc(
+            space_name,
+            doc["subpath"],
+            doc["shortname"],
+        )
+        if locked_data:
+            resource_base_record.attributes["locked"] = locked_data
+
 
     # Get attachments
     entry_path = (
         settings.spaces_folder
-        / f"{space_name}/{branch_path(doc['branch_name'])}/{doc['subpath']}/.dm/{meta_doc_content['shortname']}"
+        / f"{space_name}/{doc['subpath']}/.dm/{meta_doc_content['shortname']}"
     )
     if retrieve_attachments and entry_path.is_dir():
         resource_base_record.attachments = await get_entry_attachments(
             subpath=f"{doc['subpath']}/{meta_doc_content['shortname']}",
-            branch_name=doc["branch_name"],
             attachments_path=entry_path,
             filter_types=filter_types,
             retrieve_json_payload=retrieve_json_payload,
@@ -1607,7 +1580,6 @@ async def get_record_from_redis_doc(
         await validate_payload_with_schema(
             payload_data=payload_doc_content,
             space_name=space_name,
-            branch_name=branch_name,
             schema_shortname=resource_obj.payload.schema_shortname,
         )
 
@@ -1623,32 +1595,29 @@ async def get_entry_by_var(
     logged_in_user,
     retrieve_json_payload: bool = False,
     retrieve_attachments: bool = False,
+    retrieve_lock_status: bool = False,
 ):
     spaces = await get_spaces()
     entry_doc = None
     entry_space = None
-    entry_branch = None
     async with RedisServices() as redis_services:
         for space_name, space in spaces.items():
             space = json.loads(space)
-            for branch in space["branches"]:
-                search_res = await redis_services.search(
-                    space_name=space_name,
-                    branch_name=branch,
-                    search=f"@{key}:{val}*",
-                    limit=1,
-                    offset=0,
-                    filters={},
-                )
-                if search_res["total"] > 0:
-                    entry_doc = json.loads(search_res["data"][0])
-                    entry_branch = branch
-                    break
-            if entry_doc:
+            if not space['indexing_enabled']:
+                continue
+            search_res = await redis_services.search(
+                space_name=space_name,
+                search=f"@{key}:{val}*",
+                limit=1,
+                offset=0,
+                filters={},
+            )
+            if search_res["total"] > 0:
+                entry_doc = json.loads(search_res["data"][0])
                 entry_space = space_name
                 break
 
-    if not entry_doc or not entry_space or not entry_branch:
+    if not entry_doc or not entry_space:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
@@ -1679,7 +1648,6 @@ async def get_entry_by_var(
     await plugin_manager.before_action(
         core.Event(
             space_name=entry_space,
-            branch_name=entry_branch,
             subpath=entry_doc["subpath"],
             shortname=entry_doc["shortname"],
             action_type=core.ActionType.view,
@@ -1690,17 +1658,16 @@ async def get_entry_by_var(
 
     resource_base_record = await get_record_from_redis_doc(
         space_name=entry_space,
-        branch_name=entry_branch,
         doc=entry_doc,
         retrieve_json_payload=retrieve_json_payload,
         retrieve_attachments=retrieve_attachments,
         validate_schema=True,
+        retrieve_lock_status=retrieve_lock_status,
     )
 
     await plugin_manager.after_action(
         core.Event(
             space_name=entry_space,
-            branch_name=entry_branch,
             subpath=entry_doc["subpath"],
             shortname=entry_doc["shortname"],
             action_type=core.ActionType.view,

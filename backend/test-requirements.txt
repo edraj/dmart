@@ -16,7 +16,3 @@ types-psutil
 
 jsf
 
-# types-ujson
-# types-pyOpenSSL
-# types-requests
-# pytest-asyncio

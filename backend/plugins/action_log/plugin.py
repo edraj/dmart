@@ -5,7 +5,7 @@ from models.core import ActionType, PluginBase, Event
 from models.enums import ContentType, ResourceType
 from utils.db import load, load_resource_payload
 from models.core import Action, Locator, Meta
-from utils.helpers import branch_path, camel_case
+from utils.helpers import camel_case
 from utils.settings import settings
 from datetime import datetime
 from fastapi.logger import logger
@@ -33,7 +33,6 @@ class Plugin(PluginBase):
         else:
             entry = await load(
                 space_name=data.space_name,
-                branch_name=data.branch_name,
                 subpath=data.subpath,
                 shortname=data.shortname,
                 class_type=class_type,
@@ -50,7 +49,6 @@ class Plugin(PluginBase):
             ):
                 payload = load_resource_payload(
                     space_name=data.space_name,
-                    branch_name=data.branch_name,
                     subpath=data.subpath,
                     filename=entry.payload.body,
                     class_type=class_type,
@@ -67,7 +65,6 @@ class Plugin(PluginBase):
                 uuid=entry.uuid,
                 type=data.resource_type,
                 space_name=data.space_name,
-                branch_name=data.branch_name,
                 subpath=data.subpath,
                 shortname=data.shortname,
                 displayname=entry.displayname,
@@ -83,7 +80,6 @@ class Plugin(PluginBase):
         events_file_path = (
             settings.spaces_folder
             / data.space_name
-            / branch_path(data.branch_name)
             / ".dm/events.jsonl"
         )
         file_content = (

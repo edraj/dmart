@@ -37,8 +37,6 @@ class Settings(BaseSettings):
     servername: str = ""  # This is for print purposes only.
     auto_uuid_rule: str = "auto"  # Used to generate a shortname from UUID
     google_application_credentials: str = ""
-    default_branch: str = "master"
-    management_space_branch: str = "master"
     is_registrable: bool = True
     social_login_allowed: bool = True
     all_spaces_mw: str = (
@@ -71,9 +69,14 @@ class Settings(BaseSettings):
 
     facebook_client_id: str = ""
     facebook_client_secret: str = ""
+    
+    store_payload_string: bool = True
 
     model_config = SettingsConfigDict(
-        env_file=os.getenv("BACKEND_ENV", "config.env"), env_file_encoding="utf-8"
+        env_file=os.getenv(
+            "BACKEND_ENV",
+            str(Path(__file__).resolve().parent.parent.parent / "config.env") if __file__.endswith(".pyc") else "config.env"
+        ), env_file_encoding="utf-8"
     )
 
 

@@ -1,7 +1,10 @@
-## Tools
+### **Tools**
 
-In the realm of software development, efficiency and reliability are paramount. To streamline various tasks and enhance productivity, developers often turn to a plethora of tools and libraries that facilitate different aspects of the development process. Among these tools, several stand out for their utility in specific functions, such as password management, notification triggering, and more. In this section, we'll explore some of the tools utilized as a script, which accomplishes tasks like password generation, triggering admin notifications, and updating user information.
-Overall, these tools and libraries play crucial roles in automating tasks, enhancing security, and improving the development workflow. By leveraging these tools effectively, developers can streamline processes, mitigate risks, and deliver high-quality software solutions efficiently.
+---
+
+In software development, efficiency and reliability are crucial. To streamline tasks and boost productivity, developers use various tools and libraries that aid different aspects of the development process. In this section, we'll examine some of the scripts used to generate passwords, generate fake data or create indices.
+
+These tools and libraries are essential for automating tasks, enhancing security, and improving the development workflow. By effectively leveraging these tools, developers can streamline processes, mitigate risks, and deliver high-quality software solutions efficiently.
 
 **Examples of used tools in Dmart:**
 
@@ -9,6 +12,8 @@ Overall, these tools and libraries play crucial roles in automating tasks, enhan
 - [Health Check API](Health-Check-API)
 - [Password Hash Generation](Password-Hash-Generation)
 - [Schema Migration](Schema-Migration)
-- [Trigger Admin Notification](Trigger-Admin-Notifications)
 - [Set Admin Password](Set-Admin-Password)
 - [Data Generator](Data-Generator)
+- [Commaned Line Interface](Automated-Cli-Tool)
+- [Data Exporter Tool](Exporter)
+- [Archive Tool](Archive)

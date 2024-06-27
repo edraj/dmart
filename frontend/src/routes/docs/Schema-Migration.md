@@ -1,4 +1,6 @@
-**Schema Migration Script**
+### **Schema Migration Script**
+
+---
 
 **Introduction:** This script facilitates schema migration within a system, allowing users to change the type of a field in a specific schema under a particular space. It automates the process of updating the schema definition along with all associated resources to reflect the changes in the field type. This documentation provides an overview of the script's functionality, usage, and key components.
 
