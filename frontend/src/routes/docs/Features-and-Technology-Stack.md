@@ -10,18 +10,72 @@
   margin-right: auto;
   width: 50%;
 }
+
+.bg-img {
+background-image: url('./assets/features1.jpg');
+	background-size: cover;
+	width: 100%;
+	height: 529px;
+
+}
+
+.bg-img h2 {	margin-left: 2em;
+	margin-top: 0em;
+	padding-top: 172px;
+	font-size: 51px;
+	font-weight: 800;
+	letter-spacing: 1.5px;
+
+}
+.bg-img2 {
+background-image: url('./assets/design.jpg');
+	background-size: cover;
+	width: 100%;
+	height: 529px;
+margin-bottom: 2em;
+}
+.bg-img2 h2 {	margin-left: 2em;
+	margin-top: 0em;
+	padding-top: 172px;
+	font-size: 51px;
+	font-weight: 800;
+	letter-spacing: 1.5px;
+
+}
+
+.bg-img3 {
+background-image: url('./assets/tech_stack.png');
+	background-size: cover;
+	width: 100%;
+	height: 529px;
+margin-bottom: 2em;
+}
+
+.bg-img3 h2 {	
+	margin-left: 1.3em;
+
+	padding-top: 113px;
+	font-size: 50px;
+	font-weight: 800;
+	letter-spacing: 1.5px;
+
+
+}
 </style>
 
-<div style="float:right; width:12%; padding-left:10px; border-left:1px solid gray;">
+<div class=bg-img>
+<h2> Features of DMART</h2>
+
+</div>
+
+<!-- <div style="float:right; width:12%; padding-left:10px; border-left:1px solid gray;">
     <h3>Table of Contents</h3>
     <ul>
         <li><a href="#features-of-dmart">Features of DMART</a></li>
         <li><a href="#design-principles">Design Principles</a></li>
         <li><a href="#technology-stack">Technology Stack</a></li>
     </ul>
-</div>
-
-### **Features of DMART**
+</div> -->
 
 ---
 
@@ -51,7 +105,10 @@
 
 ---
 
-## Design Principles
+<div class=bg-img2>
+<h2> Design Principles</h2>
+
+</div>
 
 **Entry-Based Business-Oriented Data Definitions**
 
@@ -73,9 +130,13 @@
 
 ---
 
-## Technology Stack
+<div class=bg-img3>
+<h2> Technology  <br/> Stack</h2>
+
+</div>
 
 <img class="center" src={BACKEND} width="300">
+
 **Backend Technologies**
 
 - **Programming Language:** Python 3.11 (latest revision)
