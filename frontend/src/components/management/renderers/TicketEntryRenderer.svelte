@@ -123,7 +123,7 @@
           >
             <option value={null}>Select next state</option>
             {#each ticketStates as e}
-              <option bind:this={ticketElement} value={e.state} disabled={!e.roles.some((el) => userRoles.includes(el))}>{e.state} ({ticketElement && ticketElement.disabled && e.roles})</option>
+              <option bind:this={ticketElement} value={e.state} disabled={!e.roles.some((el) => userRoles.includes(el))}>{e.state} {(ticketElement && ticketElement.disabled) ? `(${e.roles})` : ""}</option>
             {/each}
           </Input>
         {/if}
