@@ -104,6 +104,7 @@
       }
   }
 
+    export let ticketElement;
 </script>
 
 <Form class="d-flex flex-column justify-content-between w-100 p-5" on:submit={handleTicketSubmit}>
@@ -122,7 +123,7 @@
           >
             <option value={null}>Select next state</option>
             {#each ticketStates as e}
-              <option value={e.state} disabled={!e.roles.some((el) => userRoles.includes(el))}>{e.state}</option>
+              <option bind:this={ticketElement} value={e.state} disabled={!e.roles.some((el) => userRoles.includes(el))}>{e.state} ({ticketElement && ticketElement.disabled && e.roles})</option>
             {/each}
           </Input>
         {/if}
