@@ -1,15 +1,4 @@
-<script>
-    import Ticket from "./assets/ticketing-system.png";
-</script>
-
 <style>
-/* .center {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  width: 44%;
-  bacground-img 
-} */
 
 .bg-img {
 background-image: url('./assets/ticketing-system.png');
