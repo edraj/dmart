@@ -327,7 +327,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 old_version_flattend,
                 new_version_flattend,
                 list({"last_login": datetime.now()}),
-                MANAGEMENT_BRANCH,
                 shortname,
             )
             await plugin_manager.after_action(
