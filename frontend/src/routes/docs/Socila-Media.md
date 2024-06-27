@@ -1,18 +1,28 @@
-<script>
-    import Social from "./assets/Social-Mediaa.png";
-</script>
-
 <style>
-.center {
 
+
+.bg-img {
+background-image: url('./assets/social-media.jpg');
+	background-size: cover;
 	width: 100%;
-	height: 424px;
-	margin-bottom: 2em;
+	height: 529px;
+
+}
+
+.h2, h2 {	margin-left: 2em;
+	margin-top: 0em;
+	padding-top: 172px;
+	font-size: 51px;
+	font-weight: 800;
+	letter-spacing: 1.5px;
+
 }
 </style>
-<img class="center" src={Social} width="500">
+<div class=bg-img>
+<h2> DMART as a Social Media 
+<br/> Interaction Platform</h2>
 
-### **DMART as a Social Media Interaction Platform**
+</div>
 
 ---
 
