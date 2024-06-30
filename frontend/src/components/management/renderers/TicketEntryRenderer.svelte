@@ -11,7 +11,7 @@
 
   const userRoles = JSON.parse(localStorage.getItem("roles"));
 
-
+  let ticketElement: any = null;
   let ticket_status = null;
   let ticket_action = null;
   let resolution = null;
@@ -103,7 +103,6 @@
           resolution = null;
       }
   }
-
 </script>
 
 <Form class="d-flex flex-column justify-content-between w-100 p-5" on:submit={handleTicketSubmit}>
@@ -122,7 +121,7 @@
           >
             <option value={null}>Select next state</option>
             {#each ticketStates as e}
-              <option value={e.state} disabled={!e.roles.some((el) => userRoles.includes(el))}>{e.state}</option>
+              <option bind:this={ticketElement} value={e.state} disabled={!e.roles.some((el) => userRoles.includes(el))}>{e.state} {(ticketElement && ticketElement.disabled) ? `(${e.roles})` : ""}</option>
             {/each}
           </Input>
         {/if}
