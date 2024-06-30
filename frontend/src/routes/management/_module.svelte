@@ -97,8 +97,7 @@
                 <Col sm="2" class="h-100 border-end border-light px-1">
                     <Sidebar/>
                 </Col>
-                <Col sm="10" class="h-100 border-end border-light px-1 overflow-auto"
-                >
+                <Col sm="10" class="h-100 border-end border-light px-1 overflow-auto">
                     <slot/>
                 </Col>
             {/await}

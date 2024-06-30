@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {ResourceType, retrieve_entry} from "@/dmart";
+    import {get_profile, ResourceType, retrieve_entry} from "@/dmart";
     import {user} from "@/stores/user";
     import {Badge, Card, CardBody, CardText, CardTitle, Col, ListGroup, ListGroupItem, Row} from "sveltestrap";
     import Icon from "@/components/Icon.svelte";
@@ -8,15 +8,8 @@
 
     let userRecord: any = {};
     (async () => {
-        userRecord = await retrieve_entry(
-            ResourceType.user,
-            "management",
-            "users",
-            $user.shortname,
-            true,
-            false,
-            false,
-        );
+        userRecord = await get_profile();
+        userRecord = userRecord.records[0];
     })()
 
     let selectedRole = null;
@@ -43,7 +36,7 @@
                 );
                 permissionList[role] = permissionList[role].permissions
             } catch (e) {
-                showToast(Level.warn, "Failed to retrieve that role!");
+                showToast(Level.warn, "Failed to retrieve that role!\n" + e.message);
                 permissionList[role] = null;
             }
         }
@@ -81,9 +74,8 @@
 <Card class="p-3 m-5">
   <CardBody>
     <CardTitle class="mb-5" tag="h5">
-      <Row class="justify-content-between">
+      <Row>
         <Col>{userRecord.shortname}</Col>
-        <Col class="d-flex justify-content-end">{userRecord.uuid}</Col>
       </Row>
     </CardTitle>
 
@@ -91,23 +83,23 @@
     <CardText>
       <Card class="d-flex flex-row justify-content-between px-4 py-3">
         <span>
-          <Icon name="person-lines-fill"/> {userRecord.type || "N/A"}
+          <Icon name="person-lines-fill"/> {userRecord?.attributes?.type || "N/A"}
         </span>
 
         <span>
-          <Icon name="envelope-at"/> {userRecord.email || "N/A"}
+          <Icon name="envelope-at"/> {userRecord?.attributes?.email || "N/A"}
         </span>
 
         <span>
-          <Icon name="telephone"/> {userRecord.msisdn || "N/A"}
+          <Icon name="telephone"/> {userRecord?.attributes?.msisdn || "N/A"}
         </span>
       </Card>
 
       <div class="my-3"><b>Displayname:</b></div>
       <Card class="d-flex flex-row justify-content-between px-4 py-3">
-        {#each Object.keys(userRecord.displayname ?? {}) as keyDisplayname}
+        {#each Object.keys(userRecord?.attributes?.displayname ?? {}) as keyDisplayname}
           <span>
-            <b class="text-capitalize">{keyDisplayname}:</b> {userRecord.displayname[keyDisplayname] || "N/A"}
+            <b class="text-capitalize">{keyDisplayname}:</b> {userRecord?.attributes?.displayname[keyDisplayname] || "N/A"}
           </span>
         {/each}
       </Card>
@@ -115,20 +107,19 @@
       <div class="my-3"><b>Checks:</b></div>
       <Card class="d-flex flex-row justify-content-between px-4 py-3">
         {#each [
-            "is_active",
             "force_password_change",
             "is_email_verified",
             "is_msisdn_verified"
         ] as keyCheck}
           <span>
-            <b class="text-capitalize">{keyCheck.replaceAll("_", " ")}:</b> {userRecord[keyCheck]}
+            <b class="text-capitalize">{keyCheck.replaceAll("_", " ")}:</b> {userRecord?.attributes?.[keyCheck]}
           </span>
         {/each}
       </Card>
 
       <div class="my-3"><b>Roles:</b></div>
       <ul class="d-flex p-0">
-        {#each userRecord.roles || [] as role}
+        {#each userRecord?.attributes?.roles || [] as role}
           <!-- svelte-ignore a11y-click-events-have-key-events -->
           <!-- svelte-ignore a11y-no-static-element-interactions -->
           <div on:click="{()=>handleSelectedRole(role)}">
