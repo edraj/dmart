@@ -19,7 +19,7 @@ class BaseDB(ABC):
         "resource_type",
         "meta_doc_id",
         "payload_doc_id",
-        "payload_string",
+        "values_string",
         "view_acl",
     ]
     SYS_INDEXES: list[dict[str, Any]] = [

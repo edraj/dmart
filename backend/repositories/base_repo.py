@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from copy import copy
 from datetime import datetime
 import json
 import os
@@ -1236,3 +1237,71 @@ class BaseRepo(ABC):
         )
         payload_string += attachments_payload_string
         return payload_string.strip(",")
+    
+    
+    async def generate_values_string(
+        self,
+        dto: EntityDTO,
+        payload: dict[str, Any],
+        meta_json: dict[str, Any],
+    ) -> str:
+        """Generates a string (separated by comma) of all the attributes values of the payload dict,
+        and the attachments values, and the meta values
+
+        Args:
+            dto (EntityDTO): the main entry's DTO
+            payload (dict[str, Any]): the payload document
+
+        Returns:
+            str: a string of keywords separated by commas
+        """
+        values_string: str = ""
+        meta_json_copy = copy(meta_json)
+        # Remove system related attributes from payload
+        for attr in self.db.SYS_ATTRIBUTES:
+            if attr in payload:
+                del payload[attr]
+            if attr in meta_json_copy:
+                del meta_json_copy[attr]
+
+        # Generate direct payload string
+        payload_values = set(flatten_all(payload).values())
+        meta_values = set(flatten_all(meta_json_copy).values())
+        values_string += ",".join([str(i) for i in payload_values if i is not None])
+        values_string += ",".join([str(i) for i in meta_values if i is not None])
+
+        # Generate attachments payload string
+        attachments: dict[str, list] = await main_db.get_entry_attachments(
+            subpath=f"{dto.subpath}/{dto.shortname}",
+            branch_name=dto.branch_name,
+            attachments_path=(
+                settings.spaces_folder
+                / f"{dto.space_name}/{branch_path(dto.branch_name)}/{dto.subpath}/.dm/{dto.shortname}"
+            ),
+            retrieve_json_payload=True,
+            include_fields=[
+                "shortname",
+                "displayname",
+                "description",
+                "payload",
+                "tags",
+                "owner_shortname",
+                "owner_group_shortname",
+                "body",
+                "state",
+            ],
+        )
+        if not attachments:
+            return values_string.strip(",")
+
+        # Convert Record objects to dict
+        dict_attachments = {}
+        for k, v in attachments.items():
+            dict_attachments[k] = [i.model_dump() for i in v]
+
+        attachments_values = set(flatten_all(dict_attachments).values())
+        attachments_payload_string = ",".join(
+            [str(i) for i in attachments_values if i is not None]
+        )
+        values_string += attachments_payload_string
+        return values_string.strip(",")

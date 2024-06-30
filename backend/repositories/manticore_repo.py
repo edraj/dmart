@@ -141,6 +141,9 @@ class ManticoreRepo(BaseRepo):
         meta_json["payload_string"] = await self.generate_payload_string(
             dto, payload
         )
+        meta_json["values_string"] = await self.generate_values_string(
+            dto, payload, meta_json
+        )
 
         await self.db.save_at_id(meta_doc_id, meta_json)
 
@@ -178,6 +181,9 @@ class ManticoreRepo(BaseRepo):
 
         meta_json["payload_string"] = await self.generate_payload_string(
             dto, payload
+        )
+        meta_json["values_string"] = await self.generate_values_string(
+            dto, payload, meta_json
         )
 
         await self.db.replace(meta_doc_id, db_record['meta']['id'], meta_json)

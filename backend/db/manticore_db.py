@@ -76,6 +76,7 @@ class ManticoreDB(BaseDB):
         # "reporter_msisdn": "string",
         "payload_doc_id": "string",
         "meta_doc_id": "string",
+        "values_string": "text",
         "payload_string": "string",
         # "document_data": "text",
     }
@@ -484,12 +485,12 @@ class ManticoreDB(BaseDB):
                         match_query += f" | @view_acl {filters['user_shortname']} "
                 elif isinstance(value, list) and value:
                     if len(value):
-                        where_filters.append(f"{key} IN ('{"', '".join(map(str, value))}')")
+                        where_filters.append(f"{key} IN ('" + ', '.join(map(str, value)) + "')")
                 elif isinstance(value, str) and value and key != "user_shortname":
                     where_filters.append(f"{key}='{value}'")
                 elif value and key != "user_shortname":
                     where_filters.append(f"{key}={value}")
-
+                    
 
         if not search:
             search = f" {match_query}')"
@@ -497,6 +498,7 @@ class ManticoreDB(BaseDB):
             search = search.replace("match('", f"{match_query}")
         else:
             search += f" AND {match_query}')"
+            
         sql_str += f" WHERE {search}"
         if subpath_query:
             sql_str += " AND subpath_match = 1 "
@@ -512,6 +514,7 @@ class ManticoreDB(BaseDB):
             sql_str += f" ORDER BY {sort_by} {'asc' if sort_type == SortType.ascending else 'desc'}"
 
         sql_str += f" LIMIT {limit} OFFSET {offset}"
+        sql_str = sql_str.replace(" AND match('')", "")
         
 
         result = self.mc_command(sql_str)
