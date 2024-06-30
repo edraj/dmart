@@ -198,16 +198,6 @@ class AccessControl:
             else:
                 search_subpath += "/"
 
-        if entry_shortname:
-            return await self.check_access_control_list(
-                space_name,
-                subpath,
-                resource_type,
-                entry_shortname,
-                action_type,
-                user_shortname,
-            )
-            
         return False
 
     async def check_access_control_list(
