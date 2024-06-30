@@ -406,6 +406,14 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
         r"@\w*\:({|\()?\$\w*(}|\))?", "", query_dict["search"]
     )
 
+    if "query_offset" in query_dict:
+        query_dict["offset"] = query_dict["query_offset"]
+        query_dict.pop("query_offset")
+
+    if "query_limit" in query_dict:
+        query_dict["limit"] = query_dict["query_limit"]
+        query_dict.pop("query_limit")
+        
     if "offset" in record.attributes:
         query_dict["offset"] = record.attributes["offset"]
 

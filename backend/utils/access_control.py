@@ -308,6 +308,7 @@ class AccessControl:
         if not user_meta.groups:
             return []
 
+
         groups_search = await operational_db.search(
             space_name=settings.management_space,
             branch_name=settings.management_space_branch,
