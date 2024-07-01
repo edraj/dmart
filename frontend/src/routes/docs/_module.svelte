@@ -23,7 +23,9 @@
         'Clients-and-Libraries.md',  
         'Use-Cases.md',
         'Starter-Kits.md',
-        'Roadmap.md'
+        'Roadmap.md',
+        'FAQs.md',
+        'FAQs.ar.md'
     ];
 
     let selectedIndex = docFiles.findIndex(file => `/docs/${file.replace('.md', '').replace('index','')}`===window.location.pathname );
