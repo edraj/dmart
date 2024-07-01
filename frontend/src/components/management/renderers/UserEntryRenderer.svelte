@@ -4,12 +4,11 @@
         check_existing_user,
         passwordRegExp,
         passwordWrongExp,
-        query,
-        QueryType,
         request,
         RequestType,
         ResourceType,
         ResponseEntry,
+        retrieve_entry,
         Status,
     } from "@/dmart";
     import {Button, Form, FormGroup, Input, Label,} from "sveltestrap";
@@ -81,51 +80,44 @@
 
     async function get_schema() {
         if (entry.payload && entry.payload.schema_shortname) {
-            const query_schema = {
-                space_name,
-                type: QueryType.search,
-                subpath: "/schema",
-                filter_shortnames: [entry.payload.schema_shortname],
-                search: "",
-                retrieve_json_payload: true,
-            };
-
-            const schema_data = await query(query_schema);
-            if (schema_data.status == "success" && schema_data.records.length > 0) {
-                schema = schema_data.records[0].attributes["payload"].body;
-                cleanUpSchema(schema.properties);
-
-                try {
-                    validatorContent = createAjvValidator({schema});
-                } catch (error) {
-                    const name = schema_data.records[0].shortname;
-                    validatorContent = createAjvValidator({schema: {}});
-                    toast.push({
-                        component: {
-                            src: ToastActionComponent,
-                            props: {
-                                level: Level.warn,
-                                message: `The schema ${name} is corrupted!`,
-                                action: () => {
-                                    $goto(
-                                        "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
-                                        {
-                                            space_name,
-                                            subpath: "/schema",
-                                            shortname: entry.payload.schema_shortname,
-                                            resource_type: "schema",
-                                        }
-                                    );
-                                },
+            try {
+                const schema_data = await retrieve_entry(
+                    ResourceType.schema,
+                    space_name,
+                    "/schema",
+                    entry.payload.schema_shortname,
+                    true,
+                    false,
+                    true,
+                );
+                const schema = schema_data.payload.body;
+                cleanUpSchema(schema);
+                validatorContent = createAjvValidator({schema});
+            } catch (error) {
+                validatorContent = createAjvValidator({schema: {}});
+                toast.push({
+                    component: {
+                        src: ToastActionComponent,
+                        props: {
+                            level: Level.warn,
+                            message: `The schema ${entry.payload.schema_shortname} is corrupted!`,
+                            action: () => {
+                                $goto(
+                                    "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
+                                    {
+                                        space_name,
+                                        subpath: "/schema",
+                                        shortname: entry.payload.schema_shortname,
+                                        resource_type: "schema",
+                                    }
+                                );
                             },
                         },
-                        initial: 0,
-                        dismissable: false,
-                    });
-                }
+                    },
+                    initial: 0,
+                    dismissable: false,
+                });
             }
-        } else {
-            schema = null;
         }
     }
 
