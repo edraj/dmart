@@ -1,0 +1,11 @@
+[
+    {
+        "name": "web",
+        "keys": [
+            "12345"
+        ],
+        "allowed_api_patterns": [
+            "/managed/*"
+        ]
+    }
+]
