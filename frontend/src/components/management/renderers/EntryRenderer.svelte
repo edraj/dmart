@@ -1752,8 +1752,8 @@
     </div>
     <div class="tab-pane" class:active={tab_option === "edit_meta"}>
       <div
-              class="px-1 pb-1"
-              style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
+        class="px-1 pb-1"
+        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
       >
         {#if resource_type === ResourceType.ticket}
           <TicketEntryRenderer {space_name} {subpath} bind:entry/>
