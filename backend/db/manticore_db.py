@@ -393,7 +393,7 @@ class ManticoreDB(BaseDB):
             key_name = search[key+1:idx]
             if key_name not in meta_fields:
                 continue
-            value_end = len(search) - 1
+            value_end = len(search)
             if keys_idx + 1 < len(keys_locations):
                 value_end = keys_locations[keys_idx+1] - 1
             value_substr = search[idx+1:value_end]
@@ -520,7 +520,9 @@ class ManticoreDB(BaseDB):
             sql_str += f" ORDER BY {sort_by} {'asc' if sort_type == SortType.ascending else 'desc'}"
 
         sql_str += f" LIMIT {limit} OFFSET {offset}"
-        sql_str = sql_str.replace(" AND match('')", "")
+        sql_str = sql_str.replace("AND match('')", " ")
+        sql_str = sql_str.replace("match('') AND", " ")
+        sql_str = sql_str.replace("match('')", " ")
         
 
         result = self.mc_command(sql_str)
