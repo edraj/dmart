@@ -348,6 +348,7 @@ app.add_middleware(
     CorrelationIdMiddleware,
     header_name='X-Correlation-ID',
     update_request_header=False,
+    validator=None,
 )
 @app.get("/", include_in_schema=False)
 async def root():

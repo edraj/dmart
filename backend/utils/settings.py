@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     facebook_client_secret: str = ""
     
     enable_channel_auth: bool = False
-    channels: dict = {}
+    channels: list = []
     store_payload_string: bool = True
 
     model_config = SettingsConfigDict(

@@ -326,7 +326,7 @@ async def query_via_urlparams(
 async def create_entry(
     space_name: str = Path(...),
     schema_shortname: str = Path(...),
-    subpath: str = Path(..., regex=regex.SUBPATH),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
     body_dict: dict[str, Any] = Body(...),
 ):
     allowed_models = {
