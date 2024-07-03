@@ -19,7 +19,7 @@ class Plugin(PluginBase):
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
             logger.error(
-                f"data.shortname is None and str is required at system_notification_sender"
+                "data.shortname is None and str is required at system_notification_sender"
             )
             return
         if data.action_type == ActionType.delete:
