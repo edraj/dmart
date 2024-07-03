@@ -11,19 +11,8 @@
 		  "type": "string"
 		}
 	  },
-	  "filter_rules": {
-		"type": "array",
-		"items": {
-		  "type": "object",
-		  "properties": {
-			"key": {
-			  "type": "string"
-			},
-			"value": {
-			  "type": "string"
-			}
-		  }
-		}
+	  "msisdns_search_string": {
+		"type": "string"
 	  },
 	  "scheduled_at": {
 		"type": "integer",
@@ -50,18 +39,6 @@
 		  "finished"
 		],
 		"default": "pending"
-	  },
-	  "governorate": {
-		"type": "object",
-		"properties": {
-		  "shortname": {
-			"type": "string"
-		  },
-		  "sector_shortname": {
-			"type": "string"
-		  }
-		},
-		"required": []
 	  },
 	  "sender_id": {
 		"type": "array",
