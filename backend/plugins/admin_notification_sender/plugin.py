@@ -49,14 +49,15 @@ class Plugin(PluginBase):
             return
 
         # Get msisdns users
-        search_criteria = notification_dict.get('msisdns_search_string')
+        search_criteria = notification_dict.get('search_string')
         if not search_criteria:
             search_criteria = '@msisdn:' + '|'.join(notification_dict.get('msisdns'))
         async with RedisServices() as redis:
             receivers = await redis.search(
-                space_name=settings.management_space,
-                search=f"@subpath:users {search_criteria}",
+                space_name=data.space_name,
+                search=f"@subpath:{notification_dict['subpath']} {search_criteria}",
                 filters={},
+                schema_name=notification_dict.get("schema_name", "meta"),
                 limit=10000,
                 offset=0,
             )

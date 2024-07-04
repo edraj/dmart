@@ -11,8 +11,16 @@
 		  "type": "string"
 		}
 	  },
-	  "msisdns_search_string": {
+	  "search_string": {
 		"type": "string"
+	  },
+	  "subpath": {
+		"type": "string",
+		"description": "Users subpath"
+	  },
+	  "schema_name": {
+		"type": "string",
+		"description": "Users JSON schema definition shortname (must be located under the same space)"
 	  },
 	  "scheduled_at": {
 		"type": "integer",
@@ -60,6 +68,8 @@
 	  }
 	},
 	"required": [
+	  "subpath",
+	  "schema_name",
 	  "priority",
 	  "types"
 	]
