@@ -39,18 +39,21 @@ class Plugin(PluginBase):
             return 
 
         async with AsyncRequest() as client:
-            await client.post(
-                f"{settings.websocket_url}/broadcast-to-channels",
-                json={
-                    "channels": [*set(channels)],
-                    "message": {
-                        "title": "updated",
-                        "subpath": data.subpath,
-                        "space": data.space_name,
-                        "shortname": data.shortname,
-                        "action_type": data.action_type,
-                        "owner_shortname": data.user_shortname
+            try:
+                await client.post(
+                    f"{settings.websocket_url}/broadcast-to-channels",
+                    json={
+                        "channels": [*set(channels)],
+                        "message": {
+                            "title": "updated",
+                            "subpath": data.subpath,
+                            "space": data.space_name,
+                            "shortname": data.shortname,
+                            "action_type": data.action_type,
+                            "owner_shortname": data.user_shortname
+                        }
                     }
-                }
-            )
+                )
+            except Exception as _:
+                pass
             
