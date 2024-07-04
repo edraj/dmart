@@ -299,8 +299,6 @@ async def main(
             for item in loaded_data:
                 print(f"{item['documents']}\tRegular {space_name}/{item['subpath']}")
 
-    await RedisServices.POOL.aclose()
-    await RedisServices.POOL.disconnect(True)
 
 
 if __name__ == "__main__":

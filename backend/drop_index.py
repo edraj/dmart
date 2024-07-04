@@ -25,9 +25,6 @@ async def drop_index(space: str, schema: str) -> None:
             print("DONE.")
     except Exception as e:
         print(f"Error: {e}")
-    finally:  
-        await RedisServices.POOL.aclose()
-        await RedisServices.POOL.disconnect(True)
 
 
 if __name__ == "__main__":

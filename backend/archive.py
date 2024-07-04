@@ -121,11 +121,6 @@ async def archive(space: str, subpath: str, schema: str, olderthan: int):
                     continue
             print(f'Processed {counter}')
 
-
-    await RedisServices.POOL.aclose()
-    await RedisServices.POOL.disconnect(True)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Script for archiving records from different spaces and subpaths."
