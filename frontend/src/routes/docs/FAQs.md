@@ -15,13 +15,6 @@
 2. **Volume permissions:** If your container uses volumes to mount directories, ensure the user running the container has appropriate access rights to those directories.
 3. **Resource limitations:** In some cases, resource limitations (e.g., disk space) might prevent the build process from completing successfully.
 
-**Q: The build process fails with an error message mentioning invalid syntax in the Dockerfile. How can I fix it?**
-
-**A:** Dockerfile syntax errors can lead to build failures. Here's how to address them:
-
-1. **Check Dockerfile syntax:** Carefully review your Dockerfile for any typos, missing instructions, or incorrect formatting in instructions like `FROM`, `COPY`, or `RUN`.
-2. **Use Dockerfile validation tools:** Several online tools and linters can help you check your Dockerfile syntax for errors.
-3. **Consult Dockerfile documentation:** The official Docker documentation provides detailed explanations of Dockerfile instructions and best practices.
 
 **Q: My container build takes an excessively long time to complete. What could be slowing it down?**
 
