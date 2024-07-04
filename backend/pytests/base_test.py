@@ -1,14 +1,16 @@
 import json
 from fastapi.testclient import TestClient
 from main import app
-from utils.redis_services import RedisServices
-from utils.plugin_manager import plugin_manager
 from utils.settings import settings
 from fastapi import status
 from models.api import Query
 from models.enums import QueryType, ResourceType
 
 client = TestClient(app)
+
+
+def gen_client() -> TestClient:
+    return TestClient(app)
 
 
 superman = {}
@@ -25,9 +27,17 @@ MANAGEMENT_SPACE: str = f"{settings.management_space}"
 USERS_SUBPATH: str = "users"
 DEMO_SPACE: str = "test"
 DEMO_SUBPATH: str = "content"
-RedisServices.is_pytest = True
-plugin_manager.is_pytest = True
 
+
+def get_superman_cookie() -> str:
+    response = client.post(
+        "/user/login",
+        json={"shortname": superman["shortname"], "password": superman["password"]},
+    )
+    print(f"\n {response.json() = } \n creds: {superman = } \n")
+    assert response.status_code == status.HTTP_200_OK
+    # client.cookies.set("auth_token", response.cookies["auth_token"])
+    return response.cookies["auth_token"]
 
 def set_superman_cookie():
     response = client.post(

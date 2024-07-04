@@ -26,14 +26,6 @@ from fastapi.logger import logger
 
 class RedisServices(Redis):
 
-    POOL = BlockingConnectionPool(
-        host=settings.redis_host,
-        port=settings.redis_port,
-        password=settings.redis_password,
-        decode_responses=True,
-        protocol=3,
-        max_connections=settings.redis_pool_max_connections,
-    )
 
     META_SCHEMA = (
         TextField("$.uuid", no_stem=True, as_name="uuid"),
@@ -220,7 +212,6 @@ class RedisServices(Redis):
         "view_acl",
     ]
     redis_indices: dict[str, dict[str, Search]] = {}
-    is_pytest = False
     
     def __new__(cls):
         if not hasattr(cls, 'instance'):
@@ -228,19 +219,14 @@ class RedisServices(Redis):
         return cls.instance
 
     def __init__(self):
-        if self.is_pytest:
-            super().__init__(
-                connection_pool=BlockingConnectionPool(
-                    host=settings.redis_host,
-                    port=settings.redis_port,
-                    password=settings.redis_password,
-                    decode_responses=True,
-                    protocol=3,
-                    max_connections=settings.redis_pool_max_connections,
-                )
-            )
-        else:
-            super().__init__(connection_pool=self.POOL, decode_responses=True)
+        super().__init__(connection_pool=BlockingConnectionPool(
+                                            host=settings.redis_host,
+                                            port=settings.redis_port,
+                                            password=settings.redis_password,
+                                            decode_responses=True,
+                                            protocol=3,
+                                            max_connections=settings.redis_pool_max_connections,
+                        ), decode_responses=True)
 
     async def create_index(
         self,
