@@ -1,19 +1,20 @@
 import pytest
+from httpx import AsyncClient
 from pytests.base_test import (
-    client,
     DEMO_SPACE,
     DEMO_SUBPATH,
 )
 from pytests.feature.test_resource_and_attachment import json_entry_shortname
 from fastapi import status
-from models.enums import RequestType
+from models.enums import RequestType,QueryType
 
 
 @pytest.mark.run(order=3)
-def test_query_subpath() -> None:
-    response = client.post(
+@pytest.mark.anyio
+async def test_query_subpath(client: AsyncClient) -> None:
+    response = await client.post(
         "/managed/query",
-        json={"type": "subpath", "space_name": DEMO_SPACE, "subpath": DEMO_SUBPATH},
+        json={"type": QueryType.subpath, "space_name": DEMO_SPACE, "subpath": DEMO_SUBPATH},
     )
     assert response.status_code == status.HTTP_200_OK
     json_response = response.json()
@@ -22,11 +23,12 @@ def test_query_subpath() -> None:
 
 
 @pytest.mark.run(order=3)
-def test_query_search() -> None:
-    response = client.post(
+@pytest.mark.anyio
+async def test_query_search(client: AsyncClient) -> None:
+    response = await client.post(
         "/managed/query",
         json={
-            "type": "search",
+            "type": QueryType.search,
             "space_name": DEMO_SPACE,
             "subpath": DEMO_SUBPATH,
             "search": "",
@@ -39,8 +41,9 @@ def test_query_search() -> None:
 
 
 @pytest.mark.run(order=3)
-def test_query_history() -> None:
-    response = client.post(
+@pytest.mark.anyio
+async def test_query_history(client: AsyncClient) -> None:
+    response = await client.post(
         "/managed/query",
         json={
             "type": "history",
@@ -57,8 +60,9 @@ def test_query_history() -> None:
 
 
 @pytest.mark.run(order=3)
-def test_query_count() -> None:
-    response = client.post(
+@pytest.mark.anyio
+async def test_query_count(client: AsyncClient) -> None:
+    response = await client.post(
         "/managed/query",
         json={
             "type": "counters",
@@ -75,8 +79,9 @@ def test_query_count() -> None:
 
 
 @pytest.mark.run(order=3)
-def test_query_aggregate() -> None:
-    response = client.post(
+@pytest.mark.anyio
+async def test_query_aggregate(client: AsyncClient) -> None:
+    response = await client.post(
         "/managed/query",
         json={
             "type": "aggregation",
@@ -117,8 +122,9 @@ def test_query_aggregate() -> None:
 
 
 @pytest.mark.run(order=3)
-def test_query_events() -> None:
-    response = client.post(
+@pytest.mark.anyio
+async def test_query_events(client: AsyncClient) -> None:
+    response = await client.post(
         "/managed/query",
         json={
             "type": "events",

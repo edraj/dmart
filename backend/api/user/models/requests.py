@@ -1,12 +1,12 @@
-from enum import Enum
 from typing import Dict
 from pydantic import BaseModel, Field
 from utils.internal_error_code import InternalErrorCode
 import utils.regex as rgx
 from models.api import Exception, Error
+from models.enums import StrEnum
 
 
-class OTPType(str, Enum):
+class OTPType(StrEnum):
     SMS = "SMS"
     EMAIL = "EMAIL"
 
