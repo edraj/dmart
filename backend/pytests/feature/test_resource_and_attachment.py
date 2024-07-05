@@ -1,4 +1,5 @@
 import pytest
+from httpx import AsyncClient
 from pytests.base_test import (
     assert_bad_request,
     assert_code_and_status_success,
@@ -9,7 +10,6 @@ from pytests.base_test import (
     delete_space,
     init_test_db,
     set_superman_cookie,
-    client,
     DEMO_SPACE,
     DEMO_SUBPATH,
     upload_resource_with_payload,
@@ -20,14 +20,15 @@ from models.api import Query
 from models.enums import QueryType, ResourceType
 from utils.settings import settings
 
-set_superman_cookie()
 
-init_test_db()
 
 
 @pytest.mark.run(order=2)
-def test_retrieve_content_folder():
-    retrieve_content_folder()
+@pytest.mark.anyio
+async def test_retrieve_content_folder(client: AsyncClient):
+    await init_test_db(client)
+    await set_superman_cookie(client)
+    await retrieve_content_folder(client)
 
 
 schema_record_path = "pytests/data/record_of_schema.json"
@@ -50,7 +51,8 @@ resources_csv_path = "pytests/data/resources.csv"
 
 
 @pytest.mark.run(order=2)
-def test_create_text_content_resource():
+@pytest.mark.anyio
+async def test_create_text_content_resource(client: AsyncClient):
     attributes = {"payload": {"content_type": "text", "body": "this is a text content"}}
     request_data = {
         "space_name": DEMO_SPACE,
@@ -65,9 +67,10 @@ def test_create_text_content_resource():
         ],
     }
 
-    assert_code_and_status_success(client.post("/managed/request", json=request_data))
+    assert_code_and_status_success(await client.post("/managed/request", json=request_data))
 
-    assert_resource_created(
+    await assert_resource_created(
+        client,
         query=Query(
             type=QueryType.search,
             space_name=DEMO_SPACE,
@@ -81,18 +84,21 @@ def test_create_text_content_resource():
         res_attributes=attributes,
     )
 
-    check_repeated_shortname(client.post("/managed/request", json=request_data))
+    check_repeated_shortname(await client.post("/managed/request", json=request_data))
 
 
 @pytest.mark.run(order=2)
-def test_upload_schema_resource() -> None:
-    upload_resource_with_payload(
+@pytest.mark.anyio
+async def test_upload_schema_resource(client: AsyncClient) -> None:
+    await upload_resource_with_payload(
+        client,
         DEMO_SPACE, schema_record_path, schema_payload_path, "application/json"
     )
 
 
 @pytest.mark.run(order=2)
-def test_create_json_content_resource() -> None:
+@pytest.mark.anyio
+async def test_create_json_content_resource(client: AsyncClient) -> None:
     global json_entry_uuid
     endpoint = "/managed/request"
     attributes = {
@@ -116,10 +122,11 @@ def test_create_json_content_resource() -> None:
         ],
     }
 
-    response = client.post(endpoint, json=request_data)
+    response = await client.post(endpoint, json=request_data)
     assert_code_and_status_success(response)
 
-    assert_resource_created(
+    await assert_resource_created(
+        client,
         query=Query(
             type=QueryType.search,
             space_name=DEMO_SPACE,
@@ -136,7 +143,7 @@ def test_create_json_content_resource() -> None:
     json_entry_uuid = response.json()["records"][0]["uuid"]
 
     check_repeated_shortname(
-        client.post(
+        await client.post(
             endpoint,
             json=request_data,
         )
@@ -144,7 +151,8 @@ def test_create_json_content_resource() -> None:
 
 
 @pytest.mark.run(order=2)
-def test_create_invalid_json_resource():
+@pytest.mark.anyio
+async def test_create_invalid_json_resource(client: AsyncClient):
     global json_entry_uuid
     request_data = {
         "space_name": DEMO_SPACE,
@@ -165,11 +173,12 @@ def test_create_invalid_json_resource():
         ],
     }
 
-    assert_bad_request(client.post("/managed/request", json=request_data))
+    assert_bad_request(await client.post("/managed/request", json=request_data))
 
 
 @pytest.mark.run(order=2)
-def test_update_json_content_resource() -> None:
+@pytest.mark.anyio
+async def test_update_json_content_resource(client: AsyncClient) -> None:
     endpoint = "/managed/request"
     request_data = {
         "space_name": DEMO_SPACE,
@@ -190,11 +199,12 @@ def test_update_json_content_resource() -> None:
         ],
     }
 
-    assert_code_and_status_success(client.post(endpoint, json=request_data))
+    assert_code_and_status_success(await client.post(endpoint, json=request_data))
 
 
 @pytest.mark.run(order=2)
-def test_create_comment_attachment() -> None:
+@pytest.mark.anyio
+async def test_create_comment_attachment(client: AsyncClient) -> None:
     endpoint = "/managed/request"
     request_data = {
         "space_name": DEMO_SPACE,
@@ -209,9 +219,10 @@ def test_create_comment_attachment() -> None:
         ],
     }
 
-    assert_code_and_status_success(client.post(endpoint, json=request_data))
+    assert_code_and_status_success(await client.post(endpoint, json=request_data))
 
-    assert_resource_created(
+    await assert_resource_created(
+        client,
         query=Query(
             type=QueryType.search,
             space_name=DEMO_SPACE,
@@ -226,12 +237,13 @@ def test_create_comment_attachment() -> None:
         res_attachments={"comment": 1},
     )
 
-    check_repeated_shortname(client.post(endpoint, json=request_data))
+    check_repeated_shortname(await client.post(endpoint, json=request_data))
 
 
 @pytest.mark.run(order=2)
-def test_get_entry_from_managed():
-    response = client.get(
+@pytest.mark.anyio
+async def test_get_entry_from_managed(client: AsyncClient):
+    response = await client.get(
         f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}"
     )
     assert response.status_code == status.HTTP_200_OK
@@ -239,79 +251,90 @@ def test_get_entry_from_managed():
 
 
 @pytest.mark.run(order=2)
-def test_get_entry_by_uuid():
-    response = client.get(f"managed/byuuid/{json_entry_uuid.split('-')[0]}")
+@pytest.mark.anyio
+async def test_get_entry_by_uuid(client: AsyncClient):
+    response = await client.get(f"managed/byuuid/{json_entry_uuid.split('-')[0]}")
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["uuid"] == json_entry_uuid
 
 
 @pytest.mark.run(order=2)
-def test_get_entry_by_slug():
-    response = client.get(f"managed/byslug/{json_entry_shortname}_slug")
+@pytest.mark.anyio
+async def test_get_entry_by_slug(client: AsyncClient):
+    response = await client.get(f"managed/byslug/{json_entry_shortname}_slug")
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["uuid"] == json_entry_uuid
 
 
 @pytest.mark.run(order=2)
-def test_get_not_found_entry():
-    response = client.get(
+@pytest.mark.anyio
+async def test_get_not_found_entry(client: AsyncClient):
+    response = await client.get(
         f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/json_entry_shortname"
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.run(order=2)
-def test_get_unauthorized_resource_from_managed_api(mocker):
+@pytest.mark.anyio
+async def test_get_unauthorized_resource_from_managed_api(client, mocker):
     mocker.patch("utils.access_control.access_control.check_access", return_value=None)
-    response = client.get(
+    response = await client.get(
         f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}"
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.run(order=2)
-def test_get_unauthorized_entry_from_public_api():
-    response = client.get(
+@pytest.mark.anyio
+async def test_get_unauthorized_entry_from_public_api(client: AsyncClient):
+    response = await client.get(
         f"public/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}"
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.run(order=2)
-def test_upload_json_content_resource() -> None:
-    upload_resource_with_payload(
+@pytest.mark.anyio
+async def test_upload_json_content_resource(client: AsyncClient) -> None:
+    await upload_resource_with_payload(
+        client,
         DEMO_SPACE, content_record_path, content_payload_path, "application/json"
     )
 
 
 @pytest.mark.run(order=2)
-def test_upload_image_attachment() -> None:
-    upload_resource_with_payload(
+@pytest.mark.anyio
+async def test_upload_image_attachment(client: AsyncClient) -> None:
+    await upload_resource_with_payload(
+        client,
         DEMO_SPACE, media_record_path, media_payload_path, "image/jpeg", True
     )
 
 
 @pytest.mark.run(order=2)
-def test_retrieve_attachment():
+@pytest.mark.anyio
+async def test_retrieve_attachment(client: AsyncClient):
     # Retrieve from MANAGED API
     endpoint = f"managed/payload/media/{DEMO_SPACE}/{DEMO_SUBPATH}/{content_shortname}/{media_shortname}"
-    response = client.get(endpoint)
+    response = await client.get(endpoint)
     assert response.status_code == status.HTTP_200_OK
 
     # Retrieve from PUBLIC API
     endpoint = f"public/payload/media/{DEMO_SPACE}/{DEMO_SUBPATH}/{content_shortname}/{media_shortname}"
-    response = client.get(endpoint)
+    response = await client.get(endpoint)
     assert response.status_code == status.HTTP_200_OK
 
 
 @pytest.mark.run(order=2)
-def test_upload_resource_from_csv() -> None:
+@pytest.mark.anyio
+async def test_upload_resource_from_csv(client: AsyncClient) -> None:
     with open(resources_csv_path, "rb") as csv_file:
         no_of_rows = len(csv_file.readlines()) - 1
 
         csv_file.seek(0)
 
-        response = client.post(
+        response = await client.post(
             f"managed/resources_from_csv/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{schema_shortname}",
             files=[("resources_file", ("data.csv", csv_file))],
         )
@@ -321,57 +344,50 @@ def test_upload_resource_from_csv() -> None:
 
 
 @pytest.mark.run("last")
-def test_delete_attachment():
-    delete_resource(
+@pytest.mark.anyio
+async def test_delete_attachment(client: AsyncClient):
+    await delete_resource(
+        client,
         ResourceType.media,
         f"{DEMO_SUBPATH}/{content_shortname}",
         media_shortname.split(".")[0],
     )
 
-    assert (
-        client.get(
-            f"managed/payload/media/{DEMO_SPACE}/{DEMO_SUBPATH}/{content_shortname}/{media_shortname}"
-        ).status_code
-        == status.HTTP_404_NOT_FOUND
-    )
+    response = await client.get(f"managed/payload/media/{DEMO_SPACE}/{DEMO_SUBPATH}/{content_shortname}/{media_shortname}")
+    assert (response.status_code == status.HTTP_404_NOT_FOUND)
 
 
-def test_delete_content():
-    delete_resource(ResourceType.content, DEMO_SUBPATH, content_shortname)
+@pytest.mark.anyio
+async def test_delete_content(client: AsyncClient):
+    await delete_resource(client, ResourceType.content, DEMO_SUBPATH, content_shortname)
 
-    assert_resource_deleted(DEMO_SPACE, DEMO_SUBPATH, content_shortname)
+    await assert_resource_deleted(client, DEMO_SPACE, DEMO_SUBPATH, content_shortname)
 
-    assert (
-        client.get(
-            f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{content_shortname}"
-        ).status_code
-        == status.HTTP_404_NOT_FOUND
+    response = await client.get(f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{content_shortname}")
+
+    assert (response.status_code == status.HTTP_404_NOT_FOUND)
+
+
+@pytest.mark.run("last")
+@pytest.mark.anyio
+async def test_delete_folder(client: AsyncClient):
+    await delete_resource(client, ResourceType.folder, "/", DEMO_SUBPATH)
+
+    await assert_resource_deleted(client, DEMO_SPACE, settings.root_subpath_mw, DEMO_SUBPATH)
+
+    response = await client.get(f"managed/entry/folder/{DEMO_SPACE}/{settings.root_subpath_mw}/{DEMO_SUBPATH}")
+    assert (response.status_code == status.HTTP_404_NOT_FOUND
     )
 
 
 @pytest.mark.run("last")
-def test_delete_folder():
-    delete_resource(ResourceType.folder, "/", DEMO_SUBPATH)
-
-    assert_resource_deleted(DEMO_SPACE, settings.root_subpath_mw, DEMO_SUBPATH)
-
-    assert (
-        client.get(
-            f"managed/entry/folder/{DEMO_SPACE}/{settings.root_subpath_mw}/{DEMO_SUBPATH}"
-        ).status_code
-        == status.HTTP_404_NOT_FOUND
-    )
+@pytest.mark.anyio
+async def test_delete_space(client: AsyncClient):
+    await delete_space(client)
 
 
 @pytest.mark.run("last")
-def test_delete_space():
-    delete_space()
-
-
-@pytest.mark.run("last")
-def test_logout():
-    response = client.post(
-        "/user/logout",
-        json={},
-    )
+@pytest.mark.anyio
+async def test_logout(client: AsyncClient):
+    response = await client.post("/user/logout", json={})
     assert_code_and_status_success(response)
