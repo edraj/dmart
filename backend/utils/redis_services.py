@@ -212,6 +212,14 @@ class RedisServices(Redis):
         "view_acl",
     ]
     redis_indices: dict[str, dict[str, Search]] = {}
+    POOL: BlockingConnectionPool= BlockingConnectionPool(
+                            timeout=10,
+                            host=settings.redis_host,
+                            port=settings.redis_port,
+                            password=settings.redis_password,
+                            protocol=3,
+                            max_connections=settings.redis_pool_max_connections,
+                            decode_responses=True)
     
     def __new__(cls):
         if not hasattr(cls, 'instance'):
@@ -219,14 +227,13 @@ class RedisServices(Redis):
         return cls.instance
 
     def __init__(self):
-        super().__init__(connection_pool=BlockingConnectionPool(
-                                            host=settings.redis_host,
-                                            port=settings.redis_port,
-                                            password=settings.redis_password,
-                                            decode_responses=True,
-                                            protocol=3,
-                                            max_connections=settings.redis_pool_max_connections,
-                        ), decode_responses=True)
+        super().__init__(connection_pool=RedisServices.POOL)
+
+    async def close_pool(self):
+        # print('{"Disconnecting connection pool":"initated"}')
+        await self.aclose()
+        await RedisServices.POOL.aclose()
+        await RedisServices.POOL.disconnect(True)
 
     async def create_index(
         self,
@@ -582,7 +589,7 @@ class RedisServices(Redis):
 
         return query_policies
 
-    def prepate_meta_doc(
+    def prepare_meta_doc(
         self, space_name: str, subpath: str, meta: core.Meta
     ):
         resource_type = meta.__class__.__name__.lower()
@@ -597,7 +604,7 @@ class RedisServices(Redis):
                 meta.shortname,
                 subpath,
             )
-        meta_json = json.loads(meta.model_dump_json(exclude_none=True))
+        meta_json = json.loads(meta.model_dump_json(exclude_none=True,warnings="error"))
         meta_json["query_policies"] = self.generate_query_policies(
             space_name,
             subpath,
@@ -631,7 +638,7 @@ class RedisServices(Redis):
     async def save_meta_doc(
         self, space_name: str, subpath: str, meta: core.Meta
     ):
-        meta_doc_id, meta_json = self.prepate_meta_doc(
+        meta_doc_id, meta_json = self.prepare_meta_doc(
             space_name, subpath, meta
         )
         await self.save_doc(meta_doc_id, meta_json)

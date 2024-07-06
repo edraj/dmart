@@ -1,5 +1,6 @@
 from copy import copy
 import shutil
+
 from utils.helpers import arr_remove_common, read_jsonl_file, snake_case
 from datetime import datetime
 from models.enums import ContentType, ResourceType, LockAction
@@ -270,7 +271,7 @@ async def save(
     if not path.is_dir():
         os.makedirs(path)
 
-    meta_json = meta.model_dump_json(exclude_none=True)
+    meta_json = meta.model_dump_json(exclude_none=True,warnings="error")
     with open(path / filename, "w") as file:
         file.write(meta_json)
         file.flush()
@@ -295,7 +296,7 @@ async def create(
         os.makedirs(path)
 
     with open(path / filename, "w") as file:
-        file.write(meta.model_dump_json(exclude_none=True))
+        file.write(meta.model_dump_json(exclude_none=True,warnings="error"))
         file.flush()
         os.fsync(file)
 
@@ -424,7 +425,7 @@ async def update(
                 )
 
     meta.updated_at = datetime.now()
-    meta_json = meta.model_dump_json(exclude_none=True)
+    meta_json = meta.model_dump_json(exclude_none=True,warnings="error")
     with open(path / filename, "w") as file:
         file.write(meta_json)
         file.flush()
@@ -514,7 +515,7 @@ async def store_entry_diff(
         f"{history_path}/history.jsonl",
         "a",
     ) as events_file:
-        await events_file.write(f"{history_obj.model_dump_json()}\n")
+        await events_file.write(f"{history_obj.model_dump_json(exclude_none=True, warnings="error")}\n")
 
     return history_diff
 
@@ -612,7 +613,7 @@ async def move(
             os.rename(src=src_payload_file_path, dst=dist_payload_file_path)
 
     if meta_updated:
-        meta_json = meta.model_dump_json(exclude_none=True)
+        meta_json = meta.model_dump_json(exclude_none=True,warnings="error")
         with open(dest_path / dest_filename, "w") as opened_file:
             opened_file.write(meta_json)
             opened_file.flush()

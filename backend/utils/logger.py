@@ -18,9 +18,9 @@ class CustomFormatter(logging.Formatter):
             "props": getattr(record, "props", ""),
             "thread": record.threadName,
             "process": record.process,
-            "pathname": record.pathname,
-            "lineno": record.lineno,
-            "funcName": record.funcName,
+            # "pathname": record.pathname,
+            # "lineno": record.lineno,
+            # "funcName": record.funcName,
         }
         return json.dumps(data)
 
