@@ -1391,7 +1391,7 @@ async def internal_sys_update_model(
     async with RedisServices() as redis_services:
         await redis_services.save_meta_doc(space_name, subpath, meta)
         if payload_updated:
-            payload_dict.update(json.loads(meta.model_dump_json()))
+            payload_dict.update(json.loads(meta.model_dump_json(exclude_none=True,warnings="error")))
             await redis_services.save_payload_doc(
                 space_name,
                 subpath,
@@ -1429,7 +1429,7 @@ async def internal_save_model(
                 meta=meta,
                 payload_data=payload,
             )
-            payload.update(json.loads(meta.json()))
+            payload.update(json.loads(meta.model_dump_json(exclude_none=True,warnings="error")))
             await redis.save_payload_doc(
                 space_name, 
                 subpath, 

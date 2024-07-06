@@ -120,6 +120,7 @@ async def archive(space: str, subpath: str, schema: str, olderthan: int):
                     print(f"Error archiving {record.get('shortname')}: {e} at line {sys.exc_info()[-1].tb_lineno}") # type: ignore
                     continue
             print(f'Processed {counter}')
+    await RedisServices().close_pool()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

@@ -7,12 +7,12 @@ from models.enums import QueryType, ResourceType
 superman = {}
 alibaba = {}
 
-file = open("./login_creds.sh", "r")
-for line in file.readlines():
-    if line.strip().startswith("export SUPERMAN"):
-        superman = json.loads(str(line.strip().split("'")[1]))
-    if line.strip().startswith("export ALIBABA"):
-        alibaba = json.loads(str(line.strip().split("'")[1]))
+with open("./login_creds.sh", "r") as file:
+    for line in file.readlines():
+        if line.strip().startswith("export SUPERMAN"):
+            superman = json.loads(str(line.strip().split("'")[1]))
+        if line.strip().startswith("export ALIBABA"):
+            alibaba = json.loads(str(line.strip().split("'")[1]))
 
 MANAGEMENT_SPACE: str = f"{settings.management_space}"
 USERS_SUBPATH: str = "users"

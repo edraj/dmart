@@ -22,7 +22,7 @@ from models.enums import (
     PluginType,
     EventListenTime,
 )
-from utils.helpers import camel_case, remove_none, snake_case
+from utils.helpers import camel_case, remove_none_dict, snake_case
 import utils.regex as regex
 from utils.settings import settings
 import utils.password_hashing as password_hashing
@@ -71,7 +71,7 @@ class Payload(Resource):
         if self.content_type == ContentType.json:
             if old_body and not replace:
                 separate_payload_body = dict(
-                    remove_none(
+                    remove_none_dict(
                         deep_update(
                             old_body,
                             payload["body"],
@@ -106,7 +106,8 @@ class Record(BaseModel):
             self.subpath = self.subpath.strip("/")
 
     def to_dict(self):
-        return json.loads(self.model_dump_json())
+        return self.model_dump(exclude_none=True,warnings="error")
+
 
     def __eq__(self, other):
         return (
@@ -217,8 +218,7 @@ class Meta(Resource):
 
         record.attributes["owner_shortname"] = owner_shortname
         record.attributes["shortname"] = record.shortname
-        meta_obj = meta_class(**remove_none(record.attributes))  # type: ignore
-        return meta_obj
+        return meta_class(**remove_none_dict(record.attributes))
 
     @staticmethod
     def check_record(record: Record, owner_shortname: str):

@@ -171,31 +171,35 @@ def divide_chunks(lll, n):
         yield lll[i : i + n]
 
 
-def remove_none(target: dict | list):
-    if isinstance(target, dict):
-        new_d: dict = {}
-        for key, val in target.items():
-            if val is None:
-                continue
+def remove_none_dict(target: dict[str, Any] ) -> dict[str, Any]:
+    new_d: dict = {}
+    for key, val in target.items():
+        if val is None:
+            continue
 
-            if isinstance(val, dict) or isinstance(val, list):
-                new_d[key] = remove_none(val)
-            else:
-                new_d[key] = val
+        if isinstance(val, dict) : 
+            new_d[key] = remove_none_dict(val)
+        elif isinstance(val, list):
+            new_d[key] = remove_none_list(val)
+        else:
+            new_d[key] = val
 
-        return new_d
-    else:
-        new_l: list = []
-        for val in target:
-            if val is None:
-                continue
+    return new_d
 
-            if isinstance(val, dict) or isinstance(val, list):
-                new_l.append(remove_none(val))
-            else:
-                new_l.append(val)
+def remove_none_list(target: list):
+    new_l: list = []
+    for val in target:
+        if val is None:
+            continue
 
-        return new_l
+        if isinstance(val, dict) : 
+            new_l.append(remove_none_dict(val))
+        elif isinstance(val, list):
+            new_l.append(remove_none_list(val))
+        else:
+            new_l.append(val)
+
+    return new_l
 
 
 def alter_dict_keys(
