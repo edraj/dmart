@@ -20,7 +20,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Install python dependencies
       run: |
-        source $HOME/venv/bin/activate
+        source $HOME/.venv/bin/activate
         cd backend; 
         pip install -r requirements.txt
         pip install -r test-requirements.txt
@@ -31,28 +31,28 @@ jobs:
     - name: Lint with pyright
       run: |
         cd backend
-        source $HOME/venv/bin/activate
+        source $HOME/.venv/bin/activate
         PYRIGHT_PYTHON_FORCE_VERSION=latest pyright ./
     - name: Lint with Ruff
       run: |
-        source $HOME/venv/bin/activate
+        source $HOME/.venv/bin/activate
         cd backend; ruff check .
     - name: Check with mypy
       run: |
-        source $HOME/venv/bin/activate
+        source $HOME/.venv/bin/activate
         cd backend; mypy --explicit-package-bases --warn-return-any .
     - name: Start dmart service and run curl.sh
       run: |
         export XDG_RUNTIME_DIR="/run/user/$UID"
         export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
-        source $HOME/venv/bin/activate
+        source $HOME/.venv/bin/activate
         systemctl --user restart dmart
         cd backend
         ./reload.sh
         ./curl.sh
     - name: Test with pytest
       run: |
-        source $HOME/venv/bin/activate
+        source $HOME/.venv/bin/activate
         cd backend; pytest -p no:warnings pytests
     - name: Install frontend js depdenencies
       run: |
