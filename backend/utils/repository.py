@@ -729,7 +729,7 @@ async def get_entry_attachments(
     if not attachments_path.is_dir():
         return {}
     attachments_iterator = os.scandir(attachments_path)
-    attachments_dict: dict[str, list] = {}
+    attachments_dict: dict[ResourceType, list] = {}
     for attachment_entry in attachments_iterator:
         # TODO: Filter types on the parent attachment type folder layer
         if not attachment_entry.is_dir():
@@ -782,10 +782,10 @@ async def get_entry_attachments(
                     )
 
             if attach_resource_name in attachments_dict:
-                attachments_dict[attach_resource_name].append(
+                attachments_dict[ResourceType(attach_resource_name)].append(
                     resource_record_obj)
             else:
-                attachments_dict[attach_resource_name] = [resource_record_obj]
+                attachments_dict[ResourceType(attach_resource_name)] = [resource_record_obj]
         attachments_files.close()
     attachments_iterator.close()
 
