@@ -592,7 +592,7 @@ class RedisServices(Redis):
     def prepare_meta_doc(
         self, space_name: str, subpath: str, meta: core.Meta
     ):
-        resource_type = meta.__class__.__name__.lower()
+        resource_type = ResourceType(meta.__class__.__name__.lower())
         meta_doc_id = self.generate_doc_id(
             space_name, "meta", meta.shortname, subpath
         )
@@ -604,7 +604,8 @@ class RedisServices(Redis):
                 meta.shortname,
                 subpath,
             )
-        meta_json = json.loads(meta.model_dump_json(exclude_none=True,warnings="error"))
+        meta.model_rebuild()
+        meta_json = json.loads(meta.model_dump_json(serialize_as_any=False, exclude_none=True,warnings="error"))
         meta_json["query_policies"] = self.generate_query_policies(
             space_name,
             subpath,
@@ -650,7 +651,7 @@ class RedisServices(Redis):
         subpath: str,
         meta: core.Meta,
         payload: dict,
-        resource_type: str = ResourceType.content,
+        resource_type: ResourceType = ResourceType.content,
     ):
         if meta.payload is None:
             print(

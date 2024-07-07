@@ -66,7 +66,7 @@ class Payload(Resource):
     def update(
         self, payload: dict, old_body: dict | None = None, replace: bool = False
     ) -> dict | None:
-        self.content_type = payload["content_type"]
+        self.content_type = ContentType(payload["content_type"])
 
         if self.content_type == ContentType.json:
             if old_body and not replace:
@@ -262,7 +262,7 @@ class Meta(Resource):
             and "content_type" in record.attributes["payload"]
         ):
             self.payload = Payload(
-                content_type=record.attributes["payload"]["content_type"],
+                content_type=ContentType(record.attributes["payload"]["content_type"]),
                 schema_shortname=record.attributes["payload"].get("schema_shortname"),
                 body=f"{record.shortname}.json",
             )
@@ -287,7 +287,7 @@ class Meta(Resource):
             )
 
         record_fields = {
-            "resource_type": snake_case(type(self).__name__),
+            "resource_type": ResourceType(snake_case(type(self).__name__)),
             "uuid": self.uuid,
             "shortname": self.shortname,
             "subpath": subpath,
@@ -554,7 +554,7 @@ class Notification(Meta):
         if entry:
             entry_locator = Locator(
                 space_name=entry["space_name"],
-                type=entry["resource_type"],
+                type=ResoureType(entry["resource_type"]),
                 schema_shortname=entry["payload"]["schema_shortname"],
                 subpath=entry["subpath"],
                 shortname=entry["shortname"],
