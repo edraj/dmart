@@ -554,7 +554,7 @@ class Notification(Meta):
         if entry:
             entry_locator = Locator(
                 space_name=entry["space_name"],
-                type=ResoureType(entry["resource_type"]),
+                type=ResourceType(entry["resource_type"]),
                 schema_shortname=entry["payload"]["schema_shortname"],
                 subpath=entry["subpath"],
                 shortname=entry["shortname"],
