@@ -87,7 +87,7 @@ class Plugin(PluginBase):
         # 2- get list of subscribed users
         notification_subscribers = [entry["owner_shortname"]]
         # if entry.get("collaborators", None):
-        #     notification_subscribers.extend(entry["collaborators"].values())  # type: ignore
+        #     notification_subscribers.extend(entry["collaborators"].values())
         if entry.get("owner_group_shortname", None):
             group_users = await get_group_users(entry["owner_group_shortname"])
             group_members = [

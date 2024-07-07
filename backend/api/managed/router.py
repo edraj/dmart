@@ -2586,7 +2586,7 @@ async def data_asset(
                     globals().setdefault(
                         attachments[query.data_asset_type][idx].shortname,
                         conn.read_csv(str(file_path))
-                    )  # type: ignore  # noqa
+                    )
                 case DataAssetType.jsonl:
                     globals().setdefault(
                         attachments[query.data_asset_type][idx].shortname,
@@ -2594,17 +2594,17 @@ async def data_asset(
                             str(file_path),
                             format='auto'
                         )
-                    )  # type: ignore  # noqa
+                    )
                 case DataAssetType.parquet:
                     globals().setdefault(
                         attachments[query.data_asset_type][idx].shortname,
                         conn.read_parquet(str(file_path))
-                    )  # type: ignore  # noqa
+                    )
 
-    data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)  # type: ignore
+    data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)
 
     temp_file = f"temp_file_from_duckdb_{int(round(time() * 1000))}.csv"
-    data.write_csv(file_name=temp_file)  # type: ignore
+    data.write_csv(file_name=temp_file)
     data_objects: list[dict[str, Any]] = await csv_file_to_json(FilePath(temp_file))
     os.remove(temp_file)
 

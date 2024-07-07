@@ -47,26 +47,28 @@ from utils.internal_error_code import InternalErrorCode
 async def lifespan(app: FastAPI):
     logger.info("Starting up")
     print('{"stage":"starting up"}')
-    # , extra={"props":{
-    #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
-    #    "redis_port": settings.redis_port
-    #    }})
+    try :
+        # , extra={"props":{
+        #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
+        #    "redis_port": settings.redis_port
+        #    }})
 
-    openapi_schema = app.openapi()
-    paths = openapi_schema["paths"]
-    for path in paths:
-        for method in paths[path]:
-            responses = paths[path][method]["responses"]
-            if responses.get("422"):
-                responses.pop("422")
-    app.openapi_schema = openapi_schema
+        openapi_schema = app.openapi()
+        paths = openapi_schema["paths"]
+        for path in paths:
+            for method in paths[path]:
+                responses = paths[path][method]["responses"]
+                if responses.get("422"):
+                    responses.pop("422")
+        app.openapi_schema = openapi_schema
 
-    await initialize_spaces()
-    await access_control.load_permissions_and_roles()
+        await initialize_spaces()
+        await access_control.load_permissions_and_roles()
 
-    yield
+        yield
 
-    await RedisServices().close_pool()
+    finally:
+        await RedisServices().close_pool()
     
     logger.info("Application shutting down")
     print('{"stage":"shutting down"}')
