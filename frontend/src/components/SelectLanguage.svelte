@@ -2,6 +2,7 @@
   import { _, switchLocale, locale, available_locales } from "@/i18n";
   import { website } from "@/config";
   import { ButtonGroup, Button } from "sveltestrap";
+  // import { formToJSON } from "axios";
   let locales = available_locales.filter((x) => x in website.languages);
 
   function selectLocale(event : Event, _locale : string) {
@@ -17,7 +18,14 @@
       color="primary"
       active={key === $locale}
       size="sm"
-      on:click={(event) => selectLocale(event, key)}>{key}</Button
+      on:click={
+        function(event) {
+           selectLocale(event, key)
+           // console.log(event, key)
+           console.log("file: ", localStorage.getItem("file"))
+           window.location.replace(localStorage.getItem("file"));
+        }
+      }>{key}</Button
     >
   {/each}
 </ButtonGroup>

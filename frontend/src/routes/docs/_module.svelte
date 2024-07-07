@@ -5,10 +5,11 @@
         Col,
         Card,
         CardBody,
-    } from 'sveltestrap';
+  } from 'sveltestrap';
     import {url} from "@roxi/routify";
     import Header from "@/components/Header.svelte";
     import Footer from "@/components/Footer.svelte";
+    import { languages } from 'prismjs';
 
     const docFiles = [
         'index.md',
@@ -18,17 +19,44 @@
         'Data-Organization.md',
         'Tools.md',
         'System-Admin-Tool.md',
-     'Examples.md',
-         'Automated-Testing.md',
+        'Examples.md',
+       'Automated-Testing.md',
         'Clients-and-Libraries.md',  
         'Use-Cases.md',
         'Starter-Kits.md',
         'Roadmap.md',
         'FAQs.md',
-        'FAQs.ar.md'
+    ];
+    const arDocFiles = [
+        'مدخل',
+        'التقنيات والميزات',
+        'التثبيت والتشغيل',
+        'المفاهيم التفصيلية',
+        'تنظيم البيانات',
+        'الأدوات',
+        'أداة إدارة النظام',
+        'الأمثلة ',
+       'الاختبار الآلي',
+        'مكتبات وتطبيقات العميل',  
+        'حالات الاستخدام',
+        'طقم المبتدئين',
+        'خريطة الأهداف',
+        'أسئلة شائعة',
     ];
 
+
     let selectedIndex = docFiles.findIndex(file => `/docs/${file.replace('.md', '').replace('index','')}`===window.location.pathname );
+
+    function titleCard(file:string, index:number):string {
+      localStorage.setItem("file", file)
+      localStorage.setItem("index", index.toString())
+
+        let language = localStorage.getItem("preferred_locale").substring(1,3)
+        if ( language === "en") {
+          return file.replaceAll('-', ' ').replace('.md', '').replace('index','Introduction to DMART');
+        } 
+        return arDocFiles[index]
+    }
 </script>
 
 <style>
@@ -48,13 +76,15 @@
           {#each docFiles as file, index}
             <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-click-events-have-key-events -->
             <li
-              on:click={()=> selectedIndex = index}
-              class={
-                file===docFiles[selectedIndex]
-                ? "nav-item selected" : "nav-item"
-              }>
+              on:click={function() { 
+                
+                selectedIndex = index
+                console.log("selectedIndex ", selectedIndex)
+                console.log("Index ", index)
+              }}
+              class={ file===docFiles[selectedIndex] ? "nav-item selected" : "nav-item" }>
               <a href="/docs/{file.replace('.md', '').replace('index','')}" class="nav-link link-dark">
-                {file.replaceAll('-', ' ').replace('.md', '').replace('index','Introduction to DMART')}
+                {titleCard(file, index)} 
               </a>
             </li>
             <hr class="p-0 m-0">
