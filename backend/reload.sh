@@ -33,15 +33,16 @@ while [ $RESP -ne "200" ]; do
   RESP=$(curl --write-out '%{http_code}' --silent --connect-timeout 0.5 --output /dev/null  "${APP_URL}")
   [[ $COUNTER -ge 30 ]] && break
 done
-sleep 4
+sleep 2
 
 TOKEN=$(curl -s "${APP_URL}/user/login" -H 'Content-Type: application/json' -d "${SUPERMAN}" | jq -r '.records[0].attributes.access_token')
 curl -s -H "Authorization: Bearer ${TOKEN}" -H "$CT" $APP_URL/user/profile | jq -r '.status'
 RESULT+=$?
 
+sleep 1
 curl -s -H "Authorization: Bearer ${TOKEN}" "${APP_URL}/user/profile" | jq '.records[0].attributes.roles'
 RESULT+=$?
-
+sleep 1
 redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} ${REDIS_PASSWORD} JSON.GET users_permissions_dmart | jq -R '.|fromjson|keys|length'
 # RESULT+=$?
 
