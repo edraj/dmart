@@ -1,5 +1,3 @@
-# python-json-logger
-# json_logging
 fastapi
 pydantic
 pydantic[email]
@@ -14,14 +12,6 @@ jsonschema
 email-validator
 passlib[bcrypt]
 bcrypt
-jq
-segno
-jinja2
 asgi-correlation-id
 pydantic-settings
 fastapi-sso >= 0.9.1
-duckdb
-jsf
-types-psutil
-types-pyinstaller
-pyinstaller

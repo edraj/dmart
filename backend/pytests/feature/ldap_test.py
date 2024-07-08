@@ -8,7 +8,6 @@ from pytests.base_test import (
     USERS_SUBPATH,
 )
 from utils.settings import settings
-from ldap3 import AUTO_BIND_NO_TLS, Server, Connection, ALL
 
 
 
@@ -33,9 +32,18 @@ if (
 ):
     ldap_active = False
 
-ldap_conn: Connection | None = None
+
+if not ldap_active:
+    print("LDAP is not active")
+
 
 try:
+    ldap3 = __import__("ldap3")
+    AUTO_BIND_NO_TLS = ldap3.AUTO_BIND_NO_TLS
+    Server = ldap3.Server
+    Connection = ldap3.Connection
+    ALL = ldap3.ALL
+
     ldap_conn = Connection(
         Server("127.0.0.1", get_info=ALL),
         user=settings.ldap_admin_dn,
