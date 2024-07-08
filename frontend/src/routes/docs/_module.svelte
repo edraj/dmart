@@ -37,7 +37,7 @@
         'أداة إدارة النظام',
         'الأمثلة ',
        'الاختبار الآلي',
-        'مكتبات وتطبيقات العميل',  
+        'تطبيقات المستخدم',  
         'حالات الاستخدام',
         'طقم المبتدئين',
         'خريطة الأهداف',
@@ -48,8 +48,8 @@
     let selectedIndex = docFiles.findIndex(file => `/docs/${file.replace('.md', '').replace('index','')}`===window.location.pathname );
 
     function titleCard(file:string, index:number):string {
-      localStorage.setItem("file", file)
-      localStorage.setItem("index", index.toString())
+        localStorage.setItem("file", file)
+        localStorage.setItem("index", index.toString())
 
         let language = localStorage.getItem("preferred_locale").substring(1,3)
         if ( language === "en") {
@@ -77,10 +77,10 @@
             <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-click-events-have-key-events -->
             <li
               on:click={function() { 
-                
                 selectedIndex = index
                 console.log("selectedIndex ", selectedIndex)
                 console.log("Index ", index)
+                change()
               }}
               class={ file===docFiles[selectedIndex] ? "nav-item selected" : "nav-item" }>
               <a href="/docs/{file.replace('.md', '').replace('index','')}" class="nav-link link-dark">
