@@ -80,7 +80,6 @@
                 selectedIndex = index
                 console.log("selectedIndex ", selectedIndex)
                 console.log("Index ", index)
-                change()
               }}
               class={ file===docFiles[selectedIndex] ? "nav-item selected" : "nav-item" }>
               <a href="/docs/{file.replace('.md', '').replace('index','')}" class="nav-link link-dark">
