@@ -2512,9 +2512,8 @@ async def data_asset(
         query: api.DataAssetQuery,
         _=Depends(JWTBearer()),
 ):
-    duckdb = None
     try:
-        duckdb = __import__("duckdb")
+        duckdb = __import__("duckdb") # type: ignore
     except ModuleNotFoundError:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -2587,7 +2586,7 @@ async def data_asset(
         )
 
     if query.data_asset_type in [DataAssetType.sqlite, DataAssetType.duckdb]:
-        conn: duckdb.DuckDBPyConnection = duckdb.connect(str(files_paths[0]))
+        conn: duckdb.DuckDBPyConnection = duckdb.connect(str(files_paths[0]))  # type: ignore
     else:
         conn = duckdb.connect(":default:")
         for idx, file_path in enumerate(files_paths):
@@ -2612,7 +2611,7 @@ async def data_asset(
                         conn.read_parquet(str(file_path))
                     )
 
-    data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)
+    data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)  # type: ignore
 
     temp_file = f"temp_file_from_duckdb_{int(round(time() * 1000))}.csv"
     data.write_csv(file_name=temp_file)
