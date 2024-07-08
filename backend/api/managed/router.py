@@ -55,8 +55,6 @@ from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
 from languages.loader import languages
 from typing import Callable
-import duckdb
-
 from pathlib import Path as FilePath
 
 router = APIRouter()
@@ -2513,7 +2511,20 @@ async def apply_alteration(
 async def data_asset(
         query: api.DataAssetQuery,
         _=Depends(JWTBearer()),
-):    
+):
+    duckdb = None
+    try:
+        duckdb = __import__("duckdb")
+    except ModuleNotFoundError:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="duckdb is not installed!",
+            ),
+        )
+
     attachments: dict[str, list[core.Record]] = await repository.get_entry_attachments(
         subpath=f"{query.subpath}/{query.shortname}",
         attachments_path=(

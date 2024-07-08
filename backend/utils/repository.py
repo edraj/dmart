@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 import aiofiles
-import jq  # type: ignore
 from fastapi import status
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
@@ -688,11 +687,23 @@ async def serve_query(
                 records.append(record)
 
     if query.jq_filter:
-        records = (
-            jq.compile(query.jq_filter)
-            .input([record.to_dict() for record in records])
-            .all()
-        )
+        try:
+            jq = __import__("jq")
+            records = (
+                jq.compile(query.jq_filter)
+                .input([record.to_dict() for record in records])
+                .all()
+            )
+        except ModuleNotFoundError:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="jq is not installed!",
+                ),
+            )
+
     return total, records
 
 
