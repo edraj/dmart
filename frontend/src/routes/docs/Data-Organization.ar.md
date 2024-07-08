@@ -1,57 +1,56 @@
 <script>
-  import { QueryType } from "@/dmart";
+  import {QueryType} from "@/dmart";
   import ListView from "@/components/management/ListView.svelte";
-  import Tree from "./assets/tree.png";
+  import Tree from "./assets/tree.png"
 </script>
+
 <style>
-  .center {
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-    width: 50%;
-  }
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
 </style>
 
-### **تنظيم البيانات في DMART**
+### Data Organization in Dmart
 
----
+#### Important terms
 
-#### **مصطلحات مهمة**
+#### Each term has a dedicated section with a detailed explanation
 
-**لكل مصطلح قسم خاص بشرح مفصل**
-
-- **المساحة (Space):** فئة أعمال عليا تسهل تجميع المحتوى ذي الصلة.
-- **المسار الفرعي (Subpath):** يُعرف أيضًا بالمجلد، المسار داخل المساحة الذي يؤدي إلى مدخل.
-- **البيانات التعريفية (Meta):** معلومات تعريفية مرتبطة بالمدخل مثل المالك، والاسم المختصر، ومعرف فريد عالمي، وعلامة زمنية للإنشاء / التحديث، والعلامات، إلخ.
-- **المخطط (Schema):** تعريف مخطط JSON للمدخل.
-- **الحمولة (Payload):** المحتوى الفعلي المرتبط بالمدخل.
+- **Space**: Top-level business category that facilitates grouping of relevant content.
+- **Subpath**: aka folder, The path within space that leads to an entry
+- **Meta**: Meta information associated with the entry such as owner, shortname, unique uuid, creation/update timestamp, tags ..etc
+- **Schema**: The JSON schema definition of the entry
+- **Payload**: The actual content associated with the entry
 
 <img class="center" src={Tree} width="500">
 
-في DMART، يتم تنظيم البيانات في هيكل تسلسلي لتسهيل الإدارة والوصول الفعالين. توضح هذه الوثائق مخطط تنظيم البيانات داخل DMART.
+In dmart, data is organized in a hierarchical structure to facilitate efficient management and access. This documentation outlines the data organization scheme within dmart.
 
-#### **مكونات تنظيم البيانات**
+#### **Components of Data Organization**
 
-**[المساحات](Space)**
+**[Spaces](Space)**
 
-- **التعريف:** المساحات هي حاويات من المستوى الأعلى تصنف وتنظم مجموعات المعلومات ذات الصلة.
-- **الغرض:** توفر المساحات هيكل تنظيمي عالي المستوى لتجميع بيانات متشابهة.
-- **الخصائص:** تتكون كل نسخة من DMART، وهي ذات استضافة ذاتية، من مساحات متعددة. تعمل المساحات كحاويات مستقلة لتنظيم البيانات داخل عقدة DMART.
+- **Definition:** Spaces are top-level containers that categorize and organize related information groups.
+- **Purpose:** Spaces provide a high-level organizational structure for grouping similar data.
+- **Characteristics:** Each instance of DMart, being self-hosted, consists of multiple spaces. Spaces serve as independent containers for organizing data within a DMart node.
 
-**[المسارات الفرعية والمجلدات](Subpath)**
+**[Subpaths & Folders](Subpath)**
 
-- **التعريف:** المجلدات هي هياكل هرمية داخل المساحات تستخدم لمزيد من التصنيف وتنظيم البيانات.
-- **الهدف:** تساعد المجلدات في تنظيم البيانات إلى فئات فرعية، مما يوفر بنية منطقية لإدارة البيانات.
-- **الخصائص:** توجد المجلدات داخل المساحات ويمكن أن تحتوي على مجلدات أو مدخلات أخرى.
+- **Definition:** Folders are hierarchical structures within spaces used for further categorization and organization of data.
+- **Purpose:** Folders help in organizing data into subcategories, providing a logical structure for data management.
+- **Characteristics:** Folders exist within spaces and can contain other folders or entries.
 
-**[المدخلات](Entries)**
+**[Entries](Entries)**
 
-- **التعريف:** المدخلات هي وحدات فردية من معلومات متعلقة بالعمل يتم تخزينها داخل المجلدات.
-- **الهدف:** تمثل المدخلات نقاط بيانات محددة أو قطع من المعلومات ذات الصلة بالسياق التجاري.
-- **الخصائص:** يمكن أن تتضمن المدخلات سمات وبيانات تعريفية متنوعة مرتبطة بالمعلومات المخزنة.
+- **Definition:** Entries are individual units of business-relevant information stored within folders.
+- **Purpose:** Entries represent specific data points or pieces of information relevant to the business context.
+- **Characteristics:** Entries can include various attributes and metadata associated with the stored information.
 
-**[المرفقات](Attachments)**
+**[Attachments](Attachments)**
 
-- **التعريف:** المرفقات هي قطع قابلة للتوسيع من المعلومات والكتل المرتبطة بالمدخلات.
-- **الهدف:** تكمل المرفقات المدخلات عن طريق توفير سياق إضافي أو بيانات داعمة.
-- **الخصائص:** ترتبط المرفقات بالمدخلات ويمكن أن تتضمن أنواع ملفات مختلفة مثل المستندات أو الصور أو ملفات الوسائط المتعددة.
+- **Definition:** Attachments are extensible pieces of information and blobs associated with entries.
+- **Purpose:** Attachments complement entries by providing additional context or supporting data.
+- **Characteristics:** Attachments are linked to entries and can include various file types such as documents, images, or multimedia files.
