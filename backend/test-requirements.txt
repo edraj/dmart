@@ -10,9 +10,7 @@ mypy
 types-aiofiles
 types-ldap3
 types-jsonschema
-
 locust
 types-psutil
-
 jsf
 

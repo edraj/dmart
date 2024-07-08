@@ -5,7 +5,6 @@ from api.managed.router import retrieve_entry_meta
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer
 from io import BytesIO
-import segno
 import models.api as api
 import utils.regex as regex
 import hmac
@@ -49,11 +48,23 @@ async def generate_qr_user_profile(
     date = int(time())
     m.update(f"{date}.{data}".encode())
     hexed_data = m.hexdigest()
-    qrcode = segno.make(f"{date}.{hexed_data}")
-    v_path = BytesIO()
-    qrcode.save(v_path, kind="png", dpi=600, scale=10)
 
-    return StreamingResponse(iter([v_path.getvalue()]), media_type="image/png")
+    try:
+        segno = __import__("segno")
+        qrcode = segno.make(f"{date}.{hexed_data}")
+        v_path = BytesIO()
+        qrcode.save(v_path, kind="png", dpi=600, scale=10)
+
+        return StreamingResponse(iter([v_path.getvalue()]), media_type="image/png")
+    except ModuleNotFoundError:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="segno is not installed!",
+            ),
+        )
 
 
 @router.post("/validate")
