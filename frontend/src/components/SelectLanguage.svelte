@@ -20,10 +20,16 @@
       size="sm"
       on:click={
         function(event) {
-           selectLocale(event, key)
-           // console.log(event, key)
-           console.log("file: ", localStorage.getItem("file"))
-           window.location.replace(localStorage.getItem("file"));
+
+          let path = document.URL  
+          if (path.charAt(path.length-3) === ".") {
+            path = path.substring(0, path.length-3) 
+          }
+          if (key !== "en") {
+              path += "." + key
+          }
+          selectLocale(event, key)
+          window.location.replace(path);
         }
       }>{key}</Button
     >
