@@ -389,7 +389,10 @@ class ManticoreDB(BaseDB):
                 keys_locations.append(idx)
         
         for keys_idx, key in enumerate(keys_locations):
-            idx = search.index(":", key)
+            try:
+                idx = search.index(":", key)
+            except Exception as _:
+                continue
             key_name = search[key+1:idx]
             if key_name not in meta_fields:
                 continue
@@ -405,7 +408,11 @@ class ManticoreDB(BaseDB):
                 filters[key_name].extend(value_substr.replace("{", "").replace("}", "").split(" ")) #type: ignore
     
         for key in keys_locations[::-1]:
-            idx = search.index(":", key)
+            # idx = search.index(":", key)
+            try:
+                idx = search.index(":", key)
+            except Exception as _:
+                continue
             key_name = search[key+1:idx]
             if key_name not in meta_fields:
                 continue
@@ -420,7 +427,7 @@ class ManticoreDB(BaseDB):
         if search:
             search = search.replace("email_unescaped", "email")
             # Remove '@' symbols not prefixed by '\'
-            search = re.sub(r'(?<!\\)@', '', search)
+            # search = re.sub(r'(?<!\\)@', '', search)
             
             # Replace ':' with '=' and enclose the following word in single quotes
             search = re.sub(r':([^ ]+)', r"='\1' AND", search)

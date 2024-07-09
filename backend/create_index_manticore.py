@@ -150,16 +150,20 @@ async def generate_db_docs(locators: list) -> dict[str, list[Any]]:
                     )
                 except Exception as ex:
                     print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
-                    
+                
+            meta_dto = dto=EntityDTO(
+                space_name=one.space_name, 
+                subpath=one.subpath, 
+                shortname=one.shortname, 
+                branch_name=one.branch_name, 
+                resource_type=one.type,
+            )    
             meta_data["payload_string"] = await operational_repo.generate_payload_string(
-                dto=EntityDTO(
-                    space_name=one.space_name, 
-                    subpath=one.subpath, 
-                    shortname=one.shortname, 
-                    branch_name=one.branch_name, 
-                    resource_type=one.type,
-                ),
+                meta_dto,
                 payload=payload_data,
+            )
+            meta_data["values_string"] = await operational_repo.generate_values_string(
+                meta_dto, payload_data, meta_data
             )
             
             meta_data["document_id"] = meta_doc_id
