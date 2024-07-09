@@ -331,7 +331,7 @@ async def serve_space(
             dto = core.EntityDTO.from_record(
                 record, request.space_name, owner_shortname
             )
-            space = await operational_repo.find(dto)
+            space = core.Space.model_validate_json(spaces[dto.shortname])
             if (
                 not space
                 or request.space_name not in spaces
