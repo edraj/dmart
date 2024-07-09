@@ -291,7 +291,7 @@ class AccessControl:
         search_res: tuple[int, list[dict[str, Any]]] = await operational_db.search(
             space_name=settings.management_space,
             branch_name=settings.management_space_branch,
-            search=f"@{key}:({value.replace('@','?')})",
+            search=f"@{key}:{value.replace('@','?')}",
             limit=2,
             offset=0,
             filters={"subpath": [settings.users_subpath]}
