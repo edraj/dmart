@@ -730,7 +730,7 @@ class ManticoreDB(BaseDB):
         for key, value in data.items():
             if key in ["subpath_match", "id"]:
                 continue
-            if isinstance(value, str) and (value.startswith("{") or value.startswith("[")):
+            if isinstance(value, str) and ((value.startswith("{") or value.startswith("["))):
                 decoded_data[key] = json.loads(value)
             else:
                 decoded_data[key] = value
