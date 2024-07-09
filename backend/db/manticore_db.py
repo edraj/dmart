@@ -728,7 +728,7 @@ class ManticoreDB(BaseDB):
         data = delete_empty_strings(data)
         decoded_data = {}
         for key, value in data.items():
-            if key in ["subpath_match", "id", "value_string"]:
+            if key in ["subpath_match", "id", "values_string"]:
                 continue
             if isinstance(value, str) and ((value.startswith("{") or value.startswith("["))):
                 decoded_data[key] = json.loads(value)
