@@ -5,7 +5,7 @@ from copy import copy
 from datetime import datetime
 from pathlib import Path
 from shutil import copy2 as copy_file
-from typing import TypeVar, Any, Type
+from typing import Any, Type
 
 import aiofiles
 from fastapi import status
