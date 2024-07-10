@@ -23,10 +23,11 @@
 
           let path = document.URL  
           if (path.charAt(path.length-3) === ".") {
-            path = path.substring(0, path.length-3) 
+            path = path.substring(0, path.length-3)
           }
           if (key !== "en") {
               path += "." + key
+              path = path.replace("/.ar", "/")
           }
           selectLocale(event, key)
           window.location.replace(path);
