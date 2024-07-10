@@ -16,7 +16,8 @@ from redis.commands.search.result import Result
 
 from api.managed.router import serve_request
 from models.core import Folder
-from utils import repository, db
+from utils import repository
+from utils.data_database import data_adapter as db
 from utils.custom_validations import get_schema_path
 from utils.helpers import camel_case
 from utils.redis_services import RedisServices

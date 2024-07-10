@@ -19,7 +19,8 @@ from utils.redis_services import RedisServices
 from utils.repository import internal_save_model, get_entry_attachments, get_group_users
 from utils.settings import settings
 from fastapi.logger import logger
-from utils.db import load, load_resource_payload
+from utils.data_database import data_adapter as db
+
 
 
 class Plugin(PluginBase):
@@ -42,7 +43,7 @@ class Plugin(PluginBase):
             entry = data.attributes["entry"].model_dump()
         else:
             entry = (
-                await load(
+                await db.load(
                     data.space_name,
                     data.subpath,
                     data.shortname,
@@ -56,7 +57,7 @@ class Plugin(PluginBase):
                 and entry["payload"]["body"]
             ):
                 try:
-                    entry["payload"]["body"] = load_resource_payload(
+                    entry["payload"]["body"] = db.load_resource_payload(
                         space_name=data.space_name,
                         subpath=data.subpath,
                         filename=entry["payload"]["body"],

@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 import json
 from models.core import Content, Notification, NotificationData, Translation
-from utils.db import load as load_meta
+from utils.data_database import data_adapter as db
 from utils.notification import NotificationManager
 from utils.redis_services import RedisServices
 from utils.repository import (
@@ -75,7 +75,7 @@ async def trigger_admin_notifications() -> None:
                         ),
                     )
 
-            notification_meta = await load_meta(
+            notification_meta = await db.load(
                 settings.management_space,
                 notification_dict["subpath"],
                 notification_dict["shortname"],

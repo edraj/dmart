@@ -4,7 +4,8 @@ from enum import Enum
 import re
 import sys
 from models.enums import ContentType
-from utils import db, helpers
+from utils import helpers
+from utils.data_database import data_adapter as db
 from models.core import Meta, Schema
 from utils.repository import internal_sys_update_model
 from utils.settings import settings
