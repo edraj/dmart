@@ -8,7 +8,7 @@ from models.core import ACL, ActionType, ConditionType, Group, Permission, Role,
 from models.enums import ResourceType
 from utils.helpers import camel_case, flatten_dict
 from utils.settings import settings
-import utils.db as db
+from utils.data_database import data_adapter as db
 import models.core as core
 from utils.regex import FILE_PATTERN
 from utils.redis_services import RedisServices
