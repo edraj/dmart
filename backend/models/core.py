@@ -2,7 +2,7 @@ import copy
 import json
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, ConfigDict
-from typing import Any
+from typing import Any, Self, Type, TypeVar
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
 from pydantic import Field
@@ -106,7 +106,7 @@ class Record(BaseModel):
             self.subpath = self.subpath.strip("/")
 
     def to_dict(self):
-        return self.model_dump(exclude_none=True,warnings="error")
+        return self.model_dump(exclude_none=True,warnings=True)
 
 
     def __eq__(self, other):
@@ -302,6 +302,7 @@ class Meta(Resource):
 
         return Record(**record_fields)
 
+MetaChild = TypeVar("MetaChild", bound=Meta)
 
 class Space(Meta):
     root_registration_signature: str = ""
@@ -572,4 +573,72 @@ class Notification(Meta):
             is_read=False,
             priority=notification_req["priority"],
             entry=entry_locator,
+        )
+
+
+class EntityDTO(BaseModel):
+    space_name: str
+    subpath: str
+    shortname: str
+    resource_type: ResourceType = ResourceType.content
+    schema_shortname: str = "meta"
+    user_shortname: str | None = None
+
+    def __init__(self, **data):
+        """Allow passing nulls and remove them to make Pydantic set the default values"""
+
+        if "resource_type" in data and data["resource_type"] is None:
+            del data["resource_type"]
+        if "schema_shortname" in data and data["schema_shortname"] is None:
+            del data["schema_shortname"]
+
+        data["subpath"] = data["subpath"].strip("/")
+        if data["subpath"] == "":
+            data["subpath"] = "/"
+
+        BaseModel.__init__(self, **data)
+
+    @property
+    def class_type(self) -> Type[MetaChild]:  # type: ignore
+        return getattr(sys.modules["models.core"], camel_case(self.resource_type))  # type: ignore
+
+    @staticmethod
+    def from_event_data(data: Event) -> "EntityDTO":
+        return EntityDTO(
+            **data.model_dump(
+                include={
+                    "space_name",
+                    "branch_name",
+                    "subpath",
+                    "shortname",
+                    "resource_type",
+                    "schema_shortname",
+                    "user_shortname",
+                }
+            )
+        )
+
+    def to_event_data(
+        self, action_type: ActionType, additional_data: dict[str, Any] = {}
+    ) -> Event:
+        return Event(
+            **self.model_dump(), action_type=action_type, attributes=additional_data
+        )
+
+    @classmethod
+    def from_record(
+        cls,
+        record: Record,
+        space_name: str,
+        user_shortname: str | None = None,
+    ) -> Self:
+        return cls(
+            space_name=space_name,
+            schema_shortname=record.attributes.get("payload", {}).get(
+                "schema_shortname", None
+            ),
+            user_shortname=user_shortname,
+            **record.model_dump(
+                include={"branch_name", "subpath", "shortname", "resource_type"}
+            ),
         )
