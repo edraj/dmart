@@ -25,6 +25,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r test-requirements.txt
         pip install -r plugins-requirements.txt
+        pip install -r utils-requirements.txt
         mkdir logs/
         cp ~/login_creds.sh ./
         cp ~/config.env ./
