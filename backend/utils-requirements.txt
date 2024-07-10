@@ -1,0 +1,8 @@
+jsf
+types-psutil
+types-pyinstaller
+pyinstaller
+jinja2
+duckdb
+segno
+jq

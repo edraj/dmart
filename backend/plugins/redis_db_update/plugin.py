@@ -89,7 +89,7 @@ class Plugin(PluginBase):
                 ActionType.update,
                 ActionType.progress_ticket,
             ]:
-                meta_doc_id, meta_json = redis_services.prepate_meta_doc(
+                meta_doc_id, meta_json = redis_services.prepare_meta_doc(
                     data.space_name, data.subpath, meta
                 )
                 payload = {}

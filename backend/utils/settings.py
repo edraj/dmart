@@ -5,7 +5,6 @@ import os
 import re
 import string
 import random
-from typing import Any
 from venv import logger
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
@@ -85,7 +84,7 @@ class Settings(BaseSettings):
         ), env_file_encoding="utf-8"
     )
     
-    def load_config_files(self):
+    def load_config_files(self) -> None:
         channels_config_file = os.path.join(os.path.dirname(__file__), '../config/channels.json')
         if os.path.exists(channels_config_file):
             try:
@@ -94,7 +93,7 @@ class Settings(BaseSettings):
                 
                 # Compile the patterns for better performance
                 for idx, channel in enumerate(self.channels):
-                    compiled_patterns: list[re.Pattern[Any]] = []
+                    compiled_patterns: list[re.Pattern] = []
                     for pattern in channel.get("allowed_api_patterns", []):
                         compiled_patterns.append(re.compile(pattern))
                     self.channels[idx]["allowed_api_patterns"] = compiled_patterns

@@ -1,27 +1,18 @@
 import json
-from fastapi.testclient import TestClient
-from main import app
 from utils.settings import settings
 from fastapi import status
 from models.api import Query
 from models.enums import QueryType, ResourceType
 
-client = TestClient(app)
-
-
-def gen_client() -> TestClient:
-    return TestClient(app)
-
-
 superman = {}
 alibaba = {}
 
-file = open("./login_creds.sh", "r")
-for line in file.readlines():
-    if line.strip().startswith("export SUPERMAN"):
-        superman = json.loads(str(line.strip().split("'")[1]))
-    if line.strip().startswith("export ALIBABA"):
-        alibaba = json.loads(str(line.strip().split("'")[1]))
+with open("./login_creds.sh", "r") as file:
+    for line in file.readlines():
+        if line.strip().startswith("export SUPERMAN"):
+            superman = json.loads(str(line.strip().split("'")[1]))
+        if line.strip().startswith("export ALIBABA"):
+            alibaba = json.loads(str(line.strip().split("'")[1]))
 
 MANAGEMENT_SPACE: str = f"{settings.management_space}"
 USERS_SUBPATH: str = "users"
@@ -29,18 +20,18 @@ DEMO_SPACE: str = "test"
 DEMO_SUBPATH: str = "content"
 
 
-def get_superman_cookie() -> str:
-    response = client.post(
+async def get_superman_cookie(client) -> str:
+    response = await client.post(
         "/user/login",
         json={"shortname": superman["shortname"], "password": superman["password"]},
     )
     print(f"\n {response.json() = } \n creds: {superman = } \n")
     assert response.status_code == status.HTTP_200_OK
     # client.cookies.set("auth_token", response.cookies["auth_token"])
-    return response.cookies["auth_token"]
+    return str(response.cookies["auth_token"])
 
-def set_superman_cookie():
-    response = client.post(
+async def set_superman_cookie(client):
+    response = await client.post(
         "/user/login",
         json={"shortname": superman["shortname"], "password": superman["password"]},
     )
@@ -49,8 +40,8 @@ def set_superman_cookie():
     client.cookies.set("auth_token", response.cookies["auth_token"])
 
 
-def set_alibaba_cookie():
-    response = client.post(
+async def set_alibaba_cookie(client):
+    response = await client.post(
         "/user/login",
         json={"shortname": alibaba["shortname"], "password": alibaba["password"]},
     )
@@ -59,9 +50,9 @@ def set_alibaba_cookie():
     client.cookies.set("auth_token", response.cookies["auth_token"])
 
 
-def init_test_db() -> None:
+async def init_test_db(client) -> None:
     # Create the space
-    client.post(
+    await client.post(
         "managed/space",
         json={
             "space_name": DEMO_SPACE,
@@ -78,7 +69,7 @@ def init_test_db() -> None:
     )
 
     # Create the folder
-    client.post(
+    await client.post(
         "/managed/request",
         json={
             "space_name": DEMO_SPACE,
@@ -95,7 +86,7 @@ def init_test_db() -> None:
     )
 
 
-def delete_space() -> None:
+async def delete_space(client) -> None:
     headers = {"Content-Type": "application/json"}
     endpoint = "/managed/space"
     request_data = {
@@ -112,10 +103,10 @@ def delete_space() -> None:
     }
 
     assert_code_and_status_success(
-        client.post(endpoint, json=request_data, headers=headers)
+        await client.post(endpoint, json=request_data, headers=headers)
     )
     check_not_found(
-        client.get(f"/managed/entry/space/{DEMO_SPACE}/__root__/{DEMO_SPACE}")
+        await client.get(f"/managed/entry/space/{DEMO_SPACE}/__root__/{DEMO_SPACE}")
     )
 
 
@@ -154,7 +145,8 @@ def assert_bad_request(response):
     assert response.json()["status"] == "failed"
 
 
-def assert_resource_created(
+async def assert_resource_created(
+    client,
     query: Query,
     res_shortname: str,
     res_subpath: str,
@@ -163,7 +155,7 @@ def assert_resource_created(
 ):
     if not query.search:
         query.search = ""
-    response = client.post(
+    response = await client.post(
         "/managed/query",
         json=query.model_dump(exclude_none=True),
     )
@@ -196,7 +188,7 @@ def assert_resource_created(
                 assert len(attachments) == res_attachments[attachment_key]
 
 
-def assert_resource_deleted(space: str, subpath: str, shortname: str):
+async def assert_resource_deleted(client, space: str, subpath: str, shortname: str):
     query = Query(
         type=QueryType.search,
         space_name=space,
@@ -206,13 +198,14 @@ def assert_resource_deleted(space: str, subpath: str, shortname: str):
         retrieve_json_payload=True,
         limit=1,
     )
-    response = client.post("/managed/query", json=query.model_dump(exclude_none=True))
+    response = await client.post("/managed/query", json=query.model_dump(exclude_none=True))
     assert_code_and_status_success(response)
     assert response.json()["status"] == "success"
     assert response.json()["attributes"]["returned"] == 0
 
 
-def upload_resource_with_payload(
+async def upload_resource_with_payload(
+    client,
     space_name,
     record_path: str,
     payload_path: str,
@@ -227,7 +220,7 @@ def upload_resource_with_payload(
             "request_record": ("record.json", request_file, "application/json"),
             "payload_file": (media_file.name.split("/")[-1], media_file, payload_type),
         }
-        response = client.post(
+        response = await client.post(
             "managed/resource_with_payload",
             headers={},
             data={"space_name": space_name},
@@ -244,7 +237,8 @@ def upload_resource_with_payload(
             record_data = json.loads(record_file.read())
             subpath_parts = record_data["subpath"].split('/')
             attach_parent_subpath, attach_parent_shortname = "/".join(subpath_parts[:-1]), subpath_parts[-1]
-        assert_resource_created(
+        await assert_resource_created(
+            client,
             query=Query(
                 type=QueryType.search,
                 space_name=space_name,
@@ -260,7 +254,7 @@ def upload_resource_with_payload(
         )
 
 
-def delete_resource(resource_type: str, del_subpath: str, del_shortname: str):
+async def delete_resource(client, resource_type: str, del_subpath: str, del_shortname: str):
     headers = {"Content-Type": "application/json"}
     endpoint = "/managed/request"
     request_data = {
@@ -276,16 +270,17 @@ def delete_resource(resource_type: str, del_subpath: str, del_shortname: str):
         ],
     }
 
-    response = client.post(endpoint, json=request_data, headers=headers)
+    response = await client.post(endpoint, json=request_data, headers=headers)
     assert_code_and_status_success(response)
 
 
-def retrieve_content_folder():
-    assert client.get(
-        f"managed/entry/folder/{DEMO_SPACE}/{settings.root_subpath_mw}/{DEMO_SUBPATH}"
-    ).status_code == status.HTTP_200_OK
+async def retrieve_content_folder(client):
+    response = await client.get(f"managed/entry/folder/{DEMO_SPACE}/{settings.root_subpath_mw}/{DEMO_SUBPATH}")
+    
+    assert response.status_code == status.HTTP_200_OK
      
-    assert_resource_created(
+    await assert_resource_created(
+        client,
         query=Query(
             type=QueryType.search,
             space_name=DEMO_SPACE,

@@ -1,17 +1,15 @@
 import json
 import pytest
+from httpx import AsyncClient
 from pytests.base_test import (
     assert_code_and_status_success,
     set_superman_cookie,
-    client,
     MANAGEMENT_SPACE,
     USERS_SUBPATH,
 )
 from utils.settings import settings
-from ldap3 import AUTO_BIND_NO_TLS, Server, Connection, ALL
 
 
-set_superman_cookie()
 
 with open("../backend/plugins/ldap_manager/config.json", "r") as plugin_conf:
     ldap_plugin_config = json.load(plugin_conf)
@@ -34,9 +32,18 @@ if (
 ):
     ldap_active = False
 
-ldap_conn: Connection | None = None
+
+if not ldap_active:
+    print("LDAP is not active")
+
 
 try:
+    ldap3 = __import__("ldap3")
+    AUTO_BIND_NO_TLS = ldap3.AUTO_BIND_NO_TLS
+    Server = ldap3.Server
+    Connection = ldap3.Connection
+    ALL = ldap3.ALL
+
     ldap_conn = Connection(
         Server("127.0.0.1", get_info=ALL),
         user=settings.ldap_admin_dn,
@@ -48,10 +55,12 @@ except Exception:
 
 
 @pytest.mark.run(order=4)
-def test_ldap_user_created():
+@pytest.mark.anyio
+async def test_ldap_user_created(client: AsyncClient):
     if not ldap_active:
         return
 
+    await set_superman_cookie(client)
     request_body = {
         "space_name": MANAGEMENT_SPACE,
         "request_type": "create",
@@ -80,7 +89,8 @@ def test_ldap_user_created():
 
 
 @pytest.mark.run(order=4)
-def test_ldap_user_updated():
+@pytest.mark.anyio
+async def test_ldap_user_updated(client: AsyncClient):
     if not ldap_active:
         return
 
@@ -114,7 +124,8 @@ def test_ldap_user_updated():
 
 
 @pytest.mark.run(order=4)
-def test_ldap_user_deleted():
+@pytest.mark.anyio
+async def test_ldap_user_deleted(client: AsyncClient):
     if not ldap_active:
         return
 
@@ -131,7 +142,7 @@ def test_ldap_user_deleted():
         ],
     }
 
-    response = client.post("/managed/request", json=request_body)
+    response = await client.post("/managed/request", json=request_body)
     assert_code_and_status_success(response)
 
     ldap_entry = ldap_get_first_entry("ldap_user_100100")

@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 import aiofiles
-import jq  # type: ignore
 from fastapi import status
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
@@ -688,11 +687,23 @@ async def serve_query(
                 records.append(record)
 
     if query.jq_filter:
-        records = (
-            jq.compile(query.jq_filter)
-            .input([record.to_dict() for record in records])
-            .all()
-        )
+        try:
+            jq = __import__("jq")
+            records = (
+                jq.compile(query.jq_filter)
+                .input([record.to_dict() for record in records])
+                .all()
+            )
+        except ModuleNotFoundError:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="jq is not installed!",
+                ),
+            )
+
     return total, records
 
 
@@ -729,7 +740,7 @@ async def get_entry_attachments(
     if not attachments_path.is_dir():
         return {}
     attachments_iterator = os.scandir(attachments_path)
-    attachments_dict: dict[str, list] = {}
+    attachments_dict: dict[ResourceType, list] = {}
     for attachment_entry in attachments_iterator:
         # TODO: Filter types on the parent attachment type folder layer
         if not attachment_entry.is_dir():
@@ -782,10 +793,10 @@ async def get_entry_attachments(
                     )
 
             if attach_resource_name in attachments_dict:
-                attachments_dict[attach_resource_name].append(
+                attachments_dict[ResourceType(attach_resource_name)].append(
                     resource_record_obj)
             else:
-                attachments_dict[attach_resource_name] = [resource_record_obj]
+                attachments_dict[ResourceType(attach_resource_name)] = [resource_record_obj]
         attachments_files.close()
     attachments_iterator.close()
 
@@ -1391,7 +1402,7 @@ async def internal_sys_update_model(
     async with RedisServices() as redis_services:
         await redis_services.save_meta_doc(space_name, subpath, meta)
         if payload_updated:
-            payload_dict.update(json.loads(meta.model_dump_json()))
+            payload_dict.update(json.loads(meta.model_dump_json(exclude_none=True,warnings="error")))
             await redis_services.save_payload_doc(
                 space_name,
                 subpath,
@@ -1429,7 +1440,7 @@ async def internal_save_model(
                 meta=meta,
                 payload_data=payload,
             )
-            payload.update(json.loads(meta.json()))
+            payload.update(json.loads(meta.model_dump_json(exclude_none=True,warnings="error")))
             await redis.save_payload_doc(
                 space_name, 
                 subpath, 

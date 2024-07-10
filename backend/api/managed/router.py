@@ -55,8 +55,6 @@ from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
 from languages.loader import languages
 from typing import Callable
-import duckdb
-
 from pathlib import Path as FilePath
 
 router = APIRouter()
@@ -2513,7 +2511,19 @@ async def apply_alteration(
 async def data_asset(
         query: api.DataAssetQuery,
         _=Depends(JWTBearer()),
-):    
+):
+    try:
+        duckdb = __import__("duckdb") # type: ignore
+    except ModuleNotFoundError:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="duckdb is not installed!",
+            ),
+        )
+
     attachments: dict[str, list[core.Record]] = await repository.get_entry_attachments(
         subpath=f"{query.subpath}/{query.shortname}",
         attachments_path=(
@@ -2576,7 +2586,7 @@ async def data_asset(
         )
 
     if query.data_asset_type in [DataAssetType.sqlite, DataAssetType.duckdb]:
-        conn: duckdb.DuckDBPyConnection = duckdb.connect(str(files_paths[0]))
+        conn: duckdb.DuckDBPyConnection = duckdb.connect(str(files_paths[0]))  # type: ignore
     else:
         conn = duckdb.connect(":default:")
         for idx, file_path in enumerate(files_paths):
@@ -2586,7 +2596,7 @@ async def data_asset(
                     globals().setdefault(
                         attachments[query.data_asset_type][idx].shortname,
                         conn.read_csv(str(file_path))
-                    )  # type: ignore  # noqa
+                    )
                 case DataAssetType.jsonl:
                     globals().setdefault(
                         attachments[query.data_asset_type][idx].shortname,
@@ -2594,17 +2604,17 @@ async def data_asset(
                             str(file_path),
                             format='auto'
                         )
-                    )  # type: ignore  # noqa
+                    )
                 case DataAssetType.parquet:
                     globals().setdefault(
                         attachments[query.data_asset_type][idx].shortname,
                         conn.read_parquet(str(file_path))
-                    )  # type: ignore  # noqa
+                    )
 
     data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)  # type: ignore
 
     temp_file = f"temp_file_from_duckdb_{int(round(time() * 1000))}.csv"
-    data.write_csv(file_name=temp_file)  # type: ignore
+    data.write_csv(file_name=temp_file)
     data_objects: list[dict[str, Any]] = await csv_file_to_json(FilePath(temp_file))
     os.remove(temp_file)
 

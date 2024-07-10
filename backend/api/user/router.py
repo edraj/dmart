@@ -662,6 +662,7 @@ async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
             action_type=core.ActionType.delete,
             resource_type=ResourceType.user,
             user_shortname=shortname,
+            attributes={"entry":user}
         )
     )
 

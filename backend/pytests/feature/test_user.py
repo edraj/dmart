@@ -1,9 +1,9 @@
 import pytest
+from httpx import AsyncClient
 from pytests.base_test import (
     assert_code_and_status_success,
     assert_resource_created,
     set_superman_cookie,
-    client,
     MANAGEMENT_SPACE,
     USERS_SUBPATH,
     superman
@@ -11,7 +11,6 @@ from pytests.base_test import (
 from models.api import Query
 from models.enums import QueryType, ResourceType
 
-set_superman_cookie()
 
 new_user_data = {
     "shortname": "test_user_100100",
@@ -21,14 +20,17 @@ new_user_data = {
 
 
 @pytest.mark.run(order=1)
-def test_user_does_not_exist():
-    response = client.get("/user/check-existing", params=new_user_data)
+@pytest.mark.anyio
+async def test_user_does_not_exist(client: AsyncClient):
+    await set_superman_cookie(client)
+    response = await client.get("/user/check-existing", params=new_user_data)
     assert_code_and_status_success(response)
     assert response.json()["attributes"]["unique"] is True
 
 
 @pytest.mark.run(order=1)
-def test_create_user():
+@pytest.mark.anyio
+async def test_create_user(client: AsyncClient):
     request_body = {
         "resource_type": "user",
         "shortname": new_user_data["shortname"],
@@ -45,10 +47,11 @@ def test_create_user():
         },
     }
 
-    response = client.post("/user/create", json=request_body)
+    response = await client.post("/user/create", json=request_body)
     assert_code_and_status_success(response)
 
-    assert_resource_created(
+    await assert_resource_created(
+        client,
         query=Query(
             type=QueryType.search,
             space_name=MANAGEMENT_SPACE,
@@ -64,8 +67,9 @@ def test_create_user():
     )
 
 @pytest.mark.run(order=1)
-def test_login_with_the_new_user():
-    response = client.post(
+@pytest.mark.anyio
+async def test_login_with_the_new_user(client: AsyncClient):
+    response = await client.post(
         "/user/login",
         json={
             "shortname": new_user_data["shortname"],
@@ -77,21 +81,24 @@ def test_login_with_the_new_user():
 
 
 @pytest.mark.run(order=1)
-def test_get_profile() -> None:
-    response = client.get("/user/profile")
+@pytest.mark.anyio
+async def test_get_profile(client: AsyncClient) -> None:
+    response = await client.get("/user/profile")
     assert_code_and_status_success(response)
     assert response.json()['records'][0]['shortname'] == new_user_data['shortname']
 
 
 @pytest.mark.run(order=1)
-def test_user_already_exist():
-    response = client.get("/user/check-existing", params=new_user_data)
+@pytest.mark.anyio
+async def test_user_already_exist(client: AsyncClient):
+    response = await client.get("/user/check-existing", params=new_user_data)
     assert_code_and_status_success(response)
     assert response.json()["attributes"]["unique"] is False
 
 
 @pytest.mark.run(order=1)
-def test_update_profile() -> None:
+@pytest.mark.anyio
+async def test_update_profile(client: AsyncClient) -> None:
     request_data = {
         "resource_type": "user",
         "subpath": "users",
@@ -99,22 +106,26 @@ def test_update_profile() -> None:
         "attributes": {"displayname": {"en": "New User"}},
     }
 
-    assert_code_and_status_success(client.post("/user/profile", json=request_data))
+    assert_code_and_status_success(await client.post("/user/profile", json=request_data))
 
 
 @pytest.mark.run(order=1)
-def test_delete_new_user_profile() -> None:
-    response = client.post("/user/delete", json={})
+@pytest.mark.anyio
+async def test_delete_new_user_profile(client: AsyncClient) -> None:
+    response = await client.post("/user/delete", json={})
     assert_code_and_status_success(response)
 
 
+
 @pytest.mark.run(order=1)
-def test_login_with_superman():
-    set_superman_cookie()
+@pytest.mark.anyio
+async def test_login_with_superman(client: AsyncClient):
+    await set_superman_cookie(client)
 
 
 @pytest.mark.run(order=1)
-def test_get_superman_profile() -> None:
-    response = client.get("/user/profile")
+@pytest.mark.anyio
+async def test_get_superman_profile(client: AsyncClient) -> None:
+    response = await client.get("/user/profile")
     assert_code_and_status_success(response)
     assert response.json()['records'][0]['shortname'] == superman['shortname']

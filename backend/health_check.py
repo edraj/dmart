@@ -26,6 +26,7 @@ from utils.settings import settings
 from utils.spaces import get_spaces
 
 duplicated_entries : dict= {}
+
 key_entries: dict = {}
 MAX_INVALID_SIZE = 100
 
@@ -84,6 +85,7 @@ async def main(health_type: str, space_param: str, schemas_param: list):
         print("Wrong mode specify [soft or hard]")
         return
     await save_duplicated_entries()
+    await RedisServices().close_pool()
 
 
 def print_header() -> None:
@@ -396,10 +398,10 @@ async def save_health_check_entry(health_check, space_name: str):
     )
 
 
-async def save_duplicated_entries():
+async def save_duplicated_entries() -> None:
     print('>>>> Processing UUID duplication <<<<')
     before_time = time.time()
-    uuid_scanned_entries = set()
+    uuid_scanned_entries: set = set()
     uuid_duplicated_entries: dict = {}
     
     slug_scanned_entries = set()
