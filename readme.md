@@ -208,12 +208,12 @@ loadmodule /usr/lib64/redis/modules/redisearch.so' | sudo tee -a /etc/redis/redi
 sudo systemctl start redis
 
 
+# Make logs folder
+mkdir logs
+
 git clone https://github.com/edraj/dmart.git
 
 cd dmart 
-
-# Make logs folder
-mkdir logs
 
 # Copy sample spaces structure
 cp -a sample/spaces ../
@@ -222,10 +222,10 @@ cp -a sample/spaces ../
 cd backend
 
 # Create the virtual env
-python -m venv env
+python -m venv ~/.env
 
 # Activate virtual env
-source env/bin/activate
+source ~/.env/bin/activate
 
 # Install python modules
 pip install --user -r requirements.txt
@@ -334,7 +334,7 @@ rsync -av ~/.pipi/ TARGET_OFFLINE_SERVER:~/.pipi
 rmdir ~/.pipi
 rmdir ~/.venv
 pip install --no-index --find-links=~/.pipi virtualenv
-virtualenv --python=/usr/bin/python3 ~/.venv # or your favorate py env virtualization tool
+virtualenv ~/.venv # or your favorate py env virtualization tool
 source ~/.venv/bin/activate
 pip install --no-index --find-links=~/.pipi --upgrade pip
 pip install --no-index --find-links=~/.pipi -r requirements.txt -r test-requirements.txt -r plugins-requirements.txt

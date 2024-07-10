@@ -515,7 +515,7 @@ async def store_entry_diff(
         f"{history_path}/history.jsonl",
         "a",
     ) as events_file:
-        await events_file.write(f"{history_obj.model_dump_json(exclude_none=True, warnings="error")}\n")
+        await events_file.write(f"{history_obj.model_dump_json(exclude_none=True, warnings='error')}\n")
 
     return history_diff
 
