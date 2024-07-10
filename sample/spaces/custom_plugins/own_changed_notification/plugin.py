@@ -2,7 +2,7 @@ import sys
 from models.core import Content, Payload, PluginBase, Event
 from models.enums import ContentType, ResourceType
 from utils.helpers import camel_case
-from utils.db import load, save, save_payload_from_json
+from utils.data_database import data_adapter as db
 from uuid import uuid4
 from fastapi.logger import logger
 
@@ -20,7 +20,7 @@ class Plugin(PluginBase):
             sys.modules["models.core"], camel_case(ResourceType(data.resource_type))
         )
 
-        entry = await load(
+        entry = await db.load(
             space_name=data.space_name,
             subpath=data.subpath,
             shortname=data.shortname,
@@ -43,7 +43,7 @@ class Plugin(PluginBase):
                 body=f"{str(uuid)[:8]}.json"
             )
         )
-        await save(
+        await db.save(
             "personal",
             f"people/{entry.owner_shortname}/notifications",
             meta_obj,
@@ -57,7 +57,7 @@ class Plugin(PluginBase):
             "action_type": data.action_type,
             "is_read": "no"
         }
-        await save_payload_from_json(
+        await db.save_payload_from_json(
             "personal",
             f"people/{entry.owner_shortname}/notifications",
             meta_obj,

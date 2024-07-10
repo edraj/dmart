@@ -5,7 +5,7 @@ from models.core import ActionType, PluginBase, Event, Space
 from utils.helpers import camel_case
 from utils.redis_services import RedisServices
 from utils.spaces import get_spaces
-import utils.db as db
+from utils.data_database import data_adapter as db
 from models import core
 from models.enums import ContentType, ResourceType
 from utils.settings import settings
