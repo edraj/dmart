@@ -2,12 +2,12 @@
 
 <script>
     import Permission from "./assets/create_permission.png";
-     import Role from "./assets/create_role.png";
-      import Schema from "./assets/create_schema.png";
-       import User from "./assets/create_user.png";
-         import AdminUI1 from "./assets/admin_ui_1.png";
-  import AdminUI2 from "./assets/admin_ui_2.png";
-        import Entry from "./assets/create_entry.png";
+    import Role from "./assets/create_role.png";
+    import Schema from "./assets/create_schema.png";
+    import User from "./assets/create_user.png";
+    import AdminUI1 from "./assets/admin_ui_1.png";
+    import AdminUI2 from "./assets/admin_ui_2.png";
+    import Entry from "./assets/create_entry.png";
 </script>
 
 <style>
@@ -38,9 +38,8 @@ yarn build
 caddy run
 ```
 
-** بناء tauri ثنائي (Linux AppImage) **
-
-وهذا يسمح بتعبئة أداة الإدارة كتطبيق سطح مكتب.
+**بناء tauri (AppImage)**
+وهذا يسمح بتعبئة أداة الإدارة كتطبيق سطح مكتب
 
 ```bash
 # بناء بدون فحص
