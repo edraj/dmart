@@ -47,6 +47,7 @@
 
     let selectedIndex = docFiles.findIndex(file => `/docs/${file.replace('.md', '').replace('index','')}`===window.location.pathname );
 
+
     function titleCard(file:string, index:number):string {
         localStorage.setItem("file", file)
         localStorage.setItem("index", index.toString())
@@ -55,6 +56,14 @@
         if ( language === "en") {
           return file.replaceAll('-', ' ').replace('.md', '').replace('index','Introduction to DMART');
         } 
+
+        if ( language === "ar") {
+          const elements = document.querySelectorAll(".language-json");
+          elements.forEach(element => {
+            element.setAttribute("dir", "ltr");
+          }); 
+         } 
+
         return arDocFiles[index]
     }
 </script>
@@ -77,6 +86,7 @@
             <li
               on:click={function() { 
                 selectedIndex = index
+                
                 //console.log("selectedIndex ", selectedIndex)
                 //console.log("Index ", index)
               }}
