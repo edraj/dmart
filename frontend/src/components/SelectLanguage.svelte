@@ -20,7 +20,6 @@
       size="sm"
       on:click={
         function(event) {
-
           let path = document.URL  
           if (path.charAt(path.length-3) === ".") {
             path = path.substring(0, path.length-3)
@@ -32,7 +31,6 @@
           selectLocale(event, key)
           window.location.replace(path);
         }
-      }>{key}</Button
-    >
+      }>{key}</Button>
   {/each}
 </ButtonGroup>
