@@ -66,6 +66,7 @@
 
         return arDocFiles[index]
     }
+    var lang = localStorage.getItem("preferred_locale").substring(1,3);
 </script>
 
 <style>
@@ -86,12 +87,14 @@
             <li
               on:click={function() { 
                 selectedIndex = index
-                
-                //console.log("selectedIndex ", selectedIndex)
+                lang = localStorage.getItem("preferred_locale").substring(1,3)
+                if (lang === "ar") {
+                  lang = "ar/"
+                }
                 //console.log("Index ", index)
               }}
               class={ file===docFiles[selectedIndex] ? "nav-item selected" : "nav-item" }>
-              <a href="/docs/{file.replace('.md', '').replace('index','')}" class="nav-link link-dark">
+              <a href="/docs/{lang}{file.replace('.md', '').replace('index','')}" class="nav-link link-dark">
                 {titleCard(file, index)} 
               </a>
             </li>
