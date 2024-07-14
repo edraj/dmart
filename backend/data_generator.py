@@ -2,10 +2,11 @@ import argparse
 import asyncio
 from pathlib import Path
 from uuid import uuid4
-from models.core import Content, Payload
-from models.enums import ContentType
+from models.core import Content, EntityDTO, Payload
+from models.enums import ContentType, ResourceType
 from jsf import JSF # type: ignore
-from utils.repository import internal_save_model
+from utils.operational_repo import operational_repo
+from utils.redis_services import RedisServices
 
 
 async def main(
@@ -35,9 +36,15 @@ async def main(
                 body=f"{shortname}.json"
             )
         )
-        await internal_save_model(
-            space_name=space,
-            subpath=subpath,
+        await operational_repo.internal_save_model(
+            dto=EntityDTO(
+                space_name=space,
+                subpath=subpath,
+                shortname=shortname,
+                resource_type=ResourceType.content,
+                schema_shortname=schema_path.split("/")[-1].split(".")[0],
+                user_shortname="generator_script"
+            ),
             meta=meta,
             payload=payload
         )
@@ -46,6 +53,9 @@ async def main(
     print("====================================================")
     print(f"The generator script is finished, {num} of records generated")
     print("====================================================")
+    
+    await RedisServices.POOL.aclose()
+    await RedisServices.POOL.disconnect(True)
                     
             
 

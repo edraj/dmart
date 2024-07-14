@@ -15,16 +15,16 @@ from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import  ValidationError
 from languages.loader import load_langs
+from utils.bootstrap import bootstrap_all
 from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
-from utils.spaces import initialize_spaces
+from utils.redis_services import RedisServices
 from fastapi import Depends, FastAPI, Request, Response, status
 from utils.logger import logging_schema
 from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from utils.access_control import access_control
 from fastapi.responses import JSONResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
@@ -39,18 +39,19 @@ from api.qr.router import router as qr
 from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info
-from utils.redis_services import RedisServices
 
 from utils.internal_error_code import InternalErrorCode
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up")
     print('{"stage":"starting up"}')
     try :
+    
         # , extra={"props":{
         #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
-        #    "redis_port": settings.redis_port
+        #    "redis_port": settings.operational_db_port
         #    }})
 
         openapi_schema = app.openapi()
@@ -61,12 +62,11 @@ async def lifespan(app: FastAPI):
                 if responses.get("422"):
                     responses.pop("422")
         app.openapi_schema = openapi_schema
-
-        await initialize_spaces()
-        await access_control.load_permissions_and_roles()
+        
+        await bootstrap_all()
 
         yield
-
+    
     finally:
         await RedisServices().close_pool()
     
@@ -161,6 +161,7 @@ app.add_middleware(ChannelMiddleware)
 @app.middleware("http")
 async def middle(request: Request, call_next):
     """Wrapper function to manage errors and logging"""
+    # print(f"\n\n _available_connections: {len(RedisServices.POOL._available_connections)}\n_in_use_connections: {len(RedisServices._RedisServices__POOL._in_use_connections)}\n\n")
     if request.url._url.endswith("/docs") or request.url._url.endswith("openapi.json"):
         return await call_next(request)
 

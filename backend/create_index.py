@@ -7,20 +7,18 @@ import re
 import traceback
 
 import models.api as api
+from utils.bootstrap import bootstrap_all
 import utils.db as db
 import models.core as core
-import sys
 from models.enums import ContentType, ResourceType
-from utils.helpers import camel_case, divide_chunks
+from utils.helpers import divide_chunks
 from utils.custom_validations import validate_payload_with_schema
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from utils.redis_services import RedisServices
-from utils.repository import generate_payload_string
+from utils.operational_repo import operational_repo
 from utils.settings import settings
 import utils.regex as regex
 import asyncio
-from utils.spaces import get_spaces, initialize_spaces
-from utils.access_control import access_control
 # from time import time
 from multiprocessing import Pool
 
@@ -95,73 +93,76 @@ def generate_redis_docs_process(locators: list):
 
 async def generate_redis_docs(locators: list) -> list:
     redis_docs = []
-    async with RedisServices() as redis_man:
-        for one in locators:
-            try:
-                myclass = getattr(sys.modules["models.core"], camel_case(one.type))
-                # print(f"{one=}")
+    redis_man : RedisServices = await RedisServices()
+    for one in locators:
+        try:
+            # print(f"{one=}")
 
+            dto = core.EntityDTO(
+                space_name=one.space_name,
+                subpath=one.subpath,
+                shortname=one.shortname,
+                user_shortname="anonymous",
+                resource_type=one.type
+            )
+            meta: core.Meta | None = await db.load_or_none(dto) #type: ignore
+            if not meta:
+                continue
+            
+            meta_doc_id, meta_data = redis_man.prepate_meta_doc(
+                one.space_name, one.subpath, meta
+            )
+            payload_data = {}
+            if (
+                meta.payload
+                and isinstance(meta.payload.body, str)
+                and meta.payload.content_type == ContentType.json
+                and meta.payload.schema_shortname
+            ):
                 try:
-                    meta = await db.load(
+                    payload_path = db.payload_path(dto) / str(meta.payload.body)
+                    payload_data = json.loads(payload_path.read_text())
+                    await validate_payload_with_schema(
+                        payload_data=payload_data,
+                        space_name=one.space_name,
+                        schema_shortname=meta.payload.schema_shortname,
+                    )
+                    doc_id, payload = redis_man.prepare_payload_doc(
                         space_name=one.space_name,
                         subpath=one.subpath,
-                        shortname=one.shortname,
-                        class_type=myclass,
-                        user_shortname="anonymous",
+                        resource_type=one.type,
+                        payload=copy(payload_data),
+                        meta=meta,
                     )
-                except Exception as e:
-                    print(e)
-                    continue
-                meta_doc_id, meta_data = redis_man.prepare_meta_doc(
-                    one.space_name, one.subpath, meta
-                )
-                payload_data = {}
-                if (
-                    meta.payload
-                    and isinstance(meta.payload.body, str)
-                    and meta.payload.content_type == ContentType.json
-                    and meta.payload.schema_shortname
-                ):
-                    try:
-                        payload_path = db.payload_path(
-                            one.space_name, one.subpath, myclass
-                        ) / str(meta.payload.body)
-                        payload_data = json.loads(payload_path.read_text())
-                        await validate_payload_with_schema(
-                            payload_data=payload_data,
-                            space_name=one.space_name,
-                            schema_shortname=meta.payload.schema_shortname,
-                        )
-                        doc_id, payload = redis_man.prepare_payload_doc(
-                            space_name=one.space_name,
-                            subpath=one.subpath,
-                            resource_type=one.type,
-                            payload=copy(payload_data),
-                            meta=meta,
-                        )
-                        payload.update(meta_data)
-                        redis_docs.append({"doc_id": doc_id, "payload": payload})
-                    except SchemaValidationError as _:
-                        print(
-                            f"Error: @{one.space_name}/{one.subpath}/{meta.shortname} "
-                            f"does not match the schema {meta.payload.schema_shortname}"
-                        )
-                    except Exception as ex:
-                        print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
-
-                meta_data["payload_string"] = await generate_payload_string(
+                    payload.update(meta_data)
+                    redis_docs.append({"doc_id": doc_id, "payload": payload})
+                except SchemaValidationError as _:
+                    print(
+                        f"Error: @{one.space_name}/{one.subpath}/{meta.shortname} "
+                        f"does not match the schema {meta.payload.schema_shortname}"
+                    )
+                except Exception as ex:
+                    print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
+                    
+            meta_data["payload_string"] = await operational_repo.generate_payload_string(
+                dto=core.EntityDTO(
                     space_name=one.space_name, 
                     subpath=one.subpath, 
-                    shortname=one.shortname, 
-                    payload=payload_data,
-                ) if settings.store_payload_string else ""
-                
-                redis_docs.append({"doc_id": meta_doc_id, "payload": meta_data})
+                    shortname=one.shortname,  
+                    resource_type=one.type,
+                ),
+                payload=payload_data,
+            )
+            
+            redis_docs.append({"doc_id": meta_doc_id, "payload": meta_data})
 
-            except Exception:
-                print(f"path: {one.space_name}/{one.subpath}/{one.shortname} ({one.type})")
-                print("stacktrace:")
-                print(f"    {traceback.format_exc()}")
+        except Exception:
+            print(f"path: {one.space_name}/{one.subpath}/{one.shortname} ({one.type})")
+            print("stacktrace:")
+            print(f"    {traceback.format_exc()}")
+            pass
+        
+    del redis_man
 
     return redis_docs
 
@@ -189,7 +190,6 @@ async def traverse_subpaths_entries(
     loaded_data,
     for_subpaths: list | None = None,
 ):
-    # print(f"{subpath_index=} @{space_name} {path=}")
     space_parts_count = len(settings.spaces_folder.parts)
     subpath_index = space_parts_count + 1
 
@@ -240,7 +240,8 @@ async def load_all_spaces_data_to_redis(
     Loop over spaces and subpaths inside it and load the data to redis of indexing_enabled for the space
     """
     loaded_data = {}
-    spaces = await get_spaces()
+    async with RedisServices() as redis:
+        spaces = await redis.get_doc_by_id("spaces")
     for space_name, space_json in spaces.items():
         space_obj = core.Space.model_validate_json(space_json)
         if (for_space and for_space != space_name) or not space_obj.indexing_enabled:
@@ -275,30 +276,29 @@ async def main(
     flushall: bool = False
 ):
     
-    try:
-        async with RedisServices() as redis_man:
-            if flushall:
-                print("FLUSHALL")
-                await redis_man.flushall()
+    async with RedisServices() as redis_man:
+        if flushall:
+            print("FLUSHALL")
+            await redis_man.flushall()
 
-            print("Intializing spaces")
-            await initialize_spaces()
+        print("Intializing spaces")
+        
+        await bootstrap_all()
 
-            print(f"Creating Redis indices: {for_space=} {for_schemas=}")
-            await access_control.load_permissions_and_roles()
-            await redis_man.create_indices(
-                for_space=for_space, 
-                for_schemas=for_schemas,
-                del_docs=not bool(for_subpaths)
-            )
-        res = await load_all_spaces_data_to_redis(for_space, for_subpaths)
-        for space_name, loaded_data in res.items():
-            if loaded_data:
-                for item in loaded_data:
-                    print(f"{item['documents']}\tRegular {space_name}/{item['subpath']}")
-    finally:
-        await RedisServices().close_pool()
+        print(f"Creating Redis indices: {for_space=} {for_schemas=}")
+        await redis_man.create_indices(
+            for_space=for_space, 
+            for_schemas=for_schemas,
+            del_docs=not bool(for_subpaths)
+        )
+    res = await load_all_spaces_data_to_redis(for_space, for_subpaths)
+    for space_name, loaded_data in res.items():
+        if loaded_data:
+            for item in loaded_data:
+                print(f"{item['documents']}\tRegular {space_name}/{item['subpath']}")
 
+    await RedisServices.POOL.aclose()
+    await RedisServices.POOL.disconnect(True)
 
 
 if __name__ == "__main__":

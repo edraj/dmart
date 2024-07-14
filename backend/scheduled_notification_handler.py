@@ -1,15 +1,11 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 from datetime import datetime, timedelta
-import json
-from models.core import Content, Notification, NotificationData, Translation
-from utils.db import load as load_meta
+from models.api import Query
+from models.core import Content, EntityDTO, Notification, NotificationData, Translation
+from models.enums import QueryType, ResourceType
+from utils.db import load as load_meta, get_entry_attachments
 from utils.notification import NotificationManager
-from utils.redis_services import RedisServices
-from utils.repository import (
-    internal_save_model,
-    internal_sys_update_model,
-    get_entry_attachments,
-)
+from utils.operational_repo import operational_repo
 from utils.settings import settings
 from fastapi.logger import logger
 import asyncio
@@ -18,49 +14,53 @@ import asyncio
 async def trigger_admin_notifications() -> None:
     from_time = int((datetime.now() - timedelta(minutes=15)).timestamp() * 1000)
     to_time = int(datetime.now().timestamp() * 1000)
-    async with RedisServices() as redis_services:
-        admin_notifications = await redis_services.search(
-            space_name=settings.management_space,
-            schema_name="admin_notification_request",
-            search=f"@subpath:/notifications/admin (-@status:finished) @scheduled_at:[{from_time} {to_time}]",
-            filters={},
-            limit=10000,
-            offset=0,
-        )
-    if admin_notifications["total"] == 0:
+    admin_notifications = await operational_repo.search(Query(
+        type=QueryType.search,
+        space_name=settings.management_space,
+        filter_schema_names=["admin_notification_request"],
+        subpath="/notifications/admin",
+        search=f"(-@status:finished) @scheduled_at:[{from_time} {to_time}]",
+        limit=10000,
+        offset=0,
+    ))
+
+    if admin_notifications[0] == 0:
         return
 
     notification_manager = NotificationManager()
-    for notification_doc in admin_notifications["data"]:
-        notification_dict = json.loads(notification_doc)
+    for notification_dict in admin_notifications[1]:
         formatted_req = await prepare_request(notification_dict)
 
         # Get notification receivers users
-        async with RedisServices() as redis_services:
-            receivers = await redis_services.search(
-                space_name=settings.management_space,
-                search=f"@subpath:users @msisdn:{'|'.join(notification_dict['msisdns'])}",
-                filters={},
-                limit=10000,
-                offset=0,
-            )
+        receivers = await operational_repo.search(Query(
+            type=QueryType.search,
+            space_name=settings.management_space,
+            subpath="users",
+            search=f"@msisdn:{'|'.join(notification_dict['msisdns'])}",
+            limit=10000,
+            offset=0,
+        ))
 
-        if not receivers:
+
+        if receivers[0] == 0:
             continue
 
         # Try to send the notification
         # and update the notification status to finished
         formatted_req = await prepare_request(notification_dict)
         try:
-            for receiver in receivers["data"]:
-                receiver_data = json.loads(receiver)
+            for receiver_data in receivers[1]:
                 if not formatted_req["push_only"]:
                     notification_obj = await Notification.from_request(
                         notification_dict
                     )
-                    await internal_save_model(
-                        space_name="personal",
-                        subpath=f"people/{receiver_data['shortname']}/notifications",
+                    await operational_repo.internal_save_model(
+                        dto=EntityDTO(
+                            space_name="personal",
+                            subpath=f"people/{receiver_data['shortname']}/notifications",
+                            shortname=notification_obj.shortname,
+                            resource_type=ResourceType.notification
+                        ),
                         meta=notification_obj,
                     )
 
@@ -75,18 +75,18 @@ async def trigger_admin_notifications() -> None:
                         ),
                     )
 
-            notification_meta = await load_meta(
-                settings.management_space,
-                notification_dict["subpath"],
-                notification_dict["shortname"],
-                Content,
-                notification_dict["owner_shortname"],
+            dto = EntityDTO(
+                space_name=settings.management_space,
+                subpath=notification_dict["subpath"],
+                shortname=notification_dict["shortname"],
+                resource_type=ResourceType.content,
+                user_shortname=notification_dict["owner_shortname"],
             )
-            await internal_sys_update_model(
-                settings.management_space,
-                notification_dict["subpath"],
-                notification_meta,
-                {"status": "finished"},
+            notification_meta: Content = await load_meta(dto)
+            await operational_repo.internal_sys_update_model(
+                dto=dto,
+                meta=notification_meta,
+                updates={"status": "finished"},
             )
         except Exception as e:
             logger.error(
