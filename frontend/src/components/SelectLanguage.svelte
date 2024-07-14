@@ -2,6 +2,7 @@
   import { _, switchLocale, locale, available_locales } from "@/i18n";
   import { website } from "@/config";
   import { ButtonGroup, Button } from "sveltestrap";
+  //  import { blob } from "stream/consumers";
   // import { formToJSON } from "axios";
   let locales = available_locales.filter((x) => x in website.languages);
 
@@ -29,7 +30,7 @@
               path = path.replace("/.ar", "/")
           }
           selectLocale(event, key)
-          window.location.replace(path);
+          window.location.replace(path); 
         }
       }>{key}</Button>
   {/each}
