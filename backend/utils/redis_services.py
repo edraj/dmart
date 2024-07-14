@@ -26,6 +26,14 @@ from fastapi.logger import logger
 
 class RedisServices(Redis):
 
+    POOL = BlockingConnectionPool(
+        host=settings.operational_db_host,
+        port=settings.operational_db_port,
+        password=settings.operational_db_password,
+        decode_responses=True,
+        protocol=3,
+        max_connections=settings.operational_db_pool_max_connections,
+    )
 
     META_SCHEMA = (
         TextField("$.uuid", no_stem=True, as_name="uuid"),
@@ -212,15 +220,6 @@ class RedisServices(Redis):
         "view_acl",
     ]
     redis_indices: dict[str, dict[str, Search]] = {}
-    POOL: BlockingConnectionPool= BlockingConnectionPool(
-                            timeout=10,
-                            host=settings.redis_host,
-                            port=settings.redis_port,
-                            password=settings.redis_password,
-                            protocol=3,
-                            max_connections=settings.redis_pool_max_connections,
-                            decode_responses=True)
-    
     def __new__(cls):
         if not hasattr(cls, 'instance'):
             cls.instance = super(RedisServices, cls).__new__(cls)
@@ -228,12 +227,17 @@ class RedisServices(Redis):
 
     def __init__(self):
         super().__init__(connection_pool=RedisServices.POOL)
-
+        
     async def close_pool(self):
         # print('{"Disconnecting connection pool":"initated"}')
         await self.aclose()
         await RedisServices.POOL.aclose()
         await RedisServices.POOL.disconnect(True)
+
+    async def create_index_direct(
+        self, name: str, fields: tuple, definition: IndexDefinition
+    ):
+        await self.ft(name).create_index(fields=fields, definition=definition)
 
     async def create_index(
         self,
@@ -421,7 +425,7 @@ class RedisServices(Redis):
         """
         Loop over all spaces, and for each one we create: (only if indexing_enabled is true for the space)
         1-index for meta file called space_name:meta
-        2-indices for schema files called space_name:schema_shortname
+        2-indices for schema files called space_name:{schema_shortname}
         """
         spaces = await self.get_doc_by_id("spaces")
         for space_name in spaces:
@@ -531,7 +535,7 @@ class RedisServices(Redis):
         schema_shortname: str,
         shortname: str,
         subpath: str,
-    ):
+    ) -> str:
         # if subpath[0] == "/":
         #     subpath = subpath[1:]
         # if subpath[-1] == "/":
@@ -589,9 +593,9 @@ class RedisServices(Redis):
 
         return query_policies
 
-    def prepare_meta_doc(
-        self, space_name: str, subpath: str, meta: core.Meta
-    ):
+    def prepate_meta_doc(
+        self, space_name: str,  subpath: str, meta: core.Meta
+    ) -> tuple[str, dict[str, Any]]:
         resource_type = ResourceType(meta.__class__.__name__.lower())
         meta_doc_id = self.generate_doc_id(
             space_name, "meta", meta.shortname, subpath
@@ -605,7 +609,7 @@ class RedisServices(Redis):
                 subpath,
             )
         meta.model_rebuild()
-        meta_json = json.loads(meta.model_dump_json(serialize_as_any=False, exclude_none=True,warnings="error"))
+        meta_json: dict[str, Any] = json.loads(meta.model_dump_json(exclude_none=True))
         meta_json["query_policies"] = self.generate_query_policies(
             space_name,
             subpath,
@@ -623,23 +627,25 @@ class RedisServices(Redis):
         meta_json["payload_doc_id"] = payload_doc_id
 
         return meta_doc_id, meta_json
-    
+
     def generate_view_acl(self, acl: list[dict[str, Any]] | None) -> list[str] | None:
         if not acl:
             return None
-        
+
         view_acl: list[str] = []
-        
+
         for access in acl:
-            if ActionType.view in access.get("allowed_actions", []) or ActionType.query in access.get("allowed_actions", []):
+            if ActionType.view in access.get(
+                "allowed_actions", []
+            ) or ActionType.query in access.get("allowed_actions", []):
                 view_acl.append(access["user_shortname"])
-                
+
         return view_acl
 
     async def save_meta_doc(
-        self, space_name: str, subpath: str, meta: core.Meta
+        self, space_name: str,  subpath: str, meta: core.Meta
     ):
-        meta_doc_id, meta_json = self.prepare_meta_doc(
+        meta_doc_id, meta_json = self.prepate_meta_doc(
             space_name, subpath, meta
         )
         await self.save_doc(meta_doc_id, meta_json)
@@ -650,27 +656,24 @@ class RedisServices(Redis):
         space_name: str,
         subpath: str,
         meta: core.Meta,
-        payload: dict,
-        resource_type: ResourceType = ResourceType.content,
-    ):
+        payload: dict[str, Any],
+        resource_type: ResourceType | None = ResourceType.content,
+    ) -> tuple[str, dict[str, Any]]:
         if meta.payload is None:
-            print(
+            raise Exception(
                 f"Missing payload for {space_name}/{subpath} of type {resource_type}"
             )
-            return "", {}
         if meta.payload.body is None:
-            print(
+            raise Exception(
                 f"Missing body for {space_name}/{subpath} of type {resource_type}"
             )
-            return "", {}
         if not isinstance(meta.payload.body, str):
-            print("body should be type of string")
-            return "", {}
+            raise Exception("body should be type of string")
         payload_shortname = meta.payload.body.split(".")[0]
         meta_doc_id = self.generate_doc_id(
             space_name, "meta", payload_shortname, subpath
         )
-        docid = self.generate_doc_id(
+        docid: str = self.generate_doc_id(
             space_name,
             meta.payload.schema_shortname or "",
             payload_shortname,
@@ -680,7 +683,7 @@ class RedisServices(Redis):
         payload["query_policies"] = self.generate_query_policies(
             space_name,
             subpath,
-            resource_type,
+            resource_type or ResourceType.content,
             meta.is_active,
             meta.owner_shortname,
             meta.owner_group_shortname,
@@ -712,7 +715,9 @@ class RedisServices(Redis):
             return
         await self.save_doc(docid, payload)
 
-    async def get_payload_doc(self, doc_id: str, resource_type: ResourceType):
+    async def get_payload_doc(
+        self, doc_id: str, resource_type: ResourceType
+    ) -> dict[str, Any]:
         resource_class = getattr(
             sys.modules["models.core"],
             camel_case(resource_type),
@@ -733,11 +738,12 @@ class RedisServices(Redis):
     async def save_lock_doc(
         self,
         space_name: str,
+        
         subpath: str,
         payload_shortname: str,
         owner_shortname: str,
         ttl: int,
-    ):
+    ) -> LockAction:
         lock_doc_id = self.generate_doc_id(
             space_name, "lock", payload_shortname, subpath
         )
@@ -774,7 +780,7 @@ class RedisServices(Redis):
         space_name: str,
         subpath: str,
         payload_shortname: str,
-    ):
+    ) -> dict[str, Any]:
         lock_doc_id = self.generate_doc_id(
             space_name, "lock", payload_shortname, subpath
         )
@@ -793,6 +799,7 @@ class RedisServices(Redis):
     async def is_entry_locked(
         self,
         space_name: str,
+        
         subpath: str,
         shortname: str,
         user_shortname: str,
@@ -820,12 +827,14 @@ class RedisServices(Redis):
             pipe.json().set(document["doc_id"], path, document["payload"])
         return await pipe.execute()
 
-    async def get_count(self, space_name: str, schema_shortname: str):
+    async def get_count(
+        self, space_name: str, schema_shortname: str
+    ) -> int:
         ft_index = self.ft(f"{space_name}:{schema_shortname}")
 
         try:
             info = await ft_index.info()
-            return info["num_docs"]
+            return int(info["num_docs"])
         except Exception as e:
             logger.error(f"Error at redis_services.get_count: {e}")
             return 0
@@ -838,7 +847,7 @@ class RedisServices(Redis):
         self,
         space_name: str,
         search: str,
-        filters: dict[str, str | list],
+        filters: dict[str, str | list | None],
         limit: int,
         offset: int,
         exact_subpath: bool = False,
@@ -847,7 +856,7 @@ class RedisServices(Redis):
         highlight_fields: list[str] | None = None,
         schema_name: str = "meta",
         return_fields: list = [],
-    ):
+    ) -> tuple[int, list[str]]:
         # Tries to get the index from the provided space
         try:
             ft_index = self.ft(f"{space_name}:{schema_name}")
@@ -856,7 +865,7 @@ class RedisServices(Redis):
             logger.error(
                 f"Error accessing index: {space_name}:{schema_name}, at redis_services.search: {e}"
             )
-            return {"data": [], "total": 0}
+            return (0, [])
 
         search_query = Query(
             query_string=self.prepare_query_string(search, filters, exact_subpath)
@@ -881,25 +890,32 @@ class RedisServices(Redis):
                 and "results" in search_res
                 and "total_results" in search_res
             ):
-
-                return {
-                    "data": [
-                        one["extra_attributes"]["$"]
-                        for one in search_res["results"]
-                        if "extra_attributes" in one
-                    ],
-                    "total": search_res["total_results"],
-                }
+                # res = {
+                #     "data": [
+                #         one["extra_attributes"]["$"]
+                #         for one in search_res["results"]
+                #         if "extra_attributes" in one
+                #     ],
+                #     "total": search_res["total_results"],
+                # }
+                # print(type(res["data"]))
+                # pprint(res)
+                # print("\n\n")
+                return search_res["total_results"], [
+                    one["extra_attributes"]["$"]
+                    for one in search_res["results"]
+                    if "extra_attributes" in one
+                ]
             else:
-                return {}
+                return 0, []
         except Exception:
-            return {}
+            return 0, []
 
     async def aggregate(
         self,
         space_name: str,
         search: str,
-        filters: dict[str, str | list],
+        filters: dict[str, str | list | None],
         group_by: list[str],
         reducers: list[RedisReducer],
         max: int = 10,
@@ -929,16 +945,8 @@ class RedisServices(Redis):
             aggr_request.group_by(group_by, *reducers_functions)
 
         if sort_by:
-            aggr_request.sort_by(
-                [
-                    str(
-                        aggregation.Desc(f"@{sort_by}")
-                        if sort_type == SortType.ascending
-                        else aggregation.Asc(f"@{sort_by}")
-                    )
-                ],
-                max=max,
-            )
+            aggr_request.sort_by(aggregation.Asc(f"@{sort_by}") if sort_type == SortType.ascending else aggregation.Asc(f"@{sort_by}"), max=max)  # type: ignore
+
 
         if load:
             aggr_request.load(*load)
@@ -952,7 +960,7 @@ class RedisServices(Redis):
         return []
 
     def prepare_query_string(
-        self, search: str, filters: dict[str, str | list], exact_subpath: bool
+        self, search: str, filters: dict[str, str | list | None], exact_subpath: bool
     ):
         query_string = search
 
@@ -973,19 +981,19 @@ class RedisServices(Redis):
                 )
             elif item[0] == "query_policies" and item[1] is not None:
                 query_string += (
-                    f" ((@{item[0]}:{{" + "|".join(item[1]).translate(redis_escape_chars) + "})"
+                    f" ((@{item[0]}:{{"
+                    + "|".join(item[1]).translate(redis_escape_chars)
+                    + "})"
                 )
                 if filters.get("user_shortname", None) is not None:
-                    query_string += (
-                        f" | (@view_acl:{{{filters['user_shortname']}}}) )"
-                    )
+                    query_string += f" | (@view_acl:{{{filters['user_shortname']}}}) )"
                 else:
                     query_string += ")"
             elif item[0] == "created_at" and item[1]:
                 query_string += f" @{item[0]}:{item[1]}"
             elif item[0] == "subpath" and exact_subpath:
                 search_value = ""
-                for subpath in item[1]:  # Handle existence/absence of `/`
+                for subpath in item[1] or []:  # Handle existence/absence of `/`
                     search_value += "|" + subpath.strip("/")
                     search_value += "|" + f"/{subpath}".replace("//", "/")
 
@@ -993,14 +1001,16 @@ class RedisServices(Redis):
                     redis_escape_chars
                 )
                 query_string += f" @exact_subpath:{{{exact_subpath_value}}}"
-            elif item[0] == "subpath" and item[1][0] == "/":
+            elif (
+                item[0] == "subpath" and len(item) > 1 and item[1] and item[1][0] == "/"
+            ):
                 pass
             elif item[1] and item[0] != "user_shortname":
                 query_string += " @" + item[0] + ":(" + "|".join(item[1]) + ")"
 
         return query_string or "*"
 
-    async def get_doc_by_id(self, doc_id: str) -> Any:
+    async def get_doc_by_id(self, doc_id: str) -> dict[str, Any]:
         try:
             x = self.json().get(name=doc_id)
             if x and isinstance(x, Awaitable):
@@ -1008,16 +1018,16 @@ class RedisServices(Redis):
                 if isinstance(value, dict):
                     return value
                 if isinstance(value, str):
-                    return json.loads(value)
+                    return json.loads(value)  # type: ignore
                 else:
-                   raise Exception(f"Not json dict at id: {doc_id}. data: {value=}")
+                    raise Exception(f"Not json dict at id: {doc_id}. data: {value=}")
             else:
                 raise Exception(f"Not awaitable {x=}")
         except Exception as e:
             logger.warning(f"Error at redis_services.get_doc_by_id: {doc_id=} {e}")
         return {}
 
-    async def get_docs_by_ids(self, docs_ids: list[str]) -> list:
+    async def get_docs_by_ids(self, docs_ids: list[str]) -> list[dict[str, Any]]:
         try:
             x = self.json().mget(docs_ids, "$")
             if x and isinstance(x, Awaitable):
@@ -1038,19 +1048,23 @@ class RedisServices(Redis):
     async def delete_doc(
         self, space_name, schema_shortname, shortname, subpath
     ):
-        docid = self.generate_doc_id(
+        await self.delete_doc_by_id(self.generate_doc_id(
             space_name, schema_shortname, shortname, subpath
-        )
+        ))
+            
+    async def delete_doc_by_id(self, id: str):
         try:
-            x = self.json().delete(key=docid)
+            x = self.json().delete(key=id)
             if x and isinstance(x, Awaitable):
                 await x
         except Exception as e:
             logger.warning(f"Error at redis_services.delete_doc: {e}")
+        
 
     async def move_payload_doc(
         self,
         space_name,
+
         schema_shortname,
         src_shortname,
         src_subpath,
@@ -1099,7 +1113,7 @@ class RedisServices(Redis):
         try:
             return await self.delete(*keys)
         except Exception as e:
-            logger.warning(f"Error at redis_services.del_keys {keys}: {e}")
+            logger.warning(f"Error at redis_services.def_keys {keys}: {e}")
             return False
 
     async def get_key(self, key) -> str | None:
@@ -1130,12 +1144,12 @@ class RedisServices(Redis):
         except Exception:
             return False
 
-    async def list_indices(self):
+    async def list_indices(self) -> set[str]:
         x = self.ft().execute_command("FT._LIST")
         if x and isinstance(x, Awaitable):
-            return await x
-        
-    
+            return await x  # type: ignore
+
+        return set()
     
     async def get_all_document_ids(self, index: str, search_str: str = "*") -> list[str]:        
         # Initialize the list to hold document IDs

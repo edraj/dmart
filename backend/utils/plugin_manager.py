@@ -2,6 +2,7 @@ import asyncio
 from inspect import iscoroutine
 import os
 from pathlib import Path
+
 import aiofiles
 from fastapi import Depends, FastAPI
 from models.core import (
@@ -15,28 +16,26 @@ from models.core import (
 )
 from models.enums import ResourceType, PluginType
 from utils.settings import settings
-from utils.spaces import get_spaces
+from utils.operational_repo import operational_repo
 from importlib.util import find_spec, module_from_spec
 import sys
 from fastapi.logger import logger
 
-CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
 
+CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
 # Allow python to search for modules inside the custom plugins
 # be including the path to the parent folder of the custom plugins to sys.path
 back_out_of_project = 2
 back_to_spaces = 0
-
 for part in CUSTOM_PLUGINS_PATH.parts:
     if part == "..":
         back_to_spaces += 1
 
 if __file__.endswith(".pyc"):
     back_out_of_project += 1
-
 sys.path.append(
     "/".join(__file__.split("/")[:-(back_out_of_project+back_to_spaces)]) + 
-    "/" +
+    "/" + 
     "/".join(CUSTOM_PLUGINS_PATH.parts[back_to_spaces:-1])
 )
 
@@ -154,7 +153,7 @@ class PluginManager:
         return True
 
     async def before_action(self, event: Event):
-        spaces = await get_spaces()
+        spaces = await operational_repo.find_by_id("spaces")
         if (
             event.space_name not in spaces
             or event.action_type not in self.plugins_wrappers
@@ -181,7 +180,7 @@ class PluginManager:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
     async def after_action(self, event: Event):
-        spaces = await get_spaces()
+        spaces = await operational_repo.find_by_id("spaces")
         if (
             event.space_name not in spaces
             or event.action_type not in self.plugins_wrappers

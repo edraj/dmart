@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from importlib.util import find_spec, module_from_spec
 import json
 import sys
-from models.core import NotificationData
+from models.core import EntityDTO, NotificationData
+from models.enums import ResourceType
 from utils.settings import settings
 from models.core import User
 from utils.db import load
@@ -17,14 +18,14 @@ class Notifier(ABC):
 
     async def _load_user(self, shortname: str) -> User:
         if not hasattr(self, "user"):
-
-            self.user = await load(
+            self.user: User = await load(EntityDTO(
                 space_name=settings.management_space,
                 subpath=settings.users_subpath,
                 shortname=shortname,
-                class_type=User,
+                resource_type=ResourceType.user,
                 user_shortname="__system__",
-            )
+                
+            ))
         return self.user
 
 

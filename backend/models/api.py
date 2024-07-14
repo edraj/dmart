@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 from builtins import Exception as PyException
 from models.enums import (
+    ActionType,
     DataAssetType,
     QueryType,
     ResourceType,
@@ -64,6 +65,25 @@ class Request(BaseModel):
         }
     }
 
+    @field_validator("records")
+    @classmethod
+    def validate_empty_records(cls, v: list[core.Record], info: ValidationInfo):
+        if (not v):
+            raise ValueError("Request records cannot be empty")
+
+        return v
+    
+    @property
+    def action_type(self) -> ActionType:
+        match self.request_type:
+            case RequestType.create:
+                return ActionType.create
+            case RequestType.update | RequestType.r_replace | RequestType.assign | RequestType.update_acl:
+                return ActionType.update
+            case RequestType.delete | RequestType.move:
+                return ActionType.delete
+                
+
 
 class RedisReducer(BaseModel):
     reducer_name: str
@@ -104,7 +124,7 @@ class Query(BaseModel):
     jq_filter: str | None = None
     limit: int = 10
     offset: int = 0
-    aggregation_data: RedisAggregate | None = None
+    aggregation_data: RedisAggregate | dict[str, Any] | None = None
 
     # Replace -1 limit by settings.max_query_limit
     def __init__(self, **data):

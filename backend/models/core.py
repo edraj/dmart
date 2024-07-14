@@ -22,7 +22,7 @@ from models.enums import (
     PluginType,
     EventListenTime,
 )
-from utils.helpers import camel_case, remove_none_dict, snake_case
+from utils.helpers import camel_case, remove_none, snake_case
 import utils.regex as regex
 from utils.settings import settings
 import utils.password_hashing as password_hashing
@@ -49,29 +49,29 @@ class Payload(Resource):
     client_checksum: str | None = None
     checksum: str | None = None
     body: str | dict[str, Any]
-    
+
     def __init__(self, **data):
         BaseModel.__init__(self, **data)
-        
+
         if not self.checksum and self.body:
             sha1 = hashlib_sha1()
-            
+
             if isinstance(self.body, dict):
-                sha1.update(json.dumps(self.body).encode('utf-8'))
+                sha1.update(json.dumps(self.body).encode("utf-8"))
             else:
-                sha1.update(self.body.encode('utf-8'))
-                
+                sha1.update(self.body.encode("utf-8"))
+
             self.checksum = sha1.hexdigest()
 
     def update(
         self, payload: dict, old_body: dict | None = None, replace: bool = False
     ) -> dict | None:
-        self.content_type = ContentType(payload["content_type"])
+        self.content_type = payload["content_type"]
 
         if self.content_type == ContentType.json:
             if old_body and not replace:
                 separate_payload_body = dict(
-                    remove_none_dict(
+                    remove_none(
                         deep_update(
                             old_body,
                             payload["body"],
@@ -105,9 +105,11 @@ class Record(BaseModel):
         if self.subpath != "/":
             self.subpath = self.subpath.strip("/")
 
-    def to_dict(self):
-        return self.model_dump(exclude_none=True,warnings=True)
+        if self.subpath[0] != "/":
+            self.subpath = f"/{self.subpath}"
 
+    def to_dict(self):
+        return json.loads(self.model_dump_json())
 
     def __eq__(self, other):
         return (
@@ -178,6 +180,7 @@ class Relationship(Resource):
     related_to: Locator
     attributes: dict[str, Any]
 
+
 class ACL(BaseModel):
     user_shortname: str
     allowed_actions: list[ActionType]
@@ -201,24 +204,21 @@ class Meta(Resource):
 
     model_config = ConfigDict(validate_assignment=True)
 
-    @staticmethod
-    def from_record(record: Record, owner_shortname: str):
+    @classmethod
+    def from_record(cls, record: Record, owner_shortname: str) -> Self:
         if record.shortname == settings.auto_uuid_rule:
             record.uuid = uuid4()
             record.shortname = str(record.uuid)[:8]
             record.attributes["uuid"] = record.uuid
 
-        meta_class = getattr(
-            sys.modules["models.core"], camel_case(record.resource_type)
-        )
-
-        if issubclass(meta_class, User) and "password" in record.attributes:
+        if issubclass(cls, User) and "password" in record.attributes:
             hashed_pass = password_hashing.hash_password(record.attributes["password"])
             record.attributes["password"] = hashed_pass
 
         record.attributes["owner_shortname"] = owner_shortname
         record.attributes["shortname"] = record.shortname
-        return meta_class(**remove_none_dict(record.attributes))
+        meta_obj = cls(**remove_none(record.attributes))  # type: ignore
+        return meta_obj
 
     @staticmethod
     def check_record(record: Record, owner_shortname: str):
@@ -287,7 +287,7 @@ class Meta(Resource):
             )
 
         record_fields = {
-            "resource_type": ResourceType(snake_case(type(self).__name__)),
+            "resource_type": snake_case(type(self).__name__),
             "uuid": self.uuid,
             "shortname": self.shortname,
             "subpath": subpath,
@@ -302,7 +302,9 @@ class Meta(Resource):
 
         return Record(**record_fields)
 
+
 MetaChild = TypeVar("MetaChild", bound=Meta)
+
 
 class Space(Meta):
     root_registration_signature: str = ""
@@ -377,6 +379,7 @@ class Sqlite(DataAsset):
 class Duckdb(DataAsset):
     pass
 
+
 class Csv(DataAsset):
     pass
 
@@ -437,8 +440,6 @@ class Schema(Meta):
 class Content(Meta):
     pass
 
-class Log(Meta):
-    pass
 
 class Folder(Meta):
     pass
@@ -474,7 +475,7 @@ class Reporter(Resource):
 
 
 class Ticket(Meta):
-    state: str
+    state: str | None = None
     is_open: bool = True
     reporter: Reporter | None = None
     workflow_shortname: str
@@ -608,7 +609,6 @@ class EntityDTO(BaseModel):
             **data.model_dump(
                 include={
                     "space_name",
-                    "branch_name",
                     "subpath",
                     "shortname",
                     "resource_type",
@@ -639,6 +639,6 @@ class EntityDTO(BaseModel):
             ),
             user_shortname=user_shortname,
             **record.model_dump(
-                include={"branch_name", "subpath", "shortname", "resource_type"}
+                include={"subpath", "shortname", "resource_type"}
             ),
         )

@@ -28,10 +28,11 @@ class Settings(BaseSettings):
     jwt_access_expires: int = 30 * 86400  # 30 days
     listening_host: str = "0.0.0.0"
     listening_port: int = 8282
-    redis_host: str = "127.0.0.1"
-    redis_password: str = ""
-    redis_port: int = 6379
-    redis_pool_max_connections: int = 20
+    operational_db_host: str = "127.0.0.1"
+    operational_db_user: str | None = None
+    operational_db_password: str | None = None
+    operational_db_port: int = 9308
+    operational_db_pool_max_connections: int = 20
     one_session_per_user: bool = False
     management_space: str = "management"
     users_subpath: str = "users"
@@ -72,6 +73,8 @@ class Settings(BaseSettings):
 
     facebook_client_id: str = ""
     facebook_client_secret: str = ""
+    
+    active_operational_db: str = "redis" # allowed values: redis, manticore
     
     enable_channel_auth: bool = False
     channels: list = []

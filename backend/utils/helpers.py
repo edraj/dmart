@@ -1,7 +1,6 @@
 from copy import deepcopy
 import csv
 from datetime import datetime
-import json
 from pathlib import Path
 from re import sub as re_sub
 import aiofiles
@@ -11,6 +10,7 @@ from jsonschema.validators import _RefResolver as RefResolver  # type: ignore
 # TBD import referencing.jsonschema
 from collections.abc import MutableMapping
 from models.enums import Language
+from utils.settings import settings
 from typing import Any
 from languages.loader import languages
 
@@ -171,35 +171,31 @@ def divide_chunks(lll, n):
         yield lll[i : i + n]
 
 
-def remove_none_dict(target: dict[str, Any] ) -> dict[str, Any]:
-    new_d: dict = {}
-    for key, val in target.items():
-        if val is None:
-            continue
+def remove_none(target: dict | list):
+    if isinstance(target, dict):
+        new_d: dict = {}
+        for key, val in target.items():
+            if val is None:
+                continue
 
-        if isinstance(val, dict) : 
-            new_d[key] = remove_none_dict(val)
-        elif isinstance(val, list):
-            new_d[key] = remove_none_list(val)
-        else:
-            new_d[key] = val
+            if isinstance(val, dict) or isinstance(val, list):
+                new_d[key] = remove_none(val)
+            else:
+                new_d[key] = val
 
-    return new_d
+        return new_d
+    else:
+        new_l: list = []
+        for val in target:
+            if val is None:
+                continue
 
-def remove_none_list(target: list):
-    new_l: list = []
-    for val in target:
-        if val is None:
-            continue
+            if isinstance(val, dict) or isinstance(val, list):
+                new_l.append(remove_none(val))
+            else:
+                new_l.append(val)
 
-        if isinstance(val, dict) : 
-            new_l.append(remove_none_dict(val))
-        elif isinstance(val, list):
-            new_l.append(remove_none_list(val))
-        else:
-            new_l.append(val)
-
-    return new_l
+        return new_l
 
 
 def alter_dict_keys(
@@ -319,9 +315,42 @@ async def csv_file_to_json(csv_file_path: Path) -> list[dict[str, Any]]:
 
     return data
 
-def read_jsonl_file(file_path):
-    data = []
-    with open(file_path, 'r') as file:
-        for line in file:
-            data.append(json.loads(line))
-    return data
+
+def trans_magic_words(subpath: str, user_shortname: str) -> str:
+        subpath = subpath.replace(settings.current_user_mw, user_shortname)
+        subpath = subpath.replace("//", "/")
+
+        if len(subpath) == 0:
+            subpath = "/"
+        if subpath[0] == "/" and len(subpath) > 1:
+            subpath = subpath[1:]
+        if subpath[-1] == "/" and len(subpath) > 1:
+            subpath = subpath[:-1]
+        return subpath
+    
+
+def delete_none(_dict: dict[str, Any]) -> dict[str, Any]:
+    """Delete None values recursively from all of the dictionaries"""
+    for key, value in list(_dict.items()):
+        if isinstance(value, dict):
+            delete_none(value)
+        elif value is None:
+            del _dict[key]
+        elif isinstance(value, list):
+            for v_i in value:
+                if isinstance(v_i, dict):
+                    delete_none(v_i)
+
+    return _dict
+
+def delete_empty_strings(d: dict[str, Any]) -> dict[str, Any]:
+    for key, value in list(d.items()):
+        if isinstance(value, dict):
+            delete_empty_strings(value)
+        elif isinstance(value, str) and value == "":
+            del d[key]
+        elif isinstance(value, list):
+            for v in value:
+                if isinstance(v, dict):
+                    delete_empty_strings(v)
+    return d
