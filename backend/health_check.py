@@ -37,9 +37,12 @@ spaces_schemas: dict[str, dict[str, dict]] = {}
 async def main(health_type: str, space_param: str, schemas_param: list):
     try:
         spaces = await get_spaces()
-        if space_param not in spaces:
+        if space_param != "all" and space_param not in spaces:
             print("space name is not found")
             return None
+        if space_param == "all":
+            for space in spaces:
+                return await main(health_type, space, schemas_param)
         space_obj = core.Space.model_validate_json(spaces[space_param])
         if not space_obj.check_health:
             print(f"EARLY EXIT, health check disabled for space {space_param}")
@@ -553,5 +556,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     before_time = time.time()
-    asyncio.run(main(args.type, args.space, args.schemas))
+    asyncio.run(main(args.type, args.space or "all", args.schemas))
     print(f'total time: {"{:.2f}".format(time.time() - before_time)} sec')
