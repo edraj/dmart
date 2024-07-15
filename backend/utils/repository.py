@@ -1311,7 +1311,7 @@ async def health_check_entry(
         and isinstance(entry_meta_obj.payload.body, str)
         and entry_meta_obj.payload.content_type == ContentType.json
     ):
-        payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
+        payload_file_path = db.payload_path(space_name, subpath, resource_class)
         if not entry_meta_obj.payload.body.endswith(
             ".json"
         ) or not os.access(payload_file_path, os.W_OK):
