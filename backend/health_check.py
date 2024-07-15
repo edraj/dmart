@@ -35,57 +35,59 @@ spaces_schemas: dict[str, dict[str, dict]] = {}
 
 
 async def main(health_type: str, space_param: str, schemas_param: list):
-    spaces = await get_spaces()
-    if space_param not in spaces:
-        print("space name is not found")
-        return None
-    space_obj = core.Space.model_validate_json(spaces[space_param])
-    if not space_obj.check_health:
-        print(f"EARLY EXIT, health check disabled for space {space_param}")
-        return None
-    
-    await cleanup_spaces()
-    is_full: bool = True if not args.space or args.space == 'all' else False
-    print_header()
-    if health_type == 'soft':
-        print("Running soft healthcheck")
-        if not schemas_param and not is_full:
-            print('Add the space name and at least one schema')
-            return
-        if is_full:
-            params = await load_spaces_schemas(space_param)
-        else:
-            params = {space_param: schemas_param}
-        for space in params:
-            print(f'>>>> Processing {space:<10} <<<<')
-            before_time = time.time()
-            health_check : dict[str, list|dict] | None = {'invalid_folders': [], 'folders_report': {}}
-            for schema in params.get(space, []):
-                health_check_res = await soft_health_check(space, schema)
-                if health_check_res and health_check and isinstance(health_check['folders_report'], dict):
-                    health_check['folders_report'].update(health_check_res.get('folders_report', {}))
-            print_health_check(health_check)
-            await save_health_check_entry(health_check, space)
-            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
-
-    elif not health_type or health_type == 'hard':
-        print("Running hard healthcheck")
-        spaces = {space_param : {}}
-        if is_full:
-            spaces = await get_spaces()
-        for space in spaces:
-            print(f'>>>> Processing {space:<10} <<<<')
-            before_time = time.time()
-            health_check = await hard_health_check(space)
-            if health_check:
+    try:
+        spaces = await get_spaces()
+        if space_param not in spaces:
+            print("space name is not found")
+            return None
+        space_obj = core.Space.model_validate_json(spaces[space_param])
+        if not space_obj.check_health:
+            print(f"EARLY EXIT, health check disabled for space {space_param}")
+            return None
+        
+        await cleanup_spaces()
+        is_full: bool = True if not args.space or args.space == 'all' else False
+        print_header()
+        if health_type == 'soft':
+            print("Running soft healthcheck")
+            if not schemas_param and not is_full:
+                print('Add the space name and at least one schema')
+                return
+            if is_full:
+                params = await load_spaces_schemas(space_param)
+            else:
+                params = {space_param: schemas_param}
+            for space in params:
+                print(f'>>>> Processing {space:<10} <<<<')
+                before_time = time.time()
+                health_check : dict[str, list|dict] | None = {'invalid_folders': [], 'folders_report': {}}
+                for schema in params.get(space, []):
+                    health_check_res = await soft_health_check(space, schema)
+                    if health_check_res and health_check and isinstance(health_check['folders_report'], dict):
+                        health_check['folders_report'].update(health_check_res.get('folders_report', {}))
+                print_health_check(health_check)
                 await save_health_check_entry(health_check, space)
-            print_health_check(health_check)
-            print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
-    else:
-        print("Wrong mode specify [soft or hard]")
-        return
-    await save_duplicated_entries()
-    await RedisServices().close_pool()
+                print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
+
+        elif not health_type or health_type == 'hard':
+            print("Running hard healthcheck")
+            spaces = {space_param : {}}
+            if is_full:
+                spaces = await get_spaces()
+            for space in spaces:
+                print(f'>>>> Processing {space:<10} <<<<')
+                before_time = time.time()
+                health_check = await hard_health_check(space)
+                if health_check:
+                    await save_health_check_entry(health_check, space)
+                print_health_check(health_check)
+                print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
+        else:
+            print("Wrong mode specify [soft or hard]")
+            return
+        await save_duplicated_entries()
+    finally:
+        await RedisServices().close_pool()
 
 
 def print_header() -> None:
