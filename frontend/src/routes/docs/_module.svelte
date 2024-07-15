@@ -11,7 +11,8 @@
     import Footer from "@/components/Footer.svelte";
     import { languages } from 'prismjs';
 
-    const docFiles = [
+
+    export const docFiles:string[] = [
         'index.md',
         'Features-and-Technology-Stack.md',
         'Installation-and-Setup-Instructions.md',
@@ -27,7 +28,8 @@
         'Roadmap.md',
         'FAQs.md',
     ];
-    const arDocFiles = [
+
+    const arDocFiles:string[] = [
         'نظرة عامة',
         'التقنيات والميزات',
         'التثبيت والتشغيل',
@@ -44,9 +46,7 @@
         'أسئلة شائعة',
     ];
 
-
     let selectedIndex = docFiles.findIndex(file => `/docs/${file.replace('.md', '').replace('index','')}`===window.location.pathname );
-
 
     function titleCard(file:string, index:number):string {
         localStorage.setItem("file", file)
@@ -57,6 +57,7 @@
           return file.replaceAll('-', ' ').replace('.md', '').replace('index','Introduction to DMART');
         } 
 
+        // make json code ltr, (tmp)
         if ( language === "ar") {
           const elements = document.querySelectorAll(".language-json");
           elements.forEach(element => {
@@ -66,7 +67,12 @@
 
         return arDocFiles[index]
     }
-    var lang = localStorage.getItem("preferred_locale").substring(1,3);
+
+    // make selected topic dark a litle bit  (tmp)
+    function setClass(file:string):string {
+      return file===docFiles[selectedIndex] ?  "nav-item selected" : "nav-item"
+    }
+
 </script>
 
 <style>
@@ -85,11 +91,8 @@
           {#each docFiles as file, index}
             <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-click-events-have-key-events -->
             <li
-              on:click={function() { 
-                selectedIndex = index
-                //console.log("Index ", index)
-              }}
-              class={ file===docFiles[selectedIndex] ? "nav-item selected" : "nav-item" }>
+              on:click={function() {selectedIndex = index}}
+              class={ setClass(file) }>
               <a href="/docs/{file.replace('.md', '').replace('index','')}" class="nav-link link-dark">
                 {titleCard(file, index)} 
               </a>
