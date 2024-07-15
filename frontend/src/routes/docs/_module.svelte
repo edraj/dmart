@@ -90,6 +90,8 @@
                 lang = localStorage.getItem("preferred_locale").substring(1,3)
                 if (lang === "ar") {
                   lang = "ar/"
+                } else {
+                  lang = ""
                 }
                 //console.log("Index ", index)
               }}

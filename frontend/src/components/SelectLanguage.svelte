@@ -25,12 +25,20 @@
           if (path.charAt(path.length-3) === ".") {
             path = path.substring(0, path.length-3)
           }
-          if (key !== "en") {
-              path += "." + key
-              path = path.replace("/.ar", "/")
-          }
+          
           selectLocale(event, key)
+          let lang = key
+
+          if (lang !== "en") {
+              path += "." + lang 
+              path = path.replace("/.ar", "/")
+
+          } else {
+            lang = ""
+          }
+          path = path.replace("/ar/", "/")
           window.location.replace(path); 
+          console.log("paht aft", path)
         }
       }>{key}</Button>
   {/each}
