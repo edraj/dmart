@@ -1,13 +1,13 @@
-## **Automated Testing Documentation**
+## الاختبار الآلي
 
 ---
 
-Automated testing is a crucial practice in software development that involves using tools and scripts to automatically execute test cases, validate software functionality, and detect defects early in the development process. This documentation provides an overview of different types of automated testing, including
+الاختبار الآلي ممارسة حاسمة في تطوير البرمجيات والتي تتضمن استخدام الأدوات والبرامج النصية لتنفيذ حالات الاختبار تلقائيًا والتحقق من صحة وظائف البرنامج واكتشاف العيوب في وقت مبكر من عملية التطوير. توفر هذه الوثائق نظرة عامة على أنواع مختلفة من الاختبارات الآلية، بما في ذلك
 
-1. [Unit testing with Pytest](Automated-Testing-Pytest)
+1. [اختبار الوحدة باستخدام Pytest](Automated-Testing-Pytest)
 
-2. [Automated Load testing](Automated-Load-Testing)
+2. [اختبار الحمل الآلي](Automated-Load-Testing)
 
-3. [API testing with cURL.](Curl-sh)
+3. [اختبار واجهة برمجة التطبيقات باستخدام cURL.](Curl-sh)
 
-4. [Automated testing with Pylint.](pylint)
+4. [الاختبار الآلي باستخدام بيلينت.](pylint)
