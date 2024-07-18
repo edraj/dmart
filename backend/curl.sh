@@ -53,7 +53,7 @@ RESULT+=$?
 #RESULT+=$?
 
 echo -n -e "Collection Contacts Query: \t" >&2
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"type": "search","space_name": "ordering","subpath": "collections/contacts","retrieve_json_payload": true,"search": "","retrieve_attachments": true}' ${API_URL}/managed/query | jq .status | tee /dev/stderr | grep -q "success"
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"type": "search","space_name": "management","subpath": "users","retrieve_json_payload": true,"search": "","retrieve_attachments": true}' ${API_URL}/managed/query | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
 # echo -n -e "Saved Queries for Report"
