@@ -6,7 +6,7 @@ from utils.settings import settings
 
 AVAILABLE_DATA_REPOSITORIES: dict[str, BaseObjectAdapter] = {
     'file': FileAdapter(),
-    'pgsql': SQLAdapter()
+    'postgres': SQLAdapter()
 }
 
 

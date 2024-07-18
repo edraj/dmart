@@ -37,15 +37,20 @@ class Plugin(PluginBase):
             return
 
         # Get msisdns users
-        receivers = await operational_repo.search(Query(
-            type=QueryType.search,
-            space_name=settings.management_space,
-            branch_name=settings.management_space_branch,
-            subpath="users",
-            search=f"@msisdn:{'|'.join(notification_dict['msisdns'])}",
-            limit=10000,
-            offset=0,
-        ))
+        query = Query(
+                type=QueryType.search,
+                space_name=settings.management_space,
+                branch_name=settings.management_space_branch,
+                subpath="users",
+                search=f"@msisdn:{'|'.join(notification_dict['msisdns'])}",
+                limit=10000,
+                offset=0,
+            )
+        if settings.active_data_db == "file":
+            receivers = await operational_repo.search(query)
+        else:
+            receivers = await db.query(query)
+
         if not receivers or receivers[0] == 0:
             return
 

@@ -240,6 +240,7 @@ def test_get_entry_from_managed():
 
 @pytest.mark.run(order=2)
 def test_get_entry_by_uuid():
+    print("@@@@@", json_entry_uuid.split('-')[0])
     response = client.get(f"managed/byuuid/{json_entry_uuid.split('-')[0]}")
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["uuid"] == json_entry_uuid

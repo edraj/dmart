@@ -1,10 +1,11 @@
+from pathlib import Path
+
 import aiofiles
 from utils.middleware import get_request_data
 from models.core import ActionType, EntityDTO, PluginBase, Event
 from models.enums import ContentType, ResourceType
 from utils.data_database import data_adapter as db
 from models.core import Action, Locator, Meta
-from utils.helpers import branch_path
 from utils.settings import settings
 from datetime import datetime
 from fastapi.logger import logger
@@ -12,7 +13,6 @@ from fastapi.logger import logger
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
-
         # Type narrowing for PyRight
         if (
             not isinstance(data.shortname, str)
@@ -69,9 +69,11 @@ class Plugin(PluginBase):
         events_file_path = (
             settings.spaces_folder
             / data.space_name
-            / branch_path(data.branch_name)
-            / ".dm/events.jsonl"
+            / ".dm"
         )
+        events_file_path.mkdir(parents=True, exist_ok=True)
+        events_file_path = events_file_path / "events.jsonl"
+
         file_content = (
             f"\n{event_obj.model_dump_json()}" if events_file_path.is_file() else event_obj.model_dump_json()
         )
@@ -82,6 +84,8 @@ class Plugin(PluginBase):
     def generate_create_event_attributes(self, entry: Meta, attributes: dict):
         generated_attributes = {}
         for key, value in entry.__dict__.items():
+            if key == "_sa_instance_state":
+                continue
             if key not in Meta.model_fields:
                 generated_attributes[key] = value
 

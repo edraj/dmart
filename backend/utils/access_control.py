@@ -225,15 +225,19 @@ class AccessControl:
         return bool(list(filter(prog.match, user_permissions.keys())))
 
     async def get_user(self, user_shortname: str) -> core.User:
-        user_doc: dict[str, Any] = await operational_db.find_or_fail(core.EntityDTO(
+        user_dto = core.EntityDTO(
             space_name=settings.management_space,
             branch_name=settings.management_space_branch,
             schema_shortname="meta",
             subpath="users",
             shortname=user_shortname,
             resource_type=ResourceType.user,
-        ))
-        return core.User(**user_doc)
+        )
+        if settings.active_data_db == 'file':
+            user_doc: dict[str, Any] = await operational_db.find_or_fail(user_dto)
+            return core.User(**user_doc)
+        else:
+            return await data_db.load_or_none(user_dto)
 
     async def user_query_policies(
             self, user_shortname: str, space: str, subpath: str

@@ -437,11 +437,11 @@ async def main():
     config.logconfig_dict = logging_schema
     config.errorlog = logger
 
-    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    ssl_context.load_cert_chain('./../xxx/cert.pem', keyfile='./../xxx/key.pem')
-
-    config.certfile = './../xxx/cert.pem'
-    config.keyfile = './../xxx/key.pem'
+    # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    # ssl_context.load_cert_chain('./../xxx/cert.pem', keyfile='./../xxx/key.pem')
+    #
+    # config.certfile = './../xxx/cert.pem'
+    # config.keyfile = './../xxx/key.pem'
     await serve(app, config)
 
 

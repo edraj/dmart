@@ -6,7 +6,7 @@ from utils.helpers import (
 from models.enums import ContentType, ResourceType
 from utils.settings import settings
 import models.core as core
-from typing import TypeVar, Any
+from typing import TypeVar, Any, Tuple
 import models.api as api
 import os
 import json
@@ -41,7 +41,6 @@ class BaseObjectAdapter(ABC):
         space_name: str,
         subpath: str,
         shortname: str,
-        branch_name: str | None = settings.default_branch,
     ):
         pass
 
@@ -50,7 +49,6 @@ class BaseObjectAdapter(ABC):
         self,
         subpath: str,
         attachments_path: Path,
-        branch_name: str | None = None,
         filter_types: list | None = None,
         include_fields: list | None = None,
         filter_shortnames: list | None = None,
@@ -71,6 +69,12 @@ class BaseObjectAdapter(ABC):
     @abstractmethod
     async def load_or_none(self, dto: core.EntityDTO) -> MetaChild | None:  # type: ignore
         """Load a Meta Json according to the reuqested Class type"""
+        pass
+
+    async def get_entry_by_criteria(self, criteria: dict) -> MetaChild | None:  # type: ignore
+        pass
+
+    async def query(self, query: api.Query | None = None, user_shortname: str | None = None) -> Tuple[int, list[core.MetaChild]]:
         pass
 
     @abstractmethod

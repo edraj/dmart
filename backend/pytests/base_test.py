@@ -154,6 +154,9 @@ def assert_resource_created(
 ):
     if not query.search:
         query.search = ""
+    print("---@----")
+    print(query.model_dump(exclude_none=True))
+    print("---@----")
     response = client.post(
         "/managed/query",
         json=query.model_dump(exclude_none=True),
@@ -179,6 +182,8 @@ def assert_resource_created(
         )
 
     # Assert correct attachments number for each attachment type returned
+    print("----@----")
+    print(json_response["records"][0])
     if res_attachments:
         for attachment_key, attachments in json_response["records"][0][
             "attachments"
@@ -224,7 +229,7 @@ def upload_resource_with_payload(
             data={"space_name": space_name},
             files=files,
         )
-
+    # assert False == True
     if is_fail:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
     else:
@@ -272,6 +277,7 @@ def delete_resource(resource_type: str, del_subpath: str, del_shortname: str):
 
 
 def retrieve_content_folder():
+    print("@@@@", f"managed/entry/folder/{DEMO_SPACE}/{settings.root_subpath_mw}/{DEMO_SUBPATH}")
     assert client.get(
         f"managed/entry/folder/{DEMO_SPACE}/{settings.root_subpath_mw}/{DEMO_SUBPATH}"
     ).status_code == status.HTTP_200_OK

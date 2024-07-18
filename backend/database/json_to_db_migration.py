@@ -46,26 +46,30 @@ with Session(engine) as session:
             subpath = '/'
             p = os.path.join(root, '.dm', 'meta.space.json')
             if Path(p).is_file():
-                entry = json.load(open(p))
-                entry['space_name'] = space_name
-                if payload := entry.get('payload', {}).get('body', None):
-                    if entry.get('payload', {}).get('content_type', None) == 'json':
-                        body = json.load(open(
-                            os.path.join(root, dir, '../..', payload)
-                        ))
+                try:
+                    entry = json.load(open(p))
+                    entry['space_name'] = space_name
+                    if payload := entry.get('payload', {}).get('body', None):
+                        if entry.get('payload', {}).get('content_type', None) == 'json':
+                            body = json.load(open(
+                                os.path.join(root, dir, '../..', payload)
+                            ))
+                        else:
+                            body = payload
+                        entry['payload']['body'] = body
                     else:
-                        body = payload
-                    entry['payload']['body'] = body
-                else:
-                    entry['payload'] = None
-                entry['subpath'] = '/'
-                entry['resource_type'] = 'space'
-                entry['tags'] = entry.get('tags', [])
-                entry['acl'] = entry.get('acl', [])
-                entry['hide_folders'] = entry.get('hide_folders', [])
-                entry['relationships'] = entry.get('relationships', [])
-                entry['hide_space'] = entry.get('hide_space', False)
-                session.add(Spaces.model_validate(entry))
+                        entry['payload'] = None
+                    entry['subpath'] = '/'
+                    entry['resource_type'] = 'space'
+                    entry['tags'] = entry.get('tags', [])
+                    entry['acl'] = entry.get('acl', [])
+                    entry['hide_folders'] = entry.get('hide_folders', [])
+                    entry['relationships'] = entry.get('relationships', [])
+                    entry['hide_space'] = entry.get('hide_space', False)
+                    session.add(Spaces.model_validate(entry))
+                except Exception as e:
+                    print(f"Error processing {space_name}/{subpath}/{dir}/{entry} ... ")
+                    print(e)
             continue
 
         # if subpath.endswith('.dm'):
@@ -122,9 +126,13 @@ with Session(engine) as session:
                         entry['space_name'] = space_name
                         if payload := entry.get('payload', {}).get('body', None):
                             if entry.get('payload', {}).get('content_type', None) == 'json':
-                                body = json.load(open(
-                                    os.path.join(root, dir, '../..', payload)
-                                ))
+                                try:
+                                    body = json.load(open(
+                                        os.path.join(root, dir, '../..', payload)
+                                    ))
+                                except Exception as e:
+                                    print(f"Error processing {space_name}/{subpath}/{dir}/{entry} ... ")
+                                    print(e)
                             else:
                                 body = payload
                             entry['payload']['body'] = body
@@ -136,12 +144,15 @@ with Session(engine) as session:
                         try:
                             match subpath:
                                 case 'users':
+                                    print("=====================>")
                                     entry['resource_type'] = 'user'
                                     entry['firebase_token'] = entry.get('firebase_token', '')
                                     entry['language'] = entry.get('language', '')
                                     entry['google_id'] = entry.get('google_id', '')
                                     entry['facebook_id'] = entry.get('facebook_id', '')
                                     entry['social_avatar_url'] = entry.get('social_avatar_url', '')
+                                    print(entry)
+                                    print("<=====================")
                                     session.add(Users.model_validate(entry))
                                 case 'roles':
                                     entry['resource_type'] = 'role'
@@ -169,6 +180,7 @@ with Session(engine) as session:
                         lines = open(p, 'r').readlines()
                         for line in lines:
                             history = json.loads(line)
+                            history['shortname'] = dir
                             history['space_name'] = space_name
                             history['subpath'] = subpath
                             try:

@@ -9,7 +9,6 @@ from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, sta
 from fastapi.responses import FileResponse
 from starlette.responses import StreamingResponse
 
-from database.create_tables import Spaces
 from utils.bootstrap import bootstrap_all, load_permissions_and_roles
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.custom_validations import (
@@ -36,7 +35,7 @@ from models.enums import (
 import utils.regex as regex
 import sys
 import json
-from utils.jwt import JWTBearer, GetJWTToken, remove_redis_active_session
+from utils.jwt import JWTBearer, remove_redis_active_session
 from utils.access_control import access_control
 from utils.operational_repository import operational_repo
 from utils.data_database import data_adapter as db
@@ -60,7 +59,6 @@ from fastapi.responses import RedirectResponse
 from languages.loader import languages
 from typing import Callable
 import duckdb
-
 from pathlib import Path as FilePath
 
 router = APIRouter()
@@ -284,33 +282,15 @@ async def serve_space(
 ) -> api.Response:
     if settings.active_data_db == "file":
         spaces = await operational_repo.find_by_id("spaces")
-        if request.space_name not in spaces:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message="Space name provided is empty or invalid [3]",
-                ),
-            )
-
     else:
-        spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
-        if request.space_name not in [space.shortname for space in spaces]:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message="Space name provided is empty or invalid [3]",
-                ),
-            )
+        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+        spaces = [space.shortname for space in spaces]
 
     record = request.records[0]
     history_diff: dict[str, Any] = {}
     match request.request_type:
         case api.RequestType.create:
-            if request.space_name in [space.shortname for space in spaces]:
+            if request.space_name in spaces:
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
@@ -425,11 +405,17 @@ async def serve_space(
             dto = core.EntityDTO.from_record(
                 record, request.space_name, owner_shortname
             )
-            space = await operational_repo.find(dto)
+
+            if settings.active_data_db == "file":
+                space = await operational_repo.find(dto)
+            else:
+                print("Lspace", dto)
+                space = await db.load(dto)
+
             if not await access_control.check_access(
-                dto=dto,
-                meta=space,
-                action_type=core.ActionType.delete,
+                    dto=dto,
+                    meta=space,
+                    action_type=core.ActionType.delete,
             ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -440,12 +426,16 @@ async def serve_space(
                     ),
                 )
 
-            os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
-
-            indexes = await operational_repo.list_indexes()
-            for index in indexes:
-                if index.startswith(f"{request.space_name}:"):
-                    await operational_repo.drop_index(index, True)
+            if settings.active_data_db == "file":
+                os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
+            else:
+                print("Dspace", dto)
+                await db.delete(dto)
+            if settings.active_data_db == "file":
+                indexes = await operational_repo.list_indexes()
+                for index in indexes:
+                    if index.startswith(f"{request.space_name}:"):
+                        await operational_repo.drop_index(index, True)
 
         case _:
             raise api.Exception(
@@ -492,8 +482,7 @@ async def query_entries(
     if settings.active_data_db == "file":
         total, records = await operational_repo.query_handler(query, user_shortname)
     else:
-        records = await db.query(query)
-        total = len(records)
+        total, records = await db.query(query, user_shortname)
 
     await plugin_manager.after_action(
         core.Event(
@@ -530,7 +519,7 @@ async def serve_request(
             )
 
     else:
-        spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
         if request.space_name not in [space.shortname for space in spaces]:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
@@ -551,7 +540,7 @@ async def serve_request(
         )
 
         if request.request_type != RequestType.create:
-            meta = await db.load_or_none(dto) # type: ignore
+            meta = await db.load(dto)  # type: ignore
 
         if not await access_control.check_access(
             dto=dto,
@@ -605,13 +594,14 @@ async def serve_request(
                         meta.created_at = datetime.now()
                         meta.updated_at = datetime.now()
 
-                    separate_payload_data: dict[str, Any] = {}
+                    separate_payload_data: dict[str, Any] | str = {}
+                    if meta.payload:
+                        separate_payload_data: dict[str, Any] | str = meta.payload.body
                     if (
                         meta.payload
                         and meta.payload.content_type == ContentType.json
                         and isinstance(meta.payload.body, dict)
                     ):
-                        separate_payload_data = meta.payload.body
                         meta.payload.body = dto.shortname + ".json"
 
                     if (
@@ -627,7 +617,7 @@ async def serve_request(
                             schema_shortname=meta.payload.schema_shortname,
                         )
 
-                    await db.save(dto, meta, separate_payload_data)
+                    await db.create(dto, meta, separate_payload_data)
 
                     if isinstance(meta, core.User):
                         # SMS Invitation
@@ -935,7 +925,7 @@ async def update_state(
             )
 
     else:
-        spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
         if space_name not in [space.shortname for space in spaces]:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
@@ -1131,9 +1121,7 @@ async def retrieve_entry_or_attachment_payload(
     )
 
     meta: core.Meta = await db.load(dto)
-    print(f"{meta=}")
     await plugin_manager.before_action(dto.to_event_data(core.ActionType.view))
-    print("###", meta.payload.body, f"{shortname}.{ext}")
     if (
         meta.payload is None
         or meta.payload.body is None
@@ -1195,7 +1183,7 @@ async def create_or_update_resource_with_payload(
             )
 
     else:
-        spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
         if space_name not in [space.shortname for space in spaces]:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
@@ -1583,13 +1571,16 @@ async def get_entry_by_uuid(
     retrieve_attachments: bool = False,
     logged_in_user=Depends(JWTBearer()),
 ):
-    return await operational_repo.get_entry_by_var(
-        "uuid",
-        uuid,
-        logged_in_user,
-        retrieve_json_payload,
-        retrieve_attachments,
-    )
+    if settings.active_data_db == "file":
+        return await operational_repo.get_entry_by_var(
+            "uuid",
+            uuid,
+            logged_in_user,
+            retrieve_json_payload,
+            retrieve_attachments,
+        )
+    else:
+        return await db.get_entry_by_criteria({"uuid": uuid})
 
 
 @router.get("/byslug/{slug}", response_model_exclude_none=True)
@@ -1599,13 +1590,16 @@ async def get_entry_by_slug(
     retrieve_attachments: bool = False,
     logged_in_user=Depends(JWTBearer()),
 ):
-    return await operational_repo.get_entry_by_var(
-        "slug",
-        slug,
-        logged_in_user,
-        retrieve_json_payload,
-        retrieve_attachments,
-    )
+    if settings.active_data_db == "file":
+        return await operational_repo.get_entry_by_var(
+            "slug",
+            slug,
+            logged_in_user,
+            retrieve_json_payload,
+            retrieve_attachments,
+        )
+    else:
+        return await db.get_entry_by_criteria({"slug": slug})
 
 
 # @router.post("/reload-redis-data", response_model_exclude_none=True)
@@ -1680,7 +1674,7 @@ async def get_space_report(
                 ),
             )
     else:
-        spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
         if space_name not in [space.shortname for space in spaces]:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,

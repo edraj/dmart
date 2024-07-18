@@ -70,30 +70,51 @@ async def check_existing_user_fields(
         {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
     for key, value in unique_fields.items():
-        if not value:
-            continue
-        value = value.translate(redis_escape_chars).replace("\\\\", "\\")
-        if key == "email_unescaped":
-            value = f"{{{value}}}"
-        redis_search_res: tuple[int, list[dict[str, Any]]] = (
-            await operational_repo.search(
+        if settings.active_data_db == 'file':
+            if not value:
+                continue
+            value = value.translate(redis_escape_chars).replace("\\\\", "\\")
+            if key == "email_unescaped":
+                value = f"{{{value}}}"
+            redis_search_res: tuple[int, list[dict[str, Any]]] = (
+                await operational_repo.search(
+                    api.Query(
+                        type=QueryType.search,
+                        space_name=MANAGEMENT_SPACE,
+                        branch_name=MANAGEMENT_BRANCH,
+                        subpath=USERS_SUBPATH,
+                        search=search_str + f" @{key}:{value}",
+                        limit=1,
+                        offset=0
+                    )
+                )
+            )
+
+            if redis_search_res and redis_search_res[0] > 0:
+                return api.Response(
+                    status=api.Status.success,
+                    attributes={"unique": False, "field": key},
+                )
+        else:
+            if value is None:
+                continue
+            if key == "email_unescaped":
+                key = "email"
+            _, result = await db.query(
                 api.Query(
                     type=QueryType.search,
                     space_name=MANAGEMENT_SPACE,
-                    branch_name=MANAGEMENT_BRANCH,
                     subpath=USERS_SUBPATH,
                     search=search_str + f" @{key}:{value}",
                     limit=1,
                     offset=0
                 )
             )
-        )
-
-        if redis_search_res and redis_search_res[0] > 0:
-            return api.Response(
-                status=api.Status.success,
-                attributes={"unique": False, "field": key},
-            )
+            if len(result) > 0:
+                return api.Response(
+                    status=api.Status.success,
+                    attributes={"unique": False},
+                )
 
     return api.Response(status=api.Status.success, attributes={"unique": True})
 
@@ -359,6 +380,8 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         attributes["email"] = user.email
     if user.displayname:
         attributes["displayname"] = user.displayname
+    if user.description:
+        attributes["description"] = user.description
     if user.msisdn:
         attributes["msisdn"] = user.msisdn
     if settings.active_data_db == 'file' and user.payload:
@@ -397,7 +420,6 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     user_avatar = await db.get_entry_attachments(
         subpath=f"{USERS_SUBPATH}/{user.shortname}",
         attachments_path=attachments_path,
-        branch_name=MANAGEMENT_BRANCH,
         filter_shortnames=["avatar"],
     )
 
@@ -461,10 +483,15 @@ async def update_profile(
     if profile_user.password:
         user.password = password_hashing.hash_password(profile_user.password)
         user.force_password_change = False
-    if "displayname" in profile.attributes:
-        user.displayname = profile_user.displayname
-    if "language" in profile.attributes:
-        user.language = profile_user.language
+    try:
+        if "displayname" in profile.attributes:
+            user.displayname = profile.attributes["displayname"]
+        if "description" in profile.attributes:
+            user.description = profile.attributes["description"]
+        if "language" in profile.attributes:
+            user.language = profile.attributes["language"]
+    except Exception as e:
+        print(e)
 
     if "confirmation" in profile.attributes:
         result = None
@@ -492,7 +519,11 @@ async def update_profile(
         elif profile_user.msisdn:
             user.is_msisdn_verified = True
     else:
-        await operational_repo.validate_uniqueness(dto, profile.attributes, RequestType.update)
+        if settings.active_data_db == 'file':
+            await operational_repo.validate_uniqueness(dto, profile.attributes, RequestType.update)
+        else:
+            # TODO: Implement this for postgres
+            pass
         if "email" in profile.attributes and user.email != profile_user.email:
             user.email = profile_user.email
             user.is_email_verified = False

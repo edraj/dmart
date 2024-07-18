@@ -57,16 +57,20 @@ class Plugin(PluginBase):
 
         # 1- get the matching SystemNotificationRequests
         search_subpaths = list(filter(None, data.subpath.split("/")))
-        matching_notification_requests = await operational_repo.search(Query(
-            type=QueryType.search,
-            space_name=settings.management_space,
-            branch_name=settings.management_space_branch,
-            subpath="notifications/system",
-            filter_schema_names=["system_notification_request"],
-            search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
-            limit=30,
-            offset=0,
-        ))
+        query = Query(
+                type=QueryType.search,
+                space_name=settings.management_space,
+                branch_name=settings.management_space_branch,
+                subpath="notifications/system",
+                filter_schema_names=["system_notification_request"],
+                search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
+                limit=30,
+                offset=0,
+            )
+        if settings.active_data_db == "file":
+            matching_notification_requests = await operational_repo.search(query)
+        else:
+            matching_notification_requests = await db.query(query)
         if not matching_notification_requests[0] == 0:
             return
 

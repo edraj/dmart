@@ -1204,7 +1204,6 @@ class BaseRepo(ABC):
         # Generate attachments payload string
         attachments: dict[str, list] = await main_db.get_entry_attachments(
             subpath=f"{dto.subpath}/{dto.shortname}",
-            branch_name=dto.branch_name,
             attachments_path=(
                 settings.spaces_folder
                 / f"{dto.space_name}/{branch_path(dto.branch_name)}/{dto.subpath}/.dm/{dto.shortname}"

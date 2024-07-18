@@ -1,33 +1,220 @@
-import sys
+import json
+import os
+import re
+import subprocess
+from copy import copy, deepcopy
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Type, Tuple, Optional
 from uuid import uuid4
-
 import aiofiles
 import sqlalchemy
-from sqlalchemy import text, delete
-from database.create_tables import Entries, Histories, Permissions, Roles, Users, Spaces, Attachments
-from copy import copy, deepcopy
+from fastapi import status
+from fastapi.logger import logger
+from sqlalchemy import text, delete, func
+from sqlmodel import create_engine, Session, select
+from pydantic import create_model
+
+import models.api as api
+import models.core as core
+from database.create_tables import (
+    Entries,
+    Histories,
+    Permissions,
+    Roles,
+    Users,
+    Spaces,
+    Attachments, Aggregated,
+)
+from models.enums import QueryType
 from object_adapters.base import BaseObjectAdapter
 from utils.helpers import (
     arr_remove_common,
-    branch_path,
-    camel_case,
     flatten_all,
+    str_to_datetime,
 )
-from datetime import datetime
-from models.enums import ContentType, ResourceType, QueryType
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
 from utils.settings import settings
-import models.core as core
-from typing import Any, Type
-import models.api as api
-import os
-import json
-from pathlib import Path
-from fastapi import status
-from utils.regex import ATTACHMENT_PATTERN
-from fastapi.logger import logger
-from sqlmodel import create_engine, Session, select, SQLModel
+
+postgres_aggregate_functions = [
+    "avg",
+    "count",
+    "max",
+    "min",
+    "sum",
+    "array_agg",
+    "string_agg",
+    "bool_and",
+    "bool_or",
+    "bit_and",
+    "bit_or",
+    "every",
+    "json_agg",
+    "jsonb_agg",
+    "json_object_agg",
+    "jsonb_object_agg",
+    "mode",
+    "regr_avgx",
+    "regr_avgy",
+    "regr_count",
+    "regr_intercept",
+    "regr_r2",
+    "regr_slope",
+    "regr_sxx",
+    "regr_sxy",
+    "regr_syy",
+    "corr",
+    "covar_pop",
+    "covar_samp",
+    "stddev",
+    "stddev_pop",
+    "stddev_samp",
+    "variance",
+    "var_pop",
+    "var_samp",
+]
+
+mysql_aggregate_functions = [
+    "avg",
+    "count",
+    "max",
+    "min",
+    "sum",
+    "group_concat",
+    "json_arrayagg",
+    "json_objectagg",
+    "std",
+    "stddev",
+    "stddev_pop",
+    "stddev_samp",
+    "variance",
+    "var_pop",
+    "var_samp",
+]
+
+sqlite_aggregate_functions = [
+    "avg",
+    "count",
+    "group_concat",
+    "max",
+    "min",
+    "sum",
+    "total",
+]
+
+
+def parse_search_string(s, entity):
+    pattern = r"@(\w+):(\w+)"
+    matches = re.findall(pattern, s)
+    result = {}
+    for key, value in matches:
+        try:
+            if getattr(entity, key):
+                result = {key: value}
+        except Exception as _:
+            continue
+    return result
+
+
+async def events_query(
+        query: api.Query, user_shortname: str | None = None
+) -> tuple[int, list[core.Record]]:
+    from utils.access_control import access_control
+
+    records: list[core.Record] = []
+    total: int = 0
+
+    path = Path(f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
+    print(path)
+    if not path.is_file():
+        return total, records
+
+    result = []
+    if query.search:
+        p = subprocess.Popen(
+            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
+        )
+        p = subprocess.Popen(
+            ["tail", "-n", f"{query.limit + query.offset}"],
+            stdin=p.stdout,
+            stdout=subprocess.PIPE,
+        )
+        p = subprocess.Popen(["tac"], stdin=p.stdout, stdout=subprocess.PIPE)
+        if query.offset > 0:
+            p = subprocess.Popen(
+                ["sed", f"1,{query.offset}d"],
+                stdin=p.stdout,
+                stdout=subprocess.PIPE,
+            )
+        r, _ = p.communicate()
+        result = list(filter(None, r.decode("utf-8").split("\n")))
+    else:
+        cmd = f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
+        if query.offset > 0:
+            cmd += f" | sed '1,{query.offset}d'"
+        result = list(
+            filter(
+                None,
+                subprocess.run(
+                    [cmd], capture_output=True, text=True, shell=True
+                ).stdout.split("\n"),
+            )
+        )
+
+    if query.search:
+        p1 = subprocess.Popen(
+            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
+        )
+        p2 = subprocess.Popen(["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE)
+        r, _ = p2.communicate()
+        total = int(
+            r.decode(),
+            10,
+        )
+    else:
+        total = int(
+            subprocess.run(
+                [f"wc -l < {path}"],
+                capture_output=True,
+                text=True,
+                shell=True,
+            ).stdout,
+            10,
+        )
+    for line in result:
+        action_obj = json.loads(line)
+
+        if (
+                query.from_date
+                and str_to_datetime(action_obj["timestamp"]) < query.from_date
+        ):
+            continue
+
+        if query.to_date and str_to_datetime(action_obj["timestamp"]) > query.to_date:
+            break
+
+        if not await access_control.check_access(
+                dto=core.EntityDTO(
+                    space_name=query.space_name,
+                    subpath=action_obj.get("resource", {}).get("subpath", "/"),
+                    resource_type=action_obj["resource"]["type"],
+                    shortname=action_obj["resource"]["shortname"],
+                    user_shortname=user_shortname,
+                ),
+                action_type=core.ActionType(action_obj["request"]),
+        ):
+            continue
+
+        records.append(
+            core.Record(
+                resource_type=action_obj["resource"]["type"],
+                shortname=action_obj["resource"]["shortname"],
+                subpath=action_obj["resource"]["subpath"],
+                attributes=action_obj,
+            ),
+        )
+    return total, records
 
 
 class SQLAdapter(BaseObjectAdapter):
@@ -36,16 +223,20 @@ class SQLAdapter(BaseObjectAdapter):
     def metapath(self, dto: core.EntityDTO) -> tuple[Path, str]:
         pass
 
-    postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+    database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
 
     def get_session(self):
         if self.session is None:
-            connection_string = f"{self.postgresql_url}/{settings.database_name}"
+            connection_string = (
+                f"{self.database_connection_string}/{settings.database_name}"
+            )
             engine = create_engine(connection_string, echo=True)
             self.session = Session(engine)
         return self.session
 
-    def get_table(self, dto) -> Type[Roles | Permissions | Users | Spaces | Entries | Attachments]:
+    def get_table(
+            self, dto
+    ) -> Type[Roles | Permissions | Users | Spaces | Entries | Attachments]:
         match dto.class_type:
             case core.Role:
                 return Roles
@@ -55,7 +246,16 @@ class SQLAdapter(BaseObjectAdapter):
                 return Users
             case core.Space:
                 return Spaces
-            case core.Alteration | core.Media | core.Lock | core.Comment | core.Reply | core.Reaction | core.Json | core.DataAsset:
+            case (
+            core.Alteration
+            | core.Media
+            | core.Lock
+            | core.Comment
+            | core.Reply
+            | core.Reaction
+            | core.Json
+            | core.DataAsset
+            ):
                 return Attachments
             case _:
                 return Entries
@@ -70,7 +270,16 @@ class SQLAdapter(BaseObjectAdapter):
                 return Permissions.model_validate(data, update=update)
             case core.Space:
                 return Spaces.model_validate(data, update=update)
-            case core.Alteration | core.Media | core.Lock | core.Comment | core.Reply | core.Reaction | core.Json | core.DataAsset:
+            case (
+                core.Alteration
+                | core.Media
+                | core.Lock
+                | core.Comment
+                | core.Reply
+                | core.Reaction
+                | core.Json
+                | core.DataAsset
+            ):
                 return Attachments.model_validate(data, update=update)
             case _:
                 return Entries.model_validate(data, update=update)
@@ -91,7 +300,9 @@ class SQLAdapter(BaseObjectAdapter):
         total: int = 0
         match query.type:
             case api.QueryType.subpath:
-                connection_string = f"{self.postgresql_url}/{query.space_name}"
+                connection_string = (
+                    f"{self.database_connection_string}/{query.space_name}"
+                )
                 engine = create_engine(connection_string, echo=True)
                 session = Session(engine)
 
@@ -104,7 +315,6 @@ class SQLAdapter(BaseObjectAdapter):
             space_name: str,
             subpath: str,
             shortname: str,
-            branch_name: str | None = settings.default_branch,
     ):
         pass
 
@@ -112,7 +322,6 @@ class SQLAdapter(BaseObjectAdapter):
             self,
             subpath: str,
             attachments_path: Path,
-            branch_name: str | None = None,
             filter_types: list | None = None,
             include_fields: list | None = None,
             filter_shortnames: list | None = None,
@@ -120,7 +329,12 @@ class SQLAdapter(BaseObjectAdapter):
     ) -> dict:
         attachments_dict: dict[str, list] = {}
         with self.get_session() as session:
-            statement = select(Attachments).where(Attachments.subpath.startswith(subpath))
+            space_name = attachments_path.relative_to(settings.spaces_folder).parts[0]
+            statement = (
+                select(Attachments)
+                .where(Attachments.space_name == space_name)
+                .where(Attachments.subpath.startswith(subpath))
+            )
             results = list(session.exec(statement).all())
             if len(results) == 0:
                 return attachments_dict
@@ -132,8 +346,7 @@ class SQLAdapter(BaseObjectAdapter):
                     "resource_type": attachment_json["resource_type"],
                     "uuid": attachment_json["uuid"],
                     "shortname": attachment_json["shortname"],
-                    "branch_name": 'master',
-                    "subpath": '/'.join(subpath.split('/')[:-1]),
+                    "subpath": "/".join(subpath.split("/")[:-1]),
                 }
                 del attachment_json["resource_type"]
                 del attachment_json["uuid"]
@@ -152,7 +365,7 @@ class SQLAdapter(BaseObjectAdapter):
 
     def payload_path(self, dto: core.EntityDTO) -> Path:
         """Construct the full path of the meta file"""
-        path = settings.spaces_folder / dto.space_name / branch_path(dto.branch_name)
+        path = settings.spaces_folder / dto.space_name
 
         subpath = copy(dto.subpath)
         if subpath[0] == "/":
@@ -171,7 +384,6 @@ class SQLAdapter(BaseObjectAdapter):
 
     async def load_or_none(self, dto: core.EntityDTO) -> core.Meta | None:  # type: ignore
         """Load a Meta Json according to the reuqested Class type"""
-        print(dto, dto.class_type)
         with self.get_session() as session:
             table = self.get_table(dto)
             statement = select(table).where(table.space_name == dto.space_name)
@@ -183,33 +395,65 @@ class SQLAdapter(BaseObjectAdapter):
                     statement = statement.where(table.shortname == dto.shortname)
                 else:
                     if table is Attachments:
-                        statement = statement.where(table.shortname == dto.shortname).where(table.subpath == f"{dto.subpath}/attachments.{dto.resource_type}")
+                        statement = statement.where(
+                            table.shortname == dto.shortname and
+                            table.subpath == f"{dto.subpath}/attachments.{dto.resource_type}"
+                        )
                     else:
-                        statement = statement.where(table.subpath == dto.subpath).where(table.shortname == dto.shortname)
+                        statement = statement.where(
+                            table.subpath == dto.subpath or
+                            table.shortname == dto.shortname
+                        )
 
             result = session.exec(statement).one_or_none()
             if result is None:
                 return None
-
+            print("###", table, result)
             try:
                 try:
-                    if result.payload:
-                        result.payload = core.Payload.model_validate(result.payload)
+                    if result.payload and isinstance(result.payload, dict):
+                        result.payload = core.Payload.model_validate(result.payload, strict=False)
                 except Exception as e:
                     print("[!load]", e)
-                    logger.error(f"Failed parsing an entry. {dto=}. Error: {e.args}")
+                    logger.error(f"Failed parsing an entry. {dto=}. Error: {e}")
                 return result
             except Exception as e:
                 print("[!load_or_none]", e)
-                logger.error(f"Failed parsing an entry. {dto=}. Error: {e.args}")
+                logger.error(f"Failed parsing an entry. {dto=}. Error: {e}")
                 return None
 
-    async def query(self, query: api.Query | None = None) -> list[core.MetaChild]:
+    async def get_entry_by_criteria(self, criteria: dict) -> core.Meta | None:  # type: ignore
+        tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
         with self.get_session() as session:
+            for table in tables:
+                statement = select(table)
+                for k, v in criteria.items():
+                    if isinstance(v, str):
+                        statement = statement.where(text(f"{k}::text LIKE :{k}")).params(
+                            {k: f"{v}%"}
+                        )
+                    else:
+                        statement = statement.where(text(f"{k}=:{k}")).params({k: v})
+                    result = session.exec(statement).one_or_none()
+                    if result is not None:
+                        return result
+        return None
+
+    async def query(
+            self, query: api.Query | None = None, user_shortname: str | None = None
+    ) -> Tuple[int, list[core.MetaChild]]:
+        with self.get_session() as session:
+            print("\n\n\n")
+            print(query)
+            print(query.type, "@@@@@@@@", query.type == QueryType.history)
+            print(type(query.aggregation_data), query.aggregation_data)
             table = None
             if query.type == QueryType.spaces:
                 table = Spaces
-            elif query.space_name == 'management':
+            elif query.type == QueryType.history:
+                table = Histories
+                print("historyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy")
+            elif query.space_name == "management":
                 match query.subpath:
                     case "users":
                         table = Users
@@ -223,44 +467,156 @@ class SQLAdapter(BaseObjectAdapter):
                 table = Entries
             statement = select(table)
 
-            if query:
-                if query.space_name:
-                    if query.type != QueryType.spaces or query.space_name != 'management' or query.subpath != "/":
-                        statement = statement.where(table.space_name == query.space_name)
-                if query.subpath and table is Entries:
-                    print(f"{query.subpath=}")
-                    statement = statement.where(table.subpath == query.subpath)
-                if query.search and query.subpath != "/":
-                    statement = statement.where(table.shortname == query.search)
-                # if query.filter_schema_names:
-                #     statement = statement.where(table.schema_shortname.in_(query.filter_schema_names))
-                # if query.filter_shortnames:
-                #     statement = statement.where(table.shortname.in_(query.filter_shortnames))
-                # if query.filter_tags:
-                #     statement = statement.where(table.tags.contains(query.filter_tags))
-                # if query.search:
-                #     statement = statement.where(table.shortname.ilike(f"%{query.search}%"))
-                if query.from_date:
-                    statement = statement.where(table.created_at >= query.from_date)
-                if query.to_date:
-                    statement = statement.where(table.created_at <= query.to_date)
-                if query.sort_by:
-                    statement = statement.order_by(table.__dict__[query.sort_by])
-                if query.sort_type == "descending":
-                    statement = statement.order_by(table.__dict__[query.sort_by].desc())
-                if query.limit:
-                    statement = statement.limit(query.limit)
-                if query.offset:
-                    statement = statement.offset(query.offset)
-            print(f"{statement=}")
-            results = list(session.exec(statement).all())
-            if len(results) == 0:
-                return []
+            total_statement = select(func.count(table.uuid))
+            if table in [Entries, Attachments, Histories]:
+                total_statement.where(
+                    table.subpath == query.subpath
+                    and table.space_name == query.space_name
+                )
 
-            for idx, item in enumerate(results):
-                results[idx] = table.model_validate(item)
+            total = session.execute(total_statement).scalar()
 
-        return results
+            if query.type == QueryType.counters:
+                return total, []
+
+            if query.type == QueryType.events:
+                try:
+                    return await events_query(query, user_shortname)  # type: ignore
+                except Exception as e:
+                    print(e)
+                    return 0, []
+            try:
+                if query.type == QueryType.aggregation:
+                    if settings.database_driver == "sqlite":
+                        aggregate_functions = sqlite_aggregate_functions
+                    elif settings.database_driver == "mysql":
+                        aggregate_functions = mysql_aggregate_functions
+                    elif settings.database_driver == "postgresql":
+                        aggregate_functions = postgres_aggregate_functions
+
+                    # for reducer in query.aggregation_data.reducers:
+                    # if reducer.reducer_name in aggregate_functions:
+                    statement = select(
+                        *[
+                            getattr(table, ll.replace("@", "")) for ll in query.aggregation_data.load
+                        ]
+                    )
+                    statement = statement.group_by(
+                        *[
+                            table.__dict__[column]
+                            for column in [group_by.replace("@", "") for group_by in query.aggregation_data.group_by]
+                        ]
+                    )
+                    for reducer in query.aggregation_data.reducers:
+                        if reducer.reducer_name in aggregate_functions:
+                            if len(reducer.args) == 0:
+                                field = '*'
+                            else:
+                                field = getattr(table, reducer.args[0]) if hasattr(table, reducer.args[0]) else None
+                                if field is None:
+                                    continue
+                                print(
+                                    field, type(field),
+                                )
+                                if isinstance(field.type, sqlalchemy.Integer) or isinstance(field.type, sqlalchemy.Boolean):
+                                    field = f"{field}::int"
+                                elif isinstance(field.type, sqlalchemy.Float):
+                                    field = f"{field}::float"
+                                else:
+                                    field = f"{field}::text"
+
+                            statement = statement.add_columns(
+                                getattr(func, reducer.reducer_name)(field).label(reducer.alias)
+                            )
+                        pass
+            except Exception as e:
+                print("[!query]", e)
+                raise api.Exception(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    error=api.Error(
+                        type="query",
+                        code=InternalErrorCode.SOMETHING_WRONG,
+                        message=e,
+                    ),
+                )
+            if query.space_name:
+                if (
+                        query.type != QueryType.spaces
+                        or query.space_name != "management"
+                        or query.subpath != "/"
+                ):
+                    statement = statement.where(
+                        table.space_name == query.space_name
+                    )
+            if query.subpath and table is Entries:
+                statement = statement.where(table.subpath == query.subpath)
+            if query.search and query.subpath != "/":
+                for k, v in parse_search_string(query.search, table).items():
+                    statement = statement.where(text(f"{k}=:{k}")).params({k: v})
+                # statement = statement.where(table.shortname == query.search)
+            # if query.filter_schema_names:
+            #     statement = statement.where(table.schema_shortname.in_(query.filter_schema_names))
+            if query.filter_shortnames:
+                statement = statement.where(
+                    table.shortname.in_(query.filter_shortnames)
+                )
+            # if query.filter_tags:
+            #     statement = statement.where(table.tags.contains(query.filter_tags))
+            # if query.search:
+            #     statement = statement.where(table.shortname.ilike(f"%{query.search}%"))
+            if query.from_date:
+                statement = statement.where(table.created_at >= query.from_date)
+            if query.to_date:
+                statement = statement.where(table.created_at <= query.to_date)
+            if query.sort_by:
+                statement = statement.order_by(table.__dict__[query.sort_by])
+            if query.sort_type == "descending":
+                statement = statement.order_by(table.__dict__[query.sort_by].desc())
+            if query.limit:
+                statement = statement.limit(query.limit)
+            if query.offset:
+                statement = statement.offset(query.offset)
+            try:
+                results = list(session.exec(statement).all())
+                if len(results) == 0:
+                    return 0, []
+
+                for idx, item in enumerate(results):
+                    if query.type == QueryType.aggregation:
+                        print("##@@##", item)
+                        extra={}
+                        for key, value in item._mapping.items():
+                            if not hasattr(Aggregated, key):
+                                extra[key] = value
+
+                        results[idx] = Aggregated.model_validate(item).to_record(
+                            query.subpath,
+                            getattr(item, 'shortname') if hasattr(item, 'shortname') else None,
+                            extra=extra,
+                        )
+                    else:
+                        results[idx] = table.model_validate(item).to_record(
+                            query.subpath, item.shortname
+                        )
+                    if query.type not in [QueryType.history, QueryType.events]:
+                        if query.retrieve_attachments:
+                            results[idx].attachments = await self.get_entry_attachments(
+                                query.subpath,
+                                Path(settings.spaces_folder) / query.space_name,
+                                retrieve_json_payload=True,
+                            )
+            except Exception as e:
+                print("[!!query]", e)
+                raise api.Exception(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    error=api.Error(
+                        type="query",
+                        code=InternalErrorCode.SOMETHING_WRONG,
+                        message=str(e),
+                    ),
+                )
+        print("######", results)
+        return total, results
 
     async def load(self, dto: core.EntityDTO) -> core.MetaChild:
         meta: core.Meta | None = await self.load_or_none(dto)  # type: ignore
@@ -286,40 +642,54 @@ class SQLAdapter(BaseObjectAdapter):
             if table in [Roles, Permissions, Users]:
                 statement = statement.where(table.shortname == dto.shortname)
             else:
-                statement = statement.where(table.subpath == dto.subpath).where(table.shortname == dto.shortname)
+                statement = statement.where(table.subpath == dto.subpath).where(
+                    table.shortname == dto.shortname
+                )
 
             result = session.exec(statement).one_or_none()
             if result is None:
                 return None
 
-            return result[0].model_dump().get('payload', {}).get('body', {})
+            return result[0].model_dump().get("payload", {}).get("body", {})
 
     async def save(
-            self, dto: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any] | None = None
+            self,
+            dto: core.EntityDTO,
+            meta: core.Meta,
+            payload_data: dict[str, Any] | None = None,
     ):
-        """Save Meta Json to respectiv file"""
+        """Save"""
         try:
             with self.get_session() as session:
-                print(f"{dto=}")
                 entity = {
                     **meta.model_dump(),
-                    'space_name': dto.space_name,
+                    "space_name": dto.space_name,
                     "subpath": dto.subpath,
-                    "resource_type": dto.resource_type
+                    "resource_type": dto.resource_type,
                 }
-                if entity['payload']:
+                if entity['payload'] and payload_data is not None:
                     entity['payload']['body'] = payload_data
 
                 if dto.class_type is core.Folder:
-                    if entity['subpath'].startswith('/'):
-                        entity['subpath'] = entity['subpath'][1:]
-                    entity['subpath'] += dto.shortname
+                    if entity["subpath"] != "/":
+                        if entity["subpath"].startswith("/"):
+                            entity["subpath"] = entity["subpath"][1:]
+                        entity["subpath"] += dto.shortname
 
-                if dto.class_type in [core.Alteration, core.Media, core.Lock, core.Comment, core.Reply, core.Reaction, core.Json, core.DataAsset]:
-                    entity['subpath'] = f"{dto.subpath}/attachments.{dto.resource_type}"
+                if dto.class_type in [
+                    core.Alteration,
+                    core.Media,
+                    core.Lock,
+                    core.Comment,
+                    core.Reply,
+                    core.Reaction,
+                    core.Json,
+                    core.DataAsset,
+                ]:
+                    entity["subpath"] = f"{dto.subpath}/attachments.{dto.resource_type}"
 
-                if entity['subpath'].endswith('/'):
-                    entity['subpath'] = entity['subpath'][:-1]
+                if entity["subpath"] != "/" and entity["subpath"].endswith("/"):
+                    entity["subpath"] = entity["subpath"][:-1]
 
                 try:
                     data = self.get_base_model(dto, entity)
@@ -343,7 +713,10 @@ class SQLAdapter(BaseObjectAdapter):
             )
 
     async def create(
-            self, dto: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any] | None = None
+            self,
+            dto: core.EntityDTO,
+            meta: core.Meta,
+            payload_data: dict[str, Any] | None = None,
     ):
         result = await self.load_or_none(dto)
 
@@ -365,7 +738,9 @@ class SQLAdapter(BaseObjectAdapter):
             payload_filename = meta.shortname + Path(attachment.filename).suffix
 
             os.makedirs(payload_file_path, exist_ok=True)
-            async with aiofiles.open(payload_file_path / payload_filename, "wb") as file:
+            async with aiofiles.open(
+                    payload_file_path / payload_filename, "wb"
+            ) as file:
                 content = await attachment.read()
                 await file.write(content)
 
@@ -377,7 +752,10 @@ class SQLAdapter(BaseObjectAdapter):
         pass
 
     async def update(
-            self, dto: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any] | None = None
+            self,
+            dto: core.EntityDTO,
+            meta: core.Meta,
+            payload_data: dict[str, Any] | None = None,
     ) -> dict:
         """Update the entry, store the difference and return it"""
         with self.get_session() as session:
@@ -460,12 +838,12 @@ class SQLAdapter(BaseObjectAdapter):
                 history_obj = Histories(
                     space_name=dto.space_name,
                     uuid=uuid4(),
-                    shortname="history",
+                    shortname=dto.shortname,
                     owner_shortname=dto.user_shortname or "__system__",
                     timestamp=datetime.now(),
                     request_headers=get_request_data().get("request_headers", {}),
                     diff=history_diff,
-                    subpath=dto.subpath
+                    subpath=dto.subpath,
                 )
 
                 session.add(Histories.model_validate(history_obj))
@@ -474,7 +852,7 @@ class SQLAdapter(BaseObjectAdapter):
                 return history_diff
             except Exception as e:
                 print("[!store_entry_diff]", e)
-                logger.error(f"Failed parsing an entry. {dto=}. Error: {e.args}")
+                logger.error(f"Failed parsing an entry. {dto=}. Error: {e}")
                 return {}
 
     async def move(
@@ -495,7 +873,9 @@ class SQLAdapter(BaseObjectAdapter):
                 if table in [Roles, Permissions, Users]:
                     statement = statement.where(table.shortname == dest_shortname)
                 else:
-                    statement = statement.where(table.subpath == dest_subpath).where(table.shortname == dest_shortname)
+                    statement = statement.where(table.subpath == dest_subpath).where(
+                        table.shortname == dest_shortname
+                    )
 
                 target = session.exec(statement).one_or_none()
                 if target is not None:
@@ -508,10 +888,13 @@ class SQLAdapter(BaseObjectAdapter):
                         ),
                     )
 
-                sqlalchemy.update(table).where(table.space_name == origin.space_name) \
-                    .where(table.subpath == origin.subpath) \
-                    .where(table.shortname == origin.shortname) \
-                    .values(subpath=dest_subpath, shortname=dest_shortname)
+                sqlalchemy.update(table).where(
+                    table.space_name == origin.space_name
+                ).where(table.subpath == origin.subpath).where(
+                    table.shortname == origin.shortname
+                ).values(
+                    subpath=dest_subpath, shortname=dest_shortname
+                )
 
                 session.commit()
             except Exception as e:
@@ -540,9 +923,17 @@ class SQLAdapter(BaseObjectAdapter):
         """Delete the file that match the criteria given, remove folder if empty"""
         with self.get_session() as session:
             try:
-                print(f"{dto=}")
                 result = await self.load(dto)
                 session.delete(result)
+                if dto.class_type == core.Space:
+                    statement = delete(Entries).where(
+                        Entries.space_name == dto.space_name  # type:ignore[call-overload]
+                    )
+                    session.exec(statement)
+                    statement = delete(Attachments).where(
+                        Attachments.space_name == dto.space_name  # type:ignore[call-overload]
+                    )
+                    session.exec(statement)
                 session.commit()
             except Exception as e:
                 print("[!delete]", e)
@@ -558,13 +949,16 @@ class SQLAdapter(BaseObjectAdapter):
 
     def is_entry_exist(self, dto: core.EntityDTO) -> bool:
         with self.get_session() as session:
+            print(f"is_entry_exist@{dto=}")
             table = self.get_table(dto)
             statement = select(table).where(table.space_name == dto.space_name)
 
             if table in [Roles, Permissions, Users]:
                 statement = statement.where(table.shortname == dto.shortname)
             else:
-                statement = statement.where(table.subpath == dto.subpath).where(table.shortname == dto.shortname)
+                statement = statement.where(table.subpath == dto.subpath).where(
+                    table.shortname == dto.shortname
+                )
 
-            result = session.exec(statement).one_or_none()
-            return False if result is None else True
+            result = session.exec(statement).fetchall()
+            return False if len(result) == 0 else True

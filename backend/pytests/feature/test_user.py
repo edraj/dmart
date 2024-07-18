@@ -22,6 +22,7 @@ new_user_data = {
 
 @pytest.mark.run(order=1)
 def test_user_does_not_exist():
+    print("@@@@", new_user_data)
     response = client.get("/user/check-existing", params=new_user_data)
     assert_code_and_status_success(response)
     assert response.json()["attributes"]["unique"] is True
@@ -44,8 +45,11 @@ def test_create_user():
             "roles": [],
         },
     }
-
+    print("-----")
+    print(request_body)
+    print("-----")
     response = client.post("/user/create", json=request_body)
+    print(response.json())
     assert_code_and_status_success(response)
 
     assert_resource_created(

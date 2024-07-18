@@ -3,6 +3,8 @@ from inspect import iscoroutine
 import os
 from pathlib import Path
 
+from models import api, core
+from utils.data_database import data_adapter as db
 import aiofiles
 from fastapi import Depends, FastAPI
 from models.core import (
@@ -12,9 +14,9 @@ from models.core import (
     Event,
     EventFilter,
     EventListenTime,
-    Space,
+    Space, EntityDTO,
 )
-from models.enums import ResourceType, PluginType
+from models.enums import ResourceType, PluginType, QueryType
 from utils.settings import settings
 from utils.operational_repository import operational_repo
 from importlib.util import find_spec, module_from_spec
@@ -152,17 +154,25 @@ class PluginManager:
         return True
 
     async def before_action(self, event: Event):
-        spaces = await operational_repo.find_by_id("spaces")
-        if (
-            event.space_name not in spaces
-            or event.action_type not in self.plugins_wrappers
-        ):
-            return
-
-        space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
-
+        if settings.active_data_db == "file":
+            spaces = await operational_repo.find_by_id("spaces")
+            if (
+                event.space_name not in spaces
+                or event.action_type not in self.plugins_wrappers
+            ):
+                return
+            space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
+        else:
+            spaces = await db.load(core.EntityDTO(
+                space_name=event.space_name, shortname=event.space_name, subpath='/',
+                resource_type=ResourceType.space
+            ))
+            space_plugins = spaces.active_plugins
+        print("Bspace_plugins", event.action_type)
+        print("Bspace_plugins", space_plugins)
+        print("Bspace_plugins", self.plugins_wrappers)
         loop = asyncio.get_event_loop()
-        for plugin_model in self.plugins_wrappers[event.action_type]:
+        for plugin_model in self.plugins_wrappers.get(event.action_type, []):
             if (
                 plugin_model.shortname in space_plugins
                 and plugin_model.listen_time == EventListenTime.before
@@ -181,16 +191,30 @@ class PluginManager:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
     async def after_action(self, event: Event):
-        spaces = await operational_repo.find_by_id("spaces")
-        if (
-            event.space_name not in spaces
-            or event.action_type not in self.plugins_wrappers
-        ):
-            return
-
-        space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
+        if settings.active_data_db == "file":
+            spaces = await operational_repo.find_by_id("spaces")
+            if (
+                event.space_name not in spaces
+                or event.action_type not in self.plugins_wrappers
+            ):
+                return
+            space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
+        else:
+            spaces = await db.load_or_none(core.EntityDTO(
+                space_name=event.space_name, shortname=event.space_name, subpath='/',
+                resource_type=ResourceType.space
+            ))
+            if spaces is None:
+                return
+            space_plugins = spaces.active_plugins
+        print("Aspace_plugins", space_plugins)
         loop = asyncio.get_event_loop()
-        for plugin_model in self.plugins_wrappers[event.action_type]:
+        # print("@======================================@")
+        # print(event.action_type)
+        # print(self.plugins_wrappers)
+        # print(self.plugins_wrappers[event.action_type])
+        # print("@======================================@")
+        for plugin_model in self.plugins_wrappers.get(event.action_type, []):
             if (
                 plugin_model.shortname in space_plugins
                 and plugin_model.listen_time == EventListenTime.after
