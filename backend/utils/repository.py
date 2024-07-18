@@ -689,9 +689,14 @@ async def serve_query(
     if query.jq_filter:
         try:
             jq = __import__("jq")
+            _input = [record.to_dict() for record in records]
+            for __input in _input:
+                if "uuid" in __input:
+                    __input["uuid"] = str(__input["uuid"])
+
             records = (
                 jq.compile(query.jq_filter)
-                .input([record.to_dict() for record in records])
+                .input(_input)
                 .all()
             )
         except ModuleNotFoundError:
