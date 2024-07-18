@@ -34,7 +34,6 @@
 
 </Col><Col>
 
-
 ##### <Icon name="briefcase" class="text-warning m-2 fs-2" /> Usecases
 
 One initial category of usecases targets organizations and individuals to establish their online presence: Provision a website that is indexed by search engines, manage users, be able to recieve/send messages/emails and allow users to ineract with published content. 

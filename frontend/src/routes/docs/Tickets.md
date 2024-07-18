@@ -38,8 +38,7 @@ In Dmart, "Tickets" represent units of work or requests submitted to the system 
 
 First you need to define the workflow of the ticket, please check the Workflow section for the details
 
-```
-
+```json
 {
     "space_name": "damrt_data",
     "request_type": "create",

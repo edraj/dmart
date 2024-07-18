@@ -44,7 +44,7 @@ And for the file attachments, which are media and data_asset you can use the /ma
 
 request_record file, consists of the record data, example
 
-```
+```json
 {
     "resource_type": "csv",
         "subpath": "asset_csv/test_csv",

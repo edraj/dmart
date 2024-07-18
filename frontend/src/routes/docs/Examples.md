@@ -56,7 +56,7 @@ _Please note all schemas must be created under the `schema` subpath_
 
 Specify the location, the Meta data, and the Payload (actual product data) data
 
-```
+```json
 {
     "space_name": "dmart_data",
     "request_type": "create", // Explained at Concepts -> Request Types

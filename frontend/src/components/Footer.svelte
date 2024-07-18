@@ -4,7 +4,7 @@
   import LocalizedValue from "./LocalizedValue.svelte";
   import { website } from "@/config";
   import Icon from "@/components/Icon.svelte";
-    import {handleThemeChange, themesList} from "@/stores/themes_store";
+  import {handleThemeChange, themesList} from "@/stores/themes_store";
 </script>
 
 <Navbar class=" px-3 mt-0 py-0" color="light" light>
