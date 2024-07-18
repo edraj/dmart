@@ -477,6 +477,18 @@ async def serve_space(
 async def query_entries(
         query: api.Query, user_shortname=Depends(JWTBearer())
 ) -> api.Response:
+    spaces = await get_spaces()
+
+    if query.space_name not in spaces:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.INVALID_SPACE_NAME,
+                message="Space name provided is empty or invalid [3]",
+            ),
+        )
+
     await plugin_manager.before_action(
         core.Event(
             space_name=query.space_name,
