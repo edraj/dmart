@@ -53,14 +53,14 @@ RESULT+=$?
 #RESULT+=$?
 
 echo -n -e "Collection Contacts Query: \t" >&2
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"type": "search","space_name": "ordering","subpath": "collections/contacts","retrieve_json_payload": true,"search": "","retrieve_attachments": true}' ${API_URL}/managed/query | jq .status | tee /dev/stderr | grep -q "success"
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"type": "search","space_name": "management","subpath": "users","retrieve_json_payload": true,"search": "","retrieve_attachments": true}' ${API_URL}/managed/query | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
 # echo -n -e "Saved Queries for Report"
 # curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"attributes": {"limit": 10,"offcet": 0,"key_search": ""},"resource_type": "content","shortname": "info_service","subpath": "/reports"}' ${API_URL}/managed/excute/query/aftersales | jq
 
 echo -n -e "JQ filter: \t\t\t" >&2
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"type": "search","space_name": "aftersales","subpath": "/tickets","filter_schema_names": ["rc_compensation","connect_disconnect","add_remove_vas"],"filter_types": ["ticket"],"search": "","jq_filter" : ".[].shortname"}' ${API_URL}/managed/query | jq .status | tee /dev/stderr | grep -q "success"
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"type": "search","space_name": "applications","subpath": "/","filter_types": ["folder"],"search": "applications","jq_filter" : ".[].shortname_title"}' ${API_URL}/managed/query | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
 echo -n -e "Reload security: \t\t" >&2
