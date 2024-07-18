@@ -158,7 +158,7 @@ print(record.shortname);
 }
 ```
 
-**إسترجاع الإدخال**
+**استرجاع الإدخال**
 
 ```dart
 var (respEntry, _) = await  Dmart.retrieveEntry(
@@ -171,7 +171,7 @@ retrieveJsonPayload: true,
 ));
 ```
 
-**عرض حمولة الإدخال**
+**جلب حمولة الإدخال**
 
 ```dart
 var (respEntryPayload, _) = await  Dmart.getPayload(GetPayloadRequest(
