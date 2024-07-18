@@ -8,6 +8,6 @@
 
 - [عميل تايبسكريبت](Typescript-Client)
 
-- [ عميل فلاتر (fluter)](Flutter-Client)
+- [عميل فلاتر (fluter)](Flutter-Client)
 
 - [عميل بايثون](Python-Client)
