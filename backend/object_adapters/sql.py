@@ -637,6 +637,7 @@ class SQLAdapter(BaseObjectAdapter):
         """Load a Meta class payload file"""
         with self.get_session() as session:
             table = self.get_table(dto)
+
             statement = select(table).where(table.space_name == dto.space_name)
 
             if table in [Roles, Permissions, Users]:
@@ -650,7 +651,7 @@ class SQLAdapter(BaseObjectAdapter):
             if result is None:
                 return None
 
-            return result[0].model_dump().get("payload", {}).get("body", {})
+            return result.model_dump().get("payload", {}).get("body", {})
 
     async def save(
             self,

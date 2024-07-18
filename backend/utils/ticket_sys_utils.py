@@ -5,16 +5,20 @@ from utils.data_database import data_adapter as db
 import models.core as core
 from utils.internal_error_code import InternalErrorCode
 from utils.access_control import access_control
+from utils.settings import settings
 
-async def set_ticket_init_state(dto: core.EntityDTO, ticket: core.Ticket) -> core.Ticket:
+
 # async def set_init_state_from_request(ticket: api.Request, branch_name, logged_in_user):
+async def set_ticket_init_state(dto: core.EntityDTO, ticket: core.Ticket) -> core.Ticket:
     # workflow_attr = ticket.records[0].attributes
     # workflow_shortname = workflow_attr["workflow_shortname"]
     if not dto.user_shortname:
         raise Exception("Missing user_shortname in the EntityDTO")
 
-    user_roles_names = list((await access_control.get_user_roles(dto.user_shortname)).keys())
-    # user_roles = _user_roles.keys()
+    if settings.active_data_db == "file":
+        user_roles_names = list((await access_control.get_user_roles_using_operational_db(dto.user_shortname)).keys())
+    else:
+        user_roles_names = list((await access_control.get_user_roles_using_data_db(dto.user_shortname)).keys())
 
     workflow_dto = core.EntityDTO(
         **dto.model_dump(include={"space_name", "user_shortname"}),
@@ -53,7 +57,6 @@ async def set_ticket_init_state(dto: core.EntityDTO, ticket: core.Ticket) -> cor
             initial_state = state["name"]
             break
 
-    
     ticket.state = initial_state
     ticket.is_open = True
     

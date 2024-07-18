@@ -936,9 +936,10 @@ async def update_state(
                 ),
             )
 
-    user_roles: list[str] = list(
-        (await access_control.get_user_roles(logged_in_user)).keys()
-    )
+    if settings.active_data_db == "file":
+        user_roles = list((await access_control.get_user_roles_using_operational_db(logged_in_user)).keys())
+    else:
+        user_roles = list((await access_control.get_user_roles_using_data_db(logged_in_user)).keys())
 
     dto: core.EntityDTO = core.EntityDTO(
         space_name=space_name,
