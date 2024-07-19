@@ -3,7 +3,7 @@ import aiofiles
 from utils.middleware import get_request_data
 from models.core import ActionType, PluginBase, Event
 from models.enums import ContentType, ResourceType
-from utils.db import load, load_resource_payload
+from utils.data_database import data_adapter as db
 from models.core import Action, Locator, Meta
 from utils.helpers import camel_case
 from utils.settings import settings
@@ -31,7 +31,7 @@ class Plugin(PluginBase):
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"]
         else:
-            entry = await load(
+            entry = await db.load(
                 space_name=data.space_name,
                 subpath=data.subpath,
                 shortname=data.shortname,
@@ -47,7 +47,7 @@ class Plugin(PluginBase):
                 entry.payload.content_type == ContentType.json
                 and entry.payload.body
             ):
-                payload = load_resource_payload(
+                payload = db.load_resource_payload(
                     space_name=data.space_name,
                     subpath=data.subpath,
                     filename=entry.payload.body,

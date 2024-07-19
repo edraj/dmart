@@ -7,7 +7,7 @@ import re
 import traceback
 
 import models.api as api
-import utils.db as db
+from utils.data_database import data_adapter as db
 import models.core as core
 import sys
 from models.enums import ContentType, ResourceType

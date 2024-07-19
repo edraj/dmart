@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     max_query_limit: int = 10000
     session_inactivity_ttl: int = 60 * 10
 
+    active_data_db: str = "file"
+
     google_client_id: str = ""
     google_client_secret: str = ""
 

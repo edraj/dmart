@@ -1,6 +1,6 @@
 import models.api as api
 from fastapi import status
-import utils.db as db
+from utils.data_database import data_adapter as db
 import models.core as core
 from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode

@@ -8,7 +8,7 @@ from utils.redis_services import RedisServices
 from utils.repository import internal_save_model, get_entry_attachments
 from utils.settings import settings
 from fastapi.logger import logger
-from utils.db import load, load_resource_payload, save_payload_from_json
+from utils.data_database import data_adapter as db
 
 
 class Plugin(PluginBase):
@@ -27,7 +27,7 @@ class Plugin(PluginBase):
             )
             return
 
-        notification_request_meta = await load(
+        notification_request_meta = await db.load(
             data.space_name,
             data.subpath,
             data.shortname,
@@ -37,7 +37,7 @@ class Plugin(PluginBase):
         notification_dict = notification_request_meta.dict()
         notification_dict["subpath"] = data.subpath
 
-        notification_request_payload: dict[str, Any] = load_resource_payload(
+        notification_request_payload: dict[str, Any] = db.load_resource_payload(
             data.space_name,
             data.subpath,
             notification_request_meta.payload.body,
@@ -91,7 +91,7 @@ class Plugin(PluginBase):
 
 
         notification_request_payload["status"] = "finished"
-        await save_payload_from_json(
+        await db.save_payload_from_json(
             space_name=data.space_name,
             subpath=data.subpath,
             meta=notification_request_meta,

@@ -13,7 +13,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 import models.api as api
 import models.core as core
-import utils.db as db
+from utils.data_database import data_adapter as db
 import utils.regex as regex
 from models.enums import ContentType, Language, ResourceType
 from utils.access_control import access_control

@@ -28,7 +28,7 @@ from models.enums import (
     DataAssetType,
     TaskType,
 )
-import utils.db as db
+from utils.data_database import data_adapter as db
 import utils.regex as regex
 import sys
 import json
