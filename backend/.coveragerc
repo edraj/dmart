@@ -1,0 +1,9 @@
+# .coveragerc
+[report]
+# show_missing = True
+omit =
+     pytests
+     ../frontend
+    ../logs
+    ../sample
+     loadtest

@@ -111,11 +111,11 @@ async def create_user(record: core.Record) -> api.Response:
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="create", code=50, message="bad or missign invitation token"
+                type="create", code=50, message="bad or missing invitation token"
             ),
         )
 
-    # TBD : Raise error if user already eists.
+    # TBD : Raise error if user already exists.
 
     if "password" not in record.attributes:
         raise api.Exception(
@@ -209,6 +209,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 invitation_token = await redis_services.get_key(
                     f"users:login:invitation:{request.invitation}"
                 )
+            # TODO : the Below Condition Must be Applied
             if not invitation_token:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
