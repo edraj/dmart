@@ -16,6 +16,7 @@ from utils.custom_validations import (
     validate_jsonl_with_schema,
 )
 from utils.internal_error_code import InternalErrorCode
+from utils.router_helper import is_space_exist
 from utils.ticket_sys_utils import (
     set_ticket_init_state,
     transite,
@@ -30,7 +31,7 @@ from models.enums import (
     ResourceType,
     LockAction,
     DataAssetType,
-    TaskType, QueryType,
+    TaskType, QueryType, LockActions,
 )
 import utils.regex as regex
 import sys
@@ -506,29 +507,7 @@ async def serve_request(
     owner_shortname=Depends(JWTBearer()),
     is_internal: bool = False,
 ) -> api.Response:
-    if settings.active_data_db == "file":
-        spaces = await operational_repo.find_by_id("spaces")
-        if request.space_name not in spaces:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message="Space name provided is empty or invalid [3]",
-                ),
-            )
-
-    else:
-        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
-        if request.space_name not in [space.shortname for space in spaces]:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message="Space name provided is empty or invalid [3]",
-                ),
-            )
+    await is_space_exist(request.space_name)
 
     records = []
     failed_records = []
@@ -912,29 +891,7 @@ async def update_state(
     comment: str | None = Body(None, embed=True, examples=["Nice ticket"]),
     branch_name: str | None = settings.default_branch,
 ) -> api.Response:
-    if settings.active_data_db == "file":
-        spaces = await operational_repo.find_by_id("spaces")
-        if space_name not in spaces:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message="Space name provided is empty or invalid [3]",
-                ),
-            )
-
-    else:
-        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
-        if space_name not in [space.shortname for space in spaces]:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message="Space name provided is empty or invalid [3]",
-                ),
-            )
+    await is_space_exist(space_name)
 
     if settings.active_data_db == "file":
         user_roles = list((await access_control.get_user_roles_using_operational_db(logged_in_user)).keys())
@@ -1171,29 +1128,8 @@ async def create_or_update_resource_with_payload(
 ):
     # NOTE We currently make no distinction between create and update.
     # in such case update should contain all the data every time.
-    if settings.active_data_db == "file":
-        spaces = await operational_repo.find_by_id("spaces")
-        if space_name not in spaces:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message="Space name provided is empty or invalid [3]",
-                ),
-            )
+    await is_space_exist(space_name)
 
-    else:
-        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
-        if space_name not in [space.shortname for space in spaces]:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message="Space name provided is empty or invalid [3]",
-                ),
-            )
     record = core.Record.model_validate_json(request_record.file.read())
 
     dto = core.EntityDTO.from_record(record, space_name, owner_shortname)
@@ -1266,7 +1202,7 @@ async def create_or_update_resource_with_payload(
     resource_obj: core.Meta = dto.class_type.from_record(
         record=record, owner_shortname=owner_shortname
     )
-    
+
     if record.shortname != settings.auto_uuid_rule:
         dto.shortname = resource_obj.shortname
 
@@ -1663,28 +1599,7 @@ async def get_space_report(
             ),
         )
 
-    if settings.active_data_db == "file":
-        spaces = await operational_repo.find_by_id("spaces")
-        if space_name not in spaces:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message="Space name provided is empty or invalid [3]",
-                ),
-            )
-    else:
-        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
-        if space_name not in [space.shortname for space in spaces]:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message="Space name provided is empty or invalid [3]",
-                ),
-            )
+    await is_space_exist(space_name)
 
     if health_type not in ["soft", "hard"]:
         raise api.Exception(
@@ -1711,24 +1626,6 @@ async def lock_entry(
     resource_type: ResourceType | None = ResourceType.ticket,
     logged_in_user=Depends(JWTBearer()),
 ):
-    folder_meta_path = (
-        settings.spaces_folder
-        / space_name
-        / branch_path(branch_name)
-        / subpath
-        / ".dm"
-        / shortname
-    )
-    if not folder_meta_path.is_dir():
-        raise api.Exception(
-            status_code=status.HTTP_404_NOT_FOUND,
-            error=api.Error(
-                type="db",
-                code=InternalErrorCode.DIR_NOT_FOUND,
-                message="requested object is not found",
-            ),
-        )
-
     dto = core.EntityDTO(
         space_name=space_name,
         subpath=subpath,
@@ -1738,36 +1635,57 @@ async def lock_entry(
     )
     meta: core.Meta = await db.load(dto)
 
-    await plugin_manager.before_action(dto.to_event_data(core.ActionType.lock))
-
-    if resource_type == ResourceType.ticket and isinstance(meta, core.Ticket):
-        meta.collaborators = meta.collaborators if meta.collaborators else {}
-        if meta.collaborators.get("processed_by") != logged_in_user:
-            meta.collaborators["processed_by"] = logged_in_user
-            request = api.Request(
-                space_name=space_name,
-                request_type=api.RequestType.update,
-                records=[
-                    core.Record(
-                        resource_type=resource_type,
-                        subpath=subpath,
-                        shortname=shortname,
-                        attributes={
-                            "is_active": True,
-                            "collaborators": meta.collaborators,
-                        },
-                    )
-                ],
+    if settings.active_data_db == "file":
+        folder_meta_path = (
+            settings.spaces_folder
+            / space_name
+            / branch_path(branch_name)
+            / subpath
+            / ".dm"
+            / shortname
+        )
+        if not folder_meta_path.is_dir():
+            raise api.Exception(
+                status_code=status.HTTP_404_NOT_FOUND,
+                error=api.Error(
+                    type="db",
+                    code=InternalErrorCode.DIR_NOT_FOUND,
+                    message="requested object is not found",
+                ),
             )
-            await serve_request(request=request, owner_shortname=logged_in_user)
 
-    # if lock file doesn't exist
-    # elif lock file exit but lock_period expired
-    # elif lock file exist and lock_period isn't expired but the owner want to extend the lock
-    lock_type: LockAction | None = await operational_repo.save_lock_doc(
-        dto,
-        logged_in_user,
-    )
+        await plugin_manager.before_action(dto.to_event_data(core.ActionType.lock))
+
+        if resource_type == ResourceType.ticket and isinstance(meta, core.Ticket):
+            meta.collaborators = meta.collaborators if meta.collaborators else {}
+            if meta.collaborators.get("processed_by") != logged_in_user:
+                meta.collaborators["processed_by"] = logged_in_user
+                request = api.Request(
+                    space_name=space_name,
+                    request_type=api.RequestType.update,
+                    records=[
+                        core.Record(
+                            resource_type=resource_type,
+                            subpath=subpath,
+                            shortname=shortname,
+                            attributes={
+                                "is_active": True,
+                                "collaborators": meta.collaborators,
+                            },
+                        )
+                    ],
+                )
+                await serve_request(request=request, owner_shortname=logged_in_user)
+
+        # if lock file doesn't exist
+        # elif lock file exit but lock_period expired
+        # elif lock file exist and lock_period isn't expired but the owner want to extend the lock
+        lock_type: LockAction | None = await operational_repo.save_lock_doc(
+            dto,
+            logged_in_user,
+        )
+    else:
+        lock_type = await db.lock_handler(dto, LockActions.lock)
 
     if lock_type is None:
         raise api.Exception(
@@ -1805,7 +1723,11 @@ async def cancel_lock(
         shortname=shortname,
         user_shortname=logged_in_user,
     )
-    lock_payload = await operational_repo.get_lock_doc(dto)
+    if settings.active_data_db == "file":
+        lock_payload = await operational_repo.get_lock_doc(dto)
+    else:
+        dto.resource_type = ResourceType.lock
+        lock_payload = (await db.load(dto)).model_dump()
 
     if not lock_payload or lock_payload["owner_shortname"] != logged_in_user:
         raise api.Exception(
@@ -1819,7 +1741,10 @@ async def cancel_lock(
 
     await plugin_manager.before_action(dto.to_event_data(core.ActionType.unlock))
 
-    await operational_repo.delete_lock_doc(dto)
+    if settings.active_data_db == "file":
+        await operational_repo.delete_lock_doc(dto)
+    else:
+        await db.lock_handler(dto, LockActions.unlock)
 
     await plugin_manager.after_action(dto.to_event_data(core.ActionType.unlock))
 
@@ -1831,7 +1756,8 @@ async def cancel_lock(
 
 @router.get("/reload-security-data")
 async def reload_security_data(_=Depends(JWTBearer())):
-    await load_permissions_and_roles()
+    if settings.active_data_db == "file":
+        await load_permissions_and_roles()
 
     return api.Response(status=api.Status.success)
 

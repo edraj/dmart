@@ -1,20 +1,11 @@
 from abc import ABC, abstractmethod
-import sys
-from utils.helpers import (
-    camel_case,
-)
-from models.enums import ContentType, ResourceType
-from utils.settings import settings
-import models.core as core
-from typing import TypeVar, Any, Tuple
-import models.api as api
-import os
-import json
 from pathlib import Path
-import aiofiles
-from utils.regex import ATTACHMENT_PATTERN
-from fastapi.logger import logger
+from typing import TypeVar, Any, Tuple
 
+import models.api as api
+import models.core as core
+from database.create_tables import Locks
+from models.enums import LockActions
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
 
@@ -161,4 +152,7 @@ class BaseObjectAdapter(ABC):
 
     @abstractmethod
     def is_entry_exist(self, dto: core.EntityDTO) -> bool:
+        pass
+
+    async def lock_handler(self, dto: core.EntityDTO, action: LockActions) -> Locks | None:
         pass

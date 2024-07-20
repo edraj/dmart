@@ -33,8 +33,8 @@ async def set_ticket_init_state(dto: core.EntityDTO, ticket: core.Ticket) -> cor
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
-                message="This shortname already exists",
+                code=InternalErrorCode.MISSING_DATA,
+                message="This ticket does not have a workflow!",
             ),
         )
 
@@ -44,8 +44,8 @@ async def set_ticket_init_state(dto: core.EntityDTO, ticket: core.Ticket) -> cor
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
-                message="This shortname already exists",
+                code=InternalErrorCode.MISSING_DATA,
+                message="This ticket does not have workflow details!",
             ),
         )
 

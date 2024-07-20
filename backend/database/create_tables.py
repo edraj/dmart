@@ -197,6 +197,15 @@ class Aggregated(SQLModel, table=False):
         return AggregatedRecord(**record_fields)
 
 
+class Locks(SQLModel, table=True):
+    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    space_name: str = Field(regex=regex.SPACENAME)
+    shortname: str = Field(regex=regex.SHORTNAME)
+    subpath: str = Field(regex=regex.SUBPATH)
+    owner_shortname: str = Field(regex=regex.SHORTNAME)
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
 def generate_tables():
     postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
     engine = create_engine(postgresql_url, echo=True)

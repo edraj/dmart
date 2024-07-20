@@ -7,6 +7,11 @@ class StrEnum(str, Enum):
         return self.value
 
 
+class LockActions(StrEnum):
+    lock = "lock"
+    unlock = "unlock"
+
+
 class RequestType(StrEnum):
     create = "create"
     update = "update"
