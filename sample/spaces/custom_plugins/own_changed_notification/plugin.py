@@ -1,7 +1,5 @@
-import sys
 from models.core import Content, EntityDTO, Payload, PluginBase, Event
 from models.enums import ContentType, ResourceType
-from utils.helpers import camel_case
 from utils.db import load, save
 from uuid import uuid4
 from fastapi.logger import logger
@@ -13,12 +11,9 @@ class Plugin(PluginBase):
        
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
-            logger.error(f"data.shortname is None and str is required at system_notification_sender")
+            logger.error("data.shortname is None and str is required at system_notification_sender")
             return
 
-        class_type = getattr(
-            sys.modules["models.core"], camel_case(ResourceType(data.resource_type))
-        )
         entity = EntityDTO.from_event_data(data)
         entry = await load(entity)
 

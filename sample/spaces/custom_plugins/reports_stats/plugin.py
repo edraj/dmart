@@ -10,6 +10,7 @@ from utils.settings import settings
 from utils.operational_repo import operational_repo
 
 
+
 class Plugin(PluginBase):
     async def hook(self, data: Event):
         if data.subpath[0] == "/":

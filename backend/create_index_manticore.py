@@ -77,11 +77,6 @@ async def load_data_to_redis(
 
 
     saved_docs_count = 0
-    #print(f"""
-    #    Completed parsing {locators_len} files,
-    #    generated {len(db_docs_chunks)} chunks of docs to be stored in Redis,
-    #    time: {int(time()) - start_time}
-    #""")
 
     for db_docs_chunk in db_docs_chunks:
         for schema, chunk in db_docs_chunk.items():
