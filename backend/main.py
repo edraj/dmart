@@ -146,7 +146,6 @@ async def my_exception_handler(_, exception):
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(_: Request, exc: RequestValidationError):
     err = jsonable_encoder({"detail": exc.errors()})["detail"]
-    # print(exc)
     raise api.Exception(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         error=api.Error(

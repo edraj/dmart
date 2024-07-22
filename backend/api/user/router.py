@@ -10,9 +10,9 @@ from utils.generate_email import generate_email_from_template
 from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
-from models.enums import ActionType, RequestType, ResourceType, ContentType
+from models.enums import ActionType, RequestType, ResourceType, ContentType, QueryType
 from utils.custom_validations import validate_uniqueness
-import utils.db as db
+from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
@@ -70,26 +70,48 @@ async def check_existing_user_fields(
     redis_escape_chars = str.maketrans(
         {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
-    async with RedisServices() as redis_man:
-        for key, value in unique_fields.items():
-            if not value:
-                continue
-            value = value.translate(redis_escape_chars).replace("\\\\", "\\")
-            if key == "email_unescaped":
-                value = f"{{{value}}}"
-            redis_search_res = await redis_man.search(
-                space_name=MANAGEMENT_SPACE,
-                search=search_str + f" @{key}:{value}",
-                limit=1,
-                offset=0,
-                filters={},
-            )
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis_man:
+            for key, value in unique_fields.items():
+                if not value:
+                    continue
+                value = value.translate(redis_escape_chars).replace("\\\\", "\\")
+                if key == "email_unescaped":
+                    value = f"{{{value}}}"
+                redis_search_res = await redis_man.search(
+                    space_name=MANAGEMENT_SPACE,
+                    search=search_str + f" @{key}:{value}",
+                    limit=1,
+                    offset=0,
+                    filters={},
+                )
 
-            if redis_search_res and redis_search_res["total"] > 0:
+                if redis_search_res and redis_search_res["total"] > 0:
+                    return api.Response(
+                        status=api.Status.success,
+                        attributes={"unique": False, "field": key},
+                    )
+    else:
+        for key, value in unique_fields.items():
+            if value is None:
+                continue
+            if key == "email_unescaped":
+                key = "email"
+            _, result = await db.query(
+                api.Query(
+                    type=QueryType.search,
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    search=search_str + f" @{key}:{value}",
+                    limit=1,
+                    offset=0
+                )
+            )
+            if len(result) > 0:
                 return api.Response(
                     status=api.Status.success,
-                    attributes={"unique": False, "field": key},
-                )
+                    attributes={"unique": False},
+            )
 
     return api.Response(status=api.Status.success, attributes={"unique": True})
 
@@ -197,7 +219,6 @@ async def create_user(record: core.Record) -> api.Response:
 )
 async def login(response: Response, request: UserLoginRequest) -> api.Response:
     """Login and generate refresh token"""
-
     shortname: str | None = None
     user = None
     user_updates: dict[str, Any] = {}
@@ -315,7 +336,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             )
         ):
             record = await process_user_login(user, response, user_updates, request.firebase_token)
-
             await plugin_manager.after_action(
                 core.Event(
                     space_name=MANAGEMENT_SPACE,
@@ -375,7 +395,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         attributes["displayname"] = user.displayname
     if user.msisdn:
         attributes["msisdn"] = user.msisdn
-    if user.payload:
+    if settings.active_data_db == 'file' and user.payload:
         attributes["payload"] = user.payload
         path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
         if (
@@ -441,144 +461,149 @@ async def update_profile(
     profile: core.Record, shortname=Depends(JWTBearer())
 ) -> api.Response:
     """Update user profile"""
-
-    profile_user = core.Meta.check_record(
-        record=profile, owner_shortname=profile.shortname
-    )
-    if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="jwtauth",
-                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                message="Invalid username or password",
-            ),
+    try:
+        profile_user = core.Meta.check_record(
+            record=profile, owner_shortname=profile.shortname
         )
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
-
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-    )
-
-    old_version_flattend = flatten_dict(user.model_dump())
-
-    if profile_user.password and "old_password" in profile.attributes:
-        if not password_hashing.verify_password(
-            profile.attributes["old_password"], user.password or ""
-        ):
+        if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA,
-                          message="mismatch with the information provided"),
+                api.Error(
+                    type="jwtauth",
+                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                    message="Invalid username or password",
+                ),
             )
-
-    # if "force_password_change" in profile.attributes:
-    #     user.force_password_change = profile.attributes["force_password_change"]
-
-    if profile_user.password:
-        user.password = password_hashing.hash_password(profile_user.password)
-        user.force_password_change = False
-    if "displayname" in profile.attributes:
-        user.displayname = profile_user.displayname
-    if "language" in profile.attributes:
-        user.language = profile_user.language
-
-    if "confirmation" in profile.attributes:
-        result = None
-        async with RedisServices() as redis_services:
-            if profile_user.email:
-                result = await redis_services.get_content_by_id(
-                    f"users:otp:confirmation/email/{profile_user.email}"
-                )
-            elif profile_user.msisdn:
-                result = await redis_services.get_content_by_id(
-                    f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
-                )
-
-        if result is None or result != profile.attributes["confirmation"]:
-            raise Exception(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
-                          message="Invalid confirmation code [1]"),
+        await plugin_manager.before_action(
+            core.Event(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                action_type=core.ActionType.update,
+                resource_type=ResourceType.user,
+                user_shortname=shortname,
             )
+        )
 
-        if profile_user.email:
-            user.is_email_verified = True
-        elif profile_user.msisdn:
-            user.is_msisdn_verified = True
-    else:
-        await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update)
-        if "email" in profile.attributes and user.email != profile_user.email:
-            user.email = profile_user.email
-            user.is_email_verified = False
-
-        if profile_user.msisdn and user.msisdn != profile_user.msisdn:
-            user.msisdn = profile_user.msisdn
-            user.is_msisdn_verified = False
-
-        if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
-            separate_payload_data = {}
-            user.payload = core.Payload(
-                content_type=ContentType.json,
-                schema_shortname=profile_user.payload.schema_shortname,
-                body="",
-            )
-            if profile.attributes["payload"]["body"]:
-                separate_payload_data = profile.attributes["payload"]["body"]
-                user.payload.body = shortname + ".json"
-
-            if user.payload and separate_payload_data:
-                if profile_user.payload.schema_shortname:
-                    await validate_payload_with_schema(
-                        payload_data=separate_payload_data,
-                        space_name=MANAGEMENT_SPACE,
-                        schema_shortname=str(user.payload.schema_shortname),
-                    )
-
-            if separate_payload_data:
-                await db.save_payload_from_json(
-                    MANAGEMENT_SPACE,
-                    USERS_SUBPATH,
-                    user,
-                    separate_payload_data,
-                )
-
-    history_diff = await db.update(
-        MANAGEMENT_SPACE,
-        USERS_SUBPATH,
-        user,
-        old_version_flattend,
-        flatten_dict(user.model_dump()),
-        list(profile.attributes.keys()),
-        shortname,
-        retrieve_lock_status=profile.retrieve_lock_status,
-    )
-
-    await plugin_manager.after_action(
-        core.Event(
+        user = await db.load(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
+            class_type=core.User,
             user_shortname=shortname,
-            attributes={"history_diff": history_diff},
         )
-    )
 
+
+        old_version_flattend = flatten_dict(user.model_dump())
+
+        if profile_user.password and "old_password" in profile.attributes:
+            if not password_hashing.verify_password(
+                profile.attributes["old_password"], user.password or ""
+            ):
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA,
+                              message="mismatch with the information provided"),
+                )
+
+        # if "force_password_change" in profile.attributes:
+        #     user.force_password_change = profile.attributes["force_password_change"]
+
+        if profile_user.password:
+            user.password = password_hashing.hash_password(profile_user.password)
+            user.force_password_change = False
+        if "displayname" in profile.attributes:
+            user.displayname = profile_user.displayname.model_dump()
+        if "description" in profile.attributes:
+            user.description = profile_user.description.model_dump()
+        if "language" in profile.attributes:
+            user.language = profile_user.language
+
+        if "confirmation" in profile.attributes:
+            result = None
+            if settings.active_data_db == "file":
+                async with RedisServices() as redis_services:
+                    if profile_user.email:
+                        result = await redis_services.get_content_by_id(
+                            f"users:otp:confirmation/email/{profile_user.email}"
+                        )
+                    elif profile_user.msisdn:
+                        result = await redis_services.get_content_by_id(
+                            f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
+                        )
+
+                if result is None or result != profile.attributes["confirmation"]:
+                    raise Exception(
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
+                                  message="Invalid confirmation code [1]"),
+                    )
+
+            if profile_user.email:
+                user.is_email_verified = True
+            elif profile_user.msisdn:
+                user.is_msisdn_verified = True
+        else:
+            await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update)
+            if "email" in profile.attributes and user.email != profile_user.email:
+                user.email = profile_user.email
+                user.is_email_verified = False
+
+            if profile_user.msisdn and user.msisdn != profile_user.msisdn:
+                user.msisdn = profile_user.msisdn
+                user.is_msisdn_verified = False
+
+            if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
+                separate_payload_data = {}
+                user.payload = core.Payload(
+                    content_type=ContentType.json,
+                    schema_shortname=profile_user.payload.schema_shortname,
+                    body="",
+                )
+                if profile.attributes["payload"]["body"]:
+                    separate_payload_data = profile.attributes["payload"]["body"]
+                    user.payload.body = shortname + ".json"
+
+                if user.payload and separate_payload_data:
+                    if profile_user.payload.schema_shortname:
+                        await validate_payload_with_schema(
+                            payload_data=separate_payload_data,
+                            space_name=MANAGEMENT_SPACE,
+                            schema_shortname=str(user.payload.schema_shortname),
+                        )
+
+                if settings.active_data_db == 'file' and separate_payload_data:
+                    await db.save_payload_from_json(
+                        MANAGEMENT_SPACE,
+                        USERS_SUBPATH,
+                        user,
+                        separate_payload_data,
+                    )
+
+        history_diff = await db.update(
+            MANAGEMENT_SPACE,
+            USERS_SUBPATH,
+            user,
+            old_version_flattend,
+            flatten_dict(user.model_dump()),
+            list(profile.attributes.keys()),
+            shortname,
+            retrieve_lock_status=profile.retrieve_lock_status,
+        )
+
+        await plugin_manager.after_action(
+            core.Event(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                action_type=core.ActionType.update,
+                resource_type=ResourceType.user,
+                user_shortname=shortname,
+                attributes={"history_diff": history_diff},
+            )
+        )
+    except api.Exception as e:
+        print(e)
     return api.Response(status=api.Status.success)
 
 

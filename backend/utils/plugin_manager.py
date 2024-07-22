@@ -1,9 +1,16 @@
 import asyncio
-from inspect import iscoroutine
 import os
+import sys
+from importlib.util import find_spec, module_from_spec
+from inspect import iscoroutine
 from pathlib import Path
+
 import aiofiles
 from fastapi import Depends, FastAPI
+from fastapi.logger import logger
+
+from data_adapters.adapter import data_adapter as db
+from models import core
 from models.core import (
     ActionType,
     PluginWrapper,
@@ -16,9 +23,6 @@ from models.core import (
 from models.enums import ResourceType, PluginType
 from utils.settings import settings
 from utils.spaces import get_spaces
-from importlib.util import find_spec, module_from_spec
-import sys
-from fastapi.logger import logger
 
 CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
 
@@ -154,14 +158,19 @@ class PluginManager:
         return True
 
     async def before_action(self, event: Event):
-        spaces = await get_spaces()
-        if (
-            event.space_name not in spaces
-            or event.action_type not in self.plugins_wrappers
-        ):
+        if event.action_type not in self.plugins_wrappers:
             return
 
-        space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
+        if settings.active_data_db == "file":
+            spaces = await get_spaces()
+            if event.space_name not in spaces:
+                return
+            space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
+        else:
+            space = await db.load_or_none(event.space_name, "", event.space_name, core.Space)
+            if space is None:
+                return
+            space_plugins = space.active_plugins
 
         loop = asyncio.get_event_loop()
         for plugin_model in self.plugins_wrappers[event.action_type]:
@@ -178,33 +187,47 @@ class PluginManager:
                         if iscoroutine(plugin_execution):
                             loop.create_task(plugin_execution)
                 except Exception as e:
+                    print(f"Plugin:{plugin_model}:{str(e)}")
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
     async def after_action(self, event: Event):
-        spaces = await get_spaces()
-        if (
-            event.space_name not in spaces
-            or event.action_type not in self.plugins_wrappers
-        ):
+        if event.action_type not in self.plugins_wrappers:
             return
 
-        space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
+        if settings.active_data_db == "file":
+            spaces = await get_spaces()
+            if event.space_name not in spaces:
+                return
+            space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
+        else:
+            space = await db.load_or_none(event.space_name, "", event.space_name, core.Space)
+            if space is None:
+                return
+            space_plugins = space.active_plugins
+
         loop = asyncio.get_event_loop()
-        for plugin_model in self.plugins_wrappers[event.action_type]:
-            if (
-                plugin_model.shortname in space_plugins
-                and plugin_model.listen_time == EventListenTime.after
-                and plugin_model.filters
-                and self.matched_filters(plugin_model.filters, event)
-            ):
-                try:
-                    object = plugin_model.object
-                    if isinstance(object, PluginBase):
-                        plugin_execution = object.hook(event)
-                        if iscoroutine(plugin_execution):
-                            loop.create_task(plugin_execution)
-                except Exception as e:
-                    logger.error(f"Plugin:{plugin_model}:{str(e)}")
+        _plugin_model = None
+        try:
+            for plugin_model in self.plugins_wrappers[event.action_type]:
+                _plugin_model = plugin_model
+                if (
+                    plugin_model.shortname in space_plugins
+                    and plugin_model.listen_time == EventListenTime.after
+                    and plugin_model.filters
+                    and self.matched_filters(plugin_model.filters, event)
+                ):
+                    try:
+                        object = plugin_model.object
+                        if isinstance(object, PluginBase):
+                            plugin_execution = object.hook(event)
+                            if iscoroutine(plugin_execution):
+                                loop.create_task(plugin_execution)
+                    except Exception as e:
+                        print(f"PluginError:{plugin_model}:{str(e)}")
+                        logger.error(f"Plugin:{plugin_model}:{str(e)}")
+        except Exception as e:
+            print(f"PluginError:{_plugin_model}:{str(e)}")
+            logger.error(f"Plugin:{_plugin_model}:{str(e)}")
 
 
 plugin_manager = PluginManager()

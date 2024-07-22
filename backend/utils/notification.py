@@ -5,7 +5,7 @@ import sys
 from models.core import NotificationData
 from utils.settings import settings
 from models.core import User
-from utils.db import load
+from data_adapters.adapter import data_adapter as db
 from fastapi.logger import logger
 
 
@@ -18,7 +18,7 @@ class Notifier(ABC):
     async def _load_user(self, shortname: str) -> User:
         if not hasattr(self, "user"):
 
-            self.user = await load(
+            self.user = await db.load(
                 space_name=settings.management_space,
                 subpath=settings.users_subpath,
                 shortname=shortname,

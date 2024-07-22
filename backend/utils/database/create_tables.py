@@ -72,7 +72,6 @@ class Attachments(MetaF, SQLModel, table=True):
     space_name: str = Field(regex=regex.SPACENAME)
 
 
-
 class Histories(SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     shortname: str = Field(regex=regex.SHORTNAME)
@@ -127,7 +126,6 @@ class Spaces(MetaF, Space, SQLModel, table=True):
     hide_folders: list[str] | None = Field(default_factory=None, sa_type=JSON)
     hide_space: bool | None = None
     active_plugins: list[str] | None = Field(default_factory=None, sa_type=JSON)
-    branches: list[str] | None = Field(default_factory=None, sa_type=JSON)
     ordinal: int | None = None
 
 
@@ -195,6 +193,18 @@ class Aggregated(SQLModel, table=False):
         }
 
         return AggregatedRecord(**record_fields)
+
+
+class Tickets(MetaF, SQLModel, table=True):
+    state: str
+    is_open: bool = True
+    reporter: dict | core.Reporter | None = Field(default_factory=None, sa_type=JSON)
+    workflow_shortname: str
+    collaborators: dict[str, str] | None = Field(default_factory=None, sa_type=JSON)
+    resolution_reason: str | None = None
+
+    subpath: str = Field(regex=regex.SUBPATH)
+    space_name: str = Field(regex=regex.SPACENAME)
 
 
 class Locks(SQLModel, table=True):

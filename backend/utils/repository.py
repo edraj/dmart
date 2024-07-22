@@ -13,7 +13,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 import models.api as api
 import models.core as core
-import utils.db as db
+from data_adapters.adapter import data_adapter as db
 import utils.regex as regex
 from models.enums import ContentType, Language, ResourceType
 from utils.access_control import access_control
@@ -1013,7 +1013,7 @@ async def get_resource_obj_or_none(
         return None
 
 
-def get_payload_obj_or_none(
+async def get_payload_obj_or_none(
     *,
     space_name: str,
     subpath: str,
@@ -1023,7 +1023,7 @@ def get_payload_obj_or_none(
     resource_cls = getattr(
         sys.modules["models.core"], camel_case(resource_type))
     try:
-        return db.load_resource_payload(
+        return await db.load_resource_payload(
             space_name=space_name,
             subpath=subpath,
             filename=filename,
@@ -1123,7 +1123,7 @@ async def validate_subpath_data(
                 if len(subpath_parts) > (len(spaces_path_parts) + 2):
                     payload_path = "/".join(
                         subpath_parts[folder_name_index:-1])
-                folder_meta_payload = db.load_resource_payload(
+                folder_meta_payload = await db.load_resource_payload(
                     space_name,
                     payload_path,
                     str(folder_meta_content.payload.body),
@@ -1323,7 +1323,7 @@ async def health_check_entry(
             raise Exception(
                 f"can't access this payload {payload_file_path}"
             )
-        payload_file_content = db.load_resource_payload(
+        payload_file_content = await db.load_resource_payload(
             space_name,
             subpath,
             entry_meta_obj.payload.body,
@@ -1366,7 +1366,7 @@ async def internal_sys_update_model(
     if not payload_dict:
         try:
             body = str(meta.payload.body) if meta and meta.payload else ""
-            payload_dict = db.load_resource_payload(
+            payload_dict = await db.load_resource_payload(
                 space_name, subpath, body, core.Content
             )
         except Exception:

@@ -1,9 +1,10 @@
 import models.api as api
 from fastapi import status
-import utils.db as db
+from data_adapters.adapter import data_adapter as db
 import models.core as core
 from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode
+from utils.settings import settings
 
 
 async def set_init_state_from_request(ticket: api.Request, logged_in_user):
@@ -22,7 +23,7 @@ async def set_init_state_from_request(ticket: api.Request, logged_in_user):
     )
 
     if workflows_data is not None and workflows_data.payload is not None:
-        workflows_payload = db.load_resource_payload(
+        workflows_payload = await db.load_resource_payload(
             space_name=ticket.space_name,
             subpath="workflows",
             filename=str(workflows_data.payload.body),
@@ -69,12 +70,17 @@ async def set_init_state_from_record(
     )
 
     if workflows_data is not None and workflows_data.payload is not None:
-        workflows_payload = db.load_resource_payload(
-            space_name=space_name,
-            subpath="workflows",
-            filename=str(workflows_data.payload.body),
-            class_type=core.Content,
-        )
+        if settings.active_data_db == "file":
+            filename = str(workflows_data.payload.body)
+            workflows_payload = await db.load_resource_payload(
+                space_name=space_name,
+                subpath="workflows",
+                filename=filename,
+                class_type=core.Content,
+            )
+        else:
+            workflows_payload = workflows_data.payload.body
+
         ticket.attributes = {
             **workflow_attr,
             "state": workflows_payload["initial_state"],

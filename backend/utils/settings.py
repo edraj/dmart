@@ -77,6 +77,16 @@ class Settings(BaseSettings):
     channels: list = []
     store_payload_string: bool = True
 
+    active_operational_db: str = "redis"  # allowed values: redis, manticore
+    active_data_db: str = "file"  # allowed values: file, sql
+
+    database_driver: str = 'postgresql'
+    database_username: str = 'postgres'
+    database_password: str = ''
+    database_host: str = 'localhost'
+    database_port: int = 5432
+    database_name: str = 'dmart'
+
     model_config = SettingsConfigDict(
         env_file=os.getenv(
             "BACKEND_ENV",
