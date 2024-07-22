@@ -11,6 +11,7 @@ from starlette.responses import StreamingResponse
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema, validate_uniqueness
 from utils.internal_error_code import InternalErrorCode
+from utils.router_helper import is_space_exist
 from utils.ticket_sys_utils import (
     set_init_state_from_request,
     set_init_state_from_record,
@@ -26,15 +27,14 @@ from models.enums import (
     ResourceType,
     LockAction,
     DataAssetType,
-    TaskType,
+    TaskType, QueryType,
 )
-import utils.db as db
 import utils.regex as regex
 import sys
 import json
 from utils.jwt import JWTBearer, GetJWTToken, remove_redis_active_session
 from utils.access_control import access_control
-from utils.spaces import get_spaces, initialize_spaces
+from utils.spaces import initialize_spaces, get_spaces
 from typing import Any
 import utils.repository as repository
 from utils.helpers import (
@@ -56,6 +56,8 @@ from fastapi.responses import RedirectResponse
 from languages.loader import languages
 from typing import Callable
 from pathlib import Path as FilePath
+from data_adapters.adapter import data_adapter as db
+
 
 router = APIRouter()
 
@@ -144,15 +146,32 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         user_shortname, query.space_name, query.subpath
     )
 
-    folder = await db.load(
-        query.space_name,
-        query.subpath,
-        "",
-        core.Folder,
-        user_shortname,
-    )
-
-    folder_payload = db.load_resource_payload(
+    if settings.active_data_db == "file":
+        folder = await db.load(
+            query.space_name,
+            query.subpath,
+            "",
+            core.Folder,
+            user_shortname,
+        )
+    else:
+        folder = await db.load(
+            query.space_name,
+            query.subpath,
+            query.subpath,
+            core.Folder,
+            user_shortname,
+        )
+    # folder = await db.load(
+    #     core.EntityDTO(
+    #         space_name=query.space_name,
+    #         subpath=query.subpath,
+    #         shortname="",
+    #         resource_type=ResourceType.folder,
+    #     )
+    # )
+    # NUKE
+    folder_payload = await db.load_resource_payload(
         query.space_name,
         "/",
         f"{folder.shortname}.json",
@@ -280,20 +299,35 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 async def serve_space(
         request: api.Request, owner_shortname=Depends(JWTBearer())
 ) -> api.Response:
-    spaces = await get_spaces()
+    if settings.active_data_db == "file":
+        spaces = await get_spaces()
+    else:
+        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
+
     record = request.records[0]
     history_diff = {}
     match request.request_type:
         case api.RequestType.create:
-            if request.space_name in spaces:
-                raise api.Exception(
-                    status.HTTP_400_BAD_REQUEST,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.ALREADY_EXIST_SPACE_NAME,
-                        message="Space name provided already existed [1]",
-                    ),
-                )
+            if settings.active_data_db == "file":
+                if request.space_name in spaces:
+                    raise api.Exception(
+                        status.HTTP_400_BAD_REQUEST,
+                        api.Error(
+                            type="request",
+                            code=InternalErrorCode.ALREADY_EXIST_SPACE_NAME,
+                            message="Space name provided already existed [1]",
+                        ),
+                    )
+            else:
+                if request.space_name in [space.shortname for space in spaces]:
+                    raise api.Exception(
+                        status.HTTP_400_BAD_REQUEST,
+                        api.Error(
+                            type="request",
+                            code=InternalErrorCode.ALREADY_EXIST_SPACE_NAME,
+                            message="Space name provided already existed [1]",
+                        ),
+                    )
 
             if not await access_control.check_access(
                     user_shortname=owner_shortname,
@@ -315,16 +349,16 @@ async def serve_space(
             resource_obj = core.Meta.from_record(
                 record=record, owner_shortname=owner_shortname
             )
-
             resource_obj.is_active = True
             resource_obj.shortname = request.space_name
-            if isinstance(resource_obj, core.Space) :
+            if isinstance(resource_obj, core.Space):
                 resource_obj.indexing_enabled = True
                 resource_obj.active_plugins = [
-                "action_log",
-                "redis_db_update",
-                "resource_folders_creation",
+                    "action_log",
+                    "redis_db_update",
+                    "resource_folders_creation",
                 ]
+
             await db.save(
                 request.space_name,
                 record.subpath,
@@ -334,9 +368,15 @@ async def serve_space(
         case api.RequestType.update:
             try:
                 space = core.Space.from_record(record, owner_shortname)
+                if settings.active_data_db == "file":
+                    if request.space_name not in spaces:
+                        raise Exception
+                else:
+                    if request.space_name not in [space.shortname for space in spaces]:
+                        raise Exception
+
                 if (
-                        request.space_name not in spaces
-                        or request.space_name != record.shortname
+                        request.space_name != record.shortname
                 ):
                     raise Exception
             except Exception:
@@ -345,7 +385,7 @@ async def serve_space(
                     api.Error(
                         type="request",
                         code=InternalErrorCode.INVALID_SPACE_NAME,
-                        message="Space name provided is empty or invalid [6]",
+                        message=f"Space name {request.space_name} provided is empty or invalid [6]",
                     ),
                 )
             if not await access_control.check_access(
@@ -396,7 +436,6 @@ async def serve_space(
                 user_shortname=owner_shortname,
                 retrieve_lock_status=record.retrieve_lock_status,
             )
-
         case api.RequestType.delete:
             if request.space_name == "management":
                 raise api.Exception(
@@ -407,15 +446,22 @@ async def serve_space(
                         message="Cannot delete management space",
                     ),
                 )
-            if request.space_name not in spaces:
-                raise api.Exception(
-                    status.HTTP_400_BAD_REQUEST,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.INVALID_SPACE_NAME,
-                        message="Space name provided is empty or invalid [2]",
-                    ),
-                )
+
+            exception = api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_SPACE_NAME,
+                    message=f"Space name {request.space_name} provided is empty or invalid [2]",
+                ),
+            )
+            if settings.active_data_db == "file":
+                if request.space_name not in spaces:
+                    raise exception
+            else:
+
+                if request.space_name not in [space.shortname for space in spaces]:
+                    raise exception
 
             if not await access_control.check_access(
                     user_shortname=owner_shortname,
@@ -433,8 +479,13 @@ async def serve_space(
                         message="You don't have permission to this action [3]",
                     ),
                 )
-
-            os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
+            if settings.active_data_db == "file":
+                os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
+            else:
+                resource_obj = core.Meta.from_record(
+                    record=record, owner_shortname=owner_shortname
+                )
+                await db.delete(request.space_name, record.subpath, resource_obj, owner_shortname)
 
             async with RedisServices() as redis_services:
                 x = await redis_services.list_indices()
@@ -477,17 +528,7 @@ async def serve_space(
 async def query_entries(
         query: api.Query, user_shortname=Depends(JWTBearer())
 ) -> api.Response:
-    spaces = await get_spaces()
-
-    if query.space_name not in spaces:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            api.Error(
-                type="request",
-                code=InternalErrorCode.INVALID_SPACE_NAME,
-                message="Space name provided is empty or invalid [3]",
-            ),
-        )
+    await is_space_exist(query.space_name)
 
     await plugin_manager.before_action(
         core.Event(
@@ -499,13 +540,17 @@ async def query_entries(
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies(
-        user_shortname, query.space_name, query.subpath
-    )
+    if settings.active_data_db == "file":
+        redis_query_policies = await access_control.get_user_query_policies(
+            user_shortname, query.space_name, query.subpath
+        )
 
-    total, records = await repository.serve_query(
-        query, user_shortname, redis_query_policies
-    )
+        total, records = await repository.serve_query(
+            query, user_shortname, redis_query_policies
+        )
+    else:
+        total, records = await db.query(query, user_shortname)
+
 
     await plugin_manager.after_action(
         core.Event(
@@ -529,17 +574,8 @@ async def serve_request(
         owner_shortname=Depends(JWTBearer()),
         is_internal: bool = False,
 ) -> api.Response:
-    spaces = await get_spaces()
+    await is_space_exist(request.space_name)
 
-    if request.space_name not in spaces:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            api.Error(
-                type="request",
-                code=InternalErrorCode.INVALID_SPACE_NAME,
-                message="Space name provided is empty or invalid [3]",
-            ),
-        )
     if not request.records:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -606,15 +642,25 @@ async def serve_request(
                             record.resource_type)
                     )
 
-                    shortname_exists = repository.is_entry_exist(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        resource_type=record.resource_type,
-                        schema_shortname=record.attributes.get(
-                            "schema_shortname", None)
-                    )
-                    if shortname_exists and record.shortname != settings.auto_uuid_rule:
+                    if settings.active_data_db == "file":
+                        shortname_exists = repository.is_entry_exist(
+                            space_name=request.space_name,
+                            subpath=record.subpath,
+                            shortname=record.shortname,
+                            resource_type=record.resource_type,
+                            schema_shortname=record.attributes.get(
+                                "schema_shortname", None)
+                        )
+                    else:
+                        shortname_exists = db.is_entry_exist(
+                            space_name=request.space_name,
+                            subpath=record.subpath,
+                            shortname=record.shortname,
+                            resource_cls=resource_cls,
+                            schema_shortname=record.attributes.get(
+                                "schema_shortname", None)
+                        )
+                    if record.shortname != settings.auto_uuid_rule and shortname_exists:
                         raise api.Exception(
                             status.HTTP_400_BAD_REQUEST,
                             api.Error(
@@ -641,8 +687,8 @@ async def serve_request(
                             and resource_obj.payload.body is not None
                     ):
                         separate_payload_data = resource_obj.payload.body
-                        resource_obj.payload.body = body_shortname + (".json" if record.resource_type != ResourceType.log else ".jsonl")
-                        
+                        resource_obj.payload.body = body_shortname + (
+                            ".json" if record.resource_type != ResourceType.log else ".jsonl")
 
                     if (
                             resource_obj.payload
@@ -706,12 +752,18 @@ async def serve_request(
                     if separate_payload_data is not None and isinstance(
                             separate_payload_data, dict
                     ):
-                        await db.save_payload_from_json(
-                            request.space_name,
-                            record.subpath,
-                            resource_obj,
-                            separate_payload_data,
-                        )
+                        if settings.active_data_db == "file":
+                            await db.save_payload_from_json(
+                                request.space_name,
+                                record.subpath,
+                                resource_obj,
+                                separate_payload_data,
+                            )
+                        else:
+                            resource_obj.payload = record.attributes.get("payload", {})
+                            await db.update(
+                                request.space_name, record.subpath, resource_obj, {}, {}, [], owner_shortname
+                            )
 
                     records.append(
                         resource_obj.to_record(
@@ -807,13 +859,13 @@ async def serve_request(
                 old_version_flattend = flatten_dict(
                     old_resource_obj.model_dump())
                 if (
-                    record.resource_type != ResourceType.log
-                    and old_resource_obj.payload
-                    and old_resource_obj.payload.content_type == ContentType.json
-                    and isinstance(old_resource_obj.payload.body, str)
+                        record.resource_type != ResourceType.log
+                        and old_resource_obj.payload
+                        and old_resource_obj.payload.content_type == ContentType.json
+                        and isinstance(old_resource_obj.payload.body, str)
                 ):
                     try:
-                        old_resource_payload_body = db.load_resource_payload(
+                        old_resource_payload_body = await db.load_resource_payload(
                             space_name=request.space_name,
                             subpath=record.subpath,
                             filename=old_resource_obj.payload.body,
@@ -832,9 +884,9 @@ async def serve_request(
                 # GENERATE NEW RESOURCE OBJECT
                 resource_obj = old_resource_obj
                 resource_obj.updated_at = datetime.now()
-                
+
                 new_version_flattend = {}
-                
+
                 if record.resource_type == ResourceType.log:
                     new_resource_payload_data = record.attributes.get("payload", {}).get(
                         "body", {}
@@ -869,7 +921,7 @@ async def serve_request(
                         space_name=request.space_name,
                         schema_shortname=resource_obj.payload.schema_shortname,
                     )
-                
+
                 if record.resource_type == ResourceType.log:
                     history_diff = await db.update(
                         space_name=request.space_name,
@@ -902,7 +954,7 @@ async def serve_request(
                         schema_shortname=schema_shortname,
                         retrieve_lock_status=record.retrieve_lock_status,
                     )
-                if new_resource_payload_data is not None:
+                if settings.active_data_db == 'file' and new_resource_payload_data is not None:
                     await db.save_payload_from_json(
                         request.space_name,
                         record.subpath,
@@ -911,8 +963,8 @@ async def serve_request(
                     )
 
                 if (
-                    isinstance(resource_obj, core.User) and
-                    record.attributes.get("is_active") is False
+                        isinstance(resource_obj, core.User) and
+                        record.attributes.get("is_active") is False
                 ):
                     await remove_redis_active_session(record.shortname)
 
@@ -954,7 +1006,7 @@ async def serve_request(
                     shortname=record.attributes["owner_shortname"],
                     class_type=core.User,
                 )
-                    
+
                 if record.subpath[0] != "/":
                     record.subpath = f"/{record.subpath}"
                 await plugin_manager.before_action(
@@ -1013,7 +1065,6 @@ async def serve_request(
 
                 resource_obj.updated_at = datetime.now()
                 resource_obj.owner_shortname = record.attributes["owner_shortname"]
-                
 
                 history_diff = await db.update(
                     space_name=request.space_name,
@@ -1026,7 +1077,6 @@ async def serve_request(
                     schema_shortname=schema_shortname,
                     retrieve_lock_status=record.retrieve_lock_status,
                 )
-
 
                 records.append(
                     resource_obj.to_record(
@@ -1049,7 +1099,6 @@ async def serve_request(
                     )
                 )
 
-
         case api.RequestType.update_acl:
             for record in request.records:
                 if record.attributes.get("acl", None) is None:
@@ -1061,7 +1110,7 @@ async def serve_request(
                             message="The acl is required",
                         ),
                     )
-                    
+
                 if record.subpath[0] != "/":
                     record.subpath = f"/{record.subpath}"
                 await plugin_manager.before_action(
@@ -1119,7 +1168,6 @@ async def serve_request(
 
                 resource_obj.updated_at = datetime.now()
                 resource_obj.acl = record.attributes["acl"]
-                
 
                 history_diff = await db.update(
                     space_name=request.space_name,
@@ -1132,7 +1180,6 @@ async def serve_request(
                     schema_shortname=schema_shortname,
                     retrieve_lock_status=record.retrieve_lock_status,
                 )
-
 
                 records.append(
                     resource_obj.to_record(
@@ -1154,8 +1201,7 @@ async def serve_request(
                         attributes={"history_diff": history_diff},
                     )
                 )
-        
-        
+
         case api.RequestType.delete:
             for record in request.records:
                 if record.subpath[0] != "/":
@@ -1233,10 +1279,10 @@ async def serve_request(
                     record.subpath = f"/{record.subpath}"
 
                 if (
-                    not record.attributes.get("src_subpath")
-                    or not record.attributes.get("src_shortname")
-                    or not record.attributes.get("dest_subpath")
-                    or not record.attributes.get("dest_shortname")
+                        not record.attributes.get("src_subpath")
+                        or not record.attributes.get("src_shortname")
+                        or not record.attributes.get("dest_subpath")
+                        or not record.attributes.get("dest_shortname")
                 ):
                     raise api.Exception(
                         status.HTTP_400_BAD_REQUEST,
@@ -1351,16 +1397,8 @@ async def update_state(
         comment: str | None = Body(None, embed=True, examples=["Nice ticket"]),
         retrieve_lock_status: bool | None = False,
 ) -> api.Response:
-    spaces = await get_spaces()
-    if space_name not in spaces:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            api.Error(
-                type="request",
-                code=InternalErrorCode.INVALID_SPACE_NAME,
-                message="Space name provided is empty or invalid [4]",
-            ),
-        )
+    await is_space_exist(space_name)
+
     _user_roles = await access_control.get_user_roles(logged_in_user)
     user_roles = _user_roles.keys()
 
@@ -1423,7 +1461,7 @@ async def update_state(
                 workflows_data.payload is not None
                 and workflows_data.payload.body is not None
         ):
-            workflows_payload = db.load_resource_payload(
+            workflows_payload = await db.load_resource_payload(
                 space_name=space_name,
                 subpath="workflows",
                 filename=str(workflows_data.payload.body),
@@ -1519,7 +1557,7 @@ async def update_state(
                 old_version_flattend,
                 new_version_flattend,
                 ["state", "resolution_reason", "comment"],
-                
+
                 logged_in_user,
                 retrieve_lock_status=retrieve_lock_status,
             )
@@ -1653,16 +1691,8 @@ async def create_or_update_resource_with_payload(
 ):
     # NOTE We currently make no distinction between create and update.
     # in such case update should contain all the data every time.
-    spaces = await get_spaces()
-    if space_name not in spaces:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            api.Error(
-                type="request",
-                code=InternalErrorCode.INVALID_SPACE_NAME,
-                message="Space name provided is empty or invalid [5]",
-            ),
-        )
+    await is_space_exist(space_name)
+
     record = core.Record.model_validate_json(request_record.file.read())
 
     payload_filename = payload_file.filename or ""
@@ -2057,7 +2087,7 @@ async def retrieve_entry_meta(
         # include locked before returning the dictionary
         return {**meta.model_dump(exclude_none=True), "attachments": attachments}
 
-    payload_body = db.load_resource_payload(
+    payload_body = await db.load_resource_payload(
         space_name=space_name,
         subpath=subpath,
         filename=meta.payload.body,
@@ -2095,14 +2125,17 @@ async def get_entry_by_uuid(
         retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
-    return await repository.get_entry_by_var(
-        "uuid",
-        uuid,
-        logged_in_user,
-        retrieve_json_payload,
-        retrieve_attachments,
-        retrieve_lock_status,
-    )
+    if settings.active_data_db == "file":
+        return await repository.get_entry_by_var(
+            "uuid",
+            uuid,
+            logged_in_user,
+            retrieve_json_payload,
+            retrieve_attachments,
+            retrieve_lock_status,
+        )
+    else:
+        return await db.get_entry_by_criteria({"uuid": uuid})
 
 
 @router.get("/byslug/{slug}", response_model_exclude_none=True)
@@ -2113,57 +2146,17 @@ async def get_entry_by_slug(
         retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
-    return await repository.get_entry_by_var(
-        "slug",
-        slug,
-        logged_in_user,
-        retrieve_json_payload,
-        retrieve_attachments,
-        retrieve_lock_status,
-    )
-
-
-# @router.post("/reload-redis-data", response_model_exclude_none=True)
-# async def recreate_redis_indices(
-#     for_space: str | None = None,
-#     for_schemas: list | None = None,
-#     for_subpaths: list | None = None,
-#     logged_in_user=Depends(JWTBearer()),
-# ):
-
-#     spaces = await get_spaces()
-#     for space_name, space_json in spaces.items():
-#         space_obj = core.Space.model_validate_json(space_json)
-#         if space_obj.indexing_enabled and not await access_control.check_access(
-#             user_shortname=logged_in_user,
-#             space_name=space_name,
-#             subpath="/",
-#             resource_type=ResourceType.content,
-#             action_type=core.ActionType.create,
-#         ):
-#             raise api.Exception(
-#                 status.HTTP_401_UNAUTHORIZED,
-#                 api.Error(
-#                     type="request",
-#                     code=InternalErrorCode.NOT_ALLOWED,
-#                     message="You don't have permission to this action [12]",
-#                 ),
-#             )
-
-#     async with RedisServices() as redis_services:
-#         await redis_services.create_indices(
-#             for_space, for_schemas
-#         )
-#     loaded_data = await load_all_spaces_data_to_redis(for_space, for_subpaths)
-#     await initialize_spaces()
-#     await access_control.load_permissions_and_roles()
-
-#     report = [
-#         {"space_name": space_name, "index_data": index_data}
-#         for space_name, index_data in loaded_data.items()
-#     ]
-
-#     return api.Response(status=api.Status.success, attributes={"report": report})
+    if settings.active_data_db == "file":
+        return await repository.get_entry_by_var(
+            "slug",
+            slug,
+            logged_in_user,
+            retrieve_json_payload,
+            retrieve_attachments,
+            retrieve_lock_status,
+        )
+    else:
+        return await db.get_entry_by_criteria({"slug": slug})
 
 
 @router.get("/health/{health_type}/{space_name}", response_model_exclude_none=True)
@@ -2182,16 +2175,8 @@ async def get_space_report(
             ),
         )
 
-    spaces = await get_spaces()
-    if space_name not in spaces and space_name != "all":
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="media",
-                code=InternalErrorCode.INVALID_SPACE_NAME,
-                message="Space name provided is empty or invalid"
-            ),
-        )
+    await is_space_exist(space_name)
+
     if health_type not in ["soft", "hard"]:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -2217,20 +2202,21 @@ async def lock_entry(
         resource_type: ResourceType | None = ResourceType.ticket,
         logged_in_user=Depends(JWTBearer()),
 ):
-    folder_meta_path = (
-            settings.spaces_folder
-            / space_name
-            / subpath
-            / ".dm"
-            / shortname
-    )
-    if not folder_meta_path.is_dir():
-        raise api.Exception(
-            status_code=status.HTTP_404_NOT_FOUND,
-            error=api.Error(
-                type="db", code=InternalErrorCode.DIR_NOT_FOUND, message="requested object is not found"
-            ),
+    if settings.active_data_db == "file":
+        folder_meta_path = (
+                settings.spaces_folder
+                / space_name
+                / subpath
+                / ".dm"
+                / shortname
         )
+        if not folder_meta_path.is_dir():
+            raise api.Exception(
+                status_code=status.HTTP_404_NOT_FOUND,
+                error=api.Error(
+                    type="db", code=InternalErrorCode.DIR_NOT_FOUND, message="requested object is not found"
+                ),
+            )
 
     await plugin_manager.before_action(
         core.Event(
@@ -2274,19 +2260,26 @@ async def lock_entry(
     # if lock file is doesn't exist
     # elif lock file exit but lock_period expired
     # elif lock file exist and lock_period isn't expired but the owner want to extend the lock
-    async with RedisServices() as redis_services:
-        lock_type = await redis_services.save_lock_doc(
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis_services:
+            lock_type = await redis_services.save_lock_doc(
+                space_name,
+                subpath,
+                shortname,
+                logged_in_user,
+                settings.lock_period,
+            )
+    else:
+        lock_type = await db.lock_handler(
             space_name,
-            
             subpath,
             shortname,
             logged_in_user,
-            settings.lock_period,
+            LockAction.lock
         )
 
     await db.store_entry_diff(
         space_name,
-        
         "/" + subpath,
         shortname,
         logged_in_user,
@@ -2323,20 +2316,30 @@ async def cancel_lock(
         shortname: str = Path(..., pattern=regex.SHORTNAME),
         logged_in_user=Depends(JWTBearer()),
 ):
-    async with RedisServices() as redis_services:
-        lock_payload = await redis_services.get_lock_doc(
-            space_name,  subpath, shortname
-        )
 
-    if not lock_payload or lock_payload["owner_shortname"] != logged_in_user:
-        raise api.Exception(
-            status_code=status.HTTP_403_FORBIDDEN,
-            error=api.Error(
-                type="lock",
-                code=InternalErrorCode.LOCK_UNAVAILABLE,
-                message="Lock does not exist or you have no access",
-            ),
-        )
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis_services:
+            lock_payload = await redis_services.get_lock_doc(
+                space_name, subpath, shortname
+            )
+    else:
+        lock_payload = (await db.load(
+            space_name=space_name,
+            subpath=subpath,
+            shortname=shortname,
+            class_type=core.Lock,
+            user_shortname=logged_in_user,
+        )).model_dump()
+
+        if not lock_payload or lock_payload["owner_shortname"] != logged_in_user:
+            raise api.Exception(
+                status_code=status.HTTP_403_FORBIDDEN,
+                error=api.Error(
+                    type="lock",
+                    code=InternalErrorCode.LOCK_UNAVAILABLE,
+                    message="Lock does not exist or you have no access",
+                ),
+            )
 
     await plugin_manager.before_action(
         core.Event(
@@ -2348,14 +2351,22 @@ async def cancel_lock(
         )
     )
 
-    async with RedisServices() as redis_services:
-        await redis_services.delete_lock_doc(
-            space_name,  subpath, shortname
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis_services:
+            await redis_services.delete_lock_doc(
+                space_name, subpath, shortname
+            )
+    else:
+        await db.lock_handler(
+            space_name,
+            subpath,
+            shortname,
+            logged_in_user,
+            LockAction.unlock
         )
 
     await db.store_entry_diff(
         space_name,
-        
         "/" + subpath,
         shortname,
         logged_in_user,
@@ -2417,7 +2428,7 @@ async def execute(
             ),
         )
 
-    query_dict: dict[str, Any] = db.load_resource_payload(
+    query_dict: dict[str, Any] = await db.load_resource_payload(
         space_name=space_name,
         subpath=record.subpath,
         filename=str(meta.payload.body),
@@ -2525,7 +2536,7 @@ async def data_asset(
         _=Depends(JWTBearer()),
 ):
     try:
-        duckdb = __import__("duckdb") # type: ignore
+        duckdb = __import__("duckdb")  # type: ignore
     except ModuleNotFoundError:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,

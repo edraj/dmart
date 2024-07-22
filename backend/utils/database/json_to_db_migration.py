@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from sqlmodel import Session, create_engine, text
 
-from create_tables import Entries, Users, generate_tables, Attachments, Roles, Permissions, Histories, Spaces
+from create_tables import Entries, Users, generate_tables, Attachments, Roles, Permissions, Histories, Spaces, Tickets
 from utils.settings import settings
 
 logging.basicConfig()
@@ -144,15 +144,12 @@ with Session(engine) as session:
                         try:
                             match subpath:
                                 case 'users':
-                                    print("=====================>")
                                     entry['resource_type'] = 'user'
                                     entry['firebase_token'] = entry.get('firebase_token', '')
                                     entry['language'] = entry.get('language', '')
                                     entry['google_id'] = entry.get('google_id', '')
                                     entry['facebook_id'] = entry.get('facebook_id', '')
                                     entry['social_avatar_url'] = entry.get('social_avatar_url', '')
-                                    print(entry)
-                                    print("<=====================")
                                     session.add(Users.model_validate(entry))
                                 case 'roles':
                                     entry['resource_type'] = 'role'
@@ -172,6 +169,16 @@ with Session(engine) as session:
                                     if entry['resource_type'] == 'folder':
                                         new_subpath = entry['subpath'].split('/')
                                         entry['subpath'] = '/'.join(new_subpath[:-1]) + '/'
+                                    elif entry['resource_type'] == 'ticket':
+                                        entry["state"] = entry.get("state", "")
+                                        entry["is_open"] = entry.get("is_open", True)
+                                        entry["reporter"] = entry.get("reporter", None)
+                                        entry["workflow_shortname"] = entry.get("workflow_shortname", "")
+                                        entry["collaborators"] = entry.get("collaborators", None)
+                                        entry["resolution_reason"] = entry.get("resolution_reason", None)
+                                        session.add(Tickets.model_validate(entry))
+                                        continue
+
                                     session.add(Entries.model_validate(entry))
                         except Exception as e:
                             print(f"Error processing {space_name}/{subpath}/{dir}/{entry} ... ")

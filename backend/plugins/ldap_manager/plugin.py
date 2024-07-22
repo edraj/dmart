@@ -2,7 +2,7 @@ from fastapi.logger import logger
 from models.core import Event, PluginBase, User
 from models.enums import ActionType
 from utils.settings import settings
-from utils.db import load
+from data_adapters.adapter import data_adapter as db
 
 from ldap3 import AUTO_BIND_NO_TLS, MODIFY_REPLACE, Server, Connection, ALL
 
@@ -41,7 +41,7 @@ class Plugin(PluginBase):
             self.delete(data.shortname)
             return
         
-        user_model: User = await load(
+        user_model: User = await db.load(
             space_name=settings.management_space,
             subpath=data.subpath,
             shortname=data.shortname,

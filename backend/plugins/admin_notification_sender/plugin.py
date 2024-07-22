@@ -8,8 +8,7 @@ from utils.redis_services import RedisServices
 from utils.repository import internal_save_model, get_entry_attachments
 from utils.settings import settings
 from fastapi.logger import logger
-from utils.db import load, load_resource_payload, save_payload_from_json
-
+from data_adapters.adapter import data_adapter as db
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
@@ -27,7 +26,7 @@ class Plugin(PluginBase):
             )
             return
 
-        notification_request_meta = await load(
+        notification_request_meta = await db.load(
             data.space_name,
             data.subpath,
             data.shortname,
@@ -37,7 +36,7 @@ class Plugin(PluginBase):
         notification_dict = notification_request_meta.dict()
         notification_dict["subpath"] = data.subpath
 
-        notification_request_payload: dict[str, Any] = load_resource_payload(
+        notification_request_payload: dict[str, Any] = await db.load_resource_payload(
             data.space_name,
             data.subpath,
             notification_request_meta.payload.body,
@@ -49,14 +48,18 @@ class Plugin(PluginBase):
             return
 
         # Get msisdns users
-        async with RedisServices() as redis:
-            receivers = await redis.search(
-                space_name=settings.management_space,
-                search=f"@subpath:users @msisdn:{'|'.join(notification_dict['msisdns'])}",
-                filters={},
-                limit=10000,
-                offset=0,
-            )
+        if settings.active_data_db == "file":
+            async with RedisServices() as redis:
+                receivers = await redis.search(
+                    space_name=settings.management_space,
+                    search=f"@subpath:users @msisdn:{'|'.join(notification_dict['msisdns'])}",
+                    filters={},
+                    limit=10000,
+                    offset=0,
+                )
+        else:
+            #TODO implement this for sql
+            return
         if not receivers or receivers.get("total", 0) == 0:
             return
 
@@ -91,7 +94,7 @@ class Plugin(PluginBase):
 
 
         notification_request_payload["status"] = "finished"
-        await save_payload_from_json(
+        await db.save_payload_from_json(
             space_name=data.space_name,
             subpath=data.subpath,
             meta=notification_request_meta,
