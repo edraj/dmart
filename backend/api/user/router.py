@@ -111,11 +111,11 @@ async def create_user(record: core.Record) -> api.Response:
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="create", code=50, message="bad or missing invitation token"
+                type="create", code=50, message= "bad or missing invitation token"
             ),
         )
 
-    # TBD : Raise error if user already exists.
+    # TBD : Raise error if user already eists.
 
     if "password" not in record.attributes:
         raise api.Exception(

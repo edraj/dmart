@@ -391,3 +391,4 @@ async def test_delete_space(client: AsyncClient):
 async def test_logout(client: AsyncClient):
     response = await client.post("/user/logout", json={})
     assert_code_and_status_success(response)
+

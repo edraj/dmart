@@ -37,3 +37,4 @@ async def test_sms_notifier_send_success():
         json={"msisdn": "1234567890", "message": "Title in en"},
     )
 
+

@@ -96,3 +96,4 @@ def test_user_login_request_missing_password():
     request = UserLoginRequest(shortname="john_doo")
     result = request.check_fields()
     assert result == {"shortname": "john_doo"}
+

@@ -3,8 +3,6 @@ from httpx import AsyncClient
 from pytests.base_test import get_superman_cookie
 from fastapi import status
 import pytest
-from JwtEncoder import JwtEncoder
-from utils import jwt
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import sign_jwt
 from utils.settings import settings
@@ -73,6 +71,7 @@ async def test_in_loop_tasks(client: AsyncClient) -> None:
         assert "name" in task
         assert "coroutine" in task
         assert "stack" in task
+
 
 
 

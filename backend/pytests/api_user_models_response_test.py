@@ -36,3 +36,4 @@ def test_confirmation_response_model():
         # This should raise a ValidationError because 'data' must be a Confirmation instance
         ConfirmationResponse(status="success", data="not a Confirmation instance")
 
+
