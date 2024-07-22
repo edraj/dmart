@@ -18,23 +18,20 @@ from fastapi import status
 from models.api import Query
 from models.enums import QueryType, ResourceType, ContentType
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import sign_jwt
-from utils.password_hashing import hash_password, verify_password
 from utils.settings import settings
 from utils import regex, db
-from utils.custom_validations import validate_payload_with_schema
 from httpx import AsyncClient
 
 
 new_user_data = {
-    "shortname": "tests_user_100100",
-    "msisdn": "7777778220",
-    "email": "test_user_100100@mymail.com",
+    "shortname": "uesr_test",
+    "msisdn": "7777779909",
+    "email": "user_test@mymail.com",
 }
 new_user_data2 = {
-    "shortname": "test_uuu_1002100",
-    "msisdn": "77772117529",
-    "email": "test_usesr___we@mymail.com",
+    "shortname": "tesssst_uuwu_1002100",
+    "msisdn": "72772107529",
+    "email": "test_useesr_User@mymail.com",
 }
 
 @pytest.mark.run(order=1)
@@ -525,39 +522,7 @@ async def test_update_profile_confirmation_code(client: AsyncClient) -> None:
         assert response.status_code == 422
         assert response.json()['error']['message'] == "Invalid confirmation code [1]"
 
-# @pytest.mark.run(order=1)
-# @pytest.mark.anyio
-# async def test_update_profile_payload(client: AsyncClient) -> None:
-#     request_data = {
-#         "resource_type": "user",
-#         "subpath": "users",
-#         "shortname": "testuser",
-#         "attributes": {
-#             "payload": {
-#                 "content_type": ContentType.json,
-#                 "body": {"key": "value"}
-#             }
-#         }
-#     }
-#
-#     existing_user_data = {
-#         'shortname': 'testuser',
-#         'owner_shortname': 'owner',
-#         'payload': Payload(
-#             content_type=ContentType.json,
-#             schema_shortname="user_profile",
-#             body=""
-#         )
-#     }
-#
-#     with patch("utils.jwt.JWTBearer.__call__", return_value="testuser"), \
-#          patch("utils.db.load", return_value=User(**existing_user_data)), \
-#          patch("utils.db.save_payload_from_json", return_value=None), \
-#          patch("utils.custom_validations.validate_payload_with_schema", return_value=None):
-#         response = await client.post("/user/profile", json=request_data)
-#
-#         assert response.status_code == 200
-#         assert response.json()['status'] == 'success'
+
 
 @pytest.mark.run(order=1)
 @pytest.mark.anyio

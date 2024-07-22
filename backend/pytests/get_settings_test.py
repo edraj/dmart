@@ -12,3 +12,4 @@ def test_script_execution():
         check=True
     )
     assert result.returncode == 0
+

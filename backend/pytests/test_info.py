@@ -11,7 +11,7 @@ from utils.settings import settings
 @pytest.mark.run(order=6)
 @pytest.mark.anyio
 async def test_info_me(client: AsyncClient) -> None:
-#    async with my_client as client:
+
     client.cookies.set("auth_token", await get_superman_cookie(client))
     response = await client.get("/info/me")
     assert response.status_code == status.HTTP_200_OK
@@ -22,7 +22,7 @@ async def test_info_me(client: AsyncClient) -> None:
 @pytest.mark.run(order=6)
 @pytest.mark.anyio
 async def test_info_manifest(client: AsyncClient) -> None:
- #   async with my_client as client:
+
         client.cookies.set("auth_token", await get_superman_cookie(client))
         response = await client.get("/info/manifest")
         assert response.status_code == status.HTTP_200_OK

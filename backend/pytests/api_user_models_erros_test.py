@@ -15,3 +15,4 @@ def test_expired_otp():
     assert EXPIRED_OTP.code == InternalErrorCode.OTP_EXPIRED
     assert EXPIRED_OTP.message == "Expired OTP"
 
+

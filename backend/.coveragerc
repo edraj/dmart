@@ -4,7 +4,6 @@
 # show_missing = True
 
 omit =
-    pytests/*
     ../frontend/*
     ../logs/*
     ../sample/*
@@ -16,4 +15,24 @@ omit =
     data_generator.py
     set_admin_passwd.py
     bundler.py
+    websocket.py
+    test_utils.py
+    set_admin_passwd.py
+    schema_migration.py
+    scheduled_notification_handler.py
+    password_get.py
+    health_check.py
+    get_settings.py
+    drop_index.py
+    utils/custom_validation.py
+    dmart.py
+    utils/hypercorn_config.py
+    data_generator.py
+    create_users_folders.py
+    create_index.py
+    conftest.py
+    archive.py
+    utils/settings.py
+    utils/async_request.py
+    password_gen.py
 

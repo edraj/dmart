@@ -11,4 +11,3 @@ async def test_sanity(client: AsyncClient) -> None:
         json_response = response.json()
         assert json_response["status"] == "success"
 
-
