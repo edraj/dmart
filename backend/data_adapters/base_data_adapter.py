@@ -1,3 +1,4 @@
+# type: ignore
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TypeVar, Any, Tuple, Type

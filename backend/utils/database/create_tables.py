@@ -1,4 +1,5 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
+# type: ignore
 import copy
 from datetime import datetime
 from typing import Optional, Any
