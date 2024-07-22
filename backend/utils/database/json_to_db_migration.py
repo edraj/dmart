@@ -21,9 +21,9 @@ engine = create_engine(f"{postgresql_url}/postgres")
 
 try:
     s = Session(engine)
-    s.connection().connection.set_isolation_level(0)
-    sql = f"CREATE DATABASE {settings.database_name}"
-    s.exec(text(sql))
+    s.connection().connection.set_isolation_level(0)  # type: ignore
+    sql = f"CREATE DATABASE {settings.database_name}"  # type: ignore
+    s.exec(text(sql))  # type: ignore
     engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=True)
     generate_tables()
 except Exception as e:
@@ -45,6 +45,7 @@ with Session(engine) as session:
         if subpath == '' or subpath == '/':
             subpath = '/'
             p = os.path.join(root, '.dm', 'meta.space.json')
+            entry = {}
             if Path(p).is_file():
                 try:
                     entry = json.load(open(p))
@@ -52,7 +53,7 @@ with Session(engine) as session:
                     if payload := entry.get('payload', {}).get('body', None):
                         if entry.get('payload', {}).get('content_type', None) == 'json':
                             body = json.load(open(
-                                os.path.join(root, dir, '../..', payload)
+                                os.path.join(root, dir, '../..', payload) # type: ignore
                             ))
                         else:
                             body = payload
@@ -124,6 +125,7 @@ with Session(engine) as session:
                     elif file.endswith('.json'):
                         entry = json.load(open(p))
                         entry['space_name'] = space_name
+                        body = None
                         if payload := entry.get('payload', {}).get('body', None):
                             if entry.get('payload', {}).get('content_type', None) == 'json':
                                 try:

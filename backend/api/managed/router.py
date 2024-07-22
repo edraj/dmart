@@ -1399,8 +1399,13 @@ async def update_state(
 ) -> api.Response:
     await is_space_exist(space_name)
 
-    _user_roles = await access_control.get_user_roles(logged_in_user)
-    user_roles = _user_roles.keys()
+    if settings.active_data_db == "file":
+        user_roles = await access_control.get_user_roles_operational(logged_in_user)
+        user_roles = user_roles.keys()
+    else:
+        user_roles = await access_control.get_user_roles_database(logged_in_user)
+        user_roles = user_roles.keys()
+
 
     await plugin_manager.before_action(
         core.Event(

@@ -28,6 +28,7 @@ from utils.settings import settings
 import utils.password_hashing as password_hashing
 from hashlib import sha1 as hashlib_sha1
 
+
 # class MoveModel(BaseModel):
 #    resource_type: ResourceType
 #    src_shortname: str = Field(regex=regex.SHORTNAME)
@@ -49,22 +50,22 @@ class Payload(Resource):
     client_checksum: str | None = None
     checksum: str | None = None
     body: str | dict[str, Any]
-    
+
     def __init__(self, **data):
         BaseModel.__init__(self, **data)
-        
+
         if not self.checksum and self.body:
             sha1 = hashlib_sha1()
-            
+
             if isinstance(self.body, dict):
                 sha1.update(json.dumps(self.body).encode('utf-8'))
             else:
                 sha1.update(self.body.encode('utf-8'))
-                
+
             self.checksum = sha1.hexdigest()
 
     def update(
-        self, payload: dict, old_body: dict | None = None, replace: bool = False
+            self, payload: dict, old_body: dict | None = None, replace: bool = False
     ) -> dict | None:
         self.content_type = ContentType(payload["content_type"])
 
@@ -106,14 +107,13 @@ class Record(BaseModel):
             self.subpath = self.subpath.strip("/")
 
     def to_dict(self):
-        return self.model_dump(exclude_none=True,warnings="error")
-
+        return self.model_dump(exclude_none=True, warnings="error")
 
     def __eq__(self, other):
         return (
-            isinstance(other, Record)
-            and self.shortname == other.shortname
-            and self.subpath == other.subpath
+                isinstance(other, Record)
+                and self.shortname == other.shortname
+                and self.subpath == other.subpath
         )
 
     model_config = {
@@ -235,7 +235,7 @@ class Meta(Resource):
         return meta_obj
 
     def update_from_record(
-        self, record: Record, old_body: dict | None = None, replace: bool = False
+            self, record: Record, old_body: dict | None = None, replace: bool = False
     ) -> dict | None:
         restricted_fields = [
             "uuid",
@@ -258,9 +258,9 @@ class Meta(Resource):
                 self.__setattr__(field_name, record.attributes[field_name])
 
         if (
-            not self.payload
-            and "payload" in record.attributes
-            and "content_type" in record.attributes["payload"]
+                not self.payload
+                and "payload" in record.attributes
+                and "content_type" in record.attributes["payload"]
         ):
             self.payload = Payload(
                 content_type=ContentType(record.attributes["payload"]["content_type"]),
@@ -288,7 +288,9 @@ class Meta(Resource):
             )
 
         record_fields = {
-            "resource_type": self.resource_type if hasattr(self, "resource_type") else snake_case(type(self).__name__),
+            "resource_type": self.resource_type  # type: ignore
+            if hasattr(self, "resource_type")
+            else snake_case(type(self).__name__),
             "uuid": self.uuid,
             "shortname": self.shortname,
             "subpath": subpath,
@@ -379,6 +381,7 @@ class Sqlite(DataAsset):
 class Duckdb(DataAsset):
     pass
 
+
 class Csv(DataAsset):
     pass
 
@@ -439,12 +442,13 @@ class Schema(Meta):
 class Content(Meta):
     pass
 
+
 class Log(Meta):
     pass
 
+
 class Folder(Meta):
     pass
-
 
 
 class Permission(Meta):
@@ -546,8 +550,8 @@ class Notification(Meta):
     @staticmethod
     async def from_request(notification_req: dict, entry: dict = {}):
         if (
-            notification_req["payload"]["schema_shortname"]
-            == "admin_notification_request"
+                notification_req["payload"]["schema_shortname"]
+                == "admin_notification_request"
         ):
             notification_type = NotificationType.admin
         else:
@@ -579,6 +583,7 @@ class Notification(Meta):
 
 
 MetaChild = TypeVar("MetaChild", bound=Meta)
+
 
 class EntityDTO(BaseModel):
     space_name: str
@@ -623,7 +628,7 @@ class EntityDTO(BaseModel):
         )
 
     def to_event_data(
-        self, action_type: ActionType, additional_data: dict[str, Any] = {}
+            self, action_type: ActionType, additional_data: dict[str, Any] = {}
     ) -> Event:
         return Event(
             **self.model_dump(), action_type=action_type, attributes=additional_data
@@ -631,10 +636,10 @@ class EntityDTO(BaseModel):
 
     @classmethod
     def from_record(
-        cls,
-        record: Record,
-        space_name: str,
-        user_shortname: str | None = None,
+            cls,
+            record: Record,
+            space_name: str,
+            user_shortname: str | None = None,
     ) -> Self:
         return cls(
             space_name=space_name,
