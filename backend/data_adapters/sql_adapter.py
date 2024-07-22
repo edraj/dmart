@@ -14,7 +14,7 @@ import sqlalchemy
 from fastapi import status
 from fastapi.logger import logger
 from sqlalchemy import text, delete, func
-from sqlmodel import create_engine, Session, select, update
+from sqlmodel import create_engine, Session, select
 
 import models.api as api
 import models.core as core
@@ -329,12 +329,12 @@ class SQLAdapter(BaseDataAdapter):
         total: int = 0
         match query.type:
             case api.QueryType.subpath:
-                connection_string = (
-                    f"{self.database_connection_string}/{query.space_name}"
-                )
-                engine = create_engine(connection_string, echo=True)
-                session = Session(engine)
-
+                pass
+                # connection_string = (
+                #     f"{self.database_connection_string}/{query.space_name}"
+                # )
+                # engine = create_engine(connection_string, echo=True)
+                # session = Session(engine)
                 #!TODO finsih...
 
         return total, locators
