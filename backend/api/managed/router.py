@@ -163,7 +163,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
             user_shortname,
         )
     # folder = await db.load(
-    #     core.EntityDTO(
+    #     Any(
     #         space_name=query.space_name,
     #         subpath=query.subpath,
     #         shortname="",
@@ -1399,12 +1399,8 @@ async def update_state(
 ) -> api.Response:
     await is_space_exist(space_name)
 
-    if settings.active_data_db == "file":
-        _user_roles = await access_control.get_user_roles_operational(logged_in_user)
-        user_roles = _user_roles.keys()
-    else:
-        _user_roles = await access_control.get_user_roles_database(logged_in_user)
-        user_roles = _user_roles.keys()
+    _user_roles = await access_control.get_user_roles(logged_in_user)
+    user_roles = _user_roles.keys()
 
 
     await plugin_manager.before_action(

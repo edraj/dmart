@@ -367,16 +367,11 @@ class AccessControl:
 
     async def generate_user_permissions(self, user_shortname: str) -> dict:
         user_permissions: dict = {}
-        if settings.active_data_db == "file":
-            user_roles = await self.get_user_roles_operational(user_shortname)
-        else:
-            user_roles = await self.get_user_roles_database(user_shortname)
+
+        user_roles = await self.get_user_roles(user_shortname)
 
         for _, role in user_roles.items():
-            if settings.active_data_db == "file":
-                role_permissions = await self.get_role_permissions_operational(role)
-            else:
-                role_permissions = await self.get_role_permissions_database(role)
+            role_permissions = await self.get_role_permissions(role)
 
             for permission in role_permissions:
                 for space_name, permission_subpaths in permission.subpaths.items():
@@ -416,6 +411,12 @@ class AccessControl:
                 )
         return user_permissions
 
+    async def get_role_permissions(self, role: Role) -> list[Permission]:
+        if settings.active_data_db == "file":
+            return await self.get_role_permissions_operational(role)
+        else:
+            return await self.get_role_permissions_database(role)
+
     async def get_role_permissions_operational(self, role: Role) -> list[Permission]:
         permissions_options = "|".join(role.permissions)
         async with RedisServices() as redis_services:
@@ -437,7 +438,7 @@ class AccessControl:
 
         return role_permissions
 
-    async def get_role_permissions_database(self, role: core.Role) -> list[core.Permission]:
+    async def get_role_permissions_database(self, role: core.Role) -> list[Permission]:
         role_records = await db.load_or_none(
             settings.management_space, 'roles', role.shortname, core.Role
         )
@@ -456,6 +457,12 @@ class AccessControl:
             role_permissions.append(permission_record)
 
         return role_permissions
+
+    async def get_user_roles(self, user_shortname: str) -> dict[str, Role]:
+        if settings.active_data_db == "file":
+            return await self.get_user_roles_operational(user_shortname)
+        else:
+            return await self.get_user_roles_database(user_shortname)
 
     async def get_user_roles_operational(self, user_shortname: str) -> dict[str, Role]:
         user_meta: core.User = await self.load_user_meta(user_shortname)
