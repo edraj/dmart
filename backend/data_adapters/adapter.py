@@ -11,11 +11,4 @@ AVAILABLE_DATA_REPOSITORIES: dict[str, Type[SQLAdapter | FileAdapter]] = {
     'sql': SQLAdapter
 }
 
-
-class DataAdapter:
-    def __init__(self, adapter: BaseDataAdapter) -> None:
-        self.adapter = adapter
-
-
-active_data_adapter = AVAILABLE_DATA_REPOSITORIES[settings.active_data_db]
-data_adapter: BaseDataAdapter = DataAdapter(active_data_adapter()).adapter
+data_adapter: BaseDataAdapter = AVAILABLE_DATA_REPOSITORIES[settings.active_data_db]()
