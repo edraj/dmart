@@ -1741,3 +1741,13 @@ async def store_user_invitation_token(user: core.User, channel: str) -> str | No
         .replace("{token}", invitation_token)\
         .replace("{lang}", Language.code(user.language))\
         .replace("{user_type}", user.type)
+
+
+async def delete_space(space_name, record, owner_shortname):
+    if settings.active_data_db == "sql":
+        resource_obj = core.Meta.from_record(
+            record=record, owner_shortname=owner_shortname
+        )
+        await db.delete(space_name, record.subpath, resource_obj, owner_shortname)
+
+    os.system(f"rm -r {settings.spaces_folder}/{space_name}")
