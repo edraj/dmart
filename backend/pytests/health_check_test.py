@@ -73,4 +73,3 @@ async def test_load_spaces_schemas(mock_get_spaces):
 
     schemas = await load_spaces_schemas("test_space")
     assert "test_space" in schemas
-

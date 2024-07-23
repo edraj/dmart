@@ -103,4 +103,3 @@ def test_redis_reducer_name():
 def test_reaction_type():
     assert ReactionType.like == "like"
     assert ReactionType.care == "care"
-

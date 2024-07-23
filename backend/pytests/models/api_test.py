@@ -223,4 +223,3 @@ def test_data_asset_query_model():
     )
     assert valid_sqlite_query.data_asset_type == DataAssetType.sqlite
     assert valid_sqlite_query.filter_data_assets == ["sqlite_asset"]
-

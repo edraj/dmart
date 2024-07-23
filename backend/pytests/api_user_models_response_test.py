@@ -35,6 +35,3 @@ def test_confirmation_response_model():
     with pytest.raises(ValidationError):
         # This should raise a ValidationError because 'data' must be a Confirmation instance
         ConfirmationResponse(status="success", data="not a Confirmation instance")
-
-
-

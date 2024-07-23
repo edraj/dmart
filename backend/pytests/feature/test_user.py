@@ -29,9 +29,9 @@ new_user_data = {
     "email": "user_test@mymail.com",
 }
 new_user_data2 = {
-    "shortname": "tesssst_uuwu_1002100",
-    "msisdn": "72772107529",
-    "email": "test_useesr_User@mymail.com",
+    "shortname": "user_test_098",
+    "msisdn": "72772107097",
+    "email": "user_test_098@mymail.com",
 }
 
 @pytest.mark.run(order=1)
@@ -327,53 +327,53 @@ async def test_create_user_passwd_attribute(client: AsyncClient):
         "attributes": None
     }
 
-# @pytest.mark.run(order=1)
-# @pytest.mark.anyio
-# async def test_create_user_with_payload_body(client: AsyncClient):
-#     await set_superman_cookie(client)
-#
-#     request_body_valid_payload = {
-#         "resource_type": "user",
-#         "shortname": new_user_data2["shortname"],
-#         "subpath": USERS_SUBPATH,
-#         "attributes": {
-#             "invitation": "valid_invitation_token",
-#             "is_active": True,
-#             "is_email_verified": True,
-#             "is_msisdn_verified": True,
-#             "password": "Test1234",
-#             "email": new_user_data2["email"],
-#             "msisdn": new_user_data2["msisdn"],
-#             "roles": [],
-#             "payload": {
-#                 "content_type": "json",
-#                 "schema_shortname": "api",
-#                 "body": {
-#                     "end_point": "",
-#                     "verb": "post",
-#                     "key1": "value1",
-#                     "key2": "value2"
-#                 }
-#             }
-#         },
-#     }
-#
-#     response = await client.post("/user/create", json=request_body_valid_payload)
-#     assert_code_and_status_success(response)
-#
-#     assert response.status_code == 200
-#
-#     separate_payload_data = {
-#         "end_point": "",
-#         "verb": "post",
-#         "key1": "value1",
-#         "key2": "value2"
-#     }
-#     await validate_payload_with_schema(
-#         payload_data=separate_payload_data,
-#         space_name=MANAGEMENT_SPACE,
-#         schema_shortname="api"
-#     )
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_create_user_with_payload_body(client: AsyncClient):
+    await set_superman_cookie(client)
+
+    request_body_valid_payload = {
+        "resource_type": "user",
+        "shortname": new_user_data2["shortname"],
+        "subpath": USERS_SUBPATH,
+        "attributes": {
+            "invitation": "valid_invitation_token",
+            "is_active": True,
+            "is_email_verified": True,
+            "is_msisdn_verified": True,
+            "password": "Test1234",
+            "email": new_user_data2["email"],
+            "msisdn": new_user_data2["msisdn"],
+            "roles": [],
+            "payload": {
+                "content_type": "json",
+                "schema_shortname": "api",
+                "body": {
+                    "end_point": "",
+                    "verb": "post",
+                    "key1": "value1",
+                    "key2": "value2"
+                }
+            }
+        },
+    }
+
+    response = await client.post("/user/create", json=request_body_valid_payload)
+    assert_code_and_status_success(response)
+
+    assert response.status_code == 200
+
+    separate_payload_data = {
+        "end_point": "",
+        "verb": "post",
+        "key1": "value1",
+        "key2": "value2"
+    }
+    await validate_payload_with_schema(
+        payload_data=separate_payload_data,
+        space_name=MANAGEMENT_SPACE,
+        schema_shortname="api"
+    )
 
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
@@ -611,8 +611,4 @@ async def test_get_profile_with_payload(client: AsyncClient) -> None:
         response_data = response.json()
         assert response_data['records'][0]['shortname'] == user_data['shortname']
         assert response_data['records'][0]['attributes']['payload']['body'] == payload_content
-
-
-
-
 

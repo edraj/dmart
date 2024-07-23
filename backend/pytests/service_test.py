@@ -24,4 +24,3 @@ def test_gen_alphanumeric_unique():
     num_samples = 100
     samples = {gen_alphanumeric() for _ in range(num_samples)}
     assert len(samples) == num_samples, "Generated strings should be unique"
-

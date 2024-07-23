@@ -72,6 +72,3 @@ async def test_in_loop_tasks(client: AsyncClient) -> None:
         assert "coroutine" in task
         assert "stack" in task
 
-
-
-
