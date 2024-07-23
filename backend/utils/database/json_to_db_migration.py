@@ -7,7 +7,8 @@ from uuid import uuid4
 
 from sqlmodel import Session, create_engine, text
 
-from create_tables import Entries, Users, generate_tables, Attachments, Roles, Permissions, Histories, Spaces, Tickets
+from create_tables import Entries, Users, generate_tables, Attachments, \
+    Roles, Permissions, Histories, Spaces, Tickets  # type: ignore
 from utils.settings import settings
 
 logging.basicConfig()

@@ -12,11 +12,11 @@ async def set_init_state_from_request(ticket: api.Request, logged_in_user):
     workflow_shortname = workflow_attr["workflow_shortname"]
 
     if settings.active_data_db == "file":
-        user_roles = await access_control.get_user_roles_operational(logged_in_user)
-        user_roles = user_roles.keys()
+        _user_roles = await access_control.get_user_roles_operational(logged_in_user)
+        user_roles = _user_roles.keys()
     else:
-        user_roles = await access_control.get_user_roles_database(logged_in_user)
-        user_roles = user_roles.keys()
+        _user_roles = await access_control.get_user_roles_database(logged_in_user)
+        user_roles = _user_roles.keys()
 
     workflows_data = await db.load(
         space_name=ticket.space_name,
