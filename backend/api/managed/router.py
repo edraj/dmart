@@ -444,13 +444,7 @@ async def serve_space(
                         message="You don't have permission to this action [3]",
                     ),
                 )
-            if settings.active_data_db == "sql":
-                resource_obj = core.Meta.from_record(
-                    record=record, owner_shortname=owner_shortname
-                )
-                await db.delete(request.space_name, record.subpath, resource_obj, owner_shortname)
-
-            os.system(f"rm -r {settings.spaces_folder}/{request.space_name}")
+            await repository.delete_space(request.space_name, record, owner_shortname)
 
             async with RedisServices() as redis_services:
                 x = await redis_services.list_indices()
