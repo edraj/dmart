@@ -195,7 +195,7 @@ class BaseDataAdapter(ABC):
                        space_name: str,
                        subpath: str,
                        shortname: str,
-                       resource_cls: core.Meta | Type[core.Meta],
+                       resource_type: core.ResourceType,
                        schema_shortname: str | None = None, ) -> bool:
         pass
 

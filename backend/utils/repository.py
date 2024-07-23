@@ -947,48 +947,48 @@ async def redis_query_search(
     return search_res, total
 
 
-def is_entry_exist(
-    space_name: str,
-    subpath: str,
-    shortname: str,
-    resource_type: ResourceType,
-    schema_shortname: str | None = None,
-) -> bool:
-    """Check if an entry with the given name already exist or not in the given path
-
-    Args:
-        space_name (str): The target space name
-        subpath (str): The target subpath
-        shortname (str): the target shortname
-        class_type (core.Meta): The target class of the entry
-        schema_shortname (str | None, optional): schema shortname of the entry. Defaults to None.
-
-    Returns:
-        bool: True if it's already exist, False otherwise
-    """
-    if subpath[0] == "/":
-        subpath = f".{subpath}"
-
-    payload_file = settings.spaces_folder / space_name / \
-        subpath / f"{shortname}.json"
-    if payload_file.is_file():
-        return True
-
-    for r_type in ResourceType:
-        # Spaces compared with each others only
-        if r_type == ResourceType.space and r_type != resource_type:
-            continue
-        resource_cls = getattr(
-            sys.modules["models.core"], camel_case(r_type.value), None
-        )
-        if not resource_cls:
-            continue
-        meta_path, meta_file = db.metapath(
-            space_name, subpath, shortname, resource_cls, schema_shortname)
-        if (meta_path/meta_file).is_file():
-            return True
-
-    return False
+# def is_entry_exist(
+#     space_name: str,
+#     subpath: str,
+#     shortname: str,
+#     resource_type: ResourceType,
+#     schema_shortname: str | None = None,
+# ) -> bool:
+#     """Check if an entry with the given name already exist or not in the given path
+#
+#     Args:
+#         space_name (str): The target space name
+#         subpath (str): The target subpath
+#         shortname (str): the target shortname
+#         class_type (core.Meta): The target class of the entry
+#         schema_shortname (str | None, optional): schema shortname of the entry. Defaults to None.
+#
+#     Returns:
+#         bool: True if it's already exist, False otherwise
+#     """
+#     if subpath[0] == "/":
+#         subpath = f".{subpath}"
+#
+#     payload_file = settings.spaces_folder / space_name / \
+#         subpath / f"{shortname}.json"
+#     if payload_file.is_file():
+#         return True
+#
+#     for r_type in ResourceType:
+#         # Spaces compared with each others only
+#         if r_type == ResourceType.space and r_type != resource_type:
+#             continue
+#         resource_cls = getattr(
+#             sys.modules["models.core"], camel_case(r_type.value), None
+#         )
+#         if not resource_cls:
+#             continue
+#         meta_path, meta_file = db.metapath(
+#             space_name, subpath, shortname, resource_cls, schema_shortname)
+#         if (meta_path/meta_file).is_file():
+#             return True
+#
+#     return False
 
 
 async def get_resource_obj_or_none(

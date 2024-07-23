@@ -637,29 +637,15 @@ async def serve_request(
                             request, owner_shortname
                         )
 
-                    resource_cls = getattr(
-                        sys.modules["models.core"], camel_case(
-                            record.resource_type)
+                    shortname_exists = db.is_entry_exist(
+                        space_name=request.space_name,
+                        subpath=record.subpath,
+                        shortname=record.shortname,
+                        resource_type=record.resource_type,
+                        schema_shortname=record.attributes.get(
+                            "schema_shortname", None)
                     )
 
-                    if settings.active_data_db == "file":
-                        shortname_exists = repository.is_entry_exist(
-                            space_name=request.space_name,
-                            subpath=record.subpath,
-                            shortname=record.shortname,
-                            resource_type=record.resource_type,
-                            schema_shortname=record.attributes.get(
-                                "schema_shortname", None)
-                        )
-                    else:
-                        shortname_exists = db.is_entry_exist(
-                            space_name=request.space_name,
-                            subpath=record.subpath,
-                            shortname=record.shortname,
-                            resource_cls=resource_cls,
-                            schema_shortname=record.attributes.get(
-                                "schema_shortname", None)
-                        )
                     if record.shortname != settings.auto_uuid_rule and shortname_exists:
                         raise api.Exception(
                             status.HTTP_400_BAD_REQUEST,
@@ -2307,7 +2293,7 @@ async def cancel_lock(
         shortname: str = Path(..., pattern=regex.SHORTNAME),
         logged_in_user=Depends(JWTBearer()),
 ):
-    lock_payload = db.lock_handler(space_name, subpath, shortname, logged_in_user, LockAction.fetch)
+    lock_payload = await db.lock_handler(space_name, subpath, shortname, logged_in_user, LockAction.fetch)
 
     if not lock_payload or lock_payload["owner_shortname"] != logged_in_user:
         raise api.Exception(
