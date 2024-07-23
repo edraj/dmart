@@ -3,6 +3,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from copy import copy
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +19,7 @@ from sqlmodel import create_engine, Session, select
 
 import models.api as api
 import models.core as core
-from models.enums import QueryType, LockAction
+from models.enums import QueryType, LockAction, ResourceType
 from utils.database.create_tables import (
     Entries,
     Histories,
@@ -32,7 +33,7 @@ from utils.database.create_tables import (
 )
 from utils.helpers import (
     arr_remove_common,
-    str_to_datetime,
+    str_to_datetime, camel_case,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
@@ -1002,10 +1003,57 @@ class SQLAdapter(BaseDataAdapter):
 
     async def clone(
             self,
-            src_dto: Any,
-            dest_dto: Any,
+            src_space: str,
+            dest_space: str,
+            src_subpath: str,
+            src_shortname: str,
+            dest_subpath: str,
+            dest_shortname: str,
+            class_type: Type[core.Meta],
     ):
         pass
+
+    def is_entry_exist(self,
+                       space_name: str,
+                       subpath: str,
+                       shortname: str,
+                       resource_type: ResourceType,
+                       schema_shortname: str | None = None, ) -> bool:
+        with self.get_session() as session:
+            resource_cls = getattr(
+                sys.modules["models.core"], camel_case(resource_type)
+            )
+
+            table = self.get_table(resource_cls)
+            if not subpath.startswith("/"):
+                subpath = f"/{subpath}"
+
+            statement = select(table).where(table.space_name == space_name)
+
+            if table in [Roles, Permissions, Users]:
+                statement = statement.where(table.shortname == shortname)
+            elif resource_cls in [
+                core.Alteration,
+                core.Media,
+                core.Lock,
+                core.Comment,
+                core.Reply,
+                core.Reaction,
+                core.Json,
+                core.DataAsset,
+            ]:
+                subpath = f"{subpath}/attachments.{resource_cls.__name__.lower()}"
+                statement = statement.where(table.subpath == subpath).where(
+                    table.shortname == shortname
+                )
+
+            else:
+                statement = statement.where(table.subpath == subpath).where(
+                    table.shortname == shortname
+                )
+
+            result = session.exec(statement).fetchall()
+            return False if len(result) == 0 else True
 
     async def delete(
             self,
@@ -1048,44 +1096,6 @@ class SQLAdapter(BaseDataAdapter):
                         message="failed to delete entry",
                     ),
                 )
-
-    def is_entry_exist(self,
-                       space_name: str,
-                       subpath: str,
-                       shortname: str,
-                       resource_cls: Type[core.Meta],
-                       schema_shortname: str | None = None, ) -> bool:
-        with self.get_session() as session:
-            table = self.get_table(resource_cls)
-            if not subpath.startswith("/"):
-                subpath = f"/{subpath}"
-
-            statement = select(table).where(table.space_name == space_name)
-
-            if table in [Roles, Permissions, Users]:
-                statement = statement.where(table.shortname == shortname)
-            elif resource_cls in [
-                core.Alteration,
-                core.Media,
-                core.Lock,
-                core.Comment,
-                core.Reply,
-                core.Reaction,
-                core.Json,
-                core.DataAsset,
-            ]:
-                subpath = f"{subpath}/attachments.{resource_cls.__name__.lower()}"
-                statement = statement.where(table.subpath == subpath).where(
-                    table.shortname == shortname
-                )
-
-            else:
-                statement = statement.where(table.subpath == subpath).where(
-                    table.shortname == shortname
-                )
-
-            result = session.exec(statement).fetchall()
-            return False if len(result) == 0 else True
 
     async def lock_handler(
             self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction

@@ -2,6 +2,7 @@
 import json
 import os
 import shutil
+import sys
 from copy import copy
 from datetime import datetime
 from pathlib import Path
@@ -15,7 +16,7 @@ import models.api as api
 import models.core as core
 from .base_data_adapter import BaseDataAdapter
 from models.enums import ContentType, ResourceType, LockAction
-from utils.helpers import arr_remove_common, read_jsonl_file, snake_case
+from utils.helpers import arr_remove_common, read_jsonl_file, snake_case, camel_case
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
 from utils.redis_services import RedisServices
@@ -198,8 +199,49 @@ class FileAdapter(BaseDataAdapter):
         """Load a Meta Json according to the reuqested Class type"""
         pass
 
-    def is_entry_exist(self, dto: Any) -> bool:
-        pass
+    def is_entry_exist(
+            self,
+            space_name: str,
+            subpath: str,
+            shortname: str,
+            resource_type: ResourceType,
+            schema_shortname: str | None = None,
+    ) -> bool:
+        """Check if an entry with the given name already exist or not in the given path
+
+        Args:
+            space_name (str): The target space name
+            subpath (str): The target subpath
+            shortname (str): the target shortname
+            class_type (core.Meta): The target class of the entry
+            schema_shortname (str | None, optional): schema shortname of the entry. Defaults to None.
+
+        Returns:
+            bool: True if it's already exist, False otherwise
+        """
+        if subpath[0] == "/":
+            subpath = f".{subpath}"
+
+        payload_file = settings.spaces_folder / space_name / \
+                       subpath / f"{shortname}.json"
+        if payload_file.is_file():
+            return True
+
+        for r_type in ResourceType:
+            # Spaces compared with each others only
+            if r_type == ResourceType.space and r_type != resource_type:
+                continue
+            resource_cls = getattr(
+                sys.modules["models.core"], camel_case(r_type.value), None
+            )
+            if not resource_cls:
+                continue
+            meta_path, meta_file = self.metapath(
+                space_name, subpath, shortname, resource_cls, schema_shortname)
+            if (meta_path / meta_file).is_file():
+                return True
+
+        return False
 
     async def load(
         self,
