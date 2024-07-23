@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from importlib.util import find_spec, module_from_spec
 import json
 import sys
+from typing import Any
+
 from models.core import NotificationData
 from utils.settings import settings
 from models.core import User
@@ -15,7 +17,7 @@ class Notifier(ABC):
     async def send(self, data: NotificationData) -> bool:
         pass
 
-    async def _load_user(self, shortname: str) -> User:
+    async def _load_user(self, shortname: str) -> Any:
         if not hasattr(self, "user"):
 
             self.user = await db.load(

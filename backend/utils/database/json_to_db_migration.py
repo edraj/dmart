@@ -1,4 +1,5 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
+# type: ignore
 import json
 import logging
 import os
@@ -8,7 +9,7 @@ from uuid import uuid4
 from sqlmodel import Session, create_engine, text
 
 from create_tables import Entries, Users, generate_tables, Attachments, \
-    Roles, Permissions, Histories, Spaces, Tickets  # type: ignore
+    Roles, Permissions, Histories, Spaces, Tickets
 from utils.settings import settings
 
 logging.basicConfig()
