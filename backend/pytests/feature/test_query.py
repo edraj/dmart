@@ -141,3 +141,4 @@ async def test_query_events(client: AsyncClient) -> None:
         json_response["records"][0]["attributes"]["request"]
         in RequestType._value2member_map_
     )
+
