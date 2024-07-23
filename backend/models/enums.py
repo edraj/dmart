@@ -128,6 +128,7 @@ class ValidationEnum(StrEnum):
 
 
 class LockAction(StrEnum):
+    fetch = "fetch"
     lock = "lock"
     extend = "extend"
     unlock = "unlock"

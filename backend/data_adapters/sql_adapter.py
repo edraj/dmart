@@ -18,7 +18,6 @@ from sqlmodel import create_engine, Session, select
 
 import models.api as api
 import models.core as core
-from models.core import MetaChild
 from models.enums import QueryType, LockAction
 from utils.database.create_tables import (
     Entries,
@@ -220,7 +219,29 @@ async def events_query(
 class SQLAdapter(BaseDataAdapter):
     session: Session = None
 
-    def metapath(self, dto: core.EntityDTO) -> tuple[Path, str]:
+    def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
+        locators: list[core.Locator] = []
+        total: int = 0
+        match query.type:
+            case api.QueryType.subpath:
+                pass
+                # connection_string = (
+                #     f"{self.database_connection_string}/{query.space_name}"
+                # )
+                # engine = create_engine(connection_string, echo=True)
+                # session = Session(engine)
+                #!TODO finsih...
+        return total, locators
+
+    def folder_path(
+            self,
+            space_name: str,
+            subpath: str,
+            shortname: str,
+    ):
+        pass
+
+    def metapath(self, dto: Any) -> tuple[Path, str]:
         pass
 
     def __init__(self):
@@ -236,8 +257,8 @@ class SQLAdapter(BaseDataAdapter):
         return self.session
 
     def get_table(
-            self, class_type: Type[core.MetaChild]
-    ) -> Type[MetaChild] | Type[Roles] | Type[Permissions] | Type[Users] | Type[Spaces] | Type[Locks] | Type[Tickets] | \
+            self, class_type: Type[core.Meta]
+    ) -> Type[core.Meta] | Type[Roles] | Type[Permissions] | Type[Users] | Type[Spaces] | Type[Locks] | Type[Tickets] | \
          Type[Attachments] | Type[Entries]:
 
         if "core" not in str(class_type):
@@ -271,7 +292,7 @@ class SQLAdapter(BaseDataAdapter):
                 return Entries
 
     def get_table_dto(
-            self, dto: core.EntityDTO
+            self, dto: Any
     ) -> Type[Roles | Permissions | Users | Spaces | Locks | Attachments | Entries]:
         match dto.class_type:
             case core.Role:
@@ -324,29 +345,6 @@ class SQLAdapter(BaseDataAdapter):
             case _:
                 return Entries.model_validate(data, update=update)
 
-    def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
-        locators: list[core.Locator] = []
-        total: int = 0
-        match query.type:
-            case api.QueryType.subpath:
-                pass
-                # connection_string = (
-                #     f"{self.database_connection_string}/{query.space_name}"
-                # )
-                # engine = create_engine(connection_string, echo=True)
-                # session = Session(engine)
-                #!TODO finsih...
-
-        return total, locators
-
-    def folder_path(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-    ):
-        pass
-
     async def get_entry_attachments(
             self,
             subpath: str,
@@ -398,7 +396,7 @@ class SQLAdapter(BaseDataAdapter):
             self,
             space_name: str,
             subpath: str,
-            class_type: Type[core.MetaChild],
+            class_type: Type[core.Meta],
             schema_shortname: str | None = None, ) -> Path:
         """Construct the full path of the meta file"""
         path = settings.spaces_folder / space_name
@@ -423,7 +421,7 @@ class SQLAdapter(BaseDataAdapter):
             space_name: str,
             subpath: str,
             shortname: str,
-            class_type: Type[core.MetaChild],
+            class_type: Type[core.Meta],
             user_shortname: str | None = None,
             schema_shortname: str | None = None,
     ) -> core.Meta | None:  # type: ignore
@@ -597,9 +595,9 @@ class SQLAdapter(BaseDataAdapter):
                 )
             if query.space_name:
                 if (
-                    query.type != QueryType.spaces
-                    or query.space_name != "management"
-                    or query.subpath != "/"
+                        query.type != QueryType.spaces
+                        or query.space_name != "management"
+                        or query.subpath != "/"
                 ):
                     statement = statement.where(table.space_name == query.space_name)
             if query.subpath and table is Entries:
@@ -679,10 +677,10 @@ class SQLAdapter(BaseDataAdapter):
             space_name: str,
             subpath: str,
             shortname: str,
-            class_type: Type[core.MetaChild],
+            class_type: Type[core.Meta],
             user_shortname: str | None = None,
             schema_shortname: str | None = None,
-    ) -> core.MetaChild:
+    ) -> core.Meta:
         meta: core.Meta | None = await self.load_or_none(
             space_name, subpath, shortname, class_type, user_shortname, schema_shortname
         )  # type: ignore
@@ -704,7 +702,7 @@ class SQLAdapter(BaseDataAdapter):
             space_name: str,
             subpath: str,
             filename: str,
-            class_type: Type[core.MetaChild],
+            class_type: Type[core.Meta],
             schema_shortname: str | None = None,
     ) -> dict[str, Any] | None:
         """Load a Meta class payload file"""
@@ -824,7 +822,7 @@ class SQLAdapter(BaseDataAdapter):
             await self.update(space_name, subpath, meta, {}, {}, [], "")
 
     async def save_payload_from_json(
-            self, dto: core.EntityDTO, meta: core.Meta, payload_data: dict[str, Any]
+            self, dto: Any, meta: core.Meta, payload_data: dict[str, Any]
     ):
         pass
 
@@ -1004,8 +1002,8 @@ class SQLAdapter(BaseDataAdapter):
 
     async def clone(
             self,
-            src_dto: core.EntityDTO,
-            dest_dto: core.EntityDTO,
+            src_dto: Any,
+            dest_dto: Any,
     ):
         pass
 
@@ -1055,7 +1053,7 @@ class SQLAdapter(BaseDataAdapter):
                        space_name: str,
                        subpath: str,
                        shortname: str,
-                       resource_cls: Type[core.MetaChild],
+                       resource_cls: Type[core.Meta],
                        schema_shortname: str | None = None, ) -> bool:
         with self.get_session() as session:
             table = self.get_table(resource_cls)
@@ -1090,8 +1088,8 @@ class SQLAdapter(BaseDataAdapter):
             return False if len(result) == 0 else True
 
     async def lock_handler(
-            self, space_name: str, subpath: str,shortname: str,user_shortname: str,action: LockAction
-    ) -> Locks | None:
+            self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
+    ) -> Locks | dict | None:
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
 
@@ -1124,6 +1122,15 @@ class SQLAdapter(BaseDataAdapter):
                     session.commit()
                     session.refresh(lock)
                     return lock
+                case LockAction.fetch:
+                    lock_payload = (await self.load(
+                        space_name=space_name,
+                        subpath=subpath,
+                        shortname=shortname,
+                        class_type=core.Lock,
+                        user_shortname=user_shortname,
+                    )).model_dump()
+                    return lock_payload
                 case LockAction.unlock:
                     statement = delete(Locks) \
                         .where(Locks.space_name == space_name) \
