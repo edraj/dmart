@@ -1613,6 +1613,9 @@ async def get_entry_by_var(
     retrieve_attachments: bool = False,
     retrieve_lock_status: bool = False,
 ):
+    if settings.active_data_db == "sql":
+        return await db.get_entry_by_criteria({key: val})
+
     spaces = await get_spaces()
     entry_doc = None
     entry_space = None

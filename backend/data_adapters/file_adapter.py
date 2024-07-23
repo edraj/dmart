@@ -124,23 +124,23 @@ class FileAdapter(BaseDataAdapter):
         return f"{settings.spaces_folder}/{space_name}/{subpath}/{shortname}"
 
     async def get_entry_attachments(
-        self,
-        subpath: str,
-        attachments_path: Path,
-        filter_types: list | None = None,
-        include_fields: list | None = None,
-        filter_shortnames: list | None = None,
-        retrieve_json_payload: bool = False,
+            self,
+            subpath: str,
+            attachments_path: Path,
+            filter_types: list | None = None,
+            include_fields: list | None = None,
+            filter_shortnames: list | None = None,
+            retrieve_json_payload: bool = False,
     ) -> dict:
         pass
 
     def metapath(
-        self,
-        space_name: str,
-        subpath: str,
-        shortname: str,
-        class_type: Type[core.Meta],
-        schema_shortname: str | None = None,
+            self,
+            space_name: str,
+            subpath: str,
+            shortname: str,
+            class_type: Type[core.Meta],
+            schema_shortname: str | None = None,
     ) -> tuple[Path, str]:
         """Construct the full path of the meta file"""
         path = settings.spaces_folder / space_name
@@ -194,63 +194,28 @@ class FileAdapter(BaseDataAdapter):
             path = path / subpath
         return path
 
-
-    async def load_or_none(self, dto: Any) -> core.Meta | None:  # type: ignore
+    async def load_or_none(self,
+                           space_name: str,
+                           subpath: str,
+                           shortname: str,
+                           class_type: Type[core.Meta],
+                           user_shortname: str | None = None,
+                           schema_shortname: str | None = None
+                           ) -> core.Meta | None:  # type: ignore
         """Load a Meta Json according to the reuqested Class type"""
-        pass
+        try:
+            return await self.load(space_name, subpath, shortname, class_type, user_shortname, schema_shortname)
+        except:
+            return None
 
-    def is_entry_exist(
+    async def load(
             self,
             space_name: str,
             subpath: str,
             shortname: str,
-            resource_type: ResourceType,
+            class_type: Type[core.Meta],
+            user_shortname: str | None = None,
             schema_shortname: str | None = None,
-    ) -> bool:
-        """Check if an entry with the given name already exist or not in the given path
-
-        Args:
-            space_name (str): The target space name
-            subpath (str): The target subpath
-            shortname (str): the target shortname
-            class_type (core.Meta): The target class of the entry
-            schema_shortname (str | None, optional): schema shortname of the entry. Defaults to None.
-
-        Returns:
-            bool: True if it's already exist, False otherwise
-        """
-        if subpath[0] == "/":
-            subpath = f".{subpath}"
-
-        payload_file = settings.spaces_folder / space_name / \
-                       subpath / f"{shortname}.json"
-        if payload_file.is_file():
-            return True
-
-        for r_type in ResourceType:
-            # Spaces compared with each others only
-            if r_type == ResourceType.space and r_type != resource_type:
-                continue
-            resource_cls = getattr(
-                sys.modules["models.core"], camel_case(r_type.value), None
-            )
-            if not resource_cls:
-                continue
-            meta_path, meta_file = self.metapath(
-                space_name, subpath, shortname, resource_cls, schema_shortname)
-            if (meta_path / meta_file).is_file():
-                return True
-
-        return False
-
-    async def load(
-        self,
-        space_name: str,
-        subpath: str,
-        shortname: str,
-        class_type: Type[core.Meta],
-        user_shortname: str | None = None,
-        schema_shortname: str | None = None,
     ) -> core.Meta:
         """Load a Meta Json according to the reuqested Class type"""
         user_shortname = user_shortname
@@ -281,12 +246,12 @@ class FileAdapter(BaseDataAdapter):
             raise Exception(f"Error Invalid Entry At: {path}. Error {e} {content=}")
 
     async def load_resource_payload(
-        self,
-        space_name: str,
-        subpath: str,
-        filename: str,
-        class_type: Type[core.Meta],
-        schema_shortname: str | None = None,
+            self,
+            space_name: str,
+            subpath: str,
+            filename: str,
+            class_type: Type[core.Meta],
+            schema_shortname: str | None = None,
     ):
         """Load a Meta class payload file"""
 
@@ -307,7 +272,7 @@ class FileAdapter(BaseDataAdapter):
             )
 
     async def save(
-        self, space_name: str, subpath: str, meta: core.Meta
+            self, space_name: str, subpath: str, meta: core.Meta
     ):
         """Save Meta Json to respectiv file"""
         path, filename = self.metapath(
@@ -663,14 +628,14 @@ class FileAdapter(BaseDataAdapter):
             self.delete_empty(path.parent)
 
     async def clone(
-        self,
-        src_space: str,
-        dest_space: str,
-        src_subpath: str,
-        src_shortname: str,
-        dest_subpath: str,
-        dest_shortname: str,
-        class_type: Type[core.Meta],
+            self,
+            src_space: str,
+            dest_space: str,
+            src_subpath: str,
+            src_shortname: str,
+            dest_subpath: str,
+            dest_shortname: str,
+            class_type: Type[core.Meta],
     ):
 
         meta_obj = await self.load(
@@ -715,6 +680,50 @@ class FileAdapter(BaseDataAdapter):
                     / meta_obj.payload.body
             )
             copy_file(src=src_payload_file_path, dst=dist_payload_file_path)
+
+    def is_entry_exist(
+            self,
+            space_name: str,
+            subpath: str,
+            shortname: str,
+            resource_type: ResourceType,
+            schema_shortname: str | None = None,
+    ) -> bool:
+        """Check if an entry with the given name already exist or not in the given path
+
+        Args:
+            space_name (str): The target space name
+            subpath (str): The target subpath
+            shortname (str): the target shortname
+            class_type (core.Meta): The target class of the entry
+            schema_shortname (str | None, optional): schema shortname of the entry. Defaults to None.
+
+        Returns:
+            bool: True if it's already exist, False otherwise
+        """
+        if subpath[0] == "/":
+            subpath = f".{subpath}"
+
+        payload_file = settings.spaces_folder / space_name / \
+                       subpath / f"{shortname}.json"
+        if payload_file.is_file():
+            return True
+
+        for r_type in ResourceType:
+            # Spaces compared with each others only
+            if r_type == ResourceType.space and r_type != resource_type:
+                continue
+            resource_cls = getattr(
+                sys.modules["models.core"], camel_case(r_type.value), None
+            )
+            if not resource_cls:
+                continue
+            meta_path, meta_file = self.metapath(
+                space_name, subpath, shortname, resource_cls, schema_shortname)
+            if (meta_path / meta_file).is_file():
+                return True
+
+        return False
 
     async def delete(
             self,
@@ -772,11 +781,11 @@ class FileAdapter(BaseDataAdapter):
                        f"{subpath}/.dm/{meta.shortname}"
 
         if (
-            path.is_dir()
-            and (
+                path.is_dir()
+                and (
                 not isinstance(meta, core.Attachment)
                 or len(os.listdir(path)) == 0
-            )
+        )
         ):
             shutil.rmtree(path)
             # in case of folder the path = {folder_name}/.dm
