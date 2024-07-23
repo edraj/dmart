@@ -13,10 +13,11 @@ login_creds.sh
 mycookies.jar
 config.ini
 
-.venv
-backend/.venv
+
 .env
 backend/env/
+.venv
+backend/.venv
 secrets.env
 backend/config.env
 workspace.xml
