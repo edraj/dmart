@@ -11,19 +11,16 @@
 		  "type": "string"
 		}
 	  },
-	  "filter_rules": {
-		"type": "array",
-		"items": {
-		  "type": "object",
-		  "properties": {
-			"key": {
-			  "type": "string"
-			},
-			"value": {
-			  "type": "string"
-			}
-		  }
-		}
+	  "search_string": {
+		"type": "string"
+	  },
+	  "subpath": {
+		"type": "string",
+		"description": "Users subpath"
+	  },
+	  "schema_name": {
+		"type": "string",
+		"description": "Users JSON schema definition shortname (must be located under the same space)"
 	  },
 	  "scheduled_at": {
 		"type": "integer",
@@ -51,18 +48,6 @@
 		],
 		"default": "pending"
 	  },
-	  "governorate": {
-		"type": "object",
-		"properties": {
-		  "shortname": {
-			"type": "string"
-		  },
-		  "sector_shortname": {
-			"type": "string"
-		  }
-		},
-		"required": []
-	  },
 	  "sender_id": {
 		"type": "array",
 		"items": {
@@ -83,6 +68,8 @@
 	  }
 	},
 	"required": [
+	  "subpath",
+	  "schema_name",
 	  "priority",
 	  "types"
 	]
