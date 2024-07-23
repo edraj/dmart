@@ -34,7 +34,7 @@ import sys
 import json
 from utils.jwt import JWTBearer, GetJWTToken, remove_redis_active_session
 from utils.access_control import access_control
-from utils.spaces import initialize_spaces, get_spaces
+from utils.spaces import initialize_spaces
 from typing import Any
 import utils.repository as repository
 from utils.helpers import (
@@ -299,35 +299,11 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 async def serve_space(
         request: api.Request, owner_shortname=Depends(JWTBearer())
 ) -> api.Response:
-    if settings.active_data_db == "file":
-        spaces = await get_spaces()
-    else:
-        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
-
     record = request.records[0]
     history_diff = {}
     match request.request_type:
         case api.RequestType.create:
-            if settings.active_data_db == "file":
-                if request.space_name in spaces:
-                    raise api.Exception(
-                        status.HTTP_400_BAD_REQUEST,
-                        api.Error(
-                            type="request",
-                            code=InternalErrorCode.ALREADY_EXIST_SPACE_NAME,
-                            message="Space name provided already existed [1]",
-                        ),
-                    )
-            else:
-                if request.space_name in [space.shortname for space in spaces]:
-                    raise api.Exception(
-                        status.HTTP_400_BAD_REQUEST,
-                        api.Error(
-                            type="request",
-                            code=InternalErrorCode.ALREADY_EXIST_SPACE_NAME,
-                            message="Space name provided already existed [1]",
-                        ),
-                    )
+            await is_space_exist(request.space_name, should_exist=False)
 
             if not await access_control.check_access(
                     user_shortname=owner_shortname,
@@ -368,12 +344,7 @@ async def serve_space(
         case api.RequestType.update:
             try:
                 space = core.Space.from_record(record, owner_shortname)
-                if settings.active_data_db == "file":
-                    if request.space_name not in spaces:
-                        raise Exception
-                else:
-                    if request.space_name not in [space.shortname for space in spaces]:
-                        raise Exception
+                await is_space_exist(request.space_name)
 
                 if (
                         request.space_name != record.shortname
@@ -455,13 +426,7 @@ async def serve_space(
                     message=f"Space name {request.space_name} provided is empty or invalid [2]",
                 ),
             )
-            if settings.active_data_db == "file":
-                if request.space_name not in spaces:
-                    raise exception
-            else:
-
-                if request.space_name not in [space.shortname for space in spaces]:
-                    raise exception
+            await is_space_exist(request.space_name)
 
             if not await access_control.check_access(
                     user_shortname=owner_shortname,
@@ -2112,17 +2077,16 @@ async def get_entry_by_uuid(
         retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
-    if settings.active_data_db == "file":
-        return await repository.get_entry_by_var(
-            "uuid",
-            uuid,
-            logged_in_user,
-            retrieve_json_payload,
-            retrieve_attachments,
-            retrieve_lock_status,
-        )
-    else:
-        return await db.get_entry_by_criteria({"uuid": uuid})
+    return await repository.get_entry_by_var(
+        "uuid",
+        uuid,
+        logged_in_user,
+        retrieve_json_payload,
+        retrieve_attachments,
+        retrieve_lock_status,
+    )
+
+
 
 
 @router.get("/byslug/{slug}", response_model_exclude_none=True)
@@ -2133,17 +2097,15 @@ async def get_entry_by_slug(
         retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
-    if settings.active_data_db == "file":
-        return await repository.get_entry_by_var(
-            "slug",
-            slug,
-            logged_in_user,
-            retrieve_json_payload,
-            retrieve_attachments,
-            retrieve_lock_status,
-        )
-    else:
-        return await db.get_entry_by_criteria({"slug": slug})
+    return await repository.get_entry_by_var(
+        "slug",
+        slug,
+        logged_in_user,
+        retrieve_json_payload,
+        retrieve_attachments,
+        retrieve_lock_status,
+    )
+
 
 
 @router.get("/health/{health_type}/{space_name}", response_model_exclude_none=True)
