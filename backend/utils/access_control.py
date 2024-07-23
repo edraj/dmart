@@ -1,6 +1,8 @@
 import json
 import re
 import sys
+from typing import Any
+
 from redis.commands.search.field import TextField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
@@ -507,7 +509,7 @@ class AccessControl:
             print(f"Error: {e}")
             return {}
 
-    async def load_user_meta(self, user_shortname: str) -> core.User:
+    async def load_user_meta(self, user_shortname: str) -> Any:
         async with RedisServices() as redis_services:
             if settings.active_data_db == "file":
                 user_meta_doc_id = redis_services.generate_doc_id(
