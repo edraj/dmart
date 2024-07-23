@@ -2261,23 +2261,13 @@ async def lock_entry(
     # if lock file is doesn't exist
     # elif lock file exit but lock_period expired
     # elif lock file exist and lock_period isn't expired but the owner want to extend the lock
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_services:
-            lock_type = await redis_services.save_lock_doc(
-                space_name,
-                subpath,
-                shortname,
-                logged_in_user,
-                settings.lock_period,
-            )
-    else:
-        lock_type = await db.lock_handler(
-            space_name,
-            subpath,
-            shortname,
-            logged_in_user,
-            LockAction.lock
-        )
+    lock_type = await db.lock_handler(
+        space_name,
+        subpath,
+        shortname,
+        logged_in_user,
+        LockAction.lock
+    )
 
     await db.store_entry_diff(
         space_name,
@@ -2317,30 +2307,17 @@ async def cancel_lock(
         shortname: str = Path(..., pattern=regex.SHORTNAME),
         logged_in_user=Depends(JWTBearer()),
 ):
+    lock_payload = db.lock_handler(space_name, subpath, shortname, logged_in_user, LockAction.fetch)
 
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_services:
-            lock_payload = await redis_services.get_lock_doc(
-                space_name, subpath, shortname
-            )
-    else:
-        lock_payload = (await db.load(
-            space_name=space_name,
-            subpath=subpath,
-            shortname=shortname,
-            class_type=core.Lock,
-            user_shortname=logged_in_user,
-        )).model_dump()
-
-        if not lock_payload or lock_payload["owner_shortname"] != logged_in_user:
-            raise api.Exception(
-                status_code=status.HTTP_403_FORBIDDEN,
-                error=api.Error(
-                    type="lock",
-                    code=InternalErrorCode.LOCK_UNAVAILABLE,
-                    message="Lock does not exist or you have no access",
-                ),
-            )
+    if not lock_payload or lock_payload["owner_shortname"] != logged_in_user:
+        raise api.Exception(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error=api.Error(
+                type="lock",
+                code=InternalErrorCode.LOCK_UNAVAILABLE,
+                message="Lock does not exist or you have no access",
+            ),
+        )
 
     await plugin_manager.before_action(
         core.Event(
@@ -2352,19 +2329,13 @@ async def cancel_lock(
         )
     )
 
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_services:
-            await redis_services.delete_lock_doc(
-                space_name, subpath, shortname
-            )
-    else:
-        await db.lock_handler(
-            space_name,
-            subpath,
-            shortname,
-            logged_in_user,
-            LockAction.unlock
-        )
+    await db.lock_handler(
+        space_name,
+        subpath,
+        shortname,
+        logged_in_user,
+        LockAction.unlock
+    )
 
     await db.store_entry_diff(
         space_name,

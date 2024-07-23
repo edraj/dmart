@@ -22,41 +22,9 @@ from utils.redis_services import RedisServices
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN
 from utils.settings import settings
 
-MetaChild = TypeVar("MetaChild", bound=core.Meta)
-
 
 class FileAdapter(BaseDataAdapter):
-
-    async def load_or_none(self, dto: core.EntityDTO) -> MetaChild | None:  # type: ignore
-        """Load a Meta Json according to the reuqested Class type"""
-        pass
-
-    def is_entry_exist(self, dto: core.EntityDTO) -> bool:
-        pass
-
-    async def get_entry_attachments(
-        self,
-        subpath: str,
-        attachments_path: Path,
-        filter_types: list | None = None,
-        include_fields: list | None = None,
-        filter_shortnames: list | None = None,
-        retrieve_json_payload: bool = False,
-    ) -> dict:
-        pass
-
     def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
-        """Given a query return the total and the locators
-        Parameters
-        ----------
-        query: api.Query
-            Query of type subpath
-
-        Returns
-        -------
-        Total, Locators
-        """
-
         locators: list[core.Locator] = []
         total: int = 0
         match query.type:
@@ -154,12 +122,23 @@ class FileAdapter(BaseDataAdapter):
     ):
         return f"{settings.spaces_folder}/{space_name}/{subpath}/{shortname}"
 
+    async def get_entry_attachments(
+        self,
+        subpath: str,
+        attachments_path: Path,
+        filter_types: list | None = None,
+        include_fields: list | None = None,
+        filter_shortnames: list | None = None,
+        retrieve_json_payload: bool = False,
+    ) -> dict:
+        pass
+
     def metapath(
         self,
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: Type[core.Meta],
         schema_shortname: str | None = None,
     ) -> tuple[Path, str]:
         """Construct the full path of the meta file"""
@@ -195,7 +174,7 @@ class FileAdapter(BaseDataAdapter):
             self,
             space_name: str,
             subpath: str,
-            class_type: Type[MetaChild],
+            class_type: Type[core.Meta],
             schema_shortname: str | None = None,
     ) -> Path:
         """Construct the full path of the meta file"""
@@ -214,15 +193,23 @@ class FileAdapter(BaseDataAdapter):
             path = path / subpath
         return path
 
+
+    async def load_or_none(self, dto: Any) -> core.Meta | None:  # type: ignore
+        """Load a Meta Json according to the reuqested Class type"""
+        pass
+
+    def is_entry_exist(self, dto: Any) -> bool:
+        pass
+
     async def load(
         self,
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: Type[core.Meta],
         user_shortname: str | None = None,
         schema_shortname: str | None = None,
-    ) -> MetaChild:
+    ) -> core.Meta:
         """Load a Meta Json according to the reuqested Class type"""
         user_shortname = user_shortname
         path, filename = self.metapath(
@@ -256,7 +243,7 @@ class FileAdapter(BaseDataAdapter):
         space_name: str,
         subpath: str,
         filename: str,
-        class_type: Type[MetaChild],
+        class_type: Type[core.Meta],
         schema_shortname: str | None = None,
     ):
         """Load a Meta class payload file"""
@@ -641,7 +628,7 @@ class FileAdapter(BaseDataAdapter):
         src_shortname: str,
         dest_subpath: str,
         dest_shortname: str,
-        class_type: Type[MetaChild],
+        class_type: Type[core.Meta],
     ):
 
         meta_obj = await self.load(
@@ -755,3 +742,29 @@ class FileAdapter(BaseDataAdapter):
                 shutil.rmtree(path.parent)
             if isinstance(meta, core.Folder) and Path(history_path).is_dir():
                 shutil.rmtree(history_path)
+
+    async def lock_handler(
+            self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
+    ) -> dict | None:
+        match action:
+            case LockAction.lock:
+                async with RedisServices() as redis_services:
+                    lock_type = await redis_services.save_lock_doc(
+                        space_name,
+                        subpath,
+                        shortname,
+                        user_shortname,
+                        settings.lock_period,
+                    )
+                    return lock_type
+            case LockAction.fetch:
+                async with RedisServices() as redis_services:
+                    lock_payload = await redis_services.get_lock_doc(
+                        space_name, subpath, shortname
+                    )
+                    return lock_payload
+            case LockAction.unlock:
+                async with RedisServices() as redis_services:
+                    await redis_services.delete_lock_doc(
+                        space_name, subpath, shortname
+                    )

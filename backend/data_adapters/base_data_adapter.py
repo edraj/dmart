@@ -8,23 +8,10 @@ import models.core as core
 from models.enums import LockAction
 from utils.database.create_tables import Locks
 
-MetaChild = TypeVar("MetaChild", bound=core.Meta)
-
 
 class BaseDataAdapter(ABC):
     @abstractmethod
     def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
-        """Given a query return the total and the locators
-        Parameters
-        ----------
-        query: api.Query
-            Query of type subpath
-
-        Returns
-        -------
-        Total, Locators
-
-        """
         pass
 
     @abstractmethod
@@ -54,7 +41,7 @@ class BaseDataAdapter(ABC):
             space_name: str,
             subpath: str,
             shortname: str,
-            class_type: Type[MetaChild],
+            class_type: Type[core.Meta],
             schema_shortname: str | None = None,
     ) -> tuple[Path, str]:
         """Construct the full path of the meta file"""
@@ -65,7 +52,7 @@ class BaseDataAdapter(ABC):
             self,
             space_name: str,
             subpath: str,
-            class_type: Type[MetaChild],
+            class_type: Type[core.Meta],
             schema_shortname: str | None = None,
     ) -> Path:
         """Construct the full path of the meta file"""
@@ -77,14 +64,14 @@ class BaseDataAdapter(ABC):
             space_name: str,
             subpath: str,
             shortname: str,
-            class_type: Type[core.MetaChild],
+            class_type,
             user_shortname: str | None = None,
             schema_shortname: str | None = None,
-    ) -> MetaChild | None:  # type: ignore
+    ) -> core.Meta | None:  # type: ignore
         """Load a Meta Json according to the reuqested Class type"""
         pass
 
-    async def get_entry_by_criteria(self, criteria: dict) -> MetaChild | None:  # type: ignore
+    async def get_entry_by_criteria(self, criteria: dict) -> core.Meta | None:  # type: ignore
         pass
 
     async def query(self, query: api.Query | None = None, user_shortname: str | None = None) \
@@ -97,10 +84,10 @@ class BaseDataAdapter(ABC):
             space_name: str,
             subpath: str,
             shortname: str,
-            class_type: Type[MetaChild],
+            class_type: Type[core.Meta],
             user_shortname: str | None = None,
             schema_shortname: str | None = None,
-    ) -> MetaChild:  # type: ignore
+    ) -> core.Meta:  # type: ignore
         pass
 
     @abstractmethod
@@ -109,7 +96,7 @@ class BaseDataAdapter(ABC):
             space_name: str,
             subpath: str,
             filename: str,
-            class_type: Type[MetaChild],
+            class_type: Type[core.Meta],
             schema_shortname: str | None = None,
     ) -> dict[str, Any]:
         pass
@@ -156,11 +143,6 @@ class BaseDataAdapter(ABC):
             schema_shortname: str | None = None,
             retrieve_lock_status: bool | None = False,
     ) -> dict:
-        """Update the entry, store the difference and return it
-        1. load the current file
-        3. store meta at the file location
-        4. store the diff between old and new file
-        """
         pass
 
     @abstractmethod
@@ -203,8 +185,18 @@ class BaseDataAdapter(ABC):
             src_shortname: str,
             dest_subpath: str,
             dest_shortname: str,
-            class_type: Type[MetaChild],
+            class_type: Type[core.Meta],
     ):
+        pass
+
+
+    @abstractmethod
+    def is_entry_exist(self,
+                       space_name: str,
+                       subpath: str,
+                       shortname: str,
+                       resource_cls: core.Meta | Type[core.Meta],
+                       schema_shortname: str | None = None, ) -> bool:
         pass
 
     @abstractmethod
@@ -217,19 +209,9 @@ class BaseDataAdapter(ABC):
             schema_shortname: str | None = None,
             retrieve_lock_status: bool | None = False,
     ):
-        """Delete the file that match the criteria given, remove folder if empty"""
-        pass
-
-    @abstractmethod
-    def is_entry_exist(self,
-                       space_name: str,
-                       subpath: str,
-                       shortname: str,
-                       resource_cls: MetaChild | Type[core.MetaChild],
-                       schema_shortname: str | None = None, ) -> bool:
         pass
 
     async def lock_handler(
             self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
-    ) -> Locks | None:
+    ) -> Locks | dict | None:
         pass
