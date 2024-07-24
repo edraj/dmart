@@ -36,14 +36,8 @@ async def query_entries(query: api.Query) -> api.Response:
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies(
-        "anonymous",
-        query.space_name,
-        query.subpath
-    )
-
     total, records = await repository.serve_query(
-        query, "anonymous", redis_query_policies
+        query, "anonymous"
     )
 
     await plugin_manager.after_action(
@@ -296,13 +290,8 @@ async def query_via_urlparams(
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies(
-        "anonymous",
-        query.space_name,
-        query.subpath
-    )
     total, records = await repository.serve_query(
-        query, "anonymous", redis_query_policies
+        query, "anonymous"
     )
 
     await plugin_manager.after_action(

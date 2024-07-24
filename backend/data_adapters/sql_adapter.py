@@ -823,7 +823,11 @@ class SQLAdapter(BaseDataAdapter):
             await self.update(space_name, subpath, meta, {}, {}, [], "")
 
     async def save_payload_from_json(
-            self, dto: Any, meta: core.Meta, payload_data: dict[str, Any]
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            payload_data: dict[str, Any],
     ):
         pass
 
