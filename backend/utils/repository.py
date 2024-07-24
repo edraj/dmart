@@ -13,17 +13,15 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 import models.api as api
 import models.core as core
-from data_adapters.adapter import data_adapter as db
 import utils.regex as regex
 from models.enums import ContentType, Language, ResourceType
+from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.custom_validations import validate_payload_with_schema
 from utils.helpers import (
-    alter_dict_keys,
     camel_case,
     flatten_all,
-    snake_case,
-    str_to_datetime,
+    snake_case, str_to_datetime, alter_dict_keys,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import generate_jwt
@@ -51,7 +49,7 @@ def parse_redis_response(rows: list) -> list:
 
 
 async def serve_query(
-    query: api.Query, logged_in_user: str, redis_query_policies: list = []
+    query: api.Query, logged_in_user: str
 ) -> tuple[int, list[core.Record]]:
     """Given a query return the total and the records
 
@@ -65,6 +63,13 @@ async def serve_query(
     Total, Records
 
     """
+    if settings.active_data_db == "sql":
+        return await db.query(query, logged_in_user)
+
+    redis_query_policies = await access_control.get_user_query_policies(
+        logged_in_user, query.space_name, query.subpath
+    )
+
     records: list[core.Record] = []
     total: int = 0
     spaces = await get_spaces()

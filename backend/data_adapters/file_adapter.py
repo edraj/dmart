@@ -7,7 +7,7 @@ from copy import copy
 from datetime import datetime
 from pathlib import Path
 from shutil import copy2 as copy_file
-from typing import TypeVar, Type, Any
+from typing import Type, Any
 
 import aiofiles
 from fastapi import status
@@ -217,8 +217,9 @@ class FileAdapter(BaseDataAdapter):
             user_shortname: str | None = None,
             schema_shortname: str | None = None,
     ) -> core.Meta:
-        """Load a Meta Json according to the reuqested Class type"""
-        user_shortname = user_shortname
+        """Load a Meta Json according to the requested Class type"""
+        if subpath == shortname and class_type is core.Folder:
+            shortname = ""
         path, filename = self.metapath(
             space_name, subpath, shortname, class_type, schema_shortname
         )

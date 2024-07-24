@@ -146,31 +146,14 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         user_shortname, query.space_name, query.subpath
     )
 
-    if settings.active_data_db == "file":
-        folder = await db.load(
-            query.space_name,
-            query.subpath,
-            "",
-            core.Folder,
-            user_shortname,
-        )
-    else:
-        folder = await db.load(
-            query.space_name,
-            query.subpath,
-            query.subpath,
-            core.Folder,
-            user_shortname,
-        )
-    # folder = await db.load(
-    #     Any(
-    #         space_name=query.space_name,
-    #         subpath=query.subpath,
-    #         shortname="",
-    #         resource_type=ResourceType.folder,
-    #     )
-    # )
-    # NUKE
+    folder = await db.load(
+        query.space_name,
+        query.subpath,
+        query.subpath,
+        core.Folder,
+        user_shortname,
+    )
+
     folder_payload = await db.load_resource_payload(
         query.space_name,
         "/",
@@ -499,17 +482,9 @@ async def query_entries(
         )
     )
 
-    if settings.active_data_db == "file":
-        redis_query_policies = await access_control.get_user_query_policies(
-            user_shortname, query.space_name, query.subpath
-        )
-
-        total, records = await repository.serve_query(
-            query, user_shortname, redis_query_policies
-        )
-    else:
-        total, records = await db.query(query, user_shortname)
-
+    total, records = await repository.serve_query(
+        query, user_shortname,
+    )
 
     await plugin_manager.after_action(
         core.Event(
@@ -899,7 +874,8 @@ async def serve_request(
                         schema_shortname=schema_shortname,
                         retrieve_lock_status=record.retrieve_lock_status,
                     )
-                if settings.active_data_db == 'file' and new_resource_payload_data is not None:
+
+                if new_resource_payload_data is not None:
                     await db.save_payload_from_json(
                         request.space_name,
                         record.subpath,
@@ -2145,21 +2121,6 @@ async def lock_entry(
         resource_type: ResourceType | None = ResourceType.ticket,
         logged_in_user=Depends(JWTBearer()),
 ):
-    if settings.active_data_db == "file":
-        folder_meta_path = (
-                settings.spaces_folder
-                / space_name
-                / subpath
-                / ".dm"
-                / shortname
-        )
-        if not folder_meta_path.is_dir():
-            raise api.Exception(
-                status_code=status.HTTP_404_NOT_FOUND,
-                error=api.Error(
-                    type="db", code=InternalErrorCode.DIR_NOT_FOUND, message="requested object is not found"
-                ),
-            )
 
     await plugin_manager.before_action(
         core.Event(
@@ -2173,7 +2134,7 @@ async def lock_entry(
 
     if resource_type == ResourceType.ticket:
         cls = getattr(sys.modules["models.core"], camel_case(resource_type))
-        meta: core.Ticket = await db.load(
+        meta = await db.load(
             space_name=space_name,
             subpath=subpath,
             shortname=shortname,
