@@ -70,51 +70,9 @@ async def check_existing_user_fields(
     redis_escape_chars = str.maketrans(
         {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_man:
-            for key, value in unique_fields.items():
-                if not value:
-                    continue
-                value = value.translate(redis_escape_chars).replace("\\\\", "\\")
-                if key == "email_unescaped":
-                    value = f"{{{value}}}"
-                redis_search_res = await redis_man.search(
-                    space_name=MANAGEMENT_SPACE,
-                    search=search_str + f" @{key}:{value}",
-                    limit=1,
-                    offset=0,
-                    filters={},
-                )
 
-                if redis_search_res and redis_search_res["total"] > 0:
-                    return api.Response(
-                        status=api.Status.success,
-                        attributes={"unique": False, "field": key},
-                    )
-    else:
-        for key, value in unique_fields.items():
-            if value is None:
-                continue
-            if key == "email_unescaped":
-                key = "email"
-            _, result = await db.query(
-                api.Query(
-                    type=QueryType.search,
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    search=search_str + f" @{key}:{value}",
-                    limit=1,
-                    offset=0
-                )
-            )
-            if len(result) > 0:
-                return api.Response(
-                    status=api.Status.success,
-                    attributes={"unique": False},
-            )
-
-    return api.Response(status=api.Status.success, attributes={"unique": True})
-
+    attributes = await repository.check_uniqueness(unique_fields, search_str, redis_escape_chars)
+    return api.Response(status=api.Status.success, attributes=attributes)
 
 
 @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
@@ -391,6 +349,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     attributes: dict[str, Any] = {}
     if user.email:
         attributes["email"] = user.email
+
     if user.displayname:
         attributes["displayname"] = user.displayname
     if user.msisdn:
@@ -521,23 +480,23 @@ async def update_profile(
 
         if "confirmation" in profile.attributes:
             result = None
-            if settings.active_data_db == "file":
-                async with RedisServices() as redis_services:
-                    if profile_user.email:
-                        result = await redis_services.get_content_by_id(
-                            f"users:otp:confirmation/email/{profile_user.email}"
-                        )
-                    elif profile_user.msisdn:
-                        result = await redis_services.get_content_by_id(
-                            f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
-                        )
 
-                if result is None or result != profile.attributes["confirmation"]:
-                    raise Exception(
-                        status.HTTP_422_UNPROCESSABLE_ENTITY,
-                        api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
-                                  message="Invalid confirmation code [1]"),
+            async with RedisServices() as redis_services:
+                if profile_user.email:
+                    result = await redis_services.get_content_by_id(
+                        f"users:otp:confirmation/email/{profile_user.email}"
                     )
+                elif profile_user.msisdn:
+                    result = await redis_services.get_content_by_id(
+                        f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
+                    )
+
+            if result is None or result != profile.attributes["confirmation"]:
+                raise Exception(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
+                              message="Invalid confirmation code [1]"),
+                )
 
             if profile_user.email:
                 user.is_email_verified = True
@@ -572,13 +531,12 @@ async def update_profile(
                             schema_shortname=str(user.payload.schema_shortname),
                         )
 
-                if settings.active_data_db == 'file' and separate_payload_data:
-                    await db.save_payload_from_json(
-                        MANAGEMENT_SPACE,
-                        USERS_SUBPATH,
-                        user,
-                        separate_payload_data,
-                    )
+                await db.save_payload_from_json(
+                    MANAGEMENT_SPACE,
+                    USERS_SUBPATH,
+                    user,
+                    separate_payload_data,
+                )
 
         history_diff = await db.update(
             MANAGEMENT_SPACE,

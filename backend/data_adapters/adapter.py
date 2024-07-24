@@ -1,8 +1,9 @@
+# type: ignore
 from typing import Type
 
-from .base_data_adapter import BaseDataAdapter  # type: ignore
-from .file_adapter import FileAdapter  # type: ignore
-from .sql_adapter import SQLAdapter  # type: ignore
+from .base_data_adapter import BaseDataAdapter
+from .file_adapter import FileAdapter
+from .sql_adapter import SQLAdapter
 from utils.settings import settings
 
 
