@@ -22,7 +22,6 @@ from models.core import (
 )
 from models.enums import ResourceType, PluginType
 from utils.settings import settings
-from utils.spaces import get_spaces
 
 CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
 
@@ -161,16 +160,10 @@ class PluginManager:
         if event.action_type not in self.plugins_wrappers:
             return
 
-        if settings.active_data_db == "file":
-            spaces = await get_spaces()
-            if event.space_name not in spaces:
-                return
-            space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
-        else:
-            space = await db.load_or_none(event.space_name, "", event.space_name, core.Space)
-            if space is None:
-                return
-            space_plugins = space.active_plugins
+        space = await db.fetch_space(event.space_name)
+        if space is None:
+            return
+        space_plugins = space.active_plugins
 
         loop = asyncio.get_event_loop()
         for plugin_model in self.plugins_wrappers[event.action_type]:
@@ -194,16 +187,10 @@ class PluginManager:
         if event.action_type not in self.plugins_wrappers:
             return
 
-        if settings.active_data_db == "file":
-            spaces = await get_spaces()
-            if event.space_name not in spaces:
-                return
-            space_plugins = Space.model_validate_json(spaces[event.space_name]).active_plugins
-        else:
-            space = await db.load_or_none(event.space_name, "", event.space_name, core.Space)
-            if space is None:
-                return
-            space_plugins = space.active_plugins
+        space = await db.fetch_space(event.space_name)
+        if space is None:
+            return
+        space_plugins = space.active_plugins
 
         loop = asyncio.get_event_loop()
         _plugin_model = None
