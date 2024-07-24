@@ -510,6 +510,7 @@ class SQLAdapter(BaseDataAdapter):
                         table = Entries
             else:
                 table = Entries
+
             statement = select(table)
 
             total_statement = select(func.count(table.uuid))
@@ -519,10 +520,6 @@ class SQLAdapter(BaseDataAdapter):
                     and table.space_name == query.space_name
                 )
 
-            total = session.execute(total_statement).scalar()
-
-            if query.type == QueryType.counters:
-                return total, []
 
             if query.type == QueryType.events:
                 try:
@@ -583,7 +580,6 @@ class SQLAdapter(BaseDataAdapter):
                                     reducer.alias
                                 )
                             )
-                        pass
             except Exception as e:
                 print("[!query]", e)
                 raise api.Exception(
@@ -625,10 +621,17 @@ class SQLAdapter(BaseDataAdapter):
                 statement = statement.order_by(table.__dict__[query.sort_by])
             if query.sort_type == "descending":
                 statement = statement.order_by(table.__dict__[query.sort_by].desc())
-            if query.limit:
-                statement = statement.limit(query.limit)
+
             if query.offset:
                 statement = statement.offset(query.offset)
+
+            total = session.execute(total_statement).scalar()
+            if query.type == QueryType.counters:
+                return total, []
+
+            if query.limit:
+                statement = statement.limit(query.limit)
+
             try:
                 results = list(session.exec(statement).all())
                 if len(results) == 0:

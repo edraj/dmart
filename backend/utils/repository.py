@@ -1771,7 +1771,7 @@ async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dic
                 redis_search_res = await redis_man.search(
                     space_name=MANAGEMENT_SPACE,
                     search=search_str + f" @{key}:{value}",
-                    limit=1,
+                    limit=0,
                     offset=0,
                     filters={},
                 )
@@ -1784,18 +1784,18 @@ async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dic
                 continue
             if key == "email_unescaped":
                 key = "email"
-            _, result = await db.query(
+            total, result = await db.query(
                 api.Query(
                     type=QueryType.search,
                     space_name=MANAGEMENT_SPACE,
                     subpath=USERS_SUBPATH,
                     search=search_str + f" @{key}:{value}",
-                    limit=1,
+                    limit=0,
                     offset=0
                 )
             )
 
-            if len(result) > 0:
+            if total > 0:
                 return {"unique": False, "field": key}
 
     return {"unique": True}
