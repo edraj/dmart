@@ -9,8 +9,9 @@ from fastapi import status
 
 async def is_space_exist(space_name, should_exist=True):
     if settings.active_data_db == "file":
-        spaces = await get_spaces()
-        if (space_name in spaces) ^ should_exist:
+        space = await db.fetch_space(space_name)
+
+        if (space is not None) ^ should_exist:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(
@@ -21,8 +22,9 @@ async def is_space_exist(space_name, should_exist=True):
             )
 
     else:
-        _, spaces = await db.query(api.Query(type=QueryType.spaces, space_name="management", subpath="/"))
-        if (space_name in [space.shortname for space in spaces]) ^ should_exist:
+        space = await db.fetch_space(space_name)
+
+        if (space is not None) ^ should_exist:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(

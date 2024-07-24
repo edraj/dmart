@@ -215,3 +215,6 @@ class BaseDataAdapter(ABC):
             self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
     ) -> Locks | dict | None:
         pass
+
+    async def fetch_space(self, space_name: str) -> core.Space | None:
+        pass

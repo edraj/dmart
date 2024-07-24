@@ -1154,3 +1154,10 @@ class SQLAdapter(BaseDataAdapter):
                     session.exec(statement)
                     session.commit()
                     return None
+
+    async def fetch_space(self, space_name: str) -> core.Space | None:
+        space = await self.load_or_none(space_name, "", space_name, core.Space)
+        if space is None:
+            return None
+        return core.Space.validate(space)
+

@@ -58,7 +58,6 @@ from typing import Callable
 from pathlib import Path as FilePath
 from data_adapters.adapter import data_adapter as db
 
-
 router = APIRouter()
 
 
@@ -672,18 +671,8 @@ async def serve_request(
                     if separate_payload_data is not None and isinstance(
                             separate_payload_data, dict
                     ):
-                        if settings.active_data_db == "file":
-                            await db.save_payload_from_json(
-                                request.space_name,
-                                record.subpath,
-                                resource_obj,
-                                separate_payload_data,
-                            )
-                        else:
-                            resource_obj.payload = record.attributes.get("payload", {})
-                            await db.update(
-                                request.space_name, record.subpath, resource_obj, {}, {}, [], owner_shortname
-                            )
+                        await repository.create_entry_payload(request.space_name, record.subpath, resource_obj, owner_shortname,
+                                                              separate_payload_data)
 
                     records.append(
                         resource_obj.to_record(
@@ -1322,7 +1311,6 @@ async def update_state(
 
     _user_roles = await access_control.get_user_roles(logged_in_user)
     user_roles = _user_roles.keys()
-
 
     await plugin_manager.before_action(
         core.Event(
@@ -2057,8 +2045,6 @@ async def get_entry_by_uuid(
     )
 
 
-
-
 @router.get("/byslug/{slug}", response_model_exclude_none=True)
 async def get_entry_by_slug(
         slug: str,
@@ -2075,7 +2061,6 @@ async def get_entry_by_slug(
         retrieve_attachments,
         retrieve_lock_status,
     )
-
 
 
 @router.get("/health/{health_type}/{space_name}", response_model_exclude_none=True)
@@ -2121,7 +2106,6 @@ async def lock_entry(
         resource_type: ResourceType | None = ResourceType.ticket,
         logged_in_user=Depends(JWTBearer()),
 ):
-
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,

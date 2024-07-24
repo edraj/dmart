@@ -14,6 +14,7 @@ from fastapi import status
 
 import models.api as api
 import models.core as core
+from utils.spaces import get_spaces
 from .base_data_adapter import BaseDataAdapter
 from models.enums import ContentType, ResourceType, LockAction
 from utils.helpers import arr_remove_common, read_jsonl_file, snake_case, camel_case
@@ -820,3 +821,9 @@ class FileAdapter(BaseDataAdapter):
                     await redis_services.delete_lock_doc(
                         space_name, subpath, shortname
                     )
+
+    async def fetch_space(self, space_name: str) -> core.Space | None:
+        spaces = await get_spaces()
+        if space_name not in spaces:
+            return None
+        return core.Space.model_validate_json(spaces[space_name])
