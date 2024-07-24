@@ -8,28 +8,15 @@ from fastapi import status
 
 
 async def is_space_exist(space_name, should_exist=True):
-    if settings.active_data_db == "file":
-        space = await db.fetch_space(space_name)
 
-        if (space is not None) ^ should_exist:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message=f"Space name {space_name} provided is empty or invalid [3]",
-                ),
-            )
+    space = await db.fetch_space(space_name)
 
-    else:
-        space = await db.fetch_space(space_name)
-
-        if (space is not None) ^ should_exist:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message=f"Space name {space_name} provided is empty or invalid [3]",
-                ),
-            )
+    if (space is not None) ^ should_exist:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.INVALID_SPACE_NAME,
+                message=f"Space name {space_name} provided is empty or invalid [3]",
+            ),
+        )

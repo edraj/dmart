@@ -1,6 +1,5 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 """ Main module """
-# from logging import handlers
 from starlette.datastructures import UploadFile
 from contextlib import asynccontextmanager
 import asyncio
@@ -13,7 +12,7 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
-from pydantic import  ValidationError
+from pydantic import ValidationError
 from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
@@ -43,16 +42,12 @@ from utils.redis_services import RedisServices
 
 from utils.internal_error_code import InternalErrorCode
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up")
     print('{"stage":"starting up"}')
-    try :
-        # , extra={"props":{
-        #    "bind_address": f"{settings.listening_host}:{settings.listening_port}",
-        #    "redis_port": settings.redis_port
-        #    }})
-
+    try:
         openapi_schema = app.openapi()
         paths = openapi_schema["paths"]
         for path in paths:
@@ -72,8 +67,6 @@ async def lifespan(app: FastAPI):
     
     logger.info("Application shutting down")
     print('{"stage":"shutting down"}')
-
-
 
 app = FastAPI(
     lifespan=lifespan,
@@ -153,9 +146,9 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
         ),
     )
 
-
 app.add_middleware(CustomRequestMiddleware)
 app.add_middleware(ChannelMiddleware)
+
 
 @app.middleware("http")
 async def middle(request: Request, call_next):
@@ -425,8 +418,9 @@ async def catchall() -> None:
             type="catchall", code=InternalErrorCode.INVALID_ROUTE, message="Requested method or path is invalid"
         ),
     )
-    
+
 load_langs()
+
 
 async def main():
     config = Config()
