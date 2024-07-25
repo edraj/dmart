@@ -1,6 +1,8 @@
 import json
 from sys import modules as sys_modules
 from typing import Any
+
+from models import api
 from models.core import Notification, NotificationData, PluginBase, Event, Translation
 from utils.helpers import camel_case
 from utils.notification import NotificationManager
@@ -48,19 +50,19 @@ class Plugin(PluginBase):
             return
 
         # Get msisdns users
-        if settings.active_data_db == "file":
-            async with RedisServices() as redis:
-                receivers = await redis.search(
-                    space_name=settings.management_space,
-                    search=f"@subpath:users @msisdn:{'|'.join(notification_dict['msisdns'])}",
-                    filters={},
-                    limit=10000,
-                    offset=0,
-                )
-        else:
-            #TODO implement this for sql
-            return
-        if not receivers or receivers.get("total", 0) == 0:
+        search_criteria = notification_dict.get('search_string')
+        if not search_criteria:
+            search_criteria = '@msisdn:' + '|'.join(notification_dict.get('msisdns'))
+
+        total, receivers = db.query(api.Query(
+            space_name=data.space_name,
+            subpath=notification_dict['subpath'],
+            filters={},
+            search=search_criteria,
+            limit=10000,
+            offset=0
+        ))
+        if total == 0:
             return
 
         receivers_shortnames = set()

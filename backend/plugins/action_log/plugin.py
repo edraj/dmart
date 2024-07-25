@@ -30,20 +30,16 @@ class Plugin(PluginBase):
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"]
         else:
-            if settings.active_data_db == "file":
-                entry = await db.load(
-                    space_name=data.space_name,
-                    subpath=data.subpath,
-                    shortname=data.shortname,
-                    class_type=class_type,
-                    user_shortname=data.user_shortname,
-                )
-            else:
-                entry = await db.load_or_none(
-                    data.space_name, data.subpath, data.shortname, class_type
-                )
-                if entry is None:
-                    return
+            entry = await db.load_or_none(
+                space_name=data.space_name,
+                subpath=data.subpath,
+                shortname=data.shortname,
+                class_type=class_type,
+                user_shortname=data.user_shortname,
+            )
+
+            if entry is None:
+                return
 
         action_attributes = {}
         if data.action_type == ActionType.create:

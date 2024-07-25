@@ -113,6 +113,9 @@ class AccessControl:
             return False
 
     async def get_user_permissions(self, user_shortname: str) -> dict:
+        # file: fetch from op if not found
+        #       get from files then save it in op db
+        # sql: fetch directly thought db
         if settings.active_data_db == "file":
             async with RedisServices() as redis_services:
                 user_permissions: dict = await redis_services.get_doc_by_id(
@@ -518,6 +521,9 @@ class AccessControl:
 
     async def load_user_meta(self, user_shortname: str) -> Any:
         async with RedisServices() as redis_services:
+            # file: fetch from op if not found
+            #       get from files then save it in op db
+            # sql: fetch directly thought db
             if settings.active_data_db == "file":
                 user_meta_doc_id = redis_services.generate_doc_id(
                     space_name=settings.management_space,

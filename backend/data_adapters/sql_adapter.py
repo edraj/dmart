@@ -893,6 +893,19 @@ class SQLAdapter(BaseDataAdapter):
         )
         return history_diff
 
+    async def update_payload(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            payload_data: dict[str, Any],
+            owner_shortname: str = None,
+    ):
+        meta.payload.body = payload_data
+        await self.update(
+            space_name, subpath, meta, {}, {}, [], owner_shortname
+        )
+
     async def store_entry_diff(
             self,
             space_name: str,
