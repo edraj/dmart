@@ -10,7 +10,6 @@ from fastapi import Depends, FastAPI
 from fastapi.logger import logger
 
 from data_adapters.adapter import data_adapter as db
-from models import core
 from models.core import (
     ActionType,
     PluginWrapper,
@@ -18,7 +17,6 @@ from models.core import (
     Event,
     EventFilter,
     EventListenTime,
-    Space,
 )
 from models.enums import ResourceType, PluginType
 from utils.settings import settings

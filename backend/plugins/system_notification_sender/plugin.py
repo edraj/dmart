@@ -13,7 +13,6 @@ from models.core import (
 )
 from utils.notification import NotificationManager
 from utils.helpers import camel_case, replace_message_vars
-from utils.redis_services import RedisServices
 from utils.repository import internal_save_model, get_entry_attachments, get_group_users
 from utils.settings import settings
 from fastapi.logger import logger

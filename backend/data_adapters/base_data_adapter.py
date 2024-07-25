@@ -1,12 +1,11 @@
 # type: ignore
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TypeVar, Any, Tuple, Type
+from typing import Any, Tuple, Type
 
 import models.api as api
 import models.core as core
 from models.enums import LockAction
-from utils.database.create_tables import Locks
 
 
 class BaseDataAdapter(ABC):

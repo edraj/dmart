@@ -27,7 +27,7 @@ from models.enums import (
     ResourceType,
     LockAction,
     DataAssetType,
-    TaskType, QueryType,
+    TaskType,
 )
 import utils.regex as regex
 import sys
@@ -400,14 +400,6 @@ async def serve_space(
                     ),
                 )
 
-            exception = api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_SPACE_NAME,
-                    message=f"Space name {request.space_name} provided is empty or invalid [2]",
-                ),
-            )
             await is_space_exist(request.space_name)
 
             if not await access_control.check_access(
