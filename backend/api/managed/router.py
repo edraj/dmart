@@ -671,8 +671,9 @@ async def serve_request(
                     if separate_payload_data is not None and isinstance(
                             separate_payload_data, dict
                     ):
-                        await repository.create_entry_payload(request.space_name, record.subpath, resource_obj, owner_shortname,
-                                                              separate_payload_data)
+                        await db.update_payload(
+                            request.space_name, record.subpath, resource_obj, separate_payload_data, owner_shortname
+                        )
 
                     records.append(
                         resource_obj.to_record(

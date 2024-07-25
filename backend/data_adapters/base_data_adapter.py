@@ -145,6 +145,18 @@ class BaseDataAdapter(ABC):
     ) -> dict:
         pass
 
+
+    @abstractmethod
+    async def update_payload(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            payload_data: dict[str, Any],
+            owner_shortname: str = None,
+    ):
+        pass
+
     @abstractmethod
     async def store_entry_diff(
             self,

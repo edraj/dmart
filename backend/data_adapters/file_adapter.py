@@ -451,7 +451,6 @@ class FileAdapter(BaseDataAdapter):
 
         history_diff = await self.store_entry_diff(
             space_name,
-
             subpath,
             meta.shortname,
             user_shortname,
@@ -462,6 +461,21 @@ class FileAdapter(BaseDataAdapter):
         )
 
         return history_diff
+
+    async def update_payload(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            payload_data: dict[str, Any],
+            owner_shortname: str = None,
+    ):
+        await self.save_payload_from_json(
+            space_name,
+            subpath,
+            meta,
+            payload_data,
+        )
 
     async def store_entry_diff(
             self,

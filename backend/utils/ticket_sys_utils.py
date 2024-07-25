@@ -70,6 +70,8 @@ async def set_init_state_from_record(
     )
 
     if workflows_data is not None and workflows_data.payload is not None:
+        # file: fetch payload from file
+        # sql: payload is already within the entry
         if settings.active_data_db == "file":
             filename = str(workflows_data.payload.body)
             workflows_payload = await db.load_resource_payload(

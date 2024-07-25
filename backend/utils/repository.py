@@ -1799,18 +1799,3 @@ async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dic
                 return {"unique": False, "field": key}
 
     return {"unique": True}
-
-
-async def create_entry_payload(space_name, subpath, resource_obj, owner_shortname, separate_payload_data):
-    if settings.active_data_db == "file":
-        await db.save_payload_from_json(
-            space_name,
-            subpath,
-            resource_obj,
-            separate_payload_data,
-        )
-    else:
-        resource_obj.payload.body = separate_payload_data
-        await db.update(
-            space_name, subpath, resource_obj, {}, {}, [], owner_shortname
-        )

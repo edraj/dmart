@@ -1,5 +1,7 @@
 import json
 from sys import modules as sys_modules
+
+from models import api
 from models.enums import ContentType
 from models.core import (
     ActionType,
@@ -68,20 +70,15 @@ class Plugin(PluginBase):
 
         # 1- get the matching SystemNotificationRequests
         search_subpaths = list(filter(None, data.subpath.split("/")))
-        async with await RedisServices() as redis:
-            if settings.active_data_db == "file":
-                matching_notification_requests = await redis.search(
-                    space_name=settings.management_space,
-                    schema_name="system_notification_request",
-                    filters={"subpath": ["notifications/system"]},
-                    limit=30,
-                    offset=0,
-                    search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
-                )
-            else:
-                #TODO implement this
-                return
-        if not matching_notification_requests.get("data", {}):
+        total, matching_notification_requests = db.query(api.Query(
+            space_name=settings.management_space,
+            subpath="notifications/system",
+            search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
+            limit=30,
+            offset=0
+        ))
+
+        if total == 0:
             return
 
         # 2- get list of subscribed users
@@ -99,20 +96,15 @@ class Plugin(PluginBase):
             notification_subscribers.remove(data.user_shortname)
 
         users_objects: dict[str, dict] = {}
-        if settings.active_data_db == 'file':
-            for subscriber in notification_subscribers:
-                async with RedisServices() as redis:
-                    users_objects[subscriber] = await redis.get_doc_by_id(
-                        redis.generate_doc_id(
-                            settings.management_space,
-                            "meta",
-                            subscriber,
-                            settings.users_subpath,
-                        )
-                    )
-        else:
-            # TODO implement this
-            return
+
+        for subscriber in notification_subscribers:
+            users_objects[subscriber] = (await db.load(
+                settings.management_space,
+                settings.users_subpath,
+                subscriber,
+                getattr(sys_modules["models.core"], camel_case("user")),
+                data.user_shortname,
+            )).model_dump()
 
         # 3- send the notification
         notification_manager = NotificationManager()
