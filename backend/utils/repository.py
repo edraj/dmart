@@ -1281,13 +1281,13 @@ async def health_check_entry(
     resource_class = getattr(
         sys.modules["models.core"], camel_case(resource_type)
     )
-    entry_meta_obj = await db.load(
+    entry_meta_obj = resource_class.model_validate(await db.load(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
         class_type=resource_class,
         user_shortname=user_shortname,
-    )
+    ))
     if entry_meta_obj.shortname != shortname:
         raise Exception(
             "the shortname which got from the folder path doesn't match the shortname in the meta file."

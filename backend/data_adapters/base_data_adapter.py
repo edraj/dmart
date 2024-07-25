@@ -225,7 +225,7 @@ class BaseDataAdapter(ABC):
 
     async def lock_handler(
             self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
-    ) -> Locks | dict | None:
+    ) -> dict | None:
         pass
 
     async def fetch_space(self, space_name: str) -> core.Space | None:

@@ -207,12 +207,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     ),
                 )
 
-            user = await db.load(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                class_type=core.User,
-                user_shortname=shortname,
+            user = core.User.model_validate(
+                await db.load(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    class_type=core.User,
+                    user_shortname=shortname,
+                )
             )
             if (
                 request.shortname != user.shortname
@@ -275,12 +277,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                             message="Invalid username or password [1]",
                         ),
                     )
-            user = await db.load(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                class_type=core.User,
-                user_shortname=shortname,
+            user = core.User.model_validate(
+                await db.load(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    class_type=core.User,
+                    user_shortname=shortname,
+                )
             )
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
         if (
@@ -339,13 +343,13 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         )
     )
 
-    user = await db.load(
+    user = core.User.model_validate(await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    )
+    ))
     attributes: dict[str, Any] = {}
     if user.email:
         attributes["email"] = user.email
@@ -444,13 +448,13 @@ async def update_profile(
             )
         )
 
-        user = await db.load(
+        user = core.User.model_validate(await db.load(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             class_type=core.User,
             user_shortname=shortname,
-        )
+        ))
 
 
         old_version_flattend = flatten_dict(user.model_dump())
@@ -591,12 +595,14 @@ async def logout(
     await remove_redis_active_session(shortname)
     await remove_redis_user_session(shortname)
 
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
+    user = core.User.model_validate(
+        await db.load(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            class_type=core.User,
+            user_shortname=shortname,
+        )
     )
     if user.firebase_token:
         await repository.internal_sys_update_model(
@@ -665,13 +671,13 @@ async def otp_request(
     """Request new OTP"""
 
     result = user_request.check_fields()
-    user = await db.load(
+    user = core.User.model_validate(await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    )
+    ))
     exception = api.Exception(
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
@@ -724,13 +730,13 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             ),
         )
 
-    user = await db.load(
+    user = core.User.model_validate(await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    )
+    ))
 
     old_version_flattend = flatten_dict(user.model_dump())
     user.force_password_change = True
@@ -881,12 +887,14 @@ async def user_reset(
     logged_user=Depends(JWTBearer()),
 ) -> api.Response:
 
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
+    user = core.User.model_validate(
+        await db.load(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            class_type=core.User,
+            user_shortname=shortname,
+        )
     )
     if not await access_control.check_access(
         user_shortname=logged_user,
@@ -970,8 +978,10 @@ async def validate_password(
     password: str, shortname=Depends(JWTBearer())
 ) -> api.Response:
     """Validate Password"""
-    user = await db.load(
-        MANAGEMENT_SPACE, USERS_SUBPATH, shortname, core.User, shortname
+    user = core.User.model_validate(
+        await db.load(
+            MANAGEMENT_SPACE, USERS_SUBPATH, shortname, core.User, shortname
+        )
     )
     if user and password_hashing.verify_password(password, user.password or ""):
         return api.Response(status=api.Status.success)

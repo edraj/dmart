@@ -133,11 +133,13 @@ async def main(
     """
     
     # 1-load schema
-    schema_model: Schema = await db.load(
-        space_name=space,
-        subpath="schema",
-        shortname=schema,
-        class_type=Schema
+    schema_model: Schema = Schema.model_validate(
+        await db.load(
+            space_name=space,
+            subpath="schema",
+            shortname=schema,
+            class_type=Schema
+        )
     )
     if(
         not schema_model.payload or

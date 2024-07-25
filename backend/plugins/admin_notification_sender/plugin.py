@@ -28,33 +28,41 @@ class Plugin(PluginBase):
             )
             return
 
-        notification_request_meta = await db.load(
-            data.space_name,
-            data.subpath,
-            data.shortname,
-            getattr(sys_modules["models.core"], camel_case(data.resource_type)),
-            data.user_shortname,
+        notification_request_meta = getattr(
+            sys_modules["models.core"], camel_case(data.resource_type)
+        ).model_validate(
+            await db.load(
+                data.space_name,
+                data.subpath,
+                data.shortname,
+                getattr(sys_modules["models.core"], camel_case(data.resource_type)),
+                data.user_shortname,
+            )
         )
+
         notification_dict = notification_request_meta.dict()
         notification_dict["subpath"] = data.subpath
+        if settings.active_data_db == "file":
+            notification_request_payload: dict[str, Any] = await db.load_resource_payload(
+                data.space_name,
+                data.subpath,
+                notification_request_meta.payload.body,
+                getattr(sys_modules["models.core"], camel_case(data.resource_type)),
+            )
+        else:
+            notification_request_payload = notification_request_meta.payload.body
 
-        notification_request_payload: dict[str, Any] = await db.load_resource_payload(
-            data.space_name,
-            data.subpath,
-            notification_request_meta.payload.body,
-            getattr(sys_modules["models.core"], camel_case(data.resource_type)),
-        )
         notification_dict.update(notification_request_payload)
 
         if not notification_dict or notification_dict.get("scheduled_at", False):
             return
 
         # Get msisdns users
-        search_criteria = notification_dict.get('search_string')
+        search_criteria = notification_dict.get('search_string', '')
         if not search_criteria:
-            search_criteria = '@msisdn:' + '|'.join(notification_dict.get('msisdns'))
+            search_criteria = '@msisdn:' + '|'.join(notification_dict.get('msisdns', ''))
 
-        total, receivers = db.query(api.Query(
+        total, receivers = await db.query(api.Query(
             space_name=data.space_name,
             subpath=notification_dict['subpath'],
             filters={},
@@ -64,6 +72,8 @@ class Plugin(PluginBase):
         ))
         if total == 0:
             return
+
+        receivers = receivers[0].model_dump()
 
         receivers_shortnames = set()
         for receiver in receivers["data"]:

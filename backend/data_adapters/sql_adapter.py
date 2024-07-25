@@ -1119,7 +1119,7 @@ class SQLAdapter(BaseDataAdapter):
 
     async def lock_handler(
             self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
-    ) -> Locks | dict | None:
+    ) -> dict | None:
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
 
@@ -1151,7 +1151,7 @@ class SQLAdapter(BaseDataAdapter):
                     session.add(lock)
                     session.commit()
                     session.refresh(lock)
-                    return lock
+                    return lock.model_dump()
                 case LockAction.fetch:
                     lock_payload = (await self.load(
                         space_name=space_name,
