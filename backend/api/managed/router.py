@@ -1324,12 +1324,14 @@ async def update_state(
         )
     )
 
-    ticket_obj = await db.load(
-        space_name=space_name,
-        subpath=subpath,
-        shortname=shortname,
-        class_type=core.Ticket,
-        user_shortname=logged_in_user,
+    ticket_obj: core.Ticket = core.Ticket.model_validate(
+        await db.load(
+            space_name=space_name,
+            subpath=subpath,
+            shortname=shortname,
+            class_type=core.Ticket,
+            user_shortname=logged_in_user,
+        )
     )
     if ticket_obj.payload is None or ticket_obj.payload.body is None:
         raise api.Exception(
@@ -2119,12 +2121,14 @@ async def lock_entry(
 
     if resource_type == ResourceType.ticket:
         cls = getattr(sys.modules["models.core"], camel_case(resource_type))
-        meta = await db.load(
-            space_name=space_name,
-            subpath=subpath,
-            shortname=shortname,
-            class_type=cls,
-            user_shortname=logged_in_user,
+        meta = core.Ticket.model_validate(
+            await db.load(
+                space_name=space_name,
+                subpath=subpath,
+                shortname=shortname,
+                class_type=cls,
+                user_shortname=logged_in_user,
+            )
         )
         meta.collaborators = meta.collaborators if meta.collaborators else {}
         if meta.collaborators.get("processed_by") != logged_in_user:
@@ -2349,12 +2353,14 @@ async def apply_alteration(
         on_entry: core.Record,
         logged_in_user=Depends(JWTBearer()),
 ):
-    alteration_meta = await db.load(
-        space_name=space_name,
-        subpath=f"{on_entry.subpath}/{on_entry.shortname}",
-        shortname=alteration_name,
-        class_type=core.Alteration,
-        user_shortname=logged_in_user,
+    alteration_meta = core.Alteration.model_validate(
+        await db.load(
+            space_name=space_name,
+            subpath=f"{on_entry.subpath}/{on_entry.shortname}",
+            shortname=alteration_name,
+            class_type=core.Alteration,
+            user_shortname=logged_in_user,
+        )
     )
     entry_meta: core.Meta = await db.load(
         space_name=space_name,

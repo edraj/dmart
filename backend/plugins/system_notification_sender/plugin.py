@@ -70,7 +70,7 @@ class Plugin(PluginBase):
 
         # 1- get the matching SystemNotificationRequests
         search_subpaths = list(filter(None, data.subpath.split("/")))
-        total, matching_notification_requests = db.query(api.Query(
+        total, matching_notification_requests = await db.query(api.Query(
             space_name=settings.management_space,
             subpath="notifications/system",
             search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
@@ -80,6 +80,8 @@ class Plugin(PluginBase):
 
         if total == 0:
             return
+
+        matching_notification_requests = matching_notification_requests[0].model_dump()
 
         # 2- get list of subscribed users
         notification_subscribers = [entry["owner_shortname"]]

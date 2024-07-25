@@ -104,7 +104,7 @@ class Plugin(PluginBase):
                     payload = await db.load_resource_payload(
                         space_name=data.space_name,
                         subpath=data.subpath,
-                        filename=meta.payload.body,
+                        filename=str(meta.payload.body),
                         class_type=class_type,
                     )
 

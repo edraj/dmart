@@ -41,12 +41,12 @@ class Plugin(PluginBase):
             self.delete(data.shortname)
             return
         
-        user_model: User = await db.load(
+        user_model: User = User.model_validate(await db.load(
             space_name=settings.management_space,
             subpath=data.subpath,
             shortname=data.shortname,
             class_type=User
-        )
+        ))
         
         if data.action_type == ActionType.create:
             self.add(data.shortname, user_model)

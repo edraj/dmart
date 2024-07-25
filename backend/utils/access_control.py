@@ -451,13 +451,13 @@ class AccessControl:
 
         role_permissions: list[core.Permission] = []
 
-        for permission in role_records.permissions:
+        for permission in role_records.permissions:  # type: ignore
             permission_record = await db.load_or_none(
                 settings.management_space, 'permissions', permission, core.Permission
             )
             if permission_record is None:
                 continue
-            role_permissions.append(permission_record)
+            role_permissions.append(permission_record)  # type: ignore
 
         return role_permissions
 
@@ -507,13 +507,14 @@ class AccessControl:
                 return {}
 
             user_roles: dict[str, core.Role] = {}
-            for role in user.roles:
+            for role in user.roles:  # type: ignore
                 role_record = await db.load_or_none(
                     settings.management_space, 'roles', role, core.Role
                 )
                 if role_record is None:
                     continue
-                user_roles[role] = role_record
+
+                user_roles[role] = role_record  # type: ignore
             return user_roles
         except Exception as e:
             print(f"Error: {e}")
