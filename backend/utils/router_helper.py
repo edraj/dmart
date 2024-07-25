@@ -1,7 +1,4 @@
-from models.enums import QueryType
 from utils.internal_error_code import InternalErrorCode
-from utils.settings import settings
-from utils.spaces import get_spaces
 from data_adapters.adapter import data_adapter as db
 import models.api as api
 from fastapi import status

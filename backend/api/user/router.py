@@ -10,7 +10,7 @@ from utils.generate_email import generate_email_from_template
 from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
-from models.enums import ActionType, RequestType, ResourceType, ContentType, QueryType
+from models.enums import ActionType, RequestType, ResourceType, ContentType
 from utils.custom_validations import validate_uniqueness
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control

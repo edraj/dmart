@@ -2,7 +2,7 @@ import copy
 import json
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, ConfigDict
-from typing import Type, Any, Self, TypeVar
+from typing import Any
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
 from pydantic import Field
