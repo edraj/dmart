@@ -206,7 +206,7 @@ class FileAdapter(BaseDataAdapter):
         """Load a Meta Json according to the reuqested Class type"""
         try:
             return await self.load(space_name, subpath, shortname, class_type, user_shortname, schema_shortname)
-        except:
+        except Exception as _:
             return None
 
     async def load(
