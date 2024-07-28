@@ -10,7 +10,6 @@ from uuid import uuid4
 import aiofiles
 from fastapi import status
 from fastapi.encoders import jsonable_encoder
-from fastapi.logger import logger
 import models.api as api
 import models.core as core
 import utils.regex as regex
