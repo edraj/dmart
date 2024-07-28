@@ -59,6 +59,7 @@ async def lifespan(app: FastAPI):
 
         await initialize_spaces()
         await access_control.load_permissions_and_roles()
+        # await plugin_manager.load_plugins(app, capture_body)
 
         yield
 
@@ -429,6 +430,10 @@ async def main():
 
     config.logconfig_dict = logging_schema
     config.errorlog = logger
+
+    config.keyfile = "./key.pem"
+    config.certfile = "./cert.pem"
+
     await serve(app, config)  # type: ignore
 
 

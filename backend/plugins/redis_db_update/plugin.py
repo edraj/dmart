@@ -11,6 +11,7 @@ from fastapi.logger import logger
 from create_index import main as reload_redis
 from utils.settings import settings
 
+
 class Plugin(PluginBase):
     async def hook(self, data: Event):
         if settings.active_data_db == "sql":

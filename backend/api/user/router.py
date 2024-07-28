@@ -391,7 +391,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         / ".dm"
         / user.shortname
     )
-    user_avatar = await repository.get_entry_attachments(
+    user_avatar = await db.get_entry_attachments(
         subpath=f"{USERS_SUBPATH}/{user.shortname}",
         attachments_path=attachments_path,
         filter_shortnames=["avatar"],

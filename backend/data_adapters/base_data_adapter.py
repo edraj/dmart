@@ -23,18 +23,6 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_entry_attachments(
-        self,
-        subpath: str,
-        attachments_path: Path,
-        filter_types: list | None = None,
-        include_fields: list | None = None,
-        filter_shortnames: list | None = None,
-        retrieve_json_payload: bool = False,
-    ) -> dict:
-        pass
-
-    @abstractmethod
     def metapath(
             self,
             space_name: str,
@@ -228,4 +216,15 @@ class BaseDataAdapter(ABC):
         pass
 
     async def fetch_space(self, space_name: str) -> core.Space | None:
+        pass
+
+    async def get_entry_attachments(
+            sefl,
+            subpath: str,
+            attachments_path: Path,
+            filter_types: list | None = None,
+            include_fields: list | None = None,
+            filter_shortnames: list | None = None,
+            retrieve_json_payload: bool = False,
+    ) -> dict:
         pass
