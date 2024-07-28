@@ -447,18 +447,15 @@ class SQLAdapter(BaseDataAdapter):
             if table in [Roles, Permissions, Users, Spaces]:
                 statement = statement.where(table.shortname == shortname)
             else:
-                if class_type == core.Folder:
-                    statement = statement.where(table.shortname == shortname)
+                if table is Attachments:
+                    statement = statement.where(
+                        table.shortname == shortname
+                        and table.subpath
+                        == f"{subpath}/attachments.{class_type.__name__.lower()}"
+                    )
                 else:
-                    if table is Attachments:
-                        statement = statement.where(
-                            table.shortname == shortname
-                            and table.subpath
-                            == f"{subpath}/attachments.{class_type.__name__.lower()}"
-                        )
-                    else:
-                        print("[@load_or_none]", table, subpath, shortname)
-                        statement = statement.where(table.shortname == shortname).where(table.subpath == subpath)
+                    print("[@load_or_none]", table, subpath, shortname)
+                    statement = statement.where(table.shortname == shortname).where(table.subpath == subpath)
 
             result = session.exec(statement).one_or_none()
             if result is None:
