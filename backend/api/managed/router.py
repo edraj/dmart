@@ -848,7 +848,7 @@ async def serve_request(
                                 list(new_version_flattend.keys())
                         )
 
-                    if settings.active_data_db == 'sql':
+                    if settings.active_data_db == 'sql' and resource_obj.payload and resource_obj.payload.content_type == ContentType.json:
                         resource_obj.payload.body = new_resource_payload_data
                     history_diff = await db.update(
                         space_name=request.space_name,
