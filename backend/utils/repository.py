@@ -52,27 +52,17 @@ def parse_redis_response(rows: list) -> list:
 async def serve_query(
         query: api.Query, logged_in_user: str
 ) -> tuple[int, list[core.Record]]:
-    """Given a query return the total and the records
+    records: list[core.Record] = []
+    total: int = 0
 
-    Parameters
-    ----------
-    query: api.Query
-        query of type [spaces, search, subpath]
-
-    Returns
-    -------
-    Total, Records
-
-    """
     if settings.active_data_db == "sql":
-        return await db.query(query, logged_in_user)
+        total, records = await db.query(query, logged_in_user)
+        return total, records
 
     redis_query_policies = await access_control.get_user_query_policies(
         logged_in_user, query.space_name, query.subpath
     )
 
-    records: list[core.Record] = []
-    total: int = 0
     spaces = await get_spaces()
     match query.type:
         case api.QueryType.spaces:
@@ -297,7 +287,7 @@ async def serve_query(
                                     continue
 
                             resource_base_record.attachments = (
-                                await get_entry_attachments(
+                                await db.get_entry_attachments(
                                     subpath=f"{query.subpath}/{shortname}",
                                     attachments_path=(meta_path / shortname),
                                     filter_types=query.filter_types,
@@ -368,7 +358,7 @@ async def serve_query(
                                 await payload_file_content.read()
                             )
                             if os.path.exists(meta_path / shortname):
-                                folder_record.attachments = await get_entry_attachments(
+                                folder_record.attachments = await db.get_entry_attachments(
                                     subpath=f"{query.subpath if query.subpath != '/' else ''}/{shortname}",
                                     attachments_path=(meta_path / shortname),
                                     filter_types=query.filter_types,
@@ -490,7 +480,7 @@ async def serve_query(
                             / f"{query.space_name}/{doc['subpath']}/.dm/{doc['shortname']}"
                     )
                     if query.retrieve_attachments and entry_path.is_dir():
-                        record.attachments = await get_entry_attachments(
+                        record.attachments = await db.get_entry_attachments(
                             subpath=f"{doc['subpath']}/{doc['shortname']}",
                             attachments_path=entry_path,
                             filter_types=query.filter_types,
@@ -738,93 +728,6 @@ async def get_last_updated_entry(
     _, records = await serve_query(report_query, logged_in_user)
 
     return records[0] if records else None
-
-
-async def get_entry_attachments(
-        subpath: str,
-        attachments_path: Path,
-        filter_types: list | None = None,
-        include_fields: list | None = None,
-        filter_shortnames: list | None = None,
-        retrieve_json_payload: bool = False,
-) -> dict:
-    if not attachments_path.is_dir():
-        return {}
-    attachments_iterator = os.scandir(attachments_path)
-    attachments_dict: dict[ResourceType, list] = {}
-    for attachment_entry in attachments_iterator:
-        # TODO: Filter types on the parent attachment type folder layer
-        if not attachment_entry.is_dir():
-            continue
-
-        attachments_files = os.scandir(attachment_entry)
-        for attachments_file in attachments_files:
-            match = regex.ATTACHMENT_PATTERN.search(str(attachments_file.path))
-            if not match or not attachments_file.is_file():
-                continue
-
-            attach_shortname = match.group(2)
-            attach_resource_name = match.group(1).lower()
-            if filter_shortnames and attach_shortname not in filter_shortnames:
-                continue
-
-            if filter_types and ResourceType(attach_resource_name) not in filter_types:
-                continue
-
-            resource_class = getattr(
-                sys.modules["models.core"], camel_case(attach_resource_name)
-            )
-            resource_obj = None
-            async with aiofiles.open(attachments_file, "r") as meta_file:
-                try:
-                    resource_obj = resource_class.model_validate_json(await meta_file.read())
-                except Exception as e:
-                    raise Exception(
-                        f"Bad attachment ... {attachments_file=}") from e
-
-            resource_record_obj = resource_obj.to_record(
-                subpath, attach_shortname, include_fields
-            )
-            if (
-                    retrieve_json_payload
-                    and resource_obj
-                    and resource_record_obj
-                    and resource_obj.payload
-                    and resource_obj.payload.content_type
-                    and resource_obj.payload.content_type == ContentType.json
-                    and Path(
-                f"{attachment_entry.path}/{resource_obj.payload.body}"
-            ).is_file()
-            ):
-                async with aiofiles.open(
-                        f"{attachment_entry.path}/{resource_obj.payload.body}", "r"
-                ) as payload_file_content:
-                    resource_record_obj.attributes["payload"].body = json.loads(
-                        await payload_file_content.read()
-                    )
-
-            if attach_resource_name in attachments_dict:
-                attachments_dict[ResourceType(attach_resource_name)].append(
-                    resource_record_obj)
-            else:
-                attachments_dict[ResourceType(attach_resource_name)] = [resource_record_obj]
-        attachments_files.close()
-    attachments_iterator.close()
-
-    # SORT ALTERATION ATTACHMENTS BY ALTERATION.CREATED_AT
-    for attachment_name, attachments in attachments_dict.items():
-        try:
-            if attachment_name == ResourceType.alteration:
-                attachments_dict[attachment_name] = sorted(
-                    attachments, key=lambda d: d.attributes["created_at"]
-                )
-        except Exception as e:
-            logger.error(
-                f"Invalid attachment entry:{attachments_path / attachment_name}.\
-            Error: {e.args}"
-            )
-
-    return attachments_dict
 
 
 async def redis_query_aggregate(
@@ -1480,7 +1383,7 @@ async def generate_payload_string(
                                 for i in payload_values if i is not None])
 
     # Generate attachments payload string
-    attachments: dict[str, list] = await get_entry_attachments(
+    attachments: dict[str, list] = await db.get_entry_attachments(
         subpath=f"{subpath}/{shortname}",
         attachments_path=(
                 settings.spaces_folder
@@ -1577,7 +1480,7 @@ async def get_record_from_redis_doc(
             / f"{space_name}/{doc['subpath']}/.dm/{meta_doc_content['shortname']}"
     )
     if retrieve_attachments and entry_path.is_dir():
-        resource_base_record.attachments = await get_entry_attachments(
+        resource_base_record.attachments = await db.get_entry_attachments(
             subpath=f"{doc['subpath']}/{meta_doc_content['shortname']}",
             attachments_path=entry_path,
             filter_types=filter_types,

@@ -593,13 +593,15 @@ async def serve_request(
 
                     separate_payload_data = None
                     if (
-                            resource_obj.payload
+                            settings.active_data_db == 'sql'
+                            and resource_obj.payload
                             and resource_obj.payload.content_type == ContentType.json
                             and resource_obj.payload.body is not None
                     ):
                         separate_payload_data = resource_obj.payload.body
                         resource_obj.payload.body = body_shortname + (
-                            ".json" if record.resource_type != ResourceType.log else ".jsonl")
+                            ".json" if record.resource_type != ResourceType.log else ".jsonl"
+                        )
 
                     if (
                             resource_obj.payload
@@ -845,6 +847,9 @@ async def serve_request(
                                 list(old_version_flattend.keys()) +
                                 list(new_version_flattend.keys())
                         )
+
+                    if settings.active_data_db == 'sql':
+                        resource_obj.payload.body = new_resource_payload_data
                     history_diff = await db.update(
                         space_name=request.space_name,
                         subpath=record.subpath,
@@ -1974,7 +1979,7 @@ async def retrieve_entry_meta(
             / f"{space_name}/{subpath}/.dm/{shortname}"
     )
     if retrieve_attachments:
-        attachments = await repository.get_entry_attachments(
+        attachments = await db.get_entry_attachments(
             subpath=subpath,
             attachments_path=entry_path,
             retrieve_json_payload=retrieve_json_payload,
@@ -2405,7 +2410,7 @@ async def data_asset(
             ),
         )
 
-    attachments: dict[str, list[core.Record]] = await repository.get_entry_attachments(
+    attachments: dict[str, list[core.Record]] = await db.get_entry_attachments(
         subpath=f"{query.subpath}/{query.shortname}",
         attachments_path=(
                 settings.spaces_folder

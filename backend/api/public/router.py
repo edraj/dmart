@@ -128,7 +128,7 @@ async def retrieve_entry_meta(
         / f"{space_name}/{subpath}/.dm/{shortname}"
     )
     if retrieve_attachments:
-        attachments = await repository.get_entry_attachments(
+        attachments = await db.get_entry_attachments(
             subpath=subpath,
             attachments_path=entry_path,
             retrieve_json_payload=retrieve_json_payload,

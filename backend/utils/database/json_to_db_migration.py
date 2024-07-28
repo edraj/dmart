@@ -16,7 +16,15 @@ logging.basicConfig()
 logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
 logging.disable(logging.ERROR)
 
-# postgresql_url = "postgresql://postgres:tenno1515@localhost:5432/postgres"
+
+def subpath_checker(subpath: str):
+    if subpath.endswith("/"):
+        subpath = subpath[:-1]
+    if not subpath.startswith("/"):
+        subpath = '/' + subpath
+    return subpath
+
+
 postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
 engine = create_engine(f"{postgresql_url}/postgres")
 
@@ -93,6 +101,7 @@ with Session(engine) as session:
                             _attachment['space_name'] = space_name
                             _attachment['uuid'] = _attachment.get('uuid', uuid4())
                             _attachment['subpath'] = f"{subpath}/{dir}".replace('//', '/')
+                            _attachment['subpath'] = subpath_checker(_attachment['subpath'])
                             _attachment['acl'] = _attachment.get('acl', [])
                             _attachment['relationships'] = _attachment.get('relationships', [])
                             _attachment['tags'] = _attachment.get('relationships', [])
@@ -113,7 +122,9 @@ with Session(engine) as session:
                             else:
                                 _body: str = _attachment.get('payload', {}).get('body', None)
                                 if _body and _body.endswith('.json'):
-                                    _attachment_body = json.load(open(os.path.join(root, dir, _body)))
+                                    _attachment_body = json.load(open(
+                                        os.path.join(root, dir, _body)
+                                    ))
                                     _attachment['payload']['body'] = _attachment_body
                                 if _attachment.get('payload', None) is None:
                                     _attachment['payload'] = {}
@@ -142,7 +153,7 @@ with Session(engine) as session:
                             entry['payload']['body'] = body
                         else:
                             entry['payload'] = None
-                        entry['subpath'] = subpath
+                        entry['subpath'] = subpath_checker(subpath)
                         entry['acl'] = entry.get('acl', [])
                         entry['relationships'] = entry.get('relationships', [])
                         try:
@@ -180,9 +191,11 @@ with Session(engine) as session:
                                         entry["workflow_shortname"] = entry.get("workflow_shortname", "")
                                         entry["collaborators"] = entry.get("collaborators", None)
                                         entry["resolution_reason"] = entry.get("resolution_reason", None)
+
+                                        entry["subpath"] = subpath_checker(entry["subpath"])
                                         session.add(Tickets.model_validate(entry))
                                         continue
-
+                                    entry["subpath"] = subpath_checker(entry["subpath"])
                                     session.add(Entries.model_validate(entry))
                         except Exception as e:
                             print(f"Error processing {space_name}/{subpath}/{dir}/{entry} ... ")
@@ -193,7 +206,8 @@ with Session(engine) as session:
                             history = json.loads(line)
                             history['shortname'] = dir
                             history['space_name'] = space_name
-                            history['subpath'] = subpath
+                            history['subpath'] = subpath_checker(subpath)
+
                             try:
                                 session.add(Histories.model_validate(history))
                             except Exception as e:

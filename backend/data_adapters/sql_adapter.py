@@ -107,6 +107,14 @@ sqlite_aggregate_functions = [
 ]
 
 
+def subpath_checker(subpath: str):
+    if subpath.endswith("/"):
+        subpath = subpath[:-1]
+    if not subpath.startswith("/"):
+        subpath = '/' + subpath
+    return subpath
+
+
 def parse_search_string(s, entity):
     pattern = r"@(\w+):(\w+)"
     matches = re.findall(pattern, s)
@@ -360,12 +368,14 @@ class SQLAdapter(BaseDataAdapter):
             if not subpath.startswith("/"):
                 subpath = f"/{subpath}"
             space_name = attachments_path.relative_to(settings.spaces_folder).parts[0]
+            print("[@get_entry_attachments]", space_name, subpath)
             statement = (
                 select(Attachments)
                 .where(Attachments.space_name == space_name)
                 .where(Attachments.subpath.startswith(subpath))
             )
             results = list(session.exec(statement).all())
+            print("[@get_entry_attachments]", results)
             if len(results) == 0:
                 return attachments_dict
 
@@ -433,7 +443,7 @@ class SQLAdapter(BaseDataAdapter):
             table = self.get_table(class_type)
 
             statement = select(table).where(table.space_name == space_name)
-
+            print("[@load_or_none]", table, space_name)
             if table in [Roles, Permissions, Users, Spaces]:
                 statement = statement.where(table.shortname == shortname)
             else:
@@ -447,17 +457,17 @@ class SQLAdapter(BaseDataAdapter):
                             == f"{subpath}/attachments.{class_type.__name__.lower()}"
                         )
                     else:
-                        statement = statement.where(
-                            table.subpath == subpath
-                            or table.shortname == shortname
-                        )
+                        print("[@load_or_none]", table, subpath, shortname)
+                        statement = statement.where(table.shortname == shortname).where(table.subpath == subpath)
 
             result = session.exec(statement).one_or_none()
             if result is None:
                 return None
-
+            print("[@load_or_none]", result)
             try:
                 try:
+                    print("[@@load_or_none]", result)
+                    print("[@@load_or_none]", result.payload)
                     if result.payload and isinstance(result.payload, dict):
                         result.payload = core.Payload.model_validate(
                             result.payload, strict=False
@@ -745,7 +755,8 @@ class SQLAdapter(BaseDataAdapter):
                     if entity["subpath"] != "/":
                         if not entity["subpath"].startswith("/"):
                             entity["subpath"] = f'/{entity["subpath"]}'
-                        entity["subpath"] += meta.shortname
+                        if entity["subpath"].endswith("/"):
+                            entity["subpath"] = entity["subpath"][:-1]
 
                 if meta.__class__ in [
                     core.Alteration,
@@ -759,15 +770,13 @@ class SQLAdapter(BaseDataAdapter):
                 ]:
                     entity["subpath"] = f"{subpath}/attachments.{meta.__class__.__name__.lower()}"
 
-                if not entity["subpath"].endswith("/"):
-                    entity["subpath"] += "/"
                 if entity["subpath"] != "/" and entity["subpath"].endswith("/"):
                     entity["subpath"] = entity["subpath"][:-1]
 
                 try:
                     entity['resource_type'] = meta.__class__.__name__.lower()
                     data = self.get_base_model(meta.__class__, entity)
-
+                    data.subpath = subpath_checker(data.subpath)
                     session.add(data)
                     session.commit()
                 except Exception as e:
@@ -866,7 +875,8 @@ class SQLAdapter(BaseDataAdapter):
                 result.sqlmodel_update(meta.model_dump())
                 if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
                     result.subpath = f"/{result.subpath}"
-
+                print("[@update]", meta)
+                print("[@update]", result)
                 session.add(result)
                 session.commit()
             except Exception as e:

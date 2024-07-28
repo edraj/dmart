@@ -6,7 +6,7 @@ from models import api
 from models.core import Notification, NotificationData, PluginBase, Event, Translation
 from utils.helpers import camel_case
 from utils.notification import NotificationManager
-from utils.repository import internal_save_model, get_entry_attachments
+from utils.repository import internal_save_model
 from utils.settings import settings
 from fastapi.logger import logger
 from data_adapters.adapter import data_adapter as db
@@ -119,7 +119,7 @@ class Plugin(PluginBase):
             / f"{settings.management_space}/"
             f"{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
-        notification_attachments = await get_entry_attachments(
+        notification_attachments = await db.get_entry_attachments(
             subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
             attachments_path=attachments_path,
         )

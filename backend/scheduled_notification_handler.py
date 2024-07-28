@@ -8,7 +8,6 @@ from utils.redis_services import RedisServices
 from utils.repository import (
     internal_save_model,
     internal_sys_update_model,
-    get_entry_attachments,
 )
 from utils.settings import settings
 from fastapi.logger import logger
@@ -109,7 +108,7 @@ async def prepare_request(notification_dict) -> dict:
         / f"{settings.management_space}"
         f"/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
     )
-    notification_attachments = await get_entry_attachments(
+    notification_attachments = await db.get_entry_attachments(
         subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
         attachments_path=attachments_path,
     )
