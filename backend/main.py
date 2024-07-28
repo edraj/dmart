@@ -431,9 +431,6 @@ async def main():
     config.logconfig_dict = logging_schema
     config.errorlog = logger
 
-    config.keyfile = "./key.pem"
-    config.certfile = "./cert.pem"
-
     await serve(app, config)  # type: ignore
 
 
