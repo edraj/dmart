@@ -111,40 +111,39 @@ async def serve_query(
                     )
                 res_data = res_data[query.offset: (query.limit + query.offset)]
 
-            async with RedisServices() as redis_services:
-                for redis_doc_dict in res_data:
-                    try:
-                        resource_base_record = await get_record_from_redis_doc(
-                            space_name=query.space_name,
-                            doc=redis_doc_dict,
-                            retrieve_json_payload=query.retrieve_json_payload,
-                            retrieve_attachments=query.retrieve_attachments,
-                            validate_schema=query.validate_schema,
-                            filter_types=query.filter_types,
-                            retrieve_lock_status=query.retrieve_lock_status,
-                        )
-                    except Exception:
-                        # Incase of schema validation error
-                        continue
-
-                    # Don't repeat the same entry comming from different indices
-                    # if resource_base_record in records:
-                    #     total -= 1
-                    #     continue
-
-                    if query.highlight_fields:
-                        for key, value in query.highlight_fields.items():
-                            resource_base_record.attributes[value] = getattr(
-                                redis_doc_dict, key, None
-                            )
-
-                    resource_base_record.attributes = alter_dict_keys(
-                        jsonable_encoder(resource_base_record.attributes, exclude_none=True),
-                        query.include_fields,
-                        query.exclude_fields,
+            for redis_doc_dict in res_data:
+                try:
+                    resource_base_record = await get_record_from_redis_doc(
+                        space_name=query.space_name,
+                        doc=redis_doc_dict,
+                        retrieve_json_payload=query.retrieve_json_payload,
+                        retrieve_attachments=query.retrieve_attachments,
+                        validate_schema=query.validate_schema,
+                        filter_types=query.filter_types,
+                        retrieve_lock_status=query.retrieve_lock_status,
                     )
+                except Exception as e:
+                    print("Error in get_record_from_redis_doc", e)
+                    continue
 
-                    records.append(resource_base_record)
+                # Don't repeat the same entry comming from different indices
+                # if resource_base_record in records:
+                #     total -= 1
+                #     continue
+
+                if query.highlight_fields:
+                    for key, value in query.highlight_fields.items():
+                        resource_base_record.attributes[value] = getattr(
+                            redis_doc_dict, key, None
+                        )
+
+                resource_base_record.attributes = alter_dict_keys(
+                    jsonable_encoder(resource_base_record.attributes, exclude_none=True),
+                    query.include_fields,
+                    query.exclude_fields,
+                )
+
+                records.append(resource_base_record)
 
         case api.QueryType.subpath:
             subpath = query.subpath
@@ -158,9 +157,6 @@ async def serve_query(
 
             if query.include_fields is None:
                 query.include_fields = []
-
-            # Gel all matching entries
-            # entries_glob = ".dm/*/meta.*.json"
 
             meta_path = path / ".dm"
             if meta_path.is_dir():
@@ -414,30 +410,29 @@ async def serve_query(
                     total += int(redis_res)
 
         case api.QueryType.tags:
-            async with RedisServices() as redis_services:
-                query.sort_by = "tags"
-                query.aggregation_data = api.RedisAggregate(
-                    group_by=["@tags"],
-                    reducers=[
-                        api.RedisReducer(
-                            reducer_name="count",
-                            alias="freq"
-                        )
-                    ]
-                )
-                rows = await redis_query_aggregate(
-                    query=query,
-                    redis_query_policies=redis_query_policies
-                )
-                records.append(
-                    core.Record(
-                        resource_type=ResourceType.content,
-                        shortname="tags_frequency",
-                        subpath=query.subpath,
-                        attributes={"result": rows},
+            query.sort_by = "tags"
+            query.aggregation_data = api.RedisAggregate(
+                group_by=["@tags"],
+                reducers=[
+                    api.RedisReducer(
+                        reducer_name="count",
+                        alias="freq"
                     )
+                ]
+            )
+            rows = await redis_query_aggregate(
+                query=query,
+                redis_query_policies=redis_query_policies
+            )
+            records.append(
+                core.Record(
+                    resource_type=ResourceType.content,
+                    shortname="tags_frequency",
+                    subpath=query.subpath,
+                    attributes={"result": rows},
                 )
-                total = 1
+            )
+            total = 1
 
         case api.QueryType.random:
             query.aggregation_data = api.RedisAggregate(
