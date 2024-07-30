@@ -149,6 +149,10 @@ echo -n -e "Create Schema: \t\t\t" >&2
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createschema.json"' -F 'payload_file=@"../sample/test/schema.json"' ${API_URL}/managed/resource_with_payload | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
+echo -n -e "Create content: \t\t" >&2
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createcontent.json"' -F 'payload_file=@"../sample/test/data.json"' ${API_URL}/managed/resource_with_payload | jq .status | tee /dev/stderr | grep -q "success"
+RESULT+=$?
+
 echo -n -e "Comment on content: \t\t"
 COMMENT_SHORTNAME="greatcomment"
 COMMENT_SUBPATH="$SUBPATH/$SHORTNAME"
@@ -157,10 +161,6 @@ curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$RECORD" ${API_URL}/
 
 echo -n -e "Managed CSV: \t\t\t" >&2
 curl -s -H "accept: text/csv" -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"dummy","subpath":"myfolder","type":"subpath","retrieve_json_payload":true,"limit":5}' ${API_URL}/managed/csv | xargs -0 echo | jq .status | tee /dev/stderr | grep -q "success"
-RESULT+=$?
-
-echo -n -e "Create content: \t\t" >&2
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createcontent.json"' -F 'payload_file=@"../sample/test/data.json"' ${API_URL}/managed/resource_with_payload | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
 echo -n -e "Update content: \t\t" >&2

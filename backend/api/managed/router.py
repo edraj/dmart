@@ -147,7 +147,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     folder = await db.load(
         query.space_name,
-        query.subpath,
+        '/',
         query.subpath,
         core.Folder,
         user_shortname,
@@ -593,15 +593,15 @@ async def serve_request(
 
                     separate_payload_data = None
                     if (
-                            settings.active_data_db == 'sql'
-                            and resource_obj.payload
+                            resource_obj.payload
                             and resource_obj.payload.content_type == ContentType.json
                             and resource_obj.payload.body is not None
                     ):
                         separate_payload_data = resource_obj.payload.body
-                        resource_obj.payload.body = body_shortname + (
-                            ".json" if record.resource_type != ResourceType.log else ".jsonl"
-                        )
+                        if settings.active_data_db == 'file':
+                            resource_obj.payload.body = body_shortname + (
+                                ".json" if record.resource_type != ResourceType.log else ".jsonl"
+                            )
 
                     if (
                             resource_obj.payload
@@ -702,6 +702,7 @@ async def serve_request(
                             "error_code": e.error.code,
                         }
                     )
+
         case api.RequestType.update | api.RequestType.r_replace:
             for record in request.records:
                 if record.subpath[0] != "/":
@@ -852,6 +853,7 @@ async def serve_request(
                             and resource_obj.payload
                             and resource_obj.payload.content_type == ContentType.json):
                         resource_obj.payload.body = new_resource_payload_data  # type: ignore
+
                     history_diff = await db.update(
                         space_name=request.space_name,
                         subpath=record.subpath,
@@ -1719,9 +1721,12 @@ async def create_or_update_resource_with_payload(
                 message="Only resources of type 'attachment' or 'content' are allowed",
             ),
         )
-
-    resource_obj.payload.body = f"{resource_obj.shortname}." + \
-                                payload_filename.split(".")[1]
+    if settings.active_data_db == "file":
+        resource_obj.payload.body = f"{resource_obj.shortname}." + \
+                                    payload_filename.split(".")[1]
+    elif not isinstance(resource_obj, core.Attachment):
+        resource_obj.payload.body = json.load(payload_file.file)
+        payload_file.file.seek(0)
 
     if (
             resource_content_type == ContentType.json
@@ -2120,15 +2125,15 @@ async def lock_entry(
 
     if resource_type == ResourceType.ticket:
         cls = getattr(sys.modules["models.core"], camel_case(resource_type))
-        meta = core.Ticket.model_validate(
-            await db.load(
-                space_name=space_name,
-                subpath=subpath,
-                shortname=shortname,
-                class_type=cls,
-                user_shortname=logged_in_user,
-            )
+
+        meta = await db.load(
+            space_name=space_name,
+            subpath=subpath,
+            shortname=shortname,
+            class_type=cls,
+            user_shortname=logged_in_user,
         )
+
         meta.collaborators = meta.collaborators if meta.collaborators else {}
         if meta.collaborators.get("processed_by") != logged_in_user:
             meta.collaborators["processed_by"] = logged_in_user

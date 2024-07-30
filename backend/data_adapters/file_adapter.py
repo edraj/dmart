@@ -347,14 +347,12 @@ class FileAdapter(BaseDataAdapter):
             subpath,
             meta.shortname,
             meta.__class__,
-
             meta.payload.schema_shortname if meta.payload else None,
         )
         payload_file_path = self.payload_path(
             space_name,
             subpath,
             meta.__class__,
-
             meta.payload.schema_shortname if meta.payload else None,
         )
 
@@ -849,80 +847,82 @@ class FileAdapter(BaseDataAdapter):
     ) -> dict:
         if not attachments_path.is_dir():
             return {}
-        print("attachments_path", subpath)
-        print("attachments_path", attachments_path)
-        attachments_iterator = os.scandir(attachments_path)
-        attachments_dict: dict[ResourceType, list] = {}
-        for attachment_entry in attachments_iterator:
-            # TODO: Filter types on the parent attachment type folder layer
-            if not attachment_entry.is_dir():
-                continue
-
-            attachments_files = os.scandir(attachment_entry)
-            for attachments_file in attachments_files:
-                match = regex.ATTACHMENT_PATTERN.search(str(attachments_file.path))
-                if not match or not attachments_file.is_file():
+        try:
+            attachments_iterator = os.scandir(attachments_path)
+            attachments_dict: dict[ResourceType, list] = {}
+            for attachment_entry in attachments_iterator:
+                # TODO: Filter types on the parent attachment type folder layer
+                if not attachment_entry.is_dir():
                     continue
 
-                attach_shortname = match.group(2)
-                attach_resource_name = match.group(1).lower()
-                if filter_shortnames and attach_shortname not in filter_shortnames:
-                    continue
+                attachments_files = os.scandir(attachment_entry)
+                for attachments_file in attachments_files:
+                    match = regex.ATTACHMENT_PATTERN.search(str(attachments_file.path))
+                    if not match or not attachments_file.is_file():
+                        continue
 
-                if filter_types and ResourceType(attach_resource_name) not in filter_types:
-                    continue
+                    attach_shortname = match.group(2)
+                    attach_resource_name = match.group(1).lower()
+                    if filter_shortnames and attach_shortname not in filter_shortnames:
+                        continue
 
-                resource_class = getattr(
-                    sys.modules["models.core"], camel_case(attach_resource_name)
-                )
-                resource_obj = None
-                async with aiofiles.open(attachments_file, "r") as meta_file:
-                    try:
-                        resource_obj = resource_class.model_validate_json(await meta_file.read())
-                    except Exception as e:
-                        raise Exception(
-                            f"Bad attachment ... {attachments_file=}") from e
+                    if filter_types and ResourceType(attach_resource_name) not in filter_types:
+                        continue
 
-                resource_record_obj = resource_obj.to_record(
-                    subpath, attach_shortname, include_fields
-                )
-                if (
-                        retrieve_json_payload
-                        and resource_obj
-                        and resource_record_obj
-                        and resource_obj.payload
-                        and resource_obj.payload.content_type
-                        and resource_obj.payload.content_type == ContentType.json
-                        and Path(
-                    f"{attachment_entry.path}/{resource_obj.payload.body}"
-                ).is_file()
-                ):
-                    async with aiofiles.open(
-                            f"{attachment_entry.path}/{resource_obj.payload.body}", "r"
-                    ) as payload_file_content:
-                        resource_record_obj.attributes["payload"].body = json.loads(
-                            await payload_file_content.read()
-                        )
-
-                if attach_resource_name in attachments_dict:
-                    attachments_dict[ResourceType(attach_resource_name)].append(
-                        resource_record_obj)
-                else:
-                    attachments_dict[ResourceType(attach_resource_name)] = [resource_record_obj]
-            attachments_files.close()
-        attachments_iterator.close()
-
-        # SORT ALTERATION ATTACHMENTS BY ALTERATION.CREATED_AT
-        for attachment_name, attachments in attachments_dict.items():
-            try:
-                if attachment_name == ResourceType.alteration:
-                    attachments_dict[attachment_name] = sorted(
-                        attachments, key=lambda d: d.attributes["created_at"]
+                    resource_class = getattr(
+                        sys.modules["models.core"], camel_case(attach_resource_name)
                     )
-            except Exception as e:
-                logger.error(
-                    f"Invalid attachment entry:{attachments_path / attachment_name}.\
-                Error: {e.args}"
-                )
+                    resource_obj = None
+                    async with aiofiles.open(attachments_file, "r") as meta_file:
+                        try:
+                            resource_obj = resource_class.model_validate_json(await meta_file.read())
+                        except Exception as e:
+                            raise Exception(
+                                f"Bad attachment ... {attachments_file=}") from e
 
-        return attachments_dict
+                    resource_record_obj = resource_obj.to_record(
+                        subpath, attach_shortname, include_fields
+                    )
+                    if (
+                            retrieve_json_payload
+                            and resource_obj
+                            and resource_record_obj
+                            and resource_obj.payload
+                            and resource_obj.payload.content_type
+                            and resource_obj.payload.content_type == ContentType.json
+                            and Path(
+                        f"{attachment_entry.path}/{resource_obj.payload.body}"
+                    ).is_file()
+                    ):
+                        async with aiofiles.open(
+                                f"{attachment_entry.path}/{resource_obj.payload.body}", "r"
+                        ) as payload_file_content:
+                            resource_record_obj.attributes["payload"].body = json.loads(
+                                await payload_file_content.read()
+                            )
+
+                    if attach_resource_name in attachments_dict:
+                        attachments_dict[ResourceType(attach_resource_name)].append(
+                            resource_record_obj)
+                    else:
+                        attachments_dict[ResourceType(attach_resource_name)] = [resource_record_obj]
+                attachments_files.close()
+            attachments_iterator.close()
+
+            # SORT ALTERATION ATTACHMENTS BY ALTERATION.CREATED_AT
+            for attachment_name, attachments in attachments_dict.items():
+                try:
+                    if attachment_name == ResourceType.alteration:
+                        attachments_dict[attachment_name] = sorted(
+                            attachments, key=lambda d: d.attributes["created_at"]
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"Invalid attachment entry:{attachments_path / attachment_name}.\
+                    Error: {e.args}"
+                    )
+            print("attachments_path", attachments_dict)
+            return attachments_dict
+        except Exception as e:
+            print(e)
+            return {}

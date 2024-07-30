@@ -119,7 +119,8 @@ class AccessControl:
         if settings.active_data_db == "file":
             async with RedisServices() as redis_services:
                 user_permissions: dict = await redis_services.get_doc_by_id(
-                    self.generate_user_permission_doc_id(user_shortname))
+                    self.generate_user_permission_doc_id(user_shortname)
+                )
 
                 if not user_permissions:
                     return await self.generate_user_permissions(user_shortname)

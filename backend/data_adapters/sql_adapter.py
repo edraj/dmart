@@ -439,11 +439,13 @@ class SQLAdapter(BaseDataAdapter):
         """Load a Meta Json according to the reuqested Class type"""
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
+
+        shortname = shortname.replace("/", "")
+
         with self.get_session() as session:
             table = self.get_table(class_type)
 
             statement = select(table).where(table.space_name == space_name)
-            print("[@load_or_none]", table, space_name)
             if table in [Roles, Permissions, Users, Spaces]:
                 statement = statement.where(table.shortname == shortname)
             else:
@@ -454,18 +456,15 @@ class SQLAdapter(BaseDataAdapter):
                         == f"{subpath}/attachments.{class_type.__name__.lower()}"
                     )
                 else:
-                    print("[@load_or_none]", table, subpath, shortname)
                     statement = statement.where(table.shortname == shortname).where(table.subpath == subpath)
 
             result = session.exec(statement).one_or_none()
             if result is None:
                 return None
-            print("[@load_or_none]", result)
+
             try:
                 try:
-                    print("[@@load_or_none]", result)
-                    print("[@@load_or_none]", result.payload)
-                    if result.payload and isinstance(result.payload, dict):
+                    if result.payload and result.payload and isinstance(result.payload, dict):
                         result.payload = core.Payload.model_validate(
                             result.payload, strict=False
                         )
@@ -767,13 +766,14 @@ class SQLAdapter(BaseDataAdapter):
                 ]:
                     entity["subpath"] = f"{subpath}/attachments.{meta.__class__.__name__.lower()}"
 
-                if entity["subpath"] != "/" and entity["subpath"].endswith("/"):
-                    entity["subpath"] = entity["subpath"][:-1]
+                if "subpath" in entity:
+                    if entity["subpath"] != "/" and entity["subpath"].endswith("/"):
+                        entity["subpath"] = entity["subpath"][:-1]
+                    entity["subpath"] = subpath_checker(entity["subpath"])
 
                 try:
                     entity['resource_type'] = meta.__class__.__name__.lower()
                     data = self.get_base_model(meta.__class__, entity)
-                    data.subpath = subpath_checker(data.subpath)
                     session.add(data)
                     session.commit()
                 except Exception as e:
@@ -1135,8 +1135,7 @@ class SQLAdapter(BaseDataAdapter):
                 case LockAction.lock:
                     statement = select(Locks).where(Locks.space_name == space_name) \
                         .where(Locks.subpath == subpath) \
-                        .where(Locks.shortname == shortname) \
-                        .where(Locks.owner_shortname == user_shortname)
+                        .where(Locks.shortname == shortname)
                     result = session.exec(statement).one_or_none()
                     if result:
                         raise api.Exception(
