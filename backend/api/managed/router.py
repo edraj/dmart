@@ -2126,12 +2126,14 @@ async def lock_entry(
     if resource_type == ResourceType.ticket:
         cls = getattr(sys.modules["models.core"], camel_case(resource_type))
 
-        meta = await db.load(
-            space_name=space_name,
-            subpath=subpath,
-            shortname=shortname,
-            class_type=cls,
-            user_shortname=logged_in_user,
+        meta = core.Ticket.model_validate(
+            await db.load(
+                space_name=space_name,
+                subpath=subpath,
+                shortname=shortname,
+                class_type=cls,
+                user_shortname=logged_in_user,
+            )
         )
 
         meta.collaborators = meta.collaborators if meta.collaborators else {}
