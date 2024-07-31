@@ -2,7 +2,7 @@ from re import sub as res_sub
 from uuid import uuid4
 from fastapi import APIRouter, Body, Query, Path, status, Depends
 from models.enums import AttachmentType, ContentType, ResourceType, TaskType
-import utils.db as db
+from data_adapters.adapter import data_adapter as db
 import models.api as api
 from utils.helpers import camel_case
 from utils.custom_validations import validate_payload_with_schema
@@ -36,14 +36,8 @@ async def query_entries(query: api.Query) -> api.Response:
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies(
-        "anonymous",
-        query.space_name,
-        query.subpath
-    )
-
     total, records = await repository.serve_query(
-        query, "anonymous", redis_query_policies
+        query, "anonymous"
     )
 
     await plugin_manager.after_action(
@@ -134,7 +128,7 @@ async def retrieve_entry_meta(
         / f"{space_name}/{subpath}/.dm/{shortname}"
     )
     if retrieve_attachments:
-        attachments = await repository.get_entry_attachments(
+        attachments = await db.get_entry_attachments(
             subpath=subpath,
             attachments_path=entry_path,
             retrieve_json_payload=retrieve_json_payload,
@@ -154,7 +148,7 @@ async def retrieve_entry_meta(
             "attachments": attachments
         }
 
-    payload_body = db.load_resource_payload(
+    payload_body = await db.load_resource_payload(
         space_name=space_name,
         subpath=subpath,
         filename=meta.payload.body,
@@ -296,13 +290,8 @@ async def query_via_urlparams(
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies(
-        "anonymous",
-        query.space_name,
-        query.subpath
-    )
     total, records = await repository.serve_query(
-        query, "anonymous", redis_query_policies
+        query, "anonymous"
     )
 
     await plugin_manager.after_action(
@@ -502,7 +491,7 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
             ),
         )
 
-    query_dict: dict[str, Any] = db.load_resource_payload(
+    query_dict: dict[str, Any] = await db.load_resource_payload(
         space_name=space_name,
         subpath=record.subpath,
         filename=str(meta.payload.body),

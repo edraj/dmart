@@ -4,10 +4,12 @@ from enum import Enum
 import re
 import sys
 from models.enums import ContentType
-from utils import db, helpers
+from utils import helpers
+from data_adapters.adapter import data_adapter as db
 from models.core import Meta, Schema
 from utils.repository import internal_sys_update_model
 from utils.settings import settings
+
 
 class FieldType(Enum):
     string = "string"
@@ -76,7 +78,7 @@ async def change_field_type(
                 continue
             
             # 5.1-load payload file
-            resource_payload = db.load_resource_payload(
+            resource_payload = await db.load_resource_payload(
                 space_name=space,
                 subpath=subpath,
                 filename=resource_obj.payload.body,
@@ -131,11 +133,13 @@ async def main(
     """
     
     # 1-load schema
-    schema_model: Schema = await db.load(
-        space_name=space,
-        subpath="schema",
-        shortname=schema,
-        class_type=Schema
+    schema_model: Schema = Schema.model_validate(
+        await db.load(
+            space_name=space,
+            subpath="schema",
+            shortname=schema,
+            class_type=Schema
+        )
     )
     if(
         not schema_model.payload or
@@ -144,7 +148,7 @@ async def main(
     ):
         print(f"Invalid schema file: \n{schema_model.model_dump_json()}")
         return
-    schema_payload: dict = db.load_resource_payload(
+    schema_payload: dict = await db.load_resource_payload(
         space_name=space,
         subpath="schema",
         filename=schema_model.payload.body,

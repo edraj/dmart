@@ -5,7 +5,7 @@ import sys
 
 from models.core import Content, Event
 from models.enums import ActionType
-from utils import db
+from data_adapters.adapter import data_adapter as db
 from utils.settings import settings
 
 CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
@@ -94,8 +94,5 @@ if __name__ == "__main__":
     parser.add_argument("--notification-shortname", help="The shortname of the notification request")
 
     args = parser.parse_args()
-    
-    
-    asyncio.run(main(args.space, args.notification_subpath, args.notification_shortname))
-    
 
+    asyncio.run(main(args.space, args.notification_subpath, args.notification_shortname))

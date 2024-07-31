@@ -12,7 +12,7 @@ import models.api as api
 import models.core as core
 from models.enums import ActionType, RequestType, ResourceType, ContentType
 from utils.custom_validations import validate_uniqueness
-import utils.db as db
+from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
@@ -70,29 +70,9 @@ async def check_existing_user_fields(
     redis_escape_chars = str.maketrans(
         {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
-    async with RedisServices() as redis_man:
-        for key, value in unique_fields.items():
-            if not value:
-                continue
-            value = value.translate(redis_escape_chars).replace("\\\\", "\\")
-            if key == "email_unescaped":
-                value = f"{{{value}}}"
-            redis_search_res = await redis_man.search(
-                space_name=MANAGEMENT_SPACE,
-                search=search_str + f" @{key}:{value}",
-                limit=1,
-                offset=0,
-                filters={},
-            )
 
-            if redis_search_res and redis_search_res["total"] > 0:
-                return api.Response(
-                    status=api.Status.success,
-                    attributes={"unique": False, "field": key},
-                )
-
-    return api.Response(status=api.Status.success, attributes={"unique": True})
-
+    attributes = await repository.check_uniqueness(unique_fields, search_str, redis_escape_chars)
+    return api.Response(status=api.Status.success, attributes=attributes)
 
 
 @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
@@ -197,7 +177,6 @@ async def create_user(record: core.Record) -> api.Response:
 )
 async def login(response: Response, request: UserLoginRequest) -> api.Response:
     """Login and generate refresh token"""
-
     shortname: str | None = None
     user = None
     user_updates: dict[str, Any] = {}
@@ -228,12 +207,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     ),
                 )
 
-            user = await db.load(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                class_type=core.User,
-                user_shortname=shortname,
+            user = core.User.model_validate(
+                await db.load(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    class_type=core.User,
+                    user_shortname=shortname,
+                )
             )
             if (
                 request.shortname != user.shortname
@@ -296,12 +277,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                             message="Invalid username or password [1]",
                         ),
                     )
-            user = await db.load(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                class_type=core.User,
-                user_shortname=shortname,
+            user = core.User.model_validate(
+                await db.load(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    class_type=core.User,
+                    user_shortname=shortname,
+                )
             )
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
         if (
@@ -315,7 +298,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             )
         ):
             record = await process_user_login(user, response, user_updates, request.firebase_token)
-
             await plugin_manager.after_action(
                 core.Event(
                     space_name=MANAGEMENT_SPACE,
@@ -361,21 +343,22 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         )
     )
 
-    user = await db.load(
+    user = core.User.model_validate(await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    )
+    ))
     attributes: dict[str, Any] = {}
     if user.email:
         attributes["email"] = user.email
+
     if user.displayname:
         attributes["displayname"] = user.displayname
     if user.msisdn:
         attributes["msisdn"] = user.msisdn
-    if user.payload:
+    if settings.active_data_db == 'file' and user.payload:
         attributes["payload"] = user.payload
         path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
         if (
@@ -408,7 +391,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         / ".dm"
         / user.shortname
     )
-    user_avatar = await repository.get_entry_attachments(
+    user_avatar = await db.get_entry_attachments(
         subpath=f"{USERS_SUBPATH}/{user.shortname}",
         attachments_path=attachments_path,
         filter_shortnames=["avatar"],
@@ -441,114 +424,117 @@ async def update_profile(
     profile: core.Record, shortname=Depends(JWTBearer())
 ) -> api.Response:
     """Update user profile"""
-
-    profile_user = core.Meta.check_record(
-        record=profile, owner_shortname=profile.shortname
-    )
-    if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="jwtauth",
-                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                message="Invalid username or password",
-            ),
+    try:
+        profile_user = core.Meta.check_record(
+            record=profile, owner_shortname=profile.shortname
         )
-    await plugin_manager.before_action(
-        core.Event(
+        if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="jwtauth",
+                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                    message="Invalid username or password",
+                ),
+            )
+        await plugin_manager.before_action(
+            core.Event(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                action_type=core.ActionType.update,
+                resource_type=ResourceType.user,
+                user_shortname=shortname,
+            )
+        )
+
+        user = core.User.model_validate(await db.load(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
+            class_type=core.User,
             user_shortname=shortname,
-        )
-    )
+        ))
 
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-    )
 
-    old_version_flattend = flatten_dict(user.model_dump())
+        old_version_flattend = flatten_dict(user.model_dump())
 
-    if profile_user.password and "old_password" in profile.attributes:
-        if not password_hashing.verify_password(
-            profile.attributes["old_password"], user.password or ""
-        ):
-            raise api.Exception(
-                status.HTTP_401_UNAUTHORIZED,
-                api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA,
-                          message="mismatch with the information provided"),
-            )
-
-    # if "force_password_change" in profile.attributes:
-    #     user.force_password_change = profile.attributes["force_password_change"]
-
-    if profile_user.password:
-        user.password = password_hashing.hash_password(profile_user.password)
-        user.force_password_change = False
-    if "displayname" in profile.attributes:
-        user.displayname = profile_user.displayname
-    if "language" in profile.attributes:
-        user.language = profile_user.language
-
-    if "confirmation" in profile.attributes:
-        result = None
-        async with RedisServices() as redis_services:
-            if profile_user.email:
-                result = await redis_services.get_content_by_id(
-                    f"users:otp:confirmation/email/{profile_user.email}"
-                )
-            elif profile_user.msisdn:
-                result = await redis_services.get_content_by_id(
-                    f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
+        if profile_user.password and "old_password" in profile.attributes:
+            if not password_hashing.verify_password(
+                profile.attributes["old_password"], user.password or ""
+            ):
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA,
+                              message="mismatch with the information provided"),
                 )
 
-        if result is None or result != profile.attributes["confirmation"]:
-            raise Exception(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
-                          message="Invalid confirmation code [1]"),
-            )
+        # if "force_password_change" in profile.attributes:
+        #     user.force_password_change = profile.attributes["force_password_change"]
 
-        if profile_user.email:
-            user.is_email_verified = True
-        elif profile_user.msisdn:
-            user.is_msisdn_verified = True
-    else:
-        await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update)
-        if "email" in profile.attributes and user.email != profile_user.email:
-            user.email = profile_user.email
-            user.is_email_verified = False
+        if profile_user.password:
+            user.password = password_hashing.hash_password(profile_user.password)
+            user.force_password_change = False
+        if "displayname" in profile.attributes:
+            user.displayname = profile_user.displayname.model_dump()
+        if "description" in profile.attributes:
+            user.description = profile_user.description.model_dump()
+        if "language" in profile.attributes:
+            user.language = profile_user.language
 
-        if profile_user.msisdn and user.msisdn != profile_user.msisdn:
-            user.msisdn = profile_user.msisdn
-            user.is_msisdn_verified = False
+        if "confirmation" in profile.attributes:
+            result = None
 
-        if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
-            separate_payload_data = {}
-            user.payload = core.Payload(
-                content_type=ContentType.json,
-                schema_shortname=profile_user.payload.schema_shortname,
-                body="",
-            )
-            if profile.attributes["payload"]["body"]:
-                separate_payload_data = profile.attributes["payload"]["body"]
-                user.payload.body = shortname + ".json"
-
-            if user.payload and separate_payload_data:
-                if profile_user.payload.schema_shortname:
-                    await validate_payload_with_schema(
-                        payload_data=separate_payload_data,
-                        space_name=MANAGEMENT_SPACE,
-                        schema_shortname=str(user.payload.schema_shortname),
+            async with RedisServices() as redis_services:
+                if profile_user.email:
+                    result = await redis_services.get_content_by_id(
+                        f"users:otp:confirmation/email/{profile_user.email}"
+                    )
+                elif profile_user.msisdn:
+                    result = await redis_services.get_content_by_id(
+                        f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
                     )
 
-            if separate_payload_data:
+            if result is None or result != profile.attributes["confirmation"]:
+                raise Exception(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
+                              message="Invalid confirmation code [1]"),
+                )
+
+            if profile_user.email:
+                user.is_email_verified = True
+            elif profile_user.msisdn:
+                user.is_msisdn_verified = True
+        else:
+            await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update)
+            if "email" in profile.attributes and user.email != profile_user.email:
+                user.email = profile_user.email
+                user.is_email_verified = False
+
+            if profile_user.msisdn and user.msisdn != profile_user.msisdn:
+                user.msisdn = profile_user.msisdn
+                user.is_msisdn_verified = False
+
+            if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
+                separate_payload_data = {}
+                user.payload = core.Payload(
+                    content_type=ContentType.json,
+                    schema_shortname=profile_user.payload.schema_shortname,
+                    body="",
+                )
+                if profile.attributes["payload"]["body"]:
+                    separate_payload_data = profile.attributes["payload"]["body"]
+                    user.payload.body = shortname + ".json"
+
+                if user.payload and separate_payload_data:
+                    if profile_user.payload.schema_shortname:
+                        await validate_payload_with_schema(
+                            payload_data=separate_payload_data,
+                            space_name=MANAGEMENT_SPACE,
+                            schema_shortname=str(user.payload.schema_shortname),
+                        )
+
                 await db.save_payload_from_json(
                     MANAGEMENT_SPACE,
                     USERS_SUBPATH,
@@ -556,29 +542,30 @@ async def update_profile(
                     separate_payload_data,
                 )
 
-    history_diff = await db.update(
-        MANAGEMENT_SPACE,
-        USERS_SUBPATH,
-        user,
-        old_version_flattend,
-        flatten_dict(user.model_dump()),
-        list(profile.attributes.keys()),
-        shortname,
-        retrieve_lock_status=profile.retrieve_lock_status,
-    )
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-            attributes={"history_diff": history_diff},
+        history_diff = await db.update(
+            MANAGEMENT_SPACE,
+            USERS_SUBPATH,
+            user,
+            old_version_flattend,
+            flatten_dict(user.model_dump()),
+            list(profile.attributes.keys()),
+            shortname,
+            retrieve_lock_status=profile.retrieve_lock_status,
         )
-    )
 
+        await plugin_manager.after_action(
+            core.Event(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                action_type=core.ActionType.update,
+                resource_type=ResourceType.user,
+                user_shortname=shortname,
+                attributes={"history_diff": history_diff},
+            )
+        )
+    except api.Exception as e:
+        print(e)
     return api.Response(status=api.Status.success)
 
 
@@ -608,12 +595,14 @@ async def logout(
     await remove_redis_active_session(shortname)
     await remove_redis_user_session(shortname)
 
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
+    user = core.User.model_validate(
+        await db.load(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            class_type=core.User,
+            user_shortname=shortname,
+        )
     )
     if user.firebase_token:
         await repository.internal_sys_update_model(
@@ -682,13 +671,13 @@ async def otp_request(
     """Request new OTP"""
 
     result = user_request.check_fields()
-    user = await db.load(
+    user = core.User.model_validate(await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    )
+    ))
     exception = api.Exception(
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
@@ -741,13 +730,13 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             ),
         )
 
-    user = await db.load(
+    user = core.User.model_validate(await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    )
+    ))
 
     old_version_flattend = flatten_dict(user.model_dump())
     user.force_password_change = True
@@ -898,12 +887,14 @@ async def user_reset(
     logged_user=Depends(JWTBearer()),
 ) -> api.Response:
 
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
+    user = core.User.model_validate(
+        await db.load(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            class_type=core.User,
+            user_shortname=shortname,
+        )
     )
     if not await access_control.check_access(
         user_shortname=logged_user,
@@ -987,8 +978,10 @@ async def validate_password(
     password: str, shortname=Depends(JWTBearer())
 ) -> api.Response:
     """Validate Password"""
-    user = await db.load(
-        MANAGEMENT_SPACE, USERS_SUBPATH, shortname, core.User, shortname
+    user = core.User.model_validate(
+        await db.load(
+            MANAGEMENT_SPACE, USERS_SUBPATH, shortname, core.User, shortname
+        )
     )
     if user and password_hashing.verify_password(password, user.password or ""):
         return api.Response(status=api.Status.success)

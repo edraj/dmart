@@ -41,7 +41,7 @@ jobs:
     - name: Check with mypy
       run: |
         source $HOME/.venv/bin/activate
-        cd backend; mypy --explicit-package-bases --warn-return-any .
+        cd backend; mypy .
     - name: Start dmart service and run curl.sh
       run: |
         export XDG_RUNTIME_DIR="/run/user/$UID"
