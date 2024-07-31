@@ -3,7 +3,7 @@ from models.core import ActionType, Attachment, PluginBase, Event, Space
 from utils.helpers import camel_case
 from utils.repository import generate_payload_string
 from utils.spaces import get_spaces
-import utils.db as db
+from data_adapters.adapter import data_adapter as db
 from models import core
 from models.enums import ContentType, ResourceType
 from utils.redis_services import RedisServices
@@ -11,8 +11,12 @@ from fastapi.logger import logger
 from create_index import main as reload_redis
 from utils.settings import settings
 
+
 class Plugin(PluginBase):
     async def hook(self, data: Event):
+        if settings.active_data_db == "sql":
+            return
+
         self.data = data
         # Type narrowing for PyRight
         if (
@@ -98,10 +102,10 @@ class Plugin(PluginBase):
                     and meta.payload.content_type == ContentType.json
                     and meta.payload.body is not None
                 ):
-                    payload = db.load_resource_payload(
+                    payload = await db.load_resource_payload(
                         space_name=data.space_name,
                         subpath=data.subpath,
-                        filename=meta.payload.body,
+                        filename=str(meta.payload.body),
                         class_type=class_type,
                     )
 

@@ -4,9 +4,14 @@ from utils.redis_services import RedisServices
 from utils.repository import internal_save_model
 from fastapi.logger import logger
 
+from utils.settings import settings
+
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
+        if settings.active_data_db == "sql":
+            return
+
         # Type narrowing for PyRight
         if (
             not isinstance(data.shortname, str)

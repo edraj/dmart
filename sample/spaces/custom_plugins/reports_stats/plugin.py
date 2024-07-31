@@ -2,7 +2,7 @@ from os import scandir
 from re import sub
 from models.core import PluginBase, Event
 from utils.access_control import access_control
-from utils.db import load, load_resource_payload
+from data_adapters.adapter import data_adapter as db
 from models.core import Content
 from models.api import Query
 from utils.repository import get_last_updated_entry, serve_query, internal_sys_update_model
@@ -29,7 +29,7 @@ class Plugin(PluginBase):
             subpath, class_type = "reports", Content
 
             try:
-                report_meta = await load(
+                report_meta = await db.load(
                     space_name=data.space_name,
                     subpath=subpath,
                     shortname=shortname,  # type: ignore
@@ -37,7 +37,7 @@ class Plugin(PluginBase):
                     user_shortname=data.user_shortname,
                 )
 
-                report_payload = load_resource_payload(
+                report_payload = await db.load_resource_payload(
                     space_name=data.space_name,
                     subpath=subpath,
                     filename=report_meta.payload.body,  # type: ignore

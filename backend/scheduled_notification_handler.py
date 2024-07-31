@@ -2,13 +2,12 @@
 from datetime import datetime, timedelta
 import json
 from models.core import Content, Notification, NotificationData, Translation
-from utils.db import load as load_meta
+from data_adapters.adapter import data_adapter as db
 from utils.notification import NotificationManager
 from utils.redis_services import RedisServices
 from utils.repository import (
     internal_save_model,
     internal_sys_update_model,
-    get_entry_attachments,
 )
 from utils.settings import settings
 from fastapi.logger import logger
@@ -78,13 +77,17 @@ async def trigger_admin_notifications() -> None:
                         ),
                     )
 
-            notification_meta = await load_meta(
+            notification_meta = await db.load_or_none(
                 settings.management_space,
                 notification_dict["subpath"],
                 notification_dict["shortname"],
                 Content,
                 notification_dict["owner_shortname"],
             )
+
+            if notification_meta is None:
+                return
+
             await internal_sys_update_model(
                 settings.management_space,
                 notification_dict["subpath"],
@@ -105,7 +108,7 @@ async def prepare_request(notification_dict) -> dict:
         / f"{settings.management_space}"
         f"/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
     )
-    notification_attachments = await get_entry_attachments(
+    notification_attachments = await db.get_entry_attachments(
         subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
         attachments_path=attachments_path,
     )

@@ -1,5 +1,7 @@
 import json
 from sys import modules as sys_modules
+
+from models import api
 from models.enums import ContentType
 from models.core import (
     ActionType,
@@ -10,16 +12,11 @@ from models.core import (
     Translation,
 )
 from utils.notification import NotificationManager
-
-# from plugins.web_notification import WebNotifier, websocket_push
 from utils.helpers import camel_case, replace_message_vars
-
-# from utils.notification import NotificationContext, send_notification
-from utils.redis_services import RedisServices
-from utils.repository import internal_save_model, get_entry_attachments, get_group_users
+from utils.repository import internal_save_model, get_group_users
 from utils.settings import settings
 from fastapi.logger import logger
-from utils.db import load, load_resource_payload
+from data_adapters.adapter import data_adapter as db
 
 
 class Plugin(PluginBase):
@@ -42,7 +39,7 @@ class Plugin(PluginBase):
             entry = data.attributes["entry"].model_dump()
         else:
             entry = (
-                await load(
+                await db.load(
                     data.space_name,
                     data.subpath,
                     data.shortname,
@@ -56,7 +53,7 @@ class Plugin(PluginBase):
                 and entry["payload"]["body"]
             ):
                 try:
-                    entry["payload"]["body"] = load_resource_payload(
+                    entry["payload"]["body"] = await db.load_resource_payload(
                         space_name=data.space_name,
                         subpath=data.subpath,
                         filename=entry["payload"]["body"],
@@ -72,17 +69,18 @@ class Plugin(PluginBase):
 
         # 1- get the matching SystemNotificationRequests
         search_subpaths = list(filter(None, data.subpath.split("/")))
-        async with await RedisServices() as redis:
-            matching_notification_requests = await redis.search(
-                space_name=settings.management_space,
-                schema_name="system_notification_request",
-                filters={"subpath": ["notifications/system"]},
-                limit=30,
-                offset=0,
-                search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
-            )
-        if not matching_notification_requests.get("data", {}):
+        total, matching_notification_requests = await db.query(api.Query(
+            space_name=settings.management_space,
+            subpath="notifications/system",
+            search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
+            limit=30,
+            offset=0
+        ))
+
+        if total == 0:
             return
+
+        matching_notification_requests = matching_notification_requests[0].model_dump()
 
         # 2- get list of subscribed users
         notification_subscribers = [entry["owner_shortname"]]
@@ -99,16 +97,15 @@ class Plugin(PluginBase):
             notification_subscribers.remove(data.user_shortname)
 
         users_objects: dict[str, dict] = {}
+
         for subscriber in notification_subscribers:
-            async with RedisServices() as redis:
-                users_objects[subscriber] = await redis.get_doc_by_id(
-                    redis.generate_doc_id(
-                        settings.management_space,
-                        "meta",
-                        subscriber,
-                        settings.users_subpath,
-                    )
-                )
+            users_objects[subscriber] = (await db.load(
+                settings.management_space,
+                settings.users_subpath,
+                subscriber,
+                getattr(sys_modules["models.core"], camel_case("user")),
+                data.user_shortname,
+            )).model_dump()
 
         # 3- send the notification
         notification_manager = NotificationManager()
@@ -160,7 +157,7 @@ class Plugin(PluginBase):
             / f"{settings.management_space}"
             f"/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
-        notification_attachments = await get_entry_attachments(
+        notification_attachments = await db.get_entry_attachments(
             subpath=f"{notification_dict['subpath']}/{notification_dict['shortname']}",
             attachments_path=attachments_path,
         )
