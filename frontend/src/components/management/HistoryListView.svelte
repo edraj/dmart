@@ -191,41 +191,41 @@
                 <td>
                   <ul>
                     <li>
-                      <b>Owner shortname: </b>{row["attributes"][
+                      <b>Owner shortname: </b><br>{row["attributes"][
                         "owner_shortname"
                       ]}
                     </li>
                     <li>
-                      <b>Created At: </b>{row["attributes"]["created_at"]}
+                      <b>Created At: </b><br>{row["attributes"]["created_at"]}
                     </li>
                   </ul>
                 </td>
                 <td>
                   <ul>
                     {#each Object.entries(parseRequestHeader(row["attributes"]["request_headers"])) as [k, v]}
-                      <li><b>{k}: </b>{v}</li>
+                      <li><b>{k}: </b><br>{v}</li>
                     {/each}
                   </ul>
                 </td>
                 <td>
                   {#each Object.entries(parseDiff(row["attributes"]["diff"])) as [k, v]}
                     <ul>
-                      <li><b>Field: </b>{k}</li>
+                      <li><b>Field: </b><br>{k}</li>
                       <li>
                         <b
                           >Old:
-                        </b>{returnASmallStupidValueCuzSvelteCantCastInMarkup(
+                        </b><br>{returnASmallStupidValueCuzSvelteCantCastInMarkup(
                           v,
                           "old"
-                        )}
+                      )}
                       </li>
                       <li>
                         <b
                           >New:
-                        </b>{returnASmallStupidValueCuzSvelteCantCastInMarkup(
+                        </b><br>{returnASmallStupidValueCuzSvelteCantCastInMarkup(
                           v,
                           "new"
-                        )}
+                      )}
                       </li>
                     </ul>
                   {/each}

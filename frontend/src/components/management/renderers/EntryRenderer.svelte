@@ -869,10 +869,10 @@
                 ? structuredClone(jseModalContent.json)
                 : JSON.parse(jseModalContent.text);
             // }
-            if (!!body.query.type === false) {
+            if (body.query && !!body.query.type === false) {
                 body.query.type = "search";
             }
-            if (!!body.sort_type === false) {
+            if (body.sort_type && !!body.sort_type === false) {
                 body.sort_type = "ascending";
             }
             request_body = {
