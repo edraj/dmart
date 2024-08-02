@@ -65,7 +65,9 @@ class Settings(BaseSettings):
     ldap_root_dn: str = ""
     ldap_pass: str = ""
     max_query_limit: int = 10000
-    session_inactivity_ttl: int = 60 * 10
+    session_inactivity_ttl: int = 60 * 60 * 24 * 7  # 7 days
+
+    url_shorter_expires: int = 60 * 60 * 48  # 48 hours
 
     google_client_id: str = ""
     google_client_secret: str = ""

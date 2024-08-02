@@ -16,3 +16,4 @@ asgi-correlation-id
 pydantic-settings
 fastapi-sso >= 0.9.1
 sqlmodel
+psycopg2-binary

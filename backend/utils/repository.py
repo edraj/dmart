@@ -1603,13 +1603,16 @@ async def get_entry_by_var(
 
 async def url_shortner(url: str) -> str:
     token_uuid = str(uuid4())[:8]
-    async with RedisServices() as redis_services:
-        await redis_services.set_key(
-            f"short/{token_uuid}",
-            url,
-            ex=60 * 60 * 48,
-            nx=False,
-        )
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis_services:
+            await redis_services.set_key(
+                f"short/{token_uuid}",
+                url,
+                ex=settings.url_shorter_expires,
+                nx=False,
+            )
+    else:
+        await db.set_url_shortner(token_uuid, url)
 
     return f"{settings.public_app_url}/managed/s/{token_uuid}"
 
@@ -1633,11 +1636,14 @@ async def store_user_invitation_token(user: core.User, channel: str) -> str | No
         {"shortname": user.shortname, "channel": channel},
         settings.jwt_access_expires,
     )
-    async with RedisServices() as redis_services:
-        await redis_services.set_key(
-            f"users:login:invitation:{invitation_token}",
-            invitation_value
-        )
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis_services:
+            await redis_services.set_key(
+                f"users:login:invitation:{invitation_token}",
+                invitation_value
+            )
+    else:
+        await db.set_invitation(invitation_token, invitation_value)
 
     return core.User.invitation_url_template() \
         .replace("{url}", settings.invitation_link) \

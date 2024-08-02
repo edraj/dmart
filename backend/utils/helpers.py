@@ -28,14 +28,13 @@ def flatten_all(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict
     return dict(items)
 
 
-def flatten_dict(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict:
-    items: list = []
+def flatten_dict(d):
+    items = []
     for k, v in d.items():
-        new_key = parent_key + sep + k if parent_key else k
-        if isinstance(v, MutableMapping):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v).items())
         else:
-            items.append((new_key, v))
+            items.append((k, v))
     return dict(items)
 
 

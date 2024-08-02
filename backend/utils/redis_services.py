@@ -212,7 +212,7 @@ class RedisServices(Redis):
         "view_acl",
     ]
     redis_indices: dict[str, dict[str, Search]] = {}
-    POOL: BlockingConnectionPool= BlockingConnectionPool(
+    POOL: BlockingConnectionPool = BlockingConnectionPool(
                             timeout=10,
                             host=settings.redis_host,
                             port=settings.redis_port,

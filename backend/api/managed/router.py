@@ -32,7 +32,7 @@ from models.enums import (
 import utils.regex as regex
 import sys
 import json
-from utils.jwt import JWTBearer, GetJWTToken, remove_redis_active_session
+from utils.jwt import JWTBearer, GetJWTToken, remove_active_session
 from utils.access_control import access_control
 from utils.spaces import initialize_spaces
 from typing import Any
@@ -141,10 +141,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
     )
 
-    redis_query_policies = await access_control.get_user_query_policies(
-        user_shortname, query.space_name, query.subpath
-    )
-
     folder = await db.load(
         query.space_name,
         '/',
@@ -165,76 +161,79 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     keys: list = [i["name"] for i in folder_views]
     keys_existence = dict(zip(keys, [False for _ in range(len(keys))]))
-    search_res, _ = await repository.redis_query_search(query, user_shortname, redis_query_policies)
+
+
+    # if settings.active_data_db == 'file':
+    #     _, search_res = await db.query(query, user_shortname)
+    # else:
+    #     _, search_res = await db.query(query, user_shortname)
+    #     docs_dicts = [search_re.model_dump() for search_re in search_res]
+
+    _, search_res = await repository.serve_query(
+        query, user_shortname,
+    )
+
+    docs_dicts = [search_re.model_dump() for search_re in search_res]
+
     json_data = []
     timestamp_fields = ["created_at", "updated_at"]
     new_keys: set = set()
     deprecated_keys: set = set()
-    async with RedisServices() as redis_services:
-        for redis_document in search_res:
-            redis_doc_dict = json.loads(redis_document)
-            if (
-                    redis_doc_dict.get("payload_doc_id")
-                    and query.retrieve_json_payload
-            ):
-                payload_doc_content = await redis_services.get_payload_doc(
-                    redis_doc_dict["payload_doc_id"], redis_doc_dict["resource_type"]
-                )
-                redis_doc_dict.update(payload_doc_content)
 
-            rows: list[dict] = [{}]
-            flattened_doc = flatten_dict(redis_doc_dict)
-            for folder_view in folder_views:
-                column_key = folder_view.get("key")
-                column_title = folder_view.get("name")
-                attribute_val = flattened_doc.get(column_key)
-                if attribute_val:
-                    keys_existence[column_title] = True
-                """
-                Extract array items in a separate row per item
-                - list_new_rows = []
-                - for row in rows:
-                -      for item in new_list[1:]:
-                -          new_row = row
-                -          add item attributes to the new_row
-                -          list_new_rows.append(new_row)
-                -      add new_list[0] attributes to row
-                -    
-                -  rows += list_new_rows
-                """
-                if isinstance(attribute_val, list) and len(attribute_val) > 0:
-                    list_new_rows: list[dict] = []
-                    # Duplicate old rows
-                    for row in rows:
-                        # New row for each item
-                        for item in attribute_val[1:]:
-                            new_row = copy(row)
-                            # New cell for each item's attribute
-                            if isinstance(item, dict):
-                                for k, v in item.items():
-                                    new_row[f"{column_title}.{k}"] = v
-                                    new_keys.add(f"{column_title}.{k}")
-                            else:
-                                new_row[column_title] = item
-
-                            list_new_rows.append(new_row)
-                        # Add first items's attribute to the existing rows
-                        if isinstance(attribute_val[0], dict):
-                            deprecated_keys.add(column_title)
-                            for k, v in attribute_val[0].items():
-                                row[f"{column_title}.{k}"] = v
+    for redis_document in docs_dicts:
+        rows: list[dict] = [{}]
+        flattened_doc = flatten_dict(redis_document)
+        for folder_view in folder_views:
+            column_key = folder_view.get("key")
+            column_title = folder_view.get("name")
+            attribute_val = flattened_doc.get(column_key)
+            if attribute_val:
+                keys_existence[column_title] = True
+            """
+            Extract array items in a separate row per item
+            - list_new_rows = []
+            - for row in rows:
+            -      for item in new_list[1:]:
+            -          new_row = row
+            -          add item attributes to the new_row
+            -          list_new_rows.append(new_row)
+            -      add new_list[0] attributes to row
+            -    
+            -  rows += list_new_rows
+            """
+            if isinstance(attribute_val, list) and len(attribute_val) > 0:
+                list_new_rows: list[dict] = []
+                # Duplicate old rows
+                for row in rows:
+                    # New row for each item
+                    for item in attribute_val[1:]:
+                        new_row = copy(row)
+                        # New cell for each item's attribute
+                        if isinstance(item, dict):
+                            for k, v in item.items():
+                                new_row[f"{column_title}.{k}"] = v
                                 new_keys.add(f"{column_title}.{k}")
                         else:
-                            row[column_title] = attribute_val[0]
-                    rows += list_new_rows
+                            new_row[column_title] = item
 
-                elif attribute_val and not isinstance(attribute_val, list):
-                    new_col = attribute_val if column_key not in timestamp_fields else \
-                        datetime.fromtimestamp(attribute_val).strftime(
-                            '%Y-%m-%d %H:%M:%S')
-                    for row in rows:
-                        row[column_title] = new_col
-            json_data += rows
+                        list_new_rows.append(new_row)
+                    # Add first items's attribute to the existing rows
+                    if isinstance(attribute_val[0], dict):
+                        deprecated_keys.add(column_title)
+                        for k, v in attribute_val[0].items():
+                            row[f"{column_title}.{k}"] = v
+                            new_keys.add(f"{column_title}.{k}")
+                    else:
+                        row[column_title] = attribute_val[0]
+                rows += list_new_rows
+
+            elif attribute_val and not isinstance(attribute_val, list):
+                new_col = attribute_val if column_key not in timestamp_fields else \
+                    datetime.fromtimestamp(attribute_val).strftime(
+                        '%Y-%m-%d %H:%M:%S')
+                for row in rows:
+                    row[column_title] = new_col
+        json_data += rows
 
     # Sort all entries from all schemas
     if query.sort_by in core.Meta.model_fields and len(query.filter_schema_names) > 1:
@@ -419,14 +418,14 @@ async def serve_space(
                     ),
                 )
             await repository.delete_space(request.space_name, record, owner_shortname)
-
-            async with RedisServices() as redis_services:
-                x = await redis_services.list_indices()
-                if x:
-                    indices: list[str] = x
-                    for index in indices:
-                        if index.startswith(f"{request.space_name}:"):
-                            await redis_services.drop_index(index, True)
+            if settings.active_data_db == 'file':
+                async with RedisServices() as redis_services:
+                    x = await redis_services.list_indices()
+                    if x:
+                        indices: list[str] = x
+                        for index in indices:
+                            if index.startswith(f"{request.space_name}:"):
+                                await redis_services.drop_index(index, True)
 
         case _:
             raise api.Exception(
@@ -878,7 +877,7 @@ async def serve_request(
                         isinstance(resource_obj, core.User) and
                         record.attributes.get("is_active") is False
                 ):
-                    await remove_redis_active_session(record.shortname)
+                    await remove_active_session(record.shortname)
 
                 records.append(
                     resource_obj.to_record(
@@ -2265,7 +2264,8 @@ async def cancel_lock(
 
 @router.get("/reload-security-data")
 async def reload_security_data(_=Depends(JWTBearer())):
-    await access_control.load_permissions_and_roles()
+    if settings.active_data_db == "file":
+        await access_control.load_permissions_and_roles()
 
     return api.Response(status=api.Status.success)
 
@@ -2343,9 +2343,15 @@ async def execute(
 async def shoting_url(
         token: str,
 ):
-    async with RedisServices() as redis_services:
-        if url := await redis_services.get_key(f"short/{token}"):
-            return RedirectResponse(url)
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis_services:
+            if url := await redis_services.get_key(f"short/{token}"):
+                return RedirectResponse(url=url)
+            else:
+                return RedirectResponse(url="/frontend")
+    else:
+        if url := await db.get_url_shortner(token):
+            return RedirectResponse(url=url)
         else:
             return RedirectResponse(url="/frontend")
 
