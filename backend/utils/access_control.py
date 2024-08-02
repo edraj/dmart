@@ -23,41 +23,42 @@ class AccessControl:
     users: dict[str, User] = {}
 
     async def load_permissions_and_roles(self) -> None:
-        management_path = settings.spaces_folder / settings.management_space
+        if settings.active_data_db == "file":
+            management_path = settings.spaces_folder / settings.management_space
 
-        management_modules: dict[str, type[core.Meta]] = {
-            "groups": core.Group,
-            "roles": core.Role,
-            "permissions": core.Permission
-        }
+            management_modules: dict[str, type[core.Meta]] = {
+                "groups": core.Group,
+                "roles": core.Role,
+                "permissions": core.Permission
+            }
 
-        for module_name, module_value in management_modules.items():
-            self_module = getattr(self, module_name)
-            self_module = {}
-            path = management_path / module_name
-            entries_glob = ".dm/*/meta.*.json"
-            for one in path.glob(entries_glob):
-                match = FILE_PATTERN.search(str(one))
-                if not match or not one.is_file():
-                    continue
-                shortname = match.group(1)
-                try:
-                    resource_obj: core.Meta = await db.load(
-                        settings.management_space,
-                        module_name,
-                        shortname,
-                        module_value,
-                        "anonymous",
-                    )
-                    if resource_obj.is_active:
-                        self_module[shortname] = resource_obj  # store in redis doc
-                except Exception as ex:
-                    print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
-                    raise ex
+            for module_name, module_value in management_modules.items():
+                self_module = getattr(self, module_name)
+                self_module = {}
+                path = management_path / module_name
+                entries_glob = ".dm/*/meta.*.json"
+                for one in path.glob(entries_glob):
+                    match = FILE_PATTERN.search(str(one))
+                    if not match or not one.is_file():
+                        continue
+                    shortname = match.group(1)
+                    try:
+                        resource_obj: core.Meta = await db.load(
+                            settings.management_space,
+                            module_name,
+                            shortname,
+                            module_value,
+                            "anonymous",
+                        )
+                        if resource_obj.is_active:
+                            self_module[shortname] = resource_obj  # store in redis doc
+                    except Exception as ex:
+                        print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
+                        raise ex
 
-        await self.create_user_premission_index()
-        await self.store_modules_to_redis()
-        await self.delete_user_permissions_map_in_redis()
+            await self.create_user_premission_index()
+            await self.store_modules_to_redis()
+            await self.delete_user_permissions_map_in_redis()
 
     async def create_user_premission_index(self) -> None:
         async with RedisServices() as redis_services:

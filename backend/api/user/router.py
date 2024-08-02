@@ -17,7 +17,7 @@ from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import JWTBearer, remove_redis_active_session, remove_redis_user_session, sign_jwt, decode_jwt
+from utils.jwt import JWTBearer, remove_active_session, remove_user_session, sign_jwt, decode_jwt
 from typing import Any
 from utils.settings import settings
 import utils.repository as repository
@@ -183,11 +183,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     identifier = request.check_fields()
     try:
         if request.invitation:
-            async with RedisServices() as redis_services:
-                # FIXME invitation_token = await redis_services.getdel_key(
-                invitation_token = await redis_services.get_key(
-                    f"users:login:invitation:{request.invitation}"
-                )
+            if settings.active_data_db == "file":
+                async with RedisServices() as redis_services:
+                    # FIXME invitation_token = await redis_services.getdel_key(
+                    invitation_token = await redis_services.get_key(
+                        f"users:login:invitation:{request.invitation}"
+                    )
+            else:
+                invitation_token = await db.get_invitation_token(request.invitation)
             if not invitation_token:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -592,8 +595,8 @@ async def logout(
     response.set_cookie(value="", max_age=0, key="auth_token",
                         httponly=True, secure=True, samesite="none")
 
-    await remove_redis_active_session(shortname)
-    await remove_redis_user_session(shortname)
+    await remove_active_session(shortname)
+    await remove_user_session(shortname)
 
     user = core.User.model_validate(
         await db.load(
@@ -640,8 +643,8 @@ async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
     )
     await db.delete(MANAGEMENT_SPACE, USERS_SUBPATH, user, shortname)
 
-    await remove_redis_active_session(shortname)
-    await remove_redis_user_session(shortname)
+    await remove_active_session(shortname)
+    await remove_user_session(shortname)
 
     await plugin_manager.after_action(
         core.Event(
