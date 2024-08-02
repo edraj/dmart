@@ -217,6 +217,27 @@ class Locks(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
+class Sessions(SQLModel, table=True):
+    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    shortname: str = Field(regex=regex.SHORTNAME)
+    token: str = Field(...)
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class Invitations(SQLModel, table=True):
+    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    invitation_token: str = Field(...)
+    invitation_value: str = Field(...)
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class URLShorts(SQLModel, table=True):
+    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    token_uuid: str = Field(...)
+    url: str = Field(...)
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
 def generate_tables():
     postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
     engine = create_engine(postgresql_url, echo=True)

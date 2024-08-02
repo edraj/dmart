@@ -228,3 +228,36 @@ class BaseDataAdapter(ABC):
             retrieve_json_payload: bool = False,
     ) -> dict:
         pass
+
+    async def set_sql_active_session(self, user_shortname: str, token: str) -> bool:
+        pass
+
+    async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
+        pass
+
+    async def get_sql_active_session(self, user_shortname: str):
+        pass
+
+    async def get_sql_user_session(self, user_shortname: str):
+        pass
+
+    async def remove_sql_active_session(self, user_shortname: str) -> bool:
+        pass
+
+    async def remove_sql_user_session(self, user_shortname: str) -> bool:
+        pass
+
+    async def set_invitation(self, user_shortname: str, token):
+        pass
+
+    async def get_invitation_token(self, token: str):
+        pass
+
+    async def set_url_shortner(self, token_uuid: str, url: str) -> bool:
+        pass
+
+    async def get_url_shortner(self, token_uuid: str) -> str:
+        pass
+
+    async def delete_url_shortner(self, token_uuid: str) -> bool:
+        pass

@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from copy import copy
 from datetime import datetime
 from pathlib import Path
@@ -29,7 +30,9 @@ from utils.database.create_tables import (
     Spaces,
     Attachments,
     Aggregated,
-    Locks, Tickets,
+    Locks,
+    Tickets,
+    Sessions, Invitations, URLShorts
 )
 from utils.helpers import (
     arr_remove_common,
@@ -37,6 +40,7 @@ from utils.helpers import (
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
+from utils.password_hashing import hash_password
 from utils.settings import settings
 from .base_data_adapter import BaseDataAdapter
 
@@ -464,7 +468,9 @@ class SQLAdapter(BaseDataAdapter):
 
             try:
                 try:
-                    if result.payload and result.payload and isinstance(result.payload, dict):
+                    if hasattr(result, 'payload') and result.payload and isinstance(result.payload, dict):
+                        if result.payload.get("body", None) is None:
+                            result.payload["body"] = {}
                         result.payload = core.Payload.model_validate(
                             result.payload, strict=False
                         )
@@ -1183,3 +1189,131 @@ class SQLAdapter(BaseDataAdapter):
             return None
         return core.Space.validate(space)
 
+    async def set_sql_active_session(self, user_shortname: str, token: str) -> bool:
+        return True
+
+    async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
+        with self.get_session() as session:
+            try:
+                last_session = self.get_sql_user_session(user_shortname)
+                if last_session is not None:
+                    await self.remove_sql_user_session(user_shortname)
+                timestamp = datetime.now()
+                session.add(
+                    Sessions(
+                        uuid=uuid4(),
+                        shortname=user_shortname,
+                        token=hash_password(token),
+                        timestamp=timestamp,
+                    )
+                )
+                session.commit()
+                return True
+            except Exception as e:
+                print("[!set_sql_active_session]", e)
+                return False
+
+    async def get_sql_active_session(self, user_shortname: str):
+        return True
+
+    async def get_sql_user_session(self, user_shortname: str):
+        with self.get_session() as session:
+            statement = select(Sessions).where(Sessions.shortname == user_shortname)
+
+            result = session.exec(statement).one_or_none()
+            if result is None:
+                return None
+
+            user_session = Sessions.model_validate(result)
+
+            if settings.jwt_access_expires + user_session.timestamp.timestamp() < time.time():
+                await self.remove_sql_user_session(user_shortname)
+                return None
+            return user_session.token
+
+    async def remove_sql_active_session(self, user_shortname: str) -> bool:
+        return True
+
+    async def remove_sql_user_session(self, user_shortname: str) -> bool:
+        with self.get_session() as session:
+            try:
+                statement = delete(Sessions).where(Sessions.shortname == user_shortname)
+                session.exec(statement)
+                session.commit()
+                return True
+            except Exception as e:
+                print("[!remove_sql_user_session]", e)
+                return False
+
+    async def set_invitation(self, invitation_token: str, invitation_value):
+        with self.get_session() as session:
+            timestamp = datetime.now()
+            try:
+                session.add(
+                    Invitations(
+                        uuid=uuid4(),
+                        invitation_token=invitation_token,
+                        invitation_value=invitation_value,
+                        timestamp=timestamp,
+                    )
+                )
+                session.commit()
+            except Exception as e:
+                print("[!set_sql_active_session]", e)
+
+    async def get_invitation_token(self, invitation_token: str):
+        with self.get_session() as session:
+            statement = select(Invitations).where(Invitations.invitation_token == invitation_token)
+
+            result = session.exec(statement).one_or_none()
+            if result is None:
+                return None
+
+            user_session = Invitations.model_validate(result)
+
+            statement = delete(Invitations).where(Invitations.invitation_token == invitation_token)
+            session.exec(statement)
+            session.commit()
+
+            return user_session.invitation_value
+
+    async def set_url_shortner(self, token_uuid: str, url: str) -> bool:
+        with self.get_session() as session:
+            try:
+                session.add(
+                    URLShorts(
+                        uuid=uuid4(),
+                        token_uuid=token_uuid,
+                        url=url,
+                        timestamp=datetime.now(),
+                    )
+                )
+                session.commit()
+            except Exception as e:
+                print("[!set_sql_active_session]", e)
+
+    async def get_url_shortner(self, token_uuid: str) -> str | None:
+        with self.get_session() as session:
+            statement = select(URLShorts).where(URLShorts.token_uuid == token_uuid)
+
+            result = session.exec(statement).one_or_none()
+            if result is None:
+                return None
+
+            url_shortner = URLShorts.model_validate(result)
+            if settings.url_shorter_expires + url_shortner.timestamp.timestamp() < time.time():
+                await self.delete_url_shortner(token_uuid)
+                return None
+
+            return url_shortner.url
+
+    async def delete_url_shortner(self, token_uuid: str) -> bool:
+        with self.get_session() as session:
+            try:
+                statement = delete(URLShorts).where(URLShorts.token_uuid == token_uuid)
+                session.exec(statement)
+                session.commit()
+                return True
+            except Exception as e:
+                print("[!remove_sql_user_session]", e)
+                return False
