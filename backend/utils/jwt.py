@@ -146,14 +146,14 @@ async def set_active_session(user_shortname: str, token: str) -> bool:
     if settings.active_data_db == "file":
         return await set_redis_active_session(user_shortname, token)
     else:
-        return await db.set_sql_active_session(user_shortname, token)
+        return bool(await db.set_sql_active_session(user_shortname, token))
 
 
 async def set_user_session(user_shortname: str, token: str) -> bool:
     if settings.active_data_db == "file":
         return await set_redis_user_session(user_shortname, token)
     else:
-        return await db.set_sql_user_session(user_shortname, token)
+        return bool(await db.set_sql_user_session(user_shortname, token))
 
 
 async def get_active_session(user_shortname: str):
@@ -174,14 +174,14 @@ async def remove_active_session(user_shortname: str) -> bool:
     if settings.active_data_db == "file":
         return await remove_redis_active_session(user_shortname)
     else:
-        return await db.remove_sql_active_session(user_shortname)
+        return bool(await db.remove_sql_active_session(user_shortname))
 
 
 async def remove_user_session(user_shortname: str) -> bool:
     if settings.active_data_db == "file":
         return await remove_redis_user_session(user_shortname)
     else:
-        return await db.remove_sql_user_session(user_shortname)
+        return bool(await db.remove_sql_user_session(user_shortname))
 
 
 async def set_redis_active_session(user_shortname: str, token: str) -> bool:
