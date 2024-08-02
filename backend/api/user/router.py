@@ -190,7 +190,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         f"users:login:invitation:{request.invitation}"
                     )
             else:
-                invitation_token = db.get_invitation_token(request.invitation)
+                invitation_token = await db.get_invitation_token(request.invitation)
             if not invitation_token:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
