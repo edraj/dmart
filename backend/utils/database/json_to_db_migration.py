@@ -35,6 +35,10 @@ try:
     sql = f"CREATE DATABASE {settings.database_name}"  # type: ignore
     s.exec(text(sql))  # type: ignore
     engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=True)
+except Exception as e:
+    print(e)
+
+try:
     generate_tables()
 except Exception as e:
     print(e)
