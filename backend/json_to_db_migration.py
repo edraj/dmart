@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from sqlmodel import Session, create_engine, text
 
-from create_tables import Entries, Users, generate_tables, Attachments, \
+from utils.database.create_tables import Entries, Users, generate_tables, Attachments, \
     Roles, Permissions, Histories, Spaces, Tickets
 from utils.settings import settings
 
@@ -83,7 +83,7 @@ with Session(engine) as session:
                     entry['hide_space'] = entry.get('hide_space', False)
                     session.add(Spaces.model_validate(entry))
                 except Exception as e:
-                    print(f"Error processing {space_name}/{subpath}/{dir}/{entry} ... ")
+                    print(f"Error processing Spaces {space_name}/{subpath}/{dir}/{entry} ... ")
                     print(e)
             continue
 
@@ -97,6 +97,8 @@ with Session(engine) as session:
 
         for dir in dirs:
             for file in os.listdir(os.path.join(root, dir)):
+                if not file.startswith('meta'):
+                    continue
                 p = os.path.join(root, dir, file)
                 if Path(p).is_file():
                     if 'attachments' in p:
@@ -137,7 +139,7 @@ with Session(engine) as session:
                                 _attachment['resource_type'] = dir.replace('attachments.', '') #file.replace('.json', '').replace('meta.', '')
                                 session.add(Attachments.model_validate(_attachment))
                             except Exception as e:
-                                print(f"Error processing {space_name}/{subpath}/{dir}/{file} ... ")
+                                print(f"Error processing Attachments {space_name}/{subpath}/{dir}/{file} ... ")
                                 print(e)
                     elif file.endswith('.json'):
                         entry = json.load(open(p))
@@ -150,7 +152,7 @@ with Session(engine) as session:
                                         os.path.join(root, dir, '../..', payload)
                                     ))
                                 except Exception as e:
-                                    print(f"Error processing {space_name}/{subpath}/{dir}/{entry} ... ")
+                                    print(f"Error processing payload {space_name}/{subpath}/{dir}/{entry} ... ")
                                     print(e)
                             else:
                                 body = payload
@@ -161,48 +163,48 @@ with Session(engine) as session:
                         entry['acl'] = entry.get('acl', [])
                         entry['relationships'] = entry.get('relationships', [])
                         try:
-                            match subpath:
-                                case 'users':
-                                    entry['resource_type'] = 'user'
-                                    entry['firebase_token'] = entry.get('firebase_token', '')
-                                    entry['language'] = entry.get('language', '')
-                                    entry['google_id'] = entry.get('google_id', '')
-                                    entry['facebook_id'] = entry.get('facebook_id', '')
-                                    entry['social_avatar_url'] = entry.get('social_avatar_url', '')
-                                    session.add(Users.model_validate(entry))
-                                case 'roles':
-                                    entry['resource_type'] = 'role'
-                                    entry['permissions'] = entry.get('permissions', [])
-                                    session.add(Roles.model_validate(entry))
-                                case 'permissions':
-                                    entry['resource_type'] = 'permission'
-                                    entry['subpaths'] = entry.get('subpaths', {})
-                                    entry['resource_types'] = entry.get('resource_types', [])
-                                    entry['actions'] = entry.get('actions', [])
-                                    entry['conditions'] = entry.get('conditions', [])
-                                    entry['restricted_fields'] = entry.get('restricted_fields', [])
-                                    entry['allowed_fields_values'] = entry.get('allowed_fields_values', {})
-                                    session.add(Permissions.model_validate(entry))
-                                case _:
-                                    entry['resource_type'] = file.replace('.json', '').replace('meta.', '')
-                                    if entry['resource_type'] == 'folder':
-                                        new_subpath = entry['subpath'].split('/')
-                                        entry['subpath'] = '/'.join(new_subpath[:-1]) + '/'
-                                    elif entry['resource_type'] == 'ticket':
-                                        entry["state"] = entry.get("state", "")
-                                        entry["is_open"] = entry.get("is_open", True)
-                                        entry["reporter"] = entry.get("reporter", None)
-                                        entry["workflow_shortname"] = entry.get("workflow_shortname", "")
-                                        entry["collaborators"] = entry.get("collaborators", None)
-                                        entry["resolution_reason"] = entry.get("resolution_reason", None)
+                            if file.startswith("meta.user"):
+                                entry['resource_type'] = 'user'
+                                entry['firebase_token'] = entry.get('firebase_token', '')
+                                entry['type'] = entry.get('type', 'web')
+                                entry['language'] = entry.get('language', '')
+                                entry['google_id'] = entry.get('google_id', '')
+                                entry['facebook_id'] = entry.get('facebook_id', '')
+                                entry['social_avatar_url'] = entry.get('social_avatar_url', '')
+                                session.add(Users.model_validate(entry))
+                            elif file.startswith("meta.role"):
+                                entry['resource_type'] = 'role'
+                                entry['permissions'] = entry.get('permissions', [])
+                                session.add(Roles.model_validate(entry))
+                            elif file.startswith("meta.permission"):
+                                entry['resource_type'] = 'permission'
+                                entry['subpaths'] = entry.get('subpaths', {})
+                                entry['resource_types'] = entry.get('resource_types', [])
+                                entry['actions'] = entry.get('actions', [])
+                                entry['conditions'] = entry.get('conditions', [])
+                                entry['restricted_fields'] = entry.get('restricted_fields', [])
+                                entry['allowed_fields_values'] = entry.get('allowed_fields_values', {})
+                                session.add(Permissions.model_validate(entry))
+                            else:
+                                entry['resource_type'] = file.replace('.json', '').replace('meta.', '')
+                                if entry['resource_type'] == 'folder':
+                                    new_subpath = entry['subpath'].split('/')
+                                    entry['subpath'] = '/'.join(new_subpath[:-1]) + '/'
+                                elif entry['resource_type'] == 'ticket':
+                                    entry["state"] = entry.get("state", "")
+                                    entry["is_open"] = entry.get("is_open", True)
+                                    entry["reporter"] = entry.get("reporter", None)
+                                    entry["workflow_shortname"] = entry.get("workflow_shortname", "")
+                                    entry["collaborators"] = entry.get("collaborators", None)
+                                    entry["resolution_reason"] = entry.get("resolution_reason", None)
 
-                                        entry["subpath"] = subpath_checker(entry["subpath"])
-                                        session.add(Tickets.model_validate(entry))
-                                        continue
                                     entry["subpath"] = subpath_checker(entry["subpath"])
-                                    session.add(Entries.model_validate(entry))
+                                    session.add(Tickets.model_validate(entry))
+                                    continue
+                                entry["subpath"] = subpath_checker(entry["subpath"])
+                                session.add(Entries.model_validate(entry))
                         except Exception as e:
-                            print(f"Error processing {space_name}/{subpath}/{dir}/{entry} ... ")
+                            print(f"Error processing Entries {space_name}/{subpath}/{dir}/{entry} ... ")
                             print(e)
                     elif file == 'history.jsonl':
                         lines = open(p, 'r').readlines()
@@ -215,7 +217,7 @@ with Session(engine) as session:
                             try:
                                 session.add(Histories.model_validate(history))
                             except Exception as e:
-                                print(f"Error processing {space_name}/{subpath}/{dir}/{history} ... ")
+                                print(f"Error processing Histories {space_name}/{subpath}/{dir}/{history} ... ")
                                 print(e)
 
             try:
