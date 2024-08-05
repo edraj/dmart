@@ -2,6 +2,8 @@ import json
 from typing import Any
 import aiofiles
 from fastapi import status
+
+from models import core
 from models.core import Record
 from models.enums import RequestType
 from utils.helpers import csv_file_to_json, flatten_dict, flatten_list_of_dicts_in_dict
@@ -12,6 +14,7 @@ from utils.settings import settings
 from pathlib import Path as FSPath
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
+from data_adapters.adapter import data_adapter as db
 
 
 async def validate_payload_with_schema(
@@ -29,13 +32,19 @@ async def validate_payload_with_schema(
                 message="Invalid payload.body",
             ),
         )
+    if settings.active_data_db == "file":
+        schema_path = get_schema_path(
+            space_name=space_name,
+            schema_shortname=f"{schema_shortname}.json",
+        )
 
-    schema_path = get_schema_path(
-        space_name=space_name,
-        schema_shortname=f"{schema_shortname}.json",
-    )
+        schema = json.loads(FSPath(schema_path).read_text())
+    else:
+        if schema_shortname in ["folder_rendering", "meta_schema"]:
+            space_name = "management"
+        schema = await db.load(space_name, "schema", schema_shortname, core.Schema)
+        schema = schema.model_dump()
 
-    schema = json.loads(FSPath(schema_path).read_text())
 
     if not isinstance(payload_data, dict):
         data = json.load(payload_data.file)
