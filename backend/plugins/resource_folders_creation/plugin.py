@@ -9,9 +9,6 @@ from utils.settings import settings
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
-        if settings.active_data_db == "sql":
-            return
-
         # Type narrowing for PyRight
         if (
             not isinstance(data.shortname, str)
@@ -42,14 +39,14 @@ class Plugin(PluginBase):
             #         dest_shortname=schema_name,
             #         class_type=Schema,
             #     )
-
-            async with RedisServices() as redis_services:
-                await redis_services.create_indices(
-                    for_space=data.shortname,
-                    # for_schemas=sys_schemas,
-                    for_custom_indices=False,
-                    del_docs=False,
-                )
+            if settings.active_data_db == "file":
+                async with RedisServices() as redis_services:
+                    await redis_services.create_indices(
+                        for_space=data.shortname,
+                        # for_schemas=sys_schemas,
+                        for_custom_indices=False,
+                        del_docs=False,
+                    )
 
             # redis_update_plugin = RedisUpdatePlugin()
             # for schema_name in sys_schemas:

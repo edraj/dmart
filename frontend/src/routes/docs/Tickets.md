@@ -47,7 +47,6 @@ First you need to define the workflow of the ticket, please check the Workflow s
         {
             "resource_type": "ticket",
             "shortname": "auto",
-            "branch_name": "master",
             "subpath": "tickets",
             "attributes": {
                 "is_active": true,

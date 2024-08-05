@@ -86,7 +86,6 @@ type Error = {
 export type ApiResponseRecord = {
     resource_type: string;
     shortname: string;
-    branch_name?: string;
     subpath: string;
     attributes: Record<string, any>;
 };
@@ -613,7 +612,6 @@ export async function fetchDataAsset(
     shortname: string,
     query_string?: string,
     filter_data_assets?: string[],
-    branch_name?: string
 ) {
     try {
         const endpoint = "/managed/data-asset";
@@ -628,7 +626,6 @@ export async function fetchDataAsset(
                 shortname,
                 query_string: query_string ?? "SELECT * FROM file",
                 filter_data_assets,
-                branch_name,
             },
             {headers}
         );

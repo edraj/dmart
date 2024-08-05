@@ -72,9 +72,9 @@
     if (response.status === "success") {
       showToast(Level.info);
       isSpaceModalOpen = false;
-      // await spaces.refresh();
-      // refresh = !refresh;
+
       refresh_spaces.refresh();
+      space_name_shortname = "";
     } else {
       showToast(Level.warn);
     }

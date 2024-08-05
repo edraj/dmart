@@ -189,7 +189,6 @@
           resource_type: ResourceType.space,
           shortname: current_space.shortname,
           subpath: "/",
-          branch_name: "master",
           attributes: {},
         },
       ],

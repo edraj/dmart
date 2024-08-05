@@ -157,7 +157,6 @@
           resource_type,
           shortname: entry.shortname,
           subpath: targetSubpath || "/",
-          branch_name: "master",
           attributes: {},
         },
       ],
