@@ -936,7 +936,6 @@
                         resource_type,
                         shortname: entry.shortname,
                         subpath: targetSubpath || "/",
-                        branch_name: "master",
                         attributes: {},
                     },
                 ],
@@ -982,7 +981,6 @@
                 resource_type: b.resource_type,
                 shortname: b.shortname,
                 subpath: subpath || "/",
-                branch_name: "master",
                 attributes: {},
             });
         });
@@ -1021,7 +1019,6 @@
             search: "",
             retrieve_json_payload: true,
             limit: 1000,
-            branch_name: "master",
             filter_schema_names: [],
         };
         const data = await csv(body);
