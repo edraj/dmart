@@ -145,7 +145,6 @@
       type: "search",
       search: search || "",
       retrieve_json_payload: true,
-      branch_name: "master",
       filter_types: resource_type ? [resource_type] : [],
       filter_shortnames: resource_shortnames
         ? resource_shortnames.split(",")
