@@ -244,6 +244,33 @@ cp config.env.sample config.env
 
 ```
 
+### Data store option
+
+#### File based (default)
+
+- Set `ACTIVE_DATA_DB="file"` in the config.env file.
+- The data will be stored in the specified path that is set in `SPACES_FOLDER`. 
+- It is **mandatory** to set the required configuration for Redis:
+```
+REDIS_HOST="127.0.0.1"
+REDIS_PASSWORD=""
+REDIS_PORT=6379
+```
+
+#### SQL based
+
+- Set `ACTIVE_DATA_DB="sql"` in the config.env file.
+- It is **mandatory** to set the required configuration for the SQL database in the config.env file.
+```
+DATABASE_DRIVER="postgresql"
+DATABASE_USERNAME="postgres"
+DATABASE_PASSWORD="postgres"
+DATABASE_HOST="localhost"
+DATABASE_PORT=5432
+DATABASE_NAME="dmart"
+```
+- Media attachments are still being saved in the file system in the specified path that is set in `SPACES_FOLDER`.
+
 #### Automated testing
 
 #### Installing python dependencies
