@@ -1036,20 +1036,15 @@ async def lock_entry(
     # if lock file is doesn't exist
     # elif lock file exit but lock_period expired
     # elif lock file exist and lock_period isn't expired but the owner want to extend the lock
-    print("=====================1=========================")
-    try:
-        lock_type = await db.lock_handler(
-            space_name,
-            subpath,
-            shortname,
-            logged_in_user,
-            LockAction.lock
-        )
-    except api.Exception as e:
-        print("!", e)
-    print("======================2========================")
 
-    print("======================3========================")
+    lock_type = await db.lock_handler(
+        space_name,
+        subpath,
+        shortname,
+        logged_in_user,
+        LockAction.lock
+    )
+
     await db.store_entry_diff(
         space_name,
         "/" + subpath,
@@ -1060,7 +1055,6 @@ async def lock_entry(
         ["lock_type"],
         core.Content,
     )
-    print("======================4========================")
 
     await plugin_manager.after_action(
         core.Event(
