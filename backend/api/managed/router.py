@@ -8,6 +8,13 @@ from time import time
 from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, status
 from fastapi.responses import FileResponse
 from starlette.responses import StreamingResponse
+
+from api.managed.utils import serve_request_create, serve_request_update_r_replace, serve_request_assign, \
+    serve_request_update_acl, serve_request_delete, serve_request_move, \
+    get_resource_content_type_from_payload_content_type, csv_entries_prepare_docs, handle_update_state, \
+    update_state_handle_resolution, serve_space_delete, serve_space_update, serve_space_create, \
+    data_asset_attachments_handler, import_resources_from_csv_handler, data_asset_handler, \
+    create_or_update_resource_with_payload_handler
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema, validate_uniqueness
 from utils.internal_error_code import InternalErrorCode
@@ -162,7 +169,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     keys: list = [i["name"] for i in folder_views]
     keys_existence = dict(zip(keys, [False for _ in range(len(keys))]))
 
-
     # if settings.active_data_db == 'file':
     #     _, search_res = await db.query(query, user_shortname)
     # else:
@@ -175,73 +181,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     docs_dicts = [search_re.model_dump() for search_re in search_res]
 
-    json_data = []
-    timestamp_fields = ["created_at", "updated_at"]
-    new_keys: set = set()
-    deprecated_keys: set = set()
-
-    for redis_document in docs_dicts:
-        rows: list[dict] = [{}]
-        flattened_doc = flatten_dict(redis_document)
-        for folder_view in folder_views:
-            column_key = folder_view.get("key")
-            column_title = folder_view.get("name")
-            attribute_val = flattened_doc.get(column_key)
-            if attribute_val:
-                keys_existence[column_title] = True
-            """
-            Extract array items in a separate row per item
-            - list_new_rows = []
-            - for row in rows:
-            -      for item in new_list[1:]:
-            -          new_row = row
-            -          add item attributes to the new_row
-            -          list_new_rows.append(new_row)
-            -      add new_list[0] attributes to row
-            -    
-            -  rows += list_new_rows
-            """
-            if isinstance(attribute_val, list) and len(attribute_val) > 0:
-                list_new_rows: list[dict] = []
-                # Duplicate old rows
-                for row in rows:
-                    # New row for each item
-                    for item in attribute_val[1:]:
-                        new_row = copy(row)
-                        # New cell for each item's attribute
-                        if isinstance(item, dict):
-                            for k, v in item.items():
-                                new_row[f"{column_title}.{k}"] = v
-                                new_keys.add(f"{column_title}.{k}")
-                        else:
-                            new_row[column_title] = item
-
-                        list_new_rows.append(new_row)
-                    # Add first items's attribute to the existing rows
-                    if isinstance(attribute_val[0], dict):
-                        deprecated_keys.add(column_title)
-                        for k, v in attribute_val[0].items():
-                            row[f"{column_title}.{k}"] = v
-                            new_keys.add(f"{column_title}.{k}")
-                    else:
-                        row[column_title] = attribute_val[0]
-                rows += list_new_rows
-
-            elif attribute_val and not isinstance(attribute_val, list):
-                new_col = attribute_val if column_key not in timestamp_fields else \
-                    datetime.fromtimestamp(attribute_val).strftime(
-                        '%Y-%m-%d %H:%M:%S')
-                for row in rows:
-                    row[column_title] = new_col
-        json_data += rows
-
-    # Sort all entries from all schemas
-    if query.sort_by in core.Meta.model_fields and len(query.filter_schema_names) > 1:
-        json_data = sorted(
-            json_data,
-            key=lambda d: d[query.sort_by] if query.sort_by in d else "",
-            reverse=(query.sort_type == api.SortType.descending),
-        )
+    json_data, deprecated_keys, new_keys = csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence)
 
     await plugin_manager.after_action(
         core.Event(
@@ -284,148 +224,13 @@ async def serve_space(
     history_diff = {}
     match request.request_type:
         case api.RequestType.create:
-            await is_space_exist(request.space_name, should_exist=False)
-
-            if not await access_control.check_access(
-                    user_shortname=owner_shortname,
-                    space_name=settings.all_spaces_mw,
-                    subpath="/",
-                    resource_type=ResourceType.space,
-                    action_type=core.ActionType.create,
-                    record_attributes=record.attributes,
-            ):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [1]",
-                    ),
-                )
-
-            resource_obj = core.Meta.from_record(
-                record=record, owner_shortname=owner_shortname
-            )
-            resource_obj.is_active = True
-            resource_obj.shortname = request.space_name
-            if isinstance(resource_obj, core.Space):
-                resource_obj.indexing_enabled = True
-                resource_obj.active_plugins = [
-                    "action_log",
-                    "redis_db_update",
-                    "resource_folders_creation",
-                ]
-
-            await db.save(
-                request.space_name,
-                record.subpath,
-                resource_obj,
-            )
+            await serve_space_create(request, record, owner_shortname)
 
         case api.RequestType.update:
-            try:
-                space = core.Space.from_record(record, owner_shortname)
-                await is_space_exist(request.space_name)
+            history_diff = await serve_space_update(request, record, owner_shortname)
 
-                if (
-                        request.space_name != record.shortname
-                ):
-                    raise Exception
-            except Exception:
-                raise api.Exception(
-                    status.HTTP_400_BAD_REQUEST,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.INVALID_SPACE_NAME,
-                        message=f"Space name {request.space_name} provided is empty or invalid [6]",
-                    ),
-                )
-            if not await access_control.check_access(
-                    user_shortname=owner_shortname,
-                    space_name=settings.all_spaces_mw,
-                    subpath="/",
-                    resource_type=ResourceType.space,
-                    action_type=core.ActionType.update,
-                    record_attributes=record.attributes,
-                    entry_shortname=record.shortname
-            ):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [2]",
-                    ),
-                )
-
-            await plugin_manager.before_action(
-                core.Event(
-                    space_name=space.shortname,
-                    subpath=record.subpath,
-                    shortname=space.shortname,
-                    action_type=core.ActionType.update,
-                    resource_type=record.resource_type,
-                    user_shortname=owner_shortname,
-                )
-            )
-
-            old_space = await db.load(
-                space_name=space.shortname,
-                subpath=record.subpath,
-                shortname=space.shortname,
-                class_type=core.Space,
-                user_shortname=owner_shortname,
-            )
-            history_diff = await db.update(
-                space_name=space.shortname,
-                subpath=record.subpath,
-                meta=space,
-                old_version_flattend=flatten_dict(old_space.model_dump()),
-                new_version_flattend=flatten_dict(space.model_dump()),
-                updated_attributes_flattend=list(
-                    flatten_dict(record.attributes).keys()
-                ),
-                user_shortname=owner_shortname,
-                retrieve_lock_status=record.retrieve_lock_status,
-            )
         case api.RequestType.delete:
-            if request.space_name == "management":
-                raise api.Exception(
-                    status.HTTP_400_BAD_REQUEST,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.CANNT_DELETE,
-                        message="Cannot delete management space",
-                    ),
-                )
-
-            await is_space_exist(request.space_name)
-
-            if not await access_control.check_access(
-                    user_shortname=owner_shortname,
-                    space_name=settings.all_spaces_mw,
-                    subpath="/",
-                    resource_type=ResourceType.space,
-                    action_type=core.ActionType.delete,
-                    entry_shortname=record.shortname
-            ):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [3]",
-                    ),
-                )
-            await repository.delete_space(request.space_name, record, owner_shortname)
-            if settings.active_data_db == 'file':
-                async with RedisServices() as redis_services:
-                    x = await redis_services.list_indices()
-                    if x:
-                        indices: list[str] = x
-                        for index in indices:
-                            if index.startswith(f"{request.space_name}:"):
-                                await redis_services.drop_index(index, True)
+            await serve_space_delete(request, record, owner_shortname)
 
         case _:
             raise api.Exception(
@@ -514,768 +319,22 @@ async def serve_request(
     failed_records = []
     match request.request_type:
         case api.RequestType.create:
-            for record in request.records:
-                if record.subpath[0] != "/":
-                    record.subpath = f"/{record.subpath}"
-                try:
-                    schema_shortname: str | None = None
-                    if (
-                            "payload" in record.attributes
-                            and isinstance(record.attributes.get("payload", None), dict)
-                            and "schema_shortname" in record.attributes["payload"]
-                    ):
-                        schema_shortname = record.attributes["payload"][
-                            "schema_shortname"
-                        ]
-                    await plugin_manager.before_action(
-                        core.Event(
-                            space_name=request.space_name,
-                            subpath=record.subpath,
-                            shortname=record.shortname,
-                            action_type=core.ActionType.create,
-                            schema_shortname=schema_shortname,
-                            resource_type=record.resource_type,
-                            user_shortname=owner_shortname,
-                        )
-                    )
-
-                    if not await access_control.check_access(
-                            user_shortname=owner_shortname,
-                            space_name=request.space_name,
-                            subpath=record.subpath,
-                            resource_type=record.resource_type,
-                            action_type=core.ActionType.create,
-                            record_attributes=record.attributes,
-                    ):
-                        raise api.Exception(
-                            status.HTTP_401_UNAUTHORIZED,
-                            api.Error(
-                                type="request",
-                                code=InternalErrorCode.NOT_ALLOWED,
-                                message="You don't have permission to this action [4]",
-                            ),
-                        )
-
-                    if record.resource_type == ResourceType.ticket:
-                        record = await set_init_state_from_request(
-                            request, owner_shortname
-                        )
-
-                    shortname_exists = db.is_entry_exist(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        resource_type=record.resource_type,
-                        schema_shortname=record.attributes.get(
-                            "schema_shortname", None)
-                    )
-
-                    if record.shortname != settings.auto_uuid_rule and shortname_exists:
-                        raise api.Exception(
-                            status.HTTP_400_BAD_REQUEST,
-                            api.Error(
-                                type="request",
-                                code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
-                                message=f"This shortname {record.shortname} already exists",
-                            ),
-                        )
-
-                    await validate_uniqueness(request.space_name, record)
-
-                    resource_obj = core.Meta.from_record(
-                        record=record, owner_shortname=owner_shortname
-                    )
-                    if not is_internal or "created_at" not in record.attributes:
-                        resource_obj.created_at = datetime.now()
-                        resource_obj.updated_at = datetime.now()
-                    body_shortname = record.shortname
-
-                    separate_payload_data = None
-                    if (
-                            resource_obj.payload
-                            and resource_obj.payload.content_type == ContentType.json
-                            and resource_obj.payload.body is not None
-                    ):
-                        separate_payload_data = resource_obj.payload.body
-                        if settings.active_data_db == 'file':
-                            resource_obj.payload.body = body_shortname + (
-                                ".json" if record.resource_type != ResourceType.log else ".jsonl"
-                            )
-
-                    if (
-                            resource_obj.payload
-                            and resource_obj.payload.content_type == ContentType.json
-                            and resource_obj.payload.schema_shortname
-                            and isinstance(separate_payload_data, dict)
-                    ):
-                        await validate_payload_with_schema(
-                            payload_data=separate_payload_data,
-                            space_name=request.space_name,
-                            schema_shortname=resource_obj.payload.schema_shortname,
-                        )
-
-                    await db.save(
-                        request.space_name,
-                        record.subpath,
-                        resource_obj,
-                    )
-
-                    if isinstance(resource_obj, core.User):
-                        # SMS Invitation
-                        if not resource_obj.is_msisdn_verified and resource_obj.msisdn:
-                            inv_link = await repository.store_user_invitation_token(
-                                resource_obj, "SMS"
-                            )
-                            if inv_link:
-                                await send_sms(
-                                    msisdn=record.attributes.get("msisdn", ""),
-                                    message=languages[
-                                        resource_obj.language
-                                    ]["invitation_message"].replace(
-                                        "{link}",
-                                        await repository.url_shortner(inv_link)
-                                    ),
-                                )
-                        # EMAIL Invitation
-                        if not resource_obj.is_email_verified and resource_obj.email:
-                            inv_link = await repository.store_user_invitation_token(
-                                resource_obj, "EMAIL"
-                            )
-                            if inv_link:
-                                await send_email(
-                                    from_address=settings.email_sender,
-                                    to_address=resource_obj.email,
-                                    message=generate_email_from_template(
-                                        "activation",
-                                        {
-                                            "link": await repository.url_shortner(
-                                                inv_link
-                                            ),
-                                            "name": record.attributes.get(
-                                                "displayname", {}
-                                            ).get("en", ""),
-                                            "shortname": resource_obj.shortname,
-                                            "msisdn": resource_obj.msisdn,
-                                        },
-                                    ),
-                                    subject=generate_subject("activation"),
-                                )
-
-                    if separate_payload_data is not None and isinstance(
-                            separate_payload_data, dict
-                    ):
-                        await db.update_payload(
-                            request.space_name, record.subpath, resource_obj, separate_payload_data, owner_shortname
-                        )
-
-                    records.append(
-                        resource_obj.to_record(
-                            record.subpath,
-                            resource_obj.shortname,
-                            [],
-                        )
-                    )
-                    record.attributes["logged_in_user_token"] = token
-                    await plugin_manager.after_action(
-                        core.Event(
-                            space_name=request.space_name,
-                            subpath=record.subpath,
-                            shortname=resource_obj.shortname,
-                            action_type=core.ActionType.create,
-                            schema_shortname=record.attributes["payload"].get(
-                                "schema_shortname", None
-                            )
-                            if record.attributes.get("payload")
-                            else None,
-                            resource_type=record.resource_type,
-                            user_shortname=owner_shortname,
-                            attributes=record.attributes,
-                        )
-                    )
-
-                except api.Exception as e:
-                    failed_records.append(
-                        {
-                            "record": record,
-                            "error": e.error.message,
-                            "error_code": e.error.code,
-                        }
-                    )
+            records, failed_records = await serve_request_create(request, owner_shortname, token, is_internal)
 
         case api.RequestType.update | api.RequestType.r_replace:
-            for record in request.records:
-                if record.subpath[0] != "/":
-                    record.subpath = f"/{record.subpath}"
-                await plugin_manager.before_action(
-                    core.Event(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        schema_shortname=record.attributes.get("payload", {}).get(
-                            "schema_shortname", None
-                        ),
-                        action_type=core.ActionType.update,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
-                    )
-                )
-
-                resource_cls = getattr(
-                    sys.modules["models.core"], camel_case(
-                        record.resource_type)
-                )
-                schema_shortname = record.attributes.get("payload", {}).get(
-                    "schema_shortname"
-                )
-                old_resource_obj = await db.load(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    shortname=record.shortname,
-                    class_type=resource_cls,
-                    user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
-                )
-
-                # CHECK PERMISSION
-                if not await access_control.check_access(
-                        user_shortname=owner_shortname,
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        resource_type=record.resource_type,
-                        action_type=core.ActionType.update,
-                        resource_is_active=old_resource_obj.is_active,
-                        resource_owner_shortname=old_resource_obj.owner_shortname,
-                        resource_owner_group=old_resource_obj.owner_group_shortname,
-                        record_attributes=record.attributes,
-                        entry_shortname=record.shortname
-                ):
-                    raise api.Exception(
-                        status.HTTP_401_UNAUTHORIZED,
-                        api.Error(
-                            type="request",
-                            code=InternalErrorCode.NOT_ALLOWED,
-                            message="You don't have permission to this action [5]",
-                        ),
-                    )
-
-                # GET PAYLOAD DATA
-                old_resource_payload_body = {}
-                old_version_flattend = flatten_dict(
-                    old_resource_obj.model_dump())
-                if (
-                        record.resource_type != ResourceType.log
-                        and old_resource_obj.payload
-                        and old_resource_obj.payload.content_type == ContentType.json
-                        and isinstance(old_resource_obj.payload.body, str)
-                ):
-                    try:
-                        old_resource_payload_body = await db.load_resource_payload(
-                            space_name=request.space_name,
-                            subpath=record.subpath,
-                            filename=old_resource_obj.payload.body,
-                            class_type=resource_cls,
-                            schema_shortname=schema_shortname,
-                        )
-                    except api.Exception as e:
-                        if request.request_type == api.RequestType.update:
-                            raise e
-
-                    old_version_flattend.pop("payload.body", None)
-                    old_version_flattend.update(
-                        flatten_dict(
-                            {"payload.body": old_resource_payload_body})
-                    )
-                # GENERATE NEW RESOURCE OBJECT
-                resource_obj = old_resource_obj
-                resource_obj.updated_at = datetime.now()
-
-                new_version_flattend = {}
-
-                if record.resource_type == ResourceType.log:
-                    new_resource_payload_data = record.attributes.get("payload", {}).get(
-                        "body", {}
-                    )
-                else:
-                    new_resource_payload_data = (
-                        resource_obj.update_from_record(
-                            record=record,
-                            old_body=old_resource_payload_body,
-                            replace=request.request_type == api.RequestType.r_replace,
-                        )
-                    )
-                    new_version_flattend = flatten_dict(resource_obj.model_dump())
-                    if new_resource_payload_data:
-                        new_version_flattend.update(
-                            flatten_dict(
-                                {"payload.body": new_resource_payload_data})
-                        )
-
-                    await validate_uniqueness(
-                        request.space_name, record, RequestType.update
-                    )
-                # VALIDATE SEPARATE PAYLOAD BODY
-                if (
-                        resource_obj.payload
-                        and resource_obj.payload.content_type == ContentType.json
-                        and resource_obj.payload.schema_shortname
-                        and new_resource_payload_data is not None
-                ):
-                    await validate_payload_with_schema(
-                        payload_data=new_resource_payload_data,
-                        space_name=request.space_name,
-                        schema_shortname=resource_obj.payload.schema_shortname,
-                    )
-
-                if record.resource_type == ResourceType.log:
-                    history_diff = await db.update(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        meta=resource_obj,
-                        old_version_flattend={},
-                        new_version_flattend={},
-                        updated_attributes_flattend=[],
-                        user_shortname=owner_shortname,
-                        schema_shortname=schema_shortname,
-                        retrieve_lock_status=record.retrieve_lock_status,
-                    )
-                else:
-                    updated_attributes_flattend = list(
-                        flatten_dict(record.attributes).keys()
-                    )
-                    if request.request_type == RequestType.r_replace:
-                        updated_attributes_flattend = (
-                                list(old_version_flattend.keys()) +
-                                list(new_version_flattend.keys())
-                        )
-
-                    if (settings.active_data_db == 'sql'
-                            and resource_obj.payload
-                            and resource_obj.payload.content_type == ContentType.json):
-                        resource_obj.payload.body = new_resource_payload_data  # type: ignore
-
-                    history_diff = await db.update(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        meta=resource_obj,
-                        old_version_flattend=old_version_flattend,
-                        new_version_flattend=new_version_flattend,
-                        updated_attributes_flattend=updated_attributes_flattend,
-                        user_shortname=owner_shortname,
-                        schema_shortname=schema_shortname,
-                        retrieve_lock_status=record.retrieve_lock_status,
-                    )
-
-                if new_resource_payload_data is not None:
-                    await db.save_payload_from_json(
-                        request.space_name,
-                        record.subpath,
-                        resource_obj,
-                        new_resource_payload_data,
-                    )
-
-                if (
-                        isinstance(resource_obj, core.User) and
-                        record.attributes.get("is_active") is False
-                ):
-                    await remove_active_session(record.shortname)
-
-                records.append(
-                    resource_obj.to_record(
-                        record.subpath, resource_obj.shortname, []
-                    )
-                )
-
-                await plugin_manager.after_action(
-                    core.Event(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        schema_shortname=record.attributes.get("payload", {}).get(
-                            "schema_shortname", None
-                        ),
-                        action_type=core.ActionType.update,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
-                        attributes={"history_diff": history_diff},
-                    )
-                )
+            records, failed_records = await serve_request_update_r_replace(request, owner_shortname)
 
         case api.RequestType.assign:
-            for record in request.records:
-                if not record.attributes.get("owner_shortname"):
-                    raise api.Exception(
-                        status.HTTP_400_BAD_REQUEST,
-                        api.Error(
-                            type="request",
-                            code=InternalErrorCode.MISSING_DATA,
-                            message="The owner_shortname is required",
-                        ),
-                    )
-                _target_user = await db.load(
-                    space_name=settings.management_space,
-                    subpath=settings.users_subpath,
-                    shortname=record.attributes["owner_shortname"],
-                    class_type=core.User,
-                )
-
-                if record.subpath[0] != "/":
-                    record.subpath = f"/{record.subpath}"
-                await plugin_manager.before_action(
-                    core.Event(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        schema_shortname=record.attributes.get("payload", {}).get(
-                            "schema_shortname", None
-                        ),
-                        action_type=core.ActionType.update,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
-                    )
-                )
-
-                resource_cls = getattr(
-                    sys.modules["models.core"], camel_case(
-                        record.resource_type)
-                )
-                schema_shortname = record.attributes.get("payload", {}).get(
-                    "schema_shortname"
-                )
-                resource_obj = await db.load(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    shortname=record.shortname,
-                    class_type=resource_cls,
-                    user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
-                )
-
-                # CHECK PERMISSION
-                if not await access_control.check_access(
-                        user_shortname=owner_shortname,
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        resource_type=record.resource_type,
-                        action_type=core.ActionType.assign,
-                        resource_is_active=resource_obj.is_active,
-                        resource_owner_shortname=resource_obj.owner_shortname,
-                        resource_owner_group=resource_obj.owner_group_shortname,
-                        record_attributes=record.attributes,
-                        entry_shortname=record.shortname
-                ):
-                    raise api.Exception(
-                        status.HTTP_401_UNAUTHORIZED,
-                        api.Error(
-                            type="request",
-                            code=InternalErrorCode.NOT_ALLOWED,
-                            message="You don't have permission to this action [05]",
-                        ),
-                    )
-
-                old_version_flattend = flatten_dict(resource_obj.model_dump())
-
-                resource_obj.updated_at = datetime.now()
-                resource_obj.owner_shortname = record.attributes["owner_shortname"]
-
-                history_diff = await db.update(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    meta=resource_obj,
-                    old_version_flattend=old_version_flattend,
-                    new_version_flattend=flatten_dict(resource_obj.model_dump()),
-                    updated_attributes_flattend=["owner_shortname"],
-                    user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
-                    retrieve_lock_status=record.retrieve_lock_status,
-                )
-
-                records.append(
-                    resource_obj.to_record(
-                        record.subpath, resource_obj.shortname, []
-                    )
-                )
-
-                await plugin_manager.after_action(
-                    core.Event(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        schema_shortname=record.attributes.get("payload", {}).get(
-                            "schema_shortname", None
-                        ),
-                        action_type=core.ActionType.update,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
-                        attributes={"history_diff": history_diff},
-                    )
-                )
+            records, failed_records = await serve_request_assign(request, owner_shortname)
 
         case api.RequestType.update_acl:
-            for record in request.records:
-                if record.attributes.get("acl", None) is None:
-                    raise api.Exception(
-                        status.HTTP_400_BAD_REQUEST,
-                        api.Error(
-                            type="request",
-                            code=InternalErrorCode.MISSING_DATA,
-                            message="The acl is required",
-                        ),
-                    )
-
-                if record.subpath[0] != "/":
-                    record.subpath = f"/{record.subpath}"
-                await plugin_manager.before_action(
-                    core.Event(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        schema_shortname=record.attributes.get("payload", {}).get(
-                            "schema_shortname", None
-                        ),
-                        action_type=core.ActionType.update,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
-                    )
-                )
-
-                resource_cls = getattr(
-                    sys.modules["models.core"], camel_case(
-                        record.resource_type)
-                )
-                schema_shortname = record.attributes.get("payload", {}).get(
-                    "schema_shortname"
-                )
-                resource_obj = await db.load(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    shortname=record.shortname,
-                    class_type=resource_cls,
-                    user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
-                )
-
-                # CHECK PERMISSION
-                if not await access_control.check_access(
-                        user_shortname=owner_shortname,
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        resource_type=record.resource_type,
-                        action_type=core.ActionType.update,
-                        resource_is_active=resource_obj.is_active,
-                        resource_owner_shortname=resource_obj.owner_shortname,
-                        resource_owner_group=resource_obj.owner_group_shortname,
-                        record_attributes=record.attributes,
-                ) or resource_obj.owner_shortname != owner_shortname:
-                    raise api.Exception(
-                        status.HTTP_401_UNAUTHORIZED,
-                        api.Error(
-                            type="request",
-                            code=InternalErrorCode.NOT_ALLOWED,
-                            message="You don't have permission to this action [06]",
-                        ),
-                    )
-
-                old_version_flattend = flatten_dict(resource_obj.model_dump())
-
-                resource_obj.updated_at = datetime.now()
-                resource_obj.acl = record.attributes["acl"]
-
-                history_diff = await db.update(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    meta=resource_obj,
-                    old_version_flattend=old_version_flattend,
-                    new_version_flattend=flatten_dict(resource_obj.model_dump()),
-                    updated_attributes_flattend=["acl"],
-                    user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
-                    retrieve_lock_status=record.retrieve_lock_status,
-                )
-
-                records.append(
-                    resource_obj.to_record(
-                        record.subpath, resource_obj.shortname, []
-                    )
-                )
-
-                await plugin_manager.after_action(
-                    core.Event(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        schema_shortname=record.attributes.get("payload", {}).get(
-                            "schema_shortname", None
-                        ),
-                        action_type=core.ActionType.update,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
-                        attributes={"history_diff": history_diff},
-                    )
-                )
+            records, failed_records = await serve_request_update_acl(request, owner_shortname)
 
         case api.RequestType.delete:
-            for record in request.records:
-                if record.subpath[0] != "/":
-                    record.subpath = f"/{record.subpath}"
-                await plugin_manager.before_action(
-                    core.Event(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        action_type=core.ActionType.delete,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
-                    )
-                )
-
-                resource_cls = getattr(
-                    sys.modules["models.core"], camel_case(
-                        record.resource_type)
-                )
-                schema_shortname = record.attributes.get("payload", {}).get(
-                    "schema_shortname"
-                )
-                resource_obj = await db.load(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    shortname=record.shortname,
-                    class_type=resource_cls,
-                    user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
-                )
-                if not await access_control.check_access(
-                        user_shortname=owner_shortname,
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        resource_type=record.resource_type,
-                        action_type=core.ActionType.delete,
-                        resource_is_active=resource_obj.is_active,
-                        resource_owner_shortname=resource_obj.owner_shortname,
-                        resource_owner_group=resource_obj.owner_group_shortname,
-                        entry_shortname=record.shortname
-                ):
-                    raise api.Exception(
-                        status.HTTP_401_UNAUTHORIZED,
-                        api.Error(
-                            type="request",
-                            code=InternalErrorCode.NOT_ALLOWED,
-                            message="You don't have permission to this action [6]",
-                        ),
-                    )
-
-                await db.delete(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    meta=resource_obj,
-                    user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
-                    retrieve_lock_status=record.retrieve_lock_status,
-                )
-
-                await plugin_manager.after_action(
-                    core.Event(
-                        space_name=request.space_name,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        action_type=core.ActionType.delete,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
-                        attributes={"entry": resource_obj},
-                    )
-                )
+            records, failed_records = await serve_request_delete(request, owner_shortname)
 
         case api.RequestType.move:
-            for record in request.records:
-                if record.subpath[0] != "/":
-                    record.subpath = f"/{record.subpath}"
-
-                if (
-                        not record.attributes.get("src_subpath")
-                        or not record.attributes.get("src_shortname")
-                        or not record.attributes.get("dest_subpath")
-                        or not record.attributes.get("dest_shortname")
-                ):
-                    raise api.Exception(
-                        status.HTTP_400_BAD_REQUEST,
-                        api.Error(
-                            type="move",
-                            code=InternalErrorCode.PROVID_SOURCE_PATH,
-                            message="Please provide a source and destination path and a src shortname",
-                        ),
-                    )
-
-                await plugin_manager.before_action(
-                    core.Event(
-                        space_name=request.space_name,
-                        subpath=record.attributes["src_subpath"],
-                        shortname=record.attributes["src_shortname"],
-                        action_type=core.ActionType.move,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
-                        attributes={
-                            "dest_subpath": record.attributes["dest_subpath"]},
-                    )
-                )
-
-                resource_cls = getattr(
-                    sys.modules["models.core"], camel_case(
-                        record.resource_type)
-                )
-                resource_obj = await db.load(
-                    space_name=request.space_name,
-                    subpath=record.attributes["src_subpath"],
-                    shortname=record.attributes["src_shortname"],
-                    class_type=resource_cls,
-                    user_shortname=owner_shortname,
-                )
-                if not await access_control.check_access(
-                        user_shortname=owner_shortname,
-                        space_name=request.space_name,
-                        subpath=record.attributes["src_subpath"],
-                        resource_type=record.resource_type,
-                        action_type=core.ActionType.delete,
-                        resource_is_active=resource_obj.is_active,
-                        resource_owner_shortname=resource_obj.owner_shortname,
-                        resource_owner_group=resource_obj.owner_group_shortname,
-                        entry_shortname=record.shortname
-                ) or not await access_control.check_access(
-                    user_shortname=owner_shortname,
-                    space_name=request.space_name,
-                    subpath=record.attributes["dest_subpath"],
-                    resource_type=record.resource_type,
-                    action_type=core.ActionType.create,
-                ):
-                    raise api.Exception(
-                        status.HTTP_401_UNAUTHORIZED,
-                        api.Error(
-                            type="request",
-                            code=InternalErrorCode.NOT_ALLOWED,
-                            message="You don't have permission to this action [7]",
-                        ),
-                    )
-                await db.move(
-                    request.space_name,
-                    record.attributes["src_subpath"],
-                    record.attributes["src_shortname"],
-                    record.attributes["dest_subpath"],
-                    record.attributes["dest_shortname"],
-                    resource_obj,
-                )
-
-                await plugin_manager.after_action(
-                    core.Event(
-                        space_name=request.space_name,
-                        subpath=record.attributes["dest_subpath"],
-                        shortname=record.attributes["dest_shortname"],
-                        action_type=core.ActionType.move,
-                        resource_type=record.resource_type,
-                        user_shortname=owner_shortname,
-                        attributes={
-                            "src_subpath": record.attributes["src_subpath"],
-                            "src_shortname": record.attributes["src_shortname"],
-                        },
-                    )
-                )
+            records, failed_records = await serve_request_move(request, owner_shortname)
 
     if len(failed_records) == 0:
         return api.Response(status=api.Status.success, records=records)
@@ -1374,59 +433,11 @@ async def update_state(
                 workflows_data.payload is not None
                 and workflows_data.payload.body is not None
         ):
-            workflows_payload = await db.load_resource_payload(
-                space_name=space_name,
-                subpath="workflows",
-                filename=str(workflows_data.payload.body),
-                class_type=core.Content,
+            ticket_obj, workflows_payload, response, old_version_flattend = await handle_update_state(
+                space_name, logged_in_user, ticket_obj, action, user_roles
             )
-            if not ticket_obj.is_open:
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(
-                        type="transition",
-                        code=InternalErrorCode.TICKET_ALREADY_CLOSED,
-                        message="Ticket is already in closed",
-                    ),
-                )
-            response = transite(
-                workflows_payload["states"], ticket_obj.state, action, user_roles
-            )
-
-            if not response["status"]:
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(
-                        type="transition",
-                        code=InternalErrorCode.INVALID_TICKET_STATUS,
-                        message=response["message"],
-                    ),
-                )
-
-            old_version_flattend = flatten_dict(ticket_obj.model_dump())
-            old_version_flattend.pop("payload.body", None)
-            old_version_flattend.update(
-                flatten_dict({"payload.body": ticket_obj}))
-
-            ticket_obj.state = response["message"]
-            ticket_obj.is_open = check_open_state(
-                workflows_payload["states"], response["message"]
-            )
-
             if resolution:
-                post_response = post_transite(
-                    workflows_payload["states"], response["message"], resolution
-                )
-                if not post_response["status"]:
-                    raise api.Exception(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        error=api.Error(
-                            type="transition",
-                            code=InternalErrorCode.INVALID_TICKET_STATUS,
-                            message=post_response["message"],
-                        ),
-                    )
-                ticket_obj.resolution_reason = resolution
+                ticket_obj = await update_state_handle_resolution(ticket_obj, workflows_payload, response, resolution)
 
             new_version_flattend = flatten_dict(ticket_obj.model_dump())
             new_version_flattend.pop("payload.body", None)
@@ -1609,38 +620,9 @@ async def create_or_update_resource_with_payload(
     record = core.Record.model_validate_json(request_record.file.read())
 
     payload_filename = payload_file.filename or ""
-    if payload_filename.endswith(".json"):
-        resource_content_type = ContentType.json
-    elif payload_file.content_type == "application/pdf":
-        resource_content_type = ContentType.pdf
-    elif payload_file.content_type == "text/csv":
-        resource_content_type = ContentType.csv
-    elif payload_file.content_type == "application/octet-stream":
-        if record.attributes.get("content_type") == "jsonl":
-            resource_content_type = ContentType.jsonl
-        elif record.attributes.get("content_type") == "sqlite":
-            resource_content_type = ContentType.sqlite
-        elif record.attributes.get("content_type") == "parquet":
-            resource_content_type = ContentType.parquet
-        else:
-            resource_content_type = ContentType.text
-    elif payload_file.content_type == "text/markdown":
-        resource_content_type = ContentType.markdown
-    elif payload_file.content_type and "image/" in payload_file.content_type:
-        resource_content_type = ContentType.image
-    elif payload_file.content_type and "audio/" in payload_file.content_type:
-        resource_content_type = ContentType.audio
-    elif payload_file.content_type and "video/" in payload_file.content_type:
-        resource_content_type = ContentType.video
-    else:
-        raise api.Exception(
-            status.HTTP_406_NOT_ACCEPTABLE,
-            api.Error(
-                type="attachment",
-                code=InternalErrorCode.NOT_SUPPORTED_TYPE,
-                message="The file type is not supported",
-            ),
-        )
+    resource_content_type = get_resource_content_type_from_payload_content_type(
+        payload_file, payload_filename, record
+    )
 
     await plugin_manager.before_action(
         core.Event(
@@ -1687,55 +669,9 @@ async def create_or_update_resource_with_payload(
             ),
         )
     await payload_file.seek(0)
-    if record.resource_type == ResourceType.ticket:
-        record = await set_init_state_from_record(
-            record, owner_shortname, space_name
-        )
-    resource_obj = core.Meta.from_record(
-        record=record, owner_shortname=owner_shortname)
-    if record.resource_type == ResourceType.ticket:
-        record = await set_init_state_from_record(
-            record, owner_shortname, space_name
-        )
-    resource_obj.payload = core.Payload(
-        content_type=resource_content_type,
-        checksum=checksum,
-        client_checksum=sha if isinstance(sha, str) else None,
-        schema_shortname="meta_schema"
-        if record.resource_type == ResourceType.schema
-        else record.attributes.get("payload", {}).get("schema_shortname", None),
-        body=f"{record.shortname}." + payload_filename.split(".")[1],
+    resource_obj, record = await create_or_update_resource_with_payload_handler(
+            record, owner_shortname, space_name, payload_file, payload_filename, checksum, sha, resource_content_type
     )
-    if (
-            not isinstance(resource_obj, core.Attachment)
-            and not isinstance(resource_obj, core.Content)
-            and not isinstance(resource_obj, core.Ticket)
-            and not isinstance(resource_obj, core.Schema)
-    ):
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            api.Error(
-                type="attachment",
-                code=InternalErrorCode.SOME_SUPPORTED_TYPE,
-                message="Only resources of type 'attachment' or 'content' are allowed",
-            ),
-        )
-    if settings.active_data_db == "file":
-        resource_obj.payload.body = f"{resource_obj.shortname}." + \
-                                    payload_filename.split(".")[1]
-    elif not isinstance(resource_obj, core.Attachment):
-        resource_obj.payload.body = json.load(payload_file.file)
-        payload_file.file.seek(0)
-
-    if (
-            resource_content_type == ContentType.json
-            and resource_obj.payload.schema_shortname
-    ):
-        await validate_payload_with_schema(
-            payload_data=payload_file,
-            space_name=space_name,
-            schema_shortname=resource_obj.payload.schema_shortname,
-        )
 
     await db.save(space_name, record.subpath, resource_obj)
     await db.save_payload(
@@ -1799,79 +735,18 @@ async def import_resources_from_csv(
     }
 
     resource_cls = getattr(
-        sys.modules["models.core"], camel_case(resource_type))
+        sys.modules["models.core"], camel_case(resource_type)
+    )
     meta_class_attributes = resource_cls.model_fields
     failed_shortnames: list = []
     success_count = 0
     for row in csv_reader:
-        shortname: str = ""
-        meta_object: dict = {}
-        payload_object: dict = {}
-        for key, value in row.items():
-            if not key or not value:
-                continue
-
-            if key == "shortname":
-                shortname = value
-                continue
-
-            keys_list = [i.strip() for i in key.split(".")]
-            if keys_list[0] in meta_class_attributes:
-                match len(keys_list):
-                    case 1:
-                        meta_object[keys_list[0].strip()] = value
-                    case 2:
-                        if keys_list[0].strip() not in meta_object:
-                            meta_object[keys_list[0].strip()] = {}
-                        meta_object[keys_list[0].strip(
-                        )][keys_list[1].strip()] = value
-                continue
-
-            current_schema_property = schema_content
-            for item in keys_list:
-                if "oneOf" in current_schema_property:
-                    for oneOf_item in current_schema_property["oneOf"]:
-                        if (
-                                "properties" in oneOf_item
-                                and item.strip() in oneOf_item["properties"]
-                        ):
-                            current_schema_property = oneOf_item["properties"][
-                                item.strip()
-                            ]
-                            break
-                else:
-                    current_schema_property = current_schema_property["properties"][
-                        item.strip()
-                    ]
-
-            if current_schema_property["type"] in ["number", "integer"]:
-                value = value.replace(",", "")
-
-            value = data_types_mapper[current_schema_property["type"]](value)
-            if current_schema_property["type"] == "array":
-                value = [
-                    str(item) if type(item) in [int, float] else item for item in value
-                ]
-
-            match len(keys_list):
-                case 1:
-                    payload_object[keys_list[0].strip()] = value
-                case 2:
-                    if keys_list[0].strip() not in payload_object:
-                        payload_object[keys_list[0].strip()] = {}
-                    payload_object[keys_list[0].strip(
-                    )][keys_list[1].strip()] = value
-                case 3:
-                    if keys_list[0].strip() not in payload_object:
-                        payload_object[keys_list[0].strip()] = {}
-                    if keys_list[1].strip() not in payload_object[keys_list[0].strip()]:
-                        payload_object[keys_list[0].strip(
-                        )][keys_list[1].strip()] = {}
-                    payload_object[keys_list[0].strip()][keys_list[1].strip()][
-                        keys_list[2].strip()
-                    ] = value
-                case _:
-                    continue
+        payload_object, meta_object, shortname = await import_resources_from_csv_handler(
+            row,
+            meta_class_attributes,
+            schema_content,
+            data_types_mapper,
+        )
 
         if shortname:
             if "is_active" not in meta_object:
@@ -1943,7 +818,8 @@ async def retrieve_entry_meta(
     )
 
     resource_class = getattr(
-        sys.modules["models.core"], camel_case(resource_type))
+        sys.modules["models.core"], camel_case(resource_type)
+    )
     meta: core.Meta = await db.load(
         space_name=space_name,
         subpath=subpath,
@@ -1960,15 +836,15 @@ async def retrieve_entry_meta(
         )
 
     if not await access_control.check_access(
-            user_shortname=logged_in_user,
-            space_name=space_name,
-            subpath=subpath,
-            resource_type=resource_type,
-            action_type=core.ActionType.view,
-            resource_is_active=meta.is_active,
-            resource_owner_shortname=meta.owner_shortname,
-            resource_owner_group=meta.owner_group_shortname,
-            entry_shortname=meta.shortname
+        user_shortname=logged_in_user,
+        space_name=space_name,
+        subpath=subpath,
+        resource_type=resource_type,
+        action_type=core.ActionType.view,
+        resource_is_active=meta.is_active,
+        resource_owner_shortname=meta.owner_shortname,
+        resource_owner_group=meta.owner_group_shortname,
+        entry_shortname=meta.shortname
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -1976,7 +852,7 @@ async def retrieve_entry_meta(
                 type="request",
                 code=InternalErrorCode.NOT_ALLOWED,
                 message="You don't have permission to this action [11]",
-            ),
+            )
         )
 
     attachments = {}
@@ -1993,11 +869,11 @@ async def retrieve_entry_meta(
         )
 
     if (
-            not retrieve_json_payload
-            or not meta.payload
-            or not meta.payload.body
-            or not isinstance(meta.payload.body, str)
-            or meta.payload.content_type != ContentType.json
+        not retrieve_json_payload
+        or not meta.payload
+        or not meta.payload.body
+        or not isinstance(meta.payload.body, str)
+        or meta.payload.content_type != ContentType.json
     ):
         # TODO
         # include locked before returning the dictionary
@@ -2125,14 +1001,16 @@ async def lock_entry(
     if resource_type == ResourceType.ticket:
         cls = getattr(sys.modules["models.core"], camel_case(resource_type))
 
-        meta = core.Ticket.model_validate(
-            await db.load(
+        mm = await db.load(
                 space_name=space_name,
                 subpath=subpath,
                 shortname=shortname,
                 class_type=cls,
                 user_shortname=logged_in_user,
             )
+
+        meta = core.Ticket.model_validate(
+            mm.model_dump()
         )
 
         meta.collaborators = meta.collaborators if meta.collaborators else {}
@@ -2158,14 +1036,20 @@ async def lock_entry(
     # if lock file is doesn't exist
     # elif lock file exit but lock_period expired
     # elif lock file exist and lock_period isn't expired but the owner want to extend the lock
-    lock_type = await db.lock_handler(
-        space_name,
-        subpath,
-        shortname,
-        logged_in_user,
-        LockAction.lock
-    )
+    print("=====================1=========================")
+    try:
+        lock_type = await db.lock_handler(
+            space_name,
+            subpath,
+            shortname,
+            logged_in_user,
+            LockAction.lock
+        )
+    except api.Exception as e:
+        print("!", e)
+    print("======================2========================")
 
+    print("======================3========================")
     await db.store_entry_diff(
         space_name,
         "/" + subpath,
@@ -2176,6 +1060,7 @@ async def lock_entry(
         ["lock_type"],
         core.Content,
     )
+    print("======================4========================")
 
     await plugin_manager.after_action(
         core.Event(
@@ -2434,48 +1319,7 @@ async def data_asset(
         filter_types=[query.data_asset_type],
         filter_shortnames=query.filter_data_assets
     )
-    files_paths: list[FilePath] = []
-    for attachment in attachments.get(query.data_asset_type, []):
-        file_path: FilePath = db.payload_path(
-            space_name=query.space_name,
-            subpath=f"{query.subpath}/{query.shortname}",
-            class_type=getattr(sys.modules["models.core"], camel_case(query.data_asset_type)),
-        )
-        if (
-                not isinstance(attachment.attributes.get("payload"), core.Payload)
-                or not isinstance(attachment.attributes["payload"].body, str)
-                or not (file_path / attachment.attributes["payload"].body).is_file()
-        ):
-            raise api.Exception(
-                status_code=status.HTTP_404_NOT_FOUND,
-                error=api.Error(
-                    type="db",
-                    code=InternalErrorCode.INVALID_DATA,
-                    message=f"Invalid data asset file found at {attachment.subpath}/{attachment.shortname}",
-                ),
-            )
-
-        file_path /= attachment.attributes["payload"].body
-        if (
-                attachment.attributes["payload"].schema_shortname
-                and attachment.resource_type == DataAssetType.csv
-        ):
-            await validate_csv_with_schema(
-                file_path=file_path,
-                space_name=query.space_name,
-                schema_shortname=attachment.attributes["payload"].schema_shortname
-            )
-        if (
-                attachment.attributes["payload"].schema_shortname
-                and attachment.resource_type == DataAssetType.jsonl
-        ):
-            await validate_jsonl_with_schema(
-                file_path=file_path,
-                space_name=query.space_name,
-                schema_shortname=attachment.attributes["payload"].schema_shortname
-            )
-        files_paths.append(file_path)
-
+    files_paths: list[FilePath] = await data_asset_attachments_handler(query, attachments)
     if not files_paths:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -2490,27 +1334,7 @@ async def data_asset(
         conn: duckdb.DuckDBPyConnection = duckdb.connect(str(files_paths[0]))  # type: ignore
     else:
         conn = duckdb.connect(":default:")
-        for idx, file_path in enumerate(files_paths):
-            # Load the file into the in-memory DB
-            match query.data_asset_type:
-                case DataAssetType.csv:
-                    globals().setdefault(
-                        attachments[query.data_asset_type][idx].shortname,
-                        conn.read_csv(str(file_path))
-                    )
-                case DataAssetType.jsonl:
-                    globals().setdefault(
-                        attachments[query.data_asset_type][idx].shortname,
-                        conn.read_json(
-                            str(file_path),
-                            format='auto'
-                        )
-                    )
-                case DataAssetType.parquet:
-                    globals().setdefault(
-                        attachments[query.data_asset_type][idx].shortname,
-                        conn.read_parquet(str(file_path))
-                    )
+        await data_asset_handler(conn, query, files_paths, attachments)
 
     data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)  # type: ignore
 

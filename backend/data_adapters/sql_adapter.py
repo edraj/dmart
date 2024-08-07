@@ -229,6 +229,156 @@ async def events_query(
     return total, records
 
 
+def query_aggregation(table, query):
+    if settings.database_driver == "sqlite":
+        aggregate_functions = sqlite_aggregate_functions
+    elif settings.database_driver == "mysql":
+        aggregate_functions = mysql_aggregate_functions
+    elif settings.database_driver == "postgresql":
+        aggregate_functions = postgres_aggregate_functions
+
+    # for reducer in query.aggregation_data.reducers:
+    # if reducer.reducer_name in aggregate_functions:
+    statement = select(
+        *[
+            getattr(table, ll.replace("@", ""))
+            for ll in query.aggregation_data.load
+        ]
+    )
+    statement = statement.group_by(
+        *[
+            table.__dict__[column]
+            for column in [
+                group_by.replace("@", "")
+                for group_by in query.aggregation_data.group_by
+            ]
+        ]
+    )
+    for reducer in query.aggregation_data.reducers:
+        if reducer.reducer_name in aggregate_functions:
+            if len(reducer.args) == 0:
+                field = "*"
+            else:
+                field = (
+                    getattr(table, reducer.args[0])
+                    if hasattr(table, reducer.args[0])
+                    else None
+                )
+                if field is None:
+                    continue
+
+                if isinstance(
+                        field.type, sqlalchemy.Integer
+                ) or isinstance(field.type, sqlalchemy.Boolean):
+                    field = f"{field}::int"
+                elif isinstance(field.type, sqlalchemy.Float):
+                    field = f"{field}::float"
+                else:
+                    field = f"{field}::text"
+
+            statement = statement.add_columns(
+                getattr(func, reducer.reducer_name)(field).label(
+                    reducer.alias
+                )
+            )
+    return statement
+
+
+async def set_sql_statement_from_query(table, statement, query):
+    try:
+        if query.type == QueryType.aggregation:
+            statement = query_aggregation(table, query)
+    except Exception as e:
+        print("[!query]", e)
+        raise api.Exception(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="query",
+                code=InternalErrorCode.SOMETHING_WRONG,
+                message=e,
+            ),
+        )
+
+    if query.space_name:
+        if (
+            query.type != QueryType.spaces
+            or query.space_name != "management"
+            or query.subpath != "/"
+        ):
+            statement = statement.where(table.space_name == query.space_name)
+
+    if query.subpath and table is Entries:
+        statement = statement.where(table.subpath == query.subpath)
+    if query.search and query.subpath != "/":
+        for k, v in parse_search_string(query.search, table).items():
+            statement = statement.where(text(f"{k}=:{k}")).params({k: v})
+        # statement = statement.where(table.shortname == query.search)
+    # if query.filter_schema_names:
+    #     statement = statement.where(table.schema_shortname.in_(query.filter_schema_names))
+    if query.filter_shortnames:
+        statement = statement.where(
+            table.shortname.in_(query.filter_shortnames)
+        )
+    # if query.filter_tags:
+    #     statement = statement.where(table.tags.contains(query.filter_tags))
+    # if query.search:
+    #     statement = statement.where(table.shortname.ilike(f"%{query.search}%"))
+    if query.from_date:
+        statement = statement.where(table.created_at >= query.from_date)
+    if query.to_date:
+        statement = statement.where(table.created_at <= query.to_date)
+    if query.sort_by:
+        statement = statement.order_by(table.__dict__[query.sort_by])
+    if query.sort_type == "descending":
+        statement = statement.order_by(table.__dict__[query.sort_by].desc())
+
+    if query.offset:
+        statement = statement.offset(query.offset)
+
+    if query.limit:
+        statement = statement.limit(query.limit)
+
+    return statement
+
+
+def set_results_from_aggregation(query, item, results, idx):
+    extra = {}
+    for key, value in item._mapping.items():
+        if not hasattr(Aggregated, key):
+            extra[key] = value
+
+    results[idx] = Aggregated.model_validate(item).to_record(
+        query.subpath,
+        (
+            getattr(item, "shortname")
+            if hasattr(item, "shortname")
+            else None
+        ),
+        extra=extra,
+    )
+
+    return results
+
+
+def set_table_for_query(query):
+    if query.type is QueryType.spaces:
+        return Spaces
+    elif query.type is QueryType.history:
+        return Histories
+    elif query.space_name == "management":
+        match query.subpath:
+            case "/users":
+                return Users
+            case "/roles":
+                return Roles
+            case "/permissions":
+                return Permissions
+            case _:
+                return Entries
+    else:
+        return Entries
+
+
 class SQLAdapter(BaseDataAdapter):
     session: Session = None
 
@@ -506,22 +656,8 @@ class SQLAdapter(BaseDataAdapter):
         with self.get_session() as session:
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
-            if query.type is QueryType.spaces:
-                table = Spaces
-            elif query.type is QueryType.history:
-                table = Histories
-            elif query.space_name == "management":
-                match query.subpath:
-                    case "/users":
-                        table = Users
-                    case "/roles":
-                        table = Roles
-                    case "/permissions":
-                        table = Permissions
-                    case _:
-                        table = Entries
-            else:
-                table = Entries
+
+            table = set_table_for_query(query.class_type)
 
             statement = select(table)
 
@@ -532,6 +668,9 @@ class SQLAdapter(BaseDataAdapter):
                     and table.space_name == query.space_name
                 )
 
+            total = session.execute(total_statement).scalar()
+            if query.type == QueryType.counters:
+                return total, []
 
             if query.type == QueryType.events:
                 try:
@@ -539,143 +678,16 @@ class SQLAdapter(BaseDataAdapter):
                 except Exception as e:
                     print(e)
                     return 0, []
-            try:
-                if query.type == QueryType.aggregation:
-                    if settings.database_driver == "sqlite":
-                        aggregate_functions = sqlite_aggregate_functions
-                    elif settings.database_driver == "mysql":
-                        aggregate_functions = mysql_aggregate_functions
-                    elif settings.database_driver == "postgresql":
-                        aggregate_functions = postgres_aggregate_functions
 
-                    # for reducer in query.aggregation_data.reducers:
-                    # if reducer.reducer_name in aggregate_functions:
-                    statement = select(
-                        *[
-                            getattr(table, ll.replace("@", ""))
-                            for ll in query.aggregation_data.load
-                        ]
-                    )
-                    statement = statement.group_by(
-                        *[
-                            table.__dict__[column]
-                            for column in [
-                                group_by.replace("@", "")
-                                for group_by in query.aggregation_data.group_by
-                            ]
-                        ]
-                    )
-                    for reducer in query.aggregation_data.reducers:
-                        if reducer.reducer_name in aggregate_functions:
-                            if len(reducer.args) == 0:
-                                field = "*"
-                            else:
-                                field = (
-                                    getattr(table, reducer.args[0])
-                                    if hasattr(table, reducer.args[0])
-                                    else None
-                                )
-                                if field is None:
-                                    continue
-
-                                if isinstance(
-                                        field.type, sqlalchemy.Integer
-                                ) or isinstance(field.type, sqlalchemy.Boolean):
-                                    field = f"{field}::int"
-                                elif isinstance(field.type, sqlalchemy.Float):
-                                    field = f"{field}::float"
-                                else:
-                                    field = f"{field}::text"
-
-                            statement = statement.add_columns(
-                                getattr(func, reducer.reducer_name)(field).label(
-                                    reducer.alias
-                                )
-                            )
-            except Exception as e:
-                print("[!query]", e)
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(
-                        type="query",
-                        code=InternalErrorCode.SOMETHING_WRONG,
-                        message=e,
-                    ),
-                )
-            if query.space_name:
-                if (
-                        query.type != QueryType.spaces
-                        or query.space_name != "management"
-                        or query.subpath != "/"
-                ):
-                    statement = statement.where(table.space_name == query.space_name)
-            if query.subpath and table is Entries:
-                statement = statement.where(table.subpath == query.subpath)
-            if query.search and query.subpath != "/":
-                for k, v in parse_search_string(query.search, table).items():
-                    statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-                # statement = statement.where(table.shortname == query.search)
-            # if query.filter_schema_names:
-            #     statement = statement.where(table.schema_shortname.in_(query.filter_schema_names))
-            if query.filter_shortnames:
-                statement = statement.where(
-                    table.shortname.in_(query.filter_shortnames)
-                )
-            # if query.filter_tags:
-            #     statement = statement.where(table.tags.contains(query.filter_tags))
-            # if query.search:
-            #     statement = statement.where(table.shortname.ilike(f"%{query.search}%"))
-            if query.from_date:
-                statement = statement.where(table.created_at >= query.from_date)
-            if query.to_date:
-                statement = statement.where(table.created_at <= query.to_date)
-            if query.sort_by:
-                statement = statement.order_by(table.__dict__[query.sort_by])
-            if query.sort_type == "descending":
-                statement = statement.order_by(table.__dict__[query.sort_by].desc())
-
-            if query.offset:
-                statement = statement.offset(query.offset)
-
-            total = session.execute(total_statement).scalar()
-            if query.type == QueryType.counters:
-                return total, []
-
-            if query.limit:
-                statement = statement.limit(query.limit)
+            statement = await set_sql_statement_from_query(table, statement, query)
 
             try:
                 results = list(session.exec(statement).all())
                 if len(results) == 0:
                     return 0, []
 
-                for idx, item in enumerate(results):
-                    if query.type == QueryType.aggregation:
-                        extra = {}
-                        for key, value in item._mapping.items():
-                            if not hasattr(Aggregated, key):
-                                extra[key] = value
+                results = self._set_query_final_results(table, query, results)
 
-                        results[idx] = Aggregated.model_validate(item).to_record(
-                            query.subpath,
-                            (
-                                getattr(item, "shortname")
-                                if hasattr(item, "shortname")
-                                else None
-                            ),
-                            extra=extra,
-                        )
-                    else:
-                        results[idx] = table.model_validate(item).to_record(
-                            query.subpath, item.shortname
-                        )
-                    if query.type not in [QueryType.history, QueryType.events]:
-                        if query.retrieve_attachments:
-                            results[idx].attachments = await self.get_entry_attachments(
-                                query.subpath,
-                                Path(settings.spaces_folder) / query.space_name,
-                                retrieve_json_payload=True,
-                            )
             except Exception as e:
                 print("[!!query]", e)
                 raise api.Exception(
@@ -1317,3 +1329,21 @@ class SQLAdapter(BaseDataAdapter):
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
                 return False
+
+    async def _set_query_final_results(self, table, query, results):
+        for idx, item in enumerate(results):
+            if query.type == QueryType.aggregation:
+                results = set_results_from_aggregation(
+                    query, item, results, idx
+                )
+            else:
+                results[idx] = table.model_validate(item).to_record(
+                    query.subpath, item.shortname
+                )
+            if query.type not in [QueryType.history, QueryType.events]:
+                if query.retrieve_attachments:
+                    results[idx].attachments = await self.get_entry_attachments(
+                        query.subpath,
+                        Path(settings.spaces_folder) / query.space_name,
+                        retrieve_json_payload=True,
+                    )
