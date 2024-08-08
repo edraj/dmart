@@ -48,8 +48,8 @@ def parse_redis_response(rows: list) -> list:
 
 
 async def _serve_query_space(query, logged_in_user):
-    records: list[core.Record] = []
-    total: int = 0
+    records = []
+    total = 0
 
     spaces = await get_spaces()
     for space_json in spaces.values():
@@ -84,11 +84,11 @@ async def _serve_query_space(query, logged_in_user):
 
 
 async def _serve_query_search(query, logged_in_user, redis_query_policies):
-    records: list[core.Record] = []
-    total: int = 0
+    records = []
+    total = 0
 
     search_res, total = await redis_query_search(query, logged_in_user, redis_query_policies)
-    res_data: list = []
+    res_data = []
     for redis_document in search_res:
         res_data.append(json.loads(redis_document))
     if len(query.filter_schema_names) > 1:
@@ -142,7 +142,7 @@ async def _serve_query_search(query, logged_in_user, redis_query_policies):
 
 
 async def _serve_query_subpath_sorting(query, records):
-    sort_reverse: bool = (
+    sort_reverse = (
             query.sort_type is not None
             and query.sort_type == api.SortType.descending
     )
@@ -212,8 +212,8 @@ async def set_attachment_for_payload(path, folder_obj, folder_record, query, met
 
 
 async def _serve_query_subpath(query, logged_in_user):
-    records: list[core.Record] = []
-    total: int = 0
+    records = []
+    total = 0
 
     subpath = query.subpath
     if subpath[0] == "/":
@@ -412,8 +412,8 @@ async def _serve_query_subpath(query, logged_in_user):
 
 
 async def _serve_query_counters(query, logged_in_user):
-    records: list[core.Record] = []
-    total: int = 0
+    records = []
+    total = 0
 
     if not await access_control.check_access(
             user_shortname=logged_in_user,
@@ -442,8 +442,8 @@ async def _serve_query_counters(query, logged_in_user):
 
 
 async def _serve_query_tags(query, redis_query_policies):
-    records: list[core.Record] = []
-    total: int = 0
+    records = []
+    total = 0
 
     query.sort_by = "tags"
     query.aggregation_data = api.RedisAggregate(
@@ -473,8 +473,8 @@ async def _serve_query_tags(query, redis_query_policies):
 
 
 async def _serve_query_random(query, redis_query_policies):
-    records: list[core.Record] = []
-    total: int = 0
+    records = []
+    total = 0
 
     query.aggregation_data = api.RedisAggregate(
         load=["@__key"],
@@ -528,8 +528,8 @@ async def _serve_query_random(query, redis_query_policies):
 
 
 async def _serve_query_history(query, logged_in_user):
-    records: list[core.Record] = []
-    total: int = 0
+    records = []
+    total = 0
 
     if not await access_control.check_access(
             user_shortname=logged_in_user,
@@ -612,8 +612,8 @@ async def _serve_query_history(query, logged_in_user):
 
 
 async def _serve_query_events(query, logged_in_user):
-    records: list[core.Record] = []
-    total: int = 0
+    records = []
+    total = 0
 
     trimmed_subpath = query.subpath
     if trimmed_subpath[0] == "/":
@@ -719,8 +719,8 @@ async def _serve_query_events(query, logged_in_user):
 
 
 async def _serve_query_aggregation(query, redis_query_policies):
-    records: list[core.Record] = []
-    total: int = 0
+    records = []
+    total = 0
 
     rows = await redis_query_aggregate(
         query=query, redis_query_policies=redis_query_policies
