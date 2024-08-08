@@ -38,7 +38,6 @@ from api.user.service import (
 )
 from utils.redis_services import RedisServices
 from languages.loader import languages
-from pathlib import Path as FilePath
 from data_adapters.adapter import data_adapter as db
 
 
