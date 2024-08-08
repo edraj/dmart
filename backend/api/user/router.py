@@ -38,7 +38,7 @@ from .service import (
     set_user_profile,
     update_user_payload, get_otp_confirmation_email_or_msisdn,
 )
-from .models.requests import (
+from .model.requests import (
     ConfirmOTPRequest,
     PasswordResetRequest,
     SendOTPRequest,
