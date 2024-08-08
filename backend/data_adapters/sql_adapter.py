@@ -657,7 +657,7 @@ class SQLAdapter(BaseDataAdapter):
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
-            table = set_table_for_query(query.class_type)
+            table = set_table_for_query(query)
 
             statement = select(table)
 
@@ -686,7 +686,7 @@ class SQLAdapter(BaseDataAdapter):
                 if len(results) == 0:
                     return 0, []
 
-                results = self._set_query_final_results(table, query, results)
+                results = await self._set_query_final_results(table, query, results)
 
             except Exception as e:
                 print("[!!query]", e)
@@ -1347,3 +1347,5 @@ class SQLAdapter(BaseDataAdapter):
                         Path(settings.spaces_folder) / query.space_name,
                         retrieve_json_payload=True,
                     )
+
+        return results

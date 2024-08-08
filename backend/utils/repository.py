@@ -13,7 +13,6 @@ from fastapi.encoders import jsonable_encoder
 import models.api as api
 import models.core as core
 import utils.regex as regex
-from api.user.router import MANAGEMENT_SPACE, USERS_SUBPATH
 from models.enums import ContentType, Language, ResourceType, QueryType
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
@@ -1796,7 +1795,7 @@ async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dic
                 if key == "email_unescaped":
                     value = f"{{{value}}}"
                 redis_search_res = await redis_man.search(
-                    space_name=MANAGEMENT_SPACE,
+                    space_name=settings.management_space,
                     search=search_str + f" @{key}:{value}",
                     limit=0,
                     offset=0,
@@ -1814,8 +1813,8 @@ async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dic
             total, result = await db.query(
                 api.Query(
                     type=QueryType.search,
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
+                    space_name=settings.management_space,
+                    subpath="users",
                     search=search_str + f" @{key}:{value}",
                     limit=0,
                     offset=0

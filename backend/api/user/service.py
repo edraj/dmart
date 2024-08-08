@@ -4,7 +4,7 @@ import string
 import urllib.parse
 import time
 from data_adapters.adapter import data_adapter as db
-from ...models import core
+from models import core
 from models.api import Error, Exception
 from models.enums import ContentType
 from utils import password_hashing

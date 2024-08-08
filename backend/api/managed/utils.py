@@ -437,7 +437,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
             )
 
         # GET PAYLOAD DATA
-        old_version_flattend, old_resource_payload_body = serve_request_update_r_replace_fetch_payload(
+        old_version_flattend, old_resource_payload_body = await serve_request_update_r_replace_fetch_payload(
             old_resource_obj, record, request, resource_cls, schema_shortname
         )
 
@@ -1005,12 +1005,23 @@ async def handle_update_state(space_name, logged_in_user, ticket_obj, action, us
         class_type=core.Content,
         user_shortname=logged_in_user,
     )
-    workflows_payload = await db.load_resource_payload(
-        space_name=space_name,
-        subpath="workflows",
-        filename=str(workflows_data.payload.body),
-        class_type=core.Content,
-    )
+    if workflows_data.payload is not None and workflows_data.payload.body is not None:
+        workflows_payload = await db.load_resource_payload(
+            space_name=space_name,
+            subpath="workflows",
+            filename=str(workflows_data.payload.body),
+            class_type=core.Content,
+        )
+    else:
+        raise api.Exception(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=api.Error(
+                type="transition",
+                code=InternalErrorCode.MISSING_DATA,
+                message="Invalid workflow",
+            ),
+        )
+
     if not ticket_obj.is_open:
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -297,13 +297,13 @@ async def middle(request: Request, call_next):
             },
         )
         response_body = json.loads(response.body.decode())
-    except Exception as e:
+    except Exception:
         exception_message = ""
         stack = None
         if ee := sys.exc_info()[1]:
             stack = set_stack(ee)
             exception_message = str(ee)
-            exception_data = {"props": {"exception": str(ee), "stack": stack, "extra_exception": e}}
+            exception_data = {"props": {"exception": str(ee), "stack": stack}}
 
         error_log = {"code": 99, "message": exception_message}
         if settings.debug_enabled:
