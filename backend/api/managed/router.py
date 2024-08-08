@@ -1,4 +1,3 @@
-from copy import copy
 import csv
 from datetime import datetime
 import hashlib
@@ -15,17 +14,8 @@ from api.managed.utils import serve_request_create, serve_request_update_r_repla
     update_state_handle_resolution, serve_space_delete, serve_space_update, serve_space_create, \
     data_asset_attachments_handler, import_resources_from_csv_handler, data_asset_handler, \
     create_or_update_resource_with_payload_handler
-from utils.generate_email import generate_email_from_template, generate_subject
-from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema, validate_uniqueness
 from utils.internal_error_code import InternalErrorCode
 from utils.router_helper import is_space_exist
-from utils.ticket_sys_utils import (
-    set_init_state_from_request,
-    set_init_state_from_record,
-    transite,
-    post_transite,
-    check_open_state,
-)
 import models.api as api
 import models.core as core
 from models.enums import (
@@ -39,7 +29,7 @@ from models.enums import (
 import utils.regex as regex
 import sys
 import json
-from utils.jwt import JWTBearer, GetJWTToken, remove_active_session
+from utils.jwt import JWTBearer, GetJWTToken
 from utils.access_control import access_control
 from utils.spaces import initialize_spaces
 from typing import Any
@@ -54,13 +44,8 @@ from utils.custom_validations import validate_payload_with_schema
 from utils.settings import settings
 from utils.plugin_manager import plugin_manager
 from io import BytesIO, StringIO
-from api.user.service import (
-    send_email,
-    send_sms,
-)
 from utils.redis_services import RedisServices
 from fastapi.responses import RedirectResponse
-from languages.loader import languages
 from typing import Callable
 from pathlib import Path as FilePath
 from data_adapters.adapter import data_adapter as db

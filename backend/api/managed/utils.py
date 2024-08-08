@@ -1,13 +1,6 @@
 from copy import copy
-import csv
 from datetime import datetime
-import hashlib
-import os
-from re import sub as res_sub
-from time import time
-from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, status
-from fastapi.responses import FileResponse
-from starlette.responses import StreamingResponse
+from fastapi import status
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema, validate_uniqueness
 from utils.internal_error_code import InternalErrorCode
@@ -25,36 +18,26 @@ from models.enums import (
     ContentType,
     RequestType,
     ResourceType,
-    LockAction,
     DataAssetType,
-    TaskType,
 )
-import utils.regex as regex
 import sys
 import json
-from utils.jwt import JWTBearer, GetJWTToken, remove_active_session
+from utils.jwt import remove_active_session
 from utils.access_control import access_control
-from utils.spaces import initialize_spaces
-from typing import Any
 import utils.repository as repository
 from utils.helpers import (
     camel_case,
-    csv_file_to_json,
     flatten_dict,
-    resolve_schema_references,
 )
 from utils.custom_validations import validate_payload_with_schema
 from utils.settings import settings
 from utils.plugin_manager import plugin_manager
-from io import BytesIO, StringIO
 from api.user.service import (
     send_email,
     send_sms,
 )
 from utils.redis_services import RedisServices
-from fastapi.responses import RedirectResponse
 from languages.loader import languages
-from typing import Callable
 from pathlib import Path as FilePath
 from data_adapters.adapter import data_adapter as db
 
