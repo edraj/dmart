@@ -32,8 +32,13 @@ from .service import (
     send_sms,
     send_otp,
     email_send_otp,
+    fetch_invitation,
+    get_shortname_from_identifier,
+    check_user_validation,
+    set_user_profile,
+    update_user_payload, get_otp_confirmation_email_or_msisdn,
 )
-from .models.requests import (
+from .model.requests import (
     ConfirmOTPRequest,
     PasswordResetRequest,
     SendOTPRequest,
@@ -183,20 +188,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     identifier = request.check_fields()
     try:
         if request.invitation:
-            if settings.active_data_db == "file":
-                async with RedisServices() as redis_services:
-                    # FIXME invitation_token = await redis_services.getdel_key(
-                    invitation_token = await redis_services.get_key(
-                        f"users:login:invitation:{request.invitation}"
-                    )
-            else:
-                invitation_token = await db.get_invitation_token(request.invitation)
-            if not invitation_token:
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
-                )
+            invitation_token = await fetch_invitation(request.invitation)
 
             data = decode_jwt(request.invitation)
             shortname = data.get("shortname", None)
@@ -233,18 +225,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     ),
                 )
 
-            if (
-                data.get("channel") == "EMAIL"
-                and user.email
-                and f"EMAIL:{user.email}" in invitation_token
-            ):
-                user_updates["is_email_verified"] = True
-            elif (
-                data.get("channel") == "SMS"
-                and user.msisdn
-                and f"SMS:{user.msisdn}" in invitation_token
-            ):
-                user_updates["is_msisdn_verified"] = True
+            user_updates = check_user_validation(user, data, user_updates, invitation_token)
+
         else:
             if identifier is None:
                 raise api.Exception(
@@ -258,19 +240,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 shortname = identifier["shortname"]
             else:
                 key, value = list(identifier.items())[0]
-                if isinstance(value, str) and isinstance(key, str):
-                    shortname = await access_control.get_user_by_criteria(key, value)
-                    if not (await access_control.is_user_verified(shortname, key)):
-                        raise api.Exception(
-                            status.HTTP_401_UNAUTHORIZED,
-                            api.Error(
-                                type="auth",
-                                code=InternalErrorCode.USER_ISNT_VERIFIED,
-                                message="This user is not verified",
-                            ),
-                        )
-                else:
-                    shortname = None
+                shortname = await get_shortname_from_identifier(access_control, key, value)
                 if shortname is None:
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
@@ -440,6 +410,7 @@ async def update_profile(
                     message="Invalid username or password",
                 ),
             )
+
         await plugin_manager.before_action(
             core.Event(
                 space_name=MANAGEMENT_SPACE,
@@ -459,7 +430,6 @@ async def update_profile(
             user_shortname=shortname,
         ))
 
-
         old_version_flattend = flatten_dict(user.model_dump())
 
         if profile_user.password and "old_password" in profile.attributes:
@@ -475,28 +445,10 @@ async def update_profile(
         # if "force_password_change" in profile.attributes:
         #     user.force_password_change = profile.attributes["force_password_change"]
 
-        if profile_user.password:
-            user.password = password_hashing.hash_password(profile_user.password)
-            user.force_password_change = False
-        if "displayname" in profile.attributes:
-            user.displayname = profile_user.displayname.model_dump()
-        if "description" in profile.attributes:
-            user.description = profile_user.description.model_dump()
-        if "language" in profile.attributes:
-            user.language = profile_user.language
+        user = set_user_profile(profile, profile_user, user)
 
         if "confirmation" in profile.attributes:
-            result = None
-
-            async with RedisServices() as redis_services:
-                if profile_user.email:
-                    result = await redis_services.get_content_by_id(
-                        f"users:otp:confirmation/email/{profile_user.email}"
-                    )
-                elif profile_user.msisdn:
-                    result = await redis_services.get_content_by_id(
-                        f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
-                    )
+            result = await get_otp_confirmation_email_or_msisdn(profile_user)
 
             if result is None or result != profile.attributes["confirmation"]:
                 raise Exception(
@@ -520,30 +472,7 @@ async def update_profile(
                 user.is_msisdn_verified = False
 
             if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
-                separate_payload_data = {}
-                user.payload = core.Payload(
-                    content_type=ContentType.json,
-                    schema_shortname=profile_user.payload.schema_shortname,
-                    body="",
-                )
-                if profile.attributes["payload"]["body"]:
-                    separate_payload_data = profile.attributes["payload"]["body"]
-                    user.payload.body = shortname + ".json"
-
-                if user.payload and separate_payload_data:
-                    if profile_user.payload.schema_shortname:
-                        await validate_payload_with_schema(
-                            payload_data=separate_payload_data,
-                            space_name=MANAGEMENT_SPACE,
-                            schema_shortname=str(user.payload.schema_shortname),
-                        )
-
-                await db.save_payload_from_json(
-                    MANAGEMENT_SPACE,
-                    USERS_SUBPATH,
-                    user,
-                    separate_payload_data,
-                )
+                await update_user_payload(profile, profile_user, user, shortname)
 
         history_diff = await db.update(
             MANAGEMENT_SPACE,
