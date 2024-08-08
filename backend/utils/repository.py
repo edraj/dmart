@@ -13,7 +13,6 @@ from fastapi.encoders import jsonable_encoder
 import models.api as api
 import models.core as core
 import utils.regex as regex
-from api.user.router import MANAGEMENT_SPACE, USERS_SUBPATH
 from models.enums import ContentType, Language, ResourceType, QueryType
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
@@ -48,6 +47,697 @@ def parse_redis_response(rows: list) -> list:
     return mylist
 
 
+async def _serve_query_space(query, logged_in_user):
+    records = []
+    total = 0
+
+    spaces = await get_spaces()
+    for space_json in spaces.values():
+        space = core.Space.model_validate_json(space_json)
+
+        if await access_control.check_space_access(
+                logged_in_user, space.shortname
+        ):
+            total += 1
+            records.append(
+                space.to_record(
+                    query.subpath,
+                    space.shortname,
+                    query.include_fields if query.include_fields else [],
+                )
+            )
+    if not query.sort_by:
+        query.sort_by = "ordinal"
+    if records:
+        record_fields = list(records[0].model_fields.keys())
+        records = sorted(
+            records,
+            key=lambda d: d.__getattribute__(query.sort_by)
+            if query.sort_by in record_fields
+            else d.attributes[query.sort_by]
+            if query.sort_by in d.attributes and d.attributes[query.sort_by] is not None
+            else 1,
+            reverse=(query.sort_type == api.SortType.descending),
+        )
+
+    return total, records
+
+
+async def _serve_query_search(query, logged_in_user, redis_query_policies):
+    records = []
+    total = 0
+
+    search_res, total = await redis_query_search(query, logged_in_user, redis_query_policies)
+    res_data = []
+    for redis_document in search_res:
+        res_data.append(json.loads(redis_document))
+    if len(query.filter_schema_names) > 1:
+        if query.sort_by:
+            res_data = sorted(
+                res_data,
+                key=lambda d: d[query.sort_by]
+                if query.sort_by in d
+                else d.get("payload", {})[query.sort_by]
+                if query.sort_by in d.get("payload", {})
+                else "",
+                reverse=(query.sort_type == api.SortType.descending),
+            )
+        res_data = res_data[query.offset: (query.limit + query.offset)]
+
+    for redis_doc_dict in res_data:
+        try:
+            resource_base_record = await get_record_from_redis_doc(
+                space_name=query.space_name,
+                doc=redis_doc_dict,
+                retrieve_json_payload=query.retrieve_json_payload,
+                retrieve_attachments=query.retrieve_attachments,
+                validate_schema=query.validate_schema,
+                filter_types=query.filter_types,
+                retrieve_lock_status=query.retrieve_lock_status,
+            )
+        except Exception as e:
+            print("Error in get_record_from_redis_doc", e)
+            continue
+
+        # Don't repeat the same entry comming from different indices
+        # if resource_base_record in records:
+        #     total -= 1
+        #     continue
+
+        if query.highlight_fields:
+            for key, value in query.highlight_fields.items():
+                resource_base_record.attributes[value] = getattr(
+                    redis_doc_dict, key, None
+                )
+
+        resource_base_record.attributes = alter_dict_keys(
+            jsonable_encoder(resource_base_record.attributes, exclude_none=True),
+            query.include_fields,
+            query.exclude_fields,
+        )
+
+        records.append(resource_base_record)
+
+    return total, records
+
+
+async def _serve_query_subpath_sorting(query, records):
+    sort_reverse = (
+            query.sort_type is not None
+            and query.sort_type == api.SortType.descending
+    )
+    if query.sort_by in core.Record.model_fields:
+        records = sorted(
+            records,
+            key=lambda record: record.__getattribute__(
+                str(query.sort_by)),
+            reverse=sort_reverse,
+        )
+    else:
+        records = sorted(
+            records,
+            key=lambda record: record.attributes[str(
+                query.sort_by)],
+            reverse=sort_reverse,
+        )
+
+    return records
+
+
+async def _serve_query_subpath_check_payload(resource_base_record, path, resource_obj, query):
+    payload_body = resource_base_record.attributes[
+        "payload"
+    ].body
+    if not payload_body or isinstance(payload_body, str):
+        async with aiofiles.open(
+                path / resource_obj.payload.body, "r"
+        ) as payload_file_content:
+            payload_body = json.loads(
+                await payload_file_content.read()
+            )
+
+    if query.validate_schema:
+        await validate_payload_with_schema(
+            payload_data=payload_body,
+            space_name=query.space_name,
+            schema_shortname=resource_obj.payload.schema_shortname,
+        )
+
+
+async def set_attachment_for_payload(path, folder_obj, folder_record, query, meta_path, shortname):
+    if (
+            query.retrieve_json_payload
+            and folder_obj.payload
+            and folder_obj.payload.content_type
+            and folder_obj.payload.content_type == ContentType.json
+            and isinstance(folder_obj.payload.body, str)
+            and (path / folder_obj.payload.body).is_file()
+    ):
+        async with aiofiles.open(
+                path / folder_obj.payload.body, "r"
+        ) as payload_file_content:
+            folder_record.attributes["payload"].body = json.loads(
+                await payload_file_content.read()
+            )
+            if os.path.exists(meta_path / shortname):
+                folder_record.attachments = await db.get_entry_attachments(
+                    subpath=f"{query.subpath if query.subpath != '/' else ''}/{shortname}",
+                    attachments_path=(meta_path / shortname),
+                    filter_types=query.filter_types,
+                    include_fields=query.include_fields,
+                    retrieve_json_payload=query.retrieve_json_payload,
+                )
+
+    return folder_record
+
+
+async def _serve_query_subpath(query, logged_in_user):
+    records = []
+    total = 0
+
+    subpath = query.subpath
+    if subpath[0] == "/":
+        subpath = "." + subpath
+
+    path = (
+        settings.spaces_folder
+        / query.space_name
+        / subpath
+    )
+
+    if query.include_fields is None:
+        query.include_fields = []
+
+    meta_path = path / ".dm"
+    if meta_path.is_dir():
+        path_iterator = os.scandir(meta_path)
+        async with RedisServices() as redis_services:
+            for entry in path_iterator:
+                if not entry.is_dir():
+                    continue
+
+                subpath_iterator = os.scandir(entry)
+                for one in subpath_iterator:
+                    # for one in path.glob(entries_glob):
+                    match = regex.FILE_PATTERN.search(str(one.path))
+                    if not match or not one.is_file():
+                        continue
+
+                    shortname = match.group(1)
+                    resource_name = match.group(2).lower()
+                    if (
+                        query.filter_types
+                        and ResourceType(resource_name) not in query.filter_types
+                    ):
+                        continue
+
+                    if (
+                        query.filter_shortnames
+                        and shortname not in query.filter_shortnames
+                    ):
+                        continue
+
+                    resource_class = getattr(
+                        sys.modules["models.core"], camel_case(
+                            resource_name)
+                    )
+                    async with aiofiles.open(one, "r") as meta_file:
+                        resource_obj = resource_class.model_validate_json(
+                            await meta_file.read()
+                        )
+
+                    if query.filter_tags and (
+                            not resource_obj.tags
+                            or not any(
+                                item in resource_obj.tags
+                                for item in query.filter_tags
+                            )
+                    ):
+                        continue
+
+                    # apply check access
+                    if not await access_control.check_access(
+                        user_shortname=logged_in_user,
+                        space_name=query.space_name,
+                        subpath=query.subpath,
+                        resource_type=ResourceType(resource_name),
+                        action_type=core.ActionType.view,
+                        resource_is_active=resource_obj.is_active,
+                        resource_owner_shortname=resource_obj.owner_shortname,
+                        resource_owner_group=resource_obj.owner_group_shortname,
+                        entry_shortname=shortname,
+                    ):
+                        continue
+
+                    total += 1
+                    if len(records) >= query.limit or total < query.offset:
+                        continue
+
+                    resource_base_record = resource_obj.to_record(
+                        query.subpath,
+                        shortname,
+                        query.include_fields,
+                    )
+                    if query.retrieve_lock_status and resource_base_record:
+                        locked_data = await redis_services.get_lock_doc(
+                            query.space_name,
+                            query.subpath,
+                            resource_obj.shortname,
+                        )
+                        if locked_data:
+                            resource_base_record.attributes[
+                                "locked"
+                            ] = locked_data
+
+                    if (
+                        query.retrieve_json_payload
+                        and resource_obj.payload
+                        and resource_obj.payload.content_type
+                        and resource_obj.payload.content_type
+                        == ContentType.json
+                        and (path / resource_obj.payload.body).is_file()
+                    ):
+                        async with aiofiles.open(
+                                path / resource_obj.payload.body, "r"
+                        ) as payload_file_content:
+                            resource_base_record.attributes[
+                                "payload"
+                            ].body = json.loads(
+                                await payload_file_content.read()
+                            )
+
+                    if (
+                        resource_obj.payload
+                        and resource_obj.payload.schema_shortname
+                    ):
+                        try:
+                            await _serve_query_subpath_check_payload(resource_base_record, path, resource_obj, query)
+                        except Exception:
+                            continue
+
+                    resource_base_record.attachments = (
+                        await db.get_entry_attachments(
+                            subpath=f"{query.subpath}/{shortname}",
+                            attachments_path=(meta_path / shortname),
+                            filter_types=query.filter_types,
+                            include_fields=query.include_fields,
+                            retrieve_json_payload=query.retrieve_json_payload,
+                        )
+                    )
+                    records.append(resource_base_record)
+
+                subpath_iterator.close()
+            if path_iterator:
+                path_iterator.close()
+
+    # Get all matching sub folders
+    # apply check access
+
+    if meta_path.is_dir():
+        subfolders_iterator = os.scandir(path)
+        for one in subfolders_iterator:
+            if not one.is_dir():
+                continue
+
+            subfolder_meta = Path(one.path + "/.dm/meta.folder.json")
+
+            match = regex.FOLDER_PATTERN.search(str(subfolder_meta))
+
+            if not match or not subfolder_meta.is_file():
+                continue
+
+            shortname = match.group(1)
+            if not await access_control.check_access(
+                    user_shortname=logged_in_user,
+                    space_name=query.space_name,
+                    subpath=f"{query.subpath}/{shortname}",
+                    resource_type=ResourceType.folder,
+                    action_type=core.ActionType.query,
+                    entry_shortname=shortname
+            ):
+                continue
+
+            if (
+                query.filter_shortnames
+                and shortname not in query.filter_shortnames
+            ):
+                continue
+
+            total += 1
+            if len(records) >= query.limit or total < query.offset:
+                continue
+
+            folder_obj = core.Folder.model_validate_json(
+                subfolder_meta.read_text()
+            )
+            folder_record = folder_obj.to_record(
+                query.subpath,
+                shortname,
+                query.include_fields,
+            )
+
+            await set_attachment_for_payload(
+                path, folder_obj, folder_record, query, meta_path, shortname
+            )
+
+            records.append(folder_record)
+
+        if subfolders_iterator:
+            subfolders_iterator.close()
+
+    if query.sort_by:
+        records = await _serve_query_subpath_sorting(query, records)
+
+    return total, records
+
+
+async def _serve_query_counters(query, logged_in_user):
+    records = []
+    total = 0
+
+    if not await access_control.check_access(
+            user_shortname=logged_in_user,
+            space_name=query.space_name,
+            subpath=query.subpath,
+            resource_type=ResourceType.content,
+            action_type=core.ActionType.query
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="You don't have permission to this action [16]",
+            ),
+        )
+    async with RedisServices() as redis_services:
+        for schema_name in query.filter_schema_names:
+            redis_res = await redis_services.get_count(
+                space_name=query.space_name,
+                schema_shortname=schema_name,
+            )
+            total += int(redis_res)
+
+    return total, records
+
+
+async def _serve_query_tags(query, redis_query_policies):
+    records = []
+    total = 0
+
+    query.sort_by = "tags"
+    query.aggregation_data = api.RedisAggregate(
+        group_by=["@tags"],
+        reducers=[
+            api.RedisReducer(
+                reducer_name="count",
+                alias="freq"
+            )
+        ]
+    )
+    rows = await redis_query_aggregate(
+        query=query,
+        redis_query_policies=redis_query_policies
+    )
+    records.append(
+        core.Record(
+            resource_type=ResourceType.content,
+            shortname="tags_frequency",
+            subpath=query.subpath,
+            attributes={"result": rows},
+        )
+    )
+    total = 1
+
+    return total, records
+
+
+async def _serve_query_random(query, redis_query_policies):
+    records = []
+    total = 0
+
+    query.aggregation_data = api.RedisAggregate(
+        load=["@__key"],
+        group_by=["@resource_type"],
+        reducers=[
+            api.RedisReducer(
+                reducer_name="random_sample",
+                alias="id",
+                args=["@__key", query.limit]
+            )
+        ]
+    )
+    async with RedisServices() as redis_services:
+        rows = await redis_query_aggregate(
+            query=query,
+            redis_query_policies=redis_query_policies
+        )
+        ids = []
+        for row in rows:
+            ids.extend(row[3])
+        docs = await redis_services.get_docs_by_ids(ids)
+        total = len(ids)
+        for doc in docs:
+            doc = doc[0]
+            if query.retrieve_json_payload and doc.get("payload_doc_id", None):
+                doc["payload"]["body"] = await redis_services.get_payload_doc(
+                    doc["payload_doc_id"], doc["resource_type"]
+                )
+            record = core.Record(
+                shortname=doc["shortname"],
+                resource_type=doc["resource_type"],
+                uuid=doc["uuid"],
+                subpath=doc["subpath"],
+                attributes={"payload": doc.get("payload")},
+            )
+            entry_path = (
+                    settings.spaces_folder
+                    / f"{query.space_name}/{doc['subpath']}/.dm/{doc['shortname']}"
+            )
+            if query.retrieve_attachments and entry_path.is_dir():
+                record.attachments = await db.get_entry_attachments(
+                    subpath=f"{doc['subpath']}/{doc['shortname']}",
+                    attachments_path=entry_path,
+                    filter_types=query.filter_types,
+                    include_fields=query.include_fields,
+                    retrieve_json_payload=query.retrieve_json_payload,
+                )
+            records.append(record)
+
+    return total, records
+
+
+async def _serve_query_history(query, logged_in_user):
+    records = []
+    total = 0
+
+    if not await access_control.check_access(
+            user_shortname=logged_in_user,
+            space_name=query.space_name,
+            subpath=query.subpath,
+            resource_type=ResourceType.history,
+            action_type=core.ActionType.query,
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="You don't have permission to this action [17]",
+            ),
+        )
+
+    if not query.filter_shortnames:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.MISSING_FILTER_SHORTNAMES,
+                message="filter_shortnames is missing",
+            ),
+        )
+
+    path = Path(f"{settings.spaces_folder}/{query.space_name}/"
+                f"{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
+    if path.is_file():
+        r1 = subprocess.Popen(
+            ["tail", "-n", f"+{query.offset}", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        rn = subprocess.Popen(
+            ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
+        )
+        r2 = subprocess.Popen(
+            ["head", "-n", f"{query.limit}"], stdin=rn.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        r3 = subprocess.Popen(
+            ["tac"], stdin=r2.stdout, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        r4, _ = r3.communicate()
+        if r4 is None:
+            result = []
+        else:
+            result = list(
+                filter(
+                    None,
+                    r4.decode().split("\n"),
+                )
+            )
+
+        r, _ = subprocess.Popen(
+            f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ).communicate()
+
+        if r is None:
+            total = 0
+        else:
+            total = int(
+                r.decode().split()[0],
+                10,
+            )
+
+        for line in result:
+            action_obj = json.loads(line)
+
+            records.append(
+                core.Record(
+                    resource_type=ResourceType.history,
+                    shortname=query.filter_shortnames[0],
+                    subpath=query.subpath,
+                    attributes=action_obj,
+                ),
+            )
+
+    return total, records
+
+
+async def _serve_query_events(query, logged_in_user):
+    records = []
+    total = 0
+
+    trimmed_subpath = query.subpath
+    if trimmed_subpath[0] == "/":
+        trimmed_subpath = trimmed_subpath[1:]
+
+    path = Path(
+        f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
+    if path.is_file():
+        result = []
+        if query.search:
+            p = subprocess.Popen(
+                ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
+            )
+            p = subprocess.Popen(
+                ["tail", "-n", f"{query.limit + query.offset}"],
+                stdin=p.stdout,
+                stdout=subprocess.PIPE,
+            )
+            p = subprocess.Popen(
+                ["tac"], stdin=p.stdout, stdout=subprocess.PIPE
+            )
+            if query.offset > 0:
+                p = subprocess.Popen(
+                    ["sed", f"1,{query.offset}d"],
+                    stdin=p.stdout,
+                    stdout=subprocess.PIPE,
+                )
+            r, _ = p.communicate()
+            result = list(filter(None, r.decode("utf-8").split("\n")))
+        else:
+            r1 = subprocess.Popen(
+                ["tail", "-n", f"{query.limit + query.offset}", path], stdout=subprocess.PIPE,
+            )
+
+            r1 = subprocess.Popen(
+                ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
+            )
+            if query.offset > 0:
+                r1 = subprocess.Popen(
+                    ["head", "-n", f"{query.limit}"], stdin=r1.stdout, stdout=subprocess.PIPE,
+                )
+
+            r6, _ = subprocess.Popen(
+                ["tac"], stdin=r1.stdout, stdout=subprocess.PIPE,
+            ).communicate()
+
+            if r6 is None:
+                result = []
+            else:
+                result = list(
+                    filter(
+                        None,
+                        r6.decode().split("\n"),
+                    )
+                )
+
+        r, _ = subprocess.Popen(
+            f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ).communicate()
+
+        if r is None:
+            total = 0
+        else:
+            total = int(
+                r.decode().split()[0],
+                10,
+            )
+
+        for line in result:
+            action_obj = json.loads(line)
+
+            if (
+                    query.from_date
+                    and str_to_datetime(action_obj["timestamp"]) < query.from_date
+            ):
+                continue
+
+            if (
+                    query.to_date
+                    and str_to_datetime(action_obj["timestamp"]) > query.to_date
+            ):
+                break
+
+            if not await access_control.check_access(
+                    user_shortname=logged_in_user,
+                    space_name=query.space_name,
+                    subpath=action_obj.get(
+                        "resource", {}).get("subpath", "/"),
+                    resource_type=action_obj["resource"]["type"],
+                    action_type=core.ActionType(action_obj["request"]),
+            ):
+                continue
+            records.append(
+                core.Record(
+                    resource_type=action_obj["resource"]["type"],
+                    shortname=action_obj["resource"]["shortname"],
+                    subpath=action_obj["resource"]["subpath"],
+                    attributes=action_obj,
+                ),
+            )
+
+    return total, records
+
+
+async def _serve_query_aggregation(query, redis_query_policies):
+    records = []
+    total = 0
+
+    rows = await redis_query_aggregate(
+        query=query, redis_query_policies=redis_query_policies
+    )
+    total = len(rows)
+    for idx, row in enumerate(rows):
+        record = core.Record(
+            resource_type=ResourceType.content,
+            shortname=str(idx + 1),
+            subpath=query.subpath,
+            attributes=row["extra_attributes"]
+        )
+        records.append(record)
+
+    return total, records
+
+
 async def serve_query(
         query: api.Query, logged_in_user: str
 ) -> tuple[int, list[core.Record]]:
@@ -62,619 +752,33 @@ async def serve_query(
         logged_in_user, query.space_name, query.subpath
     )
 
-    spaces = await get_spaces()
     match query.type:
         case api.QueryType.spaces:
-            for space_json in spaces.values():
-                space = core.Space.model_validate_json(space_json)
-
-                if await access_control.check_space_access(
-                        logged_in_user, space.shortname
-                ):
-                    total += 1
-                    records.append(
-                        space.to_record(
-                            query.subpath,
-                            space.shortname,
-                            query.include_fields if query.include_fields else [],
-                        )
-                    )
-            if not query.sort_by:
-                query.sort_by = "ordinal"
-            if records:
-                record_fields = list(records[0].model_fields.keys())
-                records = sorted(
-                    records,
-                    key=lambda d: d.__getattribute__(query.sort_by)
-                    if query.sort_by in record_fields
-                    else d.attributes[query.sort_by]
-                    if query.sort_by in d.attributes and d.attributes[query.sort_by] is not None
-                    else 1,
-                    reverse=(query.sort_type == api.SortType.descending),
-                )
+            total, records = await _serve_query_space(query, logged_in_user)
 
         case api.QueryType.search:
-            search_res, total = await redis_query_search(query, logged_in_user, redis_query_policies)
-            res_data: list = []
-            for redis_document in search_res:
-                res_data.append(json.loads(redis_document))
-            if len(query.filter_schema_names) > 1:
-                if query.sort_by:
-                    res_data = sorted(
-                        res_data,
-                        key=lambda d: d[query.sort_by]
-                        if query.sort_by in d
-                        else d.get("payload", {})[query.sort_by]
-                        if query.sort_by in d.get("payload", {})
-                        else "",
-                        reverse=(query.sort_type == api.SortType.descending),
-                    )
-                res_data = res_data[query.offset: (query.limit + query.offset)]
-
-            for redis_doc_dict in res_data:
-                try:
-                    resource_base_record = await get_record_from_redis_doc(
-                        space_name=query.space_name,
-                        doc=redis_doc_dict,
-                        retrieve_json_payload=query.retrieve_json_payload,
-                        retrieve_attachments=query.retrieve_attachments,
-                        validate_schema=query.validate_schema,
-                        filter_types=query.filter_types,
-                        retrieve_lock_status=query.retrieve_lock_status,
-                    )
-                except Exception as e:
-                    print("Error in get_record_from_redis_doc", e)
-                    continue
-
-                # Don't repeat the same entry comming from different indices
-                # if resource_base_record in records:
-                #     total -= 1
-                #     continue
-
-                if query.highlight_fields:
-                    for key, value in query.highlight_fields.items():
-                        resource_base_record.attributes[value] = getattr(
-                            redis_doc_dict, key, None
-                        )
-
-                resource_base_record.attributes = alter_dict_keys(
-                    jsonable_encoder(resource_base_record.attributes, exclude_none=True),
-                    query.include_fields,
-                    query.exclude_fields,
-                )
-
-                records.append(resource_base_record)
+            total, records = await _serve_query_search(query, logged_in_user, redis_query_policies)
 
         case api.QueryType.subpath:
-            subpath = query.subpath
-            if subpath[0] == "/":
-                subpath = "." + subpath
-            path = (
-                    settings.spaces_folder
-                    / query.space_name
-                    / subpath
-            )
-
-            if query.include_fields is None:
-                query.include_fields = []
-
-            meta_path = path / ".dm"
-            if meta_path.is_dir():
-                path_iterator = os.scandir(meta_path)
-                async with RedisServices() as redis_services:
-                    for entry in path_iterator:
-                        if not entry.is_dir():
-                            continue
-
-                        subpath_iterator = os.scandir(entry)
-                        for one in subpath_iterator:
-                            # for one in path.glob(entries_glob):
-                            match = regex.FILE_PATTERN.search(str(one.path))
-                            if not match or not one.is_file():
-                                continue
-
-                            shortname = match.group(1)
-                            resource_name = match.group(2).lower()
-                            if (
-                                    query.filter_types
-                                    and ResourceType(resource_name) not in query.filter_types
-                            ):
-                                continue
-
-                            if (
-                                    query.filter_shortnames
-                                    and shortname not in query.filter_shortnames
-                            ):
-                                continue
-
-                            resource_class = getattr(
-                                sys.modules["models.core"], camel_case(
-                                    resource_name)
-                            )
-
-                            async with aiofiles.open(one, "r") as meta_file:
-                                resource_obj = resource_class.model_validate_json(
-                                    await meta_file.read()
-                                )
-
-                            if query.filter_tags and (
-                                    not resource_obj.tags
-                                    or not any(
-                                item in resource_obj.tags
-                                for item in query.filter_tags
-                            )
-                            ):
-                                continue
-
-                            # apply check access
-                            if not await access_control.check_access(
-                                    user_shortname=logged_in_user,
-                                    space_name=query.space_name,
-                                    subpath=query.subpath,
-                                    resource_type=ResourceType(resource_name),
-                                    action_type=core.ActionType.view,
-                                    resource_is_active=resource_obj.is_active,
-                                    resource_owner_shortname=resource_obj.owner_shortname,
-                                    resource_owner_group=resource_obj.owner_group_shortname,
-                                    entry_shortname=shortname,
-                            ):
-                                continue
-                            total += 1
-                            if len(records) >= query.limit or total < query.offset:
-                                continue
-
-                            resource_base_record = resource_obj.to_record(
-                                query.subpath,
-                                shortname,
-                                query.include_fields,
-                            )
-                            if query.retrieve_lock_status and resource_base_record:
-                                locked_data = await redis_services.get_lock_doc(
-                                    query.space_name,
-                                    query.subpath,
-                                    resource_obj.shortname,
-                                )
-                                if locked_data:
-                                    resource_base_record.attributes[
-                                        "locked"
-                                    ] = locked_data
-
-                            if (
-                                    query.retrieve_json_payload
-                                    and resource_obj.payload
-                                    and resource_obj.payload.content_type
-                                    and resource_obj.payload.content_type
-                                    == ContentType.json
-                                    and (path / resource_obj.payload.body).is_file()
-                            ):
-                                async with aiofiles.open(
-                                        path / resource_obj.payload.body, "r"
-                                ) as payload_file_content:
-                                    resource_base_record.attributes[
-                                        "payload"
-                                    ].body = json.loads(
-                                        await payload_file_content.read()
-                                    )
-
-                            if (
-                                    resource_obj.payload
-                                    and resource_obj.payload.schema_shortname
-                            ):
-                                try:
-                                    payload_body = resource_base_record.attributes[
-                                        "payload"
-                                    ].body
-                                    if not payload_body or isinstance(payload_body, str):
-                                        async with aiofiles.open(
-                                                path / resource_obj.payload.body, "r"
-                                        ) as payload_file_content:
-                                            payload_body = json.loads(
-                                                await payload_file_content.read()
-                                            )
-
-                                    if query.validate_schema:
-                                        await validate_payload_with_schema(
-                                            payload_data=payload_body,
-                                            space_name=query.space_name,
-                                            schema_shortname=resource_obj.payload.schema_shortname,
-                                        )
-                                except Exception:
-                                    continue
-
-                            resource_base_record.attachments = (
-                                await db.get_entry_attachments(
-                                    subpath=f"{query.subpath}/{shortname}",
-                                    attachments_path=(meta_path / shortname),
-                                    filter_types=query.filter_types,
-                                    include_fields=query.include_fields,
-                                    retrieve_json_payload=query.retrieve_json_payload,
-                                )
-                            )
-                            records.append(resource_base_record)
-
-                        subpath_iterator.close()
-                    if path_iterator:
-                        path_iterator.close()
-
-            # Get all matching sub folders
-            # apply check access
-
-            if meta_path.is_dir():
-                subfolders_iterator = os.scandir(path)
-                for one in subfolders_iterator:
-                    if not one.is_dir():
-                        continue
-
-                    subfolder_meta = Path(one.path + "/.dm/meta.folder.json")
-
-                    match = regex.FOLDER_PATTERN.search(str(subfolder_meta))
-
-                    if not match or not subfolder_meta.is_file():
-                        continue
-
-                    shortname = match.group(1)
-                    if not await access_control.check_access(
-                            user_shortname=logged_in_user,
-                            space_name=query.space_name,
-                            subpath=f"{query.subpath}/{shortname}",
-                            resource_type=ResourceType.folder,
-                            action_type=core.ActionType.query,
-                            entry_shortname=shortname
-                    ):
-                        continue
-                    if (
-                            query.filter_shortnames
-                            and shortname not in query.filter_shortnames
-                    ):
-                        continue
-                    total += 1
-                    if len(records) >= query.limit or total < query.offset:
-                        continue
-
-                    folder_obj = core.Folder.model_validate_json(
-                        subfolder_meta.read_text())
-                    folder_record = folder_obj.to_record(
-                        query.subpath,
-                        shortname,
-                        query.include_fields,
-                    )
-                    if (
-                            query.retrieve_json_payload
-                            and folder_obj.payload
-                            and folder_obj.payload.content_type
-                            and folder_obj.payload.content_type == ContentType.json
-                            and isinstance(folder_obj.payload.body, str)
-                            and (path / folder_obj.payload.body).is_file()
-                    ):
-                        async with aiofiles.open(
-                                path / folder_obj.payload.body, "r"
-                        ) as payload_file_content:
-                            folder_record.attributes["payload"].body = json.loads(
-                                await payload_file_content.read()
-                            )
-                            if os.path.exists(meta_path / shortname):
-                                folder_record.attachments = await db.get_entry_attachments(
-                                    subpath=f"{query.subpath if query.subpath != '/' else ''}/{shortname}",
-                                    attachments_path=(meta_path / shortname),
-                                    filter_types=query.filter_types,
-                                    include_fields=query.include_fields,
-                                    retrieve_json_payload=query.retrieve_json_payload,
-                                )
-                    records.append(folder_record)
-
-                if subfolders_iterator:
-                    subfolders_iterator.close()
-
-            if query.sort_by:
-                sort_reverse: bool = (
-                        query.sort_type is not None
-                        and query.sort_type == api.SortType.descending
-                )
-                if query.sort_by in core.Record.model_fields:
-                    records = sorted(
-                        records,
-                        key=lambda record: record.__getattribute__(
-                            str(query.sort_by)),
-                        reverse=sort_reverse,
-                    )
-                else:
-                    records = sorted(
-                        records,
-                        key=lambda record: record.attributes[str(
-                            query.sort_by)],
-                        reverse=sort_reverse,
-                    )
+            total, records = await _serve_query_subpath(query, logged_in_user)
 
         case api.QueryType.counters:
-            if not await access_control.check_access(
-                    user_shortname=logged_in_user,
-                    space_name=query.space_name,
-                    subpath=query.subpath,
-                    resource_type=ResourceType.content,
-                    action_type=core.ActionType.query
-            ):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [16]",
-                    ),
-                )
-            async with RedisServices() as redis_services:
-                for schema_name in query.filter_schema_names:
-                    redis_res = await redis_services.get_count(
-                        space_name=query.space_name,
-                        schema_shortname=schema_name,
-                    )
-                    total += int(redis_res)
+            total, records = await _serve_query_counters(query, logged_in_user)
 
         case api.QueryType.tags:
-            query.sort_by = "tags"
-            query.aggregation_data = api.RedisAggregate(
-                group_by=["@tags"],
-                reducers=[
-                    api.RedisReducer(
-                        reducer_name="count",
-                        alias="freq"
-                    )
-                ]
-            )
-            rows = await redis_query_aggregate(
-                query=query,
-                redis_query_policies=redis_query_policies
-            )
-            records.append(
-                core.Record(
-                    resource_type=ResourceType.content,
-                    shortname="tags_frequency",
-                    subpath=query.subpath,
-                    attributes={"result": rows},
-                )
-            )
-            total = 1
+            total, records = await _serve_query_tags(query, redis_query_policies)
 
         case api.QueryType.random:
-            query.aggregation_data = api.RedisAggregate(
-                load=["@__key"],
-                group_by=["@resource_type"],
-                reducers=[
-                    api.RedisReducer(
-                        reducer_name="random_sample",
-                        alias="id",
-                        args=["@__key", query.limit]
-                    )
-                ]
-            )
-            async with RedisServices() as redis_services:
-                rows = await redis_query_aggregate(
-                    query=query,
-                    redis_query_policies=redis_query_policies
-                )
-                ids = []
-                for row in rows:
-                    ids.extend(row[3])
-                docs = await redis_services.get_docs_by_ids(ids)
-                total = len(ids)
-                for doc in docs:
-                    doc = doc[0]
-                    if query.retrieve_json_payload and doc.get("payload_doc_id", None):
-                        doc["payload"]["body"] = await redis_services.get_payload_doc(
-                            doc["payload_doc_id"], doc["resource_type"]
-                        )
-                    record = core.Record(
-                        shortname=doc["shortname"],
-                        resource_type=doc["resource_type"],
-                        uuid=doc["uuid"],
-                        subpath=doc["subpath"],
-                        attributes={"payload": doc.get("payload")},
-                    )
-                    entry_path = (
-                            settings.spaces_folder
-                            / f"{query.space_name}/{doc['subpath']}/.dm/{doc['shortname']}"
-                    )
-                    if query.retrieve_attachments and entry_path.is_dir():
-                        record.attachments = await db.get_entry_attachments(
-                            subpath=f"{doc['subpath']}/{doc['shortname']}",
-                            attachments_path=entry_path,
-                            filter_types=query.filter_types,
-                            include_fields=query.include_fields,
-                            retrieve_json_payload=query.retrieve_json_payload,
-                        )
-                    records.append(record)
+            total, records = await _serve_query_random(query, redis_query_policies)
 
         case api.QueryType.history:
-            if not await access_control.check_access(
-                    user_shortname=logged_in_user,
-                    space_name=query.space_name,
-                    subpath=query.subpath,
-                    resource_type=ResourceType.history,
-                    action_type=core.ActionType.query,
-            ):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [17]",
-                    ),
-                )
-
-            if not query.filter_shortnames:
-                raise api.Exception(
-                    status.HTTP_400_BAD_REQUEST,
-                    api.Error(
-                        type="request",
-                        code=InternalErrorCode.MISSING_FILTER_SHORTNAMES,
-                        message="filter_shortnames is missing",
-                    ),
-                )
-
-            path = Path(f"{settings.spaces_folder}/{query.space_name}/"
-                        f"{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
-            if path.is_file():
-                r1 = subprocess.Popen(
-                    ["tail", "-n", f"+{query.offset}", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                )
-                rn = subprocess.Popen(
-                    ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
-                )
-                r2 = subprocess.Popen(
-                    ["head", "-n", f"{query.limit}"], stdin=rn.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                )
-                r3 = subprocess.Popen(
-                    ["tac"], stdin=r2.stdout, stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-                r4, _ = r3.communicate()
-                if r4 is None:
-                    result = []
-                else:
-                    result = list(
-                        filter(
-                            None,
-                            r4.decode().split("\n"),
-                        )
-                    )
-
-                r, _ = subprocess.Popen(
-                    f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                ).communicate()
-
-                if r is None:
-                    total = 0
-                else:
-                    total = int(
-                        r.decode().split()[0],
-                        10,
-                    )
-
-                for line in result:
-                    action_obj = json.loads(line)
-
-                    records.append(
-                        core.Record(
-                            resource_type=ResourceType.history,
-                            shortname=query.filter_shortnames[0],
-                            subpath=query.subpath,
-                            attributes=action_obj,
-                        ),
-                    )
+            total, records = await _serve_query_history(query, logged_in_user)
 
         case api.QueryType.events:
-            trimmed_subpath = query.subpath
-            if trimmed_subpath[0] == "/":
-                trimmed_subpath = trimmed_subpath[1:]
-
-            path = Path(
-                f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
-            if path.is_file():
-                result = []
-                if query.search:
-                    p = subprocess.Popen(
-                        ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-                    )
-                    p = subprocess.Popen(
-                        ["tail", "-n", f"{query.limit + query.offset}"],
-                        stdin=p.stdout,
-                        stdout=subprocess.PIPE,
-                    )
-                    p = subprocess.Popen(
-                        ["tac"], stdin=p.stdout, stdout=subprocess.PIPE
-                    )
-                    if query.offset > 0:
-                        p = subprocess.Popen(
-                            ["sed", f"1,{query.offset}d"],
-                            stdin=p.stdout,
-                            stdout=subprocess.PIPE,
-                        )
-                    r, _ = p.communicate()
-                    result = list(filter(None, r.decode("utf-8").split("\n")))
-                else:
-                    r1 = subprocess.Popen(
-                        ["tail", "-n", f"{query.limit + query.offset}", path], stdout=subprocess.PIPE,
-                    )
-
-                    r1 = subprocess.Popen(
-                        ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
-                    )
-                    if query.offset > 0:
-                        r1 = subprocess.Popen(
-                            ["head", "-n", f"{query.limit}"], stdin=r1.stdout, stdout=subprocess.PIPE,
-                        )
-
-                    r6, _ = subprocess.Popen(
-                        ["tac"], stdin=r1.stdout, stdout=subprocess.PIPE,
-                    ).communicate()
-
-                    if r6 is None:
-                        result = []
-                    else:
-                        result = list(
-                            filter(
-                                None,
-                                r6.decode().split("\n"),
-                            )
-                        )
-
-                r, _ = subprocess.Popen(
-                    f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                ).communicate()
-
-                if r is None:
-                    total = 0
-                else:
-                    total = int(
-                        r.decode().split()[0],
-                        10,
-                    )
-
-                for line in result:
-                    action_obj = json.loads(line)
-
-                    if (
-                            query.from_date
-                            and str_to_datetime(action_obj["timestamp"]) < query.from_date
-                    ):
-                        continue
-
-                    if (
-                            query.to_date
-                            and str_to_datetime(action_obj["timestamp"]) > query.to_date
-                    ):
-                        break
-
-                    if not await access_control.check_access(
-                            user_shortname=logged_in_user,
-                            space_name=query.space_name,
-                            subpath=action_obj.get(
-                                "resource", {}).get("subpath", "/"),
-                            resource_type=action_obj["resource"]["type"],
-                            action_type=core.ActionType(action_obj["request"]),
-                    ):
-                        continue
-                    records.append(
-                        core.Record(
-                            resource_type=action_obj["resource"]["type"],
-                            shortname=action_obj["resource"]["shortname"],
-                            subpath=action_obj["resource"]["subpath"],
-                            attributes=action_obj,
-                        ),
-                    )
+            total, records = await _serve_query_events(query, logged_in_user)
 
         case api.QueryType.aggregation:
-            rows = await redis_query_aggregate(
-                query=query, redis_query_policies=redis_query_policies
-            )
-            total = len(rows)
-            for idx, row in enumerate(rows):
-                record = core.Record(
-                    resource_type=ResourceType.content,
-                    shortname=str(idx + 1),
-                    subpath=query.subpath,
-                    attributes=row["extra_attributes"]
-                )
-                records.append(record)
+            total, records = await _serve_query_aggregation(query, redis_query_policies)
 
     if query.jq_filter:
         try:
@@ -954,6 +1058,95 @@ async def get_group_users(group_name: str):
     return []
 
 
+async def folder_meta_content_check(
+        space_name, subpath, folder_name, spaces_path_parts,
+        user_shortname, folder_name_index, invalid_folders
+):
+    try:
+        folder_meta_content = await db.load(
+            space_name=space_name,
+            subpath=folder_name,
+            shortname="",
+            class_type=core.Folder,
+            user_shortname=user_shortname,
+        )
+        if (
+                folder_meta_content.payload
+                and folder_meta_content.payload.content_type == ContentType.json
+        ):
+            payload_path = "/"
+            subpath_parts = subpath.split("/")
+            if len(subpath_parts) > (len(spaces_path_parts) + 2):
+                payload_path = "/".join(
+                    subpath_parts[folder_name_index:-1])
+            folder_meta_payload = await db.load_resource_payload(
+                space_name,
+                payload_path,
+                str(folder_meta_content.payload.body),
+                core.Folder,
+            )
+            if folder_meta_content.payload.schema_shortname:
+                await validate_payload_with_schema(
+                    payload_data=folder_meta_payload,
+                    space_name=space_name,
+                    schema_shortname=folder_meta_content.payload.schema_shortname,
+                )
+    except Exception:
+        invalid_folders.append(folder_name)
+
+
+async def health_check_entry_vsd(
+        space_name, folder_name, entry_shortname, entry_resource_type, user_shortname,
+        folder, folders_report, max_invalid_size, entry_meta_obj
+):
+    await health_check_entry(
+        space_name=space_name,
+        subpath=folder_name,
+        shortname=entry_shortname,
+        resource_type=entry_resource_type,
+        user_shortname=user_shortname,
+    )
+
+    # VALIDATE ENTRY ATTACHMENTS
+    attachments_path = f"{folder.path}/{entry_shortname}"
+    attachment_folders = os.scandir(attachments_path)
+    for attachment_folder in attachment_folders:
+        # i.e. attachment_folder = attachments.media
+        if attachment_folder.is_file():
+            continue
+
+        attachment_folder_files = os.scandir(attachment_folder)
+        for attachment_folder_file in attachment_folder_files:
+            # i.e. attachment_folder_file = meta.*.json or *.png
+            if (
+                    not attachment_folder_file.is_file()
+                    or not os.access(attachment_folder_file.path, os.W_OK)
+                    or not os.access(attachment_folder_file.path, os.R_OK)
+            ):
+                raise Exception(
+                    f"can't access this attachment {attachment_folder_file.path[len(str(settings.spaces_folder)):]}"
+                )
+
+            attachment_match = regex.ATTACHMENT_PATTERN.search(attachment_folder_file.path)
+            if not attachment_match:
+                # if it's the media file not its meta json file
+                continue
+            attachment_shortname = attachment_match.group(2)
+            attachment_resource_type = attachment_match.group(1)
+            await health_check_entry(
+                space_name=space_name,
+                subpath=f"{folder_name}/{entry_shortname}",
+                shortname=attachment_shortname,
+                resource_type=attachment_resource_type,
+                user_shortname=user_shortname,
+            )
+
+    if "valid_entries" not in folders_report[folder_name]:
+        folders_report[folder_name]["valid_entries"] = 1
+    else:
+        folders_report[folder_name]["valid_entries"] += 1
+
+
 async def validate_subpath_data(
         space_name: str,
         subpath: str,
@@ -1008,39 +1201,10 @@ async def validate_subpath_data(
             )
             continue
 
-        folder_meta_content = None
-        folder_meta_payload = None
-        try:
-            folder_meta_content = await db.load(
-                space_name=space_name,
-                subpath=folder_name,
-                shortname="",
-                class_type=core.Folder,
-                user_shortname=user_shortname,
-            )
-            if (
-                    folder_meta_content.payload
-                    and folder_meta_content.payload.content_type == ContentType.json
-            ):
-                payload_path = "/"
-                subpath_parts = subpath.split("/")
-                if len(subpath_parts) > (len(spaces_path_parts) + 2):
-                    payload_path = "/".join(
-                        subpath_parts[folder_name_index:-1])
-                folder_meta_payload = await db.load_resource_payload(
-                    space_name,
-                    payload_path,
-                    str(folder_meta_content.payload.body),
-                    core.Folder,
-                )
-                if folder_meta_content.payload.schema_shortname:
-                    await validate_payload_with_schema(
-                        payload_data=folder_meta_payload,
-                        space_name=space_name,
-                        schema_shortname=folder_meta_content.payload.schema_shortname,
-                    )
-        except Exception:
-            invalid_folders.append(folder_name)
+        await folder_meta_content_check(
+            space_name, subpath, folder_name, spaces_path_parts,
+            user_shortname, folder_name_index, invalid_folders
+        )
 
         folders_report.setdefault(folder_name, {})
 
@@ -1090,52 +1254,10 @@ async def validate_subpath_data(
 
             entry_meta_obj = None
             try:
-                await health_check_entry(
-                    space_name=space_name,
-                    subpath=folder_name,
-                    shortname=entry_shortname,
-                    resource_type=entry_resource_type,
-                    user_shortname=user_shortname,
+                await health_check_entry_vsd(
+                    space_name, folder_name, entry_shortname, entry_resource_type, user_shortname,
+                    folder, folders_report, max_invalid_size, entry_meta_obj
                 )
-
-                # VALIDATE ENTRY ATTACHMENTS
-                attachments_path = f"{folder.path}/{entry_shortname}"
-                attachment_folders = os.scandir(attachments_path)
-                for attachment_folder in attachment_folders:
-                    # i.e. attachment_folder = attachments.media
-                    if attachment_folder.is_file():
-                        continue
-
-                    attachment_folder_files = os.scandir(attachment_folder)
-                    for attachment_folder_file in attachment_folder_files:
-                        # i.e. attachment_folder_file = meta.*.json or *.png
-                        if (
-                                not attachment_folder_file.is_file()
-                                or not os.access(attachment_folder_file.path, os.W_OK)
-                                or not os.access(attachment_folder_file.path, os.R_OK)
-                        ):
-                            raise Exception(
-                                f"can't access this attachment {attachment_folder_file.path[len(str(settings.spaces_folder)):]}"
-                            )
-
-                        attachment_match = regex.ATTACHMENT_PATTERN.search(attachment_folder_file.path)
-                        if not attachment_match:
-                            # if it's the media file not its meta json file
-                            continue
-                        attachment_shortname = attachment_match.group(2)
-                        attachment_resource_type = attachment_match.group(1)
-                        await health_check_entry(
-                            space_name=space_name,
-                            subpath=f"{folder_name}/{entry_shortname}",
-                            shortname=attachment_shortname,
-                            resource_type=attachment_resource_type,
-                            user_shortname=user_shortname,
-                        )
-
-                if "valid_entries" not in folders_report[folder_name]:
-                    folders_report[folder_name]["valid_entries"] = 1
-                else:
-                    folders_report[folder_name]["valid_entries"] += 1
             except Exception as e:
                 issue_type = "payload"
                 uuid = ""
@@ -1162,7 +1284,8 @@ async def validate_subpath_data(
                     ):
                         break
                     folders_report[folder_name]["invalid_entries"].append(
-                        issue)
+                        issue
+                    )
 
         if not folders_report.get(folder_name, {}):
             del folders_report[folder_name]
@@ -1672,7 +1795,7 @@ async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dic
                 if key == "email_unescaped":
                     value = f"{{{value}}}"
                 redis_search_res = await redis_man.search(
-                    space_name=MANAGEMENT_SPACE,
+                    space_name=settings.management_space,
                     search=search_str + f" @{key}:{value}",
                     limit=0,
                     offset=0,
@@ -1690,8 +1813,8 @@ async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dic
             total, result = await db.query(
                 api.Query(
                     type=QueryType.search,
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
+                    space_name=settings.management_space,
+                    subpath="users",
                     search=search_str + f" @{key}:{value}",
                     limit=0,
                     offset=0

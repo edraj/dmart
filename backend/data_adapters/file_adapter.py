@@ -27,94 +27,133 @@ from utils.regex import FILE_PATTERN, FOLDER_PATTERN
 from utils.settings import settings
 
 
+def sort_alteration(attachments_dict, attachments_path):
+    for attachment_name, attachments in attachments_dict.items():
+        try:
+            if attachment_name == ResourceType.alteration:
+                attachments_dict[attachment_name] = sorted(
+                    attachments, key=lambda d: d.attributes["created_at"]
+                )
+        except Exception as e:
+            logger.error(
+                f"Invalid attachment entry:{attachments_path / attachment_name}.\
+            Error: {e.args}"
+            )
+
+
+def is_file_check(retrieve_json_payload, resource_obj, resource_record_obj, attachment_entry):
+    return (
+        retrieve_json_payload
+        and resource_obj
+        and resource_record_obj
+        and resource_obj.payload
+        and resource_obj.payload.content_type
+        and resource_obj.payload.content_type == ContentType.json
+        and Path(
+            f"{attachment_entry.path}/{resource_obj.payload.body}"
+        ).is_file()
+    )
+
+
+def locator_query_path_sub_folder(locators, query, subpath_iterator, total):
+    for one in subpath_iterator:
+        # for one in path.glob(entries_glob):
+        match = FILE_PATTERN.search(str(one.path))
+        if not match or not one.is_file():
+            continue
+
+        total += 1
+        if len(locators) >= query.limit or total < query.offset:
+            continue
+
+        shortname = match.group(1)
+        resource_name = match.group(2).lower()
+        if (
+            query.filter_types
+            and ResourceType(resource_name) not in query.filter_types
+        ):
+            continue
+
+        if (
+            query.filter_shortnames
+            and shortname not in query.filter_shortnames
+        ):
+            continue
+
+        locators.append(
+            core.Locator(
+                space_name=query.space_name,
+                subpath=query.subpath,
+                shortname=shortname,
+                type=ResourceType(resource_name),
+            )
+        )
+    return locators, total
+
+
+def locator_query_sub_folder(locators, query, subfolders_iterator, total):
+    for one in subfolders_iterator:
+        if not one.is_dir():
+            continue
+
+        subfolder_meta = Path(one.path + "/.dm/meta.folder.json")
+
+        match = FOLDER_PATTERN.search(str(subfolder_meta))
+
+        if not match or not subfolder_meta.is_file():
+            continue
+
+        total += 1
+        if len(locators) >= query.limit or total < query.offset:
+            continue
+
+        shortname = match.group(1)
+        if query.filter_shortnames and shortname not in query.filter_shortnames:
+            continue
+
+        locators.append(
+            core.Locator(
+                space_name=query.space_name,
+                subpath=query.subpath,
+                shortname=shortname,
+                type=core.ResourceType.folder,
+            )
+        )
+
+    return locators, total
+
+
 class FileAdapter(BaseDataAdapter):
     def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
         locators: list[core.Locator] = []
         total: int = 0
-        match query.type:
-            case api.QueryType.subpath:
-                path = (
-                        settings.spaces_folder
-                        / query.space_name
-                        / query.subpath
-                )
+        if query.type != api.QueryType.subpath:
+            return total, locators
+        path = (
+            settings.spaces_folder
+            / query.space_name
+            / query.subpath
+        )
 
-                if query.include_fields is None:
-                    query.include_fields = []
+        if query.include_fields is None:
+            query.include_fields = []
 
-                # Gel all matching entries
-                meta_path = path / ".dm"
-                if not meta_path.is_dir():
-                    return total, locators
+        # Gel all matching entries
+        meta_path = path / ".dm"
+        if not meta_path.is_dir():
+            return total, locators
 
-                path_iterator = os.scandir(meta_path)
-                for entry in path_iterator:
-                    if not entry.is_dir():
-                        continue
+        path_iterator = os.scandir(meta_path)
+        for entry in path_iterator:
+            if not entry.is_dir():
+                continue
 
-                    subpath_iterator = os.scandir(entry)
-                    for one in subpath_iterator:
-                        # for one in path.glob(entries_glob):
-                        match = FILE_PATTERN.search(str(one.path))
-                        if not match or not one.is_file():
-                            continue
+            subpath_iterator = os.scandir(entry)
+            locators, total = locator_query_path_sub_folder(locators, query, subpath_iterator, total)
 
-                        total += 1
-                        if len(locators) >= query.limit or total < query.offset:
-                            continue
-
-                        shortname = match.group(1)
-                        resource_name = match.group(2).lower()
-                        if (
-                                query.filter_types
-                                and ResourceType(resource_name) not in query.filter_types
-                        ):
-                            continue
-
-                        if (
-                                query.filter_shortnames
-                                and shortname not in query.filter_shortnames
-                        ):
-                            continue
-
-                        locators.append(
-                            core.Locator(
-                                space_name=query.space_name,
-                                subpath=query.subpath,
-                                shortname=shortname,
-                                type=ResourceType(resource_name),
-                            )
-                        )
-
-                # Get all matching sub folders
-                subfolders_iterator = os.scandir(path)
-                for one in subfolders_iterator:
-                    if not one.is_dir():
-                        continue
-
-                    subfolder_meta = Path(one.path + "/.dm/meta.folder.json")
-
-                    match = FOLDER_PATTERN.search(str(subfolder_meta))
-
-                    if not match or not subfolder_meta.is_file():
-                        continue
-
-                    total += 1
-                    if len(locators) >= query.limit or total < query.offset:
-                        continue
-
-                    shortname = match.group(1)
-                    if query.filter_shortnames and shortname not in query.filter_shortnames:
-                        continue
-
-                    locators.append(
-                        core.Locator(
-                            space_name=query.space_name,
-                            subpath=query.subpath,
-                            shortname=shortname,
-                            type=core.ResourceType.folder,
-                        )
-                    )
+        # Get all matching sub folders
+        subfolders_iterator = os.scandir(path)
+        locators, total = locator_query_sub_folder(locators, query, subfolders_iterator, total)
 
         return total, locators
 
@@ -878,22 +917,13 @@ class FileAdapter(BaseDataAdapter):
                             resource_obj = resource_class.model_validate_json(await meta_file.read())
                         except Exception as e:
                             raise Exception(
-                                f"Bad attachment ... {attachments_file=}") from e
+                                f"Bad attachment ... {attachments_file=}"
+                            ) from e
 
                     resource_record_obj = resource_obj.to_record(
                         subpath, attach_shortname, include_fields
                     )
-                    if (
-                            retrieve_json_payload
-                            and resource_obj
-                            and resource_record_obj
-                            and resource_obj.payload
-                            and resource_obj.payload.content_type
-                            and resource_obj.payload.content_type == ContentType.json
-                            and Path(
-                        f"{attachment_entry.path}/{resource_obj.payload.body}"
-                    ).is_file()
-                    ):
+                    if is_file_check(retrieve_json_payload, resource_obj, resource_record_obj, attachment_entry):
                         async with aiofiles.open(
                                 f"{attachment_entry.path}/{resource_obj.payload.body}", "r"
                         ) as payload_file_content:
@@ -910,18 +940,8 @@ class FileAdapter(BaseDataAdapter):
             attachments_iterator.close()
 
             # SORT ALTERATION ATTACHMENTS BY ALTERATION.CREATED_AT
-            for attachment_name, attachments in attachments_dict.items():
-                try:
-                    if attachment_name == ResourceType.alteration:
-                        attachments_dict[attachment_name] = sorted(
-                            attachments, key=lambda d: d.attributes["created_at"]
-                        )
-                except Exception as e:
-                    logger.error(
-                        f"Invalid attachment entry:{attachments_path / attachment_name}.\
-                    Error: {e.args}"
-                    )
-            print("attachments_path", attachments_dict)
+            sort_alteration(attachments_dict, attachments_path)
+
             return attachments_dict
         except Exception as e:
             print(e)

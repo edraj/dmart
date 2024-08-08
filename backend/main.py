@@ -39,7 +39,6 @@ from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info
 from utils.redis_services import RedisServices
-
 from utils.internal_error_code import InternalErrorCode
 
 
@@ -65,9 +64,10 @@ async def lifespan(app: FastAPI):
 
     finally:
         await RedisServices().close_pool()
-    
+
     logger.info("Application shutting down")
     print('{"stage":"shutting down"}')
+
 
 app = FastAPI(
     lifespan=lifespan,
@@ -106,15 +106,15 @@ async def capture_body(request: Request):
     request.state.request_body = {}
 
     if (
-        request.method == "POST"
-        and "application/json" in request.headers.get("content-type", "")
+            request.method == "POST"
+            and "application/json" in request.headers.get("content-type", "")
     ):
         request.state.request_body = await request.json()
 
     if (
-        request.method == "POST"
-        and request.headers.get("content-type")
-        and "multipart/form-data" in request.headers.get("content-type", [])
+            request.method == "POST"
+            and request.headers.get("content-type")
+            and "multipart/form-data" in request.headers.get("content-type", [])
     ):
         form = await request.form()
         for field in form:
@@ -147,9 +147,93 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
         ),
     )
 
+
 app.add_middleware(CustomRequestMiddleware)
 app.add_middleware(ChannelMiddleware)
 
+
+def set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body):
+    extra = {
+        "props": {
+            "timestamp": start_time,
+            "duration": 1000 * (time.time() - start_time),
+            "server": settings.servername,
+            "process_id": getpid(),
+            "user_shortname": user_shortname,
+            "request": {
+                "url": request.url._url,
+                "verb": request.method,
+                "path": quote(str(request.url.path)),
+                "query_params": dict(request.query_params.items()),
+                "headers": dict(request.headers.items()),
+            },
+            "response": {
+                "headers": dict(response.headers.items()),
+                "http_status": response.status_code,
+            },
+        }
+    }
+
+    if exception_data is not None:
+        extra["props"]["exception"] = exception_data
+    if (hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict)
+            and isinstance(extra["props"]["request"], dict)):
+        extra["props"]["request"]["body"] = request.state.request_body
+    if (response_body and isinstance(extra, dict) and isinstance(extra["props"], dict)
+            and isinstance(extra["props"]["response"], dict)):
+        extra["props"]["response"]["body"] = response_body
+
+    return extra
+
+
+def set_middleware_response_headers(request, response):
+    referer = request.headers.get(
+        "referer",
+        request.headers.get("origin",
+                            request.headers.get("x-forwarded-proto", "http")
+                            + "://"
+                            + request.headers.get(
+                                "x-forwarded-host", f"{settings.listening_host}:{settings.listening_port}"
+                            )),
+    )
+    origin = urlparse(referer)
+    response.headers[
+        "Access-Control-Allow-Origin"
+    ] = f"{origin.scheme}://{origin.netloc}"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Headers"] = "content-type, charset"
+    response.headers["Access-Control-Max-Age"] = "600"
+    response.headers[
+        "Access-Control-Allow-Methods"
+    ] = "OPTIONS, DELETE, POST, GET, PATCH, PUT"
+
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    response.headers["x-server-time"] = datetime.now().isoformat()
+    response.headers["Access-Control-Expose-Headers"] = "x-server-time"
+    return response
+
+
+def set_logging(response, extra, request, exception_data):
+    if 400 <= response.status_code < 500:
+        logger.warning("Served request", extra=extra)
+    elif response.status_code >= 500 or exception_data is not None:
+        logger.error("Served request", extra=extra)
+    elif request.method != "OPTIONS":  # Do not log OPTIONS request, to reduce excessive logging
+        logger.info("Served request", extra=extra)
+
+
+def set_stack(e):
+    return [
+        {
+            "file": frame.f_code.co_filename,
+            "function": frame.f_code.co_name,
+            "line": lineno,
+        }
+        for frame, lineno in traceback.walk_tb(e.__traceback__)
+        if "site-packages" not in frame.f_code.co_filename
+    ]
 
 @app.middleware("http")
 async def middle(request: Request, call_next):
@@ -177,27 +261,11 @@ async def middle(request: Request, call_next):
                 api.Response(status=api.Status.failed, error=e.error)
             ),
         )
-        stack = [
-            {
-                "file": frame.f_code.co_filename,
-                "function": frame.f_code.co_name,
-                "line": lineno,
-            }
-            for frame, lineno in traceback.walk_tb(e.__traceback__)
-            if "site-packages" not in frame.f_code.co_filename
-        ]
+        stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
         response_body = json.loads(response.body.decode())
     except ValidationError as e:
-        stack = [
-            {
-                "file": frame.f_code.co_filename,
-                "function": frame.f_code.co_name,
-                "line": lineno,
-            }
-            for frame, lineno in traceback.walk_tb(e.__traceback__)
-            if "site-packages" not in frame.f_code.co_filename
-        ]
+        stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
         response = JSONResponse(
             status_code=422,
@@ -212,15 +280,7 @@ async def middle(request: Request, call_next):
         )
         response_body = json.loads(response.body.decode())
     except SchemaValidationError as e:
-        stack = [
-            {
-                "file": frame.f_code.co_filename,
-                "function": frame.f_code.co_name,
-                "line": lineno,
-            }
-            for frame, lineno in traceback.walk_tb(e.__traceback__)
-            if "site-packages" not in frame.f_code.co_filename
-        ]
+        stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
         response = JSONResponse(
             status_code=400,
@@ -241,15 +301,7 @@ async def middle(request: Request, call_next):
         exception_message = ""
         stack = None
         if ee := sys.exc_info()[1]:
-            stack = [
-                {
-                    "file": frame.f_code.co_filename,
-                    "function": frame.f_code.co_name,
-                    "line": lineno,
-                }
-                for frame, lineno in traceback.walk_tb(ee.__traceback__)
-                if "site-packages" not in frame.f_code.co_filename
-            ]
+            stack = set_stack(ee)
             exception_message = str(ee)
             exception_data = {"props": {"exception": str(ee), "stack": stack}}
 
@@ -265,31 +317,7 @@ async def middle(request: Request, call_next):
         )
         response_body = json.loads(response.body.decode())
 
-    referer = request.headers.get(
-        "referer",
-        request.headers.get("origin",
-        request.headers.get("x-forwarded-proto", "http")
-        + "://"
-        + request.headers.get(
-            "x-forwarded-host", f"{settings.listening_host}:{settings.listening_port}"
-        )),
-    )
-    origin = urlparse(referer)
-    response.headers[
-        "Access-Control-Allow-Origin"
-    ] = f"{origin.scheme}://{origin.netloc}"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Headers"] = "content-type, charset"
-    response.headers["Access-Control-Max-Age"] = "600"
-    response.headers[
-        "Access-Control-Allow-Methods"
-    ] = "OPTIONS, DELETE, POST, GET, PATCH, PUT"
-
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    response.headers["x-server-time"] = datetime.now().isoformat()
-    response.headers["Access-Control-Expose-Headers"] = "x-server-time"
+    response = set_middleware_response_headers(request, response)
 
     user_shortname = "guest"
     try:
@@ -297,42 +325,9 @@ async def middle(request: Request, call_next):
     except Exception:
         pass
 
-    extra = {
-        "props": {
-            "timestamp": start_time,
-            "duration": 1000 * (time.time() - start_time),
-            "server": settings.servername,
-            "process_id": getpid(),
-            "user_shortname": user_shortname,
-            "request": {
-                "url": request.url._url,
-                "verb": request.method,
-                "path": quote(str(request.url.path)),
-                "query_params": dict(request.query_params.items()),
-                "headers": dict(request.headers.items()),
-            },
-            "response": {
-                "headers": dict(response.headers.items()),
-                "http_status": response.status_code,
-            },
-        }
-    }
+    extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
 
-    if exception_data is not None:
-        extra["props"]["exception"] = exception_data
-    if (hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict) 
-        and isinstance(extra["props"]["request"], dict)):
-        extra["props"]["request"]["body"] = request.state.request_body
-    if (response_body and isinstance(extra, dict) and isinstance(extra["props"], dict) 
-        and isinstance(extra["props"]["response"], dict)):
-        extra["props"]["response"]["body"] = response_body
-
-    if response.status_code >= 400 and response.status_code < 500:
-        logger.warning("Served request", extra=extra)
-    elif response.status_code >= 500 or exception_data is not None:
-        logger.error("Served request", extra=extra)
-    elif request.method != "OPTIONS":  # Do not log OPTIONS request, to reduce excessive logging
-        logger.info("Served request", extra=extra)
+    set_logging(response, extra, request, exception_data)
 
     return response
 
@@ -343,6 +338,8 @@ app.add_middleware(
     update_request_header=False,
     validator=None,
 )
+
+
 @app.get("/", include_in_schema=False)
 async def root():
     """Dummy api end point"""
@@ -398,6 +395,7 @@ app.include_router(
 app.include_router(
     info, prefix="/info", tags=["info"], dependencies=[Depends(capture_body)]
 )
+
 # load plugins
 asyncio.run(plugin_manager.load_plugins(app, capture_body))
 
