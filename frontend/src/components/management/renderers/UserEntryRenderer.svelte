@@ -7,12 +7,12 @@
         request,
         RequestType,
         ResourceType,
-        ResponseEntry,
+        type ResponseEntry,
         retrieve_entry,
         Status,
     } from "@/dmart";
     import {Button, Form, FormGroup, Input, Label,} from "sveltestrap";
-    import {createAjvValidator, Validator,} from "svelte-jsoneditor";
+    import {createAjvValidator, type Validator,} from "svelte-jsoneditor";
     import {status_line} from "@/stores/management/status_line";
     import {Level, showToast} from "@/utils/toast";
     import "bootstrap";

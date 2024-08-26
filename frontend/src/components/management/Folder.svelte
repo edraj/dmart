@@ -7,7 +7,7 @@
   import Icon from "../Icon.svelte";
   import { _ } from "@/i18n";
   import { goto } from "@roxi/routify";
-  import { ApiResponseRecord, get_children, ResourceType } from "@/dmart";
+  import { type ApiResponseRecord, get_children, ResourceType } from "@/dmart";
   import { fly } from "svelte/transition";
 
   export let space_name: string;

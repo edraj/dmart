@@ -2,7 +2,7 @@
   import SidebarItem from "./SidebarItem.svelte";
   import Icon from "./Icon.svelte";
   import { _ } from "@/i18n";
-  import { Section } from "./types";
+  import { type Section } from "./types";
 
   export let section: Section;
   // export let path : Array<string>;

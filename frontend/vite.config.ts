@@ -65,13 +65,13 @@ export default defineConfig({
       ]
     }),
     routify({
-      "render.ssr": { enable: false /*production*/ },
-      ssr: { enable: false /*production*/ },
+      "render.ssr": { enable: true /*production*/ },
+      // ssr: { enable: false /*production*/ },
     }),
     svelte({
       compilerOptions: {
         dev: !production,
-        hydratable: !!process.env.ROUTIFY_SSR_ENABLE,
+        hydratable: true,
       },
       extensions: [".md", ".svelte"],
       preprocess: [preprocess(), mdsvex({
@@ -108,9 +108,4 @@ export default defineConfig({
   //   environment: "jsdom",
   //   globals: true,
   // },
-  render:{
-    ssr: {
-      noExternal: ["@popperjs/core"],
-    }
-  },
 });

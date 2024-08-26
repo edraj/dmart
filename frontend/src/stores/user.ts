@@ -1,4 +1,4 @@
-import { Writable, writable } from "svelte/store";
+import {type Writable, writable } from "svelte/store";
 import { login, logout } from "@/dmart";
 import { authToken } from "@/stores/management/auth";
 import { getLocaleFromNavigator } from "svelte-i18n";
