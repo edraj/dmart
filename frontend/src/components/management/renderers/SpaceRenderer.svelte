@@ -4,11 +4,11 @@
     QueryType,
     RequestType,
     ResourceType,
-    ActionResponse,
+    type ActionResponse,
     Status,
     query,
     request,
-    ResponseEntry,
+    type ResponseEntry,
     space,
   } from "@/dmart";
   import {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from "../Icon.svelte";
   import {
-    ApiResponse,
+    type ApiResponse,
     ContentType,
     ContentTypeMedia,
     fetchDataAsset,

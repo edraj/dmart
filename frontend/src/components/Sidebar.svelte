@@ -4,7 +4,7 @@
 
   import SidebarSection from "./SidebarSection.svelte";
   // import SidebarItem from "./SidebarItem.svelte";
-  import {Section} from "./types";
+  import {type Section} from "./types";
 
   import sections_untyped from  "@/stores/sections.json";
   let sections : Array<Section> =  sections_untyped;

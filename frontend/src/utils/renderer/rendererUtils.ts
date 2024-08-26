@@ -1,4 +1,4 @@
-import {ResourceType, ResponseEntry, retrieve_entry} from "@/dmart";
+import {ResourceType, type ResponseEntry, retrieve_entry} from "@/dmart";
 import {Level, showToast} from "@/utils/toast";
 import {createAjvValidator} from "svelte-jsoneditor";
 
