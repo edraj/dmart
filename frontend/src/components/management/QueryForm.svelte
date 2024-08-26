@@ -2,7 +2,7 @@
   import Input from "../Input.svelte";
   import { _ } from "@/i18n";
   import {
-    QueryRequest,
+    type QueryRequest,
     QueryType,
     ResourceType,
     csv,

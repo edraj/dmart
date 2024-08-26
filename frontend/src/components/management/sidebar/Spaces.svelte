@@ -3,7 +3,7 @@
   import {
     space,
     get_children,
-    ApiResponseRecord,
+    type ApiResponseRecord,
     RequestType,
     ResourceType,
     get_spaces,

@@ -3,7 +3,7 @@
   import { _ } from "@/i18n";
   // import { active_subsection } from "../_stores/active_subsection";
   import Icon from "./Icon.svelte";
-  import { Item } from "./types";
+  import { type Item } from "./types";
 
   export let item: Item;
   // export let path : Array<string>;

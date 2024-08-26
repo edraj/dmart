@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {get_payload, progress_ticket, request, RequestType, ResourceType, ResponseEntry,} from "@/dmart";
+    import {get_payload, progress_ticket, request, RequestType, ResourceType, type ResponseEntry,} from "@/dmart";
     import {Button, Form, FormGroup, Input, Label,} from "sveltestrap";
     import {Level, showToast} from "@/utils/toast";
 

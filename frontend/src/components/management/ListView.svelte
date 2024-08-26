@@ -135,8 +135,9 @@
 
     old_search = $search;
     total = resp.attributes.total;
-
+    console.log({total})
     objectDatatable.arrayRawData = resp.records;
+    console.log({arrayRawData: objectDatatable.arrayRawData})
     if (isSetPage) {
       if (objectDatatable.arrayRawData.length === 0) {
         propNumberOfPages = 0;
@@ -350,6 +351,10 @@
           }
       });
   }
+
+  $: {
+      console.log({objectDatatable})
+  }
 </script>
 
 {#key open}
@@ -381,8 +386,9 @@
   {#await fetchPageRecords()}
     READING DATA...
   {:then _}
-    <Engine bind:propDatatable={objectDatatable} />
-
+    {#if objectDatatable}
+      <Engine bind:propDatatable={objectDatatable} />
+    {/if}
     <div class="mx-3" transition:fade={{ delay: 25 }}>
       {#if objectDatatable?.arraySearched.length === 0}
         <div class="text-center pt-5">
