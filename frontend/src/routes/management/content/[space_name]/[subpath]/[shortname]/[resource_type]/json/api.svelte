@@ -16,8 +16,8 @@
   import {
     retrieve_entry,
     ResourceType,
-    ApiResponse,
-    ResponseEntry,
+    type ApiResponse,
+    type ResponseEntry,
     RequestType,
     request,
     QueryType,
@@ -25,9 +25,8 @@
   } from "@/dmart";
   import {
     JSONEditor,
-    JSONContent,
     Mode,
-    Validator,
+    type  Validator,
     createAjvValidator,
   } from "svelte-jsoneditor";
   import Prism from "@/components/Prism.svelte";

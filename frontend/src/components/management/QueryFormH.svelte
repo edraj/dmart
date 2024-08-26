@@ -1,8 +1,8 @@
 <script lang="ts">
   import { _ } from "@/i18n";
   import {
-    AggregationType,
-    QueryRequest,
+    type AggregationType,
+    type QueryRequest,
     QueryType,
     ResourceType,
     csv,

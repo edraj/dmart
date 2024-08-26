@@ -11,7 +11,7 @@
         request,
         RequestType,
         ResourceType,
-        ResponseEntry,
+        type ResponseEntry,
         retrieve_entry,
         space,
         Status,
@@ -41,7 +41,7 @@
         createAjvValidator,
         JSONEditor,
         Mode,
-        Validator,
+        type Validator,
     } from "svelte-jsoneditor";
     import {status_line} from "@/stores/management/status_line";
     import {authToken} from "@/stores/management/auth";
