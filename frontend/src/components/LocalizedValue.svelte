@@ -14,6 +14,16 @@
     } else if (typeof field === "string") {
       value = field;
     }
+
+    
+    // make json ltr 
+    let language = localStorage.getItem("preferred_locale").substring(1,3)
+    if ( language === "ar") {
+      const elements = document.querySelectorAll(".language-json");
+      elements.forEach(element => {
+        element.setAttribute("dir", "ltr");
+      }); 
+    } 
   }
 </script>
 

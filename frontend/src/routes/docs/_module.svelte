@@ -5,12 +5,14 @@
         Col,
         Card,
         CardBody,
-    } from 'sveltestrap';
+  } from 'sveltestrap';
     import {url} from "@roxi/routify";
     import Header from "@/components/Header.svelte";
     import Footer from "@/components/Footer.svelte";
+    import { languages } from 'prismjs';
 
-    const docFiles = [
+
+    export const docFiles:string[] = [
         'index.md',
         'Features-and-Technology-Stack.md',
         'Installation-and-Setup-Instructions.md',
@@ -18,24 +20,65 @@
         'Data-Organization.md',
         'Tools.md',
         'System-Admin-Tool.md',
-     'Examples.md',
-         'Automated-Testing.md',
+        'Examples.md',
+        'Automated-Testing.md',
         'Clients-and-Libraries.md',  
         'Use-Cases.md',
         'Starter-Kits.md',
         'Roadmap.md',
         'FAQs.md',
-        'FAQs.ar.md'
+    ];
+
+    const arDocFiles:string[] = [
+        'نظرة عامة',
+        'التقنيات والميزات',
+        'التثبيت والتشغيل',
+        'المفاهيم التفصيلية',
+        'تنظيم البيانات',
+        'الأدوات',
+        'واجهة الأدمن',
+        'الأمثلة ',
+        'الاختبار الآلي',
+        'تطبيقات المستخدم',  
+        'حالات الاستخدام',
+        'طقم المبتدئين',
+        'خريطة الأهداف',
+        'أسئلة شائعة',
     ];
 
     let selectedIndex = docFiles.findIndex(file => `/docs/${file.replace('.md', '').replace('index','')}`===window.location.pathname );
+
+    function titleCard(file:string, index:number):string {
+        localStorage.setItem("file", file)
+        localStorage.setItem("index", index.toString())
+
+        let language = localStorage.getItem("preferred_locale").substring(1,3)
+        if ( language === "en") {
+          return file.replaceAll('-', ' ').replace('.md', '').replace('index','Introduction to DMART');
+        } 
+
+        // make json code ltr, (tmp)
+        if ( language === "ar") {
+          const elements = document.querySelectorAll(".language-json");
+          elements.forEach(element => {
+            element.setAttribute("dir", "ltr");
+          }); 
+         } 
+
+        return arDocFiles[index]
+    }
+
+    // make selected topic dark a litle bit  (tmp)
+    function setClass(file:string):string {
+      return file===docFiles[selectedIndex] ?  "nav-item selected" : "nav-item"
+    }
+
 </script>
 
 <style>
     @import "prismjs/themes/prism.css";
     @import "prismjs/themes/prism-coy.css";
 </style>
-
 
 <Header />
 
@@ -48,13 +91,10 @@
           {#each docFiles as file, index}
             <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-click-events-have-key-events -->
             <li
-              on:click={()=> selectedIndex = index}
-              class={
-                file===docFiles[selectedIndex]
-                ? "nav-item selected" : "nav-item"
-              }>
+              on:click={function() {selectedIndex = index}}
+              class={ setClass(file) }>
               <a href="/docs/{file.replace('.md', '').replace('index','')}" class="nav-link link-dark">
-                {file.replaceAll('-', ' ').replace('.md', '').replace('index','Introduction to DMART')}
+                {titleCard(file, index)} 
               </a>
             </li>
             <hr class="p-0 m-0">
