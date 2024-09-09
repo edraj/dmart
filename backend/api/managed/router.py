@@ -1,19 +1,19 @@
 import csv
+import io
 from datetime import datetime
 import hashlib
 import os
 from re import sub as res_sub
 from time import time
 from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, status
-from fastapi.responses import FileResponse
-from starlette.responses import StreamingResponse
+from starlette.responses import StreamingResponse, FileResponse, Response
 
 from api.managed.utils import serve_request_create, serve_request_update_r_replace, serve_request_assign, \
     serve_request_update_acl, serve_request_delete, serve_request_move, \
     get_resource_content_type_from_payload_content_type, csv_entries_prepare_docs, handle_update_state, \
     update_state_handle_resolution, serve_space_delete, serve_space_update, serve_space_create, \
     data_asset_attachments_handler, import_resources_from_csv_handler, data_asset_handler, \
-    create_or_update_resource_with_payload_handler
+    create_or_update_resource_with_payload_handler, get_mime_type
 from utils.internal_error_code import InternalErrorCode
 from utils.router_helper import is_space_exist
 import models.api as api
@@ -513,7 +513,7 @@ async def retrieve_entry_or_attachment_payload(
         schema_shortname: str | None = None,
         ext: str = Path(..., pattern=regex.EXT, examples=["png"]),
         logged_in_user=Depends(JWTBearer()),
-) -> FileResponse:
+) -> Any:
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
@@ -566,12 +566,6 @@ async def retrieve_entry_or_attachment_payload(
             ),
         )
 
-    payload_path = db.payload_path(
-        space_name=space_name,
-        subpath=subpath,
-        class_type=cls,
-        schema_shortname=schema_shortname,
-    )
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
@@ -583,8 +577,16 @@ async def retrieve_entry_or_attachment_payload(
         )
     )
 
-    return FileResponse(payload_path / str(meta.payload.body))
+    if settings.active_data_db == "file":
+        payload_path = db.payload_path(
+            space_name=space_name,
+            subpath=subpath,
+            class_type=cls,
+            schema_shortname=schema_shortname,
+        )
+        return FileResponse(payload_path / str(meta.payload.body))
 
+    return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type))
 
 @router.post(
     "/resource_with_payload",
@@ -816,7 +818,9 @@ async def retrieve_entry_meta(
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+                type="media",
+                code=InternalErrorCode.OBJECT_NOT_FOUND,
+                message="Request object is not available"
             ),
         )
 
@@ -889,6 +893,7 @@ async def retrieve_entry_meta(
             user_shortname=logged_in_user,
         )
     )
+    print("11@@@@@@@@@@@@@@@@@@@@@@@@@")
     # TODO
     # include locked before returning the dictionary
     return {**meta.model_dump(exclude_none=True), "attachments": attachments}

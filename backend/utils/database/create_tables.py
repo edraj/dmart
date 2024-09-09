@@ -6,7 +6,7 @@ from typing import Optional, Any
 from uuid import UUID
 
 from pydantic import ConfigDict
-from sqlalchemy import Column, JSON, String
+from sqlalchemy import Column, JSON, String, LargeBinary
 from sqlmodel import SQLModel, create_engine, Field
 
 from models import core
@@ -71,6 +71,7 @@ class Entries(MetaF, SQLModel, table=True):
 class Attachments(MetaF, SQLModel, table=True):
     subpath: str = Field(regex=regex.SUBPATH)
     space_name: str = Field(regex=regex.SPACENAME)
+    media: bytes | None = Field(default_factory=None, sa_type=LargeBinary)
 
 
 class Histories(SQLModel, table=True):

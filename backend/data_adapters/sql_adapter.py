@@ -504,6 +504,8 @@ class SQLAdapter(BaseDataAdapter):
             | core.Json
             | core.DataAsset
             ):
+                if data.get("media", None) is None:
+                    data["media"] = None
                 return Attachments.model_validate(data, update=update)
             case _:
                 return Entries.model_validate(data, update=update)
@@ -522,14 +524,14 @@ class SQLAdapter(BaseDataAdapter):
             if not subpath.startswith("/"):
                 subpath = f"/{subpath}"
             space_name = attachments_path.relative_to(settings.spaces_folder).parts[0]
-            print("[@get_entry_attachments]", space_name, subpath)
+            shortname = attachments_path.relative_to(settings.spaces_folder).parts[-1]
             statement = (
                 select(Attachments)
                 .where(Attachments.space_name == space_name)
-                .where(Attachments.subpath.startswith(subpath))
+                .where(Attachments.subpath == f"{subpath}/{shortname}")
             )
             results = list(session.exec(statement).all())
-            print("[@get_entry_attachments]", results)
+
             if len(results) == 0:
                 return attachments_dict
 
@@ -540,10 +542,11 @@ class SQLAdapter(BaseDataAdapter):
                     "resource_type": attachment_json["resource_type"],
                     "uuid": attachment_json["uuid"],
                     "shortname": attachment_json["shortname"],
-                    "subpath": "/".join(subpath.split("/")[:-1]),
+                    "subpath": "/".join(attachment_json["subpath"].split("/")[:-1])#join(),
                 }
                 del attachment_json["resource_type"]
                 del attachment_json["uuid"]
+                del attachment_json["media"]
                 del attachment_json["shortname"]
                 del attachment_json["subpath"]
                 del attachment_json["relationships"]
@@ -772,18 +775,6 @@ class SQLAdapter(BaseDataAdapter):
                         if entity["subpath"].endswith("/"):
                             entity["subpath"] = entity["subpath"][:-1]
 
-                if meta.__class__ in [
-                    core.Alteration,
-                    core.Media,
-                    core.Lock,
-                    core.Comment,
-                    core.Reply,
-                    core.Reaction,
-                    core.Json,
-                    core.DataAsset,
-                ]:
-                    entity["subpath"] = f"{subpath}/attachments.{meta.__class__.__name__.lower()}"
-
                 if "subpath" in entity:
                     if entity["subpath"] != "/" and entity["subpath"].endswith("/"):
                         entity["subpath"] = entity["subpath"][:-1]
@@ -792,6 +783,7 @@ class SQLAdapter(BaseDataAdapter):
                 try:
                     entity['resource_type'] = meta.__class__.__name__.lower()
                     data = self.get_base_model(meta.__class__, entity)
+
                     session.add(data)
                     session.commit()
                 except Exception as e:
@@ -830,24 +822,23 @@ class SQLAdapter(BaseDataAdapter):
         await self.save(space_name, subpath, meta)
 
     async def save_payload(
-            self, space_name: str, subpath: str, meta: core.Meta, attachment
+        self, space_name: str, subpath: str, meta: core.Meta, attachment
     ):
-        payload_file_path = self.payload_path(
-            space_name, subpath, meta.__class__,
-        )
-        payload_filename = meta.shortname + Path(attachment.filename).suffix
         if meta.__class__ != core.Content:
-            os.makedirs(payload_file_path, exist_ok=True)
-            async with aiofiles.open(
-                    payload_file_path / payload_filename, "wb"
-            ) as file:
-                content = await attachment.read()
-                await file.write(content)
-            # await self.save(space_name, subpath, meta)
+            media = await attachment.read()
+            await self.update(
+                space_name, subpath, meta,
+                {}, {}, [],
+                "", attachment_media=media
+            )
         else:
             content = json.load(attachment.file)
             meta.payload.body = content
-            await self.update(space_name, subpath, meta, {}, {}, [], "")
+            await self.update(
+                space_name, subpath, meta,
+                {}, {}, [],
+                ""
+            )
 
     async def save_payload_from_json(
             self,
@@ -869,6 +860,7 @@ class SQLAdapter(BaseDataAdapter):
             user_shortname: str,
             schema_shortname: str | None = None,
             retrieve_lock_status: bool | None = False,
+            attachment_media: Any | None = None,
     ) -> dict:
         """Update the entry, store the difference and return it"""
         with self.get_session() as session:
@@ -890,8 +882,10 @@ class SQLAdapter(BaseDataAdapter):
                 result.sqlmodel_update(meta.model_dump())
                 if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
                     result.subpath = f"/{result.subpath}"
-                print("[@update]", meta)
-                print("[@update]", result)
+
+                if attachment_media:
+                    result.media = attachment_media
+
                 session.add(result)
                 session.commit()
             except Exception as e:

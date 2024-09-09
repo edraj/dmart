@@ -1451,3 +1451,23 @@ async def create_or_update_resource_with_payload_handler(
         )
 
     return resource_obj, record
+
+
+def get_mime_type(content_type: ContentType) -> str:
+    mime_types = {
+        ContentType.text: "text/plain",
+        ContentType.markdown: "text/markdown",
+        ContentType.html: "text/html",
+        ContentType.json: "application/json",
+        ContentType.image: "image/jpeg",
+        ContentType.python: "text/x-python",
+        ContentType.pdf: "application/pdf",
+        ContentType.audio: "audio/mpeg",
+        ContentType.video: "video/mp4",
+        ContentType.csv: "text/csv",
+        ContentType.parquet: "application/octet-stream",
+        ContentType.jsonl: "application/jsonlines",
+        ContentType.duckdb: "application/octet-stream",
+        ContentType.sqlite: "application/vnd.sqlite3"
+    }
+    return mime_types.get(content_type, "application/octet-stream")
