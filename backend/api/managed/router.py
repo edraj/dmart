@@ -586,7 +586,7 @@ async def retrieve_entry_or_attachment_payload(
         )
         return FileResponse(payload_path / str(meta.payload.body))
 
-    return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type))
+    return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type)) # type: ignore
 
 @router.post(
     "/resource_with_payload",
