@@ -6,7 +6,7 @@ import os
 from re import sub as res_sub
 from time import time
 from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, status
-from starlette.responses import StreamingResponse, FileResponse, Response
+from starlette.responses import StreamingResponse, FileResponse
 
 from api.managed.utils import serve_request_create, serve_request_update_r_replace, serve_request_assign, \
     serve_request_update_acl, serve_request_delete, serve_request_move, \

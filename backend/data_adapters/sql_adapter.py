@@ -1,6 +1,5 @@
 # type: ignore
 import json
-import os
 import re
 import subprocess
 import sys
@@ -11,7 +10,6 @@ from pathlib import Path
 from typing import Any, Type, Tuple
 from uuid import uuid4
 
-import aiofiles
 import sqlalchemy
 from fastapi import status
 from fastapi.logger import logger
