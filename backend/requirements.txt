@@ -4,7 +4,7 @@ pydantic[email]
 concurrent-log-handler
 hypercorn
 pyjwt
-redis >= 5.0.3
+redis
 aiofiles
 aiohttp
 python-multipart
@@ -14,7 +14,7 @@ passlib[bcrypt]
 bcrypt
 asgi-correlation-id
 pydantic-settings
-fastapi-sso >= 0.9.1
+fastapi-sso
 sqlmodel
 psycopg2-binary
 jinja2
