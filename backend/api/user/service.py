@@ -20,12 +20,6 @@ from fastapi import status
 MANAGEMENT_SPACE: str = settings.management_space
 USERS_SUBPATH: str = "users"
 
-# comms_api = zain backend api
-send_otp_api = urllib.parse.urljoin(settings.comms_api, "sms/otp/send")
-send_sms_api = urllib.parse.urljoin(settings.comms_api, "sms/send")
-send_email_api = urllib.parse.urljoin(settings.comms_api, "smtp/send")
-
-
 path = f"{os.path.dirname(__file__)}/mocks/"
 
 headers = {"Content-Type": "application/json"}
@@ -35,6 +29,10 @@ def gen_alphanumeric(length=16):
     return "".join(
         random.choice(string.ascii_letters + string.digits) for _ in range(length)
     )
+
+
+def gen_numeric(length=6):
+    return "".join(random.choice(string.digits) for _ in range(length))
 
 
 async def mock_sending_otp(msisdn) -> dict:
@@ -51,11 +49,25 @@ async def send_otp(msisdn: str, language: str):
     if settings.mock_smpp_api:
         return await mock_sending_otp(msisdn)
     else:
+        # Creating SMS message body
+        code = gen_numeric()
+        message = ""
+        match language:
+            case "ckb":
+                message = f"کۆدی دڵنیابوونی تایبەت بەخۆت {code}"
+            case "en":
+                message = f"Your otp code is {code}"
+            case _:
+                message = f"رمز التحقق الخاص بك {code}"
+
+        async with RedisServices() as redis_services:
+            await redis_services.set(f"middleware:otp:otps/{msisdn}", code, settings.otp_token_ttl)
+        
         async with AsyncRequest() as client:
             response = await client.post(
-                send_otp_api,
+                settings.send_sms_otp_api,
                 headers={**headers, "skel-accept-language": language},
-                json={"msisdn": msisdn},
+                json={"msisdn": msisdn, "message": message},
             )
             json = await response.json()
             status = response.status
@@ -76,7 +88,7 @@ async def email_send_otp(email: str, language: str):
         async with RedisServices() as redis_services:
             await redis_services.set_key(f"middleware:otp:otps/{email}", code, settings.otp_token_ttl)
         message = f"<p>Your OTP code is <b>{code}</b></p>"
-        return await send_email(settings.email_sender, email, message, "OTP")
+        return await send_email(settings.email_sender, email, message, "OTP", settings.send_email_otp_api)
 
 
 async def send_sms(msisdn: str, message: str) -> bool:
@@ -87,7 +99,7 @@ async def send_sms(msisdn: str, message: str) -> bool:
         
     async with AsyncRequest() as client:
         response = await client.post(
-            send_sms_api,
+            settings.send_sms_api,
             headers={**headers},
             json={"msisdn": msisdn, "message": message},
         )
@@ -110,7 +122,7 @@ async def send_sms(msisdn: str, message: str) -> bool:
     return True
 
 
-async def send_email(from_address: str, to_address: str, message: str, subject: str) -> bool:
+async def send_email(from_address: str, to_address: str, message: str, subject: str, send_email_api=settings.send_email_api) -> bool:
     json = {}
     status: int
     start_time = time.time()
@@ -215,10 +227,13 @@ def check_user_validation(user, data, user_updates, invitation_token):
     return user_updates
 
 
-def set_user_profile(profile, profile_user, user):
+async def set_user_profile(profile, profile_user, user):
     if profile_user.password:
         user.password = password_hashing.hash_password(profile_user.password)
         user.force_password_change = False
+        # Clear the failed password attempts
+        async with RedisServices() as redis_services:
+            await redis_services.del_keys([f"users:failed_login_attempts/{profile.shortname}"])
     if "displayname" in profile.attributes:
         user.displayname = profile_user.displayname.model_dump()
     if "description" in profile.attributes:
@@ -265,3 +280,29 @@ async def update_user_payload(profile, profile_user, user, shortname):
         user,
         separate_payload_data,
     )
+
+async def clear_failed_password_attempts(shortname: str):
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis_services:
+            await redis_services.del_keys([f"users:failed_login_attempts/{shortname}"])
+    else:
+        return await db.clear_failed_password_attempts(shortname)
+
+async def get_failed_password_attempt_count(shortname: str) -> int:
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis_services:
+            failed_login_attempts_count = 0
+            raw_failed_login_attempts_count = await redis_services.get(f"users:failed_login_attempts/{shortname}")
+            if raw_failed_login_attempts_count:
+                failed_login_attempts_count = int(raw_failed_login_attempts_count)
+            return failed_login_attempts_count
+    else:
+        return await db.get_failed_password_attempt_count(shortname)
+    
+async def set_failed_password_attempt_count(shortname: str, attempt_count: int):
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis_services:
+            await redis_services.set(f"users:failed_login_attempts/{shortname}", attempt_count)
+    else:
+        return await db.set_failed_password_attempt_count(shortname, attempt_count)
+    

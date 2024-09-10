@@ -261,3 +261,12 @@ class BaseDataAdapter(ABC):
 
     async def delete_url_shortner(self, token_uuid: str) -> bool:
         pass
+
+    async def clear_failed_password_attempts(self, user_shortname: str) -> bool:
+        pass
+
+    async def get_failed_password_attempt_count(self, user_shortname: str) -> int:
+        pass
+
+    async def set_failed_password_attempt_count(self, user_shortname: str, attempt_count: int) -> bool:
+        pass

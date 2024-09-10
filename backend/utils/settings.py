@@ -56,9 +56,13 @@ class Settings(BaseSettings):
 
     otp_token_ttl: int = 60 * 5
     comms_api: str = ""
+    send_sms_otp_api: str = ""
+    send_email_otp_api: str = ""
+    send_sms_api: str = ""
+    send_email_api: str = ""
     mock_smtp_api: bool = True
     files_query: str = "scandir"
-    mock_smpp_api: bool = False
+    mock_smpp_api: bool = True
     invitation_link: str = ""
     ldap_url: str = "ldap://"
     ldap_admin_dn: str = ""
@@ -88,6 +92,8 @@ class Settings(BaseSettings):
     database_host: str = 'localhost'
     database_port: int = 5432
     database_name: str = 'dmart'
+
+    max_failed_login_attempts: int = 5
 
     model_config = SettingsConfigDict(
         env_file=os.getenv(
