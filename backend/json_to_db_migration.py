@@ -106,7 +106,7 @@ with Session(engine) as session:
                             _attachment = json.load(open(os.path.join(root, dir, file)))
                             _attachment['space_name'] = space_name
                             _attachment['uuid'] = _attachment.get('uuid', uuid4())
-                            _attachment['subpath'] = f"{subpath}/{dir}".replace('//', '/')
+                            _attachment['subpath'] = f"{subpath}".replace('//', '/')
                             _attachment['subpath'] = subpath_checker(_attachment['subpath'])
                             _attachment['acl'] = _attachment.get('acl', [])
                             _attachment['relationships'] = _attachment.get('relationships', [])
@@ -128,10 +128,10 @@ with Session(engine) as session:
                             else:
                                 _body: str = _attachment.get('payload', {}).get('body', None)
                                 if _body and _body.endswith('.json'):
-                                    _attachment_body = json.load(open(
-                                        os.path.join(root, dir, _body)
-                                    ))
+                                    _attachment_body = json.load(open(os.path.join(root, dir, _body)))
                                     _attachment['payload']['body'] = _attachment_body
+                                elif _body:
+                                    _attachment['media'] = open(os.path.join(root, dir, _body), 'rb').read()
                                 if _attachment.get('payload', None) is None:
                                     _attachment['payload'] = {}
                             try:
