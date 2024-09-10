@@ -37,6 +37,9 @@ from .service import (
     check_user_validation,
     set_user_profile,
     update_user_payload, get_otp_confirmation_email_or_msisdn,
+    get_failed_password_attempt_count,
+    set_failed_password_attempt_count,
+    clear_failed_password_attempts,
 )
 from .model.requests import (
     ConfirmOTPRequest,
@@ -49,6 +52,7 @@ from languages.loader import languages
 from fastapi_sso.sso.google import GoogleSSO
 from fastapi_sso.sso.facebook import FacebookSSO
 from fastapi_sso.sso.base import SSOBase
+from fastapi.logger import logger
 
 router = APIRouter()
 
@@ -191,7 +195,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             invitation_token = await fetch_invitation(request.invitation)
 
             data = decode_jwt(request.invitation)
-            shortname = data.get("shortname", None)
+            shortname = data.get("username", None)
             if shortname is None:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -224,6 +228,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         message="Invalid invitation or data provided",
                     ),
                 )
+            
+            user_updates["force_password_change"] = True
 
             user_updates = check_user_validation(user, data, user_updates, invitation_token)
 
@@ -270,6 +276,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 )
             )
         ):
+            await clear_failed_password_attempts(shortname)
+            
             record = await process_user_login(user, response, user_updates, request.firebase_token)
             await plugin_manager.after_action(
                 core.Event(
@@ -282,6 +290,12 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 )
             )
             return api.Response(status=api.Status.success, records=[record])
+        # Check if user entered a wrong password 
+        is_password_valid = password_hashing.verify_password(
+            request.password or "", user.password or ""
+        )
+        if not is_password_valid:
+            await handle_failed_login_attempt(user)
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
@@ -445,7 +459,7 @@ async def update_profile(
         # if "force_password_change" in profile.attributes:
         #     user.force_password_change = profile.attributes["force_password_change"]
 
-        user = set_user_profile(profile, profile_user, user)
+        user = await set_user_profile(profile, profile_user, user)
 
         if "confirmation" in profile.attributes:
             result = await get_otp_confirmation_email_or_msisdn(profile_user)
@@ -670,6 +684,9 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
         user_shortname=shortname,
     ))
 
+    """
+    # Do not set the "force_password_change" flag right away
+
     old_version_flattend = flatten_dict(user.model_dump())
     user.force_password_change = True
 
@@ -704,11 +721,12 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             user_shortname=shortname,
         )
     )
+    """
 
     reset_password_message = "Reset password via this link: {link}, This link can be used once and within the next 48 hours."
 
-    if "msisdn" in result:
-        if not user.msisdn or user.msisdn != result["msisdn"]:
+    if "msisdn" in result or "shortname" in result:
+        if not user.msisdn or ("msisdn" in result and user.msisdn != result["msisdn"]):
             raise exception
         token = await repository.store_user_invitation_token(
             user, "SMS"
@@ -752,9 +770,15 @@ async def confirm_otp(
     result = user_request.check_fields()
     key = ""
     if "msisdn" in result:
-        key = f"middleware:otp:otps/{result['msisdn']}"
+        if settings.mock_smpp_api:
+            key = f"users:otp:otps/{result['msisdn']}"
+        else:
+            key = f"middleware:otp:otps/{result['msisdn']}"
     elif "email" in result:
-        key = f"middleware:otp:otps/{result['email']}"
+        if settings.mock_smtp_api:
+            key = f"users:otp:otps/{result['msisdn']}"
+        else:
+            key = f"middleware:otp:otps/{result['email']}"
 
     async with RedisServices() as redis_services:
         code = await redis_services.get_key(key)
@@ -969,6 +993,48 @@ async def process_user_login(
         )
         
     return record
+
+
+async def handle_failed_login_attempt(user: core.User):
+    failed_login_attempts_count: int = await get_failed_password_attempt_count(user.shortname)
+
+    # Increment the failed login attempts counter
+    failed_login_attempts_count += 1
+
+    if failed_login_attempts_count >= settings.max_failed_login_attempts:
+        # If the user reach the configured limit, lock the user by setting the is_active to false
+        if user.is_active:
+            await set_failed_password_attempt_count(user.shortname, failed_login_attempts_count)
+
+            logger.info(f"User {user.shortname} reached the maximum failed login attempts ({settings.max_failed_login_attempts}) disabling the user")
+
+            old_version_flattend = flatten_dict(user.model_dump())
+            user.is_active = False
+
+            await db.update(
+                MANAGEMENT_SPACE,
+                USERS_SUBPATH,
+                user,
+                old_version_flattend,
+                flatten_dict(user.model_dump()),
+                ["is_active"],
+                user.shortname,
+            )
+
+            await plugin_manager.after_action(
+                core.Event(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=user.shortname,
+                    action_type=core.ActionType.update,
+                    resource_type=ResourceType.user,
+                    user_shortname=user.shortname,
+                )
+            )
+    else:
+        # Count until the failed attempts reach the limit
+        await set_failed_password_attempt_count(user.shortname, failed_login_attempts_count)
+
 
 if settings.social_login_allowed:
 

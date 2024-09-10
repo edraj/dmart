@@ -224,10 +224,24 @@ class Sessions(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
+class ActiveSessions(SQLModel, table=True):
+    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    shortname: str = Field(regex=regex.SHORTNAME)
+    token: str = Field(...)
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
 class Invitations(SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     invitation_token: str = Field(...)
     invitation_value: str = Field(...)
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class FailedLoginAttempts(SQLModel, table=True):
+    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    shortname: str = Field(regex=regex.SHORTNAME)
+    attempt_count: int = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
 
 

@@ -99,7 +99,8 @@ class JWTBearer(HTTPBearer):
                     ),
                 )
 
-            await set_active_session(user_shortname, active_session_token)
+            # await set_active_session(user_shortname, active_session_token) # Do not hash the already hashed token
+            await set_active_session(user_shortname, auth_token)
 
         user_session_token = await get_user_session(user_shortname)
         if not isinstance(user_session_token, str):
