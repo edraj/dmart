@@ -412,7 +412,7 @@
             {#each objectDatatable.arrayRawData as row, index}
               <tr>
                 {#if canDelete}
-                  <td style="cursor: pointer;"><Input id={row.shortname} type="checkbox" on:change={handleBulk} name={index} /></td>
+                  <td style="cursor: pointer;"><Input id={row.shortname} type="checkbox" on:change={handleBulk} name={index.toString()} /></td>
                 {/if}
                 {#each Object.keys(columns) as col}
                   <!-- svelte-ignore a11y-click-events-have-key-events -->
