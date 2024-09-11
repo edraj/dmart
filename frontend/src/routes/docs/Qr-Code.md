@@ -1,36 +1,12 @@
 <script>
-    import Qr from "./assets/qr-ordering.jpg";
 </script>
 
 <style>
-/* .center {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  width: 44%;
-  bacground-img 
-} */
-
 .bg-img {
 background-image: url('./assets/qr-ordering.jpg');
 	background-size: cover;
 	width: 100%;
 	height: 529px;
-
-}
-
-.h2, h2 {
-
-
-
-
-	margin-left: 0.5em;
-	margin-top: 0em;
-	padding-top: 23px;
-	font-size: bold;
-	font-weight: 700;
-	color: #eaead7;
-	font-size: 55px;
 
 }
 </style>

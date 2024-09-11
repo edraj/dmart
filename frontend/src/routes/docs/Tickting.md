@@ -7,15 +7,6 @@ background-image: url('./assets/ticketing-system.png');
 	height: 529px;
 
 }
-
-.h2, h2 {
-
-	margin-left: 15em;
-	margin-top: 0em;
-	padding-top: 23px;
-	font-size: bold;
-	font-weight: 700;
-}
 </style>
 <div class=bg-img>
 <h2> DMART as a Ticketing System </h2>

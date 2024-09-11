@@ -55,8 +55,8 @@
     "marked-gfm-heading-id": "^4.1.0",
     "marked-mangle": "^1.1.9",
     "plantuml-encoder": "^1.4.0",
-    "svelte-datatables-net": "https://github.com/edraj/svelte-datatables-net",
+    "svelte-datatables-net": "edraj/svelte-datatables-net",
     "svelte-jsonschema-form": "edraj/svelte-jsonschema-form",
-    "sveltestrap": "edraj/sveltestrap#extending-UI"
+    "sveltestrap": "edraj/sveltestrap#extending-UI-2"
   }
 }
