@@ -36,7 +36,7 @@
     <Col sm="10"><Input type="text" class="form-control" bind:value={input.value} placeholder="Permission name..." /></Col>
     <Col sm="2" class="align-self-center p-0">
         <Icon class="mx-1" name="trash-fill" onclick={() => removeInput(index)} style={"font-size: 1.5rem;"} />
-        {#if index == inputs.length - 1}
+        {#if index === inputs.length - 1}
             <Icon class="mx-1" name="plus-square-fill" onclick={addInput} style={"font-size: 1.5rem;"}/>
         {/if}
     </Col>
