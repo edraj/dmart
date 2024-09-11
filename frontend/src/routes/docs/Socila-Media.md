@@ -8,15 +8,6 @@ background-image: url('./assets/social-media.jpg');
 	height: 529px;
 
 }
-
-.h2, h2 {	margin-left: 2em;
-	margin-top: 0em;
-	padding-top: 172px;
-	font-size: 51px;
-	font-weight: 800;
-	letter-spacing: 1.5px;
-
-}
 </style>
 <div class=bg-img>
 <h2> DMART as a Social Media 

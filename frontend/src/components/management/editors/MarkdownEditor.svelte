@@ -99,7 +99,7 @@
   }
 </script>
 
-<Card fluid={true} class="h-100 pt-1">
+<Card class="h-100 pt-1">
   <CardHeader></CardHeader>
     <TabContent>
       <TabPane tabId="editor" tab="Editor" active>

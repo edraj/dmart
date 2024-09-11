@@ -1,10 +1,10 @@
 {
-  "name": "DMART_frontend",
+  "name": "dmart_frontend",
   "description": "DMART skeleton app using: Svelte, Routify3, Bootstrap/Sveltestrap and Typescript",
   "author": "Kefah T. Issa",
   "email": "kefah.issa@gmail.com",
   "license": "AGPL-3.0-or-later",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "build": "node md_indexer.js && vite build",
@@ -39,24 +39,27 @@
     "mdsvex": "^0.12.3",
     "prismjs": "^1.29.0",
     "svelte": "^4.2.19",
-    "svelte-check": "^3.8.6",
+    "svelte-check": "^4.0.1",
     "svelte-i18n": "^4.0.0",
     "svelte-infinite-loading": "^1.4.0",
     "svelte-jsoneditor": "^0.23.8",
     "svelte-loading-spinners": "^0.3.6",
     "svelte-preprocess": "^6.0.2",
     "typescript": "^5.5.4",
-    "vite": "^5.4.3",
+    "vite": "^5.4.4",
     "vite-plugin-static-copy": "^1.0.6",
     "vitest": "^2.0.5",
     "workbox-window": "^7.1.0"
+  },
+  "peerDependencies": {
+    "svelte": "^4.2.19"
   },
   "dependencies": {
     "marked-gfm-heading-id": "^4.1.0",
     "marked-mangle": "^1.1.9",
     "plantuml-encoder": "^1.4.0",
-    "svelte-datatables-net": "https://github.com/edraj/svelte-datatables-net",
+    "svelte-datatables-net": "edraj/svelte-datatables-net",
     "svelte-jsonschema-form": "edraj/svelte-jsonschema-form",
-    "sveltestrap": "edraj/sveltestrap#extending-UI"
+    "sveltestrap": "edraj/sveltestrap#extending-UI-2"
   }
 }
