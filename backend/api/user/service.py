@@ -1,7 +1,6 @@
 import os
 import random
 import string
-import urllib.parse
 import time
 from data_adapters.adapter import data_adapter as db
 from models import core
