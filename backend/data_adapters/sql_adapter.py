@@ -661,10 +661,6 @@ class SQLAdapter(BaseDataAdapter):
             table = set_table_for_query(query)
 
             statement = select(table)
-            print("[!table]", table)
-            print("[!query]", query)
-            print("[!query.subpath]", query.subpath)
-            print("[!query.search]", query.search)
             total_statement = select(func.count(table.uuid))
             if table in [Entries, Attachments, Histories]:
                 total_statement = total_statement.where(
@@ -674,7 +670,6 @@ class SQLAdapter(BaseDataAdapter):
                 )
 
             total = session.execute(total_statement).scalar()
-            print("[total]", total)
             if query.type == QueryType.counters:
                 return total, []
 
