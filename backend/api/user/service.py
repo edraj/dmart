@@ -296,7 +296,8 @@ async def get_failed_password_attempt_count(shortname: str) -> int:
                 failed_login_attempts_count = int(raw_failed_login_attempts_count)
             return failed_login_attempts_count
     else:
-        return await db.get_failed_password_attempt_count(shortname)
+        failed_password_count: int = await db.get_failed_password_attempt_count(shortname)
+        return failed_password_count
     
 async def set_failed_password_attempt_count(shortname: str, attempt_count: int):
     if settings.active_data_db == "file":
