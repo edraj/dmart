@@ -661,15 +661,20 @@ class SQLAdapter(BaseDataAdapter):
             table = set_table_for_query(query)
 
             statement = select(table)
-
+            print("[!table]", table)
+            print("[!query]", query)
+            print("[!query.subpath]", query.subpath)
+            print("[!query.search]", query.search)
             total_statement = select(func.count(table.uuid))
             if table in [Entries, Attachments, Histories]:
-                total_statement.where(
+                total_statement = total_statement.where(
                     table.subpath == query.subpath
-                    and table.space_name == query.space_name
+                ).where(
+                    table.space_name == query.space_name
                 )
 
             total = session.execute(total_statement).scalar()
+            print("[total]", total)
             if query.type == QueryType.counters:
                 return total, []
 
