@@ -317,10 +317,14 @@ async def set_sql_statement_from_query(table, statement, query):
         statement = statement.where(
             table.shortname.in_(query.filter_shortnames)
         )
-    # if query.filter_tags:
-    #     statement = statement.where(table.tags.contains(query.filter_tags))
-    # if query.search:
-    #     statement = statement.where(table.shortname.ilike(f"%{query.search}%"))
+    if query.filter_types:
+        statement = statement.where(
+            table.resource_type.in_(query.filter_types)
+        )
+    if query.filter_tags:
+        statement = statement.where(
+            table.tags.in_(query.filter_tags)
+        )
     if query.from_date:
         statement = statement.where(table.created_at >= query.from_date)
     if query.to_date:
