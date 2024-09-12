@@ -608,14 +608,7 @@ class SQLAdapter(BaseDataAdapter):
             if table in [Roles, Permissions, Users, Spaces]:
                 statement = statement.where(table.shortname == shortname)
             else:
-                if table is Attachments:
-                    statement = statement.where(
-                        table.shortname == shortname
-                        and table.subpath
-                        == f"{subpath}/attachments.{class_type.__name__.lower()}"
-                    )
-                else:
-                    statement = statement.where(table.shortname == shortname).where(table.subpath == subpath)
+                statement = statement.where(table.shortname == shortname).where(table.subpath == subpath)
 
             result = session.exec(statement).one_or_none()
             if result is None:
