@@ -195,7 +195,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             invitation_token = await fetch_invitation(request.invitation)
 
             data = decode_jwt(request.invitation)
-            shortname = data.get("username", None)
+            shortname = data.get("shortname", None)
             if shortname is None:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -957,7 +957,7 @@ async def process_user_login(
     firebase_token: str | None = None
 ) -> core.Record:
     access_token = await sign_jwt(
-        {"username": user.shortname}, settings.jwt_access_expires
+        {"shortname": user.shortname}, settings.jwt_access_expires
     )
 
     response.set_cookie(
