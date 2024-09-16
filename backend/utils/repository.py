@@ -1756,7 +1756,7 @@ async def store_user_invitation_token(user: core.User, channel: str) -> str | No
         return None
 
     invitation_token = generate_jwt(
-        {"username": user.shortname, "channel": channel},
+        {"shortname": user.shortname, "channel": channel},
         settings.jwt_access_expires,
     )
     if settings.active_data_db == "file":

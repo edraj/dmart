@@ -120,7 +120,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     except Exception:
         return status.HTTP_401_UNAUTHORIZED, [], b"Invalid token\n"
 
-    user_shortname = decoded_token["username"]
+    user_shortname = decoded_token["shortname"]
     await websocket_manager.connect(websocket, user_shortname)
 
     success_connection_message = json.dumps({
