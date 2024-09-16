@@ -419,7 +419,7 @@ class SQLAdapter(BaseDataAdapter):
             connection_string = (
                 f"{self.database_connection_string}/{settings.database_name}"
             )
-            engine = create_engine(connection_string, echo=True)
+            engine = create_engine(connection_string, echo=False)
             self.session = Session(engine)
         return self.session
 
@@ -1216,7 +1216,7 @@ class SQLAdapter(BaseDataAdapter):
     async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
         with self.get_session() as session:
             try:
-                last_session = self.get_sql_user_session(user_shortname)
+                last_session = await self.get_sql_user_session(user_shortname)
                 if last_session is not None:
                     await self.remove_sql_user_session(user_shortname)
                 timestamp = datetime.now()

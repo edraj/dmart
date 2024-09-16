@@ -345,7 +345,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         attributes["displayname"] = user.displayname
     if user.msisdn:
         attributes["msisdn"] = user.msisdn
-    if settings.active_data_db == 'file' and user.payload:
+    if user.payload:
         attributes["payload"] = user.payload
         path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
         if (
