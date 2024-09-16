@@ -20,7 +20,9 @@ import models.api as api
 import models.core as core
 from models.enums import QueryType, LockAction, ResourceType
 from utils.database.create_tables import (
+    ActiveSessions,
     Entries,
+    FailedLoginAttempts,
     Histories,
     Permissions,
     Roles,
@@ -1191,7 +1193,25 @@ class SQLAdapter(BaseDataAdapter):
         return core.Space.validate(space)
 
     async def set_sql_active_session(self, user_shortname: str, token: str) -> bool:
-        return True
+        with self.get_session() as session:
+            try:
+                last_session = self.get_sql_active_session(user_shortname)
+                if last_session is not None:
+                    await self.remove_sql_active_session(user_shortname)
+                timestamp = datetime.now()
+                session.add(
+                    ActiveSessions(
+                        uuid=uuid4(),
+                        shortname=user_shortname,
+                        token=hash_password(token),
+                        timestamp=timestamp,
+                    )
+                )
+                session.commit()
+                return True
+            except Exception as e:
+                print("[!set_sql_active_session]", e)
+                return False
 
     async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
         with self.get_session() as session:
@@ -1211,11 +1231,24 @@ class SQLAdapter(BaseDataAdapter):
                 session.commit()
                 return True
             except Exception as e:
-                print("[!set_sql_active_session]", e)
+                print("[!set_sql_user_session]", e)
                 return False
 
     async def get_sql_active_session(self, user_shortname: str):
-        return True
+        with self.get_session() as session:
+            statement = select(ActiveSessions).where(ActiveSessions.shortname == user_shortname)
+
+            result = session.exec(statement).one_or_none()
+            if result is None:
+                return None
+
+            active_session = ActiveSessions.model_validate(result)
+
+            ## TODO:AB not sure
+            if settings.jwt_access_expires + active_session.timestamp.timestamp() < time.time():
+                await self.remove_sql_active_session(user_shortname)
+                return None
+            return active_session.token
 
     async def get_sql_user_session(self, user_shortname: str):
         with self.get_session() as session:
@@ -1233,7 +1266,15 @@ class SQLAdapter(BaseDataAdapter):
             return user_session.token
 
     async def remove_sql_active_session(self, user_shortname: str) -> bool:
-        return True
+        with self.get_session() as session:
+            try:
+                statement = delete(ActiveSessions).where(ActiveSessions.shortname == user_shortname)
+                session.exec(statement)
+                session.commit()
+                return True
+            except Exception as e:
+                print("[!remove_sql_active_session]", e)
+                return False
 
     async def remove_sql_user_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
@@ -1338,3 +1379,50 @@ class SQLAdapter(BaseDataAdapter):
                     )
 
         return results
+    
+    async def clear_failed_password_attempts(self, user_shortname: str) -> bool:
+        with self.get_session() as session:
+            try:
+                statement = delete(FailedLoginAttempts).where(FailedLoginAttempts.shortname == user_shortname)
+                session.exec(statement)
+                session.commit()
+                return True
+            except Exception as e:
+                print("[!clear_failed_password_attempts]", e)
+                return False
+
+    async def get_failed_password_attempt_count(self, user_shortname: str) -> int:
+        with self.get_session() as session:
+            statement = select(FailedLoginAttempts).where(FailedLoginAttempts.shortname == user_shortname)
+
+            result = session.exec(statement).one_or_none()
+            if result is None:
+                return 0
+
+            failed_login_attempt = FailedLoginAttempts.model_validate(result)
+
+            return failed_login_attempt.attempt_count
+
+    async def set_failed_password_attempt_count(self, user_shortname: str, attempt_count: int) -> bool:
+        with self.get_session() as session:
+            try:
+                statement = select(FailedLoginAttempts).where(FailedLoginAttempts.shortname == user_shortname)
+                result = session.exec(statement).one_or_none()
+
+                if result is None:
+                    session.add(
+                        FailedLoginAttempts(
+                            uuid=uuid4(),
+                            shortname=user_shortname,
+                            attempt_count=attempt_count,
+                            timestamp=datetime.now(),
+                        )
+                    )
+                else:
+                    result.attempt_count = attempt_count
+                
+                session.commit()
+                return True
+            except Exception as e:
+                print("[!set_failed_password_attempt_count]", e)
+                return False

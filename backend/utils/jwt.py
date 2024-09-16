@@ -41,7 +41,7 @@ def decode_jwt(token: str) -> dict[str, Any]:
 
     if (
             isinstance(decoded_token["data"], dict)
-            and decoded_token["data"].get("username") is not None
+            and decoded_token["data"].get("shortname") is not None
     ):
         return decoded_token["data"]
     else:
@@ -80,7 +80,7 @@ class JWTBearer(HTTPBearer):
             )
 
         decoded = decode_jwt(auth_token)
-        user_shortname = decoded["username"]
+        user_shortname = decoded["shortname"]
         if not user_shortname:
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
@@ -99,7 +99,8 @@ class JWTBearer(HTTPBearer):
                     ),
                 )
 
-            await set_active_session(user_shortname, active_session_token)
+            # await set_active_session(user_shortname, active_session_token) # Do not hash the already hashed token
+            await set_active_session(user_shortname, auth_token)
 
         user_session_token = await get_user_session(user_shortname)
         if not isinstance(user_session_token, str):
@@ -136,9 +137,9 @@ def generate_jwt(data: dict, expires: int = 86400) -> str:
 
 async def sign_jwt(data: dict, expires: int = 86400) -> str:
     token = generate_jwt(data, expires)
-    await set_user_session(data["username"], token)
+    await set_user_session(data["shortname"], token)
     if settings.one_session_per_user:
-        await set_active_session(data["username"], token)
+        await set_active_session(data["shortname"], token)
     return token
 
 

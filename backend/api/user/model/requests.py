@@ -62,10 +62,11 @@ class SendOTPRequest(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     msisdn: str | None = Field(None, pattern=rgx.MSISDN)
+    shortname: str | None = Field(None, pattern=rgx.SHORTNAME)
     email: str | None = Field(None, pattern=rgx.EMAIL)
 
     def check_fields(self) -> Dict[str, str]:
-        if self.email is None and self.msisdn is None:
+        if self.email is None and self.msisdn is None and self.shortname is None:
             raise Exception(
                 422,
                 Error(
@@ -75,7 +76,7 @@ class PasswordResetRequest(BaseModel):
                 ),
             )
 
-        if [self.email, self.msisdn].count(None) != 1:
+        if [self.email, self.msisdn, self.shortname].count(None) != 2:
             raise Exception(
                 422,
                 Error(
@@ -89,6 +90,8 @@ class PasswordResetRequest(BaseModel):
             return {"msisdn": self.msisdn}
         elif self.email:
             return {"email": self.email}
+        elif self.shortname:
+            return {"shortname": self.shortname}
 
         raise Exception(
             500,
