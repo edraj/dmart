@@ -118,12 +118,15 @@ def subpath_checker(subpath: str):
 
 
 def parse_search_string(s, entity):
-    pattern = r"@(\w+):(\w+)"
+    pattern = r"@(\w+):(.+)"
     matches = re.findall(pattern, s)
     result = {}
+
     for key, value in matches:
         try:
             if getattr(entity, key):
+                if "|" in value:
+                    value = value.split("|")
                 result = {key: value}
         except Exception as _:
             continue
@@ -309,7 +312,10 @@ async def set_sql_statement_from_query(table, statement, query):
         statement = statement.where(table.subpath == query.subpath)
     if query.search and query.subpath != "/":
         for k, v in parse_search_string(query.search, table).items():
-            statement = statement.where(text(f"{k}=:{k}")).params({k: v})
+            if isinstance(v, list):
+                statement = statement.where(getattr(table, k).in_(v))
+            else:
+                statement = statement.where(text(f"{k}=:{k}")).params({k: v})
         # statement = statement.where(table.shortname == query.search)
     # if query.filter_schema_names:
     #     statement = statement.where(table.schema_shortname.in_(query.filter_schema_names))
@@ -417,7 +423,7 @@ class SQLAdapter(BaseDataAdapter):
             connection_string = (
                 f"{self.database_connection_string}/{settings.database_name}"
             )
-            engine = create_engine(connection_string, echo=False)
+            engine = create_engine(connection_string, echo=True)
             self.session = Session(engine)
         return self.session
 
@@ -525,8 +531,8 @@ class SQLAdapter(BaseDataAdapter):
         with self.get_session() as session:
             if not subpath.startswith("/"):
                 subpath = f"/{subpath}"
-            space_name = attachments_path.relative_to(settings.spaces_folder).parts[0]
-            shortname = attachments_path.relative_to(settings.spaces_folder).parts[-1]
+            space_name = attachments_path.parts[0]
+            shortname = attachments_path.parts[-1]
             statement = (
                 select(Attachments)
                 .where(Attachments.space_name == space_name)
@@ -1333,7 +1339,7 @@ class SQLAdapter(BaseDataAdapter):
                 if query.retrieve_attachments:
                     results[idx].attachments = await self.get_entry_attachments(
                         query.subpath,
-                        Path(settings.spaces_folder) / query.space_name,
+                        Path(f"{query.space_name}/{results[idx].shortname}"),
                         retrieve_json_payload=True,
                     )
 
