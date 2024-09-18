@@ -23,12 +23,15 @@ async def set_init_state_from_request(ticket: api.Request, logged_in_user):
     )
 
     if workflows_data is not None and workflows_data.payload is not None:
-        workflows_payload = await db.load_resource_payload(
-            space_name=ticket.space_name,
-            subpath="workflows",
-            filename=str(workflows_data.payload.body),
-            class_type=core.Content,
-        )
+        if isinstance(workflows_data.payload.body, dict):
+            workflows_payload = workflows_data.payload.body
+        else:
+            workflows_payload = await db.load_resource_payload(
+                space_name=ticket.space_name,
+                subpath="workflows",
+                filename=str(workflows_data.payload.body),
+                class_type=core.Content,
+            )
 
         initial_state = None
         for state in workflows_payload["initial_state"]:
