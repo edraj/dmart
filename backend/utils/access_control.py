@@ -381,7 +381,7 @@ class AccessControl:
             permission_world_record = await db.load_or_none(
                 settings.management_space, 'permissions', "world", core.Permission
             )
-            role_permissions.append(permission_world_record)
+            role_permissions.append(permission_world_record)  # type: ignore
 
             for permission in role_permissions:
                 for space_name, permission_subpaths in permission.subpaths.items():
