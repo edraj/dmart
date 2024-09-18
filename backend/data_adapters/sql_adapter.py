@@ -119,17 +119,32 @@ def subpath_checker(subpath: str):
     return subpath
 
 
+def transform_keys_to_sql(path):
+    parts = path.split('.')
+    sql_path = parts[0]
+    sql_path += ' -> ' + ' -> '.join([f"'{part}'" for part in parts[1:-1]])
+    sql_path += f" ->> '{parts[-1]}'"
+
+    return sql_path
+
+
 def parse_search_string(s, entity):
-    pattern = r"@(\w+):(.+)"
+    pattern = r"@(.+):(.+)"
     matches = re.findall(pattern, s)
     result = {}
 
     for key, value in matches:
         try:
+            if "." in key:
+                if getattr(entity, key.split('.')[0]):
+                    result = {transform_keys_to_sql(key): value}
+                    return result
+
             if getattr(entity, key):
                 if "|" in value:
                     value = value.split("|")
                 result = {key: value}
+
         except Exception as _:
             continue
     return result
@@ -314,13 +329,17 @@ async def set_sql_statement_from_query(table, statement, query):
         statement = statement.where(table.subpath == query.subpath)
     if query.search and query.subpath != "/":
         for k, v in parse_search_string(query.search, table).items():
-            if isinstance(v, list):
+            if "->" in k:
+                statement = statement.where(text(f"({k})='{v}'"))
+            elif isinstance(v, list):
                 statement = statement.where(getattr(table, k).in_(v))
             else:
                 statement = statement.where(text(f"{k}=:{k}")).params({k: v})
         # statement = statement.where(table.shortname == query.search)
     # if query.filter_schema_names:
-    #     statement = statement.where(table.schema_shortname.in_(query.filter_schema_names))
+    #     statement = statement.where(
+    #         table.schema_shortname.in_(query.filter_schema_names)
+    #     )
     if query.filter_shortnames:
         statement = statement.where(
             table.shortname.in_(query.filter_shortnames)
