@@ -573,6 +573,7 @@ class AccessControl:
                 )
             if not user_search["data"]:
                 return None
+
             data = json.loads(user_search["data"][0])
             if data.get("shortname") and isinstance(data["shortname"], str):
                 return data["shortname"]
@@ -584,7 +585,7 @@ class AccessControl:
                 Users
             )
             if user:
-                return user.shortname
+                return str(user.shortname)
             return None
 
     async def get_user_roles_from_groups(self, user_meta: core.User) -> list:
