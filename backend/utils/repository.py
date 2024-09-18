@@ -13,7 +13,7 @@ from fastapi.encoders import jsonable_encoder
 import models.api as api
 import models.core as core
 import utils.regex as regex
-from models.enums import ContentType, Language, ResourceType, QueryType
+from models.enums import ContentType, Language, ResourceType
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.custom_validations import validate_payload_with_schema
@@ -29,9 +29,6 @@ from utils.plugin_manager import plugin_manager
 from utils.redis_services import RedisServices
 from utils.settings import settings
 from utils.spaces import get_spaces
-
-
-# import redis.commands.search.reducers as reducers
 
 
 def parse_redis_response(rows: list) -> list:
