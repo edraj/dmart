@@ -316,13 +316,7 @@ async def set_sql_statement_from_query(table, statement, query):
         )
 
     if query.space_name:
-        if (
-            query.type != QueryType.spaces
-            or query.space_name != "management"
-            or query.subpath != "/"
-        ):
-            statement = statement.where(table.space_name == query.space_name)
-
+        statement = statement.where(table.space_name == query.space_name)
     if query.subpath and table is Entries:
         statement = statement.where(table.subpath == query.subpath)
     if query.search and query.subpath != "/":
@@ -334,9 +328,12 @@ async def set_sql_statement_from_query(table, statement, query):
             else:
                 statement = statement.where(text(f"{k}=:{k}")).params({k: v})
 
+    query.filter_schema_names.remove('meta')
     if query.filter_schema_names:
         statement = statement.where(
-            text(f"(payload ->> 'schema_shortname') IN ( {", ".join(f"'{item}'" for item in query.filter_schema_names)})")
+            text("(payload ->> 'schema_shortname') IN ({})".format(
+                ', '.join(f"'{item}'" for item in query.filter_schema_names)
+            ))
         )
     if query.filter_shortnames:
         statement = statement.where(
@@ -698,7 +695,7 @@ class SQLAdapter(BaseDataAdapter):
     async def query(
             self, query: api.Query | None = None, user_shortname: str | None = None
     ) -> Tuple[int, list[core.Record]]:
-        with self.get_session() as session:
+        with (self.get_session() as session):
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -724,7 +721,13 @@ class SQLAdapter(BaseDataAdapter):
                     print(e)
                     return 0, []
 
-            statement = await set_sql_statement_from_query(table, statement, query)
+            if (query.space_name
+                and query.type == QueryType.spaces
+                and query.space_name == "management"
+                and query.subpath == "/"):
+                    statement = select(Spaces)
+            else:
+                statement = await set_sql_statement_from_query(table, statement, query)
 
             try:
                 results = list(session.exec(statement).all())
