@@ -8,6 +8,7 @@ from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 from models.core import ACL, ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
+from utils.database.create_tables import Users
 from utils.helpers import camel_case, flatten_dict
 from utils.settings import settings
 from data_adapters.adapter import data_adapter as db
@@ -240,7 +241,7 @@ class AccessControl:
         if not user_acl:
             return False
 
-        return (action_type in user_acl.allowed_actions)
+        return action_type in user_acl.allowed_actions
 
     def has_global_access(
             self,
@@ -377,6 +378,10 @@ class AccessControl:
 
         for _, role in user_roles.items():
             role_permissions = await self.get_role_permissions(role)
+            permission_world_record = await db.load_or_none(
+                settings.management_space, 'permissions', "world", core.Permission
+            )
+            role_permissions.append(permission_world_record)  # type: ignore
 
             for permission in role_permissions:
                 for space_name, permission_subpaths in permission.subpaths.items():
@@ -557,20 +562,30 @@ class AccessControl:
                 return user
 
     async def get_user_by_criteria(self, key: str, value: str) -> str | None:
-        async with RedisServices() as redis_services:
-            user_search = await redis_services.search(
-                space_name=settings.management_space,
-                search=f"@{key}:({value.replace('@', '?')})",
-                filters={"subpath": ["users"]},
-                limit=10000,
-                offset=0,
-            )
-        if not user_search["data"]:
-            return None
-        data = json.loads(user_search["data"][0])
-        if data.get("shortname") and isinstance(data["shortname"], str):
-            return data["shortname"]
+        if settings.active_data_db == "file":
+            async with RedisServices() as redis_services:
+                user_search = await redis_services.search(
+                    space_name=settings.management_space,
+                    search=f"@{key}:({value.replace('@', '?')})",
+                    filters={"subpath": ["users"]},
+                    limit=10000,
+                    offset=0,
+                )
+            if not user_search["data"]:
+                return None
+
+            data = json.loads(user_search["data"][0])
+            if data.get("shortname") and isinstance(data["shortname"], str):
+                return data["shortname"]
+            else:
+                return None
         else:
+            user = await db.get_entry_by_criteria(
+                {key: value},
+                Users
+            )
+            if user:
+                return str(user.shortname)
             return None
 
     async def get_user_roles_from_groups(self, user_meta: core.User) -> list:
