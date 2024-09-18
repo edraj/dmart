@@ -330,13 +330,15 @@ async def set_sql_statement_from_query(table, statement, query):
             else:
                 statement = statement.where(text(f"{k}=:{k}")).params({k: v})
 
-    query.filter_schema_names.remove('meta')
     if query.filter_schema_names:
-        statement = statement.where(
-            text("(payload ->> 'schema_shortname') IN ({})".format(
-                ', '.join(f"'{item}'" for item in query.filter_schema_names)
-            ))
-        )
+        if 'meta' in query.filter_schema_names:
+            query.filter_schema_names.remove('meta')
+        if query.filter_schema_names:
+            statement = statement.where(
+                text("(payload ->> 'schema_shortname') IN ({})".format(
+                    ', '.join(f"'{item}'" for item in query.filter_schema_names)
+                ))
+            )
     if query.filter_shortnames:
         statement = statement.where(
             table.shortname.in_(query.filter_shortnames)
