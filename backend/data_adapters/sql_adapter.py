@@ -665,10 +665,24 @@ class SQLAdapter(BaseDataAdapter):
                 logger.error(f"Failed parsing an entry. Error: {e}")
                 return None
 
-    async def get_entry_by_criteria(self, criteria: dict) -> core.Meta | None:  # type: ignore
-        tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Meta | None:  # type: ignore
         with self.get_session() as session:
-            for table in tables:
+            if table is None:
+                tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
+                for table in tables:
+                    statement = select(table)
+                    for k, v in criteria.items():
+                        if isinstance(v, str):
+                            statement = statement.where(
+                                text(f"{k}::text LIKE :{k}")
+                            ).params({k: f"{v}%"})
+                        else:
+                            statement = statement.where(text(f"{k}=:{k}")).params({k: v})
+                        result = session.exec(statement).one_or_none()
+                        if result is not None:
+                            return result
+                return None
+            else:
                 statement = select(table)
                 for k, v in criteria.items():
                     if isinstance(v, str):
@@ -680,7 +694,6 @@ class SQLAdapter(BaseDataAdapter):
                     result = session.exec(statement).one_or_none()
                     if result is not None:
                         return result
-        return None
 
     async def query(
             self, query: api.Query | None = None, user_shortname: str | None = None
