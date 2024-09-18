@@ -13,10 +13,11 @@ from fastapi.encoders import jsonable_encoder
 import models.api as api
 import models.core as core
 import utils.regex as regex
-from models.enums import ContentType, Language, ResourceType, QueryType
+from models.enums import ContentType, Language, ResourceType
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.custom_validations import validate_payload_with_schema
+from utils.database.create_tables import Users
 from utils.helpers import (
     camel_case,
     flatten_all,
@@ -28,9 +29,6 @@ from utils.plugin_manager import plugin_manager
 from utils.redis_services import RedisServices
 from utils.settings import settings
 from utils.spaces import get_spaces
-
-
-# import redis.commands.search.reducers as reducers
 
 
 def parse_redis_response(rows: list) -> list:
@@ -1810,18 +1808,10 @@ async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dic
                 continue
             if key == "email_unescaped":
                 key = "email"
-            total, result = await db.query(
-                api.Query(
-                    type=QueryType.search,
-                    space_name=settings.management_space,
-                    subpath="users",
-                    search=search_str + f" @{key}:{value}",
-                    limit=0,
-                    offset=0
-                )
-            )
 
-            if total > 0:
+            result = await db.get_entry_by_criteria({key: value}, Users)
+
+            if result is not None:
                 return {"unique": False, "field": key}
 
     return {"unique": True}
