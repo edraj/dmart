@@ -18,7 +18,7 @@ from sqlmodel import create_engine, Session, select
 
 import models.api as api
 import models.core as core
-from models.enums import QueryType, LockAction, ResourceType
+from models.enums import QueryType, LockAction, ResourceType, SortType
 from utils.database.create_tables import (
     Entries,
     Histories,
@@ -354,10 +354,19 @@ async def set_sql_statement_from_query(table, statement, query):
         statement = statement.where(table.created_at >= query.from_date)
     if query.to_date:
         statement = statement.where(table.created_at <= query.to_date)
-    if query.sort_by:
-        statement = statement.order_by(table.__dict__[query.sort_by])
-    if query.sort_type == "descending":
-        statement = statement.order_by(table.__dict__[query.sort_by].desc())
+    try:
+        if query.sort_by:
+            if "." in query.sort_by:
+                t = transform_keys_to_sql(query.sort_by)
+                t += " DESC" if query.sort_type == SortType.descending else ""
+                statement = statement.order_by(text(t))
+            else:
+                if query.sort_type == SortType.ascending:
+                    statement = statement.order_by(getattr(table, query.sort_by))
+                if query.sort_type == SortType.descending:
+                    statement = statement.order_by(getattr(table, query.sort_by).desc())
+    except Exception as e:
+        print(e)
 
     if query.offset:
         statement = statement.offset(query.offset)
