@@ -345,21 +345,23 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         attributes["displayname"] = user.displayname
     if user.msisdn:
         attributes["msisdn"] = user.msisdn
+
     if user.payload:
         attributes["payload"] = user.payload
-        path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
-        if (
-            user.payload
-            and user.payload.content_type
-            and user.payload.content_type == ContentType.json
-            and (path / str(user.payload.body)).is_file()
-        ):
-            async with aiofiles.open(
-                path / str(user.payload.body), "r"
-            ) as payload_file_content:
-                attributes["payload"].body = json.loads(
-                    await payload_file_content.read()
-                )
+        if settings.active_data_db == 'file':
+            path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
+            if (
+                user.payload
+                and user.payload.content_type
+                and user.payload.content_type == ContentType.json
+                and (path / str(user.payload.body)).is_file()
+            ):
+                async with aiofiles.open(
+                    path / str(user.payload.body), "r"
+                ) as payload_file_content:
+                    attributes["payload"].body = json.loads(
+                        await payload_file_content.read()
+                    )
 
     attributes["type"] = user.type
     attributes["language"] = user.language

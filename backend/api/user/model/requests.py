@@ -72,7 +72,7 @@ class PasswordResetRequest(BaseModel):
                 Error(
                     type="OTP",
                     code=InternalErrorCode.EMAIL_OR_MSISDN_REQUIRED,
-                    message="One of these [email, msisdn] should be set!",
+                    message="One of these [shortname, email, msisdn] should be set!",
                 ),
             )
 
