@@ -235,6 +235,7 @@ def set_stack(e):
         if "site-packages" not in frame.f_code.co_filename
     ]
 
+
 @app.middleware("http")
 async def middle(request: Request, call_next):
     """Wrapper function to manage errors and logging"""
@@ -254,6 +255,10 @@ async def middle(request: Request, call_next):
                 response_body = json.loads(raw_data)
             except Exception:
                 response_body = {}
+
+        # Set response headers after the main logic is complete and before returning the response
+        response = set_middleware_response_headers(request, response)
+
     except api.Exception as e:
         response = JSONResponse(
             status_code=e.status_code,
@@ -264,6 +269,10 @@ async def middle(request: Request, call_next):
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
         response_body = json.loads(response.body.decode())
+
+        # Set headers here as well in case of an exception
+        response = set_middleware_response_headers(request, response)
+
     except ValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
@@ -279,6 +288,10 @@ async def middle(request: Request, call_next):
             },
         )
         response_body = json.loads(response.body.decode())
+
+        # Set headers here as well in case of an exception
+        response = set_middleware_response_headers(request, response)
+
     except SchemaValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
@@ -297,6 +310,10 @@ async def middle(request: Request, call_next):
             },
         )
         response_body = json.loads(response.body.decode())
+
+        # Set headers here as well in case of an exception
+        response = set_middleware_response_headers(request, response)
+
     except Exception:
         exception_message = ""
         stack = None
@@ -317,8 +334,10 @@ async def middle(request: Request, call_next):
         )
         response_body = json.loads(response.body.decode())
 
-    response = set_middleware_response_headers(request, response)
+        # Set headers here as well in case of an exception
+        response = set_middleware_response_headers(request, response)
 
+    # Log request details
     user_shortname = "guest"
     try:
         user_shortname = str(await JWTBearer().__call__(request))
@@ -326,7 +345,6 @@ async def middle(request: Request, call_next):
         pass
 
     extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
-
     set_logging(response, extra, request, exception_data)
 
     return response
