@@ -139,7 +139,7 @@ def validate_search_range(v_str):
 
 
 def parse_search_string(s, entity):
-    pattern = r"@(.+):(.+)"
+    pattern = r"@(\S+):(\S+)"
     matches = re.findall(pattern, s)
     result = {}
 
@@ -148,14 +148,14 @@ def parse_search_string(s, entity):
             if "." in key:
                 if getattr(entity, key.split('.')[0]):
                     result = {transform_keys_to_sql(key): value}
-                    return result
 
             if getattr(entity, key):
                 if "|" in value:
                     value = value.split("|")
                 result = {key: value}
 
-        except Exception as _:
+        except Exception as e:
+            print(f"Failed to parse search string: {s} cuz of {e}")
             continue
     return result
 
@@ -336,15 +336,15 @@ async def set_sql_statement_from_query(table, statement, query):
             v = validate_search_range(v)
             if "->" in k:
                 if isinstance(v, str):
-                    statement = statement.where(text(f"({k})='{v}'"))
-                if isinstance(v, list):
+                    statement = statement.where(text(f"(({k}) = '{v}' OR ({k.replace(">>", ">")})::jsonb @> '\"{v}\"')"))
+                elif isinstance(v, list):
                     statement = statement.where(text(f"({k}) BETWEEN '{v[0]}' AND '{v[1]}'"))
                 else:
                     statement = statement.where(text(f"({k})={v}"))
             elif isinstance(v, list):
                 statement = statement.where(getattr(table, k).in_(v))
             else:
-                statement = statement.where(text(f"{k}=:{k}")).params({k: v})
+                statement = statement.where(text(f"{k}={v}"))
 
     if query.filter_schema_names:
         if 'meta' in query.filter_schema_names:
