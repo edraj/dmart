@@ -1405,6 +1405,7 @@ async def internal_sys_update_model(
         "owner_shortname",
         "payload",
     ]
+    old_version_flattend = {**meta.model_dump()}
     for key, value in updates.items():
         if key in restricted_fields:
             continue
@@ -1417,7 +1418,15 @@ async def internal_sys_update_model(
             payload_updated = True
 
     if meta_updated:
-        await db.save(space_name, subpath, meta)
+        await db.update(
+            space_name,
+            subpath,
+            meta,
+            old_version_flattend,
+            {**meta.model_dump()},
+            list(updates.keys()),
+            meta.shortname
+        )
     if payload_updated and meta.payload and meta.payload.schema_shortname:
         await validate_payload_with_schema(
             payload_dict, space_name, meta.payload.schema_shortname
