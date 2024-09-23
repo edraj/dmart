@@ -128,6 +128,16 @@ def transform_keys_to_sql(path):
     return sql_path
 
 
+def validate_search_range(v_str):
+    pattern = r"^\[\d+\s(\d+)*\]$"
+
+    if re.match(pattern, v_str):
+        v_list = list(map(int, v_str[1:-1].split()))
+        return v_list
+    else:
+        return v_str
+
+
 def parse_search_string(s, entity):
     pattern = r"@(.+):(.+)"
     matches = re.findall(pattern, s)
@@ -323,8 +333,14 @@ async def set_sql_statement_from_query(table, statement, query):
         statement = statement.where(table.subpath == query.subpath)
     if query.search and query.subpath != "/":
         for k, v in parse_search_string(query.search, table).items():
+            v = validate_search_range(v)
             if "->" in k:
-                statement = statement.where(text(f"({k})='{v}'"))
+                if isinstance(v, str):
+                    statement = statement.where(text(f"({k})='{v}'"))
+                if isinstance(v, list):
+                    statement = statement.where(text(f"({k}) BETWEEN '{v[0]}' AND '{v[1]}'"))
+                else:
+                    statement = statement.where(text(f"({k})={v}"))
             elif isinstance(v, list):
                 statement = statement.where(getattr(table, k).in_(v))
             else:
@@ -360,7 +376,7 @@ async def set_sql_statement_from_query(table, statement, query):
             if "." in query.sort_by:
                 t = transform_keys_to_sql(query.sort_by)
                 t += " DESC" if query.sort_type == SortType.descending else ""
-                statement = statement.order_by(text(t))
+                statement = statement.order_by(text(f"CASE WHEN ({t}) ~ '^[0-9]+$' THEN ({t})::float END, ({t})"))
             else:
                 if query.sort_type == SortType.ascending:
                     statement = statement.order_by(getattr(table, query.sort_by))
