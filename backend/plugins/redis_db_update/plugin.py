@@ -2,7 +2,6 @@ import sys
 from models.core import ActionType, Attachment, PluginBase, Event, Space
 from utils.helpers import camel_case
 from utils.repository import generate_payload_string
-from utils.spaces import get_spaces
 from data_adapters.adapter import data_adapter as db
 from models import core
 from models.enums import ContentType, ResourceType
@@ -27,7 +26,7 @@ class Plugin(PluginBase):
             logger.error("invalid data at redis_db_update")
             return
 
-        spaces = await get_spaces()
+        spaces = await db.get_spaces()
         if (
             data.space_name not in spaces
             or not Space.model_validate_json(spaces[data.space_name]).indexing_enabled

@@ -336,7 +336,9 @@ async def set_sql_statement_from_query(table, statement, query):
             v = validate_search_range(v)
             if "->" in k:
                 if isinstance(v, str):
-                    statement = statement.where(text(f"(({k}) = '{v}' OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"))
+                    statement = statement.where(
+                        text(f"(({k}) = '{v}' OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')")
+                    )
                 elif isinstance(v, list):
                     statement = statement.where(text(f"({k}) BETWEEN '{v[0]}' AND '{v[1]}'"))
                 else:
@@ -1492,3 +1494,13 @@ class SQLAdapter(BaseDataAdapter):
             except Exception as e:
                 print("[!set_failed_password_attempt_count]", e)
                 return False
+
+    async def get_spaces(self) -> dict:
+        with self.get_session() as session:
+            statement = select(Spaces)
+            results = session.exec(statement).all()
+            spaces = {}
+            for idx, item in enumerate(results):
+                space = Spaces.model_validate(item)
+                spaces[space.shortname] = space.model_dump()
+            return spaces
