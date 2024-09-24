@@ -9,7 +9,7 @@ from uuid import uuid4
 from sqlmodel import Session, create_engine, text
 
 from utils.database.create_tables import Entries, Users, generate_tables, Attachments, \
-    Roles, Permissions, Histories, Spaces, Tickets
+    Roles, Permissions, Histories, Spaces
 from utils.settings import settings
 
 logging.basicConfig()
@@ -26,7 +26,7 @@ def subpath_checker(subpath: str):
 
 
 postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
-engine = create_engine(f"{postgresql_url}/postgres")
+engine = create_engine(f"{postgresql_url}/postgres", echo=False)
 
 
 try:
@@ -34,7 +34,7 @@ try:
     s.connection().connection.set_isolation_level(0)  # type: ignore
     sql = f"CREATE DATABASE {settings.database_name}"  # type: ignore
     s.exec(text(sql))  # type: ignore
-    engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=True)
+    engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 except Exception as e:
     print(e)
 
@@ -199,9 +199,10 @@ with Session(engine) as session:
                                     entry["resolution_reason"] = entry.get("resolution_reason", None)
 
                                     entry["subpath"] = subpath_checker(entry["subpath"])
-                                    session.add(Tickets.model_validate(entry))
+                                    session.add(Entries.model_validate(entry))
                                     continue
                                 entry["subpath"] = subpath_checker(entry["subpath"])
+
                                 session.add(Entries.model_validate(entry))
                         except Exception as e:
                             print(f"Error processing Entries {space_name}/{subpath}/{dir}/{entry} ... ")
