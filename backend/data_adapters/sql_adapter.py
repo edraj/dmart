@@ -36,7 +36,9 @@ from utils.database.create_tables import (
 )
 from utils.helpers import (
     arr_remove_common,
-    str_to_datetime, camel_case,
+    get_removed_items,
+    str_to_datetime,
+    camel_case,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
@@ -1016,10 +1018,18 @@ class SQLAdapter(BaseDataAdapter):
                     if old != new:
                         if isinstance(old, list) and isinstance(new, list):
                             old, new = arr_remove_common(old, new)
+
+                        removed = get_removed_items(list(old_version_flattend.keys()), list(new_version_flattend.keys()))
+
                         history_diff[key] = {
                             "old": old,
                             "new": new,
                         }
+                        for r in removed:
+                            history_diff[r] = {
+                                "old": new_version_flattend[r],
+                                "new": None,
+                            }
                 if not history_diff:
                     return {}
 
