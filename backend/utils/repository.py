@@ -28,7 +28,6 @@ from utils.jwt import generate_jwt
 from utils.plugin_manager import plugin_manager
 from utils.redis_services import RedisServices
 from utils.settings import settings
-from utils.spaces import get_spaces
 
 
 def parse_redis_response(rows: list) -> list:
@@ -49,7 +48,7 @@ async def _serve_query_space(query, logged_in_user):
     records = []
     total = 0
 
-    spaces = await get_spaces()
+    spaces = await db.get_spaces()
     for space_json in spaces.values():
         space = core.Space.model_validate_json(space_json)
 
@@ -1649,7 +1648,7 @@ async def get_entry_by_var(
     if settings.active_data_db == "sql":
         return await db.get_entry_by_criteria({key: val})
 
-    spaces = await get_spaces()
+    spaces = await db.get_spaces()
     entry_doc = None
     entry_space = None
     async with RedisServices() as redis_services:
