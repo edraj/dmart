@@ -19,7 +19,7 @@ from utils.repository import generate_payload_string
 from utils.settings import settings
 import utils.regex as regex
 import asyncio
-from utils.spaces import get_spaces, initialize_spaces
+from utils.spaces import initialize_spaces
 from utils.access_control import access_control
 # from time import time
 from multiprocessing import Pool
@@ -240,7 +240,7 @@ async def load_all_spaces_data_to_redis(
     Loop over spaces and subpaths inside it and load the data to redis of indexing_enabled for the space
     """
     loaded_data = {}
-    spaces = await get_spaces()
+    spaces = await db.get_spaces()
     for space_name, space_json in spaces.items():
         space_obj = core.Space.model_validate_json(space_json)
         if (for_space and for_space != space_name) or not space_obj.indexing_enabled:
