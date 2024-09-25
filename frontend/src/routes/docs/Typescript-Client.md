@@ -39,7 +39,7 @@ A TypeScript implementation of the Dmart that depends on axios.
 
 - `upload_with_payload(space_name: string, subpath: string, shortname: string, resource_type: ResourceType, payload_file: File, content_type?: ContentType, schema_shortname?: string) -> Promise<ApiResponse>` - Uploads a file with a payload.
 
-- `fetchDataAsset(resourceType: string, dataAssetType: string, spaceName: string, subpath: string, shortname: string, query_string?: string, filter_data_assets?: string[], branch_name?: string) -> Promise<any>` - Fetches a data asset.
+- `fetchDataAsset(resourceType: string, dataAssetType: string, spaceName: string, subpath: string, shortname: string, query_string?: string, filter_data_assets?: string[]) -> Promise<any>` - Fetches a data asset.
 
 - `get_spaces() -> Promise<ApiResponse | null>` - Gets the spaces (user query).
 
