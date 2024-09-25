@@ -35,7 +35,7 @@ else:
         for key in users.keys():
             session.query(Users)\
                 .filter(Users.shortname == key)\
-                .update({Users.password: hashed})
+                .update({Users.password: hashed}) # type: ignore
             session.commit()
 
 
