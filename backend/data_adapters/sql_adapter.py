@@ -338,9 +338,7 @@ async def set_sql_statement_from_query(table, statement, query):
 
             if "->" in k:
                 if isinstance(v, str):
-                    statement = statement.where(
-                        text(f"(({k}) = '{v}' OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')")
-                    )
+                    statement = statement.where(text(f"(({k}) = '{v}' OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"))
                 elif isinstance(v, list):
                     statement = statement.where(text(f"({k}) BETWEEN '{v[0]}' AND '{v[1]}'"))
                 else:
