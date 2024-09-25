@@ -34,9 +34,9 @@ This command recreates indices for the "products" space, for schemas "offer" and
 **How does it work:**
 
 1.  **Main Function (`main`):** This function orchestrates the process of recreating Redis indices. It handles command-line arguments, initializes Redis services, creates or flushes indices as per the provided options, and loads data from the file system into Redis.
-2.  **Load Data to Redis (`load_data_to_redis`):** This function loads metadata and payload data from the file system and stores them in Redis. It processes data for each subpath within a space and branch, preparing Redis documents for efficient querying.
+2.  **Load Data to Redis (`load_data_to_redis`):** This function loads metadata and payload data from the file system and stores them in Redis. It processes data for each subpath within a space, preparing Redis documents for efficient querying.
 3.  **Generate Redis Docs Process (`generate_redis_docs_process`):** This function is a helper for parallel processing. It wraps the `generate_redis_docs` function to execute it asynchronously.
 4.  **Generate Redis Docs (`generate_redis_docs`):** This function generates Redis documents for each locator (file metadata) processed. It extracts metadata and payload data, validates payloads against schemas, and prepares documents for storage in Redis.
 5.  **Load Custom Indices Data (`load_custom_indices_data`):** This function loads custom indices data into Redis. It iterates over predefined custom indices and invokes the `load_data_to_redis` function for each index.
-6.  **Traverse Subpaths Entries (`traverse_subpaths_entries`):** This function traverses through subpaths within a space and branch, loading data from the file system and storing it in Redis. It recursively explores subdirectories and processes data for indexing.
+6.  **Traverse Subpaths Entries (`traverse_subpaths_entries`):** This function traverses through subpaths within a space, loading data from the file system and storing it in Redis. It recursively explores subdirectories and processes data for indexing.
 7.  **Load All Spaces Data to Redis (`load_all_spaces_data_to_redis`):** This function loads data from all spaces in the system into Redis. It iterates over spaces, invokes the `traverse_subpaths_entries` function for each space, and populates Redis with indexed data.
