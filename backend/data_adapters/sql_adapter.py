@@ -145,17 +145,15 @@ def parse_search_string(s, entity):
     pattern = r"@(\S+):(\S+)"
     matches = re.findall(pattern, s)
     result = {}
-
     for key, value in matches:
         try:
             if "." in key:
                 if getattr(entity, key.split('.')[0]):
-                    result = {transform_keys_to_sql(key): value}
-
-            if getattr(entity, key):
+                    result[transform_keys_to_sql(key)] =value
+            elif getattr(entity, key):
                 if "|" in value:
                     value = value.split("|")
-                result = {key: value}
+                result[key] = value
 
         except Exception as e:
             print(f"Failed to parse search string: {s} cuz of {e}")
@@ -337,6 +335,7 @@ async def set_sql_statement_from_query(table, statement, query):
     if query.search:
         for k, v in parse_search_string(query.search, table).items():
             v = validate_search_range(v)
+
             if "->" in k:
                 if isinstance(v, str):
                     statement = statement.where(
@@ -348,6 +347,8 @@ async def set_sql_statement_from_query(table, statement, query):
                     statement = statement.where(text(f"({k})={v}"))
             elif isinstance(v, list):
                 statement = statement.where(getattr(table, k).in_(v))
+            elif isinstance(v, str):
+                statement = statement.where(text(f"{k}='{v}'"))
             else:
                 statement = statement.where(text(f"{k}={v}"))
 
