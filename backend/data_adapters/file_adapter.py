@@ -16,7 +16,6 @@ from fastapi.logger import logger
 import models.api as api
 import models.core as core
 from utils import regex
-from utils.spaces import get_spaces
 from .base_data_adapter import BaseDataAdapter
 from models.enums import ContentType, ResourceType, LockAction
 from utils.helpers import arr_remove_common, read_jsonl_file, snake_case, camel_case
@@ -870,10 +869,11 @@ class FileAdapter(BaseDataAdapter):
                     )
 
     async def fetch_space(self, space_name: str) -> core.Space | None:
-        spaces = await get_spaces()
+        spaces = await self.get_spaces()
         if space_name not in spaces:
             return None
         return core.Space.model_validate_json(spaces[space_name])
+
 
     async def get_entry_attachments(
             self,
@@ -945,4 +945,11 @@ class FileAdapter(BaseDataAdapter):
             return attachments_dict
         except Exception as e:
             print(e)
+            return {}
+
+    async def get_spaces(self) -> dict:
+        async with RedisServices() as redis_services:
+            value = await redis_services.get_doc_by_id("spaces")
+            if isinstance(value, dict):
+                return value
             return {}
