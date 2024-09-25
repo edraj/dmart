@@ -200,8 +200,12 @@ def set_middleware_response_headers(request, response):
     response.headers[
         "Access-Control-Allow-Origin"
     ] = f"{origin.scheme}://{origin.netloc}"
+
+    if "localhost" in response.headers["Access-Control-Allow-Origin"]:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+
     response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Headers"] = "content-type, charset"
+    response.headers["Access-Control-Allow-Headers"] = "content-type, charset, authorization, accept-language, content-length"
     response.headers["Access-Control-Max-Age"] = "600"
     response.headers[
         "Access-Control-Allow-Methods"
