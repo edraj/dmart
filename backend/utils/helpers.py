@@ -54,6 +54,16 @@ def arr_remove_common(arr1: list, arr2: list):
     return arr1, arr2
 
 
+def get_removed_items(arr1: list, arr2: list):
+    removed_items = []
+
+    for i1 in arr1:
+        if i1 not in arr2:
+            removed_items.append(i1)
+
+    return removed_items
+
+
 def flatten_list_of_dicts_in_dict(d: dict) -> dict:
     """
     example:

@@ -1001,8 +1001,6 @@ class SQLAdapter(BaseDataAdapter):
             resource_type,
     ) -> dict:
         with self.get_session() as session:
-            print(f"{old_version_flattend=}")
-            print(f"{new_version_flattend=}")
             try:
                 diff_keys = list(old_version_flattend.keys())
                 diff_keys.extend(list(new_version_flattend.keys()))
@@ -1026,7 +1024,7 @@ class SQLAdapter(BaseDataAdapter):
                         }
                         for r in removed:
                             history_diff[r] = {
-                                "old": new_version_flattend[r],
+                                "old": old_version_flattend[r],
                                 "new": None,
                             }
                 if not history_diff:
