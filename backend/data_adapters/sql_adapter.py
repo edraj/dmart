@@ -31,12 +31,15 @@ from utils.database.create_tables import (
     Attachments,
     Aggregated,
     Locks,
-    Tickets,
-    Sessions, Invitations, URLShorts
+    Sessions,
+    Invitations,
+    URLShorts
 )
 from utils.helpers import (
     arr_remove_common,
-    str_to_datetime, camel_case,
+    get_removed_items,
+    str_to_datetime,
+    camel_case,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
@@ -331,7 +334,7 @@ async def set_sql_statement_from_query(table, statement, query):
         statement = statement.where(table.space_name == query.space_name)
     if query.subpath and table is Entries:
         statement = statement.where(table.subpath == query.subpath)
-    if query.search and query.subpath != "/":
+    if query.search:
         for k, v in parse_search_string(query.search, table).items():
             v = validate_search_range(v)
             if "->" in k:
@@ -474,7 +477,7 @@ class SQLAdapter(BaseDataAdapter):
 
     def get_table(
             self, class_type: Type[core.Meta]
-    ) -> Type[core.Meta] | Type[Roles] | Type[Permissions] | Type[Users] | Type[Spaces] | Type[Locks] | Type[Tickets] | \
+    ) -> Type[core.Meta] | Type[Roles] | Type[Permissions] | Type[Users] | Type[Spaces] | Type[Locks] | \
          Type[Attachments] | Type[Entries]:
 
         if "core" not in str(class_type):
@@ -491,8 +494,6 @@ class SQLAdapter(BaseDataAdapter):
                 return Spaces
             case core.Lock:
                 return Locks
-            case core.Ticket:
-                return Tickets
             case (
             core.Alteration
             | core.Media
@@ -545,8 +546,6 @@ class SQLAdapter(BaseDataAdapter):
                 return Permissions.model_validate(data, update=update)
             case core.Space:
                 return Spaces.model_validate(data, update=update)
-            case core.Ticket:
-                return Tickets.model_validate(data, update=update)
             case (
             core.Alteration
             | core.Media
@@ -1014,10 +1013,18 @@ class SQLAdapter(BaseDataAdapter):
                     if old != new:
                         if isinstance(old, list) and isinstance(new, list):
                             old, new = arr_remove_common(old, new)
+
+                        removed = get_removed_items(list(old_version_flattend.keys()), list(new_version_flattend.keys()))
+
                         history_diff[key] = {
                             "old": old,
                             "new": new,
                         }
+                        for r in removed:
+                            history_diff[r] = {
+                                "old": old_version_flattend[r],
+                                "new": None,
+                            }
                 if not history_diff:
                     return {}
 
@@ -1182,9 +1189,6 @@ class SQLAdapter(BaseDataAdapter):
                     session.exec(statement)
                     statement = delete(Attachments) \
                         .where(Attachments.space_name == space_name)  # type:ignore[call-overload]
-                    session.exec(statement)
-                    statement = delete(Tickets) \
-                        .where(Tickets.space_name == space_name)  # type:ignore[call-overload]
                     session.exec(statement)
                 session.commit()
             except Exception as e:
@@ -1445,7 +1449,7 @@ class SQLAdapter(BaseDataAdapter):
                     )
 
         return results
-    
+
     async def clear_failed_password_attempts(self, user_shortname: str) -> bool:
         with self.get_session() as session:
             try:
@@ -1486,9 +1490,19 @@ class SQLAdapter(BaseDataAdapter):
                     )
                 else:
                     result.attempt_count = attempt_count
-                
+
                 session.commit()
                 return True
             except Exception as e:
                 print("[!set_failed_password_attempt_count]", e)
                 return False
+
+    async def get_spaces(self) -> dict:
+        with self.get_session() as session:
+            statement = select(Spaces)
+            results = session.exec(statement).all()
+            spaces = {}
+            for idx, item in enumerate(results):
+                space = Spaces.model_validate(item)
+                spaces[space.shortname] = space.model_dump()
+            return spaces

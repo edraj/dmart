@@ -270,3 +270,6 @@ class BaseDataAdapter(ABC):
 
     async def set_failed_password_attempt_count(self, user_shortname: str, attempt_count: int) -> bool:
         pass
+
+    async def get_spaces(self) -> dict:
+        pass
