@@ -443,12 +443,13 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                         replace=request.request_type == api.RequestType.r_replace,
                     )
                 )
-                new_version_flattend = flatten_dict(resource_obj.model_dump())
+                new_version_flattend = resource_obj.model_dump()
                 if new_resource_payload_data:
-                    new_version_flattend.update(
-                        flatten_dict(
-                            {"payload.body": new_resource_payload_data})
-                    )
+                    new_version_flattend["payload"] = {
+                        **new_version_flattend["payload"],
+                        "body": new_resource_payload_data
+                    }
+                new_version_flattend = flatten_dict(new_version_flattend)
 
                 await validate_uniqueness(
                     request.space_name, record, RequestType.update
