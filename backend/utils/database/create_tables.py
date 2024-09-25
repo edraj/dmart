@@ -66,6 +66,14 @@ class Permissions(MetaF, SQLModel, table=True):
 class Entries(MetaF, SQLModel, table=True):
     subpath: str = Field(regex=regex.SUBPATH)
     space_name: str = Field(regex=regex.SPACENAME)
+    # Tickets
+    state: str | None = None
+    is_open: bool | None = None
+    reporter: dict | core.Reporter | None = Field(None, default_factory=None, sa_type=JSON)
+    workflow_shortname: str | None = None
+    collaborators: dict[str, str] | None = Field(None, default_factory=None, sa_type=JSON)
+    resolution_reason: str | None = None
+
 
 
 class Attachments(MetaF, SQLModel, table=True):
@@ -195,18 +203,6 @@ class Aggregated(SQLModel, table=False):
         }
 
         return AggregatedRecord(**record_fields)
-
-
-class Tickets(MetaF, SQLModel, table=True):
-    state: str
-    is_open: bool = True
-    reporter: dict | core.Reporter | None = Field(default_factory=None, sa_type=JSON)
-    workflow_shortname: str
-    collaborators: dict[str, str] | None = Field(default_factory=None, sa_type=JSON)
-    resolution_reason: str | None = None
-
-    subpath: str = Field(regex=regex.SUBPATH)
-    space_name: str = Field(regex=regex.SPACENAME)
 
 
 class Locks(SQLModel, table=True):

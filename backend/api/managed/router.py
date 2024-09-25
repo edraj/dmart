@@ -466,7 +466,6 @@ async def update_state(
                 old_version_flattend,
                 new_version_flattend,
                 ["state", "resolution_reason", "comment"],
-
                 logged_in_user,
                 retrieve_lock_status=retrieve_lock_status,
             )

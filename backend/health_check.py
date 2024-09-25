@@ -24,7 +24,6 @@ from utils.redis_services import RedisServices
 from models import core, api
 from models.enums import ContentType, RequestType, ResourceType
 from utils.settings import settings
-from utils.spaces import get_spaces
 
 duplicated_entries : dict= {}
 
@@ -37,7 +36,7 @@ spaces_schemas: dict[str, dict[str, dict]] = {}
 
 async def main(health_type: str, space_param: str, schemas_param: list):
     try:
-        spaces = await get_spaces()
+        spaces = await db.get_spaces()
         if space_param != "all" and space_param not in spaces:
             print("space name is not found")
             return None
@@ -77,7 +76,7 @@ async def main(health_type: str, space_param: str, schemas_param: list):
             print("Running hard healthcheck")
             spaces = {space_param : {}}
             if is_full:
-                spaces = await get_spaces()
+                spaces = await db.get_spaces()
             for space in spaces:
                 print(f'>>>> Processing {space:<10} <<<<')
                 before_time = time.time()
@@ -125,7 +124,7 @@ async def load_spaces_schemas(for_space: str | None = None) -> dict:
     global spaces_schemas
     if spaces_schemas:
         return spaces_schemas
-    spaces = await get_spaces()
+    spaces = await db.get_spaces()
     if for_space and for_space != "all" and for_space in spaces:
         spaces_schemas[for_space] = load_space_schemas(for_space)
         return spaces_schemas
@@ -297,7 +296,7 @@ async def soft_health_check(
 
 
 async def collect_duplicated_with_key(key, value) -> None:
-    spaces = await get_spaces()
+    spaces = await db.get_spaces()
     async with RedisServices() as redis:
         for space_name, space_data in spaces.items():
             space_data = json.loads(space_data)
@@ -335,7 +334,7 @@ async def collect_duplicated_with_key(key, value) -> None:
 
 
 async def hard_health_check(space_name: str):
-    spaces = await get_spaces()
+    spaces = await db.get_spaces()
     if space_name not in spaces:
         print("space name is not found")
         return None
@@ -412,7 +411,7 @@ async def save_duplicated_entries() -> None:
     
     slug_scanned_entries = set()
     slug_duplicated_entries: dict = {}
-    spaces : dict = await get_spaces()
+    spaces : dict = await db.get_spaces()
     async with RedisServices() as redis:
         for space_name, space_data in spaces.items():
             space_data = json.loads(space_data)
@@ -499,10 +498,8 @@ async def save_duplicated_entries() -> None:
     print(f'Completed in: {"{:.2f}".format(time.time() - before_time)} sec')
     
 
-
-
 async def cleanup_spaces() -> None:
-    spaces = await get_spaces()
+    spaces = await db.get_spaces()
     # create health check path meta
     folder_path = Path(settings.spaces_folder / "management/health_check/.dm")
     if not os.path.isdir(folder_path):
@@ -545,6 +542,7 @@ async def cleanup_spaces() -> None:
         if folder_name not in spaces:
             shutil.rmtree(Path(folder_path / folder_name))
             os.remove(Path(settings.spaces_folder / "management/health_check" / f"{folder_name}.json"))
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
