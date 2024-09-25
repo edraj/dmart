@@ -4,15 +4,13 @@
 
 **Overview:** Health Check API is a Python script designed for conducting health checks on a system. The script is intended to evaluate the health and integrity of data stored . It supports two modes of operation: soft and hard health checks.
 
-**Usage:** The script can be executed from the command line with various parameters to specify the type of health check, target space, target schemas, and branch.
+**Usage:** The script can be executed from the command line with various parameters to specify the type of health check, target space and target schemas.
 
 **Command Line Arguments:**
 
 - `-t, --type`: Specifies the type of health check to perform. Valid options are "soft" or "hard".
 
 - `-s, --space`: Specifies the target space for the health check. "all" can be specified to perform a health check on all spaces.
-
-- `-b, --branch`: Specifies the target branch for the health check.
 
 - `-m, --schemas`: Specifies the target schemas within the space for the health check.
 
