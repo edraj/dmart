@@ -367,16 +367,17 @@ async def update_state(
             user_shortname=logged_in_user,
         )
     )
-
-    ticket_obj: core.Ticket = core.Ticket.model_validate(
-        await db.load(
-            space_name=space_name,
-            subpath=subpath,
-            shortname=shortname,
-            class_type=core.Ticket,
-            user_shortname=logged_in_user,
-        )
+    ticket_raw = await db.load(
+        space_name=space_name,
+        subpath=subpath,
+        shortname=shortname,
+        class_type=core.Ticket,
+        user_shortname=logged_in_user,
     )
+    ticket_obj: core.Ticket = core.Ticket.model_validate(
+        ticket_raw.model_dump()
+    )
+
     if ticket_obj.payload is None or ticket_obj.payload.body is None:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
