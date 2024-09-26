@@ -58,17 +58,23 @@ async def hard_space_check(space):
             subpath = entry.subpath[1:]
             if subpath == "":
                 subpath = "/"
-            if entry.payload is None or not entry.payload.get("schema_shortname", None) or not entry.payload.get("body", None):
+
+            if entry is None or entry.payload is None \
+                    or not entry.payload.get("body", None): # type: ignore
                 continue
 
-            body = entry.payload["body"]
+            if not entry.payload.get("schema_shortname", None): # type: ignore
+                continue
+
+            body = entry.payload["body"] # type: ignore
             schema_data = session.exec(
                 select(Entries)
-              .where(Entries.shortname == entry.payload["schema_shortname"])
+              .where(Entries.shortname == entry.payload["schema_shortname"]) # type: ignore
               .where(Entries.subpath == "/schema")
-            ).first()
+            ).first() # type: ignore
 
-            if not schema_data.payload.get("body", None):
+            if schema_data is None or schema_data.payload is None \
+                    or not schema_data.payload.get("body", None): # type: ignore
                 continue
 
             if not subpath in folders_report:
@@ -78,7 +84,7 @@ async def hard_space_check(space):
 
             try:
                 Draft7Validator(
-                    schema_data.payload.get("body", {})
+                    schema_data.payload.get("body", {}) # type: ignore
                 ).validate(body)
                 folders_report[subpath]["valid_entries"] += 1
             except ValidationError as e:
