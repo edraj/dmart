@@ -1,5 +1,7 @@
 from copy import copy
 from datetime import datetime
+from typing import Any
+
 from fastapi import status
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema, validate_uniqueness
@@ -1037,6 +1039,7 @@ async def handle_update_state(space_name, logged_in_user, ticket_obj, action, us
         user_shortname=logged_in_user,
     )
 
+    workflows_payload: Any = {}
     if workflows_data.payload is not None and workflows_data.payload.body is not None:
         if settings.active_data_db == 'file':
             workflows_payload = await db.load_resource_payload(
@@ -1067,7 +1070,7 @@ async def handle_update_state(space_name, logged_in_user, ticket_obj, action, us
             ),
         )
     response = transite(
-        workflows_payload["states"], ticket_obj.state, action, user_roles
+        workflows_payload.get("states", []), ticket_obj.state, action, user_roles
     )
 
     if not response.get("status", False):
@@ -1087,7 +1090,7 @@ async def handle_update_state(space_name, logged_in_user, ticket_obj, action, us
 
     ticket_obj.state = response["message"]
     ticket_obj.is_open = check_open_state(
-        workflows_payload["states"], response["message"]
+        workflows_payload.get("states", []), response["message"]
     )
 
     return ticket_obj, workflows_payload, response, old_version_flattend
