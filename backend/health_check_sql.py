@@ -37,7 +37,7 @@ async def main(health_type: str, space_param: str, schemas_param: list):
     spaces = await db.get_spaces()
     print(f"{spaces=}")
     if space_param != "all":
-        if not space_param in spaces.keys():
+        if space_param not in spaces.keys():
             print(f"space name {space_param} is not found")
             return
         spaces = [spaces[space_param]]
@@ -77,7 +77,7 @@ async def hard_space_check(space):
                     or not schema_data.payload.get("body", None): # type: ignore
                 continue
 
-            if not subpath in folders_report:
+            if subpath not in folders_report:
                 folders_report[subpath] = {
                     "valid_entries": 0,
                 }
