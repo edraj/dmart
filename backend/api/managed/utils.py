@@ -1,5 +1,7 @@
 from copy import copy
 from datetime import datetime
+from typing import Any
+
 from fastapi import status
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema, validate_uniqueness
@@ -1036,13 +1038,18 @@ async def handle_update_state(space_name, logged_in_user, ticket_obj, action, us
         class_type=core.Content,
         user_shortname=logged_in_user,
     )
+
+    workflows_payload: Any = {}
     if workflows_data.payload is not None and workflows_data.payload.body is not None:
-        workflows_payload = await db.load_resource_payload(
-            space_name=space_name,
-            subpath="workflows",
-            filename=str(workflows_data.payload.body),
-            class_type=core.Content,
-        )
+        if settings.active_data_db == 'file':
+            workflows_payload = await db.load_resource_payload(
+                space_name=space_name,
+                subpath="workflows",
+                filename=str(workflows_data.payload.body),
+                class_type=core.Content,
+            )
+        else:
+            workflows_payload = workflows_data.payload.body
     else:
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1063,16 +1070,16 @@ async def handle_update_state(space_name, logged_in_user, ticket_obj, action, us
             ),
         )
     response = transite(
-        workflows_payload["states"], ticket_obj.state, action, user_roles
+        workflows_payload.get("states", []), ticket_obj.state, action, user_roles
     )
 
-    if not response["status"]:
+    if not response.get("status", False):
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(
                 type="transition",
                 code=InternalErrorCode.INVALID_TICKET_STATUS,
-                message=response["message"],
+                message=response.get("message", "")
             ),
         )
 
@@ -1083,7 +1090,7 @@ async def handle_update_state(space_name, logged_in_user, ticket_obj, action, us
 
     ticket_obj.state = response["message"]
     ticket_obj.is_open = check_open_state(
-        workflows_payload["states"], response["message"]
+        workflows_payload.get("states", []), response["message"]
     )
 
     return ticket_obj, workflows_payload, response, old_version_flattend
