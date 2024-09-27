@@ -313,7 +313,7 @@ def query_aggregation(table, query):
     return statement
 
 
-async def set_sql_statement_from_query(table, statement, query):
+async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
         if query.type == QueryType.aggregation:
             statement = query_aggregation(table, query)
@@ -376,24 +376,26 @@ async def set_sql_statement_from_query(table, statement, query):
     if query.to_date:
         statement = statement.where(table.created_at <= query.to_date)
     try:
-        if query.sort_by:
-            if "." in query.sort_by:
-                t = transform_keys_to_sql(query.sort_by)
-                t += " DESC" if query.sort_type == SortType.descending else ""
-                statement = statement.order_by(text(f"CASE WHEN ({t}) ~ '^[0-9]+$' THEN ({t})::float END, ({t})"))
-            else:
-                if query.sort_type == SortType.ascending:
-                    statement = statement.order_by(getattr(table, query.sort_by))
-                if query.sort_type == SortType.descending:
-                    statement = statement.order_by(getattr(table, query.sort_by).desc())
+        if not is_for_count:
+            if query.sort_by:
+                if "." in query.sort_by:
+                    t = transform_keys_to_sql(query.sort_by)
+                    t += " DESC" if query.sort_type == SortType.descending else ""
+                    statement = statement.order_by(text(f"CASE WHEN ({t}) ~ '^[0-9]+$' THEN ({t})::float END, ({t})"))
+                else:
+                    if query.sort_type == SortType.ascending:
+                        statement = statement.order_by(getattr(table, query.sort_by))
+                    if query.sort_type == SortType.descending:
+                        statement = statement.order_by(getattr(table, query.sort_by).desc())
     except Exception as e:
         print(e)
 
-    if query.offset:
-        statement = statement.offset(query.offset)
+    if not is_for_count:
+        if query.offset:
+            statement = statement.offset(query.offset)
 
-    if query.limit:
-        statement = statement.limit(query.limit)
+        if query.limit:
+            statement = statement.limit(query.limit)
 
     return statement
 
@@ -720,17 +722,7 @@ class SQLAdapter(BaseDataAdapter):
             table = set_table_for_query(query)
 
             statement = select(table)
-            total_statement = select(func.count(table.uuid))
-            if table in [Entries, Attachments, Histories]:
-                total_statement = total_statement.where(
-                    table.subpath == query.subpath
-                ).where(
-                    table.space_name == query.space_name
-                )
-
-            total = session.execute(total_statement).scalar()
-            if query.type == QueryType.counters:
-                return total, []
+            statement_total = select(func.count(table.uuid))
 
             if query.type == QueryType.events:
                 try:
@@ -744,10 +736,13 @@ class SQLAdapter(BaseDataAdapter):
                 and query.space_name == "management"
                 and query.subpath == "/"):
                     statement = select(Spaces)
+                    statement_total = select(func.count(Spaces.uuid))
             else:
-                statement = await set_sql_statement_from_query(table, statement, query)
+                statement = await set_sql_statement_from_query(table, statement, query, False)
+                statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
             try:
+                total = session.execute(statement_total).scalar()
                 results = list(session.exec(statement).all())
                 if len(results) == 0:
                     return 0, []

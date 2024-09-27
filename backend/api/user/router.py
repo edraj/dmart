@@ -413,107 +413,104 @@ async def update_profile(
     profile: core.Record, shortname=Depends(JWTBearer())
 ) -> api.Response:
     """Update user profile"""
-    try:
-        profile_user = core.Meta.check_record(
-            record=profile, owner_shortname=profile.shortname
-        )
-        if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
-            raise api.Exception(
-                status.HTTP_401_UNAUTHORIZED,
-                api.Error(
-                    type="jwtauth",
-                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                    message="Invalid username or password",
-                ),
-            )
-
-        await plugin_manager.before_action(
-            core.Event(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                action_type=core.ActionType.update,
-                resource_type=ResourceType.user,
-                user_shortname=shortname,
-            )
+    profile_user = core.Meta.check_record(
+        record=profile, owner_shortname=profile.shortname
+    )
+    if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="jwtauth",
+                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                message="Invalid username or password",
+            ),
         )
 
-        user = core.User.model_validate(await db.load(
+    await plugin_manager.before_action(
+        core.Event(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             shortname=shortname,
-            class_type=core.User,
+            action_type=core.ActionType.update,
+            resource_type=ResourceType.user,
             user_shortname=shortname,
-        ))
-
-        old_version_flattend = flatten_dict(user.model_dump())
-
-        if profile_user.password and "old_password" in profile.attributes:
-            if not password_hashing.verify_password(
-                profile.attributes["old_password"], user.password or ""
-            ):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA,
-                              message="mismatch with the information provided"),
-                )
-
-        # if "force_password_change" in profile.attributes:
-        #     user.force_password_change = profile.attributes["force_password_change"]
-
-        user = await set_user_profile(profile, profile_user, user)
-
-        if "confirmation" in profile.attributes:
-            result = await get_otp_confirmation_email_or_msisdn(profile_user)
-
-            if result is None or result != profile.attributes["confirmation"]:
-                raise Exception(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
-                              message="Invalid confirmation code [1]"),
-                )
-
-            if profile_user.email:
-                user.is_email_verified = True
-            elif profile_user.msisdn:
-                user.is_msisdn_verified = True
-        else:
-            await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update)
-            if "email" in profile.attributes and user.email != profile_user.email:
-                user.email = profile_user.email
-                user.is_email_verified = False
-
-            if profile_user.msisdn and user.msisdn != profile_user.msisdn:
-                user.msisdn = profile_user.msisdn
-                user.is_msisdn_verified = False
-
-            if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
-                await update_user_payload(profile, profile_user, user, shortname)
-
-        history_diff = await db.update(
-            MANAGEMENT_SPACE,
-            USERS_SUBPATH,
-            user,
-            old_version_flattend,
-            flatten_dict(user.model_dump()),
-            list(profile.attributes.keys()),
-            shortname,
-            retrieve_lock_status=profile.retrieve_lock_status,
         )
+    )
 
-        await plugin_manager.after_action(
-            core.Event(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                action_type=core.ActionType.update,
-                resource_type=ResourceType.user,
-                user_shortname=shortname,
-                attributes={"history_diff": history_diff},
+    user = core.User.model_validate(await db.load(
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        shortname=shortname,
+        class_type=core.User,
+        user_shortname=shortname,
+    ))
+
+    old_version_flattend = flatten_dict(user.model_dump())
+
+    if profile_user.password and "old_password" in profile.attributes:
+        if not password_hashing.verify_password(
+            profile.attributes["old_password"], user.password or ""
+        ):
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA,
+                            message="mismatch with the information provided"),
             )
+
+    # if "force_password_change" in profile.attributes:
+    #     user.force_password_change = profile.attributes["force_password_change"]
+
+    user = await set_user_profile(profile, profile_user, user)
+
+    if "confirmation" in profile.attributes:
+        result = await get_otp_confirmation_email_or_msisdn(profile_user)
+
+        if result is None or result != profile.attributes["confirmation"]:
+            raise Exception(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
+                            message="Invalid confirmation code [1]"),
+            )
+
+        if profile_user.email:
+            user.is_email_verified = True
+        elif profile_user.msisdn:
+            user.is_msisdn_verified = True
+    else:
+        await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update)
+        if "email" in profile.attributes and user.email != profile_user.email:
+            user.email = profile_user.email
+            user.is_email_verified = False
+
+        if profile_user.msisdn and user.msisdn != profile_user.msisdn:
+            user.msisdn = profile_user.msisdn
+            user.is_msisdn_verified = False
+
+        if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
+            await update_user_payload(profile, profile_user, user, shortname)
+
+    history_diff = await db.update(
+        MANAGEMENT_SPACE,
+        USERS_SUBPATH,
+        user,
+        old_version_flattend,
+        flatten_dict(user.model_dump()),
+        list(profile.attributes.keys()),
+        shortname,
+        retrieve_lock_status=profile.retrieve_lock_status,
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            action_type=core.ActionType.update,
+            resource_type=ResourceType.user,
+            user_shortname=shortname,
+            attributes={"history_diff": history_diff},
         )
-    except api.Exception as e:
-        print(e)
+    )
     return api.Response(status=api.Status.success)
 
 
