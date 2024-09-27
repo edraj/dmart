@@ -893,7 +893,6 @@ async def retrieve_entry_meta(
             user_shortname=logged_in_user,
         )
     )
-    print("11@@@@@@@@@@@@@@@@@@@@@@@@@")
     # TODO
     # include locked before returning the dictionary
     return {**meta.model_dump(exclude_none=True), "attachments": attachments}
