@@ -98,7 +98,21 @@ with Session(engine) as session:
         for dir in dirs:
             for file in os.listdir(os.path.join(root, dir)):
                 if not file.startswith('meta'):
+                    if file == 'history.jsonl':
+                        lines = open(os.path.join(root, dir, file), 'r').readlines()
+                        for line in lines:
+                            history = json.loads(line)
+                            history['shortname'] = dir
+                            history['space_name'] = space_name
+                            history['subpath'] = subpath_checker(subpath)
+
+                            try:
+                                session.add(Histories.model_validate(history))
+                            except Exception as e:
+                                print(f"Error processing Histories {space_name}/{subpath}/{dir}/{history} ... ")
+                                print(e)
                     continue
+
                 p = os.path.join(root, dir, file)
                 if Path(p).is_file():
                     if 'attachments' in p:
@@ -207,19 +221,6 @@ with Session(engine) as session:
                         except Exception as e:
                             print(f"Error processing Entries {space_name}/{subpath}/{dir}/{entry} ... ")
                             print(e)
-                    elif file == 'history.jsonl':
-                        lines = open(p, 'r').readlines()
-                        for line in lines:
-                            history = json.loads(line)
-                            history['shortname'] = dir
-                            history['space_name'] = space_name
-                            history['subpath'] = subpath_checker(subpath)
-
-                            try:
-                                session.add(Histories.model_validate(history))
-                            except Exception as e:
-                                print(f"Error processing Histories {space_name}/{subpath}/{dir}/{history} ... ")
-                                print(e)
 
             try:
                 session.commit()
