@@ -178,7 +178,7 @@ class PluginManager:
                         if iscoroutine(plugin_execution):
                             loop.create_task(plugin_execution)
                 except Exception as e:
-                    print(f"Plugin:{plugin_model}:{str(e)}")
+                    # print(f"Plugin:{plugin_model}:{str(e)}")
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
     async def after_action(self, event: Event):
@@ -208,10 +208,10 @@ class PluginManager:
                             if iscoroutine(plugin_execution):
                                 loop.create_task(plugin_execution)
                     except Exception as e:
-                        print(f"PluginError:{plugin_model}:{str(e)}")
+                        # print(f"PluginError:{plugin_model}:{str(e)}")
                         logger.error(f"Plugin:{plugin_model}:{str(e)}")
         except Exception as e:
-            print(f"PluginError:{_plugin_model}:{str(e)}")
+            # print(f"PluginError:{_plugin_model}:{str(e)}")
             logger.error(f"Plugin:{_plugin_model}:{str(e)}")
 
 
