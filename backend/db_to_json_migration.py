@@ -147,8 +147,8 @@ def process_histories(session, space_folder):
         file_path = f"{dir_path}{history.subpath}/.dm/{history.shortname}"
         ensure_directory_exists(file_path)
 
-        _history: str = history.model_dump_json()
-        _history: dict = json.loads(_history)
+        _history: str = history.model_dump_json() # type: ignore
+        _history: dict = json.loads(_history) # type: ignore
         _history["shortname"] = "history"
 
         del _history["space_name"]
