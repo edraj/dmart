@@ -54,7 +54,7 @@ class AccessControl:
                         if resource_obj.is_active:
                             self_module[shortname] = resource_obj  # store in redis doc
                     except Exception as ex:
-                        print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
+                        # print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
                         raise ex
 
             await self.create_user_premission_index()
@@ -145,13 +145,13 @@ class AccessControl:
             record_attributes: dict = {},
             entry_shortname: str | None = None
     ):
-        print("Checking access for", user_shortname, space_name, subpath, resource_type, action_type)
+        # print("Checking access for", user_shortname, space_name, subpath, resource_type, action_type)
         if resource_type == ResourceType.space and entry_shortname:
             return await self.check_space_access(
                 user_shortname,
                 entry_shortname
             )
-        print("Checking check_space_access access")
+        # print("Checking check_space_access access")
         user_permissions = await self.get_user_permissions(user_shortname)
 
         user_groups = (await self.load_user_meta(user_shortname)).groups or []
