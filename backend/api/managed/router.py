@@ -589,7 +589,7 @@ async def retrieve_entry_or_attachment_payload(
     if meta.payload.content_type == ContentType.json:
         return api.Response(
             status=api.Status.success,
-            attributes=meta.payload.body,
+            attributes=meta.payload.body, # type: ignore
         )
     return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type)) # type: ignore
 
@@ -725,7 +725,7 @@ async def import_resources_from_csv(
             class_type=core.Schema,
             user_shortname=owner_shortname,
         )
-        schema_content = resolve_schema_references(schema_content.payload.body)
+        schema_content = resolve_schema_references(schema_content.payload.body) # type: ignore
 
     data_types_mapper: dict[str, Callable] = {
         "integer": int,
