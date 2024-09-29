@@ -55,6 +55,9 @@ with Session(engine) as session:
         if space_name == '..':
             continue
 
+        if space_name.startswith('.git'):
+            continue 
+
         print(f"Processing {space_name}/{subpath} ... ")
         if subpath == '' or subpath == '/':
             subpath = '/'
