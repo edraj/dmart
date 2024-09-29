@@ -1,6 +1,8 @@
 from re import sub as res_sub
 from uuid import uuid4
 from fastapi import APIRouter, Body, Query, Path, status, Depends
+
+from models.api import Response
 from models.enums import AttachmentType, ContentType, ResourceType, TaskType
 from data_adapters.adapter import data_adapter as db
 import models.api as api
@@ -192,7 +194,7 @@ async def retrieve_entry_or_attachment_payload(
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
     ext: str = Path(..., pattern=regex.EXT),
-) -> FileResponse:
+) -> FileResponse | Response | StreamingResponse:
 
     await plugin_manager.before_action(
         core.Event(
@@ -267,7 +269,7 @@ async def retrieve_entry_or_attachment_payload(
     if meta.payload.content_type == ContentType.json:
         return api.Response(
             status=api.Status.success,
-            attributes=meta.payload.body,
+            attributes=meta.payload.body, # type: ignore
         )
     return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type)) # type: ignore
 
