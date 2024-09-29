@@ -1819,7 +1819,7 @@ async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dic
 
             result = await db.get_entry_by_criteria({key: value}, Users)
 
-            if len(result) > 0:
+            if result is not None:
                 return {"unique": False, "field": key}
 
     return {"unique": True}

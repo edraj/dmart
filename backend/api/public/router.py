@@ -9,14 +9,15 @@ from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
 import utils.regex as regex
 import models.core as core
-from fastapi.responses import FileResponse
+from api.managed.utils import get_mime_type
 from typing import Any
 import sys
 from utils.access_control import access_control
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 from utils.settings import settings
-
+from starlette.responses import StreamingResponse, FileResponse
+import io
 
 router = APIRouter()
 
@@ -204,19 +205,18 @@ async def retrieve_entry_or_attachment_payload(
         )
     )
 
-    resource_class = getattr(
-        sys.modules["models.core"], camel_case(resource_type))
-    meta = await db.load(
+    cls = getattr(sys.modules["models.core"], camel_case(resource_type))
+    meta: core.Meta = await db.load(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
-        class_type=resource_class,
+        class_type=cls,
         user_shortname="anonymous",
     )
     if (
-        meta.payload is None
-        or meta.payload.body is None
-        or meta.payload.body != f"{shortname}.{ext}"
+            meta.payload is None
+            or meta.payload.body is None
+            or meta.payload.body != f"{shortname}.{ext}"
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -244,10 +244,6 @@ async def retrieve_entry_or_attachment_payload(
                 message="You don't have permission to this action [15]",
             ),
         )
-    # TODO check security labels for pubblic access
-    # assert meta.is_active
-    payload_path = db.payload_path(
-        space_name, subpath, resource_class)
 
     await plugin_manager.after_action(
         core.Event(
@@ -260,8 +256,21 @@ async def retrieve_entry_or_attachment_payload(
         )
     )
 
-    media_file = payload_path / str(meta.payload.body)
-    return FileResponse(media_file)
+    if settings.active_data_db == "file":
+        payload_path = db.payload_path(
+            space_name=space_name,
+            subpath=subpath,
+            class_type=cls,
+        )
+        return FileResponse(payload_path / str(meta.payload.body))
+
+    if meta.payload.content_type == ContentType.json:
+        return api.Response(
+            status=api.Status.success,
+            attributes=meta.payload.body,
+        )
+    return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type)) # type: ignore
+
 
 
 """
