@@ -389,10 +389,10 @@ export async function login(shortname: string, password: string) {
     >(website.backend + "/user/login", {shortname, password}, {headers});
     //console.log(JSON.stringify(data, null, 2));
     // FIXME settins Authorization is only needed when the code is running on the server
-    //headers.Authorization = "";
+    /*headers.Authorization = "";
     if (data.status == Status.success && data.records.length > 0) {
       headers.Authorization = "Bearer " + data.records[0].attributes.access_token;
-    }
+    }*/
     return data;
 }
 
@@ -402,7 +402,6 @@ export async function logout() {
         {},
         {headers}
     );
-    headers.Authorization = "";
     return data;
 }
 
