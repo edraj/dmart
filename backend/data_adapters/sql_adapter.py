@@ -355,7 +355,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             elif isinstance(v, list) and vv:
                 statement = statement.where(text(f"({k}) BETWEEN '{v[0]}' AND '{v[1]}'"))
             elif isinstance(v, list):
-                statement = statement.where(text(f"(({k}) IN ({', '.join([f"'{_v}'" for _v in v])}) OR ({k.replace('>>', '>')})::jsonb @> '[({', '.join([f'"{_v}"' for _v in v])})]')"))
+                statement = statement.where(text(f"(({k}) IN ({', '.join([f'{_v}' for _v in v])}) OR ({k.replace('>>', '>')})::jsonb @> '[({', '.join([f'{_v}' for _v in v])})]')"))
             elif isinstance(v, str):
                 statement = statement.where(text(f"{k}='{v}'"))
             else:
