@@ -186,7 +186,7 @@ async def retrieve_entry_meta(
 # Public payload retrieval; can be used in "src=" in html pages
 @router.get(
     "/payload/{resource_type}/{space_name}/{subpath:path}/{shortname}.{ext}",
-    response_model_exclude_none=True,
+    response_model=None
 )
 async def retrieve_entry_or_attachment_payload(
     resource_type: ResourceType,
