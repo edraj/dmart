@@ -355,7 +355,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             elif isinstance(v, list) and vv:
                 statement = statement.where(text(f"({k}) BETWEEN '{v[0]}' AND '{v[1]}'"))
             elif isinstance(v, list):
-                statement = statement.where(text(f"(({k}) IN ({', '.join([f'{_v}' for _v in v])}) OR ({k.replace('>>', '>')})::jsonb @> '[({', '.join([f'{_v}' for _v in v])})]')"))
+                in_1 = ', '.join([f"'{_v}'" for _v in v])
+                in_2 = ', '.join([f'"{_v}"' for _v in v])
+                statement = statement.where(text(f"(({k}) IN ({in_1}) OR ({k.replace('>>', '>')})::jsonb @> '[({in_2})]')"))
             elif isinstance(v, str):
                 statement = statement.where(text(f"{k}='{v}'"))
             else:
@@ -695,7 +697,7 @@ class SQLAdapter(BaseDataAdapter):
                 logger.error(f"Failed parsing an entry. Error: {e}")
                 return None
 
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> [core.Meta]:  # type: ignore
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Meta:  # type: ignore
         with self.get_session() as session:
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
@@ -709,8 +711,9 @@ class SQLAdapter(BaseDataAdapter):
                         else:
                             statement = statement.where(text(f"{k}=:{k}")).params({k: v})
                         result = session.exec(statement).all()
-                        return result
-                return []
+                        if len(result) != 0:
+                            return result[0]
+                return None
             else:
                 statement = select(table)
                 for k, v in criteria.items():
@@ -721,7 +724,9 @@ class SQLAdapter(BaseDataAdapter):
                     else:
                         statement = statement.where(text(f"{k}=:{k}")).params({k: v})
                     result = session.exec(statement).all()
-                    return result
+                    if len(result) != 0:
+                        return result[0]
+                return None
 
     async def query(
             self, query: api.Query | None = None, user_shortname: str | None = None
@@ -754,6 +759,8 @@ class SQLAdapter(BaseDataAdapter):
 
             try:
                 total = session.execute(statement_total).scalar()
+                if query.type == QueryType.counters:
+                    return total, []
                 results = list(session.exec(statement).all())
                 if len(results) == 0:
                     return 0, []
@@ -952,7 +959,7 @@ class SQLAdapter(BaseDataAdapter):
                 if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
                     result.subpath = f"/{result.subpath}"
 
-                if attachment_media:
+                if isinstance(result, Attachments) and attachment_media:
                     result.media = attachment_media
 
                 session.add(result)

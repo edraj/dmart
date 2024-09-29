@@ -585,7 +585,7 @@ class AccessControl:
                 Users
             )
             if user:
-                return str(user[0].shortname)
+                return str(user.shortname)
             return None
 
     async def get_user_roles_from_groups(self, user_meta: core.User) -> list:

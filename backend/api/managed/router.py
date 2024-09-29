@@ -586,6 +586,11 @@ async def retrieve_entry_or_attachment_payload(
         )
         return FileResponse(payload_path / str(meta.payload.body))
 
+    if meta.payload.content_type == ContentType.json:
+        return api.Response(
+            status=api.Status.success,
+            attributes=meta.payload.body, # type: ignore
+        )
     return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type)) # type: ignore
 
 @router.post(
@@ -704,13 +709,23 @@ async def import_resources_from_csv(
     buffer = StringIO(decoded)
     csv_reader = csv.DictReader(buffer)
 
-    schema_path = (
-            db.payload_path(space_name, "schema", core.Schema)
-            / f"{schema_shortname}.json"
-    )
-    with open(schema_path) as schema_file:
-        schema_content = json.load(schema_file)
-    schema_content = resolve_schema_references(schema_content)
+    if settings.active_data_db == "file":
+        schema_path = (
+                db.payload_path(space_name, "schema", core.Schema)
+                / f"{schema_shortname}.json"
+        )
+        with open(schema_path) as schema_file:
+            schema_content = json.load(schema_file)
+        schema_content = resolve_schema_references(schema_content)
+    else:
+        schema_content = await db.load(
+            space_name=space_name,
+            subpath="/schema",
+            shortname=schema_shortname,
+            class_type=core.Schema,
+            user_shortname=owner_shortname,
+        )
+        schema_content = resolve_schema_references(schema_content.payload.body) # type: ignore
 
     data_types_mapper: dict[str, Callable] = {
         "integer": int,

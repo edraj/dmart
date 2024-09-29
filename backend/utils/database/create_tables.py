@@ -79,7 +79,7 @@ class Entries(MetaF, SQLModel, table=True):
 class Attachments(MetaF, SQLModel, table=True):
     subpath: str = Field(regex=regex.SUBPATH)
     space_name: str = Field(regex=regex.SPACENAME)
-    media: bytes | None = Field(default_factory=None, sa_type=LargeBinary)
+    media: bytes | None = Field(None, sa_type=LargeBinary)
 
 
 class Histories(SQLModel, table=True):
