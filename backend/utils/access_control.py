@@ -68,7 +68,7 @@ class AccessControl:
                 await redis_services.ft("user_permission").info()
             except Exception:
                 await redis_services.ft("user_permission").create_index(
-                    fields=(TextField("name")),
+                    fields=[TextField("name")],
                     definition=IndexDefinition(
                         prefix=["users_permissions"],
                         index_type=IndexType.JSON,
