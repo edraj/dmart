@@ -126,6 +126,7 @@ with Session(engine) as session:
                             _attachment['relationships'] = _attachment.get('relationships', [])
                             _attachment['tags'] = _attachment.get('relationships', [])
                             _attachment['owner_shortname'] = _attachment.get('owner_shortname', '')
+                            _attachment['media'] = None
                             if file.replace("attachments.", "") == 'comment':
                                 _attachment['payload'] = {
                                     'body': _attachment.get('body', ''),
