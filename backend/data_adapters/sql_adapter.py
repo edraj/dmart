@@ -132,32 +132,46 @@ def transform_keys_to_sql(path):
 
 
 def validate_search_range(v_str):
+    if isinstance(v_str, list):
+        return False, v_str
+
     pattern = r"^\[\d+\s(\d+)*\]$"
 
     if re.match(pattern, v_str):
         v_list = list(map(int, v_str[1:-1].split()))
-        return v_list
+        return True, v_list
     else:
-        return v_str
+        return False, v_str
 
 
-def parse_search_string(s, entity):
-    pattern = r"@(\S+):(\S+)"
-    matches = re.findall(pattern, s)
+def parse_search_string(string, entity):
+    list_criteria = string.split("@")
+    list_criteria = [item.strip() for item in list_criteria if item.strip()]
     result = {}
-    for key, value in matches:
-        try:
-            if "." in key:
-                if getattr(entity, key.split('.')[0]):
-                    result[transform_keys_to_sql(key)] =value
-            elif getattr(entity, key):
-                if "|" in value:
-                    value = value.split("|")
-                result[key] = value
+    for s in list_criteria:
+        if "[" in s and "]" in s:
+            pattern = r"(\S+):(\S+ \S+)"
+        else:
+            pattern = r"(\S+):(\S+)"
 
-        except Exception as e:
-            print(f"Failed to parse search string: {s} cuz of {e}")
-            continue
+        matches = re.findall(pattern, s)
+
+        for key, value in matches:
+            try:
+                if "." in key:
+                    if getattr(entity, key.split('.')[0]):
+                        key = transform_keys_to_sql(key)
+                        if "|" in value:
+                            value = value.split("|")
+                        result[key] = value
+                elif getattr(entity, key):
+                    if "|" in value:
+                        value = value.split("|")
+                    result[key] = value
+
+            except Exception as e:
+                print(f"Failed to parse search string: {s} cuz of {e}:{e.args}:{e.__dict__}")
+                continue
     return result
 
 
@@ -334,17 +348,14 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         statement = statement.where(table.subpath == query.subpath)
     if query.search:
         for k, v in parse_search_string(query.search, table).items():
-            v = validate_search_range(v)
-
+            vv, v = validate_search_range(v)
             if "->" in k:
                 if isinstance(v, str):
                     statement = statement.where(text(f"(({k}) = '{v}' OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"))
-                elif isinstance(v, list):
-                    statement = statement.where(text(f"({k}) BETWEEN '{v[0]}' AND '{v[1]}'"))
-                else:
-                    statement = statement.where(text(f"({k})={v}"))
+            elif isinstance(v, list) and vv:
+                statement = statement.where(text(f"({k}) BETWEEN '{v[0]}' AND '{v[1]}'"))
             elif isinstance(v, list):
-                statement = statement.where(getattr(table, k).in_(v))
+                statement = statement.where(text(f"(({k}) IN ({', '.join([f"'{_v}'" for _v in v])}) OR ({k.replace('>>', '>')})::jsonb @> '[({', '.join([f'"{_v}"' for _v in v])})]')"))
             elif isinstance(v, str):
                 statement = statement.where(text(f"{k}='{v}'"))
             else:
