@@ -591,6 +591,8 @@ class SQLAdapter(BaseDataAdapter):
         with self.get_session() as session:
             if not subpath.startswith("/"):
                 subpath = f"/{subpath}"
+
+            attachments_path = attachments_path.relative_to(settings.spaces_folder)
             space_name = attachments_path.parts[0]
             shortname = attachments_path.parts[-1]
             statement = (
