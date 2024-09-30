@@ -1274,7 +1274,7 @@ class SQLAdapter(BaseDataAdapter):
         space = await self.load_or_none(space_name, "", space_name, core.Space)
         if space is None:
             return None
-        return core.Space.validate(space)
+        return core.Space.model_validate(space)
 
     async def set_sql_active_session(self, user_shortname: str, token: str) -> bool:
         with self.get_session() as session:

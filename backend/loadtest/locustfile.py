@@ -6,8 +6,8 @@ import psutil
 
 
 stats : dict= {}
-min_cpu = 999999999
-max_cpu = 0
+min_cpu : float = 999999999
+max_cpu : float = 0
 min_memory = 999999999
 max_memory = 0
 min_used_memory = 99999999999
@@ -40,7 +40,7 @@ def locust_init(environment, **kwargs):
             extended web UI to show the stats. See `updateStats()` and
             `renderTable()` in extend.js.
             """
-            report = {"stats": []}
+            report: dict = {"stats": []}
             if stats:
                 stats_tmp = []
 

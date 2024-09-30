@@ -14,6 +14,7 @@ import models.api as api
 import models.core as core
 import utils.regex as regex
 from models.enums import ContentType, Language, ResourceType
+from models.core import Record
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.custom_validations import validate_payload_with_schema
@@ -209,7 +210,7 @@ async def set_attachment_for_payload(path, folder_obj, folder_record, query, met
 
 
 async def _serve_query_subpath(query, logged_in_user):
-    records = []
+    records : list[Record] = []
     total = 0
 
     subpath = query.subpath
@@ -233,7 +234,7 @@ async def _serve_query_subpath(query, logged_in_user):
                 if not entry.is_dir():
                     continue
 
-                subpath_iterator = os.scandir(entry)
+                subpath_iterator = os.scandir(str(entry))
                 for one in subpath_iterator:
                     # for one in path.glob(entries_glob):
                     match = regex.FILE_PATTERN.search(str(one.path))
@@ -258,7 +259,7 @@ async def _serve_query_subpath(query, logged_in_user):
                         sys.modules["models.core"], camel_case(
                             resource_name)
                     )
-                    async with aiofiles.open(one, "r") as meta_file:
+                    async with aiofiles.open(str(one), "r") as meta_file:
                         resource_obj = resource_class.model_validate_json(
                             await meta_file.read()
                         )
@@ -290,7 +291,7 @@ async def _serve_query_subpath(query, logged_in_user):
                     if len(records) >= query.limit or total < query.offset:
                         continue
 
-                    resource_base_record = resource_obj.to_record(
+                    resource_base_record : Record = resource_obj.to_record(
                         query.subpath,
                         shortname,
                         query.include_fields,
@@ -409,7 +410,7 @@ async def _serve_query_subpath(query, logged_in_user):
 
 
 async def _serve_query_counters(query, logged_in_user):
-    records = []
+    records : list = []
     total = 0
 
     if not await access_control.check_access(
