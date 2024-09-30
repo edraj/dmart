@@ -93,6 +93,7 @@ class AttachmentType(StrEnum):
 
 class ContentType(StrEnum):
     text = "text"
+    comment = "comment"
     markdown = "markdown"
     html = "html"
     json = "json"
