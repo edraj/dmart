@@ -18,7 +18,7 @@ from sqlmodel import create_engine, Session, select
 
 import models.api as api
 import models.core as core
-from models.enums import QueryType, LockAction, ResourceType, SortType
+from models.enums import QueryType, LockAction, ResourceType, SortType, ContentType
 from utils.database.create_tables import (
     ActiveSessions,
     Entries,
@@ -592,7 +592,8 @@ class SQLAdapter(BaseDataAdapter):
             if not subpath.startswith("/"):
                 subpath = f"/{subpath}"
 
-            attachments_path = attachments_path.relative_to(settings.spaces_folder)
+            if str(settings.spaces_folder) in str(attachments_path):
+                attachments_path = attachments_path.relative_to(settings.spaces_folder)
             space_name = attachments_path.parts[0]
             shortname = attachments_path.parts[-1]
             statement = (
@@ -623,6 +624,10 @@ class SQLAdapter(BaseDataAdapter):
                 del attachment_json["acl"]
                 del attachment_json["space_name"]
                 attachment["attributes"] = {**attachment_json}
+                if attachment["resource_type"] == "comment":
+                    attachment["attributes"]["body"] = attachment["attributes"]["payload"]["body"]
+                    attachment["attributes"]["state"] = attachment["attributes"]["payload"]["state"]
+                    del attachment["attributes"]["payload"]
                 if attachment_record.resource_type in attachments_dict:
                     attachments_dict[attachment_record.resource_type].append(attachment)
                 else:
@@ -859,6 +864,12 @@ class SQLAdapter(BaseDataAdapter):
                     entity["subpath"] = subpath_checker(entity["subpath"])
 
                 try:
+                    if meta.__class__ == core.Comment:
+                        entity["payload"] = {
+                            "content_type": ContentType.comment,
+                            "body": entity['body'],
+                            "state": entity['state']
+                        }
                     entity['resource_type'] = meta.__class__.__name__.lower()
                     data = self.get_base_model(meta.__class__, entity)
 

@@ -1,7 +1,7 @@
 import sys
 import aiofiles
 from utils.middleware import get_request_data
-from models.core import ActionType, PluginBase, Event
+from models.core import ActionType, PluginBase, Event, Payload
 from models.enums import ContentType, ResourceType
 from models.core import Action, Locator, Meta
 from utils.helpers import camel_case
@@ -45,7 +45,9 @@ class Plugin(PluginBase):
         if data.action_type == ActionType.create:
             payload = {}
             if(
-                entry.payload and 
+                entry.payload and
+                isinstance(entry.payload, Payload) and
+                entry.payload.content_type and
                 entry.payload.content_type == ContentType.json
                 and entry.payload.body
             ):
@@ -99,7 +101,10 @@ class Plugin(PluginBase):
                 generated_attributes[key] = value
 
         if entry.payload:
-            generated_attributes["payload"] = entry.payload.model_dump()
+            if isinstance(entry.payload, Payload):
+                generated_attributes["payload"] = entry.payload.model_dump()
+            else:
+                generated_attributes["payload"] = entry.payload
 
         if attributes:
             generated_attributes["payload"]["body"] = attributes

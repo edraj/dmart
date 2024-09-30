@@ -42,9 +42,9 @@ async def validate_payload_with_schema(
     else:
         if schema_shortname in ["folder_rendering", "meta_schema"]:
             space_name = "management"
-        schema = await db.load(space_name, "schema", schema_shortname, core.Schema)
-        schema = schema.model_dump()
-
+        schema = await db.load(space_name, "/schema", schema_shortname, core.Schema)
+        if schema.payload:
+            schema = schema.payload.model_dump()['body']
 
     if not isinstance(payload_data, dict):
         data = json.load(payload_data.file)
@@ -52,7 +52,7 @@ async def validate_payload_with_schema(
     else:
         data = payload_data
 
-    Draft7Validator(schema).validate(data)
+    Draft7Validator(schema).validate(data) # type: ignore
 
 
 def get_schema_path(space_name: str, schema_shortname: str):
