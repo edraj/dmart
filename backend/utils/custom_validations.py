@@ -52,7 +52,7 @@ async def validate_payload_with_schema(
     else:
         data = payload_data
 
-    Draft7Validator(schema).validate(data)
+    Draft7Validator(schema).validate(data) # type: ignore
 
 
 def get_schema_path(space_name: str, schema_shortname: str):
