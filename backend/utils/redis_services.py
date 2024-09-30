@@ -8,7 +8,7 @@ from models.api import RedisReducer, SortType
 import models.core as core
 from models.enums import ActionType, RedisReducerName, ResourceType, LockAction
 from redis.commands.json.path import Path
-from redis.commands.search.field import TextField, NumericField, TagField
+from redis.commands.search.field import TextField, NumericField, TagField, Field
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from datetime import datetime
 
@@ -27,7 +27,7 @@ from fastapi.logger import logger
 class RedisServices(Redis):
 
 
-    META_SCHEMA = (
+    META_SCHEMA : list[Field] = [
         TextField("$.uuid", no_stem=True, as_name="uuid"),
         TextField("$.shortname", sortable=True, no_stem=True, as_name="shortname"),
         TextField("$.slug", sortable=True, no_stem=True, as_name="slug"),
@@ -125,7 +125,7 @@ class RedisServices(Redis):
             sortable=False,
             as_name="payload_string",
         ),
-    )
+    ]
 
     CUSTOM_CLASSES: list[type[core.Meta]] = [
         core.Role,
@@ -239,7 +239,7 @@ class RedisServices(Redis):
         self,
         space_name: str,
         schema_name: str,
-        redis_schema: tuple,
+        redis_schema: list[Field],
         del_docs: bool = True,
     ):
         """
@@ -337,7 +337,7 @@ class RedisServices(Redis):
 
     def generate_redis_index_from_class(
         self, class_ref: type[core.Meta], exclude_from_index: list
-    ) -> tuple:
+    ) -> list[Field]:
         class_types_to_redis_fields_mapper = {
             "str": TextField,
             "bool": TextField,
@@ -348,7 +348,7 @@ class RedisServices(Redis):
             "dict": TextField,
         }
 
-        redis_schema = []
+        redis_schema : list[Field] = []
         for field_name, model_field in class_ref.model_fields.items():
             if field_name in exclude_from_index:
                 continue
@@ -370,7 +370,7 @@ class RedisServices(Redis):
             )
             redis_schema.append(redis_index_column_type(redis_key, as_name=field_name))
 
-        return tuple(redis_schema)
+        return redis_schema
 
     async def create_custom_indices(self, for_space: str | None = None):
         redis_schemas: dict[str, list] = {}
@@ -389,7 +389,7 @@ class RedisServices(Redis):
                 f"{index['space']}:meta", {}
             )
 
-            generated_schema_fields = self.generate_redis_index_from_class(
+            generated_schema_fields : list[Field] = self.generate_redis_index_from_class(
                 self.CUSTOM_CLASSES[i], exclude_from_index
             )
 
@@ -402,13 +402,13 @@ class RedisServices(Redis):
 
         for space_name, redis_schema in redis_schemas.items():
             redis_schema = self.append_unique_index_fields(
-                tuple(redis_schema),
-                list(self.META_SCHEMA),
+                redis_schema,
+                self.META_SCHEMA,
             )
             await self.create_index(
                 f"{space_name}",
                 "meta",
-                tuple(redis_schema),
+                redis_schema,
             )
 
     async def create_indices(
@@ -467,7 +467,7 @@ class RedisServices(Redis):
                 # GENERATE REDIS INDEX DEFINITION BY MAPPIN SCHEMA PROPERTIES TO REDIS INDEX FIELDS
                 schema_content = json.loads(schema_path.read_text())
                 schema_content = resolve_schema_references(schema_content)
-                redis_schema_definition = list(self.META_SCHEMA)
+                redis_schema_definition : list[Field] = self.META_SCHEMA
                 if "properties" in schema_content:
                     for key, property in schema_content["properties"].items():
                         generated_schema_fields = self.get_redis_index_fields(
@@ -493,29 +493,26 @@ class RedisServices(Redis):
                     self.redis_indices[f"{space_name}"][
                         schema_shortname
                     ] = self.ft(f"{space_name}:{schema_shortname}")
-                    redis_schema_definition.append(
-                        TextField(
-                            "$.meta_doc_id", no_stem=True, as_name="meta_doc_id"
-                        )
-                    )
+                    field_names = [f.as_name for f in redis_schema_definition]
+                    if "meta_doc_id" not in field_names:
+                        redis_schema_definition.append(TextField("$.meta_doc_id", no_stem=True, as_name="meta_doc_id"))
 
                     await self.create_index(
                         f"{space_name}",
                         schema_shortname,
-                        tuple(redis_schema_definition),
+                        redis_schema_definition,
                         del_docs,
                     )
 
         if for_custom_indices:
             await self.create_custom_indices(for_space)
 
-    def append_unique_index_fields(self, new_index: tuple, base_index: list):
+    def append_unique_index_fields(self, new_index: list[Field], base_index: list[Field]):
         for field in new_index:
             registered_field = False
             for base_field in base_index:
                 if (
-                    field.redis_args()[0] == base_field.redis_args()[0]
-                    and field.redis_args()[2]  # Compare field name
+                    field.redis_args()[2]  # Compare field name
                     == base_field.redis_args()[2]  # Compare AS name
                 ):
                     registered_field = True
