@@ -10,6 +10,7 @@ from sqlmodel import select
 from data_adapters.sql_adapter import SQLAdapter
 from data_adapters.adapter import data_adapter as db
 from utils.database.create_tables import Entries
+from typing import Any
 
 from models import core, api
 from models.enums import ContentType, RequestType, ResourceType
@@ -53,7 +54,7 @@ async def hard_space_check(space):
     with SQLAdapter().get_session() as session:
         sql_stm = select(Entries).where(Entries.space_name == space)
         entries = list(session.exec(sql_stm).all())
-        folders_report = {}
+        folders_report: dict[str, dict[str, Any]] = {}
         for entry in entries:
             subpath = entry.subpath[1:]
             if subpath == "":

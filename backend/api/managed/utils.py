@@ -50,7 +50,7 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
     deprecated_keys = set()
 
     for redis_document in docs_dicts:
-        rows = [{}]
+        rows: list[dict] = [{}]
         flattened_doc = flatten_dict(redis_document)
         for folder_view in folder_views:
             column_key = folder_view.get("key")
