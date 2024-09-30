@@ -267,7 +267,7 @@ async def middle(request: Request, call_next):
         )
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response_body = json.loads(response.body.decode())
+        response_body = json.loads(str(response.body, 'utf8'))
     except ValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
@@ -282,7 +282,7 @@ async def middle(request: Request, call_next):
                 },
             },
         )
-        response_body = json.loads(response.body.decode())
+        response_body = json.loads(str(response.body, 'utf8'))
     except SchemaValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
@@ -300,7 +300,7 @@ async def middle(request: Request, call_next):
                 },
             },
         )
-        response_body = json.loads(response.body.decode())
+        response_body = json.loads(str(response.body, 'utf8'))
     except Exception:
         exception_message = ""
         stack = None
@@ -319,7 +319,7 @@ async def middle(request: Request, call_next):
                 "error": error_log,
             },
         )
-        response_body = json.loads(response.body.decode())
+        response_body = json.loads(str(response.body, 'utf8'))
 
     response = set_middleware_response_headers(request, response)
 
