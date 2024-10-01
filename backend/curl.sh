@@ -145,10 +145,6 @@ REQUEST=$(jq -c -n --arg subpath "$SUBPATH" --arg shortname "$SHORTNAME" '{ spac
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$REQUEST" ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
-echo -n -e "Create Schema: \t\t\t" >&2
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createschema.json"' -F 'payload_file=@"../sample/test/schema.json"' ${API_URL}/managed/resource_with_payload | jq .status | tee /dev/stderr | grep -q "success"
-RESULT+=$?
-
 echo -n -e "Create content: \t\t" >&2
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createcontent.json"' -F 'payload_file=@"../sample/test/data.json"' ${API_URL}/managed/resource_with_payload | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
