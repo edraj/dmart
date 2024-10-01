@@ -2,7 +2,7 @@ import json
 from utils.settings import settings
 from fastapi import status
 from models.api import Query
-from models.enums import QueryType, ResourceType
+from models.enums import QueryType, ResourceType, RequestType
 
 superman = {}
 alibaba = {}
@@ -56,10 +56,10 @@ async def init_test_db(client) -> None:
         "managed/space",
         json={
             "space_name": DEMO_SPACE,
-            "request_type": "create",
+            "request_type": RequestType.create,
             "records": [
                 {
-                    "resource_type": "space",
+                    "resource_type": ResourceType.space,
                     "subpath": "/",
                     "shortname": DEMO_SPACE,
                     "attributes": {},
@@ -73,10 +73,10 @@ async def init_test_db(client) -> None:
         "/managed/request",
         json={
             "space_name": DEMO_SPACE,
-            "request_type": "create",
+            "request_type": RequestType.create,
             "records": [
                 {
-                    "resource_type": "folder",
+                    "resource_type": ResourceType.folder,
                     "subpath": "/",
                     "shortname": DEMO_SUBPATH,
                     "attributes": {},
@@ -91,10 +91,10 @@ async def delete_space(client) -> None:
     endpoint = "/managed/space"
     request_data = {
         "space_name": DEMO_SPACE,
-        "request_type": "delete",
+        "request_type": RequestType.delete,
         "records": [
             {
-                "resource_type": "space",
+                "resource_type": ResourceType.space,
                 "subpath": "/",
                 "shortname": DEMO_SPACE,
                 "attributes": {},
@@ -259,7 +259,7 @@ async def delete_resource(client, resource_type: str, del_subpath: str, del_shor
     endpoint = "/managed/request"
     request_data = {
         "space_name": DEMO_SPACE,
-        "request_type": "delete",
+        "request_type": RequestType.delete,
         "records": [
             {
                 "resource_type": resource_type,
