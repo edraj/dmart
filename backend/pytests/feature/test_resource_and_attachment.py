@@ -17,7 +17,7 @@ from pytests.base_test import (
 )
 from fastapi import status
 from models.api import Query
-from models.enums import QueryType, ResourceType
+from models.enums import QueryType, ResourceType, ContentType
 from utils.settings import settings
 
 
@@ -53,13 +53,13 @@ resources_csv_path = "pytests/data/resources.csv"
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_create_text_content_resource(client: AsyncClient):
-    attributes = {"payload": {"content_type": "text", "body": "this is a text content"}}
+    attributes = {"payload": {"content_type": ContentType.text, "body": "this is a text content"}}
     request_data = {
         "space_name": DEMO_SPACE,
         "request_type": "create",
         "records": [
             {
-                "resource_type": "content",
+                "resource_type": ResourceType.content,
                 "subpath": DEMO_SUBPATH,
                 "shortname": text_entry_shortname,
                 "attributes": attributes,
@@ -104,7 +104,7 @@ async def test_create_json_content_resource(client: AsyncClient) -> None:
     attributes = {
         "slug": f"{json_entry_shortname}_slug",
         "payload": {
-            "content_type": "json",
+            "content_type": ContentType.json,
             "schema_shortname": schema_shortname,
             "body": {"price": 25.99, "name": "Buyer"},
         },
@@ -114,7 +114,7 @@ async def test_create_json_content_resource(client: AsyncClient) -> None:
         "request_type": "create",
         "records": [
             {
-                "resource_type": "content",
+                "resource_type": ResourceType.content,
                 "subpath": DEMO_SUBPATH,
                 "shortname": json_entry_shortname,
                 "attributes": attributes,
@@ -159,12 +159,12 @@ async def test_create_invalid_json_resource(client: AsyncClient):
         "request_type": "create",
         "records": [
             {
-                "resource_type": "content",
+                "resource_type": ResourceType.content,
                 "subpath": DEMO_SUBPATH,
                 "shortname": "auto",
                 "attributes": {
                     "payload": {
-                        "content_type": "json",
+                        "content_type": ContentType.json,
                         "schema_shortname": schema_shortname,
                         "body": {"price": "25.99", "name": "Buyer"},
                     }
@@ -185,12 +185,12 @@ async def test_update_json_content_resource(client: AsyncClient) -> None:
         "request_type": "update",
         "records": [
             {
-                "resource_type": "content",
+                "resource_type": ResourceType.content,
                 "subpath": DEMO_SUBPATH,
                 "shortname": json_entry_shortname,
                 "attributes": {
                     "payload": {
-                        "content_type": "json",
+                        "content_type": ContentType.json,
                         "schema_shortname": schema_shortname,
                         "body": {"price": 25000.99, "name": "Buyer UPDATEDDDD"},
                     },
@@ -211,7 +211,7 @@ async def test_create_comment_attachment(client: AsyncClient) -> None:
         "request_type": "create",
         "records": [
             {
-                "resource_type": "comment",
+                "resource_type": ResourceType.comment,
                 "subpath": f"{DEMO_SUBPATH}/{json_entry_shortname}",
                 "shortname": "my_comment",
                 "attributes": {"body": "A very speed car", "state": "on_road"},
