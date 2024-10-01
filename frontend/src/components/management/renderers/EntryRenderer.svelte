@@ -1249,7 +1249,9 @@
                     type="select"
             >
               {#each allowedResourceTypes as type}
-                <option value={type}>{type}</option>
+                {#if type}
+                  <option value={type}>{type}</option>
+                {/if}
               {/each}
             </Input>
           {/if}
