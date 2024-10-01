@@ -1178,7 +1178,6 @@ class SQLAdapter(BaseDataAdapter):
                 core.Json,
                 core.DataAsset,
             ]:
-                subpath = f"{subpath}/attachments.{resource_cls.__name__.lower()}"
                 statement = statement.where(table.subpath == subpath).where(
                     table.shortname == shortname
                 )
