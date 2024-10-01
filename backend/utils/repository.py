@@ -1465,28 +1465,29 @@ async def internal_save_model(
         meta=meta,
     )
 
-    async with RedisServices() as redis:
-        await redis.save_meta_doc(
-            space_name,
-            subpath,
-            meta,
-        )
-
-        if payload:
-            await db.save_payload_from_json(
-                space_name=space_name,
-                subpath=subpath,
-                meta=meta,
-                payload_data=payload,
-            )
-            payload.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
-            await redis.save_payload_doc(
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis:
+            await redis.save_meta_doc(
                 space_name,
                 subpath,
                 meta,
-                payload,
-                ResourceType(snake_case(type(meta).__name__))
             )
+
+            if payload:
+                await db.save_payload_from_json(
+                    space_name=space_name,
+                    subpath=subpath,
+                    meta=meta,
+                    payload_data=payload,
+                )
+                payload.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
+                await redis.save_payload_doc(
+                    space_name,
+                    subpath,
+                    meta,
+                    payload,
+                    ResourceType(snake_case(type(meta).__name__))
+                )
 
 
 async def generate_payload_string(
