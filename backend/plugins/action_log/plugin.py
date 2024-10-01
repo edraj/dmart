@@ -88,6 +88,11 @@ class Plugin(PluginBase):
         )
         events_file_path.mkdir(parents=True, exist_ok=True)
         events_file_path = events_file_path / "events.jsonl"
+
+        # Remove binary content in the event object before serializing to json
+        if isinstance(event_obj.attributes, dict) and "media" in event_obj.attributes:
+            del event_obj.attributes["media"]
+
         file_content = (
             f"{event_obj.model_dump_json()}\n"
         )

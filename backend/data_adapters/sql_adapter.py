@@ -487,7 +487,7 @@ class SQLAdapter(BaseDataAdapter):
             connection_string = (
                 f"{self.database_connection_string}/{settings.database_name}"
             )
-            engine = create_engine(connection_string, echo=True)
+            engine = create_engine(connection_string, echo=False)
             self.session = Session(engine)
         return self.session
 
