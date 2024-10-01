@@ -67,10 +67,10 @@
                 <div class="d-flex justify-content-between mb-2">
                   <Label>Resource Type</Label>
                   <Icon
-                          class="mx-1"
-                          name="trash-fill"
-                          style={"font-size: 1.5rem;"}
-                          onclick={() => removeItem(index)}
+                      class="mx-1"
+                      name="trash-fill"
+                      style={"font-size: 1.5rem;"}
+                      onclick={() => removeItem(index)}
                   />
                 </div>
                 <Input type="select" bind:value={item.type}>
