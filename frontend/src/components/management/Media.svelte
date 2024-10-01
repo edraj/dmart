@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { JSONEditor, Mode } from "svelte-jsoneditor";
   import { ResourceType } from "@/dmart";
   import {marked} from "marked";
 
@@ -9,23 +8,6 @@
   export let displayname: string = undefined;
   let content_type: string = attributes?.payload?.content_type || "";
   let body: any = attributes?.payload?.body;
-
-  function handleRenderMenu(items: any, _context: any) {
-      items = items.filter(
-          (item) => !["tree", "text", "table"].includes(item.text)
-      );
-      const separator = {
-          separator: true,
-      };
-
-      const itemsWithoutSpace = items.slice(0, items.length - 2);
-      return itemsWithoutSpace.concat([
-          separator,
-          {
-              space: true,
-          },
-      ]);
-  }
 </script>
 
 {#if resource_type === ResourceType.comment}
