@@ -434,14 +434,14 @@ async def update_state(
                 time = datetime.now().strftime("%Y%m%d%H%M%S")
                 new_version_flattend["comment"] = comment
                 payload = {
-                    "content_type": "comment",
+                    "content_type": ContentType.comment,
                     "body": comment,
                     "state": ticket_obj.state,
                 }
                 record_file = json.dumps(
                     {
                         "shortname": f"c_{time}",
-                        "resource_type": "comment",
+                        "resource_type": ResourceType.comment,
                         "subpath": f"{subpath}/{shortname}",
                         "attributes": {"is_active": True, **payload},
                     }
@@ -756,7 +756,7 @@ async def import_resources_from_csv(
             attributes = meta_object
 
             attributes["payload"] = {
-                "content_type": "json",
+                "content_type": ContentType.json,
                 "schema_shortname": schema_shortname,
                 "body": payload_object,
             }

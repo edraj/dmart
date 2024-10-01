@@ -624,7 +624,7 @@ class SQLAdapter(BaseDataAdapter):
                 del attachment_json["acl"]
                 del attachment_json["space_name"]
                 attachment["attributes"] = {**attachment_json}
-                if attachment["resource_type"] == "comment":
+                if attachment["resource_type"] == ResourceType.comment:
                     attachment["attributes"]["body"] = attachment["attributes"]["payload"]["body"]
                     attachment["attributes"]["state"] = attachment["attributes"]["payload"]["state"]
                     del attachment["attributes"]["payload"]
