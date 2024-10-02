@@ -29,7 +29,6 @@ async def test_retrieve_content_folder(client: AsyncClient):
     await init_test_db(client)
     await set_superman_cookie(client)
     await retrieve_content_folder(client)
-    assert True == False
 
 
 schema_record_path = "pytests/data/record_of_schema.json"

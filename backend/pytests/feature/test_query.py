@@ -47,7 +47,7 @@ async def test_query_history(client: AsyncClient) -> None:
     response = await client.post(
         "/managed/query",
         json={
-            "type": "history",
+            "type": QueryType.history,
             "space_name": DEMO_SPACE,
             "subpath": DEMO_SUBPATH,
             "search": "",
