@@ -135,9 +135,7 @@
 
     old_search = $search;
     total = resp.attributes.total;
-    console.log({total})
     objectDatatable.arrayRawData = resp.records;
-    console.log({arrayRawData: objectDatatable.arrayRawData})
     if (isSetPage) {
       if (objectDatatable.arrayRawData.length === 0) {
         propNumberOfPages = 0;
@@ -350,10 +348,6 @@
               $bulkBucket = $bulkBucket.filter(e=> e.shortname !== objectDatatable.arrayRawData[i].shortname);
           }
       });
-  }
-
-  $: {
-      console.log({objectDatatable})
   }
 </script>
 

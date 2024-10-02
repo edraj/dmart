@@ -42,11 +42,8 @@
     }
 
     const ast = Markdoc.parse(doc);
-    console.log({ast})
     const config_with_frontmatter = add_frontmatter(ast, config);
-    console.log({config_with_frontmatter})
     const content: any = Markdoc.transform(ast, config_with_frontmatter);
-    console.log({content})
 </script>
 
 <Tags children={content.children} {components}></Tags>
