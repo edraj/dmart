@@ -1,6 +1,8 @@
 import json
 import pytest
 from httpx import AsyncClient
+
+from models.enums import RequestType, ResourceType
 from pytests.base_test import (
     assert_code_and_status_success,
     set_superman_cookie,
@@ -63,10 +65,10 @@ async def test_ldap_user_created(client: AsyncClient):
     await set_superman_cookie(client)
     request_body = {
         "space_name": MANAGEMENT_SPACE,
-        "request_type": "create",
+        "request_type": RequestType.create,
         "records": [
             {
-                "resource_type": "user",
+                "resource_type": ResourceType.user,
                 "shortname": "ldap_user_100100",
                 "subpath": USERS_SUBPATH,
                 "attributes": {
@@ -96,10 +98,10 @@ async def test_ldap_user_updated(client: AsyncClient):
 
     request_body = {
         "space_name": MANAGEMENT_SPACE,
-        "request_type": "update",
+        "request_type": RequestType.update,
         "records": [
             {
-                "resource_type": "user",
+                "resource_type": ResourceType.user,
                 "shortname": "ldap_user_100100",
                 "subpath": USERS_SUBPATH,
                 "attributes": {
@@ -131,10 +133,10 @@ async def test_ldap_user_deleted(client: AsyncClient):
 
     request_body = {
         "space_name": MANAGEMENT_SPACE,
-        "request_type": "delete",
+        "request_type": RequestType.delete,
         "records": [
             {
-                "resource_type": "user",
+                "resource_type": ResourceType.user,
                 "shortname": "ldap_user_100100",
                 "subpath": USERS_SUBPATH,
                 "attributes": {},

@@ -17,7 +17,7 @@ from pytests.base_test import (
 )
 from fastapi import status
 from models.api import Query
-from models.enums import QueryType, ResourceType, ContentType
+from models.enums import QueryType, ResourceType, ContentType, RequestType
 from utils.settings import settings
 
 
@@ -56,7 +56,7 @@ async def test_create_text_content_resource(client: AsyncClient):
     attributes = {"payload": {"content_type": ContentType.text, "body": "this is a text content"}}
     request_data = {
         "space_name": DEMO_SPACE,
-        "request_type": "create",
+        "request_type": RequestType.create,
         "records": [
             {
                 "resource_type": ResourceType.content,
@@ -111,7 +111,7 @@ async def test_create_json_content_resource(client: AsyncClient) -> None:
     }
     request_data = {
         "space_name": DEMO_SPACE,
-        "request_type": "create",
+        "request_type": RequestType.create,
         "records": [
             {
                 "resource_type": ResourceType.content,
@@ -156,7 +156,7 @@ async def test_create_invalid_json_resource(client: AsyncClient):
     global json_entry_uuid
     request_data = {
         "space_name": DEMO_SPACE,
-        "request_type": "create",
+        "request_type": RequestType.create,
         "records": [
             {
                 "resource_type": ResourceType.content,
@@ -182,7 +182,7 @@ async def test_update_json_content_resource(client: AsyncClient) -> None:
     endpoint = "/managed/request"
     request_data = {
         "space_name": DEMO_SPACE,
-        "request_type": "update",
+        "request_type": RequestType.update,
         "records": [
             {
                 "resource_type": ResourceType.content,
@@ -208,7 +208,7 @@ async def test_create_comment_attachment(client: AsyncClient) -> None:
     endpoint = "/managed/request"
     request_data = {
         "space_name": DEMO_SPACE,
-        "request_type": "create",
+        "request_type": RequestType.create,
         "records": [
             {
                 "resource_type": ResourceType.comment,
