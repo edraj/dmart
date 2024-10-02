@@ -32,7 +32,7 @@ async def test_user_does_not_exist(client: AsyncClient):
 @pytest.mark.anyio
 async def test_create_user(client: AsyncClient):
     request_body = {
-        "resource_type": "user",
+        "resource_type": ResourceType.user,
         "shortname": new_user_data["shortname"],
         "subpath": USERS_SUBPATH,
         "attributes": {
@@ -100,7 +100,7 @@ async def test_user_already_exist(client: AsyncClient):
 @pytest.mark.anyio
 async def test_update_profile(client: AsyncClient) -> None:
     request_data = {
-        "resource_type": "user",
+        "resource_type": ResourceType.user,
         "subpath": "users",
         "shortname": new_user_data["shortname"],
         "attributes": {"displayname": {"en": "New User"}},

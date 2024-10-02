@@ -66,7 +66,7 @@ async def test_query_count(client: AsyncClient) -> None:
     response = await client.post(
         "/managed/query",
         json={
-            "type": "counters",
+            "type": QueryType.counters,
             "space_name": DEMO_SPACE,
             "subpath": DEMO_SUBPATH,
             "search": "",
@@ -86,7 +86,7 @@ async def test_query_aggregate(client: AsyncClient) -> None:
         response = await client.post(
             "/managed/query",
             json={
-                "type": "aggregation",
+                "type": QueryType.aggregation,
                 "space_name": DEMO_SPACE,
                 "subpath": DEMO_SUBPATH,
                 "search": "",
@@ -130,7 +130,7 @@ async def test_query_events(client: AsyncClient) -> None:
     response = await client.post(
         "/managed/query",
         json={
-            "type": "events",
+            "type": QueryType.events,
             "space_name": DEMO_SPACE,
             "subpath": "/",
             "search": "",
