@@ -12,12 +12,12 @@ import models.api as api
 import models.core as core
 from models.enums import ActionType, RequestType, ResourceType, ContentType
 from utils.custom_validations import validate_uniqueness
-import utils.db as db
+from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import JWTBearer, remove_redis_active_session, remove_redis_user_session, sign_jwt, decode_jwt
+from utils.jwt import JWTBearer, remove_active_session, remove_user_session, sign_jwt, decode_jwt
 from typing import Any
 from utils.settings import settings
 import utils.repository as repository
@@ -32,8 +32,16 @@ from .service import (
     send_sms,
     send_otp,
     email_send_otp,
+    fetch_invitation,
+    get_shortname_from_identifier,
+    check_user_validation,
+    set_user_profile,
+    update_user_payload, get_otp_confirmation_email_or_msisdn,
+    get_failed_password_attempt_count,
+    set_failed_password_attempt_count,
+    clear_failed_password_attempts,
 )
-from .models.requests import (
+from .model.requests import (
     ConfirmOTPRequest,
     PasswordResetRequest,
     SendOTPRequest,
@@ -44,6 +52,7 @@ from languages.loader import languages
 from fastapi_sso.sso.google import GoogleSSO
 from fastapi_sso.sso.facebook import FacebookSSO
 from fastapi_sso.sso.base import SSOBase
+from fastapi.logger import logger
 
 router = APIRouter()
 
@@ -70,29 +79,9 @@ async def check_existing_user_fields(
     redis_escape_chars = str.maketrans(
         {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
-    async with RedisServices() as redis_man:
-        for key, value in unique_fields.items():
-            if not value:
-                continue
-            value = value.translate(redis_escape_chars).replace("\\\\", "\\")
-            if key == "email_unescaped":
-                value = f"{{{value}}}"
-            redis_search_res = await redis_man.search(
-                space_name=MANAGEMENT_SPACE,
-                search=search_str + f" @{key}:{value}",
-                limit=1,
-                offset=0,
-                filters={},
-            )
 
-            if redis_search_res and redis_search_res["total"] > 0:
-                return api.Response(
-                    status=api.Status.success,
-                    attributes={"unique": False, "field": key},
-                )
-
-    return api.Response(status=api.Status.success, attributes={"unique": True})
-
+    attributes = await repository.check_uniqueness(unique_fields, search_str, redis_escape_chars)
+    return api.Response(status=api.Status.success, attributes=attributes)
 
 
 @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
@@ -111,7 +100,7 @@ async def create_user(record: core.Record) -> api.Response:
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(
-                type="create", code=50, message= "bad or missing invitation token"
+                type="create", code=50, message="bad or missign invitation token"
             ),
         )
 
@@ -197,25 +186,13 @@ async def create_user(record: core.Record) -> api.Response:
 )
 async def login(response: Response, request: UserLoginRequest) -> api.Response:
     """Login and generate refresh token"""
-
     shortname: str | None = None
     user = None
     user_updates: dict[str, Any] = {}
     identifier = request.check_fields()
     try:
         if request.invitation:
-            async with RedisServices() as redis_services:
-                # FIXME invitation_token = await redis_services.getdel_key(
-                invitation_token = await redis_services.get_key(
-                    f"users:login:invitation:{request.invitation}"
-                )
-            # TODO : the Below Condition Must be Applied
-            if not invitation_token:
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
-                )
+            invitation_token = await fetch_invitation(request.invitation)
 
             data = decode_jwt(request.invitation)
             shortname = data.get("shortname", None)
@@ -229,12 +206,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     ),
                 )
 
-            user = await db.load(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                class_type=core.User,
-                user_shortname=shortname,
+            user = core.User.model_validate(
+                await db.load(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    class_type=core.User,
+                    user_shortname=shortname,
+                )
             )
             if (
                 request.shortname != user.shortname
@@ -249,19 +228,11 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         message="Invalid invitation or data provided",
                     ),
                 )
+            
+            user_updates["force_password_change"] = True
 
-            if (
-                data.get("channel") == "EMAIL"
-                and user.email
-                and f"EMAIL:{user.email}" in invitation_token
-            ):
-                user_updates["is_email_verified"] = True
-            elif (
-                data.get("channel") == "SMS"
-                and user.msisdn
-                and f"SMS:{user.msisdn}" in invitation_token
-            ):
-                user_updates["is_msisdn_verified"] = True
+            user_updates = check_user_validation(user, data, user_updates, invitation_token)
+
         else:
             if identifier is None:
                 raise api.Exception(
@@ -275,19 +246,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 shortname = identifier["shortname"]
             else:
                 key, value = list(identifier.items())[0]
-                if isinstance(value, str) and isinstance(key, str):
-                    shortname = await access_control.get_user_by_criteria(key, value)
-                    if not (await access_control.is_user_verified(shortname, key)):
-                        raise api.Exception(
-                            status.HTTP_401_UNAUTHORIZED,
-                            api.Error(
-                                type="auth",
-                                code=InternalErrorCode.USER_ISNT_VERIFIED,
-                                message="This user is not verified",
-                            ),
-                        )
-                else:
-                    shortname = None
+                shortname = await get_shortname_from_identifier(access_control, key, value)
                 if shortname is None:
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
@@ -297,12 +256,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                             message="Invalid username or password [1]",
                         ),
                     )
-            user = await db.load(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                class_type=core.User,
-                user_shortname=shortname,
+            user = core.User.model_validate(
+                await db.load(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    class_type=core.User,
+                    user_shortname=shortname,
+                )
             )
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
         if (
@@ -315,8 +276,9 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 )
             )
         ):
+            await clear_failed_password_attempts(shortname)
+            
             record = await process_user_login(user, response, user_updates, request.firebase_token)
-
             await plugin_manager.after_action(
                 core.Event(
                     space_name=MANAGEMENT_SPACE,
@@ -328,6 +290,12 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 )
             )
             return api.Response(status=api.Status.success, records=[record])
+        # Check if user entered a wrong password 
+        is_password_valid = password_hashing.verify_password(
+            request.password or "", user.password or ""
+        )
+        if not is_password_valid:
+            await handle_failed_login_attempt(user)
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
@@ -362,35 +330,38 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         )
     )
 
-    user = await db.load(
+    user = core.User.model_validate(await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    )
+    ))
     attributes: dict[str, Any] = {}
     if user.email:
         attributes["email"] = user.email
+
     if user.displayname:
         attributes["displayname"] = user.displayname
     if user.msisdn:
         attributes["msisdn"] = user.msisdn
+
     if user.payload:
         attributes["payload"] = user.payload
-        path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
-        if (
-            user.payload
-            and user.payload.content_type
-            and user.payload.content_type == ContentType.json
-            and (path / str(user.payload.body)).is_file()
-        ):
-            async with aiofiles.open(
-                path / str(user.payload.body), "r"
-            ) as payload_file_content:
-                attributes["payload"].body = json.loads(
-                    await payload_file_content.read()
-                )
+        if settings.active_data_db == 'file':
+            path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
+            if (
+                user.payload
+                and user.payload.content_type
+                and user.payload.content_type == ContentType.json
+                and (path / str(user.payload.body)).is_file()
+            ):
+                async with aiofiles.open(
+                    path / str(user.payload.body), "r"
+                ) as payload_file_content:
+                    attributes["payload"].body = json.loads(
+                        await payload_file_content.read()
+                    )
 
     attributes["type"] = user.type
     attributes["language"] = user.language
@@ -409,7 +380,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         / ".dm"
         / user.shortname
     )
-    user_avatar = await repository.get_entry_attachments(
+    user_avatar = await db.get_entry_attachments(
         subpath=f"{USERS_SUBPATH}/{user.shortname}",
         attachments_path=attachments_path,
         filter_shortnames=["avatar"],
@@ -442,7 +413,6 @@ async def update_profile(
     profile: core.Record, shortname=Depends(JWTBearer())
 ) -> api.Response:
     """Update user profile"""
-
     profile_user = core.Meta.check_record(
         record=profile, owner_shortname=profile.shortname
     )
@@ -455,6 +425,7 @@ async def update_profile(
                 message="Invalid username or password",
             ),
         )
+
     await plugin_manager.before_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
@@ -466,13 +437,13 @@ async def update_profile(
         )
     )
 
-    user = await db.load(
+    user = core.User.model_validate(await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    )
+    ))
 
     old_version_flattend = flatten_dict(user.model_dump())
 
@@ -483,37 +454,22 @@ async def update_profile(
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(type="request", code=InternalErrorCode.UNMATCHED_DATA,
-                          message="mismatch with the information provided"),
+                            message="mismatch with the information provided"),
             )
 
     # if "force_password_change" in profile.attributes:
     #     user.force_password_change = profile.attributes["force_password_change"]
 
-    if profile_user.password:
-        user.password = password_hashing.hash_password(profile_user.password)
-        user.force_password_change = False
-    if "displayname" in profile.attributes:
-        user.displayname = profile_user.displayname
-    if "language" in profile.attributes:
-        user.language = profile_user.language
+    user = await set_user_profile(profile, profile_user, user)
 
     if "confirmation" in profile.attributes:
-        result = None
-        async with RedisServices() as redis_services:
-            if profile_user.email:
-                result = await redis_services.get_content_by_id(
-                    f"users:otp:confirmation/email/{profile_user.email}"
-                )
-            elif profile_user.msisdn:
-                result = await redis_services.get_content_by_id(
-                    f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
-                )
+        result = await get_otp_confirmation_email_or_msisdn(profile_user)
 
         if result is None or result != profile.attributes["confirmation"]:
             raise Exception(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
-                          message="Invalid confirmation code [1]"),
+                            message="Invalid confirmation code [1]"),
             )
 
         if profile_user.email:
@@ -531,31 +487,7 @@ async def update_profile(
             user.is_msisdn_verified = False
 
         if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
-            separate_payload_data = {}
-            user.payload = core.Payload(
-                content_type=ContentType.json,
-                schema_shortname=profile_user.payload.schema_shortname,
-                body="",
-            )
-            if profile.attributes["payload"]["body"]:
-                separate_payload_data = profile.attributes["payload"]["body"]
-                user.payload.body = shortname + ".json"
-
-            if user.payload and separate_payload_data:
-                if profile_user.payload.schema_shortname:
-                    await validate_payload_with_schema(
-                        payload_data=separate_payload_data,
-                        space_name=MANAGEMENT_SPACE,
-                        schema_shortname=str(user.payload.schema_shortname),
-                    )
-
-            if separate_payload_data:
-                await db.save_payload_from_json(
-                    MANAGEMENT_SPACE,
-                    USERS_SUBPATH,
-                    user,
-                    separate_payload_data,
-                )
+            await update_user_payload(profile, profile_user, user, shortname)
 
     history_diff = await db.update(
         MANAGEMENT_SPACE,
@@ -579,7 +511,6 @@ async def update_profile(
             attributes={"history_diff": history_diff},
         )
     )
-
     return api.Response(status=api.Status.success)
 
 
@@ -606,15 +537,17 @@ async def logout(
     response.set_cookie(value="", max_age=0, key="auth_token",
                         httponly=True, secure=True, samesite="none")
 
-    await remove_redis_active_session(shortname)
-    await remove_redis_user_session(shortname)
+    await remove_active_session(shortname)
+    await remove_user_session(shortname)
 
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
+    user = core.User.model_validate(
+        await db.load(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            class_type=core.User,
+            user_shortname=shortname,
+        )
     )
     if user.firebase_token:
         await repository.internal_sys_update_model(
@@ -652,8 +585,8 @@ async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
     )
     await db.delete(MANAGEMENT_SPACE, USERS_SUBPATH, user, shortname)
 
-    await remove_redis_active_session(shortname)
-    await remove_redis_user_session(shortname)
+    await remove_active_session(shortname)
+    await remove_user_session(shortname)
 
     await plugin_manager.after_action(
         core.Event(
@@ -683,13 +616,13 @@ async def otp_request(
     """Request new OTP"""
 
     result = user_request.check_fields()
-    user = await db.load(
+    user = core.User.model_validate(await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    )
+    ))
     exception = api.Exception(
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
@@ -742,13 +675,16 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             ),
         )
 
-    user = await db.load(
+    user = core.User.model_validate(await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    )
+    ))
+
+    """
+    # Do not set the "force_password_change" flag right away
 
     old_version_flattend = flatten_dict(user.model_dump())
     user.force_password_change = True
@@ -784,11 +720,12 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             user_shortname=shortname,
         )
     )
+    """
 
     reset_password_message = "Reset password via this link: {link}, This link can be used once and within the next 48 hours."
 
-    if "msisdn" in result:
-        if not user.msisdn or user.msisdn != result["msisdn"]:
+    if "msisdn" in result or "shortname" in result:
+        if not user.msisdn or ("msisdn" in result and user.msisdn != result["msisdn"]):
             raise exception
         token = await repository.store_user_invitation_token(
             user, "SMS"
@@ -832,9 +769,15 @@ async def confirm_otp(
     result = user_request.check_fields()
     key = ""
     if "msisdn" in result:
-        key = f"middleware:otp:otps/{result['msisdn']}"
+        if settings.mock_smpp_api:
+            key = f"users:otp:otps/{result['msisdn']}"
+        else:
+            key = f"middleware:otp:otps/{result['msisdn']}"
     elif "email" in result:
-        key = f"middleware:otp:otps/{result['email']}"
+        if settings.mock_smtp_api:
+            key = f"users:otp:otps/{result['msisdn']}"
+        else:
+            key = f"middleware:otp:otps/{result['email']}"
 
     async with RedisServices() as redis_services:
         code = await redis_services.get_key(key)
@@ -899,12 +842,14 @@ async def user_reset(
     logged_user=Depends(JWTBearer()),
 ) -> api.Response:
 
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
+    user = core.User.model_validate(
+        await db.load(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            class_type=core.User,
+            user_shortname=shortname,
+        )
     )
     if not await access_control.check_access(
         user_shortname=logged_user,
@@ -988,8 +933,10 @@ async def validate_password(
     password: str, shortname=Depends(JWTBearer())
 ) -> api.Response:
     """Validate Password"""
-    user = await db.load(
-        MANAGEMENT_SPACE, USERS_SUBPATH, shortname, core.User, shortname
+    user = core.User.model_validate(
+        await db.load(
+            MANAGEMENT_SPACE, USERS_SUBPATH, shortname, core.User, shortname
+        )
     )
     if user and password_hashing.verify_password(password, user.password or ""):
         return api.Response(status=api.Status.success)
@@ -1009,7 +956,7 @@ async def process_user_login(
     firebase_token: str | None = None
 ) -> core.Record:
     access_token = await sign_jwt(
-        {"username": user.shortname}, settings.jwt_access_expires
+        {"shortname": user.shortname}, settings.jwt_access_expires
     )
 
     response.set_cookie(
@@ -1045,6 +992,48 @@ async def process_user_login(
         )
         
     return record
+
+
+async def handle_failed_login_attempt(user: core.User):
+    failed_login_attempts_count: int = await get_failed_password_attempt_count(user.shortname)
+
+    # Increment the failed login attempts counter
+    failed_login_attempts_count += 1
+
+    if failed_login_attempts_count >= settings.max_failed_login_attempts:
+        # If the user reach the configured limit, lock the user by setting the is_active to false
+        if user.is_active:
+            await set_failed_password_attempt_count(user.shortname, failed_login_attempts_count)
+
+            logger.info(f"User {user.shortname} reached the maximum failed login attempts ({settings.max_failed_login_attempts}) disabling the user")
+
+            old_version_flattend = flatten_dict(user.model_dump())
+            user.is_active = False
+
+            await db.update(
+                MANAGEMENT_SPACE,
+                USERS_SUBPATH,
+                user,
+                old_version_flattend,
+                flatten_dict(user.model_dump()),
+                ["is_active"],
+                user.shortname,
+            )
+
+            await plugin_manager.after_action(
+                core.Event(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=user.shortname,
+                    action_type=core.ActionType.update,
+                    resource_type=ResourceType.user,
+                    user_shortname=user.shortname,
+                )
+            )
+    else:
+        # Count until the failed attempts reach the limit
+        await set_failed_password_attempt_count(user.shortname, failed_login_attempts_count)
+
 
 if settings.social_login_allowed:
 
