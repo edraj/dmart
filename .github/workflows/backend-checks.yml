@@ -29,27 +29,20 @@ jobs:
         mkdir logs/
         cp ~/login_creds.sh ./
         cp ~/config.env ./
-    - name: Lint with pyright
+    - name: Lint with pyright, Ruff and Mypy
       run: |
         cd backend
         source $HOME/.venv/bin/activate
-        PYRIGHT_PYTHON_FORCE_VERSION=latest pyright ./
-    - name: Lint with Ruff
-      run: |
-        source $HOME/.venv/bin/activate
-        cd backend; ruff check .
-    - name: Check with mypy
-      run: |
-        source $HOME/.venv/bin/activate
-        cd backend; mypy .
+        ./pylint.sh
     - name: Start dmart service and run curl.sh
       run: |
         export XDG_RUNTIME_DIR="/run/user/$UID"
         export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
         source $HOME/.venv/bin/activate
-        systemctl --user restart dmart
         cd backend
-        ./reload.sh
+        dropdb -h 127.0.0.1 -U dmart dmart
+        ./json_to_db_migration.py
+        systemctl --user restart dmart
         ./curl.sh
     - name: Test with pytest
       run: |
