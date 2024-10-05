@@ -3,6 +3,12 @@
 declare -i RESULT=0
 source ./login_creds.sh
 RESULT+=$?
+CHECK_MODE="$(./get_settings.py | jq -r .active_data_db)"
+
+if [ "$CHECK_MODE" != "file" ]; then
+  echo "This script can only be used in file mode. Your current selected mode is $CHECK_MODE"
+  exit 0
+fi
 
 REDIS_HOST="$(./get_settings.py | jq -r .redis_host)"
 RESULT+=$?
