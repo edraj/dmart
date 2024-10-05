@@ -234,7 +234,7 @@ async def _serve_query_subpath(query, logged_in_user):
                 if not entry.is_dir():
                     continue
 
-                subpath_iterator = os.scandir(entry)
+                subpath_iterator = os.scandir(entry)  # type: ignore
                 for one in subpath_iterator:
                     # for one in path.glob(entries_glob):
                     match = regex.FILE_PATTERN.search(str(one.path))
@@ -259,7 +259,7 @@ async def _serve_query_subpath(query, logged_in_user):
                         sys.modules["models.core"], camel_case(
                             resource_name)
                     )
-                    async with aiofiles.open(one, "r") as meta_file:
+                    async with aiofiles.open(str(one), "r") as meta_file:
                         resource_obj = resource_class.model_validate_json(
                             await meta_file.read()
                         )
