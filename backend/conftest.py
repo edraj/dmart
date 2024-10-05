@@ -6,9 +6,6 @@ import pytest
 def anyio_backend():
     return "asyncio"
 
-# @pytest.fixture()
-# def my_client() -> AsyncClient:
-#     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")  # type: ignore
 
 @pytest.fixture(scope="session")
 async def client():
