@@ -1,5 +1,5 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
-# type: ignore
+
 import json
 import logging
 import os
@@ -26,13 +26,12 @@ def subpath_checker(subpath: str):
 
 
 postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
-engine = create_engine(f"{postgresql_url}/postgres", echo=False)
+engine = create_engine(f"{postgresql_url}/postgres", echo=False, isolation_level="AUTOCOMMIT")
 
 
 try:
     s = Session(engine)
-    s.connection().connection.set_isolation_level(0)  # type: ignore
-    sql = f"CREATE DATABASE {settings.database_name}"  # type: ignore
+    sql = f"CREATE DATABASE {settings.database_name}"
     s.exec(text(sql))  # type: ignore
     engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 except Exception as e:

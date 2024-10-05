@@ -16,5 +16,5 @@ asgi-correlation-id
 pydantic-settings
 fastapi-sso
 sqlmodel
-psycopg2-binary
+psycopg
 jinja2
