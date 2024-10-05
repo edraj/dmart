@@ -5,12 +5,6 @@ source ./login_creds.sh
 RESULT+=$?
 CHECK_MODE="$(./get_settings.py | jq -r .active_data_db)"
 
-REDIS_HOST="$(./get_settings.py | jq -r .redis_host)"
-RESULT+=$?
-REDIS_PORT="$(./get_settings.py | jq -r .redis_port)"
-RESULT+=$?
-REDIS_PASSWORD="$(./get_settings.py | jq -r .redis_password)"
-[ -z $REDIS_PASSWORD ] || REDIS_PASSWORD="--no-auth-warning -a $REDIS_PASSWORD" 
 RESULT+=$?
 PORT="$(./get_settings.py | jq -r .listening_port)"
 RESULT+=$?
@@ -18,6 +12,12 @@ RESULT+=$?
 APP_URL="http://localhost:$PORT"
 
 if [[ "$CHECK_MODE" == "file" ]]; then
+REDIS_HOST="$(./get_settings.py | jq -r .redis_host)"
+RESULT+=$?
+REDIS_PORT="$(./get_settings.py | jq -r .redis_port)"
+RESULT+=$?
+REDIS_PASSWORD="$(./get_settings.py | jq -r .redis_password)"
+[ -z $REDIS_PASSWORD ] || REDIS_PASSWORD="--no-auth-warning -a $REDIS_PASSWORD" 
 time ./create_index.py --flushall
 RESULT+=$?
 fi
@@ -45,9 +45,11 @@ RESULT+=$?
 sleep 1
 curl -s -H "Authorization: Bearer ${TOKEN}" "${APP_URL}/user/profile" | jq '.records[0].attributes.roles'
 RESULT+=$?
+if [[ "$CHECK_MODE" == "file" ]]; then
 sleep 1
 redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} ${REDIS_PASSWORD} JSON.GET users_permissions_dmart | jq -R '.|fromjson|keys|length'
 # RESULT+=$?
+fi
 
 
 echo "Sum of exist codes = $RESULT" 
