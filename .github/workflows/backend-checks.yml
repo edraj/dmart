@@ -43,7 +43,7 @@ jobs:
         systemctl --user stop dmart
         dropdb --if-exists -h 127.0.0.1 -U dmart dmart
         ./json_to_db_migration.py
-        systemctl --user start dmart
+        ./reload.sh
         ./curl.sh
     - name: Test with pytest
       run: |

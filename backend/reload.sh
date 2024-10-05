@@ -5,11 +5,6 @@ source ./login_creds.sh
 RESULT+=$?
 CHECK_MODE="$(./get_settings.py | jq -r .active_data_db)"
 
-if [ "$CHECK_MODE" != "file" ]; then
-  echo "This script can only be used in file mode. Your current selected mode is $CHECK_MODE"
-  exit 0
-fi
-
 REDIS_HOST="$(./get_settings.py | jq -r .redis_host)"
 RESULT+=$?
 REDIS_PORT="$(./get_settings.py | jq -r .redis_port)"
@@ -22,8 +17,10 @@ RESULT+=$?
 # APP_URL="$(./get_settings.py | jq -r .app_url)"
 APP_URL="http://localhost:$PORT"
 
+if [[ "$CHECK_MODE" == "file" ]]; then
 time ./create_index.py --flushall
 RESULT+=$?
+fi
 
 (which systemctl > /dev/null && systemctl --user list-unit-files dmart.service > /dev/null  && systemctl --user restart dmart.service) || \
 ( [[ -x "/etc/init.d/dmart" ]] && /etc/init.d/dmart restart )
