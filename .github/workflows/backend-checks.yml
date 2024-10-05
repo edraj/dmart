@@ -40,7 +40,7 @@ jobs:
         export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
         source $HOME/.venv/bin/activate
         cd backend
-        dropdb -h 127.0.0.1 -U dmart dmart
+        dropdb --if-exists -h 127.0.0.1 -U dmart dmart
         ./json_to_db_migration.py
         systemctl --user restart dmart
         ./curl.sh
