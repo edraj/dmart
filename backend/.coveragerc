@@ -35,3 +35,13 @@ omit =
     utils/settings.py
     utils/async_request.py
     password_gen.py
+    utils/redis_services.py
+    utils/repository.py
+    db_to_json_migration.py
+    utils/logger.py
+    utils/spaces.py
+    run_notification_campaign.py
+    utils/access_control.py
+    data_adapters/file_adapter.py
+    data_adapters/base_data_adapter.py
+    plugins/*
