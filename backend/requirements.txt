@@ -18,3 +18,4 @@ fastapi-sso
 sqlmodel
 psycopg
 jinja2
+pytest-cov

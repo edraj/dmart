@@ -1,0 +1,47 @@
+# .coveragerc
+[report]
+# Uncomment to show missing lines
+# show_missing = True
+
+omit =
+    ../frontend/*
+    ../logs/*
+    ../sample/*
+    loadtest/*
+    cli/
+    password_get.py
+    dmart.py
+    create_users_folder.py
+    data_generator.py
+    set_admin_passwd.py
+    bundler.py
+    websocket.py
+    test_utils.py
+    set_admin_passwd.py
+    schema_migration.py
+    scheduled_notification_handler.py
+    password_get.py
+    health_check.py
+    get_settings.py
+    drop_index.py
+    utils/custom_validation.py
+    dmart.py
+    utils/hypercorn_config.py
+    data_generator.py
+    create_users_folders.py
+    create_index.py
+    conftest.py
+    archive.py
+    utils/settings.py
+    utils/async_request.py
+    password_gen.py
+    utils/redis_services.py
+    utils/repository.py
+    db_to_json_migration.py
+    utils/logger.py
+    utils/spaces.py
+    run_notification_campaign.py
+    utils/access_control.py
+    data_adapters/file_adapter.py
+    data_adapters/base_data_adapter.py
+    plugins/*
