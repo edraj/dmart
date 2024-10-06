@@ -25,8 +25,9 @@ def test_send_otp_request_valid_email():
     assert result == {"email": "test@example.com"}
 
 def test_send_otp_request_missing_fields():
+    # Ensure both fields are explicitly None
     with pytest.raises(Exception) as excinfo:
-        SendOTPRequest().check_fields()
+        SendOTPRequest(msisdn=None, email=None).check_fields()
     assert excinfo.value.status_code == 422
     assert excinfo.value.error.code == InternalErrorCode.EMAIL_OR_MSISDN_REQUIRED
 
