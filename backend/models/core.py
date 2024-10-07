@@ -452,16 +452,16 @@ class Folder(Meta):
 
 
 class Permission(Meta):
-    subpaths: dict[str, set[str]]  # {"space_name": ["subpath_one", "subpath_two"]}
-    resource_types: set[ResourceType]
-    actions: set[ActionType]
-    conditions: set[ConditionType] = set()
+    subpaths: dict[str, list[str]]  # {"space_name": ["subpath_one", "subpath_two"]}
+    resource_types: list[ResourceType]
+    actions: list[ActionType]
+    conditions: list[ConditionType] = list()
     restricted_fields: list[str] = []
     allowed_fields_values: dict[str, list[str] | list[list[str]]] = {}
 
 
 class Role(Meta):
-    permissions: set[str]  # list of permissions_shortnames
+    permissions: list[str]  # list of permissions_shortnames
 
 
 # class Collabolator(Resource):
