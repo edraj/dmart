@@ -388,8 +388,8 @@ class AccessControl:
                     for permission_subpath in permission_subpaths:
                         permission_subpath = self.trans_magic_words(permission_subpath, user_shortname)
                         for permission_resource_types in permission.resource_types:
-                            actions = permission.actions
-                            conditions = permission.conditions
+                            actions = set(permission.actions)
+                            conditions = set(permission.conditions)
                             if (
                                     f"{space_name}:{permission_subpath}:{permission_resource_types}"
                                     in user_permissions
