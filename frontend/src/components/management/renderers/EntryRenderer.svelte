@@ -226,11 +226,6 @@
                 oldJSEMeta = structuredClone(jseMeta);
             }
 
-            try {
-                await checkWorkflowsSubpath();
-            } catch (e) {
-
-            }
 
             try {
                 if (entry?.payload?.schema_shortname) {
@@ -279,6 +274,10 @@
                 }</strong></small>`
             );
 
+            if(!!entry?.payload?.body?.content_resource_types && entry?.payload?.body?.content_resource_types.length){
+              allowedResourceTypes = entry?.payload?.body?.content_resource_types;
+            }
+
             if (!!entry?.payload?.body?.stream) {
                 if ("websocket" in website) {
                     ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
@@ -315,31 +314,6 @@
 
     function isWSOpen(ws: any) {
         return ws != null && ws.readyState === ws.OPEN;
-    }
-
-    async function checkWorkflowsSubpath() {
-        try {
-            const chk = await retrieve_entry(
-                ResourceType.folder,
-                space_name,
-                "/",
-                "workflows",
-                true,
-                false,
-                true
-            );
-            if (chk) {
-                allowedResourceTypes.push(ResourceType.ticket);
-            }
-            if ((entry?.payload?.body?.content_resource_types ?? []).length) {
-                const content_resource_types =
-                    entry?.payload?.body?.content_resource_types;
-                allowedResourceTypes = allowedResourceTypes.filter((e) =>
-                    content_resource_types.includes(e)
-                );
-            }
-        } catch (error) {
-        }
     }
 
     let aclContent = entry.acl ?? [];

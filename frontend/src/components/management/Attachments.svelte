@@ -583,7 +583,8 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="d-flex justify-content-end mx-2 flex-row">
+<div class="d-flex justify-content-between mx-2 flex-row">
+  <p>Number of attachments: {attachments.flat(1).length}</p>
   <div
     on:click={() => {
       shortname = "auto";
