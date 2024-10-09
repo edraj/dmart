@@ -33,7 +33,9 @@ if settings.active_data_db == "file":
 else:
     with SQLAdapter().get_session() as session:
         for key in users.keys():
-            session.query(Users).filter(Users.shortname == key).update({Users.password: hashed}) # type: ignore
+            session.query(Users).filter(Users.shortname == key).update(
+                {Users.password: hashed, Users.is_active: True}
+            ) # type: ignore
             session.commit()
 
 
