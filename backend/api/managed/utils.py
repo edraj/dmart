@@ -1369,9 +1369,13 @@ async def import_resources_from_csv_handler(
                         ]
                         break
             else:
-                current_schema_property = current_schema_property["properties"][
-                    item.strip()
-                ]
+                if (
+                    "properties" in current_schema_property
+                    and item.strip() in current_schema_property["properties"]
+                ):
+                    current_schema_property = current_schema_property["properties"][
+                        item.strip()
+                    ]
 
         if current_schema_property["type"] in ["number", "integer"]:
             value = value.replace(",", "")
