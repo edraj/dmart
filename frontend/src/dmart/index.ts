@@ -559,6 +559,33 @@ export async function retrieve_entry(
     }
 }
 
+export async function upload_records_csv(
+    space_name: string,
+    subpath: string,
+    resourceType: ResourceType,
+    schema: string,
+    payload: File,
+){
+    try {
+        const csvUrl = `/managed/resources_from_csv/${resourceType}/${space_name}/${subpath}/${schema}`;
+
+        let formdata = new FormData();
+        formdata.append("resources_file", payload);
+
+        const headers = {"Content-Type": "multipart/form-data"};
+
+        const {data} = await axios.post<ApiResponse>(
+            website.backend + csvUrl,
+            formdata,
+            {headers}
+        );
+
+        return data;
+    }  catch (error) {
+        return error;
+    }
+}
+
 export async function upload_with_payload(
     space_name: string,
     subpath: string,

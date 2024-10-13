@@ -15,6 +15,7 @@
         retrieve_entry,
         space,
         Status,
+        upload_records_csv,
         upload_with_payload,
     } from "@/dmart";
     import {
@@ -278,28 +279,29 @@
               allowedResourceTypes = entry?.payload?.body?.content_resource_types;
             }
 
-            if (!!entry?.payload?.body?.stream) {
-                if ("websocket" in website) {
-                    ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
-                }
-
-                ws.onopen = () => {
-                    ws.send(
-                        JSON.stringify({
-                            type: "notification_subscription",
-                            space_name: space_name,
-                            subpath: subpath,
-                        })
-                    );
-                };
-
-                ws.onmessage = (event) => {
-                    const data = JSON.parse(event?.data ?? "");
-                    if (data?.message?.title) {
-                        isNeedRefresh = true;
-                    }
-                };
-            }
+            //TODO
+            // if (!!entry?.payload?.body?.stream) {
+            //     if ("websocket" in website) {
+            //         ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+            //     }
+            //
+            //     ws.onopen = () => {
+            //         ws.send(
+            //             JSON.stringify({
+            //                 type: "notification_subscription",
+            //                 space_name: space_name,
+            //                 subpath: subpath,
+            //             })
+            //         );
+            //     };
+            //
+            //     ws.onmessage = (event) => {
+            //         const data = JSON.parse(event?.data ?? "");
+            //         if (data?.message?.title) {
+            //             isNeedRefresh = true;
+            //         }
+            //     };
+            // }
         }
     });
 
@@ -352,7 +354,7 @@
         }
     }
 
-    async function handleSave(e: Event, form: string) {
+    async function handleSave(e: Event, form: string = null) {
         e.preventDefault();
         // if (!isSchemaValidated) {
         //   alert("The content does is not validated agains the schema");
@@ -999,6 +1001,25 @@
         downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
     }
 
+    let openUploadByCSVModal = false;
+    async function handleUpload(){
+        let response = await upload_records_csv(
+            space_name,
+            subpath,
+            new_resource_type,
+            selectedSchema,
+            payloadFiles[0]
+        );
+
+        if (response.attributes.failed_shortnames.length == 0) {
+            showToast(Level.info);
+            location.reload();
+        } else {
+            showToast(Level.warn);
+            errorContent = response.attributes.failed_shortnames;
+        }
+    }
+
     const modalToggle = () => {
         isModalOpen = !isModalOpen;
         contentShortname = "";
@@ -1201,9 +1222,66 @@
 <!--<svelte:window on:beforeunload={beforeUnload} />-->
 
 <Modal
-        isOpen={isModalOpen}
-        toggle={modalToggle}
-        size={new_resource_type === "schema" ? "xl" : "lg"}
+    isOpen={openUploadByCSVModal}
+    toggle={()=>{openUploadByCSVModal=false}}
+    size={"lg"}
+>
+  <ModalBody>
+
+    <Label for="resource_type" class="mt-3">Resource type</Label>
+    <Input
+      id="resource_type"
+      bind:value={new_resource_type}
+      type="select"
+    >
+      {#each allowedResourceTypes as type}
+        {#if type}
+          <option value={type}>{type}</option>
+        {/if}
+      {/each}
+    </Input>
+
+    <Label class="mt-3">Schema</Label>
+    <Input bind:value={selectedSchema} type="select">
+      <option value={null}>{"None"}</option>
+      {#await query({
+          space_name,
+          type: QueryType.search,
+          subpath: "/schema",
+          search: "",
+          retrieve_json_payload: true,
+          limit: 99
+      }) then schemas}
+        {#each setSchemaItems(schemas) as schema}
+          <option value={schema}>{schema}</option>
+        {/each}
+      {/await}
+    </Input>
+
+    <Label class="mt-3">CSV File</Label>
+    <Input bind:files={payloadFiles} type="file" accept=".csv" />
+
+    <hr/>
+    {#if errorContent}
+      <h3 class="mt-3">Error:</h3>
+      <Prism bind:code={errorContent}/>
+    {/if}
+  </ModalBody>
+
+  <ModalFooter>
+    <Button
+      type="button"
+      color="secondary"
+      on:click={() => (openUploadByCSVModal = false)}
+    >close</Button>
+    <Button type="button" color="primary" on:click={handleUpload}>Upload</Button>
+  </ModalFooter>
+</Modal>
+
+  <Modal
+    isOpen={isModalOpen}
+    toggle={modalToggle}
+    size={new_resource_type === "schema" ? "xl" : "lg"}
 >
   <ModalHeader toggle={modalToggle}>
     Creating a {new_resource_type} under
@@ -1645,6 +1723,22 @@
                   class="justify-content-center text-center py-0 px-1"
           >
             <Icon name="cloud-download"/>
+          </Button>
+        {/if}
+        {#if !!entry?.payload?.body?.allow_upload_csv}
+          <Button
+                  outline
+                  color="success"
+                  size="sm"
+                  title={$_("upload")}
+                  on:click={()=>{
+                      new_resource_type = null;
+                      selectedSchema = null;
+                      openUploadByCSVModal = true;
+                  }}
+                  class="justify-content-center text-center py-0 px-1"
+          >
+            <Icon name="cloud-upload"/>
           </Button>
         {/if}
 
