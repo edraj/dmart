@@ -1011,11 +1011,12 @@
             payloadFiles[0]
         );
 
-        if (response.status === "success") {
+        if (response.attributes.failed_shortnames.length == 0) {
             showToast(Level.info);
             location.reload();
         } else {
             showToast(Level.warn);
+            errorContent = response.attributes.failed_shortnames;
         }
     }
 
@@ -1259,6 +1260,12 @@
 
     <Label class="mt-3">CSV File</Label>
     <Input bind:files={payloadFiles} type="file" accept=".csv" />
+
+    <hr/>
+    {#if errorContent}
+      <h3 class="mt-3">Error:</h3>
+      <Prism bind:code={errorContent}/>
+    {/if}
   </ModalBody>
 
   <ModalFooter>
