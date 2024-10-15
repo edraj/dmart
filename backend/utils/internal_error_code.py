@@ -49,3 +49,4 @@ class InternalErrorCode:
     INVALID_TOKEN = 47
     EXPIRED_TOKEN = 48
     NOT_AUTHENTICATED = 49
+    SESSION = 50

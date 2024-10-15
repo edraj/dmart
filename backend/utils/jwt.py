@@ -88,19 +88,7 @@ class JWTBearer(HTTPBearer):
             )
 
         if settings.one_session_per_user:
-            active_session_token = await get_active_session(user_shortname)
-            if not isinstance(active_session_token, str) or not verify_password(
-                    auth_token, active_session_token
-            ):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [3]"
-                    ),
-                )
-
-            # await set_active_session(user_shortname, active_session_token) # Do not hash the already hashed token
-            await set_active_session(user_shortname, auth_token)
+            await get_active_session(user_shortname, auth_token)
 
         user_session_token = await get_user_session(user_shortname)
         if not isinstance(user_session_token, str):
@@ -157,11 +145,11 @@ async def set_user_session(user_shortname: str, token: str) -> bool:
         return bool(await db.set_sql_user_session(user_shortname, token))
 
 
-async def get_active_session(user_shortname: str):
+async def get_active_session(user_shortname: str, auth_token: str = ""):
     if settings.active_data_db == "file":
         return await get_redis_active_session(user_shortname)
     else:
-        return await db.get_sql_active_session(user_shortname)
+        return await db.get_sql_active_session(user_shortname, auth_token)
 
 
 async def get_user_session(user_shortname: str):
