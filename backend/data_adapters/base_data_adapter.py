@@ -235,7 +235,7 @@ class BaseDataAdapter(ABC):
     async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
         pass
 
-    async def get_sql_active_session(self, user_shortname: str):
+    async def get_sql_active_session(self, user_shortname: str, auth_token: str | None) -> dict:
         pass
 
     async def get_sql_user_session(self, user_shortname: str):
