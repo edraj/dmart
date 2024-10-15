@@ -43,7 +43,7 @@ from utils.helpers import (
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
-from utils.password_hashing import hash_password
+from utils.password_hashing import hash_password, verify_password
 from utils.settings import settings
 from .base_data_adapter import BaseDataAdapter
 
@@ -1291,7 +1291,7 @@ class SQLAdapter(BaseDataAdapter):
     async def set_sql_active_session(self, user_shortname: str, token: str) -> bool:
         with self.get_session() as session:
             try:
-                last_session = await self.get_sql_active_session(user_shortname)
+                last_session = await self.get_sql_active_session(user_shortname, None)
                 if last_session is not None:
                     await self.remove_sql_active_session(user_shortname)
                 timestamp = datetime.now()
@@ -1299,7 +1299,7 @@ class SQLAdapter(BaseDataAdapter):
                     ActiveSessions(
                         uuid=uuid4(),
                         shortname=user_shortname,
-                        token=hash_password(token),
+                        token=token,
                         timestamp=timestamp,
                     )
                 )
@@ -1330,7 +1330,7 @@ class SQLAdapter(BaseDataAdapter):
                 print("[!set_sql_user_session]", e)
                 return False
 
-    async def get_sql_active_session(self, user_shortname: str):
+    async def get_sql_active_session(self, user_shortname: str, token: str | None) -> str | None:
         with self.get_session() as session:
             statement = select(ActiveSessions).where(ActiveSessions.shortname == user_shortname)
 
@@ -1339,8 +1339,16 @@ class SQLAdapter(BaseDataAdapter):
                 return None
 
             active_session = ActiveSessions.model_validate(result)
+            if token is not None and token != active_session.token:
+                raise api.Exception(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    error=api.Error(
+                        type="session",
+                        code=InternalErrorCode.INVALID_TOKEN,
+                        message="invalid token!",
+                    ),
+                )
 
-            ## TODO:AB not sure
             if settings.jwt_access_expires + active_session.timestamp.timestamp() < time.time():
                 await self.remove_sql_active_session(user_shortname)
                 return None
@@ -1397,7 +1405,7 @@ class SQLAdapter(BaseDataAdapter):
                 )
                 session.commit()
             except Exception as e:
-                print("[!set_sql_active_session]", e)
+                print("[!set_invitation]", e)
 
     async def get_invitation_token(self, invitation_token: str):
         with self.get_session() as session:
@@ -1428,7 +1436,7 @@ class SQLAdapter(BaseDataAdapter):
                 )
                 session.commit()
             except Exception as e:
-                print("[!set_sql_active_session]", e)
+                print("[!set_url_shortner]", e)
 
     async def get_url_shortner(self, token_uuid: str) -> str | None:
         with self.get_session() as session:
