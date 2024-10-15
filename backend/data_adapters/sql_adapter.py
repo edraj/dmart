@@ -1291,7 +1291,7 @@ class SQLAdapter(BaseDataAdapter):
     async def set_sql_active_session(self, user_shortname: str, token: str) -> bool:
         with self.get_session() as session:
             try:
-                last_session = self.get_sql_active_session(user_shortname)
+                last_session = await self.get_sql_active_session(user_shortname)
                 if last_session is not None:
                     await self.remove_sql_active_session(user_shortname)
                 timestamp = datetime.now()
