@@ -852,11 +852,10 @@ def action(text: str):
                 ):
                     schema = ",schema="
                     if "schema_shortname" in one["attributes"]["payload"]:
-                        schema += one["attributes"]["payload"]["schema_shortname"]
+                        schema += one["attributes"]["payload"].get("schema_shortname", "N/A")
                     extra = f"[yellow](payload:type={one['attributes']['payload']['content_type']}{schema})[/]"
 
                 idx += 1
-                # tree.add(f"{icon} [green]{one['shortname']}[/] {extra}")
                 bucket.append(f"{icon} [green]{one['shortname']}[/] {extra}")
                 if idx == pagination_length:
                     idx = 0
