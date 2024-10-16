@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S BACKEND_ENV=config.ini python
 
 import os
 from prompt_toolkit import PromptSession
@@ -207,22 +207,19 @@ class DMart:
             print_spaces += one
         print(print_spaces)
 
-    def list(self, folder_shortname):
+    def list(self):
         json = {
             "space_name": dmart.current_space,
             "type": "subpath",
-            "subpath": f"{dmart.current_subpath}/{folder_shortname}",
+            "subpath": dmart.current_subpath.replace("//", "/"),
             "retrieve_json_payload": True,
             "limit": 100,
         }
         ret = self.query(json)
-        if (
-            not folder_shortname
-        ):  # Only update list of we are acting against current_subpath
-            self.current_subpath_entries.clear()
-            if "records" in ret:
-                for one in ret["records"]:
-                    self.current_subpath_entries.append(one)
+        self.current_subpath_entries.clear()
+        if "records" in ret:
+            for one in ret["records"]:
+                self.current_subpath_entries.append(one)
 
     def get_mime_type(self, ext):
         match ext:
@@ -452,7 +449,7 @@ def check_update_space(space, subpath=None):
             print("Current space switched to:", dmart.current_space)
             if subpath is not None:
                 dmart.current_subpath = subpath
-            dmart.list("")
+            dmart.list()
             dmart.print_spaces()
             break
 
@@ -549,14 +546,14 @@ def action(text: str):
                 space = space.replace("@", "")
                 check_update_space(space)
                 dmart.current_subpath = args[2].replace(f"@{space}/", "")
-                dmart.list("")
+                dmart.list()
             shortname = args[0]
             payload_file = args[1]
 
             dmart.upload_schema(shortname, payload_file)
             check_update_space(old_space)
             dmart.current_subpath = old_subpath
-            dmart.list("")
+            dmart.list()
         case ["create", *args]:
             shortname = None
             resource_type = None
@@ -569,7 +566,7 @@ def action(text: str):
                 space = space.replace("@", "")
                 check_update_space(space)
                 dmart.current_subpath = args[2].replace(f"@{space}", "")
-                dmart.list("")
+                dmart.list()
             shortname = args[0]
             resource_type = args[1]
 
@@ -580,7 +577,7 @@ def action(text: str):
 
             check_update_space(old_space)
             dmart.current_subpath = old_subpath
-            dmart.list("")
+            dmart.list()
         case ["move", type, source, destination]:
             if not source.startswith("/"):
                 source += f"{dmart.current_subpath}/{source}"
@@ -622,7 +619,7 @@ def action(text: str):
                 space = space.replace("@", "")
                 check_update_space(space)
                 dmart.current_subpath = args[1].replace(f"@{space}/", "")
-                dmart.list("")
+                dmart.list()
 
             if is_content:
                 with open(args[1]) as f:
@@ -635,7 +632,7 @@ def action(text: str):
 
             check_update_space(old_space)
             dmart.current_subpath = old_subpath
-            dmart.list("")
+            dmart.list()
         case ["query", shortname]:
             action(f"query {shortname}")
             action("ls")
@@ -655,7 +652,7 @@ def action(text: str):
                 space = space.replace("@", "")
                 check_update_space(space)
                 dmart.current_subpath = args[3].replace(f"@{space}/", "")
-                dmart.list("")
+                dmart.list()
             subpath = args[0]
             schema_shortname = args[1]
             payload_file = args[2]
@@ -663,9 +660,9 @@ def action(text: str):
             print(dmart.upload_csv(subpath, schema_shortname, payload_file))
             check_update_space(old_space)
             dmart.current_subpath = old_subpath
-            dmart.list("")
+            dmart.list()
         case ["rm", "*"]:
-            dmart.list("")
+            dmart.list()
             for one in dmart.current_subpath_entries:
                 shortname = one["shortname"]
                 resource_type = one["resource_type"]
@@ -693,7 +690,7 @@ def action(text: str):
                     space = search.group()
                     space = space.replace("@", "")
                     check_update_space(space)
-                    dmart.list("")
+                    dmart.list()
                     content = content.replace(f"@{space}/", "")
                 # print(dmart.current_subpath_entries)
                 shortname = ""
@@ -714,7 +711,7 @@ def action(text: str):
                 else:
                     print(f"item not found")
                 check_update_space(old_space)
-                dmart.list("")
+                dmart.list()
         case "pwd":
             print(f"{dmart.current_space}:{dmart.current_subpath}")
         case ["cd", ".."]:
@@ -722,7 +719,7 @@ def action(text: str):
                 dmart.current_subpath = "/".join(dmart.current_subpath.split("/")[:-1])
             if not dmart.current_subpath:
                 dmart.current_subpath = "/"
-            dmart.list("")
+            dmart.list()
             print(f"[yellow]Switched subpath to:[/] [green]{dmart.current_subpath}[/]")
         case ["p" | "print", content]:
             shortname = ""
@@ -753,7 +750,7 @@ def action(text: str):
                 space = space.replace("@", "")
                 check_update_space(space)
                 dmart.current_subpath = directory.replace(f"@{space}/", "")
-                dmart.list("")
+                dmart.list()
                 directory = dmart.current_subpath
             new_subpath = ""
             for one in dmart.current_subpath_entries:
@@ -770,19 +767,23 @@ def action(text: str):
                         new_subpath += "/"
                     new_subpath += one["shortname"]
                     dmart.current_subpath = new_subpath
-                    dmart.list("")
+                    dmart.list()
                     print(
                         f"[yellow]Switched subpath to:[/] [green]{dmart.current_subpath}[/]"
                     )
                     break
         case "cd":
             dmart.current_subpath = "/"
-            dmart.list("")
+            dmart.list()
             print(f"[yellow]Switched subpath to:[/] [green]{dmart.current_subpath}[/]")
         case ["c" | "cat", *extra_shortname]:
-            dmart.list("")
-            shortname = ""
-            resource_type = ""
+            old_path = dmart.current_subpath
+            if "/" in extra_shortname[0]:
+                dmart.current_subpath = "/".join(extra_shortname[0].split("/")[:-1])
+                extra_shortname[0] = "".join(extra_shortname[0].split("/")[-1])
+            dmart.list()
+            dmart.current_subpath = old_path
+
             record = {}
             if extra_shortname[0] == "*":
                 for one in dmart.current_subpath_entries:
@@ -791,8 +792,6 @@ def action(text: str):
                 shortname = extra_shortname[0]
                 for one in dmart.current_subpath_entries:
                     if one["shortname"].startswith(shortname):
-                        shortname = one["shortname"]
-                        resource_type = one["resource_type"]
                         record = one
             if record is not None:
                 print(record)
@@ -810,10 +809,10 @@ def action(text: str):
                     space = space.replace("@", "")
                     check_update_space(space)
                     dmart.current_subpath = _extra_subpath[0].replace(f"@{space}/", "")
-                    dmart.list("")
+                    dmart.list()
                 else:
                     dmart.current_subpath = _extra_subpath[0]
-                    dmart.list("")
+                    dmart.list()
             elif len(_extra_subpath) > 2:
                 print("Too many args passed !")
 
@@ -898,7 +897,7 @@ def action(text: str):
                 # c = input("q: quite, b: previous, n: next = ")
             # print(tree)
             dmart.current_space, dmart.current_subpath = old_space, old_subpath
-            dmart.list("")
+            dmart.list()
         case ["s" | "switch", *space]:
             if len(space) == 0:
                 dmart.print_spaces()
@@ -910,7 +909,7 @@ def action(text: str):
                         f"Switching current space from {dmart.current_space} to {one} / {space}"
                     )
                     dmart.current_space = one
-                    dmart.list("")
+                    dmart.list()
                     match = True
                     dmart.print_spaces()
                     break
@@ -947,7 +946,7 @@ if __name__ == "__main__":
     spaces = dmart.spaces()
     dmart.current_space = settings.default_space  # dmart.space_names[0]
 
-    dmart.list("")
+    dmart.list()
     # print("Available spaces:", space_names)
     # print("Current space:",  current_space)
     dmart.print_spaces()
