@@ -173,6 +173,7 @@
   "confirm_toggling_active": "Entry \"{shortname}|{data.displayname}\" is currently {current} are you sure you want to set it to {new}?",
   "active": "active",
   "download": "Download",
+  "upload": "Upload",
   "inactive": "inactive",
   "time": "Time",
   "event": "Event",

@@ -777,8 +777,8 @@ async def import_resources_from_csv(
                     is_internal=True,
                 )
                 success_count += 1
-            except Exception:
-                failed_shortnames.append(shortname)
+            except Exception as e:
+                failed_shortnames.append({shortname: e.__str__()})
 
     return api.Response(
         status=api.Status.success,

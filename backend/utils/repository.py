@@ -751,6 +751,7 @@ async def serve_query(
             subpath=query.subpath,
             resource_type=record.resource_type,
             action_type=core.ActionType.query,
+            entry_shortname=record.shortname,
         )]
         new_length = len(records)
         total -= init_length - new_length
