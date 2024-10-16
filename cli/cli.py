@@ -22,7 +22,8 @@ from rich.traceback import install
 import json
 import pathlib
 from enum import Enum
-import termios, tty
+import termios
+import tty
 
 
 install(show_locals=False)
@@ -94,11 +95,11 @@ class SpaceManagmentType(str, Enum):
 class DMart:
     session = requests.Session()
     headers = {"Content-Type": "application/json"}
-    dmart_spaces = []
-    space_names = []
+    dmart_spaces : list = []
+    space_names : list[str] = []
     current_space: str = settings.default_space
     current_subpath: str = "/"
-    current_subpath_entries = []
+    current_subpath_entries : list = []
 
     def __dmart_api(self, endpoint, json=None):
         url = f"{settings.url}{endpoint}"
@@ -404,7 +405,7 @@ dmart = DMart()
 
 
 class CustomCompleter(Completer):
-    def get_completions(self, document, _):  # complete_event):
+    def get_completions(self, document, complete_event):
         # cmd = document.get_word_before_cursor()
         cmd = document.text
         arg = document.get_word_under_cursor()
@@ -419,7 +420,7 @@ class CustomCompleter(Completer):
                         yield Completion(one, start_position=-len(arg))
             else:
                 for one in dmart.current_subpath_entries:
-                    if one["shortname"].startswith(
+                    if one[ "shortname" ].startswith(
                         arg
                     ):  #  and (("cd" in cmd and one["resource_type"]=="folder") or one["resource_type"] != "folder"):
                         if "cd" in cmd and one["resource_type"] == "folder":
@@ -540,7 +541,7 @@ def action(text: str):
             if len(args) == 3:
                 search = re.search(r"@\w+", args[2])
                 if not search:
-                    print(f"[red]Malformated Command")
+                    print("[red]Malformated Command")
                     return
                 space = search.group()
                 space = space.replace("@", "")
@@ -560,7 +561,7 @@ def action(text: str):
             if len(args) == 3:
                 search = re.search(r"@\w+", args[2])
                 if not search:
-                    print(f"[red]Malformated Command")
+                    print("[red]Malformated Command")
                     return
                 space = search.group()
                 space = space.replace("@", "")
@@ -613,7 +614,7 @@ def action(text: str):
             if (len(args) == 3 and is_content) or (len(args) == 2 and not is_content):
                 search = re.search(r"@\w+", args[1])
                 if not search:
-                    print(f"[red]Malformated Command")
+                    print("[red]Malformated Command")
                     return
                 space = search.group()
                 space = space.replace("@", "")
@@ -646,7 +647,7 @@ def action(text: str):
             if len(args) == 4:
                 search = re.search(r"@\w+", args[3])
                 if not search:
-                    print(f"[red]Malformated Command")
+                    print("[red]Malformated Command")
                     return
                 space = search.group()
                 space = space.replace("@", "")
@@ -685,7 +686,7 @@ def action(text: str):
                     path = content[1]
                     search = re.search(r"@\w+", content)
                     if not search:
-                        print(f"[red]Malformated Command")
+                        print("[red]Malformated Command")
                         return
                     space = search.group()
                     space = space.replace("@", "")
@@ -709,7 +710,7 @@ def action(text: str):
                         )
                     )
                 else:
-                    print(f"item not found")
+                    print("item not found")
                 check_update_space(old_space)
                 dmart.list()
         case "pwd":
@@ -739,12 +740,12 @@ def action(text: str):
                     )
                 )
             else:
-                print(f"item not found")
+                print("item not found")
         case ["cd", directory]:
             if directory.startswith("@"):
                 search = re.search(r"@\w+", directory)
                 if not search:
-                    print(f"[red]Malformated Command")
+                    print("[red]Malformated Command")
                     return
                 space = search.group()
                 space = space.replace("@", "")
@@ -796,14 +797,14 @@ def action(text: str):
             if record is not None:
                 print(record)
             else:
-                print(f"[yellow]Item is not found[/]")
+                print("[yellow]Item is not found[/]")
         case ["ls", *_extra_subpath]:
             extra_subpath = ""
-            if len(_extra_subpath) >= 1 and _extra_subpath[0].isnumeric() == False:
+            if len(_extra_subpath) >= 1 and not _extra_subpath[0].isnumeric():
                 if _extra_subpath[0].startswith("@"):
                     search = re.search(r"@\w+", _extra_subpath[0])
                     if not search:
-                        print(f"[red]Malformated Command")
+                        print("[red]Malformated Command")
                         return
                     space = search.group()
                     space = space.replace("@", "")
@@ -834,7 +835,7 @@ def action(text: str):
             else:
                 pagination_length = settings.pagination
 
-            pagination_bucket = []
+            pagination_bucket : list[list] = []
             bucket = []
             idx = 0
             for one in dmart.current_subpath_entries:
@@ -850,10 +851,9 @@ def action(text: str):
                     and isinstance(one["attributes"]["payload"], dict)
                     and "content_type" in one["attributes"]["payload"]
                 ):
-                    schema = ",schema="
                     if "schema_shortname" in one["attributes"]["payload"]:
-                        schema += one["attributes"]["payload"].get("schema_shortname", "N/A")
-                    extra = f"[yellow](payload:type={one['attributes']['payload']['content_type']}{schema})[/]"
+                        schema = f",schema= {one["attributes"]["payload"].get("schema_shortname", "N/A")}"
+                        extra = f"[yellow](payload:type={one['attributes']['payload']['content_type']}{schema})[/]"
 
                 idx += 1
                 bucket.append(f"{icon} [green]{one['shortname']}[/] {extra}")
@@ -903,7 +903,7 @@ def action(text: str):
                 return
             match = False
             for one in dmart.space_names:
-                if one.startswith(space[0]):
+                if space and one.startswith(space[0]):
                     print(
                         f"Switching current space from {dmart.current_space} to {one} / {space}"
                     )
@@ -918,7 +918,7 @@ def action(text: str):
             print(f"[red]Command[/] [yello]{text}[/] [red]unknown[/]")
 
 
-var = {}
+var : dict = {}
 
 
 def parsing_variables(sliced_command):
@@ -953,7 +953,7 @@ if __name__ == "__main__":
     # current_subpath = "/"
     # session = PromptSession(lexer=PygmentsLexer(DmartLexer), completer=dmart_completer, style=style)
 
-    session = PromptSession(
+    session : PromptSession = PromptSession(
         style=style, completer=CustomCompleter(), history=FileHistory(".cli_history")
     )
 
@@ -1031,7 +1031,7 @@ if __name__ == "__main__":
             except KeyboardInterrupt as ex:
                 print(repr(ex))
                 continue
-            except EOFError as ex:
+            except EOFError as _:
                 print("[green]Exiting ...[/]")
                 break
         # else:
