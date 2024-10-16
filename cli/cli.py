@@ -24,6 +24,7 @@ import pathlib
 from enum import Enum
 import termios
 import tty
+from dataclasses import field
 
 
 install(show_locals=False)
@@ -95,11 +96,11 @@ class SpaceManagmentType(str, Enum):
 class DMart:
     session = requests.Session()
     headers = {"Content-Type": "application/json"}
-    dmart_spaces : list = []
-    space_names : list[str] = []
+    dmart_spaces : list = field(default_factory=lambda: [])
+    space_names : list[str] = field(default_factory=list[str])
     current_space: str = settings.default_space
     current_subpath: str = "/"
-    current_subpath_entries : list = []
+    current_subpath_entries : list = field(default_factory=list)
 
     def __dmart_api(self, endpoint, json=None):
         url = f"{settings.url}{endpoint}"
@@ -713,8 +714,12 @@ def action(text: str):
                     print("item not found")
                 check_update_space(old_space)
                 dmart.list()
-        case "pwd":
+        case ["pwd"]:
             print(f"{dmart.current_space}:{dmart.current_subpath}")
+        case ["cd"]:
+            dmart.current_subpath = "/"
+            dmart.list()
+            print(f"[yellow]Switched subpath to:[/] [green]{dmart.current_subpath}[/]")
         case ["cd", ".."]:
             if dmart.current_subpath != "/":
                 dmart.current_subpath = "/".join(dmart.current_subpath.split("/")[:-1])
@@ -773,10 +778,6 @@ def action(text: str):
                         f"[yellow]Switched subpath to:[/] [green]{dmart.current_subpath}[/]"
                     )
                     break
-        case "cd":
-            dmart.current_subpath = "/"
-            dmart.list()
-            print(f"[yellow]Switched subpath to:[/] [green]{dmart.current_subpath}[/]")
         case ["c" | "cat", *extra_shortname]:
             old_path = dmart.current_subpath
             if "/" in extra_shortname[0]:
@@ -931,109 +932,112 @@ def parsing_variables(sliced_command):
 
 
 if __name__ == "__main__":
-    # print(Panel.fit("For help, type : [bold]?[/]", title="DMart Cli"))
-    print("[bold][green]DMART[/] [yellow]Command line interface[/][/]")
-    print(
-        f"Connecting to [yellow]{settings.url}[/] user: [yellow]{settings.shortname}[/]"
-    )
+    try :
+        # print(Panel.fit("For help, type : [bold]?[/]", title="DMart Cli"))
+        print("[bold][green]DMART[/] [yellow]Command line interface[/][/]")
+        print(
+            f"Connecting to [yellow]{settings.url}[/] user: [yellow]{settings.shortname}[/]"
+        )
 
-    ret = dmart.login()
-    if ret["status"] == "failed":
-        print("Login failed")
-        exit(1)
-    dmart.profile()
-    spaces = dmart.spaces()
-    dmart.current_space = settings.default_space  # dmart.space_names[0]
+        ret = dmart.login()
+        if ret["status"] == "failed":
+            print("Login failed")
+            exit(1)
+        dmart.profile()
+        spaces = dmart.spaces()
+        dmart.current_space = settings.default_space  # dmart.space_names[0]
 
-    dmart.list()
-    # print("Available spaces:", space_names)
-    # print("Current space:",  current_space)
-    dmart.print_spaces()
-    print("[red]Type [bold]?[/] for help[/]")
-    # current_subpath = "/"
-    # session = PromptSession(lexer=PygmentsLexer(DmartLexer), completer=dmart_completer, style=style)
+        dmart.list()
+        # print("Available spaces:", space_names)
+        # print("Current space:",  current_space)
+        dmart.print_spaces()
+        print("[red]Type [bold]?[/] for help[/]")
+        # current_subpath = "/"
+        # session = PromptSession(lexer=PygmentsLexer(DmartLexer), completer=dmart_completer, style=style)
 
-    session : PromptSession = PromptSession(
-        style=style, completer=CustomCompleter(), history=FileHistory(".cli_history")
-    )
+        session : PromptSession = PromptSession(
+            style=style, completer=CustomCompleter(), history=FileHistory(".cli_history")
+        )
 
-    if len(sys.argv) >= 2:
-        if sys.argv[1] == "s":
-            mode = CLI_MODE.SCRIPT
-        elif sys.argv[1] == "c":
-            mode = CLI_MODE.CMD
-            if sys.argv[3].startswith("/"):
-                check_update_space(sys.argv[2], sys.argv[3])
-                del sys.argv[2]
-                del sys.argv[2]
-            else:
-                check_update_space(sys.argv[2])
-                del sys.argv[2]
-        del sys.argv[0]
-        del sys.argv[0]
-
-    if mode == CLI_MODE.CMD:
-        print(sys.argv)
-        action(" ".join(sys.argv))
-    elif mode == CLI_MODE.SCRIPT:
-        with open(sys.argv[1], "r") as commands:
-            is_comment_block = False
-            for command in commands:
-                if (
-                    command.startswith("#")
-                    or command.startswith("//")
-                    or command == "\n"
-                ):
-                    continue
-                elif command.startswith("/*"):
-                    is_comment_block = True
-                    continue
-                elif command.startswith("*/"):
-                    is_comment_block = False
-                    continue
-                elif is_comment_block:
-                    continue
-
-                print("[green]> ", command)
-                sliced_command = command.split()
-
-                if sliced_command[0] == "VAR":
-                    var[sliced_command[1]] = sliced_command[2]
-                    continue
-
-                sliced_command = parsing_variables(sliced_command)
-
-                action(" ".join(sliced_command))
-    elif mode == CLI_MODE.REPL:
-        while True:
-            try:
-                text = session.prompt(
-                    [("class:prompt", "❯ ")],  # ≻≻
-                    # cursor=CursorShape.BLINKING_BLOCK,
-                    # cursor=CursorShape.BLINKING_BEAM,
-                    cursor=CursorShape.BLINKING_UNDERLINE,
-                    bottom_toolbar=bottom_toolbar,
-                    complete_in_thread=True,
-                    complete_while_typing=True,
-                )
-                # remove whitespaces
-                text = re.sub(r"^\s+", "", text)  # leading
-                text = re.sub(r"\s+$", "", text)  # trailing
-                text = re.sub(
-                    r"\s+", " ", text
-                )  # replace multiple inline whitespaces with one
-                if text in ["exit", "q", "quit"]:
-                    break
+        if len(sys.argv) >= 2:
+            if sys.argv[1] == "s":
+                mode = CLI_MODE.SCRIPT
+            elif sys.argv[1] == "c":
+                mode = CLI_MODE.CMD
+                if sys.argv[3].startswith("/"):
+                    check_update_space(sys.argv[2], sys.argv[3])
+                    del sys.argv[2]
+                    del sys.argv[2]
                 else:
-                    if text == "":
+                    check_update_space(sys.argv[2])
+                    del sys.argv[2]
+            del sys.argv[0]
+            del sys.argv[0]
+
+        if mode == CLI_MODE.CMD:
+            print(sys.argv)
+            action(" ".join(sys.argv))
+        elif mode == CLI_MODE.SCRIPT:
+            with open(sys.argv[1], "r") as commands:
+                is_comment_block = False
+                for command in commands:
+                    if (
+                        command.startswith("#")
+                        or command.startswith("//")
+                        or command == "\n"
+                    ):
                         continue
-                    action(text)
-            except KeyboardInterrupt as ex:
-                print(repr(ex))
-                continue
-            except EOFError as _:
-                print("[green]Exiting ...[/]")
-                break
-        # else:
-        #    print('You entered:', repr(text))
-    print("[yellow]Good bye![/]")
+                    elif command.startswith("/*"):
+                        is_comment_block = True
+                        continue
+                    elif command.startswith("*/"):
+                        is_comment_block = False
+                        continue
+                    elif is_comment_block:
+                        continue
+
+                    print("[green]> ", command)
+                    sliced_command = command.split()
+
+                    if sliced_command[0] == "VAR":
+                        var[sliced_command[1]] = sliced_command[2]
+                        continue
+
+                    sliced_command = parsing_variables(sliced_command)
+
+                    action(" ".join(sliced_command))
+        elif mode == CLI_MODE.REPL:
+            while True:
+                try:
+                    text = session.prompt(
+                        [("class:prompt", "❯ ")],  # ≻≻
+                        # cursor=CursorShape.BLINKING_BLOCK,
+                        # cursor=CursorShape.BLINKING_BEAM,
+                        cursor=CursorShape.BLINKING_UNDERLINE,
+                        bottom_toolbar=bottom_toolbar,
+                        complete_in_thread=True,
+                        complete_while_typing=True,
+                    )
+                    # remove whitespaces
+                    text = re.sub(r"^\s+", "", text)  # leading
+                    text = re.sub(r"\s+$", "", text)  # trailing
+                    text = re.sub(
+                        r"\s+", " ", text
+                    )  # replace multiple inline whitespaces with one
+                    if text in ["exit", "q", "quit"]:
+                        break
+                    else:
+                        if text == "":
+                            continue
+                        action(text)
+                except KeyboardInterrupt as ex:
+                    print(repr(ex))
+                    continue
+                except EOFError as _:
+                    print("[green]Exiting ...[/]")
+                    break
+            # else:
+            #    print('You entered:', repr(text))
+        print("[yellow]Good bye![/]")
+    except requests.exceptions.ConnectionError as _ : 
+        print("[yellow]Connection error[/]")
