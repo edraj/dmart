@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     active_operational_db: str = "redis"  # allowed values: redis, manticore
     active_data_db: str = "file"  # allowed values: file, sql
 
-    database_driver: str = 'postgresql'
+    database_driver: str = 'postgresql+psycopg'
     database_username: str = 'postgres'
     database_password: str = ''
     database_host: str = 'localhost'
