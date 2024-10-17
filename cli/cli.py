@@ -3,6 +3,9 @@
 import os
 from prompt_toolkit import PromptSession
 import sys
+
+from prompt_toolkit.filters import has_completions, completion_is_selected
+from prompt_toolkit.key_binding import KeyBindings
 from rich import pretty
 from rich import print
 from rich.console import Console
@@ -217,6 +220,7 @@ class DMart:
             "retrieve_json_payload": True,
             "limit": 100,
         }
+
         ret = self.query(json)
         self.current_subpath_entries.clear()
         if "records" in ret:
@@ -404,12 +408,22 @@ class DMart:
 
 dmart = DMart()
 
-
+has_slash_for_ls = False
 class CustomCompleter(Completer):
     def get_completions(self, document, complete_event):
-        # cmd = document.get_word_before_cursor()
+        global has_slash_for_ls
+        global old_subpath_for_ls
+
         cmd = document.text
         arg = document.get_word_under_cursor()
+        if cmd.startswith("ls") and cmd.endswith("/"):
+            has_slash_for_ls = True
+            _cmd = cmd.replace("ls ", "")
+            if _cmd.endswith("/"):
+                _cmd = _cmd[:-1]
+            dmart.current_subpath = _cmd
+            dmart.list()
+        # print(f"{is_future=} {dmart.current_subpath=}")
         if len(cmd) < 2 or re.match(r"^\s*$", cmd):
             for one in KEYWORDS:
                 if one.startswith(arg):
@@ -422,7 +436,7 @@ class CustomCompleter(Completer):
             else:
                 for one in dmart.current_subpath_entries:
                     if one[ "shortname" ].startswith(
-                        arg
+                        arg.replace("/", "")
                     ):  #  and (("cd" in cmd and one["resource_type"]=="folder") or one["resource_type"] != "folder"):
                         if "cd" in cmd and one["resource_type"] == "folder":
                             yield Completion(
@@ -436,6 +450,7 @@ class CustomCompleter(Completer):
                                 start_position=-len(arg),
                                 display_meta=one["resource_type"],
                             )
+
 
 
 def bottom_toolbar():
@@ -800,8 +815,17 @@ def action(text: str):
             else:
                 print("[yellow]Item is not found[/]")
         case ["ls", *_extra_subpath]:
+            if len(_extra_subpath) >= 2:
+                print("Too many args passed !")
+                return
+
             extra_subpath = ""
-            if len(_extra_subpath) >= 1 and not _extra_subpath[0].isnumeric():
+            if len(_extra_subpath) == 1 and not _extra_subpath[0].isnumeric():
+                if _extra_subpath[0].startswith("/"):
+                    _extra_subpath[0] = _extra_subpath[0][1:]
+                if _extra_subpath[0].endswith("/"):
+                    _extra_subpath[0] = _extra_subpath[0][:-1]
+
                 if _extra_subpath[0].startswith("@"):
                     search = re.search(r"@\w+", _extra_subpath[0])
                     if not search:
@@ -815,8 +839,7 @@ def action(text: str):
                 else:
                     dmart.current_subpath = _extra_subpath[0]
                     dmart.list()
-            elif len(_extra_subpath) > 2:
-                print("Too many args passed !")
+
 
             if extra_subpath == "":
                 for one in dmart.current_subpath_entries:
@@ -931,6 +954,28 @@ def parsing_variables(sliced_command):
     return sliced_command
 
 
+key_bindings = KeyBindings()
+filter = has_completions & ~completion_is_selected
+@key_bindings.add("enter", filter=filter)
+def _(event):
+    event.current_buffer.go_to_completion(0)
+    event.current_buffer.validate_and_handle()
+
+
+@key_bindings.add("c-h")
+def _(event):
+    global has_slash_for_ls
+    if has_slash_for_ls and "/" not in event.current_buffer.document.text:
+        has_slash_for_ls = False
+        _subpath = event.current_buffer.document.text.replace("ls ", "")
+        _subpath = _subpath.split('/')[:-1]
+        dmart.current_subpath = "/".join(_subpath)
+        if dmart.current_subpath == "":
+            dmart.current_subpath = "/"
+        dmart.list()
+    event.app.current_buffer.delete_before_cursor(count=1)
+
+
 if __name__ == "__main__":
     try :
         # print(Panel.fit("For help, type : [bold]?[/]", title="DMart Cli"))
@@ -955,8 +1000,11 @@ if __name__ == "__main__":
         # current_subpath = "/"
         # session = PromptSession(lexer=PygmentsLexer(DmartLexer), completer=dmart_completer, style=style)
 
-        session : PromptSession = PromptSession(
-            style=style, completer=CustomCompleter(), history=FileHistory(".cli_history")
+        session = PromptSession(
+            style=style,
+            completer=CustomCompleter(),
+            history=FileHistory(".cli_history"),
+            key_bindings=key_bindings
         )
 
         if len(sys.argv) >= 2:
