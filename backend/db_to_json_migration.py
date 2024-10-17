@@ -1,3 +1,5 @@
+#!/usr/bin/env -S BACKEND_ENV=config.env python3
+
 import os
 import json
 from sqlmodel import Session, create_engine, select
