@@ -408,22 +408,11 @@ class DMart:
 
 dmart = DMart()
 
-has_slash_for_ls = False
+
 class CustomCompleter(Completer):
     def get_completions(self, document, complete_event):
-        global has_slash_for_ls
-        global old_subpath_for_ls
-
         cmd = document.text
         arg = document.get_word_under_cursor()
-        if cmd.startswith("ls") and cmd.endswith("/"):
-            has_slash_for_ls = True
-            _cmd = cmd.replace("ls ", "")
-            if _cmd.endswith("/"):
-                _cmd = _cmd[:-1]
-            dmart.current_subpath = _cmd
-            dmart.list()
-        # print(f"{is_future=} {dmart.current_subpath=}")
         if len(cmd) < 2 or re.match(r"^\s*$", cmd):
             for one in KEYWORDS:
                 if one.startswith(arg):
@@ -436,8 +425,8 @@ class CustomCompleter(Completer):
             else:
                 for one in dmart.current_subpath_entries:
                     if one[ "shortname" ].startswith(
-                        arg.replace("/", "")
-                    ):  #  and (("cd" in cmd and one["resource_type"]=="folder") or one["resource_type"] != "folder"):
+                        arg
+                    ):
                         if "cd" in cmd and one["resource_type"] == "folder":
                             yield Completion(
                                 one["shortname"],
@@ -960,20 +949,6 @@ filter = has_completions & ~completion_is_selected
 def _(event):
     event.current_buffer.go_to_completion(0)
     event.current_buffer.validate_and_handle()
-
-
-@key_bindings.add("c-h")
-def _(event):
-    global has_slash_for_ls
-    if has_slash_for_ls and "/" not in event.current_buffer.document.text:
-        has_slash_for_ls = False
-        _subpath = event.current_buffer.document.text.replace("ls ", "")
-        _subpath = _subpath.split('/')[:-1]
-        dmart.current_subpath = "/".join(_subpath)
-        if dmart.current_subpath == "":
-            dmart.current_subpath = "/"
-        dmart.list()
-    event.app.current_buffer.delete_before_cursor(count=1)
 
 
 if __name__ == "__main__":
