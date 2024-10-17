@@ -815,7 +815,6 @@ def action(text: str):
             else:
                 print("[yellow]Item is not found[/]")
         case ["ls", *_extra_subpath]:
-            print("Extra subpath", _extra_subpath)
             if len(_extra_subpath) >= 2:
                 print("Too many args passed !")
                 return
@@ -863,7 +862,6 @@ def action(text: str):
             pagination_bucket : list[list] = []
             bucket = []
             idx = 0
-            print(len(dmart.current_subpath_entries), "entries")
             for one in dmart.current_subpath_entries:
                 icon = ":page_facing_up:"
                 extra = ""
