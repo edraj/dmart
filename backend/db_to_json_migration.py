@@ -40,17 +40,20 @@ def process_attachments(session, space_folder):
     for attachment in attachments:
         subpath = subpath_checker(attachment.subpath)
 
-        parts = subpath.split('/')  # Split the string into a list
-        parts.insert(-1, '.dm')  # Insert '.dm' before the last element
-        new_path = '/'.join(parts)  # Join the list back into a string
+        parts = subpath.split('/')
+        parts.insert(-1, '.dm')
+        new_path = '/'.join(parts)
 
         dir_path = f"{space_folder}/{attachment.space_name}{new_path}"
         ensure_directory_exists(dir_path)
 
         media_path = os.path.join(dir_path, f"attachments.{attachment.resource_type}")
         ensure_directory_exists(media_path)
-
-        write_binary_file(f"{media_path}/{attachment.payload['body']}", attachment.media)
+        if attachment.payload.get("body", None):
+            if attachment.payload["content_type"] == 'json':
+                write_json_file(f"{media_path}/{attachment.shortname}", attachment.payload.get("body", {}))
+            else:
+                write_binary_file(f"{media_path}/{attachment.payload['body']}", attachment.media)
         _attachment = attachment.model_dump()
 
         del _attachment["media"]
