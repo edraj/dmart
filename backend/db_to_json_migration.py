@@ -69,10 +69,16 @@ def process_entries(session, space_folder):
             dir_meta_path = f"{dir_path}/{entry.shortname}/.dm/".replace("//", "/")
             ensure_directory_exists(dir_meta_path)
             _entry = entry.model_dump()
+            body = None
+            if payload := _entry.get("payload", {}):
+                if payload.get("body", None):
+                    body = payload["body"]
+                _entry["payload"]["body"] = f"{entry.shortname}.json"
             del _entry["space_name"]
             del _entry["subpath"]
-            file_path = os.path.join(dir_meta_path, "meta.folder.json")
-            write_json_file(file_path, _entry)
+            write_json_file(os.path.join(dir_meta_path, "meta.folder.json"), _entry)
+            if body:
+                write_json_file(os.path.join(f"{dir_path}/{entry.shortname}.json"), body)
             continue
 
         dir_meta_path = f"{dir_path}/.dm/{entry.shortname}".replace("//", "/")
@@ -90,8 +96,6 @@ def process_entries(session, space_folder):
 
         file_path = os.path.join(dir_meta_path, f"meta.{entry.resource_type}.json")
         write_json_file(file_path, _entry)
-
-
 
 def process_users(session, space_folder):
     users = session.exec(select(Users)).all()
@@ -162,7 +166,7 @@ def process_histories(session, space_folder):
 def process_spaces(session, space_folder):
     spaces = session.exec(select(Spaces)).all()
     for space in spaces:
-        dir_path = f"{space_folder}/{space.space_name}/.dm/" # Ensure absolute path
+        dir_path = f"{space_folder}/{space.space_name}/.dm/"
         ensure_directory_exists(dir_path)
 
         file_path = os.path.join(dir_path, "meta.space.json")
