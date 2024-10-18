@@ -43,7 +43,7 @@ from utils.helpers import (
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
-from utils.password_hashing import hash_password, verify_password
+from utils.password_hashing import hash_password
 from utils.settings import settings
 from .base_data_adapter import BaseDataAdapter
 
