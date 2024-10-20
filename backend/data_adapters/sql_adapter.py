@@ -1317,6 +1317,8 @@ class SQLAdapter(BaseDataAdapter):
                     ActiveSessions(
                         uuid=uuid4(),
                         shortname=user_shortname,
+                        space_name="management",
+                        subpath="active_sessions",
                         token=token,
                         timestamp=timestamp,
                     )
@@ -1339,6 +1341,8 @@ class SQLAdapter(BaseDataAdapter):
                         uuid=uuid4(),
                         shortname=user_shortname,
                         token=hash_password(token),
+                        space_name="management",
+                        subpath="active_sessions",
                         timestamp=timestamp,
                     )
                 )
