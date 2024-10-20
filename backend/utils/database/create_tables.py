@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import JSON, String, LargeBinary
-from sqlmodel import SQLModel, create_engine, Field
+from sqlalchemy import JSON, LargeBinary
+from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint
 
 from models import core
 from models.enums import ResourceType, UserType, Language
@@ -14,7 +14,10 @@ from utils.settings import settings
 
 
 class Unique(SQLModel, table=False):
-    shortname: str = Field(sa_type=String, unique=True)
+    shortname: str = Field(regex=regex.SHORTNAME) # sa_type=String)
+    space_name: str = Field(regex=regex.SPACENAME)
+    subpath: str = Field(regex=regex.SUBPATH)
+    __table_args__ = (UniqueConstraint("shortname", "space_name", "subpath"),)
 
 
 class Metas(Unique, table=False):
@@ -31,8 +34,6 @@ class Metas(Unique, table=False):
     relationships: list[core.Relationship] | None = Field(default=[], sa_type=JSON)
 
     resource_type: str = Field()
-    space_name: str = Field(regex=regex.SPACENAME)
-    subpath: str = Field(regex=regex.SUBPATH)
 
 
 
@@ -45,7 +46,6 @@ class Users(Metas, table=True):
     type: UserType = Field(default=UserType.web)
     language: Language = Field(default=Language.en)
 
-    space_name: str = Field(regex=regex.SPACENAME)
 
 
 class Roles(Metas, table=True):
@@ -53,7 +53,6 @@ class Roles(Metas, table=True):
 
 
 class Permissions(Metas, table=True):
-    subpaths: dict = Field(default_factory=dict, sa_type=JSON)
     resource_types: list[str] = Field(default_factory=dict, sa_type=JSON)
     actions: list[str] = Field(default_factory=dict, sa_type=JSON)
     conditions: list[str] = Field(default_factory=dict, sa_type=JSON)
@@ -71,20 +70,16 @@ class Entries(Metas, table=True):
     resolution_reason: str | None = None
 
 
-
 class Attachments(Metas, table=True):
     media: bytes | None = Field(None, sa_type=LargeBinary)
 
 
 class Histories(Unique, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    subpath: str = Field(regex=regex.SUBPATH)
     request_headers: dict = Field(default_factory=dict, sa_type=JSON)
     diff: dict = Field(default_factory=dict, sa_type=JSON)
     timestamp: datetime = Field(default_factory=datetime.now)
     owner_shortname: str | None = None
-
-    space_name: str = Field(regex=regex.SPACENAME)
 
     def to_record(
         self,
@@ -136,7 +131,6 @@ class Spaces(Metas, table=True):
 class AggregatedRecord(Unique, table=False):
     resource_type: ResourceType | None = None
     uuid: UUID | None = None
-    subpath: str | None = None
     attributes: dict[str, Any] | None = None
     attachments: dict[ResourceType, list[Any]] | None = None
 
@@ -159,7 +153,6 @@ class Aggregated(Unique, table=False):
     acl: list[core.ACL] | None = None
 
     resource_type: ResourceType | None = None
-    subpath: str | None = None
     attributes: dict[str, Any] | None = None
     attachments: dict[ResourceType, list[Any]] | None = None
 
@@ -199,8 +192,6 @@ class Aggregated(Unique, table=False):
 
 class Locks(Unique, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    space_name: str = Field(regex=regex.SPACENAME)
-    subpath: str = Field(regex=regex.SUBPATH)
     owner_shortname: str = Field(regex=regex.SHORTNAME)
     timestamp: datetime = Field(default_factory=datetime.now)
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSON)
