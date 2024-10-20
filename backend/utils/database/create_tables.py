@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Column, JSON, String, LargeBinary
+from sqlalchemy import JSON, String, LargeBinary
 from sqlmodel import SQLModel, create_engine, Field
 
 from models import core
@@ -76,7 +76,7 @@ class Attachments(Metas, table=True):
     media: bytes | None = Field(None, sa_type=LargeBinary)
 
 
-class Histories(SQLModel, table=True):
+class Histories(Unique, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     subpath: str = Field(regex=regex.SUBPATH)
     request_headers: dict = Field(default_factory=dict, sa_type=JSON)

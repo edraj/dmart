@@ -63,23 +63,39 @@ async def hard_space_check(space):
             subpath = entry.subpath[1:]
             if subpath == "":
                 subpath = "/"
+
+            payload : core.Payload
+            if entry.payload and isinstance(entry.payload, dict):
+                payload = core.Payload.model_validate(entry.payload)
+            elif isinstance(entry.payload, core.Payload):
+                payload = entry.payload
+            else:
+                continue
             
-            if entry is None or entry.payload is None or not entry.payload.body:
+            if not payload.schema_shortname:
                 continue
 
-            if not entry.payload.schema_shortname:
-                continue
-
-            body = entry.payload.body
+            body = payload.body
             schema_data = session.exec(
                 select(Entries)
-              .where(Entries.shortname == entry.payload.schema_shortname)
+              .where(Entries.shortname == payload.schema_shortname)
               .where(Entries.subpath == "/schema")
             ).first()
 
-            if schema_data is None or schema_data.payload is None or not schema_data.payload.body:
+            if not schema_data:
                 continue
-            schema_body = schema_data.payload.body
+
+            schema_payload : core.Payload
+            if schema_data.payload and isinstance(schema_data.payload, dict):
+                schema_payload = core.Payload.model_validate(schema_data.payload)
+            elif schema_data.payload and isinstance(schema_data.payload, core.Payload):
+                schema_payload = schema_data.payload
+            else:
+                continue
+
+            if not schema_payload.body:
+                continue
+            schema_body = schema_payload.body
             if isinstance(schema_body, str):
                 continue
 
