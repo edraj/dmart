@@ -13,7 +13,7 @@ import sqlalchemy
 from fastapi import status
 from fastapi.logger import logger
 from sqlalchemy import text, func
-from sqlmodel import create_engine, Session, select, col
+from sqlmodel import create_engine, Session, select, col, delete
 
 import models.api as api
 import models.core as core
@@ -1228,15 +1228,13 @@ class SQLAdapter(BaseDataAdapter):
                 if not subpath.startswith("/"):
                     subpath = f"/{subpath}"
 
-                result = await self.load(
-                    space_name, subpath, meta.shortname, meta.__class__
-                )
+                result = await self.load(space_name, subpath, meta.shortname, meta.__class__)
                 session.delete(result)
                 if meta.__class__ == core.Space:
-                    statement = select(Entries).where(Entries.space_name == space_name)
-                    session.delete(statement)
-                    statement2 = select(Attachments).where(Attachments.space_name == space_name)
-                    session.delete(statement2)
+                    statement = delete(Entries).where(col(Entries.space_name) == space_name)
+                    session.execute(statement)
+                    statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name)
+                    session.execute(statement2)
                 session.commit()
             except Exception as e:
                 print("[!delete]", e)
@@ -1292,11 +1290,11 @@ class SQLAdapter(BaseDataAdapter):
                     )).model_dump()
                     return lock_payload
                 case LockAction.unlock:
-                    statement = select(Locks) \
-                        .where(Locks.space_name == space_name) \
-                        .where(Locks.subpath == subpath) \
-                        .where(Locks.shortname == shortname)
-                    session.delete(statement)
+                    statement2 = delete(Locks) \
+                        .where(col(Locks.space_name) == space_name) \
+                        .where(col(Locks.subpath) == subpath) \
+                        .where(col(Locks.shortname) == shortname)
+                    session.execute(statement2)
                     session.commit()
         return None
 
@@ -1317,8 +1315,6 @@ class SQLAdapter(BaseDataAdapter):
                     ActiveSessions(
                         uuid=uuid4(),
                         shortname=user_shortname,
-                        space_name="management",
-                        subpath="active_sessions",
                         token=token,
                         timestamp=timestamp,
                     )
@@ -1341,8 +1337,6 @@ class SQLAdapter(BaseDataAdapter):
                         uuid=uuid4(),
                         shortname=user_shortname,
                         token=hash_password(token),
-                        space_name="management",
-                        subpath="active_sessions",
                         timestamp=timestamp,
                     )
                 )
@@ -1394,8 +1388,8 @@ class SQLAdapter(BaseDataAdapter):
     async def remove_sql_active_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = select(ActiveSessions).where(ActiveSessions.shortname == user_shortname)
-                session.delete(statement)
+                statement = delete(ActiveSessions).where(col(ActiveSessions.shortname) == user_shortname)
+                session.execute(statement)
                 session.commit()
                 return True
             except Exception as e:
@@ -1405,8 +1399,8 @@ class SQLAdapter(BaseDataAdapter):
     async def remove_sql_user_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = select(Sessions).where(Sessions.shortname == user_shortname)
-                session.delete(statement)
+                statement = delete(Sessions).where(col(Sessions.shortname) == user_shortname)
+                session.execute(statement)
                 session.commit()
                 return True
             except Exception as e:
