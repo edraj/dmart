@@ -488,14 +488,12 @@ class SQLAdapter(BaseDataAdapter):
 
     def __init__(self):
         self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+        connection_string = f"{self.database_connection_string}/{settings.database_name}"
+        engine = create_engine(connection_string, echo=False)
+        self.session = Session(engine)
+
 
     def get_session(self):
-        if self.session is None:
-            connection_string = (
-                f"{self.database_connection_string}/{settings.database_name}"
-            )
-            engine = create_engine(connection_string, echo=False)
-            self.session = Session(engine)
         return self.session
 
     # def get_model(self, db_record_type: Type[Roles] | Type[Permissions] | Type[Users] | Type[Spaces] | Type[Locks] | Type[Attachments] | Type[Entries]) -> Type[MetaChild]:
