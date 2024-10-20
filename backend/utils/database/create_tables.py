@@ -1,17 +1,15 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
-# type: ignore
 import copy
 from datetime import datetime
 from typing import Optional, Any
 from uuid import UUID
 
-from pydantic import ConfigDict
 from sqlalchemy import Column, JSON, String, LargeBinary
 from sqlmodel import SQLModel, create_engine, Field
 
 from models import core
-from models.core import Meta, User, Space, Record, Translation, Payload, Relationship, ACL
-from models.enums import ResourceType
+# from models.core import Record, Translation, Payload, Relationship, ACL
+from models.enums import ResourceType, UserType, Language
 from utils import regex
 from utils.settings import settings
 
@@ -20,52 +18,51 @@ class Unique(SQLModel, table=False):
     shortname: str = Field(sa_column=Column("shortname", String, unique=True))
 
 
-class MetaF(Meta, Unique, SQLModel, table=False):
+class Metas(Unique, table=False):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    displayname: Optional[dict] = Field(default={}, sa_type=JSON)
-    description: dict | None = Field(default={}, sa_type=JSON)
+    is_active: bool = False
+    displayname: Optional[core.Translation] = Field(default={}, sa_type=JSON)
+    description: Optional[core.Translation] = Field(default={}, sa_type=JSON)
     tags: list[str] = Field(default_factory=dict, sa_type=JSON)
-    acl: list[dict] | None = Field(default=[], sa_type=JSON)
-    payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSON)
-    relationships: list[dict] | None = Field(default=[], sa_type=JSON)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    owner_shortname: str | None = None
+    acl: list[core.ACL] | None = Field(default=[], sa_type=JSON)
+    payload: core.Payload | None = Field(default_factory=None, sa_type=JSON)
+    relationships: list[core.Relationship] | None = Field(default=[], sa_type=JSON)
 
     resource_type: str = Field()
     space_name: str = Field(regex=regex.SPACENAME)
-
-
-class Users(MetaF, User, SQLModel, table=True):
-    roles: list[str] = Field(default_factory=dict, sa_type=JSON)
-    groups: list[str] = Field(default_factory=dict, sa_type=JSON)
-    acl: list[dict] | None = Field(default=[], sa_type=JSON)
-    relationships: list[dict] | None = Field(default_factory=None, sa_type=JSON)
-    type: str = Field()
-    language: str = Field()
-
-    space_name: str = Field(regex=regex.SPACENAME)
-
-
-class Roles(MetaF, SQLModel, table=True):
-    permissions: list[str] = Field(default_factory=dict, sa_type=JSON)
     subpath: str = Field(regex=regex.SUBPATH)
 
+
+
+class Users(Metas, table=True):
+    password: str | None = None
+    roles: list[str] = Field(default_factory=dict, sa_type=JSON)
+    groups: list[str] = Field(default_factory=dict, sa_type=JSON)
+    acl: list[core.ACL] | None = Field(default=[], sa_type=JSON)
+    relationships: list[core.Relationship] | None = Field(default_factory=None, sa_type=JSON)
+    type: UserType = Field(default=UserType.web)
+    language: Language = Field(default=Language.en)
+
     space_name: str = Field(regex=regex.SPACENAME)
 
 
-class Permissions(MetaF, SQLModel, table=True):
+class Roles(Metas, table=True):
+    permissions: list[str] = Field(default_factory=dict, sa_type=JSON)
+
+
+class Permissions(Metas, table=True):
     subpaths: dict = Field(default_factory=dict, sa_type=JSON)
     resource_types: list[str] = Field(default_factory=dict, sa_type=JSON)
     actions: list[str] = Field(default_factory=dict, sa_type=JSON)
     conditions: list[str] = Field(default_factory=dict, sa_type=JSON)
     restricted_fields: list[str] | None = Field(default_factory=None, sa_type=JSON)
     allowed_fields_values: dict | list[dict] | None = Field(default_factory=None, sa_type=JSON)
-    subpath: str = Field(regex=regex.SUBPATH)
-
-    space_name: str = Field(regex=regex.SPACENAME)
 
 
-class Entries(MetaF, SQLModel, table=True):
-    subpath: str = Field(regex=regex.SUBPATH)
-    space_name: str = Field(regex=regex.SPACENAME)
+class Entries(Metas, table=True):
     # Tickets
     state: str | None = None
     is_open: bool | None = None
@@ -76,19 +73,17 @@ class Entries(MetaF, SQLModel, table=True):
 
 
 
-class Attachments(MetaF, SQLModel, table=True):
-    subpath: str = Field(regex=regex.SUBPATH)
-    space_name: str = Field(regex=regex.SPACENAME)
+class Attachments(Metas, table=True):
     media: bytes | None = Field(None, sa_type=LargeBinary)
 
 
-class Histories(SQLModel, table=True):
+class Histories(Unique, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    shortname: str = Field(regex=regex.SHORTNAME)
     subpath: str = Field(regex=regex.SUBPATH)
     request_headers: dict = Field(default_factory=dict, sa_type=JSON)
     diff: dict = Field(default_factory=dict, sa_type=JSON)
     timestamp: datetime = Field(default_factory=datetime.now)
+    owner_shortname: str | None = None
 
     space_name: str = Field(regex=regex.SPACENAME)
 
@@ -97,7 +92,7 @@ class Histories(SQLModel, table=True):
         subpath: str,
         shortname: str,
         include: list[str] = [],
-    ) -> Record:
+    ) -> core.Record:
         # Sanity check
 
         if self.shortname != shortname:
@@ -121,16 +116,16 @@ class Histories(SQLModel, table=True):
 
         record_fields["attributes"] = attributes
 
-        return Record(**record_fields)
+        return core.Record(**record_fields)
 
 
-class Spaces(MetaF, Space, SQLModel, table=True):
+class Spaces(Metas, table=True):
     root_registration_signature: str = ""
     primary_website: str = ""
     indexing_enabled: bool = False
     capture_misses: bool = False
     check_health: bool = False
-    languages: list[str] | None = Field(default_factory=None, sa_type=JSON)
+    languages: list[Language] = Field(default_factory=None, sa_type=JSON)
     icon: str = ""
     mirrors: list[str] | None = Field(default_factory=None, sa_type=JSON)
     hide_folders: list[str] | None = Field(default_factory=None, sa_type=JSON)
@@ -139,32 +134,30 @@ class Spaces(MetaF, Space, SQLModel, table=True):
     ordinal: int | None = None
 
 
-class AggregatedRecord(SQLModel, table=False):
+class AggregatedRecord(Unique, table=False):
     resource_type: ResourceType | None = None
     uuid: UUID | None = None
-    shortname: str | None = None
     subpath: str | None = None
     attributes: dict[str, Any] | None = None
     attachments: dict[ResourceType, list[Any]] | None = None
 
-    model_config = ConfigDict(extra="allow", validate_assignment=False)
+    # model_config = ConfigDict(extra="allow", validate_assignment=False)
 
 
-class Aggregated(SQLModel, table=False):
+class Aggregated(Unique, table=False):
     uuid: UUID | None = None
-    shortname: str | None = None
     slug: str | None = None
     is_active: bool | None = None
-    displayname: Translation | None = None
-    description: Translation | None = None
+    displayname: core.Translation | None = None
+    description: core.Translation | None = None
     tags: list[str]| None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     owner_shortname: str | None = None
     owner_group_shortname: str | None = None
-    payload: Payload | None = None
-    relationships: list[Relationship] | None = None
-    acl: list[ACL] | None = None
+    payload: core.Payload | None = None
+    relationships: list[core.Relationship] | None = None
+    acl: list[core.ACL] | None = None
 
     resource_type: ResourceType | None = None
     subpath: str | None = None
@@ -173,7 +166,7 @@ class Aggregated(SQLModel, table=False):
 
     __extra__: Any | None = None
 
-    model_config = ConfigDict(extra="allow", validate_assignment=False)
+    # model_config = ConfigDict(extra="allow", validate_assignment=False)
 
     def to_record(
         self,
@@ -205,13 +198,13 @@ class Aggregated(SQLModel, table=False):
         return AggregatedRecord(**record_fields)
 
 
-class Locks(SQLModel, table=True):
+class Locks(Unique, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     space_name: str = Field(regex=regex.SPACENAME)
-    shortname: str = Field(regex=regex.SHORTNAME)
     subpath: str = Field(regex=regex.SUBPATH)
     owner_shortname: str = Field(regex=regex.SHORTNAME)
     timestamp: datetime = Field(default_factory=datetime.now)
+    payload: core.Payload | None = Field(default_factory=None, sa_type=JSON)
 
 
 class Sessions(SQLModel, table=True):

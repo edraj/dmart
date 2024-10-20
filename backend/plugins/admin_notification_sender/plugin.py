@@ -1,6 +1,5 @@
 import json
 from sys import modules as sys_modules
-from typing import Any
 
 from models import api
 from models.core import Notification, NotificationData, PluginBase, Event, Translation
@@ -42,12 +41,13 @@ class Plugin(PluginBase):
         notification_dict = notification_request_meta.dict()
         notification_dict["subpath"] = data.subpath
         if settings.active_data_db == "file":
-            notification_request_payload: dict[str, Any] = await db.load_resource_payload(
+            mypayload = await db.load_resource_payload(
                 data.space_name,
                 data.subpath,
                 notification_request_meta.payload.body,
                 getattr(sys_modules["models.core"], camel_case(data.resource_type)),
             )
+            notification_request_payload = mypayload if mypayload else {}
         else:
             notification_request_payload = notification_request_meta.payload.body
 
@@ -72,10 +72,10 @@ class Plugin(PluginBase):
         if total == 0:
             return
 
-        receivers = receivers[0].model_dump()
+        sub_receivers: dict = receivers[0].model_dump()
 
         receivers_shortnames = set()
-        for receiver in receivers["data"]:
+        for receiver in sub_receivers["data"]:
             receivers_shortnames.add(json.loads(receiver)["shortname"])
 
         # await send_notification(
