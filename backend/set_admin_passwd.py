@@ -8,6 +8,7 @@ import getpass
 import subprocess
 import utils.regex as regex
 import re
+from sqlmodel import select
 
 
 users : dict[str, dict]= {"dmart":{}, "alibaba": {}}
@@ -33,19 +34,16 @@ if settings.active_data_db == "file":
 else:
     with SQLAdapter().get_session() as session:
         for key in users.keys():
-            session.query(Users).filter(Users.shortname == key).update(
-                {Users.password: hashed, Users.is_active: True}
-            ) # type: ignore
+            statement = select(Users).where(Users.shortname == key)
+            user = session.exec(statement).one()
+            user.password=hashed
+            user.is_active=True
+            session.add(user)
             session.commit()
 
 
+
 with open("./login_creds.sh", 'w') as creds:
-    subprocess.run(
-            [
-                "sed", 
-                f"s/xxxx/{password}/g", 
-                "login_creds.sh.sample"
-                ], 
-            stdout=creds)
+    subprocess.run( [ "sed", f"s/xxxx/{password}/g", "login_creds.sh.sample" ], stdout=creds)
 print("Done")
 
