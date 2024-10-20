@@ -3,9 +3,9 @@ import copy
 from datetime import datetime
 from typing import Any
 from uuid import UUID
-
 from sqlalchemy import JSON, LargeBinary
 from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint
+from pydantic import ConfigDict
 
 from models import core
 from models.enums import ResourceType, UserType, Language
@@ -18,13 +18,14 @@ class Unique(SQLModel, table=False):
     space_name: str = Field(regex=regex.SPACENAME)
     subpath: str = Field(regex=regex.SUBPATH)
     __table_args__ = (UniqueConstraint("shortname", "space_name", "subpath"),)
+    model_config = ConfigDict(validate_assignment=True)  # type: ignore
 
 
 class Metas(Unique, table=False):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     is_active: bool = False
-    displayname: dict = Field(default={}, sa_type=JSON)
-    description: dict = Field(default={}, sa_type=JSON)
+    displayname: dict | core.Translation | None = Field(default=None, sa_type=JSON)
+    description: dict | core.Translation | None = Field(default=None, sa_type=JSON)
     tags: list[str] = Field(default_factory=dict, sa_type=JSON)
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -53,6 +54,7 @@ class Roles(Metas, table=True):
 
 
 class Permissions(Metas, table=True):
+    subpaths: dict = Field(default_factory=dict, sa_type=JSON)
     resource_types: list[str] = Field(default_factory=dict, sa_type=JSON)
     actions: list[str] = Field(default_factory=dict, sa_type=JSON)
     conditions: list[str] = Field(default_factory=dict, sa_type=JSON)
@@ -119,7 +121,7 @@ class Spaces(Metas, table=True):
     indexing_enabled: bool = False
     capture_misses: bool = False
     check_health: bool = False
-    languages: list[Language] = Field(default_factory=None, sa_type=JSON)
+    languages: list[Language] = Field(default_factory=list, sa_type=JSON)
     icon: str = ""
     mirrors: list[str] | None = Field(default_factory=None, sa_type=JSON)
     hide_folders: list[str] | None = Field(default_factory=None, sa_type=JSON)
@@ -197,13 +199,15 @@ class Locks(Unique, table=True):
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSON)
 
 
-class Sessions(Unique, SQLModel, table=True):
+class Sessions(SQLModel, table=True):
+    shortname: str = Field(regex=regex.SHORTNAME, unique=True)
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     token: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
-class ActiveSessions(Unique, SQLModel, table=True):
+class ActiveSessions(SQLModel, table=True):
+    shortname: str = Field(regex=regex.SHORTNAME, unique=True)
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     token: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
