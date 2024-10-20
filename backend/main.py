@@ -202,8 +202,8 @@ def set_middleware_response_headers(request, response):
         "Access-Control-Allow-Origin"
     ] = f"{origin.scheme}://{origin.netloc}"
 
-    if "localhost" in response.headers["Access-Control-Allow-Origin"]:
-        response.headers["Access-Control-Allow-Origin"] = "*"
+    # if "localhost" in response.headers["Access-Control-Allow-Origin"]:
+    #     response.headers["Access-Control-Allow-Origin"] = "*"
 
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Headers"] = "content-type, charset, authorization, accept-language, content-length"
@@ -434,7 +434,7 @@ async def main():
     config.logconfig_dict = logging_schema
     config.errorlog = logger
 
-    await serve(ASGIApp(app), config)  # type: ignore
+    await serve(app, config)
 
 
 if __name__ == "__main__":

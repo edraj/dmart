@@ -1,34 +1,33 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 import copy
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import Column, JSON, String, LargeBinary
 from sqlmodel import SQLModel, create_engine, Field
 
 from models import core
-# from models.core import Record, Translation, Payload, Relationship, ACL
 from models.enums import ResourceType, UserType, Language
 from utils import regex
 from utils.settings import settings
 
 
 class Unique(SQLModel, table=False):
-    shortname: str = Field(sa_column=Column("shortname", String, unique=True))
+    shortname: str = Field(sa_type=String, unique=True)
 
 
 class Metas(Unique, table=False):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     is_active: bool = False
-    displayname: Optional[core.Translation] = Field(default={}, sa_type=JSON)
-    description: Optional[core.Translation] = Field(default={}, sa_type=JSON)
+    displayname: dict = Field(default={}, sa_type=JSON)
+    description: dict = Field(default={}, sa_type=JSON)
     tags: list[str] = Field(default_factory=dict, sa_type=JSON)
     created_at: datetime | None = None
     updated_at: datetime | None = None
     owner_shortname: str | None = None
     acl: list[core.ACL] | None = Field(default=[], sa_type=JSON)
-    payload: core.Payload | None = Field(default_factory=None, sa_type=JSON)
+    payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSON)
     relationships: list[core.Relationship] | None = Field(default=[], sa_type=JSON)
 
     resource_type: str = Field()
@@ -77,7 +76,7 @@ class Attachments(Metas, table=True):
     media: bytes | None = Field(None, sa_type=LargeBinary)
 
 
-class Histories(Unique, table=True):
+class Histories(SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     subpath: str = Field(regex=regex.SUBPATH)
     request_headers: dict = Field(default_factory=dict, sa_type=JSON)
@@ -148,14 +147,14 @@ class Aggregated(Unique, table=False):
     uuid: UUID | None = None
     slug: str | None = None
     is_active: bool | None = None
-    displayname: core.Translation | None = None
-    description: core.Translation | None = None
+    displayname: dict | core.Translation | None = Field(default_factory=None, sa_type=JSON)
+    description: dict | core.Translation | None = Field(default_factory=None, sa_type=JSON)
     tags: list[str]| None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     owner_shortname: str | None = None
     owner_group_shortname: str | None = None
-    payload: core.Payload | None = None
+    payload: dict | core.Payload | None = None
     relationships: list[core.Relationship] | None = None
     acl: list[core.ACL] | None = None
 
@@ -204,19 +203,17 @@ class Locks(Unique, table=True):
     subpath: str = Field(regex=regex.SUBPATH)
     owner_shortname: str = Field(regex=regex.SHORTNAME)
     timestamp: datetime = Field(default_factory=datetime.now)
-    payload: core.Payload | None = Field(default_factory=None, sa_type=JSON)
+    payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSON)
 
 
-class Sessions(SQLModel, table=True):
+class Sessions(Unique, SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    shortname: str = Field(regex=regex.SHORTNAME)
     token: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
-class ActiveSessions(SQLModel, table=True):
+class ActiveSessions(Unique, SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    shortname: str = Field(regex=regex.SHORTNAME)
     token: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
 
