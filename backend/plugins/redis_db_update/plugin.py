@@ -9,6 +9,7 @@ from utils.redis_services import RedisServices
 from fastapi.logger import logger
 from create_index import main as reload_redis
 from utils.settings import settings
+from typing import Any
 
 
 class Plugin(PluginBase):
@@ -95,18 +96,19 @@ class Plugin(PluginBase):
                 meta_doc_id, meta_json = redis_services.prepare_meta_doc(
                     data.space_name, data.subpath, meta
                 )
-                payload = {}
+                payload: dict[str, Any] = {}
                 if (
                     meta.payload
                     and meta.payload.content_type == ContentType.json
                     and meta.payload.body is not None
                 ):
-                    payload = await db.load_resource_payload(
+                    mypayload = await db.load_resource_payload(
                         space_name=data.space_name,
                         subpath=data.subpath,
                         filename=str(meta.payload.body),
                         class_type=class_type,
                     )
+                    payload = mypayload if mypayload else {}
 
                 meta_json["payload_string"] = await generate_payload_string(
                     space_name=data.space_name,

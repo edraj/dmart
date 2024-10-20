@@ -30,9 +30,9 @@ engine = create_engine(f"{postgresql_url}/postgres", echo=False, isolation_level
 
 
 try:
-    s = Session(engine)
+    session = Session(engine)
     sql = f"CREATE DATABASE {settings.database_name}"
-    s.exec(text(sql))  # type: ignore
+    session.execute(text(sql))
     engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 except Exception as e:
     print(e)
@@ -69,7 +69,7 @@ with Session(engine) as session:
                     if payload := entry.get('payload', {}).get('body', None):
                         if entry.get('payload', {}).get('content_type', None) == 'json':
                             body = json.load(open(
-                                os.path.join(root, dir, '../..', payload) # type: ignore
+                                os.path.join(root, str(dir), '../..', str(payload))
                             ))
                         else:
                             body = payload

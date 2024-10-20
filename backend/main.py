@@ -29,6 +29,7 @@ from hypercorn.asyncio import serve
 from hypercorn.config import Config
 from starlette.concurrency import iterate_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.types import ASGIApp
 import models.api as api
 from utils.settings import settings
 from asgi_correlation_id import CorrelationIdMiddleware
@@ -433,7 +434,7 @@ async def main():
     config.logconfig_dict = logging_schema
     config.errorlog = logger
 
-    await serve(app, config)  # type: ignore
+    await serve(ASGIApp(app), config)  # type: ignore
 
 
 if __name__ == "__main__":
