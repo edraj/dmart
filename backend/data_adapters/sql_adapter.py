@@ -453,7 +453,7 @@ def set_table_for_query(query):
 
 
 class SQLAdapter(BaseDataAdapter):
-    session: Session = None
+    session: Session 
 
     def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
         locators: list[core.Locator] = []
