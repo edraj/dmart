@@ -390,9 +390,7 @@ async def update_state(
         class_type=core.Ticket,
         user_shortname=logged_in_user,
     )
-    ticket_obj: core.Ticket = core.Ticket.model_validate(
-        ticket_raw.model_dump()
-    )
+    ticket_obj: core.Ticket = ticket_raw
 
     if ticket_obj.payload is None or ticket_obj.payload.body is None:
         raise api.Exception(
@@ -1031,10 +1029,7 @@ async def lock_entry(
                 user_shortname=logged_in_user,
             )
 
-        meta = core.Ticket.model_validate(
-            mm.model_dump()
-        )
-
+        meta = mm
         meta.collaborators = meta.collaborators if meta.collaborators else {}
         if meta.collaborators.get("processed_by") != logged_in_user:
             meta.collaborators["processed_by"] = logged_in_user
@@ -1268,15 +1263,13 @@ async def apply_alteration(
         on_entry: core.Record,
         logged_in_user=Depends(JWTBearer()),
 ):
-    alteration_meta = core.Alteration.model_validate(
-        await db.load(
+    alteration_meta = await db.load(
             space_name=space_name,
             subpath=f"{on_entry.subpath}/{on_entry.shortname}",
             shortname=alteration_name,
             class_type=core.Alteration,
             user_shortname=logged_in_user,
         )
-    )
     entry_meta: core.Meta = await db.load(
         space_name=space_name,
         subpath=f"{on_entry.subpath}",
