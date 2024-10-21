@@ -206,14 +206,12 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     ),
                 )
 
-            user = core.User.model_validate(
-                await db.load(
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    shortname=shortname,
-                    class_type=core.User,
-                    user_shortname=shortname,
-                )
+            user = await db.load(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                class_type=core.User,
+                user_shortname=shortname,
             )
             if (
                 request.shortname != user.shortname
@@ -256,14 +254,12 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                             message="Invalid username or password [1]",
                         ),
                     )
-            user = core.User.model_validate(
-                await db.load(
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    shortname=shortname,
-                    class_type=core.User,
-                    user_shortname=shortname,
-                )
+            user = await db.load(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                class_type=core.User,
+                user_shortname=shortname,
             )
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
         if (
@@ -279,6 +275,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             await clear_failed_password_attempts(shortname)
             
             record = await process_user_login(user, response, user_updates, request.firebase_token)
+            print(f"{record=}")
             await plugin_manager.after_action(
                 core.Event(
                     space_name=MANAGEMENT_SPACE,
@@ -330,13 +327,13 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
         )
     )
 
-    user = core.User.model_validate(await db.load(
+    user = await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    ))
+    )
     attributes: dict[str, Any] = {}
     if user.email:
         attributes["email"] = user.email
@@ -437,13 +434,13 @@ async def update_profile(
         )
     )
 
-    user = core.User.model_validate(await db.load(
+    user = await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    ))
+    )
 
     old_version_flattend = flatten_dict(user.model_dump())
 
@@ -540,15 +537,13 @@ async def logout(
     await remove_active_session(shortname)
     await remove_user_session(shortname)
 
-    user = core.User.model_validate(
-        await db.load(
+    user = await db.load(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             class_type=core.User,
             user_shortname=shortname,
         )
-    )
     if user.firebase_token:
         await repository.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
@@ -616,13 +611,13 @@ async def otp_request(
     """Request new OTP"""
 
     result = user_request.check_fields()
-    user = core.User.model_validate(await db.load(
+    user = await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    ))
+    )
     exception = api.Exception(
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
@@ -675,13 +670,13 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             ),
         )
 
-    user = core.User.model_validate(await db.load(
+    user = await db.load(
         space_name=MANAGEMENT_SPACE,
         subpath=USERS_SUBPATH,
         shortname=shortname,
         class_type=core.User,
         user_shortname=shortname,
-    ))
+    )
 
     """
     # Do not set the "force_password_change" flag right away
@@ -842,15 +837,13 @@ async def user_reset(
     logged_user=Depends(JWTBearer()),
 ) -> api.Response:
 
-    user = core.User.model_validate(
-        await db.load(
+    user = await db.load(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             class_type=core.User,
             user_shortname=shortname,
         )
-    )
     if not await access_control.check_access(
         user_shortname=logged_user,
         space_name=MANAGEMENT_SPACE,
@@ -933,10 +926,8 @@ async def validate_password(
     password: str, shortname=Depends(JWTBearer())
 ) -> api.Response:
     """Validate Password"""
-    user = core.User.model_validate(
-        await db.load(
-            MANAGEMENT_SPACE, USERS_SUBPATH, shortname, core.User, shortname
-        )
+    user = await db.load(
+        MANAGEMENT_SPACE, USERS_SUBPATH, shortname, core.User, shortname
     )
     if user and password_hashing.verify_password(password, user.password or ""):
         return api.Response(status=api.Status.success)

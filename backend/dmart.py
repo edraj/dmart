@@ -350,7 +350,7 @@ match sys.argv[0]:
 
         args = parser.parse_args()
         before_time = time.time()
-        asyncio.run(health_check(args.type, args.space, args.schemas, "master"))  # type: ignore
+        asyncio.run(health_check(args.type, args.space, args.schemas))
         print(f'total time: {"{:.2f}".format(time.time() - before_time)} sec')
     case "create-index":
         parser = argparse.ArgumentParser(

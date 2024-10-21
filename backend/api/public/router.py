@@ -158,7 +158,7 @@ async def retrieve_entry_meta(
         class_type=resource_class,
     )
 
-    if meta.payload and meta.payload.schema_shortname:
+    if meta.payload and meta.payload.schema_shortname and payload_body:
         await validate_payload_with_schema(
             payload_data=payload_body,
             space_name=space_name,
@@ -208,7 +208,7 @@ async def retrieve_entry_or_attachment_payload(
     )
 
     cls = getattr(sys.modules["models.core"], camel_case(resource_type))
-    meta: core.Meta = await db.load(
+    meta = await db.load(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
@@ -266,12 +266,13 @@ async def retrieve_entry_or_attachment_payload(
         )
         return FileResponse(payload_path / str(meta.payload.body))
 
-    if meta.payload.content_type == ContentType.json:
+    if meta.payload.content_type == ContentType.json and isinstance(meta.payload.body, dict):
         return api.Response(
             status=api.Status.success,
-            attributes=meta.payload.body, # type: ignore
+            attributes=meta.payload.body
         )
-    return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type)) # type: ignore
+
+    return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type))
 
 
 
@@ -502,12 +503,13 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
             ),
         )
 
-    query_dict: dict[str, Any] = await db.load_resource_payload(
+    mydict = await db.load_resource_payload(
         space_name=space_name,
         subpath=record.subpath,
         filename=str(meta.payload.body),
         class_type=core.Content,
     )
+    query_dict = mydict if mydict else {}
 
     if meta.payload.schema_shortname == "report":
         query_dict = query_dict["query"]

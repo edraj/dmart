@@ -1,4 +1,6 @@
 {
+  "venvPath": "/home/kefah",
+  "venv": ".venv",
   "exclude": [
     "loadtest",
     "pytests"

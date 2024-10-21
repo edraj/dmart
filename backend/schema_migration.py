@@ -89,7 +89,7 @@ async def change_field_type(
             continue
         
         resource_payload_keys = helpers.flatten_dict(resource_payload)
-        if field not in resource_payload_keys:
+        if field not in resource_payload_keys or not resource_payload:
             continue
         
         # 5.2-parse field's old_type to new_type
@@ -148,13 +148,15 @@ async def main(
     ):
         print(f"Invalid schema file: \n{schema_model.model_dump_json()}")
         return
-    schema_payload: dict = await db.load_resource_payload(
+    schema_payload = await db.load_resource_payload(
         space_name=space,
         subpath="schema",
         filename=schema_model.payload.body,
         class_type=Schema
     )
     
+    if not schema_payload: 
+        return
     
     # 2-make sure field with old_type exist
     field_tree = field.split(".")

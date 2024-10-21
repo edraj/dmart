@@ -5,6 +5,7 @@ import asyncio
 
 from jsonschema import ValidationError
 from jsonschema.validators import Draft7Validator
+
 import time
 from sqlmodel import select
 from data_adapters.sql_adapter import SQLAdapter
@@ -36,17 +37,20 @@ async def main(health_type: str, space_param: str, schemas_param: list):
         return
 
     spaces = await db.get_spaces()
+    spaces_names : list = []
     print(f"{spaces=}")
     if space_param != "all":
         if space_param not in spaces.keys():
             print(f"space name {space_param} is not found")
             return
-        spaces = [spaces[space_param]]
+        spaces_names = [spaces[space_param]]
+    else:
+        spaces_names = list(spaces.keys())
 
     if health_type == "soft":
         pass
     elif health_type == "hard":
-        for space in spaces:
+        for space in spaces_names:
             await hard_space_check(space)
 
 
@@ -60,22 +64,39 @@ async def hard_space_check(space):
             if subpath == "":
                 subpath = "/"
 
-            if entry is None or entry.payload is None \
-                    or not entry.payload.get("body", None): # type: ignore
+            payload : core.Payload
+            if entry.payload and isinstance(entry.payload, dict):
+                payload = core.Payload.model_validate(entry.payload)
+            elif isinstance(entry.payload, core.Payload):
+                payload = entry.payload
+            else:
+                continue
+            
+            if not payload.schema_shortname:
                 continue
 
-            if not entry.payload.get("schema_shortname", None): # type: ignore
-                continue
-
-            body = entry.payload["body"] # type: ignore
+            body = payload.body
             schema_data = session.exec(
                 select(Entries)
-              .where(Entries.shortname == entry.payload["schema_shortname"]) # type: ignore
+              .where(Entries.shortname == payload.schema_shortname)
               .where(Entries.subpath == "/schema")
-            ).first() # type: ignore
+            ).first()
 
-            if schema_data is None or schema_data.payload is None \
-                    or not schema_data.payload.get("body", None): # type: ignore
+            if not schema_data:
+                continue
+
+            schema_payload : core.Payload
+            if schema_data.payload and isinstance(schema_data.payload, dict):
+                schema_payload = core.Payload.model_validate(schema_data.payload)
+            elif schema_data.payload and isinstance(schema_data.payload, core.Payload):
+                schema_payload = schema_data.payload
+            else:
+                continue
+
+            if not schema_payload.body:
+                continue
+            schema_body = schema_payload.body
+            if isinstance(schema_body, str):
                 continue
 
             if subpath not in folders_report:
@@ -85,7 +106,7 @@ async def hard_space_check(space):
 
             try:
                 Draft7Validator(
-                    schema_data.payload.get("body", {}) # type: ignore
+                    schema_body
                 ).validate(body)
                 folders_report[subpath]["valid_entries"] += 1
             except ValidationError as e:

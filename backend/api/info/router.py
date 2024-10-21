@@ -14,11 +14,11 @@ from utils.jwt import JWTBearer
 router = APIRouter()
 
 git_info = None
+service_start_time: datetime = datetime.now()
 if __file__.endswith(".pyc"):
     info = open(Path(__file__).resolve().parent.parent.parent / "info.json")
     git_info = json.load(info)
 else:
-    service_start_time: datetime = datetime.now()
     branch_cmd = "git rev-parse --abbrev-ref HEAD"
     result, _ = subprocess.Popen(branch_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     branch = None if result is None or len(result) == 0 else result.decode().strip()

@@ -117,7 +117,7 @@ async def archive(space: str, subpath: str, schema: str, olderthan: int):
                             record["subpath"],
                         )
                 except Exception as e:
-                    print(f"Error archiving {record.get('shortname')}: {e} at line {sys.exc_info()[-1].tb_lineno}") # type: ignore
+                    print(f"Error archiving {record.get('shortname')}: {e} at line {sys.exc_info()[-1]}")
                     continue
             print(f'Processed {counter}')
     await RedisServices().close_pool()

@@ -80,7 +80,7 @@ class Plugin(PluginBase):
         if total == 0:
             return
 
-        matching_notification_requests = matching_notification_requests[0].model_dump()
+        sub_matching_notification_requests = matching_notification_requests[0].model_dump()
 
         # 2- get list of subscribed users
         notification_subscribers = [entry["owner_shortname"]]
@@ -109,7 +109,7 @@ class Plugin(PluginBase):
 
         # 3- send the notification
         notification_manager = NotificationManager()
-        for redis_document in matching_notification_requests["data"]:
+        for redis_document in sub_matching_notification_requests["data"]:
             notification_dict = json.loads(redis_document)
             if (
                 "state" in entry

@@ -1,4 +1,5 @@
 import sys
+from typing import Any
 import aiofiles
 from utils.middleware import get_request_data
 from models.core import ActionType, PluginBase, Event, Payload
@@ -43,7 +44,7 @@ class Plugin(PluginBase):
 
         action_attributes = {}
         if data.action_type == ActionType.create:
-            payload = {}
+            payload: dict[str,Any] = {}
             if(
                 entry.payload and
                 isinstance(entry.payload, Payload) and
@@ -51,12 +52,13 @@ class Plugin(PluginBase):
                 entry.payload.content_type == ContentType.json
                 and entry.payload.body
             ):
-                payload = await db.load_resource_payload(
+                mypayload = await db.load_resource_payload(
                     space_name=data.space_name,
                     subpath=data.subpath,
                     filename=entry.payload.body if isinstance(entry.payload.body, str) else data.shortname,
                     class_type=class_type,
                 )
+                payload = mypayload if mypayload else {}
             action_attributes = self.generate_create_event_attributes(entry, payload)
 
         elif data.action_type == ActionType.update:
