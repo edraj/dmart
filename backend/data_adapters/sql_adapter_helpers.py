@@ -13,7 +13,7 @@ from utils.database.create_tables import (
     Roles,
     Users,
     Spaces,
-    Aggregated, Locks, Attachments
+    Aggregated
 )
 from utils.helpers import (
     str_to_datetime,

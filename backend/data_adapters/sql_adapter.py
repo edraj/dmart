@@ -17,7 +17,6 @@ import models.api as api
 import models.core as core
 from models.enums import QueryType, LockAction, ResourceType, SortType, ContentType
 from utils.database.create_tables import (
-    Metas,
     ActiveSessions,
     Entries,
     FailedLoginAttempts,
@@ -30,7 +29,7 @@ from utils.database.create_tables import (
     Locks,
     Sessions,
     Invitations,
-    URLShorts, MetasMinified,
+    URLShorts, 
 )
 from utils.helpers import (
     arr_remove_common,
@@ -397,7 +396,7 @@ class SQLAdapter(BaseDataAdapter):
             path = path / subpath
         return path
 
-    async def load_or_none(
+    async def db_load_or_none(
             self,
             space_name: str,
             subpath: str,
@@ -405,7 +404,7 @@ class SQLAdapter(BaseDataAdapter):
             class_type: Type[MetaChild],
             user_shortname: str | None = None,
             schema_shortname: str | None = None,
-    ) -> MetaChild | None:
+    ) -> Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None:
         """Load a Meta Json according to the reuqested Class type"""
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
@@ -421,7 +420,7 @@ class SQLAdapter(BaseDataAdapter):
             elif table in [Entries, Attachments]:
                 statement = statement.where(table.shortname == shortname).where(table.subpath == subpath)
 
-            result = session.exec(statement).one_or_none()
+            result : Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None = session.exec(statement).one_or_none()
             if result is None:
                 return None
 
@@ -517,6 +516,31 @@ class SQLAdapter(BaseDataAdapter):
                 )
         return (total, results)
 
+    async def load_or_none(
+            self,
+            space_name: str,
+            subpath: str,
+            shortname: str,
+            class_type: Type[MetaChild],
+            user_shortname: str | None = None,
+            schema_shortname: str | None = None,
+    ) -> MetaChild | None:
+
+            result = await self.db_load_or_none(space_name, subpath, shortname, class_type, user_shortname,schema_shortname)
+            if not result:
+                return None
+
+            try:
+                if hasattr(result, 'payload') and result.payload and isinstance(result.payload, dict):
+                    if result.payload.get("body", None) is None:
+                        result.payload["body"] = {}
+                    result.payload = core.Payload.model_validate( result.payload, strict=False)
+            except Exception as e:
+                print("[!load]", e)
+                logger.error(f"Failed parsing an entry. Error: {e}")
+            return class_type.model_validate(result.model_dump())
+            
+
     async def load(
             self,
             space_name: str,
@@ -526,9 +550,7 @@ class SQLAdapter(BaseDataAdapter):
             user_shortname: str | None = None,
             schema_shortname: str | None = None,
     ) -> MetaChild:
-        meta: MetaChild | None = await self.load_or_none(
-            space_name, subpath, shortname, class_type, user_shortname, schema_shortname
-        )
+        meta: MetaChild | None = await self.load_or_none(space_name, subpath, shortname, class_type, user_shortname, schema_shortname)
         if meta is None:
             raise api.Exception(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -538,18 +560,8 @@ class SQLAdapter(BaseDataAdapter):
                     message=f"Request object is not available @{space_name}/{subpath}/{shortname} {class_type=} {schema_shortname=}",
                 ),
             )
-        try:
-            if hasattr(meta, 'payload') and meta.payload and isinstance(meta.payload, dict):
-                if meta.payload.get("body", None) is None:
-                    meta.payload["body"] = {}
-                meta.payload = core.Payload.model_validate(
-                    meta.payload, strict=False
-                )
-        except Exception as e:
-            print("[!load]", e)
-            logger.error(f"Failed parsing an entry. Error: {e}")
 
-        return class_type.model_validate(meta.model_dump())
+        return meta 
 
     async def load_resource_payload(
             self,
@@ -632,12 +644,8 @@ class SQLAdapter(BaseDataAdapter):
                 ),
             )
 
-    async def create(
-            self, space_name: str, subpath: str, meta: core.Meta
-    ):
-        result = await self.load_or_none(
-            space_name, subpath, meta.shortname, meta.__class__
-        )
+    async def create(self, space_name: str, subpath: str, meta: core.Meta):
+        result = await self.load_or_none(space_name, subpath, meta.shortname, meta.__class__)
 
         if result is not None:
             raise api.Exception(
@@ -696,7 +704,7 @@ class SQLAdapter(BaseDataAdapter):
         """Update the entry, store the difference and return it"""
         with self.get_session() as session:
             try:
-                result = await self.load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+                result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
                 if result is None:
                     raise api.Exception(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -830,7 +838,17 @@ class SQLAdapter(BaseDataAdapter):
         if dest_subpath and not dest_subpath.startswith("/"):
             dest_subpath = f"/{dest_subpath}"
 
-        origin = await self.load_or_none(space_name, src_subpath, src_shortname, meta.__class__)
+        origin = await self.db_load_or_none(space_name, src_subpath, src_shortname, meta.__class__)
+        if origin is None:
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="create",
+                    code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+                    message="already exists",
+                ),
+            )
+
 
         with self.get_session() as session:
             try:
@@ -942,7 +960,7 @@ class SQLAdapter(BaseDataAdapter):
                 if not subpath.startswith("/"):
                     subpath = f"/{subpath}"
 
-                result = await self.load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+                result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
                 session.delete(result)
                 if meta.__class__ == core.Space:
                     statement = delete(Entries).where(col(Entries.space_name) == space_name)

@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import JSON, LargeBinary
 from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint
 from pydantic import ConfigDict
-from utils.helpers import camel_case, remove_none_dict, snake_case
+from utils.helpers import camel_case, remove_none_dict
 from uuid import uuid4
 from models import core
 from models.enums import ResourceType, UserType, Language
@@ -42,7 +42,20 @@ class Unique(SQLModel, table=False):
     model_config = ConfigDict(validate_assignment=True)  # type: ignore
 
 
-class MetaMethods:
+class Metas(Unique, table=False):
+    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    is_active: bool = False
+    displayname: dict | core.Translation | None = Field(default=None, sa_type=JSON)
+    description: dict | core.Translation | None = Field(default=None, sa_type=JSON)
+    tags: list[str] = Field(default_factory=dict, sa_type=JSON)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    owner_shortname: str | None = None
+    acl: list[core.ACL] | None = Field(default=[], sa_type=JSON)
+    payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSON)
+    relationships: list[core.Relationship] | None = Field(default=[], sa_type=JSON)
+
+    resource_type: str = Field()
     @staticmethod
     def from_record(record: core.Record, owner_shortname: str):
         if record.shortname == settings.auto_uuid_rule:
@@ -147,41 +160,7 @@ class MetaMethods:
 
 
 
-class Metas(Unique, MetaMethods, table=False):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    is_active: bool = False
-    displayname: dict | core.Translation | None = Field(default=None, sa_type=JSON)
-    description: dict | core.Translation | None = Field(default=None, sa_type=JSON)
-    tags: list[str] = Field(default_factory=dict, sa_type=JSON)
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-    owner_shortname: str | None = None
-    acl: list[core.ACL] | None = Field(default=[], sa_type=JSON)
-    payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSON)
-    relationships: list[core.Relationship] | None = Field(default=[], sa_type=JSON)
-
-    resource_type: str = Field()
-
-
-
-class MetasMinified(SQLModel, MetaMethods, table=False):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    is_active: bool = False
-    displayname: dict | core.Translation | None = Field(default=None, sa_type=JSON)
-    description: dict | core.Translation | None = Field(default=None, sa_type=JSON)
-    tags: list[str] = Field(default_factory=dict, sa_type=JSON)
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-    owner_shortname: str | None = None
-    acl: list[core.ACL] | None = Field(default=[], sa_type=JSON)
-    payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSON)
-    relationships: list[core.Relationship] | None = Field(default=[], sa_type=JSON)
-
-    space_name: str = Field("management", regex=regex.SPACENAME)
-    shortname: str = Field(regex=regex.SHORTNAME) # sa_type=String)
-
-
-class Users(MetasMinified, table=True):
+class Users(Metas, table=True):
     password: str | None = None
     roles: list[str] = Field(default_factory=dict, sa_type=JSON)
     groups: list[str] = Field(default_factory=dict, sa_type=JSON)
@@ -189,7 +168,15 @@ class Users(MetasMinified, table=True):
     relationships: list[core.Relationship] | None = Field(default_factory=None, sa_type=JSON)
     type: UserType = Field(default=UserType.web)
     language: Language = Field(default=Language.en)
-
+    email: str | None = None
+    msisdn: str | None = Field(default=None, regex=regex.EXTENDED_MSISDN)
+    is_email_verified: bool = False
+    is_msisdn_verified: bool = False
+    force_password_change: bool = True
+    firebase_token: str | None = None
+    google_id: str | None = None
+    facebook_id: str | None = None
+    social_avatar_url: str | None = None
 
 
 class Roles(Metas, table=True):
@@ -385,3 +372,4 @@ def generate_tables():
     postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
     engine = create_engine(postgresql_url, echo=False)
     SQLModel.metadata.create_all(engine)
+
