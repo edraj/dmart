@@ -1,6 +1,4 @@
 import json
-import re
-import subprocess
 import sys
 import time
 from copy import copy
@@ -29,16 +27,14 @@ from utils.database.create_tables import (
     Users,
     Spaces,
     Attachments,
-    Aggregated,
     Locks,
     Sessions,
     Invitations,
-    URLShorts
+    URLShorts, MetasMinified,
 )
 from utils.helpers import (
     arr_remove_common,
     get_removed_items,
-    str_to_datetime,
     camel_case,
 )
 from utils.internal_error_code import InternalErrorCode
@@ -46,230 +42,13 @@ from utils.middleware import get_request_data
 from utils.password_hashing import hash_password
 from utils.settings import settings
 from .base_data_adapter import BaseDataAdapter, MetaChild
-
-postgres_aggregate_functions = [
-    "avg",
-    "count",
-    "max",
-    "min",
-    "sum",
-    "array_agg",
-    "string_agg",
-    "bool_and",
-    "bool_or",
-    "bit_and",
-    "bit_or",
-    "every",
-    "json_agg",
-    "jsonb_agg",
-    "json_object_agg",
-    "jsonb_object_agg",
-    "mode",
-    "regr_avgx",
-    "regr_avgy",
-    "regr_count",
-    "regr_intercept",
-    "regr_r2",
-    "regr_slope",
-    "regr_sxx",
-    "regr_sxy",
-    "regr_syy",
-    "corr",
-    "covar_pop",
-    "covar_samp",
-    "stddev",
-    "stddev_pop",
-    "stddev_samp",
-    "variance",
-    "var_pop",
-    "var_samp",
-]
-
-mysql_aggregate_functions = [
-    "avg",
-    "count",
-    "max",
-    "min",
-    "sum",
-    "group_concat",
-    "json_arrayagg",
-    "json_objectagg",
-    "std",
-    "stddev",
-    "stddev_pop",
-    "stddev_samp",
-    "variance",
-    "var_pop",
-    "var_samp",
-]
-
-sqlite_aggregate_functions = [
-    "avg",
-    "count",
-    "group_concat",
-    "max",
-    "min",
-    "sum",
-    "total",
-]
-
-
-def subpath_checker(subpath: str):
-    if subpath.endswith("/"):
-        subpath = subpath[:-1]
-    if not subpath.startswith("/"):
-        subpath = '/' + subpath
-    return subpath
-
-
-def transform_keys_to_sql(path):
-    parts = path.split('.')
-    sql_path = parts[0]
-    sql_path += ' -> ' + ' -> '.join([f"'{part}'" for part in parts[1:-1]])
-    sql_path += f" ->> '{parts[-1]}'"
-
-    return sql_path
-
-
-def validate_search_range(v_str):
-    if isinstance(v_str, list):
-        return False, v_str
-
-    pattern = r"^\[\d+\s(\d+)*\]$"
-
-    if re.match(pattern, v_str):
-        v_list = list(map(int, v_str[1:-1].split()))
-        return True, v_list
-    else:
-        return False, v_str
-
-
-def parse_search_string(string, entity):
-    list_criteria = string.split("@")
-    list_criteria = [item.strip() for item in list_criteria if item.strip()]
-    result = {}
-    for s in list_criteria:
-        if "[" in s and "]" in s:
-            pattern = r"(\S+):(\S+ \S+)"
-        else:
-            pattern = r"(\S+):(\S+)"
-
-        matches = re.findall(pattern, s)
-
-        for key, value in matches:
-            try:
-                if "." in key:
-                    if getattr(entity, key.split('.')[0]):
-                        key = transform_keys_to_sql(key)
-                        if "|" in value:
-                            value = value.split("|")
-                        result[key] = value
-                elif getattr(entity, key):
-                    if "|" in value:
-                        value = value.split("|")
-                    result[key] = value
-
-            except Exception as e:
-                print(f"Failed to parse search string: {s} cuz of {e}:{e.args}:{e.__dict__}")
-                continue
-    return result
-
-
-async def events_query(
-        query: api.Query, user_shortname: str | None = None
-) -> tuple[int, list[core.Record]]:
-    from utils.access_control import access_control
-
-    records: list[core.Record] = []
-    total: int = 0
-
-    path = Path(f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
-    if not path.is_file():
-        return total, records
-
-    result = []
-    if query.search:
-        p = subprocess.Popen(
-            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-        )
-        p = subprocess.Popen(
-            ["tail", "-n", f"{query.limit + query.offset}"],
-            stdin=p.stdout,
-            stdout=subprocess.PIPE,
-        )
-        p = subprocess.Popen(["tac"], stdin=p.stdout, stdout=subprocess.PIPE)
-        if query.offset > 0:
-            p = subprocess.Popen(
-                ["sed", f"1,{query.offset}d"],
-                stdin=p.stdout,
-                stdout=subprocess.PIPE,
-            )
-        r, _ = p.communicate()
-        result = list(filter(None, r.decode("utf-8").split("\n")))
-    else:
-        cmd = f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
-        if query.offset > 0:
-            cmd += f" | sed '1,{query.offset}d'"
-        result = list(
-            filter(
-                None,
-                subprocess.run(
-                    [cmd], capture_output=True, text=True, shell=True
-                ).stdout.split("\n"),
-            )
-        )
-
-    if query.search:
-        p1 = subprocess.Popen(
-            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-        )
-        p2 = subprocess.Popen(["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE)
-        r, _ = p2.communicate()
-        total = int(
-            r.decode(),
-            10,
-        )
-    else:
-        total = int(
-            subprocess.run(
-                [f"wc -l < {path}"],
-                capture_output=True,
-                text=True,
-                shell=True,
-            ).stdout,
-            10,
-        )
-    for line in result:
-        action_obj = json.loads(line)
-        if (
-                query.from_date
-                and str_to_datetime(action_obj["timestamp"]) < query.from_date
-        ):
-            continue
-
-        if query.to_date and str_to_datetime(action_obj["timestamp"]) > query.to_date:
-            break
-
-        if not await access_control.check_access(
-                user_shortname=str(user_shortname),
-                space_name=query.space_name,
-                subpath=action_obj.get(
-                    "resource", {}).get("subpath", "/"),
-                resource_type=action_obj["resource"]["type"],
-                action_type=core.ActionType(action_obj["request"]),
-        ):
-            continue
-
-        records.append(
-            core.Record(
-                resource_type=action_obj["resource"]["type"],
-                shortname=action_obj["resource"]["shortname"],
-                subpath=action_obj["resource"]["subpath"],
-                attributes=action_obj,
-            ),
-        )
-
-    return total, records
+from .sql_adapter_helpers import (
+    set_results_from_aggregation,
+    set_table_for_query,
+    events_query,
+    subpath_checker, parse_search_string, validate_search_range, sqlite_aggregate_functions, mysql_aggregate_functions,
+    postgres_aggregate_functions, transform_keys_to_sql,
+)
 
 
 def query_aggregation(table, query):
@@ -326,7 +105,6 @@ def query_aggregation(table, query):
                 )
             )
     return statement
-
 
 async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
@@ -413,45 +191,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
     return statement
 
-
-def set_results_from_aggregation(query, item, results, idx):
-    extra = {}
-    for key, value in item._mapping.items():
-        if not hasattr(Aggregated, key):
-            extra[key] = value
-
-    results[idx] = Aggregated.model_validate(item).to_record(
-        query.subpath,
-        (
-            str(getattr(item, "shortname"))
-            if hasattr(item, "shortname") and isinstance(item.shortname, str)
-            else "/"
-        ),
-        extra=extra,
-    )
-
-    return results
-
-
-def set_table_for_query(query):
-    if query.type is QueryType.spaces:
-        return Spaces
-    elif query.type is QueryType.history:
-        return Histories
-    elif query.space_name == "management":
-        match query.subpath:
-            case "/users":
-                return Users
-            case "/roles":
-                return Roles
-            case "/permissions":
-                return Permissions
-            case _:
-                return Entries
-    else:
-        return Entries
-
-
 class SQLAdapter(BaseDataAdapter):
     session: Session 
 
@@ -495,24 +234,6 @@ class SQLAdapter(BaseDataAdapter):
 
     def get_session(self):
         return self.session
-
-    # def get_model(self, db_record_type: Type[Roles] | Type[Permissions] | Type[Users] | Type[Spaces] | Type[Locks] | Type[Attachments] | Type[Entries]) -> Type[MetaChild]:
-    #     match db_record_type:
-    #         case Type[Roles]:
-    #             return core.Role
-    #         case Permissions:
-    #             return core.Permission
-    #         case Users:
-    #             return core.User
-    #         case Spaces:
-    #             return core.Space
-    #         case Locks:
-    #             return core.Lock
-    #         case Attachments:
-    #             return core.Attachment
-    #         case _:
-    #             return core.Content
-
 
     def get_table(
             self, class_type: Type[MetaChild]
@@ -705,17 +426,7 @@ class SQLAdapter(BaseDataAdapter):
                 return None
 
             try:
-                try:
-                    if table in [Metas] and hasattr(result, 'payload') and result.payload and isinstance(result.payload, dict):
-                        if result.payload.get("body", None) is None:
-                            result.payload["body"] = {}
-                        result.payload = core.Payload.model_validate(
-                            result.payload, strict=False
-                        )
-                except Exception as e:
-                    print("[!load]", e)
-                    logger.error(f"Failed parsing an entry. Error: {e}")
-                return class_type.model_validate(result.model_dump())
+                return result
             except Exception as e:
                 print("[!load_or_none]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -827,8 +538,18 @@ class SQLAdapter(BaseDataAdapter):
                     message=f"Request object is not available @{space_name}/{subpath}/{shortname} {class_type=} {schema_shortname=}",
                 ),
             )
+        try:
+            if hasattr(meta, 'payload') and meta.payload and isinstance(meta.payload, dict):
+                if meta.payload.get("body", None) is None:
+                    meta.payload["body"] = {}
+                meta.payload = core.Payload.model_validate(
+                    meta.payload, strict=False
+                )
+        except Exception as e:
+            print("[!load]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
 
-        return meta
+        return class_type.model_validate(meta.model_dump())
 
     async def load_resource_payload(
             self,
@@ -974,24 +695,20 @@ class SQLAdapter(BaseDataAdapter):
     ) -> dict:
         """Update the entry, store the difference and return it"""
         with self.get_session() as session:
-            result = await self.load( space_name, subpath, meta.shortname, meta.__class__)
-            if result is None:
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(
-                        type="create",
-                        code=InternalErrorCode.MISSING_METADATA,
-                        message="metadata is missing",
-                    ),
-                )
-
-            myentry : Metas = Metas.model_validate(result.model_dump())
-
             try:
-                myentry.updated_at = datetime.now()
-                myentry.sqlmodel_update(meta.model_dump())
-                if hasattr(myentry, "subpath") and (not myentry.subpath.startswith("/")):
-                    myentry.subpath = f"/{myentry.subpath}"
+                result = await self.load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+                if result is None:
+                    raise api.Exception(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        error=api.Error(
+                            type="create",
+                            code=InternalErrorCode.MISSING_METADATA,
+                            message="metadata is missing",
+                        ),
+                    )
+                result.sqlmodel_update(meta.model_dump())
+                if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
+                    result.subpath = f"/{result.subpath}"
 
                 if isinstance(result, Attachments) and attachment_media:
                     result.media = attachment_media
@@ -1113,7 +830,7 @@ class SQLAdapter(BaseDataAdapter):
         if dest_subpath and not dest_subpath.startswith("/"):
             dest_subpath = f"/{dest_subpath}"
 
-        origin = await self.load(space_name, src_subpath, src_shortname, meta.__class__)
+        origin = await self.load_or_none(space_name, src_subpath, src_shortname, meta.__class__)
 
         with self.get_session() as session:
             try:
@@ -1139,11 +856,8 @@ class SQLAdapter(BaseDataAdapter):
                     )
 
                 origin.shortname = str(dest_shortname)
-                dest = table.model_validate(origin.model_dump())
-                dest.subpath = str(dest_subpath)
-                if origin.payload is not None:
-                    dest.payload = core.Payload.model_validate(origin.payload.model_dump())
-                session.add(dest)
+                origin.subpath = str(dest_subpath)
+                session.add(origin)
                 session.commit()
             except Exception as e:
                 print("[!move]", e)
@@ -1228,7 +942,7 @@ class SQLAdapter(BaseDataAdapter):
                 if not subpath.startswith("/"):
                     subpath = f"/{subpath}"
 
-                result = await self.load(space_name, subpath, meta.shortname, meta.__class__)
+                result = await self.load_or_none(space_name, subpath, meta.shortname, meta.__class__)
                 session.delete(result)
                 if meta.__class__ == core.Space:
                     statement = delete(Entries).where(col(Entries.space_name) == space_name)
@@ -1299,10 +1013,11 @@ class SQLAdapter(BaseDataAdapter):
         return None
 
     async def fetch_space(self, space_name: str) -> core.Space | None:
-        space = await self.load_or_none(space_name, "", space_name, core.Space)
-        if space is None:
+        try:
+            return await self.load(space_name, "/", space_name, core.Space)
+        except Exception as e:
+            print("[!fetch_space]", e)
             return None
-        return core.Space.model_validate(space)
 
     async def set_sql_active_session(self, user_shortname: str, token: str) -> bool:
         with self.get_session() as session:

@@ -26,16 +26,12 @@ class Plugin(PluginBase):
             )
             return
 
-        notification_request_meta = getattr(
-            sys_modules["models.core"], camel_case(data.resource_type)
-        ).model_validate(
-            await db.load(
-                data.space_name,
-                data.subpath,
-                data.shortname,
-                getattr(sys_modules["models.core"], camel_case(data.resource_type)),
-                data.user_shortname,
-            )
+        notification_request_meta = await db.load(
+            data.space_name,
+            data.subpath,
+            data.shortname,
+            getattr(sys_modules["models.core"], camel_case(data.resource_type)),
+            data.user_shortname,
         )
 
         notification_dict = notification_request_meta.dict()
