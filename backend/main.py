@@ -278,7 +278,7 @@ async def middle(request: Request, call_next):
                 "error": {
                     "code": 422,
                     "message": "Validation error [2]",
-                    "info": e.errors(),
+                    "info": jsonable_encoder(e.errors()),
                 },
             },
         )

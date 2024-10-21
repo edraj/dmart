@@ -45,6 +45,7 @@ class Unique(SQLModel, table=False):
 class Metas(Unique, table=False):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     is_active: bool = False
+    slug: str | None = None
     displayname: dict | core.Translation | None = Field(default=None, sa_type=JSON)
     description: dict | core.Translation | None = Field(default=None, sa_type=JSON)
     tags: list[str] = Field(default_factory=dict, sa_type=JSON)
@@ -204,6 +205,8 @@ class Entries(Metas, table=True):
 
 class Attachments(Metas, table=True):
     media: bytes | None = Field(None, sa_type=LargeBinary)
+    body: str | None = None
+    state: str | None = None
 
 
 class Histories(SQLModel, table=True):
