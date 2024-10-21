@@ -459,8 +459,7 @@ class SQLAdapter(BaseDataAdapter):
                         statement = statement.where(text(f"{k}=:{k}")).params({k: v})
                     result = session.exec(statement).all()
                     if len(result) != 0:
-                        var : core.Meta = result[0]
-                        return var 
+                        return core.Meta.model_validate(result[0])
                 return None
 
     async def query(
