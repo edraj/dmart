@@ -274,3 +274,6 @@ class BaseDataAdapter(ABC):
 
     async def get_spaces(self) -> dict:
         return {}
+
+    async def get_media_attachments(self, space_name: str, subpath: str, shortname: str):
+        pass

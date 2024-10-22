@@ -435,8 +435,8 @@ class SQLAdapter(BaseDataAdapter):
         with self.get_session() as session:
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
-                for table in tables:
-                    statement = select(table)
+                for _table in tables:
+                    statement = select(_table)
                     for k, v in criteria.items():
                         if isinstance(v, str):
                             statement = statement.where(
@@ -446,7 +446,7 @@ class SQLAdapter(BaseDataAdapter):
                             statement = statement.where(text(f"{k}=:{k}")).params({k: v})
                         result = session.exec(statement).all()
                         if len(result) != 0:
-                            return core.Meta.model_validate(result[0])
+                            return _table.model_validate(result[0])
                 return None
             else:
                 statement = select(table)
@@ -459,7 +459,7 @@ class SQLAdapter(BaseDataAdapter):
                         statement = statement.where(text(f"{k}=:{k}")).params({k: v})
                     result = session.exec(statement).all()
                     if len(result) != 0:
-                        return core.Meta.model_validate(result[0])
+                        return table.model_validate(result[0])
                 return None
 
     async def query(
@@ -1288,3 +1288,18 @@ class SQLAdapter(BaseDataAdapter):
                 space = Spaces.model_validate(item)
                 spaces[space.shortname] = space.model_dump()
             return spaces
+
+    async def get_media_attachments(self, space_name: str, subpath: str, shortname: str):
+        if not subpath.startswith("/"):
+            subpath = f"/{subpath}"
+
+        with self.get_session() as session:
+            statement = select(Attachments.media)\
+                .where(Attachments.space_name == space_name)\
+                .where(Attachments.subpath == subpath)\
+                .where(Attachments.shortname == shortname)
+
+            result = session.exec(statement).one_or_none()
+            if result is None:
+                return None
+            return result
