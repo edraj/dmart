@@ -206,7 +206,6 @@ async def retrieve_entry_or_attachment_payload(
             user_shortname="anonymous",
         )
     )
-
     cls = getattr(sys.modules["models.core"], camel_case(resource_type))
     meta = await db.load(
         space_name=space_name,
@@ -216,9 +215,9 @@ async def retrieve_entry_or_attachment_payload(
         user_shortname="anonymous",
     )
     if (
-            meta.payload is None
-            or meta.payload.body is None
-            or meta.payload.body != f"{shortname}.{ext}"
+        meta.payload is None
+        or meta.payload.body is None
+        or meta.payload.body != f"{shortname}.{ext}"
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -272,7 +271,8 @@ async def retrieve_entry_or_attachment_payload(
             attributes=meta.payload.body
         )
 
-    return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type))
+    mediaa = await db.get_media_attachments(space_name, subpath, shortname)
+    return StreamingResponse(io.BytesIO(mediaa), media_type=get_mime_type(meta.payload.content_type))
 
 
 

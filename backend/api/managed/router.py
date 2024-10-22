@@ -548,10 +548,10 @@ async def retrieve_entry_or_attachment_payload(
         user_shortname=logged_in_user,
         schema_shortname=schema_shortname,
     )
-    if (
-            meta.payload is None
-            or meta.payload.body is None
-            or meta.payload.body != f"{shortname}.{ext}"
+    if(
+        meta.payload is None
+        or meta.payload.body is None
+        or meta.payload.body != f"{shortname}.{ext}"
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -605,7 +605,9 @@ async def retrieve_entry_or_attachment_payload(
             status=api.Status.success,
             attributes=meta.payload.body,
         )
-    return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type))
+
+    mediaa = await db.get_media_attachments(space_name, subpath, shortname)
+    return StreamingResponse(io.BytesIO(mediaa), media_type=get_mime_type(meta.payload.content_type))
 
 @router.post(
     "/resource_with_payload",
