@@ -12,6 +12,7 @@ from fastapi import status
 from fastapi.logger import logger
 from sqlalchemy import text, func
 from sqlmodel import create_engine, Session, select, col, delete
+import io
 
 import models.api as api
 import models.core as core
@@ -262,34 +263,7 @@ class SQLAdapter(BaseDataAdapter):
                 return Attachments
         return Entries
 
-    def get_table_dto(
-            self, dto: Any
-    ) -> Type[Roles | Permissions | Users | Spaces | Locks | Attachments | Entries]:
-        match dto.class_type:
-            case core.Role:
-                return Roles
-            case core.Permission:
-                return Permissions
-            case core.User:
-                return Users
-            case core.Space:
-                return Spaces
-            case core.Lock:
-                return Locks
-            case (
-            core.Alteration
-            | core.Media
-            | core.Lock
-            | core.Comment
-            | core.Reply
-            | core.Reaction
-            | core.Json
-            | core.DataAsset
-            ):
-                return Attachments
-        return Entries
-
-    def get_base_model(self, class_type, data, update=None):
+    def get_base_model(self, class_type : Type[MetaChild], data, update=None) -> Roles | Permissions | Users | Spaces | Locks | Attachments | Entries:
         match class_type:
             case core.User:
                 return Users.model_validate(data, update=update)
@@ -312,8 +286,7 @@ class SQLAdapter(BaseDataAdapter):
                 if data.get("media", None) is None:
                     data["media"] = None
                 return Attachments.model_validate(data, update=update)
-            case _:
-                return Entries.model_validate(data, update=update)
+        return Entries.model_validate(data, update=update)
 
     async def get_entry_attachments(
             self,
@@ -444,9 +417,10 @@ class SQLAdapter(BaseDataAdapter):
                             ).params({k: f"{v}%"})
                         else:
                             statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-                        result = session.exec(statement).all()
-                        if len(result) != 0:
-                            return _table.model_validate(result[0])
+                        result = session.exec(statement).one_or_none()
+                        if result:
+                            core_model_class : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
+                            return core_model_class.model_validate(result.model_dump())
                 return None
             else:
                 statement = select(table)
@@ -457,9 +431,10 @@ class SQLAdapter(BaseDataAdapter):
                         ).params({k: f"{v}%"})
                     else:
                         statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-                    result = session.exec(statement).all()
-                    if len(result) != 0:
-                        return table.model_validate(result[0])
+                    result = session.exec(statement).one_or_none()
+                    if result:
+                        core_model_class2 : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
+                        return core_model_class2.model_validate(result.model_dump())
                 return None
 
     async def query(
@@ -1289,7 +1264,7 @@ class SQLAdapter(BaseDataAdapter):
                 spaces[space.shortname] = space.model_dump()
             return spaces
 
-    async def get_media_attachments(self, space_name: str, subpath: str, shortname: str):
+    async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
 
@@ -1300,6 +1275,7 @@ class SQLAdapter(BaseDataAdapter):
                 .where(Attachments.shortname == shortname)
 
             result = session.exec(statement).one_or_none()
-            if result is None:
-                return None
-            return result
+            if result:
+                return io.BytesIO(result)
+        return None
+

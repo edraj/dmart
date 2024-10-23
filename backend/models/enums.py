@@ -1,10 +1,5 @@
-from enum import Enum
+from enum import StrEnum
 import redis.commands.search.reducers as reducers
-
-
-class StrEnum(str, Enum):
-    def __str__(self):
-        return self.value
 
 
 class RequestType(StrEnum):

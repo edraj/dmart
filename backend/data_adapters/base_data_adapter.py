@@ -5,6 +5,7 @@ from typing import Any, Tuple, Type, TypeVar
 import models.api as api
 import models.core as core
 from models.enums import LockAction
+import io
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
 
@@ -275,5 +276,5 @@ class BaseDataAdapter(ABC):
     async def get_spaces(self) -> dict:
         return {}
 
-    async def get_media_attachments(self, space_name: str, subpath: str, shortname: str):
+    async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass

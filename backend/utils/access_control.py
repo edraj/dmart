@@ -6,6 +6,7 @@ from typing import Any
 from redis.commands.search.field import TextField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
+
 from models.core import Meta, ACL, ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
 from utils.database.create_tables import Users
@@ -93,11 +94,10 @@ class AccessControl:
     async def delete_user_permissions_map_in_redis(self) -> None:
         async with RedisServices() as redis_services:
             search_query = Query("*").no_content()
-            docs: dict = await redis_services. \
-                ft("user_permission"). \
-                search(search_query)  # type: ignore
-            if docs and len(docs.get("results", [])):
-                keys = [doc["id"] for doc in docs["results"]]
+            redis_res = await redis_services.ft("user_permission").search(search_query)
+            if redis_res and isinstance(redis_res, dict) and "results" in redis_res:
+                results = redis_res["results"]
+                keys = [doc["id"] for doc in results]
                 if len(keys) > 0:
                     await redis_services.del_keys(keys)
 

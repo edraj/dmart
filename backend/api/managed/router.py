@@ -1,6 +1,5 @@
 import csv
 import hashlib
-import io
 import json
 import os
 import sys
@@ -606,8 +605,10 @@ async def retrieve_entry_or_attachment_payload(
             attributes=meta.payload.body,
         )
 
-    mediaa = await db.get_media_attachments(space_name, subpath, shortname)
-    return StreamingResponse(io.BytesIO(mediaa), media_type=get_mime_type(meta.payload.content_type))
+    data = await db.get_media_attachments(space_name, subpath, shortname)
+    if data:
+        return StreamingResponse(data, media_type=get_mime_type(meta.payload.content_type))
+    return api.Response(status=api.Status.failed)
 
 @router.post(
     "/resource_with_payload",
