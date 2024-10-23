@@ -1,54 +1,67 @@
 import csv
-import io
-from datetime import datetime
 import hashlib
+import json
 import os
+import sys
+from datetime import datetime
+from io import BytesIO, StringIO
+from pathlib import Path as FilePath
 from re import sub as res_sub
 from time import time
-from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, status
-from starlette.responses import StreamingResponse, FileResponse
+from typing import Any, Callable
 
-from api.managed.utils import serve_request_create, serve_request_update_r_replace, serve_request_assign, \
-    serve_request_update_acl, serve_request_delete, serve_request_move, \
-    get_resource_content_type_from_payload_content_type, csv_entries_prepare_docs, handle_update_state, \
-    update_state_handle_resolution, serve_space_delete, serve_space_update, serve_space_create, \
-    data_asset_attachments_handler, import_resources_from_csv_handler, data_asset_handler, \
-    create_or_update_resource_with_payload_handler, get_mime_type
-from utils.internal_error_code import InternalErrorCode
-from utils.router_helper import is_space_exist
+from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
+from fastapi.responses import RedirectResponse
+from starlette.responses import FileResponse, StreamingResponse
+
 import models.api as api
 import models.core as core
+import utils.regex as regex
+import utils.repository as repository
+from api.managed.utils import (
+    create_or_update_resource_with_payload_handler,
+    csv_entries_prepare_docs,
+    data_asset_attachments_handler,
+    data_asset_handler,
+    get_mime_type,
+    get_resource_content_type_from_payload_content_type,
+    handle_update_state,
+    import_resources_from_csv_handler,
+    serve_request_assign,
+    serve_request_create,
+    serve_request_delete,
+    serve_request_move,
+    serve_request_update_acl,
+    serve_request_update_r_replace,
+    serve_space_create,
+    serve_space_delete,
+    serve_space_update,
+    update_state_handle_resolution,
+)
+from data_adapters.adapter import data_adapter as db
 from models.enums import (
     ContentType,
+    DataAssetType,
+    LockAction,
     RequestType,
     ResourceType,
-    LockAction,
-    DataAssetType,
     TaskType,
 )
-import utils.regex as regex
-import sys
-import json
-from utils.jwt import JWTBearer, GetJWTToken
 from utils.access_control import access_control
-from utils.spaces import initialize_spaces
-from typing import Any
-import utils.repository as repository
+from utils.custom_validations import validate_payload_with_schema
 from utils.helpers import (
     camel_case,
     csv_file_to_json,
     flatten_dict,
     resolve_schema_references,
 )
-from utils.custom_validations import validate_payload_with_schema
-from utils.settings import settings
+from utils.internal_error_code import InternalErrorCode
+from utils.jwt import GetJWTToken, JWTBearer
 from utils.plugin_manager import plugin_manager
-from io import BytesIO, StringIO
 from utils.redis_services import RedisServices
-from fastapi.responses import RedirectResponse
-from typing import Callable
-from pathlib import Path as FilePath
-from data_adapters.adapter import data_adapter as db
+from utils.router_helper import is_space_exist
+from utils.settings import settings
+from utils.spaces import initialize_spaces
 
 router = APIRouter()
 
@@ -147,9 +160,11 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         f"{folder.shortname}.json",
         core.Folder,
     )
-    folder_views = folder_payload.get("csv_columns", [])
-    if not folder_views:
-        folder_views = folder_payload.get("index_attributes", [])
+    folder_views: list = []
+    if folder_payload:
+        folder_views = folder_payload.get("csv_columns", [])
+        if not folder_views:
+            folder_views = folder_payload.get("index_attributes", [])
 
     keys: list = [i["name"] for i in folder_views]
     keys_existence = dict(zip(keys, [False for _ in range(len(keys))]))
@@ -374,9 +389,7 @@ async def update_state(
         class_type=core.Ticket,
         user_shortname=logged_in_user,
     )
-    ticket_obj: core.Ticket = core.Ticket.model_validate(
-        ticket_raw.model_dump()
-    )
+    ticket_obj: core.Ticket = ticket_raw
 
     if ticket_obj.payload is None or ticket_obj.payload.body is None:
         raise api.Exception(
@@ -526,7 +539,7 @@ async def retrieve_entry_or_attachment_payload(
     )
 
     cls = getattr(sys.modules["models.core"], camel_case(resource_type))
-    meta: core.Meta = await db.load(
+    meta = await db.load(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
@@ -534,10 +547,10 @@ async def retrieve_entry_or_attachment_payload(
         user_shortname=logged_in_user,
         schema_shortname=schema_shortname,
     )
-    if (
-            meta.payload is None
-            or meta.payload.body is None
-            or meta.payload.body != f"{shortname}.{ext}"
+    if(
+        meta.payload is None
+        or meta.payload.body is None
+        or meta.payload.body != f"{shortname}.{ext}"
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -586,12 +599,16 @@ async def retrieve_entry_or_attachment_payload(
         )
         return FileResponse(payload_path / str(meta.payload.body))
 
-    if meta.payload.content_type == ContentType.json:
+    if meta.payload.content_type == ContentType.json and isinstance(meta.payload.body, dict):
         return api.Response(
             status=api.Status.success,
-            attributes=meta.payload.body, # type: ignore
+            attributes=meta.payload.body,
         )
-    return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type)) # type: ignore
+
+    data = await db.get_media_attachments(space_name, subpath, shortname)
+    if data:
+        return StreamingResponse(data, media_type=get_mime_type(meta.payload.content_type))
+    return api.Response(status=api.Status.failed)
 
 @router.post(
     "/resource_with_payload",
@@ -725,7 +742,8 @@ async def import_resources_from_csv(
             class_type=core.Schema,
             user_shortname=owner_shortname,
         )
-        schema_content = resolve_schema_references(schema_content.payload.body) # type: ignore
+        if schema_content and schema_content.payload and isinstance(schema_content.payload.body, dict):
+            schema_content = resolve_schema_references(schema_content.payload.body)
 
     data_types_mapper: dict[str, Callable] = {
         "integer": int,
@@ -890,14 +908,15 @@ async def retrieve_entry_meta(
         class_type=resource_class,
     )
 
-    if meta.payload and meta.payload.schema_shortname and validate_schema:
+    if meta.payload and meta.payload.schema_shortname and validate_schema and payload_body:
         await validate_payload_with_schema(
             payload_data=payload_body,
             space_name=space_name,
             schema_shortname=meta.payload.schema_shortname,
         )
 
-    meta.payload.body = payload_body
+    if payload_body:
+        meta.payload.body = payload_body
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
@@ -1013,10 +1032,7 @@ async def lock_entry(
                 user_shortname=logged_in_user,
             )
 
-        meta = core.Ticket.model_validate(
-            mm.model_dump()
-        )
-
+        meta = mm
         meta.collaborators = meta.collaborators if meta.collaborators else {}
         if meta.collaborators.get("processed_by") != logged_in_user:
             meta.collaborators["processed_by"] = logged_in_user
@@ -1181,12 +1197,14 @@ async def execute(
             ),
         )
 
-    query_dict: dict[str, Any] = await db.load_resource_payload(
+    mydict = await db.load_resource_payload(
         space_name=space_name,
         subpath=record.subpath,
         filename=str(meta.payload.body),
         class_type=core.Content,
     )
+
+    query_dict = mydict if mydict else {}
 
     if meta.payload.schema_shortname == "report":
         query_dict = query_dict["query"]
@@ -1248,15 +1266,13 @@ async def apply_alteration(
         on_entry: core.Record,
         logged_in_user=Depends(JWTBearer()),
 ):
-    alteration_meta = core.Alteration.model_validate(
-        await db.load(
+    alteration_meta = await db.load(
             space_name=space_name,
             subpath=f"{on_entry.subpath}/{on_entry.shortname}",
             shortname=alteration_name,
             class_type=core.Alteration,
             user_shortname=logged_in_user,
         )
-    )
     entry_meta: core.Meta = await db.load(
         space_name=space_name,
         subpath=f"{on_entry.subpath}",
@@ -1297,7 +1313,7 @@ async def data_asset(
         _=Depends(JWTBearer()),
 ):
     try:
-        duckdb = __import__("duckdb")  # type: ignore
+        duckdb = __import__("duckdb")
     except ModuleNotFoundError:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,

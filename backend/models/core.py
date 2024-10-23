@@ -288,9 +288,7 @@ class Meta(Resource):
             )
 
         record_fields = {
-            "resource_type": self.resource_type  # type: ignore
-            if hasattr(self, "resource_type")
-            else snake_case(type(self).__name__),
+            "resource_type": snake_case(type(self).__name__),
             "uuid": self.uuid,
             "shortname": self.shortname,
             "subpath": subpath,

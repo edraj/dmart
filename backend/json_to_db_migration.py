@@ -30,9 +30,9 @@ engine = create_engine(f"{postgresql_url}/postgres", echo=False, isolation_level
 
 
 try:
-    s = Session(engine)
+    session = Session(engine)
     sql = f"CREATE DATABASE {settings.database_name}"
-    s.exec(text(sql))  # type: ignore
+    session.execute(text(sql))
     engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 except Exception as e:
     print(e)
@@ -69,7 +69,7 @@ with Session(engine) as session:
                     if payload := entry.get('payload', {}).get('body', None):
                         if entry.get('payload', {}).get('content_type', None) == 'json':
                             body = json.load(open(
-                                os.path.join(root, dir, '../..', payload) # type: ignore
+                                os.path.join(root, str(dir), '../..', str(payload))
                             ))
                         else:
                             body = payload
@@ -98,6 +98,7 @@ with Session(engine) as session:
             subpath = '/'
 
         for dir in dirs:
+            print(f"Processing {space_name}/{subpath}|{dir}... ")
             for file in os.listdir(os.path.join(root, dir)):
                 if not file.startswith('meta'):
                     if file == 'history.jsonl':
@@ -188,6 +189,8 @@ with Session(engine) as session:
                                 entry['google_id'] = entry.get('google_id', '')
                                 entry['facebook_id'] = entry.get('facebook_id', '')
                                 entry['social_avatar_url'] = entry.get('social_avatar_url', '')
+                                entry['displayname'] = entry.get('displayname', {})
+                                entry['description'] = entry.get('description', {})
                                 session.add(Users.model_validate(entry))
                             elif file.startswith("meta.role"):
                                 entry['resource_type'] = 'role'
@@ -214,7 +217,8 @@ with Session(engine) as session:
                                     entry["workflow_shortname"] = entry.get("workflow_shortname", "")
                                     entry["collaborators"] = entry.get("collaborators", None)
                                     entry["resolution_reason"] = entry.get("resolution_reason", None)
-
+                                    entry['displayname'] = entry.get('displayname', {})
+                                    entry['description'] = entry.get('description', {})
                                     entry["subpath"] = subpath_checker(entry["subpath"])
                                     session.add(Entries.model_validate(entry))
                                     continue

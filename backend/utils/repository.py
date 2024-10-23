@@ -234,7 +234,7 @@ async def _serve_query_subpath(query, logged_in_user):
                 if not entry.is_dir():
                     continue
 
-                subpath_iterator = os.scandir(entry)  # type: ignore
+                subpath_iterator = os.scandir(str(entry))
                 for one in subpath_iterator:
                     # for one in path.glob(entries_glob):
                     match = regex.FILE_PATTERN.search(str(one.path))
@@ -1094,7 +1094,7 @@ async def folder_meta_content_check(
                 str(folder_meta_content.payload.body),
                 core.Folder,
             )
-            if folder_meta_content.payload.schema_shortname:
+            if folder_meta_content.payload.schema_shortname and folder_meta_payload:
                 await validate_payload_with_schema(
                     payload_data=folder_meta_payload,
                     space_name=space_name,
@@ -1355,7 +1355,7 @@ async def health_check_entry(
         payload_file_path = db.payload_path(space_name, subpath, resource_class)
         if not entry_meta_obj.payload.body.endswith(
                 ".json"
-        ) or not os.access(payload_file_path, os.W_OK):  # type: ignore
+        ) or not os.access(payload_file_path, os.W_OK):
             raise Exception(
                 f"can't access this payload {payload_file_path}"
             )
@@ -1365,7 +1365,7 @@ async def health_check_entry(
             entry_meta_obj.payload.body,
             resource_class,
         )
-        if entry_meta_obj.payload.schema_shortname:
+        if entry_meta_obj.payload.schema_shortname and payload_file_content:
             await validate_payload_with_schema(
                 payload_data=payload_file_content,
                 space_name=space_name,
@@ -1388,7 +1388,7 @@ async def internal_sys_update_model(
         meta: core.Meta,
         updates: dict,
         sync_redis: bool = True,
-        payload_dict: dict = {},
+        payload_dict: dict[str, Any] = {},
 ) -> bool:
     """
     Update @meta entry and its payload by @updates dict of attributes in the
@@ -1402,9 +1402,10 @@ async def internal_sys_update_model(
     if not payload_dict:
         try:
             body = str(meta.payload.body) if meta and meta.payload else ""
-            payload_dict = await db.load_resource_payload(
+            mydict = await db.load_resource_payload(
                 space_name, subpath, body, core.Content
             )
+            payload_dict = mydict if mydict else {}
         except Exception:
             pass
 
