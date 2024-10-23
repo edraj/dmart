@@ -2,7 +2,6 @@ from re import sub as res_sub
 from uuid import uuid4
 from fastapi import APIRouter, Body, Query, Path, status, Depends
 
-from models.api import Response
 from models.enums import AttachmentType, ContentType, ResourceType, TaskType
 from data_adapters.adapter import data_adapter as db
 import models.api as api
@@ -19,7 +18,6 @@ import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 from utils.settings import settings
 from starlette.responses import StreamingResponse, FileResponse
-import io
 
 router = APIRouter()
 
@@ -158,7 +156,7 @@ async def retrieve_entry_meta(
         class_type=resource_class,
     )
 
-    if meta.payload and meta.payload.schema_shortname:
+    if meta.payload and meta.payload.schema_shortname and payload_body:
         await validate_payload_with_schema(
             payload_data=payload_body,
             space_name=space_name,
@@ -194,7 +192,7 @@ async def retrieve_entry_or_attachment_payload(
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
     ext: str = Path(..., pattern=regex.EXT),
-) -> FileResponse | Response | StreamingResponse:
+) -> FileResponse | api.Response | StreamingResponse:
 
     await plugin_manager.before_action(
         core.Event(
@@ -206,9 +204,8 @@ async def retrieve_entry_or_attachment_payload(
             user_shortname="anonymous",
         )
     )
-
     cls = getattr(sys.modules["models.core"], camel_case(resource_type))
-    meta: core.Meta = await db.load(
+    meta = await db.load(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
@@ -216,9 +213,9 @@ async def retrieve_entry_or_attachment_payload(
         user_shortname="anonymous",
     )
     if (
-            meta.payload is None
-            or meta.payload.body is None
-            or meta.payload.body != f"{shortname}.{ext}"
+        meta.payload is None
+        or meta.payload.body is None
+        or meta.payload.body != f"{shortname}.{ext}"
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -266,12 +263,17 @@ async def retrieve_entry_or_attachment_payload(
         )
         return FileResponse(payload_path / str(meta.payload.body))
 
-    if meta.payload.content_type == ContentType.json:
+    if meta.payload.content_type == ContentType.json and isinstance(meta.payload.body, dict):
         return api.Response(
             status=api.Status.success,
-            attributes=meta.payload.body, # type: ignore
+            attributes=meta.payload.body
         )
-    return StreamingResponse(io.BytesIO(meta.media), media_type=get_mime_type(meta.payload.content_type)) # type: ignore
+
+    data = await db.get_media_attachments(space_name, subpath, shortname)
+    if data:
+        return StreamingResponse(data, media_type=get_mime_type(meta.payload.content_type))
+
+    return api.Response(status=api.Status.failed)
 
 
 
@@ -502,12 +504,13 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
             ),
         )
 
-    query_dict: dict[str, Any] = await db.load_resource_payload(
+    mydict = await db.load_resource_payload(
         space_name=space_name,
         subpath=record.subpath,
         filename=str(meta.payload.body),
         class_type=core.Content,
     )
+    query_dict = mydict if mydict else {}
 
     if meta.payload.schema_shortname == "report":
         query_dict = query_dict["query"]

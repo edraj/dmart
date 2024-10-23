@@ -5,6 +5,7 @@ import models.core as core
 from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
+from typing import Any
 
 
 async def set_init_state_from_request(ticket: api.Request, logged_in_user):
@@ -14,7 +15,7 @@ async def set_init_state_from_request(ticket: api.Request, logged_in_user):
     _user_roles = await access_control.get_user_roles(logged_in_user)
     user_roles = _user_roles.keys()
 
-    workflows_data = await db.load(
+    workflows_data: core.Content = await db.load(
         space_name=ticket.space_name,
         subpath="workflows",
         shortname=workflow_shortname,
@@ -23,15 +24,17 @@ async def set_init_state_from_request(ticket: api.Request, logged_in_user):
     )
 
     if workflows_data is not None and workflows_data.payload is not None:
+        workflows_payload: dict[str,Any]
         if isinstance(workflows_data.payload.body, dict):
             workflows_payload = workflows_data.payload.body
         else:
-            workflows_payload = await db.load_resource_payload(
+            payload = await db.load_resource_payload(
                 space_name=ticket.space_name,
                 subpath="workflows",
                 filename=str(workflows_data.payload.body),
                 class_type=core.Content,
             )
+            workflows_payload = payload if payload else {}
 
         initial_state = None
         for state in workflows_payload["initial_state"]:
@@ -75,20 +78,33 @@ async def set_init_state_from_record(
     if workflows_data is not None and workflows_data.payload is not None:
         # file: fetch payload from file
         # sql: payload is already within the entry
-        if settings.active_data_db == "file":
-            filename = str(workflows_data.payload.body)
-            workflows_payload = await db.load_resource_payload(
+        workflows_payload : dict[str, Any] = {}
+        mypayload = workflows_data.payload.body
+        if settings.active_data_db == "file" and isinstance(mypayload, str):
+            payload = await db.load_resource_payload(
                 space_name=space_name,
                 subpath="workflows",
-                filename=filename,
+                filename=mypayload,
                 class_type=core.Content,
             )
+            workflows_payload = payload if payload else {}
+        elif isinstance(mypayload, dict):
+                workflows_payload = mypayload
         else:
-            workflows_payload = workflows_data.payload.body
+            raise api.Exception(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_DATA,
+                    message=f"Invalid payload data {mypayload}",
+                ),
+            )
+
+
 
         ticket.attributes = {
             **workflow_attr,
-            "state": workflows_payload["initial_state"],  # type: ignore
+            "state": workflows_payload["initial_state"],
         }
         return ticket
 

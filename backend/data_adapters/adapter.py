@@ -1,4 +1,3 @@
-# type: ignore
 from typing import Type
 
 from .base_data_adapter import BaseDataAdapter
