@@ -2,7 +2,6 @@ from re import sub as res_sub
 from uuid import uuid4
 from fastapi import APIRouter, Body, Query, Path, status, Depends
 
-from models.api import Response
 from models.enums import AttachmentType, ContentType, ResourceType, TaskType
 from data_adapters.adapter import data_adapter as db
 import models.api as api
@@ -19,7 +18,6 @@ import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 from utils.settings import settings
 from starlette.responses import StreamingResponse, FileResponse
-import io
 
 router = APIRouter()
 
@@ -194,7 +192,7 @@ async def retrieve_entry_or_attachment_payload(
     subpath: str = Path(..., pattern=regex.SUBPATH),
     shortname: str = Path(..., pattern=regex.SHORTNAME),
     ext: str = Path(..., pattern=regex.EXT),
-) -> FileResponse | Response | StreamingResponse:
+) -> FileResponse | api.Response | StreamingResponse:
 
     await plugin_manager.before_action(
         core.Event(
@@ -271,8 +269,11 @@ async def retrieve_entry_or_attachment_payload(
             attributes=meta.payload.body
         )
 
-    mediaa = await db.get_media_attachments(space_name, subpath, shortname)
-    return StreamingResponse(io.BytesIO(mediaa), media_type=get_mime_type(meta.payload.content_type))
+    data = await db.get_media_attachments(space_name, subpath, shortname)
+    if data:
+        return StreamingResponse(data, media_type=get_mime_type(meta.payload.content_type))
+
+    return api.Response(status=api.Status.failed)
 
 
 

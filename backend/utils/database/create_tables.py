@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 from sqlalchemy import JSON, LargeBinary
-from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint
-from pydantic import ConfigDict
+from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
+from sqlmodel._compat import SQLModelConfig
 from utils.helpers import camel_case, remove_none_dict
 from uuid import uuid4
 from models import core
@@ -39,7 +39,7 @@ class Unique(SQLModel, table=False):
     space_name: str = Field(regex=regex.SPACENAME)
     subpath: str = Field(regex=regex.SUBPATH)
     __table_args__ = (UniqueConstraint("shortname", "space_name", "subpath"),)
-    model_config = ConfigDict(validate_assignment=True)  # type: ignore
+    model_config = SQLModelConfig(form_attributes=True, populate_by_name=True, validate_assignment=True, use_enum_values=True, arbitrary_types_allowed=True)  # type: ignore
 
 
 class Metas(Unique, table=False):
@@ -168,7 +168,8 @@ class Users(Metas, table=True):
     acl: list[core.ACL] | None = Field(default=[], sa_type=JSON)
     relationships: list[core.Relationship] | None = Field(default_factory=None, sa_type=JSON)
     type: UserType = Field(default=UserType.web)
-    language: Language = Field(default=Language.en)
+    # language: Language = Field(default=Language.en)
+    language: Language = Field(Column(Enum(Language)))
     email: str | None = None
     msisdn: str | None = Field(default=None, regex=regex.EXTENDED_MSISDN)
     is_email_verified: bool = False
