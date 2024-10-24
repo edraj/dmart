@@ -96,6 +96,14 @@ def process_entries(session, space_folder):
             )
             _entry["payload"]["body"] = f"{entry.shortname}.json"
 
+        if entry.resource_type != "ticket":
+            del _entry["state"]
+            del _entry["is_open"]
+            del _entry["reporter"]
+            del _entry["workflow_shortname"]
+            del _entry["collaborators"]
+            del _entry["resolution_reason"]
+
         file_path = os.path.join(dir_meta_path, f"meta.{entry.resource_type}.json")
         write_json_file(file_path, _entry)
 
