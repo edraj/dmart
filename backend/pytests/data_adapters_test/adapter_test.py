@@ -11,6 +11,7 @@ def test_available_data_repositories():
     assert AVAILABLE_DATA_REPOSITORIES['sql'] == SQLAdapter
 
 def test_data_adapter_initialization():
+    old_active_data_db = settings.active_data_db
     # Set the active_data_db setting directly
     settings.active_data_db = 'file'
     data_adapter_instance = AVAILABLE_DATA_REPOSITORIES[settings.active_data_db]()
@@ -19,3 +20,5 @@ def test_data_adapter_initialization():
     settings.active_data_db = 'sql'
     data_adapter_instance = AVAILABLE_DATA_REPOSITORIES[settings.active_data_db]()
     assert isinstance(data_adapter_instance, SQLAdapter)
+
+    settings.active_data_db = old_active_data_db
