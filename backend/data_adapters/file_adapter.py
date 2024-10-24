@@ -292,8 +292,9 @@ class FileAdapter(BaseDataAdapter):
 
         path = self.payload_path(space_name, subpath, class_type, schema_shortname)
         path /= filename
+
         if not path.is_file():
-            return {}
+            return None
         try:
             if class_type == core.Log:
                 return {"log_entry_items": read_jsonl_file(path)}
