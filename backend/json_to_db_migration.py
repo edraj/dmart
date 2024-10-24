@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from uuid import uuid4
 
@@ -43,7 +44,16 @@ except Exception as e:
     print(e)
 
 with Session(engine) as session:
-    for root, dirs, _ in os.walk(str(settings.spaces_folder)):
+    target_path = settings.spaces_folder
+
+    if len(sys.argv) == 2:
+        target_path = target_path.joinpath(sys.argv[1])
+
+    if not target_path.exists():
+        print(f"Space '{str(target_path).replace('/', '')}' does not exist")
+        sys.exit(1)
+
+    for root, dirs, _ in os.walk(str(target_path)):
         tmp = root.replace(str(settings.spaces_folder), '')
         if tmp == '':
             continue
@@ -69,7 +79,7 @@ with Session(engine) as session:
                     if payload := entry.get('payload', {}).get('body', None):
                         if entry.get('payload', {}).get('content_type', None) == 'json':
                             body = json.load(open(
-                                os.path.join(root, str(dir), '../..', str(payload))
+                                os.path.join(root, '.dm', '../..', str(payload))
                             ))
                         else:
                             body = payload
@@ -85,7 +95,7 @@ with Session(engine) as session:
                     entry['hide_space'] = entry.get('hide_space', False)
                     session.add(Spaces.model_validate(entry))
                 except Exception as e:
-                    print(f"Error processing Spaces {space_name}/{subpath}/{dir}/{entry} ... ")
+                    print(f"Error processing Spaces {space_name}/{subpath}/{entry} ... ")
                     print(e)
             continue
 
@@ -234,3 +244,8 @@ with Session(engine) as session:
             except Exception as e:
                 print(e)
                 session.reset()
+
+
+if settings.active_data_db == 'file':
+    print("[Warning] you are using active_data_db='file', please don't forget to set it to active_data_db='sql' in your config.env")
+
