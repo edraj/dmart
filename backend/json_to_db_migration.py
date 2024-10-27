@@ -6,7 +6,6 @@ import os
 import sys
 from pathlib import Path
 from uuid import uuid4
-
 from sqlmodel import Session, create_engine, text
 
 from utils.database.create_tables import Entries, Users, generate_tables, Attachments, \
@@ -76,14 +75,17 @@ with Session(engine) as session:
                 try:
                     entry = json.load(open(p))
                     entry['space_name'] = space_name
-                    if payload := entry.get('payload', {}).get('body', None):
-                        if entry.get('payload', {}).get('content_type', None) == 'json':
-                            body = json.load(open(
-                                os.path.join(root, '.dm', '../..', str(payload))
-                            ))
-                        else:
-                            body = payload
-                        entry['payload']['body'] = body
+                    entry['shortname'] = space_name
+                    _payload = entry.get('payload', {})
+                    if _payload:
+                        if payload := _payload.get('body', None):
+                            if entry.get('payload', {}).get('content_type', None) == 'json':
+                                body = json.load(open(
+                                    os.path.join(root, '.dm', '../..', str(payload))
+                                ))
+                            else:
+                                body = payload
+                            entry['payload']['body'] = body
                     else:
                         entry['payload'] = None
                     entry['subpath'] = '/'
@@ -114,7 +116,7 @@ with Session(engine) as session:
                     if file == 'history.jsonl':
                         lines = open(os.path.join(root, dir, file), 'r').readlines()
                         for line in lines:
-                            history = json.loads(line)
+                            history = json.loads(line.replace('\n', ''))
                             history['shortname'] = dir
                             history['space_name'] = space_name
                             history['subpath'] = subpath_checker(subpath)
@@ -164,7 +166,7 @@ with Session(engine) as session:
                                     _attachment['payload'] = {}
                             try:
                                 print(f"{dir=}")
-                                _attachment['resource_type'] = dir.replace('attachments.', '') #file.replace('.json', '').replace('meta.', '')
+                                _attachment['resource_type'] = dir.replace('attachments.', '')
                                 session.add(Attachments.model_validate(_attachment))
                             except Exception as e:
                                 print(f"Error processing Attachments {space_name}/{subpath}/{dir}/{file} ... ")
