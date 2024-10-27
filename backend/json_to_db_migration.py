@@ -175,18 +175,20 @@ with Session(engine) as session:
                         entry = json.load(open(p))
                         entry['space_name'] = space_name
                         body = None
-                        if payload := entry.get('payload', {}).get('body', None):
-                            if entry.get('payload', {}).get('content_type', None) == 'json':
-                                try:
-                                    body = json.load(open(
-                                        os.path.join(root, dir, '../..', payload)
-                                    ))
-                                except Exception as e:
-                                    print(f"Error processing payload {space_name}/{subpath}/{dir}/{entry} ... ")
-                                    print(e)
-                            else:
-                                body = payload
-                            entry['payload']['body'] = body
+                        _payload = entry.get('payload', {})
+                        if _payload:
+                            if payload := entry.get('payload', {}).get('body', None):
+                                if entry.get('payload', {}).get('content_type', None) == 'json':
+                                    try:
+                                        body = json.load(open(
+                                            os.path.join(root, dir, '../..', payload)
+                                        ))
+                                    except Exception as e:
+                                        print(f"Error processing payload {space_name}/{subpath}/{dir}/{entry} ... ")
+                                        print(e)
+                                else:
+                                    body = payload
+                                entry['payload']['body'] = body
                         else:
                             entry['payload'] = None
                         entry['subpath'] = subpath_checker(subpath)
