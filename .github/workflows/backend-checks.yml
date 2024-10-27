@@ -45,8 +45,10 @@ jobs:
         ./json_to_db_migration.py
         ./reload.sh
         ./curl.sh
+        systemctl --user stop dmart
     - name: Test with pytest
       run: |
+        systemctl --user stop dmart
         source $HOME/.venv/bin/activate
         cd backend; pytest pytests
     - name: Install frontend js depdenencies
