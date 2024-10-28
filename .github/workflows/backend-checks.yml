@@ -50,7 +50,7 @@ jobs:
       run: |
         systemctl --user stop dmart
         source $HOME/.venv/bin/activate
-        cd backend; pytest pytests
+        cd backend; pytest
     - name: Install frontend js depdenencies
       run: |
         # cd frontend; yarn install
