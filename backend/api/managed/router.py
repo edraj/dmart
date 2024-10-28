@@ -915,7 +915,7 @@ async def retrieve_entry_meta(
             schema_shortname=meta.payload.schema_shortname,
         )
 
-    if payload_body:
+    if payload_body is not None:
         meta.payload.body = payload_body
     await plugin_manager.after_action(
         core.Event(

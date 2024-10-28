@@ -17,8 +17,9 @@ async def test_query_subpath(client: AsyncClient) -> None:
         "/managed/query",
         json={"type": QueryType.subpath, "space_name": DEMO_SPACE, "subpath": DEMO_SUBPATH},
     )
-    assert response.status_code == status.HTTP_200_OK
     json_response = response.json()
+
+    assert response.status_code == status.HTTP_200_OK
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] > 0
 
