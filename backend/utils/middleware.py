@@ -23,8 +23,12 @@ class CustomRequestMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ["http", "websocket"]:
-            await self.app(scope, receive, send)
-            return
+           try:
+               await self.app(scope, receive, send)
+               return
+           except Exception as e:
+               pass
+
 
         request = Request(scope, receive)
         request_headers = {}
@@ -51,8 +55,11 @@ class ChannelMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ["http", "websocket"] or not settings.enable_channel_auth:
-            await self.app(scope, receive, send)
-            return
+           try:
+               await self.app(scope, receive, send)
+               return
+           except Exception as e:
+               pass
 
         request = Request(scope, receive)
         channel_key = request.headers.get("x-channel-key")
