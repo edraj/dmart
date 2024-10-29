@@ -121,7 +121,11 @@ def parse_search_string(string, entity):
     list_criteria = string.split("@")
     list_criteria = [item.strip() for item in list_criteria if item.strip()]
     result = {}
+    flag_neg = False
     for s in list_criteria:
+        if s == "-":
+            flag_neg = True
+
         if "[" in s and "]" in s:
             pattern = r"(\S+):(\S+ \S+)"
         else:
@@ -142,6 +146,9 @@ def parse_search_string(string, entity):
                         value = value.split("|")
                     result[key] = value
 
+                if flag_neg:
+                    result[key] = f"!{result[key]}"
+                    flag_neg = False
             except Exception as e:
                 print(f"Failed to parse search string: {s} cuz of {e}:{e.args}:{e.__dict__}")
                 continue
