@@ -127,20 +127,26 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         statement = statement.where(table.subpath == query.subpath)
     if query.search:
         for k, v in parse_search_string(query.search, table).items():
+            flag_neg = False
+            if "!" in v:
+                flag_neg = True
+
             vv, v = validate_search_range(v)
+            v = v.replace("!", "")
+
             if "->" in k:
                 if isinstance(v, str):
-                    statement = statement.where(text(f"(({k}) = '{v}' OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"))
+                    statement = statement.where(text(f"(({k}) {'!' if flag_neg else ''}= '{v}' OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"))
             elif isinstance(v, list) and vv:
-                statement = statement.where(text(f"({k}) BETWEEN '{v[0]}' AND '{v[1]}'"))
+                statement = statement.where(text(f"({k}) {'NOT' if flag_neg else ''} BETWEEN '{v[0]}' AND '{v[1]}'"))
             elif isinstance(v, list):
                 in_1 = ', '.join([f"'{_v}'" for _v in v])
                 in_2 = ', '.join([f'"{_v}"' for _v in v])
-                statement = statement.where(text(f"(({k}) IN ({in_1}) OR ({k.replace('>>', '>')})::jsonb @> '[({in_2})]')"))
+                statement = statement.where(text(f"(({k}) {'NOT' if flag_neg else ''} IN ({in_1}) OR ({k.replace('>>', '>')})::jsonb @> '[({in_2})]')"))
             elif isinstance(v, str):
-                statement = statement.where(text(f"{k}='{v}'"))
+                statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= '{v}'"))
             else:
-                statement = statement.where(text(f"{k}={v}"))
+                statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= {v}"))
 
     if query.filter_schema_names:
         if 'meta' in query.filter_schema_names:
