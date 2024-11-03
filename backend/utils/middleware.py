@@ -25,9 +25,8 @@ class CustomRequestMiddleware:
         if scope["type"] not in ["http", "websocket"]:
            try:
                await self.app(scope, receive, send)
-               return
            except Exception as e:
-               pass
+               return
 
 
         request = Request(scope, receive)
@@ -55,11 +54,8 @@ class ChannelMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ["http", "websocket"] or not settings.enable_channel_auth:
-           try:
-               await self.app(scope, receive, send)
-               return
-           except Exception as e:
-               pass
+            await self.app(scope, receive, send)
+            return
 
         request = Request(scope, receive)
         channel_key = request.headers.get("x-channel-key")
@@ -70,13 +66,13 @@ class ChannelMiddleware:
                     type="channel_auth", code=InternalErrorCode.NOT_ALLOWED, message="Requested method or path is forbidden"
                 ),
             )
-        
+
         request_channel: dict[str, Any] | None = None
         for channel in settings.channels:
             if channel_key in channel.get("keys", []):
                 request_channel = channel
                 break
-            
+
         if not request_channel:
             raise api.Exception(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -84,7 +80,7 @@ class ChannelMiddleware:
                     type="channel_auth", code=InternalErrorCode.NOT_ALLOWED, message="Requested method or path is forbidden [2]"
                 ),
             )
-            
+
         for pattern in request_channel["allowed_api_patterns"]:
             if pattern.search(request.scope['path']):
                 await self.app(scope, receive, send)
@@ -96,5 +92,3 @@ class ChannelMiddleware:
                 type="channel_auth", code=InternalErrorCode.NOT_ALLOWED, message="Requested method or path is forbidden [3]"
             ),
         )
-
-            
