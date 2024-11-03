@@ -140,16 +140,20 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             flag_neg = False
             if "!" in v:
                 flag_neg = True
-
             vv, v = validate_search_range(v)
-            v = v.replace("!", "")
+            if isinstance(v, str):
+                v = v.replace("!", "")
             is_list = isinstance(v, list) or ("[" in v and "]" in v)
             if is_list:
                 v = string_to_list(v)
 
             if "->" in k:
                 if isinstance(v, str):
-                    statement = statement.where(text(f"(({k}) {'!' if flag_neg else ''}= '{v}' OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"))
+                    stm = f"(({k}) {'!' if flag_neg else ''}= '{v}'"
+                    if "payload" in k:
+                        stm += f" OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"
+                    stm += ")"
+                    statement = statement.where(text(stm))
             elif is_list and vv:
                 statement = statement.where(text(f"({k}) {'NOT' if flag_neg else ''} BETWEEN '{v[0]}' AND '{v[1]}'"))
             elif is_list:
