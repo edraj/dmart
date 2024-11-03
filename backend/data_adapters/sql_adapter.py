@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Type, Tuple
 from uuid import uuid4
-
+import ast
 import sqlalchemy
 from fastapi import status
 from fastapi.logger import logger
@@ -106,6 +106,16 @@ def query_aggregation(table, query):
             )
     return statement
 
+def string_to_list(input_str):
+    if isinstance(input_str, list):
+        return input_str
+    try:
+        result = ast.literal_eval(input_str)
+        if isinstance(result, list):
+            return result
+    except (ValueError, SyntaxError):
+        return [input_str]
+
 async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
         if query.type == QueryType.aggregation:
@@ -130,19 +140,30 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             flag_neg = False
             if "!" in v:
                 flag_neg = True
-
             vv, v = validate_search_range(v)
-            v = v.replace("!", "")
+            if isinstance(v, str):
+                v = v.replace("!", "")
+            is_list = isinstance(v, list) or ("[" in v and "]" in v)
+            if is_list:
+                v = string_to_list(v)
 
             if "->" in k:
                 if isinstance(v, str):
-                    statement = statement.where(text(f"(({k}) {'!' if flag_neg else ''}= '{v}' OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"))
-            elif isinstance(v, list) and vv:
+                    stm = f"(({k}) {'!' if flag_neg else ''}= '{v}'"
+                    if "payload" in k:
+                        stm += f" OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"
+                    stm += ")"
+                    statement = statement.where(text(stm))
+            elif is_list and vv:
                 statement = statement.where(text(f"({k}) {'NOT' if flag_neg else ''} BETWEEN '{v[0]}' AND '{v[1]}'"))
-            elif isinstance(v, list):
+            elif is_list:
                 in_1 = ', '.join([f"'{_v}'" for _v in v])
-                in_2 = ', '.join([f'"{_v}"' for _v in v])
-                statement = statement.where(text(f"(({k}) {'NOT' if flag_neg else ''} IN ({in_1}) OR ({k.replace('>>', '>')})::jsonb @> '[({in_2})]')"))
+                stm = f"(({k}) {'NOT' if flag_neg else ''} IN ({in_1})"
+                if "payload" in k:
+                    in_2 = ', '.join([f'"{_v}"' for _v in v])
+                    stm += f" OR ({k.replace('>>', '>')})::jsonb @> '[{in_2}]'"
+                stm += ")"
+                statement = statement.where(text(stm))
             elif isinstance(v, str):
                 statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= '{v}'"))
             else:

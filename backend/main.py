@@ -433,8 +433,12 @@ async def main():
     config.logconfig_dict = logging_schema
     config.errorlog = logger
 
-    await serve(app, config)  # type: ignore
+    try:
+        await serve(app, config)  # type: ignore
+    except OSError as e:
+        print("[!1server]", e)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main())  # type: ignore
+
