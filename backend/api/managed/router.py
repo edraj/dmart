@@ -8,8 +8,8 @@ from time import time
 from fastapi import APIRouter, Body, Depends, Query, UploadFile, Path, Form, status
 from starlette.responses import StreamingResponse, FileResponse
 
-from api.managed.utils import serve_request_create, serve_request_update_r_replace, serve_request_assign, \
-    serve_request_update_acl, serve_request_delete, serve_request_move, \
+from api.managed.utils import serve_request_create, serve_request_update_r_replace, serve_request_patch, \
+    serve_request_assign, serve_request_update_acl, serve_request_delete, serve_request_move, \
     get_resource_content_type_from_payload_content_type, csv_entries_prepare_docs, handle_update_state, \
     update_state_handle_resolution, serve_space_delete, serve_space_update, serve_space_create, \
     data_asset_attachments_handler, import_resources_from_csv_handler, data_asset_handler, \
@@ -308,6 +308,9 @@ async def serve_request(
 
         case api.RequestType.update | api.RequestType.r_replace:
             records, failed_records = await serve_request_update_r_replace(request, owner_shortname)
+
+        case api.RequestType.patch:
+            records, failed_records = await serve_request_patch(request, owner_shortname)
 
         case api.RequestType.assign:
             records, failed_records = await serve_request_assign(request, owner_shortname)

@@ -201,6 +201,34 @@ async def test_update_json_content_resource(client: AsyncClient) -> None:
 
     assert_code_and_status_success(await client.post(endpoint, json=request_data))
 
+@pytest.mark.run(order=2)
+@pytest.mark.anyio
+async def test_patch_json_content_resource(client: AsyncClient) -> None:
+    endpoint = "/managed/request"
+    request_data = {
+        "space_name": DEMO_SPACE,
+        "request_type": RequestType.patch,
+        "records": [
+            {
+                "resource_type": ResourceType.content,
+                "subpath": DEMO_SUBPATH,
+                "shortname": json_entry_shortname,
+                "attributes": {
+                    "payload": {
+                        "content_type": ContentType.json,
+                        "schema_shortname": schema_shortname,
+                        "body": {"name": "Buyer UPDATED"},
+                    },
+                },
+            }
+        ],
+    }
+
+    response = await client.post(endpoint, json=request_data)
+    assert_code_and_status_success(response)
+    response_json = response.json()
+    assert response_json["records"][0]["attributes"]["payload"]["body"]["name"] == "Buyer UPDATED"
+    assert response_json["records"][0]["attributes"]["payload"]["body"]["price"] == 25000.99
 
 @pytest.mark.run(order=2)
 @pytest.mark.anyio

@@ -10,6 +10,7 @@ class StrEnum(str, Enum):
 class RequestType(StrEnum):
     create = "create"
     update = "update"
+    patch = "patch"
     update_acl = "update_acl"
     assign = "assign"
     r_replace = "replace"
