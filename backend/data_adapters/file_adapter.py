@@ -1,4 +1,3 @@
-# type: ignore
 import json
 import os
 import shutil
@@ -16,7 +15,7 @@ from fastapi.logger import logger
 import models.api as api
 import models.core as core
 from utils import regex
-from .base_data_adapter import BaseDataAdapter
+from .base_data_adapter import BaseDataAdapter, MetaChild
 from models.enums import ContentType, ResourceType, LockAction
 from utils.helpers import arr_remove_common, read_jsonl_file, snake_case, camel_case
 from utils.internal_error_code import InternalErrorCode
@@ -170,7 +169,7 @@ class FileAdapter(BaseDataAdapter):
             space_name: str,
             subpath: str,
             shortname: str,
-            class_type: Type[core.Meta],
+            class_type: Type[MetaChild],
             schema_shortname: str | None = None,
     ) -> tuple[Path, str]:
         """Construct the full path of the meta file"""
@@ -206,7 +205,7 @@ class FileAdapter(BaseDataAdapter):
             self,
             space_name: str,
             subpath: str,
-            class_type: Type[core.Meta],
+            class_type: Type[MetaChild],
             schema_shortname: str | None = None,
     ) -> Path:
         """Construct the full path of the meta file"""
@@ -229,10 +228,10 @@ class FileAdapter(BaseDataAdapter):
                            space_name: str,
                            subpath: str,
                            shortname: str,
-                           class_type: Type[core.Meta],
+                           class_type: Type[MetaChild],
                            user_shortname: str | None = None,
                            schema_shortname: str | None = None
-                           ) -> core.Meta | None:  # type: ignore
+                           ) -> MetaChild | None:  # type: ignore
         """Load a Meta Json according to the reuqested Class type"""
         try:
             return await self.load(space_name, subpath, shortname, class_type, user_shortname, schema_shortname)
@@ -241,17 +240,17 @@ class FileAdapter(BaseDataAdapter):
 
     async def query(self, query: api.Query | None = None, user_shortname: str | None = None) \
             -> Tuple[int, list[core.Record]]:
-        pass
+        return (0, [])
 
     async def load(
             self,
             space_name: str,
             subpath: str,
             shortname: str,
-            class_type: Type[core.Meta],
+            class_type: Type[MetaChild],
             user_shortname: str | None = None,
             schema_shortname: str | None = None,
-    ) -> core.Meta:
+    ) -> MetaChild:
         """Load a Meta Json according to the requested Class type"""
         if subpath == shortname and class_type is core.Folder:
             shortname = ""
@@ -286,15 +285,16 @@ class FileAdapter(BaseDataAdapter):
             space_name: str,
             subpath: str,
             filename: str,
-            class_type: Type[core.Meta],
+            class_type: Type[MetaChild],
             schema_shortname: str | None = None,
     ):
         """Load a Meta class payload file"""
 
         path = self.payload_path(space_name, subpath, class_type, schema_shortname)
         path /= filename
+
         if not path.is_file():
-            return {}
+            return None
         try:
             if class_type == core.Log:
                 return {"log_entry_items": read_jsonl_file(path)}
@@ -307,9 +307,7 @@ class FileAdapter(BaseDataAdapter):
                 error=api.Error(type="db", code=12, message=f"Request object is not available {path}"),
             )
 
-    async def save(
-            self, space_name: str, subpath: str, meta: core.Meta
-    ):
+    async def save(self, space_name: str, subpath: str, meta: core.Meta):
         """Save Meta Json to respectiv file"""
         path, filename = self.metapath(
             space_name,
@@ -328,9 +326,7 @@ class FileAdapter(BaseDataAdapter):
             file.flush()
             os.fsync(file)
 
-    async def create(
-            self, space_name: str, subpath: str, meta: core.Meta
-    ):
+    async def create(self, space_name: str, subpath: str, meta: core.Meta):
         path, filename = self.metapath(
             space_name, subpath, meta.shortname, meta.__class__
         )
@@ -350,9 +346,7 @@ class FileAdapter(BaseDataAdapter):
             file.flush()
             os.fsync(file)
 
-    async def save_payload(
-            self, space_name: str, subpath: str, meta: core.Meta, attachment
-    ):
+    async def save_payload(self, space_name: str, subpath: str, meta: core.Meta, attachment):
         path, filename = self.metapath(
             space_name, subpath, meta.shortname, meta.__class__
         )
@@ -500,7 +494,7 @@ class FileAdapter(BaseDataAdapter):
             subpath: str,
             meta: core.Meta,
             payload_data: dict[str, Any],
-            owner_shortname: str = None,
+            owner_shortname: str,
     ):
         await self.save_payload_from_json(
             space_name,
@@ -683,7 +677,7 @@ class FileAdapter(BaseDataAdapter):
             src_shortname: str,
             dest_subpath: str,
             dest_shortname: str,
-            class_type: Type[core.Meta],
+            class_type: Type[MetaChild],
     ):
 
         meta_obj = await self.load(
@@ -743,7 +737,7 @@ class FileAdapter(BaseDataAdapter):
             space_name (str): The target space name
             subpath (str): The target subpath
             shortname (str): the target shortname
-            class_type (core.Meta): The target class of the entry
+            class_type (MetaChild): The target class of the entry
             schema_shortname (str | None, optional): schema shortname of the entry. Defaults to None.
 
         Returns:
@@ -842,9 +836,7 @@ class FileAdapter(BaseDataAdapter):
             if isinstance(meta, core.Folder) and Path(history_path).is_dir():
                 shutil.rmtree(history_path)
 
-    async def lock_handler(
-            self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
-    ) -> dict | None:
+    async def lock_handler(self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction) -> dict | None:
         match action:
             case LockAction.lock:
                 async with RedisServices() as redis_services:
@@ -855,18 +847,19 @@ class FileAdapter(BaseDataAdapter):
                         user_shortname,
                         settings.lock_period,
                     )
-                    return lock_type
+                    return {lock_type: lock_type}
             case LockAction.fetch:
                 async with RedisServices() as redis_services:
                     lock_payload = await redis_services.get_lock_doc(
                         space_name, subpath, shortname
                     )
-                    return lock_payload
+                    return dict(lock_payload)
             case LockAction.unlock:
                 async with RedisServices() as redis_services:
                     await redis_services.delete_lock_doc(
                         space_name, subpath, shortname
                     )
+        return None
 
     async def fetch_space(self, space_name: str) -> core.Space | None:
         spaces = await self.get_spaces()

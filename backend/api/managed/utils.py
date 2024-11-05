@@ -328,7 +328,7 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
 async def serve_request_update_r_replace_fetch_payload(
     old_resource_obj, record, request, resource_cls, schema_shortname
 ):
-    old_resource_payload_body = {}
+    old_resource_payload_body : dict[str, Any] = {}
     old_version_flattend = flatten_dict(
         old_resource_obj.model_dump()
     )
@@ -339,13 +339,14 @@ async def serve_request_update_r_replace_fetch_payload(
             and isinstance(old_resource_obj.payload.body, str)
     ):
         try:
-            old_resource_payload_body = await db.load_resource_payload(
+            mybody = await db.load_resource_payload(
                 space_name=request.space_name,
                 subpath=record.subpath,
                 filename=old_resource_obj.payload.body,
                 class_type=resource_cls,
                 schema_shortname=schema_shortname,
             )
+            old_resource_payload_body = mybody if mybody else {}
         except api.Exception as e:
             if request.request_type == api.RequestType.update:
                 raise e
@@ -494,7 +495,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 if (settings.active_data_db == 'sql'
                         and resource_obj.payload
                         and resource_obj.payload.content_type == ContentType.json):
-                    resource_obj.payload.body = new_resource_payload_data  # type: ignore
+                    resource_obj.payload.body = new_resource_payload_data
 
                 history_diff = await db.update(
                     space_name=request.space_name,

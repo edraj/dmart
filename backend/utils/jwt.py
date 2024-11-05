@@ -7,7 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 import models.api as api
 from utils.internal_error_code import InternalErrorCode
-from utils.password_hashing import hash_password, verify_password
+from utils.password_hashing import hash_password
 from utils.redis_services import RedisServices
 from utils.settings import settings
 from data_adapters.adapter import data_adapter as db
@@ -51,21 +51,20 @@ def decode_jwt(token: str) -> dict[str, Any]:
         )
 
 
-class JWTBearer(HTTPBearer):
+class JWTBearer():
     is_required: bool = True
+    http_bearer: HTTPBearer
 
     def __init__(self, auto_error: bool = True, is_required: bool = True):
-        super(JWTBearer, self).__init__(auto_error=auto_error)
+        self.http_bearer = HTTPBearer(auto_error=auto_error)
         self.is_required = is_required
 
-    async def __call__(self, request: Request) -> str | None:  # type: ignore
+    async def __call__(self, request: Request) -> str | None:
         user_shortname: str | None = None
         auth_token: str | None = None
         try:
             # Handle token received in Auth header
-            credentials: Optional[HTTPAuthorizationCredentials] = await super(
-                JWTBearer, self
-            ).__call__(request)
+            credentials: Optional[HTTPAuthorizationCredentials] = await self.http_bearer.__call__(request)
             if credentials and credentials.scheme == "Bearer":
                 auth_token = credentials.credentials
 
@@ -99,18 +98,16 @@ class JWTBearer(HTTPBearer):
                 ),
             )
 
-        return user_shortname
+        return user_shortname 
 
-
-class GetJWTToken(HTTPBearer):
+class GetJWTToken:
+    http_bearer: HTTPBearer
     def __init__(self, auto_error: bool = True):
-        super(GetJWTToken, self).__init__(auto_error=auto_error)
+        self.http_bearer = HTTPBearer(auto_error=auto_error)
 
-    async def __call__(self, request: Request) -> str | None:  # type: ignore
+    async def __call__(self, request: Request) -> str | None:
         try:
-            credentials: Optional[HTTPAuthorizationCredentials] = await super(
-                GetJWTToken, self
-            ).__call__(request)
+            credentials: Optional[HTTPAuthorizationCredentials] = await self.http_bearer.__call__(request)
             if credentials and credentials.scheme == "Bearer":
                 return credentials.credentials
         except Exception:

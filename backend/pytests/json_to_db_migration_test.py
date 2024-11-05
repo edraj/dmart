@@ -17,7 +17,7 @@ def connect_with_retry(engine, retries=5, delay=2):
     """
     for attempt in range(retries):
         try:
-            with engine.connect() as conn:
+            with engine.connect() as _:
                 print(f"Connected to the database on attempt {attempt + 1}")
                 return
         except OperationalError as e:
@@ -35,6 +35,8 @@ def setup_database():
     # Create the database
     with Session(engine) as session:
         try:
+            session.exec(text(f"DROP DATABASE IF EXISTS {settings.database_name}"))
+            session.commit()
             session.exec(text(f"CREATE DATABASE {settings.database_name}"))
             session.commit()  # Ensure the transaction is fully committed
             print(f"Database {settings.database_name} created successfully")

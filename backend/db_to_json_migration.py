@@ -1,3 +1,5 @@
+#!/usr/bin/env -S BACKEND_ENV=config.env python3
+
 import os
 import json
 from sqlmodel import Session, create_engine, select
@@ -49,7 +51,7 @@ def process_attachments(session, space_folder):
         ensure_directory_exists(media_path)
         if attachment.payload.get("body", None):
             if attachment.payload["content_type"] == 'json':
-                write_json_file(f"{media_path}/{attachment.shortname}", attachment.payload.get("body", {}))
+                write_json_file(f"{media_path}/{attachment.shortname}.json", attachment.payload.get("body", {}))
             else:
                 write_binary_file(f"{media_path}/{attachment.payload['body']}", attachment.media)
         _attachment = attachment.model_dump()
@@ -94,6 +96,14 @@ def process_entries(session, space_folder):
             )
             _entry["payload"]["body"] = f"{entry.shortname}.json"
 
+        if entry.resource_type != "ticket":
+            del _entry["state"]
+            del _entry["is_open"]
+            del _entry["reporter"]
+            del _entry["workflow_shortname"]
+            del _entry["collaborators"]
+            del _entry["resolution_reason"]
+
         file_path = os.path.join(dir_meta_path, f"meta.{entry.resource_type}.json")
         write_json_file(file_path, _entry)
 
@@ -132,18 +142,16 @@ def process_roles(session, space_folder):
 
 def process_permissions(session, space_folder):
     permissions = session.exec(select(Permissions)).all()
-    dir_path = f"{space_folder}/management/permissions/.dm" # Ensure absolute path
+    dir_path = f"{space_folder}/management/permissions/.dm"
     for permission in permissions:
-        dir_path = f"{dir_path}/{permission.shortname}"
-        ensure_directory_exists(dir_path)
+        ensure_directory_exists(f"{dir_path}/{permission.shortname}")
 
         _permission = permission.model_dump()
         del _permission["space_name"]
         del _permission["subpath"]
         del _permission["shortname"]
 
-        file_path = os.path.join(dir_path, "meta.permission.json")
-        write_json_file(file_path, _permission)
+        write_json_file(f"{dir_path}/{permission.shortname}/meta.permission.json", _permission)
 
 def process_histories(session, space_folder):
     histories = session.exec(select(Histories)).all()
@@ -181,8 +189,8 @@ def main():
     space_folder = os.path.relpath(str(settings.spaces_folder))
 
     with Session(engine) as session:
-        print("Processing attachments...")
-        process_attachments(session, space_folder)
+        print("Processing spaces...")
+        process_spaces(session, space_folder)
         print("Processing entries...")
         process_entries(session, space_folder)
         print("Processing users...")
@@ -191,10 +199,11 @@ def main():
         process_roles(session, space_folder)
         print("Processing permissions...")
         process_permissions(session, space_folder)
+        print("Processing attachments...")
+        process_attachments(session, space_folder)
         print("Processing histories...")
         process_histories(session, space_folder)
-        print("Processing spaces...")
-        process_spaces(session, space_folder)
+
 
 if __name__ == "__main__":
     main()

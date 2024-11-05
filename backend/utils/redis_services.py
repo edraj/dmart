@@ -734,7 +734,7 @@ class RedisServices(Redis):
         payload_shortname: str,
         owner_shortname: str,
         ttl: int,
-    ):
+    ) -> LockAction:
         lock_doc_id = self.generate_doc_id(
             space_name, "lock", payload_shortname, subpath
         )

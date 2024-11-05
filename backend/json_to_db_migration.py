@@ -3,9 +3,9 @@
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from uuid import uuid4
-
 from sqlmodel import Session, create_engine, text
 
 from utils.database.create_tables import Entries, Users, generate_tables, Attachments, \
@@ -30,9 +30,9 @@ engine = create_engine(f"{postgresql_url}/postgres", echo=False, isolation_level
 
 
 try:
-    s = Session(engine)
+    session = Session(engine)
     sql = f"CREATE DATABASE {settings.database_name}"
-    s.exec(text(sql))  # type: ignore
+    session.execute(text(sql))
     engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 except Exception as e:
     print(e)
@@ -43,7 +43,16 @@ except Exception as e:
     print(e)
 
 with Session(engine) as session:
-    for root, dirs, _ in os.walk(str(settings.spaces_folder)):
+    target_path = settings.spaces_folder
+
+    if len(sys.argv) == 2:
+        target_path = target_path.joinpath(sys.argv[1])
+
+    if not target_path.exists():
+        print(f"Space '{str(target_path).replace('/', '')}' does not exist")
+        sys.exit(1)
+
+    for root, dirs, _ in os.walk(str(target_path)):
         tmp = root.replace(str(settings.spaces_folder), '')
         if tmp == '':
             continue
@@ -66,14 +75,17 @@ with Session(engine) as session:
                 try:
                     entry = json.load(open(p))
                     entry['space_name'] = space_name
-                    if payload := entry.get('payload', {}).get('body', None):
-                        if entry.get('payload', {}).get('content_type', None) == 'json':
-                            body = json.load(open(
-                                os.path.join(root, dir, '../..', payload) # type: ignore
-                            ))
-                        else:
-                            body = payload
-                        entry['payload']['body'] = body
+                    entry['shortname'] = space_name
+                    _payload = entry.get('payload', {})
+                    if _payload:
+                        if payload := _payload.get('body', None):
+                            if entry.get('payload', {}).get('content_type', None) == 'json':
+                                body = json.load(open(
+                                    os.path.join(root, '.dm', '../..', str(payload))
+                                ))
+                            else:
+                                body = payload
+                            entry['payload']['body'] = body
                     else:
                         entry['payload'] = None
                     entry['subpath'] = '/'
@@ -85,7 +97,7 @@ with Session(engine) as session:
                     entry['hide_space'] = entry.get('hide_space', False)
                     session.add(Spaces.model_validate(entry))
                 except Exception as e:
-                    print(f"Error processing Spaces {space_name}/{subpath}/{dir}/{entry} ... ")
+                    print(f"Error processing Spaces {space_name}/{subpath}/{entry} ... ")
                     print(e)
             continue
 
@@ -98,12 +110,13 @@ with Session(engine) as session:
             subpath = '/'
 
         for dir in dirs:
+            print(f"Processing {space_name}/{subpath}|{dir}... ")
             for file in os.listdir(os.path.join(root, dir)):
                 if not file.startswith('meta'):
                     if file == 'history.jsonl':
                         lines = open(os.path.join(root, dir, file), 'r').readlines()
                         for line in lines:
-                            history = json.loads(line)
+                            history = json.loads(line.replace('\n', ''))
                             history['shortname'] = dir
                             history['space_name'] = space_name
                             history['subpath'] = subpath_checker(subpath)
@@ -153,7 +166,7 @@ with Session(engine) as session:
                                     _attachment['payload'] = {}
                             try:
                                 print(f"{dir=}")
-                                _attachment['resource_type'] = dir.replace('attachments.', '') #file.replace('.json', '').replace('meta.', '')
+                                _attachment['resource_type'] = dir.replace('attachments.', '')
                                 session.add(Attachments.model_validate(_attachment))
                             except Exception as e:
                                 print(f"Error processing Attachments {space_name}/{subpath}/{dir}/{file} ... ")
@@ -162,18 +175,20 @@ with Session(engine) as session:
                         entry = json.load(open(p))
                         entry['space_name'] = space_name
                         body = None
-                        if payload := entry.get('payload', {}).get('body', None):
-                            if entry.get('payload', {}).get('content_type', None) == 'json':
-                                try:
-                                    body = json.load(open(
-                                        os.path.join(root, dir, '../..', payload)
-                                    ))
-                                except Exception as e:
-                                    print(f"Error processing payload {space_name}/{subpath}/{dir}/{entry} ... ")
-                                    print(e)
-                            else:
-                                body = payload
-                            entry['payload']['body'] = body
+                        _payload = entry.get('payload', {})
+                        if _payload:
+                            if payload := entry.get('payload', {}).get('body', None):
+                                if entry.get('payload', {}).get('content_type', None) == 'json':
+                                    try:
+                                        body = json.load(open(
+                                            os.path.join(root, dir, '../..', payload)
+                                        ))
+                                    except Exception as e:
+                                        print(f"Error processing payload {space_name}/{subpath}/{dir}/{entry} ... ")
+                                        print(e)
+                                else:
+                                    body = payload
+                                entry['payload']['body'] = body
                         else:
                             entry['payload'] = None
                         entry['subpath'] = subpath_checker(subpath)
@@ -188,6 +203,8 @@ with Session(engine) as session:
                                 entry['google_id'] = entry.get('google_id', '')
                                 entry['facebook_id'] = entry.get('facebook_id', '')
                                 entry['social_avatar_url'] = entry.get('social_avatar_url', '')
+                                entry['displayname'] = entry.get('displayname', {})
+                                entry['description'] = entry.get('description', {})
                                 session.add(Users.model_validate(entry))
                             elif file.startswith("meta.role"):
                                 entry['resource_type'] = 'role'
@@ -214,7 +231,8 @@ with Session(engine) as session:
                                     entry["workflow_shortname"] = entry.get("workflow_shortname", "")
                                     entry["collaborators"] = entry.get("collaborators", None)
                                     entry["resolution_reason"] = entry.get("resolution_reason", None)
-
+                                    entry['displayname'] = entry.get('displayname', {})
+                                    entry['description'] = entry.get('description', {})
                                     entry["subpath"] = subpath_checker(entry["subpath"])
                                     session.add(Entries.model_validate(entry))
                                     continue
@@ -230,3 +248,8 @@ with Session(engine) as session:
             except Exception as e:
                 print(e)
                 session.reset()
+
+
+if settings.active_data_db == 'file':
+    print("[Warning] you are using active_data_db='file', please don't forget to set it to active_data_db='sql' in your config.env")
+

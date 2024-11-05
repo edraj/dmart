@@ -1,7 +1,4 @@
-# type: ignore
 import json
-import re
-import subprocess
 import sys
 import time
 from copy import copy
@@ -9,12 +6,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Type, Tuple
 from uuid import uuid4
-
+import ast
 import sqlalchemy
 from fastapi import status
 from fastapi.logger import logger
+
 from sqlalchemy import text, delete, func, update
 from sqlmodel import create_engine, Session, select
+import io
 
 import models.api as api
 import models.core as core
@@ -29,250 +28,32 @@ from utils.database.create_tables import (
     Users,
     Spaces,
     Attachments,
-    Aggregated,
     Locks,
     Sessions,
     Invitations,
-    URLShorts
+    URLShorts, 
 )
 from utils.helpers import (
     arr_remove_common,
     get_removed_items,
-    str_to_datetime,
     camel_case,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
-from utils.password_hashing import hash_password, verify_password
+from utils.password_hashing import hash_password
 from utils.settings import settings
-from .base_data_adapter import BaseDataAdapter
-
-postgres_aggregate_functions = [
-    "avg",
-    "count",
-    "max",
-    "min",
-    "sum",
-    "array_agg",
-    "string_agg",
-    "bool_and",
-    "bool_or",
-    "bit_and",
-    "bit_or",
-    "every",
-    "json_agg",
-    "jsonb_agg",
-    "json_object_agg",
-    "jsonb_object_agg",
-    "mode",
-    "regr_avgx",
-    "regr_avgy",
-    "regr_count",
-    "regr_intercept",
-    "regr_r2",
-    "regr_slope",
-    "regr_sxx",
-    "regr_sxy",
-    "regr_syy",
-    "corr",
-    "covar_pop",
-    "covar_samp",
-    "stddev",
-    "stddev_pop",
-    "stddev_samp",
-    "variance",
-    "var_pop",
-    "var_samp",
-]
-
-mysql_aggregate_functions = [
-    "avg",
-    "count",
-    "max",
-    "min",
-    "sum",
-    "group_concat",
-    "json_arrayagg",
-    "json_objectagg",
-    "std",
-    "stddev",
-    "stddev_pop",
-    "stddev_samp",
-    "variance",
-    "var_pop",
-    "var_samp",
-]
-
-sqlite_aggregate_functions = [
-    "avg",
-    "count",
-    "group_concat",
-    "max",
-    "min",
-    "sum",
-    "total",
-]
-
-
-def subpath_checker(subpath: str):
-    if subpath.endswith("/"):
-        subpath = subpath[:-1]
-    if not subpath.startswith("/"):
-        subpath = '/' + subpath
-    return subpath
-
-
-def transform_keys_to_sql(path):
-    parts = path.split('.')
-    sql_path = parts[0]
-    sql_path += ' -> ' + ' -> '.join([f"'{part}'" for part in parts[1:-1]])
-    sql_path += f" ->> '{parts[-1]}'"
-
-    return sql_path
-
-
-def validate_search_range(v_str):
-    if isinstance(v_str, list):
-        return False, v_str
-
-    pattern = r"^\[\d+\s(\d+)*\]$"
-
-    if re.match(pattern, v_str):
-        v_list = list(map(int, v_str[1:-1].split()))
-        return True, v_list
-    else:
-        return False, v_str
-
-
-def parse_search_string(string, entity):
-    list_criteria = string.split("@")
-    list_criteria = [item.strip() for item in list_criteria if item.strip()]
-    result = {}
-    for s in list_criteria:
-        if "[" in s and "]" in s:
-            pattern = r"(\S+):(\S+ \S+)"
-        else:
-            pattern = r"(\S+):(\S+)"
-
-        matches = re.findall(pattern, s)
-
-        for key, value in matches:
-            try:
-                if "." in key:
-                    if getattr(entity, key.split('.')[0]):
-                        key = transform_keys_to_sql(key)
-                        if "|" in value:
-                            value = value.split("|")
-                        result[key] = value
-                elif getattr(entity, key):
-                    if "|" in value:
-                        value = value.split("|")
-                    result[key] = value
-
-            except Exception as e:
-                print(f"Failed to parse search string: {s} cuz of {e}:{e.args}:{e.__dict__}")
-                continue
-    return result
-
-
-async def events_query(
-        query: api.Query, user_shortname: str | None = None
-) -> tuple[int, list[core.Record]]:
-    from utils.access_control import access_control
-
-    records: list[core.Record] = []
-    total: int = 0
-
-    path = Path(f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
-    if not path.is_file():
-        return total, records
-
-    result = []
-    if query.search:
-        p = subprocess.Popen(
-            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-        )
-        p = subprocess.Popen(
-            ["tail", "-n", f"{query.limit + query.offset}"],
-            stdin=p.stdout,
-            stdout=subprocess.PIPE,
-        )
-        p = subprocess.Popen(["tac"], stdin=p.stdout, stdout=subprocess.PIPE)
-        if query.offset > 0:
-            p = subprocess.Popen(
-                ["sed", f"1,{query.offset}d"],
-                stdin=p.stdout,
-                stdout=subprocess.PIPE,
-            )
-        r, _ = p.communicate()
-        result = list(filter(None, r.decode("utf-8").split("\n")))
-    else:
-        cmd = f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
-        if query.offset > 0:
-            cmd += f" | sed '1,{query.offset}d'"
-        result = list(
-            filter(
-                None,
-                subprocess.run(
-                    [cmd], capture_output=True, text=True, shell=True
-                ).stdout.split("\n"),
-            )
-        )
-
-    if query.search:
-        p1 = subprocess.Popen(
-            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-        )
-        p2 = subprocess.Popen(["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE)
-        r, _ = p2.communicate()
-        total = int(
-            r.decode(),
-            10,
-        )
-    else:
-        total = int(
-            subprocess.run(
-                [f"wc -l < {path}"],
-                capture_output=True,
-                text=True,
-                shell=True,
-            ).stdout,
-            10,
-        )
-    for line in result:
-        action_obj = json.loads(line)
-        if (
-                query.from_date
-                and str_to_datetime(action_obj["timestamp"]) < query.from_date
-        ):
-            continue
-
-        if query.to_date and str_to_datetime(action_obj["timestamp"]) > query.to_date:
-            break
-
-        if not await access_control.check_access(
-                user_shortname=user_shortname,
-                space_name=query.space_name,
-                subpath=action_obj.get(
-                    "resource", {}).get("subpath", "/"),
-                resource_type=action_obj["resource"]["type"],
-                action_type=core.ActionType(action_obj["request"]),
-        ):
-            continue
-
-        records.append(
-            core.Record(
-                resource_type=action_obj["resource"]["type"],
-                shortname=action_obj["resource"]["shortname"],
-                subpath=action_obj["resource"]["subpath"],
-                attributes=action_obj,
-            ),
-        )
-
-    return total, records
+from .base_data_adapter import BaseDataAdapter, MetaChild
+from .sql_adapter_helpers import (
+    set_results_from_aggregation,
+    set_table_for_query,
+    events_query,
+    subpath_checker, parse_search_string, validate_search_range, sqlite_aggregate_functions, mysql_aggregate_functions,
+    postgres_aggregate_functions, transform_keys_to_sql,
+)
 
 
 def query_aggregation(table, query):
+    aggregate_functions: list = []
     if settings.database_driver == "sqlite":
         aggregate_functions = sqlite_aggregate_functions
     elif settings.database_driver == "mysql":
@@ -302,11 +83,11 @@ def query_aggregation(table, query):
             if len(reducer.args) == 0:
                 field = "*"
             else:
-                field = (
-                    getattr(table, reducer.args[0])
-                    if hasattr(table, reducer.args[0])
-                    else None
-                )
+                if not hasattr(table, reducer.args[0]):
+                    continue
+
+                field = getattr(table, reducer.args[0])
+
                 if field is None:
                     continue
 
@@ -326,6 +107,15 @@ def query_aggregation(table, query):
             )
     return statement
 
+def string_to_list(input_str):
+    if isinstance(input_str, list):
+        return input_str
+    try:
+        result = ast.literal_eval(input_str)
+        if isinstance(result, list):
+            return result
+    except (ValueError, SyntaxError):
+        return [input_str]
 
 async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
@@ -338,7 +128,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             error=api.Error(
                 type="query",
                 code=InternalErrorCode.SOMETHING_WRONG,
-                message=e,
+                message=str(e),
             ),
         )
 
@@ -348,20 +138,37 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         statement = statement.where(table.subpath == query.subpath)
     if query.search:
         for k, v in parse_search_string(query.search, table).items():
+            flag_neg = False
+            if "!" in v:
+                flag_neg = True
             vv, v = validate_search_range(v)
+            if isinstance(v, str):
+                v = v.replace("!", "")
+            is_list = isinstance(v, list) or ("[" in v and "]" in v)
+            if is_list:
+                v = string_to_list(v)
+
             if "->" in k:
                 if isinstance(v, str):
-                    statement = statement.where(text(f"(({k}) = '{v}' OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"))
-            elif isinstance(v, list) and vv:
-                statement = statement.where(text(f"({k}) BETWEEN '{v[0]}' AND '{v[1]}'"))
-            elif isinstance(v, list):
+                    stm = f"(({k}) {'!' if flag_neg else ''}= '{v}'"
+                    if "payload" in k:
+                        stm += f" OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"
+                    stm += ")"
+                    statement = statement.where(text(stm))
+            elif is_list and vv:
+                statement = statement.where(text(f"({k}) {'NOT' if flag_neg else ''} BETWEEN '{v[0]}' AND '{v[1]}'"))
+            elif is_list:
                 in_1 = ', '.join([f"'{_v}'" for _v in v])
-                in_2 = ', '.join([f'"{_v}"' for _v in v])
-                statement = statement.where(text(f"(({k}) IN ({in_1}) OR ({k.replace('>>', '>')})::jsonb @> '[({in_2})]')"))
+                stm = f"(({k}) {'NOT' if flag_neg else ''} IN ({in_1})"
+                if "payload" in k:
+                    in_2 = ', '.join([f'"{_v}"' for _v in v])
+                    stm += f" OR ({k.replace('>>', '>')})::jsonb @> '[{in_2}]'"
+                stm += ")"
+                statement = statement.where(text(stm))
             elif isinstance(v, str):
-                statement = statement.where(text(f"{k}='{v}'"))
+                statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= '{v}'"))
             else:
-                statement = statement.where(text(f"{k}={v}"))
+                statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= {v}"))
 
     if query.filter_schema_names:
         if 'meta' in query.filter_schema_names:
@@ -374,15 +181,15 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             )
     if query.filter_shortnames:
         statement = statement.where(
-            table.shortname.in_(query.filter_shortnames)
+            col(table.shortname).in_(query.filter_shortnames)
         )
     if query.filter_types:
         statement = statement.where(
-            table.resource_type.in_(query.filter_types)
+            col(table.resource_type).in_(query.filter_types)
         )
     if query.filter_tags:
         statement = statement.where(
-            table.tags.in_(query.filter_tags)
+            col(table.tags).in_(query.filter_tags)
         )
     if query.from_date:
         statement = statement.where(table.created_at >= query.from_date)
@@ -412,47 +219,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
     return statement
 
-
-def set_results_from_aggregation(query, item, results, idx):
-    extra = {}
-    for key, value in item._mapping.items():
-        if not hasattr(Aggregated, key):
-            extra[key] = value
-
-    results[idx] = Aggregated.model_validate(item).to_record(
-        query.subpath,
-        (
-            getattr(item, "shortname")
-            if hasattr(item, "shortname")
-            else None
-        ),
-        extra=extra,
-    )
-
-    return results
-
-
-def set_table_for_query(query):
-    if query.type is QueryType.spaces:
-        return Spaces
-    elif query.type is QueryType.history:
-        return Histories
-    elif query.space_name == "management":
-        match query.subpath:
-            case "/users":
-                return Users
-            case "/roles":
-                return Roles
-            case "/permissions":
-                return Permissions
-            case _:
-                return Entries
-    else:
-        return Entries
-
-
 class SQLAdapter(BaseDataAdapter):
-    session: Session = None
+    session: Session 
 
     def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
         locators: list[core.Locator] = []
@@ -473,31 +241,31 @@ class SQLAdapter(BaseDataAdapter):
             space_name: str,
             subpath: str,
             shortname: str,
-    ):
-        pass
+    ) -> str:
+        return ""
 
-    def metapath(self, dto: Any) -> tuple[Path, str]:
-        pass
+    def metapath(self, 
+            space_name: str,
+            subpath: str,
+            shortname: str,
+            class_type: Type[MetaChild],
+            schema_shortname: str | None = None,
+            ) -> tuple[Path, str]:
+        return (Path(), "")
 
     def __init__(self):
         self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+        connection_string = f"{self.database_connection_string}/{settings.database_name}"
+        engine = create_engine(connection_string, echo=False)
+        self.session = Session(engine)
+
 
     def get_session(self):
-        if self.session is None:
-            connection_string = (
-                f"{self.database_connection_string}/{settings.database_name}"
-            )
-            engine = create_engine(connection_string, echo=False)
-            self.session = Session(engine)
         return self.session
 
     def get_table(
-            self, class_type: Type[core.Meta]
-    ) -> Type[core.Meta] | Type[Roles] | Type[Permissions] | Type[Users] | Type[Spaces] | Type[Locks] | \
-         Type[Attachments] | Type[Entries]:
-
-        if "core" not in str(class_type):
-            return class_type
+            self, class_type: Type[MetaChild]
+    ) -> Type[Roles] | Type[Permissions] | Type[Users] | Type[Spaces] | Type[Locks] | Type[Attachments] | Type[Entries]:
 
         match class_type:
             case core.Role:
@@ -521,38 +289,9 @@ class SQLAdapter(BaseDataAdapter):
             | core.DataAsset
             ):
                 return Attachments
-            case _:
-                return Entries
+        return Entries
 
-    def get_table_dto(
-            self, dto: Any
-    ) -> Type[Roles | Permissions | Users | Spaces | Locks | Attachments | Entries]:
-        match dto.class_type:
-            case core.Role:
-                return Roles
-            case core.Permission:
-                return Permissions
-            case core.User:
-                return Users
-            case core.Space:
-                return Spaces
-            case core.Lock:
-                return Locks
-            case (
-            core.Alteration
-            | core.Media
-            | core.Lock
-            | core.Comment
-            | core.Reply
-            | core.Reaction
-            | core.Json
-            | core.DataAsset
-            ):
-                return Attachments
-            case _:
-                return Entries
-
-    def get_base_model(self, class_type, data, update=None):
+    def get_base_model(self, class_type : Type[MetaChild], data, update=None) -> Roles | Permissions | Users | Spaces | Locks | Attachments | Entries:
         match class_type:
             case core.User:
                 return Users.model_validate(data, update=update)
@@ -575,8 +314,7 @@ class SQLAdapter(BaseDataAdapter):
                 if data.get("media", None) is None:
                     data["media"] = None
                 return Attachments.model_validate(data, update=update)
-            case _:
-                return Entries.model_validate(data, update=update)
+        return Entries.model_validate(data, update=update)
 
     async def get_entry_attachments(
             self,
@@ -639,7 +377,7 @@ class SQLAdapter(BaseDataAdapter):
             self,
             space_name: str,
             subpath: str,
-            class_type: Type[core.Meta],
+            class_type: Type[MetaChild],
             schema_shortname: str | None = None, ) -> Path:
         """Construct the full path of the meta file"""
         path = settings.spaces_folder / space_name
@@ -659,15 +397,15 @@ class SQLAdapter(BaseDataAdapter):
             path = path / subpath
         return path
 
-    async def load_or_none(
+    async def db_load_or_none(
             self,
             space_name: str,
             subpath: str,
             shortname: str,
-            class_type: Type[core.Meta],
+            class_type: Type[MetaChild],
             user_shortname: str | None = None,
             schema_shortname: str | None = None,
-    ) -> core.Meta | None:  # type: ignore
+    ) -> Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None:
         """Load a Meta Json according to the reuqested Class type"""
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
@@ -680,36 +418,26 @@ class SQLAdapter(BaseDataAdapter):
             statement = select(table).where(table.space_name == space_name)
             if table in [Roles, Permissions, Users, Spaces]:
                 statement = statement.where(table.shortname == shortname)
-            else:
+            elif table in [Entries, Attachments]:
                 statement = statement.where(table.shortname == shortname).where(table.subpath == subpath)
 
-            result = session.exec(statement).one_or_none()
+            result : Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None = session.exec(statement).one_or_none()
             if result is None:
                 return None
 
             try:
-                try:
-                    if hasattr(result, 'payload') and result.payload and isinstance(result.payload, dict):
-                        if result.payload.get("body", None) is None:
-                            result.payload["body"] = {}
-                        result.payload = core.Payload.model_validate(
-                            result.payload, strict=False
-                        )
-                except Exception as e:
-                    print("[!load]", e)
-                    logger.error(f"Failed parsing an entry. Error: {e}")
                 return result
             except Exception as e:
                 print("[!load_or_none]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
                 return None
 
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Meta:  # type: ignore
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Meta | None:
         with self.get_session() as session:
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
-                for table in tables:
-                    statement = select(table)
+                for _table in tables:
+                    statement = select(_table)
                     for k, v in criteria.items():
                         if isinstance(v, str):
                             statement = statement.where(
@@ -717,9 +445,10 @@ class SQLAdapter(BaseDataAdapter):
                             ).params({k: f"{v}%"})
                         else:
                             statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-                        result = session.exec(statement).all()
-                        if len(result) != 0:
-                            return result[0]
+                        result = session.exec(statement).one_or_none()
+                        if result:
+                            core_model_class : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
+                            return core_model_class.model_validate(result.model_dump())
                 return None
             else:
                 statement = select(table)
@@ -730,14 +459,17 @@ class SQLAdapter(BaseDataAdapter):
                         ).params({k: f"{v}%"})
                     else:
                         statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-                    result = session.exec(statement).all()
-                    if len(result) != 0:
-                        return result[0]
+                    result = session.exec(statement).one_or_none()
+                    if result:
+                        core_model_class2 : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
+                        return core_model_class2.model_validate(result.model_dump())
                 return None
 
     async def query(
-            self, query: api.Query | None = None, user_shortname: str | None = None
+            self, query: api.Query, user_shortname: str | None = None
     ) -> Tuple[int, list[core.Record]]:
+        total : int
+        results : list
         with (self.get_session() as session):
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
@@ -745,11 +477,11 @@ class SQLAdapter(BaseDataAdapter):
             table = set_table_for_query(query)
 
             statement = select(table)
-            statement_total = select(func.count(table.uuid))
+            statement_total = select(func.count(col(table.uuid)))
 
-            if query.type == QueryType.events:
+            if query and query.type == QueryType.events:
                 try:
-                    return await events_query(query, user_shortname)  # type: ignore
+                    return await events_query(query, user_shortname)
                 except Exception as e:
                     print(e)
                     return 0, []
@@ -759,13 +491,13 @@ class SQLAdapter(BaseDataAdapter):
                 and query.space_name == "management"
                 and query.subpath == "/"):
                     statement = select(Spaces)
-                    statement_total = select(func.count(Spaces.uuid))
+                    statement_total = select(func.count(col(Spaces.uuid)))
             else:
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
             try:
-                total = session.execute(statement_total).scalar()
+                total = session.exec(statement_total).one()
                 if query.type == QueryType.counters:
                     return total, []
                 results = list(session.exec(statement).all())
@@ -784,20 +516,43 @@ class SQLAdapter(BaseDataAdapter):
                         message=str(e),
                     ),
                 )
-        return total, results
+        return (total, results)
+
+    async def load_or_none(
+            self,
+            space_name: str,
+            subpath: str,
+            shortname: str,
+            class_type: Type[MetaChild],
+            user_shortname: str | None = None,
+            schema_shortname: str | None = None,
+    ) -> MetaChild | None:
+
+            result = await self.db_load_or_none(space_name, subpath, shortname, class_type, user_shortname,schema_shortname)
+            if not result:
+                return None
+
+            try:
+                if hasattr(result, 'payload') and result.payload and isinstance(result.payload, dict):
+                    if result.payload.get("body", None) is None:
+                        result.payload["body"] = {}
+                    result.payload = core.Payload.model_validate( result.payload, strict=False)
+            except Exception as e:
+                print("[!load]", e)
+                logger.error(f"Failed parsing an entry. Error: {e}")
+            return class_type.model_validate(result.model_dump())
+            
 
     async def load(
             self,
             space_name: str,
             subpath: str,
             shortname: str,
-            class_type: Type[core.Meta],
+            class_type: Type[MetaChild],
             user_shortname: str | None = None,
             schema_shortname: str | None = None,
-    ) -> core.Meta:
-        meta: core.Meta | None = await self.load_or_none(
-            space_name, subpath, shortname, class_type, user_shortname, schema_shortname
-        )  # type: ignore
+    ) -> MetaChild:
+        meta: MetaChild | None = await self.load_or_none(space_name, subpath, shortname, class_type, user_shortname, schema_shortname)
         if meta is None:
             raise api.Exception(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -808,15 +563,14 @@ class SQLAdapter(BaseDataAdapter):
                 ),
             )
 
-        return meta
-        # type: ignore
+        return meta 
 
     async def load_resource_payload(
             self,
             space_name: str,
             subpath: str,
             filename: str,
-            class_type: Type[core.Meta],
+            class_type: Type[MetaChild],
             schema_shortname: str | None = None,
     ) -> dict[str, Any] | None:
         """Load a Meta class payload file"""
@@ -828,7 +582,7 @@ class SQLAdapter(BaseDataAdapter):
 
             if table in [Roles, Permissions, Users]:
                 statement = statement.where(table.shortname == filename.replace('.json', ''))
-            else:
+            elif table in [Entries, Attachments, Histories]:
                 statement = statement.where(table.subpath == subpath).where(
                     table.shortname == filename.replace('.json', '')
                 )
@@ -837,7 +591,8 @@ class SQLAdapter(BaseDataAdapter):
             if result is None:
                 return None
 
-            return result.model_dump().get("payload", {}).get("body", {})
+            var : dict = result.model_dump().get("payload", {}).get("body", {})
+            return var
 
     async def save(
             self, space_name: str, subpath: str, meta: core.Meta
@@ -891,12 +646,8 @@ class SQLAdapter(BaseDataAdapter):
                 ),
             )
 
-    async def create(
-            self, space_name: str, subpath: str, meta: core.Meta
-    ):
-        result = await self.load_or_none(
-            space_name, subpath, meta.shortname, meta.__class__
-        )
+    async def create(self, space_name: str, subpath: str, meta: core.Meta):
+        result = await self.load_or_none(space_name, subpath, meta.shortname, meta.__class__)
 
         if result is not None:
             raise api.Exception(
@@ -922,12 +673,13 @@ class SQLAdapter(BaseDataAdapter):
             )
         else:
             content = json.load(attachment.file)
-            meta.payload.body = content
-            await self.update(
-                space_name, subpath, meta,
-                {}, {}, [],
-                ""
-            )
+            if meta.payload:
+                meta.payload.body = content
+                await self.update(
+                    space_name, subpath, meta,
+                    {}, {}, [],
+                    ""
+                )
 
     async def save_payload_from_json(
             self,
@@ -953,21 +705,17 @@ class SQLAdapter(BaseDataAdapter):
     ) -> dict:
         """Update the entry, store the difference and return it"""
         with self.get_session() as session:
-            result = await self.load(
-                space_name, subpath, meta.shortname, meta.__class__
-            )
-            if result is None:
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(
-                        type="create",
-                        code=InternalErrorCode.MISSING_METADATA,
-                        message="metadata is missing",
-                    ),
-                )
-
             try:
-                meta.updated_at = datetime.now()
+                result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+                if result is None:
+                    raise api.Exception(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        error=api.Error(
+                            type="create",
+                            code=InternalErrorCode.MISSING_METADATA,
+                            message="metadata is missing",
+                        ),
+                    )
                 result.sqlmodel_update(meta.model_dump())
                 if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
                     result.subpath = f"/{result.subpath}"
@@ -1007,8 +755,10 @@ class SQLAdapter(BaseDataAdapter):
             subpath: str,
             meta: core.Meta,
             payload_data: dict[str, Any],
-            owner_shortname: str = None,
+            owner_shortname: str,
     ):
+        if not meta.payload:
+            meta.payload = core.Payload()
         meta.payload.body = payload_data
         await self.update(
             space_name, subpath, meta, {}, {}, [], owner_shortname
@@ -1087,12 +837,20 @@ class SQLAdapter(BaseDataAdapter):
         """Move the file that match the criteria given, remove source folder if empty"""
         if not src_subpath.startswith("/"):
             src_subpath = f"/{src_subpath}"
-        if not dest_subpath.startswith("/"):
+        if dest_subpath and not dest_subpath.startswith("/"):
             dest_subpath = f"/{dest_subpath}"
 
-        origin = await self.load(
-            space_name, src_subpath, src_shortname, meta.__class__
-        )
+        origin = await self.db_load_or_none(space_name, src_subpath, src_shortname, meta.__class__)
+        if origin is None:
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="create",
+                    code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+                    message="already exists",
+                ),
+            )
+
 
         with self.get_session() as session:
             try:
@@ -1180,7 +938,7 @@ class SQLAdapter(BaseDataAdapter):
             src_shortname: str,
             dest_subpath: str,
             dest_shortname: str,
-            class_type: Type[core.Meta],
+            class_type: Type[MetaChild],
     ):
         pass
 
@@ -1240,17 +998,13 @@ class SQLAdapter(BaseDataAdapter):
                 if not subpath.startswith("/"):
                     subpath = f"/{subpath}"
 
-                result = await self.load(
-                    space_name, subpath, meta.shortname, meta.__class__
-                )
+                result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
                 session.delete(result)
                 if meta.__class__ == core.Space:
-                    statement = delete(Entries) \
-                        .where(Entries.space_name == space_name)  # type:ignore[call-overload]
-                    session.exec(statement)
-                    statement = delete(Attachments) \
-                        .where(Attachments.space_name == space_name)  # type:ignore[call-overload]
-                    session.exec(statement)
+                    statement = delete(Entries).where(col(Entries.space_name) == space_name)
+                    session.execute(statement)
+                    statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name)
+                    session.execute(statement2)
                 session.commit()
             except Exception as e:
                 print("[!delete]", e)
@@ -1264,9 +1018,7 @@ class SQLAdapter(BaseDataAdapter):
                     ),
                 )
 
-    async def lock_handler(
-            self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
-    ) -> dict | None:
+    async def lock_handler(self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction) -> dict | None:
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
 
@@ -1308,20 +1060,20 @@ class SQLAdapter(BaseDataAdapter):
                     )).model_dump()
                     return lock_payload
                 case LockAction.unlock:
-                    statement = delete(Locks) \
-                        .where(Locks.space_name == space_name) \
-                        .where(Locks.subpath == subpath) \
-                        .where(Locks.shortname == shortname)  # type:ignore[call-overload]
-
-                    session.exec(statement)
+                    statement2 = delete(Locks) \
+                        .where(col(Locks.space_name) == space_name) \
+                        .where(col(Locks.subpath) == subpath) \
+                        .where(col(Locks.shortname) == shortname)
+                    session.execute(statement2)
                     session.commit()
-                    return None
+        return None
 
     async def fetch_space(self, space_name: str) -> core.Space | None:
-        space = await self.load_or_none(space_name, "", space_name, core.Space)
-        if space is None:
+        try:
+            return await self.load(space_name, "/", space_name, core.Space)
+        except Exception as e:
+            print("[!fetch_space]", e)
             return None
-        return core.Space.model_validate(space)
 
     async def set_sql_active_session(self, user_shortname: str, token: str) -> bool:
         with self.get_session() as session:
@@ -1365,7 +1117,7 @@ class SQLAdapter(BaseDataAdapter):
                 print("[!set_sql_user_session]", e)
                 return False
 
-    async def get_sql_active_session(self, user_shortname: str, token: str | None) -> str | None:
+    async def get_sql_active_session(self, user_shortname: str, auth_token: str | None) -> str | None:
         with self.get_session() as session:
             statement = select(ActiveSessions).where(ActiveSessions.shortname == user_shortname)
 
@@ -1374,7 +1126,7 @@ class SQLAdapter(BaseDataAdapter):
                 return None
 
             active_session = ActiveSessions.model_validate(result)
-            if token is not None and token != active_session.token:
+            if auth_token is not None and auth_token != active_session.token:
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     error=api.Error(
@@ -1389,7 +1141,7 @@ class SQLAdapter(BaseDataAdapter):
                 return None
             return active_session.token
 
-    async def get_sql_user_session(self, user_shortname: str):
+    async def get_sql_user_session(self, user_shortname: str) -> str | None:
         with self.get_session() as session:
             statement = select(Sessions).where(Sessions.shortname == user_shortname)
 
@@ -1407,8 +1159,8 @@ class SQLAdapter(BaseDataAdapter):
     async def remove_sql_active_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = delete(ActiveSessions).where(ActiveSessions.shortname == user_shortname)
-                session.exec(statement)
+                statement = delete(ActiveSessions).where(col(ActiveSessions.shortname) == user_shortname)
+                session.execute(statement)
                 session.commit()
                 return True
             except Exception as e:
@@ -1418,8 +1170,8 @@ class SQLAdapter(BaseDataAdapter):
     async def remove_sql_user_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = delete(Sessions).where(Sessions.shortname == user_shortname)
-                session.exec(statement)
+                statement = delete(Sessions).where(col(Sessions.shortname) == user_shortname)
+                session.execute(statement)
                 session.commit()
                 return True
             except Exception as e:
@@ -1442,7 +1194,7 @@ class SQLAdapter(BaseDataAdapter):
             except Exception as e:
                 print("[!set_invitation]", e)
 
-    async def get_invitation_token(self, invitation_token: str):
+    async def get_invitation_token(self, invitation_token: str) -> str | None:
         with self.get_session() as session:
             statement = select(Invitations).where(Invitations.invitation_token == invitation_token)
 
@@ -1452,13 +1204,13 @@ class SQLAdapter(BaseDataAdapter):
 
             user_session = Invitations.model_validate(result)
 
-            statement = delete(Invitations).where(Invitations.invitation_token == invitation_token)
+            statement = select(Invitations).where(Invitations.invitation_token == invitation_token)
             session.exec(statement)
             session.commit()
 
             return user_session.invitation_value
 
-    async def set_url_shortner(self, token_uuid: str, url: str) -> bool:
+    async def set_url_shortner(self, token_uuid: str, url: str):
         with self.get_session() as session:
             try:
                 session.add(
@@ -1491,7 +1243,7 @@ class SQLAdapter(BaseDataAdapter):
     async def delete_url_shortner(self, token_uuid: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = delete(URLShorts).where(URLShorts.token_uuid == token_uuid)
+                statement = select(URLShorts).where(URLShorts.token_uuid == token_uuid)
                 session.exec(statement)
                 session.commit()
                 return True
@@ -1522,7 +1274,7 @@ class SQLAdapter(BaseDataAdapter):
     async def clear_failed_password_attempts(self, user_shortname: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = delete(FailedLoginAttempts).where(FailedLoginAttempts.shortname == user_shortname)
+                statement = select(FailedLoginAttempts).where(FailedLoginAttempts.shortname == user_shortname)
                 session.exec(statement)
                 session.commit()
                 return True
@@ -1575,3 +1327,19 @@ class SQLAdapter(BaseDataAdapter):
                 space = Spaces.model_validate(item)
                 spaces[space.shortname] = space.model_dump()
             return spaces
+
+    async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
+        if not subpath.startswith("/"):
+            subpath = f"/{subpath}"
+
+        with self.get_session() as session:
+            statement = select(Attachments.media)\
+                .where(Attachments.space_name == space_name)\
+                .where(Attachments.subpath == subpath)\
+                .where(Attachments.shortname == shortname)
+
+            result = session.exec(statement).one_or_none()
+            if result:
+                return io.BytesIO(result)
+        return None
+
