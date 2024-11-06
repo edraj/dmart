@@ -86,6 +86,7 @@
   let ticketPayload = null;
   async function get_ticket_payload() {
       ticketPayload = await retrieve_entry(ResourceType.content, space_name, "workflows", entry.workflow_shortname, true)
+      ticketPayload = ticketPayload.payload.body;
       console.log({ticketPayload})
   }
 
@@ -118,7 +119,7 @@
   }
 </script>
 
-<Form class="d-flex flex-column justify-content-between w-50 p-5" on:submit={handleTicketSubmit}>
+<Form class="d-flex flex-column justify-content-between p-5" on:submit={handleTicketSubmit}>
   <div class="d-flex flex-column px-5">
     {#await get_ticket_payload() then _}
       <FormGroup>
