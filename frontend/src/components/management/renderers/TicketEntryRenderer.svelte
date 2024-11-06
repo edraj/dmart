@@ -1,5 +1,13 @@
 <script lang="ts">
-    import {get_payload, progress_ticket, request, RequestType, ResourceType, type ResponseEntry,} from "@/dmart";
+    import {
+        get_payload,
+        progress_ticket,
+        request,
+        RequestType,
+        ResourceType,
+        type ResponseEntry,
+        retrieve_entry,
+    } from "@/dmart";
     import {Button, Form, FormGroup, Input, Label,} from "sveltestrap";
     import {Level, showToast} from "@/utils/toast";
 
@@ -77,13 +85,17 @@
 
   let ticketPayload = null;
   async function get_ticket_payload() {
-      ticketPayload = await get_payload(ResourceType.content, space_name, "workflows", entry.workflow_shortname)
+      ticketPayload = await retrieve_entry(ResourceType.content, space_name, "workflows", entry.workflow_shortname, true)
+      ticketPayload = ticketPayload.payload.body;
+      console.log({ticketPayload})
   }
 
   let ticketStates = [];
   $:{
       if (ticketPayload){
         ticketStates = ticketPayload.states.filter((e) => e.state === entry.state)[0]?.next;
+          console.log({state: entry.state})
+          console.log({ticketStates})
      }
   }
 
@@ -91,11 +103,13 @@
   $:{    
       if ((ticketStates??[]).length){
           ticketResolutions = ticketPayload.states.filter((e) => e.state === ticket_status)[0]?.resolutions ?? [];
+          console.log({ticketResolutions})
       }
   }
 
   $: {
       ticket_action = ticketStates?.filter((e) => e.state === ticket_status)[0]?.action ?? null;
+      console.log({ticket_action})
   }
 
   $: {
@@ -105,10 +119,10 @@
   }
 </script>
 
-<Form class="d-flex flex-column justify-content-between w-100 p-5" on:submit={handleTicketSubmit}>
-  <div class="d-flex row">
+<Form class="d-flex flex-column justify-content-between p-5" on:submit={handleTicketSubmit}>
+  <div class="d-flex flex-column px-5">
     {#await get_ticket_payload() then _}
-      <FormGroup class="col">
+      <FormGroup>
         {#if ticketStates}
           <Label>State</Label>
           <!-- on:change={handleInputChange} -->
@@ -147,7 +161,7 @@
       {/key}
     {/await}
     {#if ticketStates.length}
-      <FormGroup class="col">
+      <FormGroup>
         <Label>Comment</Label>
         <!-- on:change={handleInputChange} -->
         <Input
@@ -159,7 +173,7 @@
         />
       </FormGroup>
     {/if}
-    <FormGroup class="col">
+    <FormGroup>
       <Label>Transfer</Label>
       <!-- on:change={handleInputChange} -->
       <Input

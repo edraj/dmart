@@ -279,29 +279,28 @@
               allowedResourceTypes = entry?.payload?.body?.content_resource_types;
             }
 
-            //TODO
-            // if (!!entry?.payload?.body?.stream) {
-            //     if ("websocket" in website) {
-            //         ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
-            //     }
-            //
-            //     ws.onopen = () => {
-            //         ws.send(
-            //             JSON.stringify({
-            //                 type: "notification_subscription",
-            //                 space_name: space_name,
-            //                 subpath: subpath,
-            //             })
-            //         );
-            //     };
-            //
-            //     ws.onmessage = (event) => {
-            //         const data = JSON.parse(event?.data ?? "");
-            //         if (data?.message?.title) {
-            //             isNeedRefresh = true;
-            //         }
-            //     };
-            // }
+            if (!!entry?.payload?.body?.stream) {
+                if ("websocket" in website) {
+                    ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+                }
+
+                ws.onopen = () => {
+                    ws.send(
+                        JSON.stringify({
+                            type: "notification_subscription",
+                            space_name: space_name,
+                            subpath: subpath,
+                        })
+                    );
+                };
+
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event?.data ?? "");
+                    if (data?.message?.title) {
+                        isNeedRefresh = true;
+                    }
+                };
+            }
         }
     });
 
