@@ -11,7 +11,7 @@ import sqlalchemy
 from fastapi import status
 from fastapi.logger import logger
 from sqlalchemy import text, func
-from sqlmodel import create_engine, Session, select, col, delete
+from sqlmodel import create_engine, Session, select, col, delete, update
 import io
 
 import models.api as api
@@ -415,10 +415,10 @@ class SQLAdapter(BaseDataAdapter):
             table = self.get_table(class_type)
 
             statement = select(table).where(table.space_name == space_name)
-            if table in [Roles, Permissions, Users, Spaces]:
-                statement = statement.where(table.shortname == shortname)
-            elif table in [Entries, Attachments]:
-                statement = statement.where(table.shortname == shortname).where(table.subpath == subpath)
+            statement = statement.where(table.shortname == shortname)
+
+            if table in [Entries, Attachments]:
+                statement = statement.where(table.subpath == subpath)
 
             result : Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None = session.exec(statement).one_or_none()
             if result is None:
@@ -850,13 +850,15 @@ class SQLAdapter(BaseDataAdapter):
                 ),
             )
 
-
         with self.get_session() as session:
             try:
+                old_shortname = origin.shortname
+                if hasattr(origin, 'subpath'):
+                    old_subpath = origin.subpath
                 table = self.get_table(meta.__class__)
                 statement = select(table).where(table.space_name == space_name)
 
-                if table in [Roles, Permissions, Users]:
+                if table in [Roles, Permissions, Users, Spaces]:
                     statement = statement.where(table.shortname == dest_shortname)
                 else:
                     statement = statement.where(table.subpath == dest_subpath).where(
@@ -874,10 +876,43 @@ class SQLAdapter(BaseDataAdapter):
                         ),
                     )
 
-                origin.shortname = str(dest_shortname)
-                origin.subpath = str(dest_subpath)
+                origin.shortname = dest_shortname
+
+                if hasattr(origin, 'subpath'):
+                    origin.subpath = dest_subpath
+
                 session.add(origin)
                 session.commit()
+                try:
+                    if table is Spaces:
+                        statement = update(Spaces) \
+                            .where(Spaces.space_name == space_name).values(space_name=dest_shortname)  # type:ignore[call-overload]
+                        session.exec(statement)
+                        statement = update(Entries) \
+                            .where(Entries.space_name == space_name).values(space_name=dest_shortname)  # type:ignore[call-overload]
+                        session.exec(statement)
+                        statement = update(Attachments) \
+                            .where(Attachments.space_name == space_name).values(space_name=dest_shortname)  # type:ignore[call-overload]
+                        session.exec(statement)
+                        session.commit()
+                except Exception as e:
+                    origin.shortname = old_shortname
+                    if hasattr(origin, 'subpath'):
+                        origin.subpath = old_subpath
+
+                    session.add(origin)
+                    session.commit()
+
+                    print("[!move]", e)
+                    logger.error(f"Failed parsing an entry. Error: {e}")
+                    raise api.Exception(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        error=api.Error(
+                            type="move",
+                            code=InternalErrorCode.SOMETHING_WRONG,
+                            message="failed to move entry",
+                        ),
+                    )
             except Exception as e:
                 print("[!move]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -889,7 +924,6 @@ class SQLAdapter(BaseDataAdapter):
                         message="failed to move entry",
                     ),
                 )
-
     def delete_empty(self, path: Path):
         pass
 
