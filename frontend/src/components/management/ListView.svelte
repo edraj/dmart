@@ -1,5 +1,6 @@
 <script lang="ts">
   import { status_line } from "@/stores/management/status_line.js";
+  import {_} from "@/i18n";
   import {
     Engine,
     functionCreateDatatable,
@@ -69,7 +70,7 @@
 
   function value(path: string, data, type) {
     if (data === null) {
-      return "not_applicable";
+      return $_("not_applicable");
     }
     if (path.length == 1 && path[0].length > 0 && typeof(data) === "object" && path[0] in data) {
       if (type == "json") return JSON.stringify(data[path[0]], undefined, 1);
@@ -78,7 +79,7 @@
     if (path.length > 1 && path[0].length > 0 && path[0] in data) {
       return value(path.slice(1), data[path[0]], type);
     }
-    return "not_applicable";
+    return $_("not_applicable");
   }
 
   let height: number;
