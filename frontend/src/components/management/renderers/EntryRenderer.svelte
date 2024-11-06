@@ -1278,221 +1278,221 @@
   </ModalFooter>
 </Modal>
 
-  <Modal
-    isOpen={isModalOpen}
-    toggle={modalToggle}
-    size={new_resource_type === "schema" ? "xl" : "lg"}
+<Modal
+  isOpen={isModalOpen}
+  toggle={modalToggle}
+  size={new_resource_type === "schema" ? "xl" : "lg"}
 >
-  <ModalHeader toggle={modalToggle}>
-    Creating a {new_resource_type} under
-    <span class="text-success">{space_name}</span>/<span class="text-primary"
-  >{subpath}</span
-  >
-  </ModalHeader>
-  <Form on:submit={async (e) => await handleSubmit(e)}>
-    <ModalBody>
-      <FormGroup>
-        {#if entryType !== "folder"}
-          {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
-            <Label for="resource_type" class="mt-3">Resource type</Label>
+<ModalHeader toggle={modalToggle}>
+  Creating a {new_resource_type} under
+  <span class="text-success">{space_name}</span>/<span class="text-primary"
+>{subpath}</span
+>
+</ModalHeader>
+<Form on:submit={async (e) => await handleSubmit(e)}>
+  <ModalBody>
+    <FormGroup>
+      {#if entryType !== "folder"}
+        {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
+          <Label for="resource_type" class="mt-3">Resource type</Label>
+          <Input
+                  id="resource_type"
+                  bind:value={new_resource_type}
+                  type="select"
+          >
+            {#each allowedResourceTypes as type}
+              {#if type}
+                <option value={type}>{type}</option>
+              {/if}
+            {/each}
+          </Input>
+        {/if}
+        {#if new_resource_type !== "schema"}
+          {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m)) && new_resource_type !== "ticket"}
+            <Label for="content_type" class="mt-3">Content type</Label>
             <Input
-                    id="resource_type"
-                    bind:value={new_resource_type}
+                    id="content_type"
+                    bind:value={selectedContentType}
                     type="select"
             >
-              {#each allowedResourceTypes as type}
-                {#if type}
-                  <option value={type}>{type}</option>
-                {/if}
+              <option value={null}>{"None"}</option>
+              {#each [ContentType.json, ContentType.text, ContentType.markdown, ContentType.html] as type}
+                <option value={type}>{type}</option>
               {/each}
             </Input>
           {/if}
-          {#if new_resource_type !== "schema"}
-            {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m)) && new_resource_type !== "ticket"}
-              <Label for="content_type" class="mt-3">Content type</Label>
-              <Input
-                      id="content_type"
-                      bind:value={selectedContentType}
-                      type="select"
-              >
-                <option value={null}>{"None"}</option>
-                {#each [ContentType.json, ContentType.text, ContentType.markdown, ContentType.html] as type}
-                  <option value={type}>{type}</option>
-                {/each}
-              </Input>
-            {/if}
-            {#if new_resource_type === "ticket"}
-              {#await query({
-                  space_name,
-                  type: QueryType.search,
-                  subpath: "/workflows",
-                  search: "",
-                  retrieve_json_payload: true,
-                  limit: 99
-              }) then workflows}
-                <Label class="mt-3">Workflow</Label>
-                {#if setWorkflowItem(workflows).length === 0}
-                  <Input bind:value={workflowShortname}/>
-                {:else}
-                  <Input bind:value={workflowShortname} type="select">
-                    {#each setWorkflowItem(workflows) as workflow}
-                      <option value={workflow}>{workflow}</option>
-                    {/each}
-                  </Input>
-                {/if}
-              {/await}
-            {/if}
-          {/if}
-        {/if}
-
-        {#if !["workflows", "schema"].includes(subpath) && ![ResourceType.folder, ResourceType.role, ResourceType.permission].includes(new_resource_type)}
-          <Label class="mt-3">Schema</Label>
-          <Input bind:value={selectedSchema} type="select">
-            <option value={null}>{"None"}</option>
+          {#if new_resource_type === "ticket"}
             {#await query({
                 space_name,
                 type: QueryType.search,
-                subpath: "/schema",
+                subpath: "/workflows",
                 search: "",
                 retrieve_json_payload: true,
                 limit: 99
-            }) then schemas}
-              {#each setSchemaItems(schemas) as schema}
-                <option value={schema}>{schema}</option>
-              {/each}
+            }) then workflows}
+              <Label class="mt-3">Workflow</Label>
+              {#if setWorkflowItem(workflows).length === 0}
+                <Input bind:value={workflowShortname}/>
+              {:else}
+                <Input bind:value={workflowShortname} type="select">
+                  {#each setWorkflowItem(workflows) as workflow}
+                    <option value={workflow}>{workflow}</option>
+                  {/each}
+                </Input>
+              {/if}
             {/await}
-          </Input>
+          {/if}
         {/if}
+      {/if}
 
-        <Label class="mt-3">Shortname</Label>
-        <Input
-                placeholder="Shortname..."
-                bind:value={contentShortname}
-                required
-        />
-        <hr/>
-        {#if new_resource_type === "schema"}
-          <TabContent
-                  on:tab={(e) => (isSchemaEntryInForm = e.detail === "form")}
-          >
-            <TabPane tabId="form" tab="Forms" active>
-              <SchemaEditor bind:content={schemaContent}/>
-            </TabPane>
-            <TabPane tabId="editor" tab="Editor">
-              <JSONEditor
-                      bind:this={schemaContentRef}
-                      bind:content={schemaContent}
-                      onRenderMenu={handleRenderMenu}
-                      mode={Mode.text}
-              />
-            </TabPane>
-          </TabContent>
-          <Row></Row>
-        {:else if selectedContentType}
-          {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
-            <Label class="mt-3">Payload</Label>
-            <Input
-                    accept="image/png, image/jpeg"
-                    bind:files={payloadFiles}
-                    type="file"
+      {#if !["workflows", "schema"].includes(subpath) && ![ResourceType.folder, ResourceType.role, ResourceType.permission].includes(new_resource_type)}
+        <Label class="mt-3">Schema</Label>
+        <Input bind:value={selectedSchema} type="select">
+          <option value={null}>{"None"}</option>
+          {#await query({
+              space_name,
+              type: QueryType.search,
+              subpath: "/schema",
+              search: "",
+              retrieve_json_payload: true,
+              limit: 99
+          }) then schemas}
+            {#each setSchemaItems(schemas) as schema}
+              <option value={schema}>{schema}</option>
+            {/each}
+          {/await}
+        </Input>
+      {/if}
+
+      <Label class="mt-3">Shortname</Label>
+      <Input
+              placeholder="Shortname..."
+              bind:value={contentShortname}
+              required
+      />
+      <hr/>
+      {#if new_resource_type === "schema"}
+        <TabContent
+                on:tab={(e) => (isSchemaEntryInForm = e.detail === "form")}
+        >
+          <TabPane tabId="form" tab="Forms" active>
+            <SchemaEditor bind:content={schemaContent}/>
+          </TabPane>
+          <TabPane tabId="editor" tab="Editor">
+            <JSONEditor
+                    bind:this={schemaContentRef}
+                    bind:content={schemaContent}
+                    onRenderMenu={handleRenderMenu}
+                    mode={Mode.text}
+            />
+          </TabPane>
+        </TabContent>
+        <Row></Row>
+      {:else if selectedContentType}
+        {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
+          <Label class="mt-3">Payload</Label>
+          <Input
+                  accept="image/png, image/jpeg"
+                  bind:files={payloadFiles}
+                  type="file"
+          />
+        {/if}
+        {#if selectedContentType === "json"}
+          <Label class="mt-3">
+            {new_resource_type === ResourceType.permission
+                ? "Permission definition"
+                : new_resource_type === ResourceType.role
+                    ? "Role definition"
+                    : "Payload"}
+          </Label>
+          <!--              <TabContent on:tab={(e) => (isModalContentEntryInForm = e.detail==="form")}>-->
+          <!--{#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}-->
+          <!--  <TabPane tabId="form" tab="Form" active>-->
+          <!--    <SchemaForm-->
+          <!--      bind:ref={schemaFormRefModal}-->
+          <!--      schema={selectedSchemaContent}-->
+          <!--      bind:data={selectedSchemaData.json}-->
+          <!--    />-->
+          <!--  </TabPane>-->
+          <!--{/if}-->
+          <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
+
+          {#if [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)}
+            <TabContent
+                    on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}
+            >
+              <TabPane tabId="form" tab="Form" active>
+                {#if new_resource_type === ResourceType.permission}
+                  <PermissionForm bind:content={formModalContent}/>
+                {:else if new_resource_type === ResourceType.role}
+                  <RoleForm bind:content={formModalContent}/>
+                {:else if new_resource_type === ResourceType.user}
+                  <UserForm bind:content={formModalContent} bind:payload={formModalContentPayload}/>
+                {/if}
+              </TabPane>
+              <TabPane tabId="editor" tab="Editor">
+                <JSONEditor
+                        bind:this={jseModalContentRef}
+                        bind:content={jseModalContent}
+                        bind:validator={validatorModalContent}
+                        onRenderMenu={handleRenderMenu}
+                        mode={Mode.text}
+                />
+              </TabPane>
+            </TabContent>
+          {:else}
+            <JSONEditor
+                    bind:this={jseModalContentRef}
+                    bind:content={jseModalContent}
+                    bind:validator={validatorModalContent}
+                    onRenderMenu={handleRenderMenu}
+                    mode={Mode.text}
             />
           {/if}
-          {#if selectedContentType === "json"}
-            <Label class="mt-3">
-              {new_resource_type === ResourceType.permission
-                  ? "Permission definition"
-                  : new_resource_type === ResourceType.role
-                      ? "Role definition"
-                      : "Payload"}
-            </Label>
-            <!--              <TabContent on:tab={(e) => (isModalContentEntryInForm = e.detail==="form")}>-->
-            <!--{#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}-->
-            <!--  <TabPane tabId="form" tab="Form" active>-->
-            <!--    <SchemaForm-->
-            <!--      bind:ref={schemaFormRefModal}-->
-            <!--      schema={selectedSchemaContent}-->
-            <!--      bind:data={selectedSchemaData.json}-->
-            <!--    />-->
-            <!--  </TabPane>-->
-            <!--{/if}-->
-            <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
-
-            {#if [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)}
-              <TabContent
-                      on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}
-              >
-                <TabPane tabId="form" tab="Form" active>
-                  {#if new_resource_type === ResourceType.permission}
-                    <PermissionForm bind:content={formModalContent}/>
-                  {:else if new_resource_type === ResourceType.role}
-                    <RoleForm bind:content={formModalContent}/>
-                  {:else if new_resource_type === ResourceType.user}
-                    <UserForm bind:content={formModalContent} bind:payload={formModalContentPayload}/>
-                  {/if}
-                </TabPane>
-                <TabPane tabId="editor" tab="Editor">
-                  <JSONEditor
-                          bind:this={jseModalContentRef}
-                          bind:content={jseModalContent}
-                          bind:validator={validatorModalContent}
-                          onRenderMenu={handleRenderMenu}
-                          mode={Mode.text}
-                  />
-                </TabPane>
-              </TabContent>
-            {:else}
-              <JSONEditor
-                      bind:this={jseModalContentRef}
-                      bind:content={jseModalContent}
-                      bind:validator={validatorModalContent}
-                      onRenderMenu={handleRenderMenu}
-                      mode={Mode.text}
-              />
-            {/if}
-          {/if}
-          {#if selectedContentType === "text"}
-            <Label class="mt-3">Payload</Label>
-            <Input type="textarea" bind:value={jseModalContent}/>
-          {/if}
-          {#if selectedContentType === "html"}
-            <Label class="mt-3">Payload</Label>
-            <HtmlEditor bind:content={jseModalContent}/>
-          {/if}
-          {#if selectedContentType === "markdown"}
-            <Label class="mt-3">Payload</Label>
-            <MarkdownEditor bind:content={jseModalContent}/>
-          {/if}
         {/if}
-        <hr/>
-        <Input
-                bind:checked={isNewEntryHasRelationship}
-                type="checkbox"
-                label="Add relationship ?"
-        />
-        {#if isNewEntryHasRelationship}
-          <RelationshipForm bind:content={relationshipModalContent}/>
+        {#if selectedContentType === "text"}
+          <Label class="mt-3">Payload</Label>
+          <Input type="textarea" bind:value={jseModalContent}/>
         {/if}
-        <hr/>
-        {#if errorContent}
-          <h3 class="mt-3">Error:</h3>
-          <Prism bind:code={errorContent}/>
+        {#if selectedContentType === "html"}
+          <Label class="mt-3">Payload</Label>
+          <HtmlEditor bind:content={jseModalContent}/>
         {/if}
-        <hr/>
-      </FormGroup>
-    </ModalBody>
-    <ModalFooter>
-      <Button
-              type="button"
-              color="secondary"
-              on:click={() => {
-          isModalOpen = false;
-          contentShortname = "";
-        }}
-      >cancel
-      </Button>
-      <Button type="submit" color="primary">Submit</Button>
-    </ModalFooter>
-  </Form>
+        {#if selectedContentType === "markdown"}
+          <Label class="mt-3">Payload</Label>
+          <MarkdownEditor bind:content={jseModalContent}/>
+        {/if}
+      {/if}
+      <hr/>
+      <Input
+              bind:checked={isNewEntryHasRelationship}
+              type="checkbox"
+              label="Add relationship ?"
+      />
+      {#if isNewEntryHasRelationship}
+        <RelationshipForm bind:content={relationshipModalContent}/>
+      {/if}
+      <hr/>
+      {#if errorContent}
+        <h3 class="mt-3">Error:</h3>
+        <Prism bind:code={errorContent}/>
+      {/if}
+      <hr/>
+    </FormGroup>
+  </ModalBody>
+  <ModalFooter>
+    <Button
+            type="button"
+            color="secondary"
+            on:click={() => {
+        isModalOpen = false;
+        contentShortname = "";
+      }}
+    >cancel
+    </Button>
+    <Button type="submit" color="primary">Submit</Button>
+  </ModalFooter>
+</Form>
 </Modal>
 
 {#if entry}
@@ -1686,20 +1686,20 @@
             </Button>
           {/if}
         {/if}
-        {#if !!entry?.payload?.body?.stream}
+        <!--{#if !!entry?.payload?.body?.stream}-->
           <Button
-                  outline={!isNeedRefresh}
-                  color={isNeedRefresh ? "danger" : "success"}
-                  size="sm"
-                  title={$_("refresh")}
-                  class="justify-contnet-center text-center py-0 px-1"
-                  on:click={() => {
+              outline={!isNeedRefresh}
+              color={isNeedRefresh ? "danger" : "success"}
+              size="sm"
+              title={$_("refresh")}
+              class="justify-contnet-center text-center py-0 px-1"
+              on:click={() => {
               refresh = !refresh;
             }}
           >
             <Icon name="arrow-clockwise"/>
           </Button>
-        {/if}
+        <!--{/if}-->
 
         {#if canDelete}
           <Button
