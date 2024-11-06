@@ -851,6 +851,8 @@ class SQLAdapter(BaseDataAdapter):
             )
 
         with self.get_session() as session:
+            old_shortname = ""
+            old_subpath = ""
             try:
                 old_shortname = origin.shortname
                 if hasattr(origin, 'subpath'):
@@ -875,10 +877,10 @@ class SQLAdapter(BaseDataAdapter):
                             message="already exists",
                         ),
                     )
+                if dest_shortname:
+                    origin.shortname = dest_shortname
 
-                origin.shortname = dest_shortname
-
-                if hasattr(origin, 'subpath'):
+                if hasattr(origin, 'subpath') and dest_subpath:
                     origin.subpath = dest_subpath
 
                 session.add(origin)
@@ -886,13 +888,13 @@ class SQLAdapter(BaseDataAdapter):
                 try:
                     if table is Spaces:
                         statement = update(Spaces) \
-                            .where(Spaces.space_name == space_name).values(space_name=dest_shortname)  # type:ignore[call-overload]
+                            .where(col(Spaces.space_name) == space_name).values(space_name=dest_shortname)  # type:ignore
                         session.exec(statement)
                         statement = update(Entries) \
-                            .where(Entries.space_name == space_name).values(space_name=dest_shortname)  # type:ignore[call-overload]
+                            .where(col(Entries.space_name) == space_name).values(space_name=dest_shortname)  # type:ignore
                         session.exec(statement)
                         statement = update(Attachments) \
-                            .where(Attachments.space_name == space_name).values(space_name=dest_shortname)  # type:ignore[call-overload]
+                            .where(col(Attachments.space_name) == space_name).values(space_name=dest_shortname)  # type:ignore
                         session.exec(statement)
                         session.commit()
                 except Exception as e:
