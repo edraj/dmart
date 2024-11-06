@@ -25,7 +25,7 @@ class CustomRequestMiddleware:
         if scope["type"] not in ["http", "websocket"]:
            try:
                await self.app(scope, receive, send)
-           except Exception as e:
+           except Exception as _:
                return
 
 
