@@ -5,6 +5,7 @@ import redis.commands.search.reducers as reducers
 class RequestType(StrEnum):
     create = "create"
     update = "update"
+    patch = "patch"
     update_acl = "update_acl"
     assign = "assign"
     r_replace = "replace"

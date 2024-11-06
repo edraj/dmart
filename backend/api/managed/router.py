@@ -32,6 +32,7 @@ from api.managed.utils import (
     serve_request_delete,
     serve_request_move,
     serve_request_update_acl,
+    serve_request_patch,
     serve_request_update_r_replace,
     serve_space_create,
     serve_space_delete,
@@ -329,6 +330,9 @@ async def serve_request(
 
         case api.RequestType.update_acl:
             records, failed_records = await serve_request_update_acl(request, owner_shortname)
+
+        case api.RequestType.patch:
+            records, failed_records = await serve_request_patch(request, owner_shortname)
 
         case api.RequestType.delete:
             records, failed_records = await serve_request_delete(request, owner_shortname)
