@@ -147,7 +147,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                 if "type" in msg_json and msg_json["type"] == "notification_unsubscribe":
                     await websocket_manager.channel_unsubscribe(websocket)
             except Exception as e:
-                logger.error(f"Error while processing message: {str(e.__str__()).encode()}", extra={"user_shortname": user_shortname})
+                logger.error(f"Error while processing message: {e.__str__()}", extra={"user_shortname": user_shortname})
                 break
     except WebSocketDisconnect:
         logger.info("WebSocket connection closed", extra={"user_shortname": user_shortname})
