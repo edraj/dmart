@@ -687,7 +687,41 @@ class SQLAdapter(BaseDataAdapter):
             meta: core.Meta,
             payload_data: dict[str, Any],
     ):
-        pass
+        with self.get_session() as session:
+            try:
+                result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+                if result is None:
+                    raise api.Exception(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        error=api.Error(
+                            type="create",
+                            code=InternalErrorCode.MISSING_METADATA,
+                            message="metadata is missing",
+                        ),
+                    )
+                if meta.payload:
+                    if isinstance(meta.payload.body, dict):
+                        meta.payload.body = {
+                            **meta.payload.body,
+                            **payload_data,
+                        }
+                    else:
+                        meta.payload.body = payload_data
+                result.sqlmodel_update(meta.model_dump())
+
+                session.add(result)
+                session.commit()
+            except Exception as e:
+                print("[!save_payload_from_json]", e)
+                logger.error(f"Failed parsing an entry. Error: {e}")
+                raise api.Exception(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    error=api.Error(
+                        type="update",
+                        code=InternalErrorCode.SOMETHING_WRONG,
+                        message="failed to update entry",
+                    ),
+                )
 
     async def update(
             self,

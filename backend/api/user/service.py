@@ -263,7 +263,8 @@ async def update_user_payload(profile, profile_user, user, shortname):
     )
     if profile.attributes["payload"]["body"]:
         separate_payload_data = profile.attributes["payload"]["body"]
-        user.payload.body = shortname + ".json"
+        if settings.active_data_db == "file":
+            user.payload.body = f"{shortname}.json"
 
     if user.payload and separate_payload_data:
         if profile_user.payload.schema_shortname:
