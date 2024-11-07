@@ -114,14 +114,16 @@ app = FastAPI()
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str):
-
     try:
         decoded_token = decode_jwt(token)
     except Exception:
         return status.HTTP_401_UNAUTHORIZED, [], b"Invalid token\n"
 
     user_shortname = decoded_token["shortname"]
-    await websocket_manager.connect(websocket, user_shortname)
+    try:
+        await websocket_manager.connect(websocket, user_shortname)
+    except Exception as e:
+        return status.HTTP_500_INTERNAL_SERVER_ERROR, [], str(e.__str__()).encode()
 
     success_connection_message = json.dumps({
         "type": "connection_response",
@@ -129,17 +131,24 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             "status": "success"
         }
     })
-    await websocket_manager.send_message(success_connection_message, user_shortname)
+
+    try:
+        await websocket_manager.send_message(success_connection_message, user_shortname)
+    except Exception as e:
+        return status.HTTP_500_INTERNAL_SERVER_ERROR, [], str(e.__str__()).encode()
 
     try:
         while True:
-            msg = await websocket.receive_text()
-            msg_json = json.loads(msg)
-            if "type" in msg_json and msg_json["type"] == "notification_subscription":
-                await websocket_manager.channel_subscribe(websocket, msg_json)
-            if "type" in msg_json and msg_json["type"] == "notification_unsubscribe":
-                await websocket_manager.channel_unsubscribe(websocket)
-
+            try:
+                msg = await websocket.receive_text()
+                msg_json = json.loads(msg)
+                if "type" in msg_json and msg_json["type"] == "notification_subscription":
+                    await websocket_manager.channel_subscribe(websocket, msg_json)
+                if "type" in msg_json and msg_json["type"] == "notification_unsubscribe":
+                    await websocket_manager.channel_unsubscribe(websocket)
+            except Exception as e:
+                logger.error(f"Error while processing message: {str(e.__str__()).encode()}", extra={"user_shortname": user_shortname})
+                break
     except WebSocketDisconnect:
         logger.info("WebSocket connection closed", extra={"user_shortname": user_shortname})
         websocket_manager.disconnect(user_shortname)
