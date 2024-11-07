@@ -278,10 +278,17 @@
             if(!!entry?.payload?.body?.content_resource_types && entry?.payload?.body?.content_resource_types.length){
               allowedResourceTypes = entry?.payload?.body?.content_resource_types;
             }
-
-            if (!!entry?.payload?.body?.stream) {
+            const isFolderWSStreamCheck = !!entry?.payload?.body?.stream && isWSClosed(ws)
+            if (isFolderWSStreamCheck) {
+                if (isWSOpen(ws)) {
+                    ws.send(JSON.stringify({type: "notification_unsubscribe"}));
+                }
                 if ("websocket" in website) {
-                    ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+                    try {
+                        ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+                    } catch (e) {
+                        console.error({e});
+                      }
                 }
 
                 ws.onopen = () => {
@@ -295,6 +302,7 @@
                 };
 
                 ws.onmessage = (event) => {
+                    console.log({event})
                     const data = JSON.parse(event?.data ?? "");
                     if (data?.message?.title) {
                         isNeedRefresh = true;
@@ -306,15 +314,14 @@
 
     onDestroy(() => {
         status_line.set("");
-
-        if (isWSOpen(ws)) {
-            ws.send(JSON.stringify({type: "notification_unsubscribe"}));
-        }
         if (ws != null) ws.close();
     });
 
     function isWSOpen(ws: any) {
         return ws != null && ws.readyState === ws.OPEN;
+    }
+    function isWSClosed(ws: any) {
+        return ws == null || ws.readyState !== ws.OPEN;
     }
 
     let aclContent = entry.acl ?? [];
