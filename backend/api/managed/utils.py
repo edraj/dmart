@@ -682,10 +682,10 @@ async def serve_request_patch(request, owner_shortname: str):
 
                 # VALIDATE SEPARATE PAYLOAD BODY
                 if (
-                        resource_obj.payload
-                        and resource_obj.payload.content_type == ContentType.json
-                        and resource_obj.payload.schema_shortname
-                        and new_resource_payload_data is not None
+                    resource_obj.payload
+                    and resource_obj.payload.content_type == ContentType.json
+                    and resource_obj.payload.schema_shortname
+                    and new_resource_payload_data is not None
                 ):
                     await validate_payload_with_schema(
                         payload_data=resource_obj.payload.body,
@@ -714,8 +714,8 @@ async def serve_request_patch(request, owner_shortname: str):
                 )
 
             if (
-                    isinstance(resource_obj, core.User) and
-                    record.attributes.get("is_active") is False
+                isinstance(resource_obj, core.User) and
+                record.attributes.get("is_active") is False
             ):
                 await remove_active_session(record.shortname)
 

@@ -700,7 +700,10 @@ class SQLAdapter(BaseDataAdapter):
                         ),
                     )
                 if meta.payload:
-                    meta.payload.body = payload_data
+                    meta.payload.body = {
+                        **meta.payload.body,
+                        **payload_data,
+                    }
                 result.sqlmodel_update(meta.model_dump())
 
                 session.add(result)
