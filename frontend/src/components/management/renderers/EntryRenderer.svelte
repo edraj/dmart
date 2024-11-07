@@ -1708,7 +1708,6 @@
         <!--{/if}-->
 
         {#if canDelete && $bulkBucket.length == 0}
-}
           <Button
                   outline
                   color="success"
