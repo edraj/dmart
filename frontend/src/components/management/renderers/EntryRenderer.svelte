@@ -1707,7 +1707,8 @@
           </Button>
         <!--{/if}-->
 
-        {#if canDelete}
+        {#if canDelete && $bulkBucket.length == 0}
+}
           <Button
                   outline
                   color="success"
@@ -1758,7 +1759,7 @@
                   on:click={handleDeleteBulk}
                   class="justify-content-center text-center py-0 px-1"
           >
-            <Icon name="x-circle"/>
+            <Icon name="trash"/>
           </Button>
         {/if}
 
