@@ -699,7 +699,8 @@ class SQLAdapter(BaseDataAdapter):
                             message="metadata is missing",
                         ),
                     )
-                meta.payload.body = payload_data
+                if meta.payload:
+                    meta.payload.body = payload_data
                 result.sqlmodel_update(meta.model_dump())
 
                 session.add(result)
