@@ -2,6 +2,7 @@
 
 import os
 import json
+from datetime import datetime
 from sqlmodel import Session, create_engine, select
 from utils.database.create_tables import (
     Entries,
@@ -13,6 +14,7 @@ from utils.database.create_tables import (
     Spaces,
 )
 from utils.settings import settings
+from models import core
 
 postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
 engine = create_engine(postgresql_url, echo=False)
@@ -27,9 +29,21 @@ def subpath_checker(subpath: str):
 def ensure_directory_exists(path: str):
     os.makedirs(path, exist_ok=True)
 
+def clean_json(data: dict):
+    for key, value in list(data.items()):
+        if not value:
+            del data[key]
+        elif isinstance(value, datetime):
+            data[key] = value.isoformat()
+        elif isinstance(value, dict):
+            clean_json(value)
+
+    return data
+
 def write_json_file(path, data):
     with open(path, "w") as f:
-        json.dump(data, f, indent=4, default=str)
+        clean = clean_json(data)
+        json.dump(clean, f, indent=2, default=str)
 
 def write_binary_file(path, data):
     with open(path, "wb") as f:
@@ -57,6 +71,7 @@ def process_attachments(session, space_folder):
         _attachment = attachment.model_dump()
 
         del _attachment["media"]
+        del _attachment["resource_type"]
         write_json_file(os.path.join(media_path, f"meta.{attachment.shortname}.json"), _attachment)
 
 
@@ -78,6 +93,8 @@ def process_entries(session, space_folder):
                 _entry["payload"]["body"] = f"{entry.shortname}.json"
             del _entry["space_name"]
             del _entry["subpath"]
+            del _entry["resource_type"]
+
             write_json_file(os.path.join(dir_meta_path, "meta.folder.json"), _entry)
             if body:
                 write_json_file(os.path.join(f"{dir_path}/{entry.shortname}.json"), body)
@@ -89,12 +106,19 @@ def process_entries(session, space_folder):
         _entry = entry.model_dump()
         del _entry["space_name"]
         del _entry["subpath"]
-        if _entry.get("payload", None) and _entry["payload"].get("body" , None):
-            write_json_file(
-                f"{dir_path}/{entry.shortname}.json",
-                _entry["payload"]["body"]
-            )
-            _entry["payload"]["body"] = f"{entry.shortname}.json"
+        del _entry["resource_type"]
+
+        if entry.payload:
+            if "content_type" not in entry.payload:
+                print(f"Warning : empty content type for @{entry.space_name}:{entry.subpath}/{entry.shortname}")
+            elif entry.payload["content_type"] == core.ContentType.json:
+                write_json_file(
+                    f"{dir_path}/{entry.shortname}.json",
+                    _entry["payload"]["body"]
+                )
+                _entry["payload"]["body"] = f"{entry.shortname}.json"
+            else:
+                print(f"Unprocessed content type({entry.payload['content_type']}): @{entry.space_name}:{entry.subpath}/{entry.shortname}")
 
         if entry.resource_type != "ticket":
             del _entry["state"]
@@ -116,6 +140,7 @@ def process_users(session, space_folder):
 
         _user = user.model_dump()
         del _user["space_name"]
+        del _user["resource_type"]
         if _user.get("payload", None) and _user["payload"].get("body" , None):
             write_json_file(
                 f"{dir_path}/{user.shortname}.json",
@@ -136,6 +161,7 @@ def process_roles(session, space_folder):
         _role = role.model_dump()
         del _role["space_name"]
         del _role["subpath"]
+        del _role["resource_type"]
 
         file_path = os.path.join(dir_path, "meta.role.json")
         write_json_file(file_path, _role)
@@ -150,6 +176,7 @@ def process_permissions(session, space_folder):
         del _permission["space_name"]
         del _permission["subpath"]
         del _permission["shortname"]
+        del _permission["resource_type"]
 
         write_json_file(f"{dir_path}/{permission.shortname}/meta.permission.json", _permission)
 
@@ -168,6 +195,7 @@ def process_histories(session, space_folder):
 
         del _history["space_name"]
         del _history["subpath"]
+        del _history["resource_type"]
         with open(f"{file_path}/history.jsonl", "a+") as f:
             f.write(str(_history) + "\n")
 
@@ -182,6 +210,7 @@ def process_spaces(session, space_folder):
         _space = space.model_dump()
         del _space["space_name"]
         del _space["shortname"]
+        del _space["resource_type"]
 
         write_json_file(file_path, _space)
 

@@ -154,9 +154,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         stm += f" OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"
                     stm += ")"
                     statement = statement.where(text(stm))
-            elif is_list and vv:
+            elif is_list and vv and v:
                 statement = statement.where(text(f"({k}) {'NOT' if flag_neg else ''} BETWEEN '{v[0]}' AND '{v[1]}'"))
-            elif is_list:
+            elif is_list and v:
                 in_1 = ', '.join([f"'{_v}'" for _v in v])
                 stm = f"(({k}) {'NOT' if flag_neg else ''} IN ({in_1})"
                 if "payload" in k:
@@ -921,15 +921,18 @@ class SQLAdapter(BaseDataAdapter):
                 session.commit()
                 try:
                     if table is Spaces:
-                        statement = update(Spaces) \
-                            .where(col(Spaces.space_name) == space_name).values(space_name=dest_shortname)  # type:ignore
-                        session.exec(statement)
-                        statement = update(Entries) \
-                            .where(col(Entries.space_name) == space_name).values(space_name=dest_shortname)  # type:ignore
-                        session.exec(statement)
-                        statement = update(Attachments) \
-                            .where(col(Attachments.space_name) == space_name).values(space_name=dest_shortname)  # type:ignore
-                        session.exec(statement)
+                        session.add(
+                            update(Spaces)
+                            .where(col(Spaces.space_name) == space_name)
+                            .values(space_name=dest_shortname))
+                        session.add(
+                            update(Entries)
+                            .where(col(Entries.space_name) == space_name)
+                            .values(space_name=dest_shortname))
+                        session.add(
+                            update(Attachments)
+                            .where(col(Attachments.space_name) == space_name)
+                            .values(space_name=dest_shortname))
                         session.commit()
                 except Exception as e:
                     origin.shortname = old_shortname
