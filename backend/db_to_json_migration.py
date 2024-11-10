@@ -63,7 +63,7 @@ def process_attachments(session, space_folder):
         dir_path = f"{space_folder}/{attachment.space_name}{new_path}"
         ensure_directory_exists(dir_path)
 
-        media_path = os.path.join(dir_path, f"attachments.{attachment.resource_type}")
+        media_path = f"{dir_path}/attachments.{attachment.resource_type}"
         ensure_directory_exists(media_path)
         if attachment.payload.get("body", None):
             if attachment.payload["content_type"] == 'json':
@@ -75,7 +75,7 @@ def process_attachments(session, space_folder):
 
         del _attachment["media"]
         del _attachment["resource_type"]
-        write_json_file(os.path.join(media_path, f"meta.{attachment.shortname}.json"), _attachment)
+        write_json_file(f"{media_path}/meta.{attachment.shortname}.json", _attachment)
 
 def process_entries(session, space_folder):
     entries = session.exec(select(Entries)).all()
@@ -97,9 +97,9 @@ def process_entries(session, space_folder):
             del _entry["subpath"]
             del _entry["resource_type"]
 
-            write_json_file(os.path.join(dir_meta_path, "meta.folder.json"), _entry)
+            write_json_file(f"{dir_meta_path}/meta.folder.json", _entry)
             if body:
-                write_json_file(os.path.join(f"{dir_path}/{entry.shortname}.json"), body)
+                write_json_file(f"{dir_path}/{entry.shortname}.json", body)
             continue
 
         dir_meta_path = f"{dir_path}/.dm/{entry.shortname}".replace("//", "/")
@@ -131,8 +131,7 @@ def process_entries(session, space_folder):
             del _entry["collaborators"]
             del _entry["resolution_reason"]
 
-        file_path = os.path.join(dir_meta_path, f"meta.{entry.resource_type}.json")
-        write_json_file(file_path, _entry)
+        write_json_file(f"{dir_meta_path}/meta.{entry.resource_type}.json", _entry)
 
 def process_users(session, space_folder):
     users = session.exec(select(Users)).all()
@@ -151,23 +150,20 @@ def process_users(session, space_folder):
             )
             _user["payload"]["body"] = f"{user.shortname}.json"
 
-        file_path = os.path.join(dir_meta_path, "meta.user.json")
-        write_json_file(file_path, _user)
+        write_json_file(f"{dir_meta_path}/meta.user.json", _user)
 
 def process_roles(session, space_folder):
     roles = session.exec(select(Roles)).all()
     dir_path = f"{space_folder}/management/roles/.dm"  # Ensure absolute path
     for role in roles:
-        dir_path = f"{dir_path}/{role.shortname}"
-        ensure_directory_exists(dir_path)
+        ensure_directory_exists(f"{dir_path}/{role.shortname}")
 
         _role = role.model_dump()
         del _role["space_name"]
         del _role["subpath"]
         del _role["resource_type"]
 
-        file_path = os.path.join(dir_path, "meta.role.json")
-        write_json_file(file_path, _role)
+        write_json_file(f"{dir_path}/{role.shortname}/meta.role.json", _role)
 
 def process_permissions(session, space_folder):
     permissions = session.exec(select(Permissions)).all()
@@ -208,13 +204,11 @@ def process_spaces(session, space_folder):
         dir_path = f"{space_folder}/{space.space_name}/.dm/"
         ensure_directory_exists(dir_path)
 
-        file_path = os.path.join(dir_path, "meta.space.json")
-
         _space = space.model_dump()
         del _space["space_name"]
         del _space["resource_type"]
 
-        write_json_file(file_path, _space)
+        write_json_file(f"{dir_path}/meta.space.json", _space)
 
 def main():
     space_folder = os.path.relpath(str(settings.spaces_folder))
