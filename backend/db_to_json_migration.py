@@ -31,6 +31,8 @@ def ensure_directory_exists(path: str):
 
 def clean_json(data: dict):
     for key, value in list(data.items()):
+        if key in ["tags", "mirrors", "active_plugins", "roles", "groups"]:
+            continue
         if not value:
             del data[key]
         elif isinstance(value, datetime):
@@ -66,6 +68,7 @@ def process_attachments(session, space_folder):
         if attachment.payload.get("body", None):
             if attachment.payload["content_type"] == 'json':
                 write_json_file(f"{media_path}/{attachment.shortname}.json", attachment.payload.get("body", {}))
+                attachment.payload["body"] = f"{attachment.shortname}.json"
             else:
                 write_binary_file(f"{media_path}/{attachment.payload['body']}", attachment.media)
         _attachment = attachment.model_dump()
@@ -73,7 +76,6 @@ def process_attachments(session, space_folder):
         del _attachment["media"]
         del _attachment["resource_type"]
         write_json_file(os.path.join(media_path, f"meta.{attachment.shortname}.json"), _attachment)
-
 
 def process_entries(session, space_folder):
     entries = session.exec(select(Entries)).all()
@@ -112,11 +114,12 @@ def process_entries(session, space_folder):
             if "content_type" not in entry.payload:
                 print(f"Warning : empty content type for @{entry.space_name}:{entry.subpath}/{entry.shortname}")
             elif entry.payload["content_type"] == core.ContentType.json:
-                write_json_file(
-                    f"{dir_path}/{entry.shortname}.json",
-                    _entry["payload"]["body"]
-                )
-                _entry["payload"]["body"] = f"{entry.shortname}.json"
+                if _entry["payload"]["body"]:
+                    write_json_file(
+                        f"{dir_path}/{entry.shortname}.json",
+                        _entry["payload"]["body"]
+                    )
+                    _entry["payload"]["body"] = f"{entry.shortname}.json"
             else:
                 print(f"Unprocessed content type({entry.payload['content_type']}): @{entry.space_name}:{entry.subpath}/{entry.shortname}")
 
@@ -175,7 +178,6 @@ def process_permissions(session, space_folder):
         _permission = permission.model_dump()
         del _permission["space_name"]
         del _permission["subpath"]
-        del _permission["shortname"]
         del _permission["resource_type"]
 
         write_json_file(f"{dir_path}/{permission.shortname}/meta.permission.json", _permission)
@@ -195,9 +197,10 @@ def process_histories(session, space_folder):
 
         del _history["space_name"]
         del _history["subpath"]
-        del _history["resource_type"]
+        if _history.get("resource_type", None):
+            del _history["resource_type"]
         with open(f"{file_path}/history.jsonl", "a+") as f:
-            f.write(str(_history) + "\n")
+            f.write(json.dumps(_history) + "\n")
 
 def process_spaces(session, space_folder):
     spaces = session.exec(select(Spaces)).all()
@@ -209,7 +212,6 @@ def process_spaces(session, space_folder):
 
         _space = space.model_dump()
         del _space["space_name"]
-        del _space["shortname"]
         del _space["resource_type"]
 
         write_json_file(file_path, _space)
