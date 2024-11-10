@@ -139,7 +139,7 @@ with Session(engine) as session:
                             _attachment['subpath'] = subpath_checker(_attachment['subpath'])
                             _attachment['acl'] = _attachment.get('acl', [])
                             _attachment['relationships'] = _attachment.get('relationships', [])
-                            _attachment['tags'] = _attachment.get('relationships', [])
+                            _attachment['tags'] = _attachment.get('tags', [])
                             _attachment['owner_shortname'] = _attachment.get('owner_shortname', '')
                             _attachment['media'] = None
                             if file.replace("attachments.", "") == 'comment':
