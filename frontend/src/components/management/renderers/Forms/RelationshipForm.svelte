@@ -103,6 +103,6 @@
         </Card>
       {/each}
     {/if}
-    <Button color="primary" class="w-100 mt-2" on:click={addNewItem}>Add Relation</Button>
+    <Button color="primary" class="w-100 mt-2" onclick={addNewItem}>Add Relation</Button>
   </Form>
 </Card>

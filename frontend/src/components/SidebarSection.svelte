@@ -4,14 +4,15 @@
   import { _ } from "@/i18n";
   import { type Section } from "./types";
 
-  export let section: Section;
+  let { section } : { section: Section } = $props();
+
   // export let path : Array<string>;
   // export let expanded : boolean;
   // export let id : string;
   // export let children; //  : Array<Section>;
   // export let type : string;
   // export let icon : string;
-  $: displayname = $_(section.id);
+  let displayname = $derived($_(section.id));
 
   if (!section.path) {
     section.path = [];
@@ -27,7 +28,7 @@
 <div class="mb-3">
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <span class:expanded={section.expanded} on:click={toggle} class="py-1 ps-1">
+  <span class:expanded={section.expanded} onclick={toggle} class="py-1 ps-1">
     <Icon name={section.icon} class="me-1" />
     <b>{displayname}</b>
   </span>

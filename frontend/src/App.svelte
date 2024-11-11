@@ -126,7 +126,7 @@
       });
   }
   setupI18n();
-  $: { document.dir = $dir; refresh_spaces.refresh(); }
+  $effect(() => { document.dir = $dir; refresh_spaces.refresh(); });
 </script>
 
 <svelte:head>

@@ -1,12 +1,18 @@
-<script>
+<script lang="ts">
   import { onMount } from "svelte";
   import Editor from "cl-editor";
   import { createEventDispatcher } from "svelte";
 
   const dispatch = createEventDispatcher();
 
-  export let uid = "x";
-  export let content;
+  let {
+    uid = "",
+    content = $bindable(""),
+  } : {
+    uid?: string,
+    content: string
+  } = $props();
+
 
   let maindiv;
   let editor = null;
@@ -67,11 +73,11 @@
 
   });
 
-  $: {
+  $effect(() => {
     if (editor && content != editor.getHtml(true)) {
       editor.setHtml(content, true);
     }
-  }
+  });
 </script>
 
 <div class="h-100 pt-1" bind:this="{maindiv}" id="htmleditor-{uid}"></div>

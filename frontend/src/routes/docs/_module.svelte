@@ -10,6 +10,8 @@
     import Header from "@/components/Header.svelte";
     import Footer from "@/components/Footer.svelte";
 
+    let props = $props();
+
     const docFiles = [
         'index.md',
         'Features-and-Technology-Stack.md',
@@ -48,7 +50,7 @@
           {#each docFiles as file, index}
             <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-click-events-have-key-events -->
             <li
-              on:click={()=> selectedIndex = index}
+              onclick={()=> selectedIndex = index}
               class={
                 file===docFiles[selectedIndex]
                 ? "nav-item selected" : "nav-item"
@@ -71,7 +73,7 @@
   <Col sm="10"  style="padding-right: 1.5rem; padding-top: 1rem;">
     <Card class="px-4" style="overflow-y: auto; height:88vh">
       <CardBody>
-        <slot/>
+        {@render props.children()}
       </CardBody>
     </Card>
   </Col>

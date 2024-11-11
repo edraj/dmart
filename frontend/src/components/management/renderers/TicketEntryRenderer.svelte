@@ -11,20 +11,25 @@
     import {Button, Form, FormGroup, Input, Label,} from "sveltestrap";
     import {Level, showToast} from "@/utils/toast";
 
-
-  export let entry: ResponseEntry;
-  export let space_name: string;
-  export let subpath: string;
+    let {
+        entry = $bindable(),
+        space_name,
+        subpath
+    } : {
+        entry: ResponseEntry,
+        space_name: string,
+        subpath: string
+    } = $props();
 
 
   const userRoles = JSON.parse(localStorage.getItem("roles"));
 
-  let ticketElement: any = null;
-  let ticket_status = null;
-  let ticket_action = null;
-  let resolution = null;
-  let comment;
-  let to_shortname="";
+  let ticketElement = $state(null);
+  let ticket_status = $state(null);
+  let ticket_action = $state(null);
+  let resolution = $state(null);
+  let comment = $state("");
+  let to_shortname = $state("null");
   async function handleTicketSubmit(e) {
     e.preventDefault();
     if (ticket_action === null && to_shortname===""){
@@ -90,33 +95,33 @@
       console.log({ticketPayload})
   }
 
-  let ticketStates = [];
-  $:{
+  let ticketStates = $state([]);
+    $effect(() => {
       if (ticketPayload){
         ticketStates = ticketPayload.states.filter((e) => e.state === entry.state)[0]?.next;
           console.log({state: entry.state})
           console.log({ticketStates})
      }
-  }
+  });
 
-  let ticketResolutions = [];
-  $:{    
+  let ticketResolutions = $state([]);
+    $effect(() => {
       if ((ticketStates??[]).length){
           ticketResolutions = ticketPayload.states.filter((e) => e.state === ticket_status)[0]?.resolutions ?? [];
           console.log({ticketResolutions})
       }
-  }
+  });
 
-  $: {
+    $effect(() => {
       ticket_action = ticketStates?.filter((e) => e.state === ticket_status)[0]?.action ?? null;
       console.log({ticket_action})
-  }
+  });
 
-  $: {
+    $effect(() => {
       if (ticket_status){
           resolution = null;
       }
-  }
+  });
 </script>
 
 <Form class="d-flex flex-column justify-content-between p-5" on:submit={handleTicketSubmit}>

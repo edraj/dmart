@@ -31,17 +31,31 @@
 
   onDestroy(() => status_line.set(""));
 
-  export let space_name: string;
-  export let subpath: string;
-  export let shortname: string = null;
-  export let type: QueryType = QueryType.search;
-  export let columns: any = null;
-  export let folderColumns: any = null;
-  export let sort_by: any = null;
-  export let sort_order: any = null;
-  export let is_clickable = true;
-  export let canDelete = false;
-  export let scope = "managed";
+  let {
+    space_name = $bindable(),
+    subpath = $bindable(),
+    shortname = $bindable(null),
+    type = $bindable(QueryType.search),
+    columns = $bindable(null),
+    folderColumns = $bindable(null),
+    sort_by = $bindable(null),
+    sort_order = $bindable(null),
+    is_clickable = $bindable(true),
+    canDelete = $bindable(false),
+    scope = $bindable("managed"),
+  } : {
+    space_name?: string,
+    subpath?: string,
+    shortname?: string,
+    type?: QueryType,
+    columns?: any,
+    folderColumns?: any,
+    sort_by?: string,
+    sort_order?: string,
+    is_clickable?: boolean,
+    canDelete?: boolean,
+    scope?: string,
+  } = $props();
 
   if (columns !== null && folderColumns !== null){
       throw new Error('columns and folderColumns cannot co-exist!');
@@ -52,21 +66,23 @@
       columns = folderRenderingColsToListCols(folderColumns);
   }
 
-  let total: number = 0;
+  let total: number = $state(0);
   const { sortBy, sortOrder, page } = $params;
   let sort = {
       sort_by: (sortBy ?? sort_by) || "shortname",
       sort_order: (sortOrder ?? sort_order) || "ascending",
   };
-  let objectDatatable = functionCreateDatatable({
-    parData: [],
-    parSearchableColumns: Object.keys(columns),
-    parRowsPerPage: (typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage") as `${number}`) || "15",
-    parSearchString: "",
-    parSortBy: (sortBy ?? sort_by) || "shortname",
-    parSortOrder: (sortOrder ?? sort_order) || "ascending",
-    parActivePage: Number(page) || 1,
-  });
+  let objectDatatable = $state(
+      functionCreateDatatable({
+          parData: [],
+          parSearchableColumns: Object.keys(columns),
+          parRowsPerPage: (typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage") as `${number}`) || "15",
+          parSearchString: "",
+          parSortBy: (sortBy ?? sort_by) || "shortname",
+          parSortOrder: (sortOrder ?? sort_order) || "ascending",
+          parActivePage: Number(page) || 1,
+      })
+  );
 
   function value(path: string, data, type) {
     if (data === null) {
@@ -82,14 +98,14 @@
     return $_("not_applicable");
   }
 
-  let height: number;
+  let height: number = $state(0);
 
   let numberActivePage: number = page || 1;
-  let propNumberOfPages: number = 1;
+  let propNumberOfPages: number = $state(1);
   let numberRowsPerPage: number =
     parseInt(typeof localStorage !==  'undefined' && localStorage.getItem("rowPerPage")) || 15;
-  let paginationBottomInfoFrom = 0;
-  let paginationBottomInfoTo = 0;
+  let paginationBottomInfoFrom = $state(0);
+  let paginationBottomInfoTo = $state(0);
 
   function setQueryParam(pair: any) {
     const urlSearchParams = new URLSearchParams(window.location.search);
@@ -238,7 +254,7 @@
     redirectToEntry(record);
   }
 
-  $: {
+  $effect(() => {
     if (
       old_search !== $search &&
       type !== QueryType.history &&
@@ -247,9 +263,9 @@
       // objectDatatable.stringSortBy = "shortname";
       fetchPageRecords(true);
     }
-  }
+  });
 
-  $: {
+  $effect(() => {
     if (objectDatatable === undefined) {
       objectDatatable = functionCreateDatatable({
         parData: [],
@@ -262,9 +278,9 @@
         parActivePage: Number(page) || 1,
       });
     }
-  }
+  });
 
-  $: {
+  $effect(() => {
     if (objectDatatable) {
       if (
         !isDeepEqual(sort, {
@@ -309,7 +325,8 @@
       paginationBottomInfoTo =
         paginationBottomInfoTo >= total ? total : paginationBottomInfoTo;
     }
-  }
+  });
+
   const toggelModal = () => {
       open != open;
   }
@@ -363,10 +380,10 @@
       <Prism code={modalData} />
     </ModalBody>
     <ModalFooter>
-      <Button color="secondary" on:click={() => (open = false)}>Close</Button>
+      <Button color="secondary" onclick={() => (open = false)}>Close</Button>
       <Button
         color="primary"
-        on:click={() => {
+        onclick={() => {
           open = false;
           redirectToEntry(modalData);
         }}>Entry</Button
@@ -413,7 +430,7 @@
                   <!-- svelte-ignore a11y-click-events-have-key-events -->
                   <td
                     style="cursor: pointer;"
-                    on:click={() => onListClick(row)}
+                    onclick={() => onListClick(row)}
                   >
                     {value(
                       columns[col].path.split("."),

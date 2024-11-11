@@ -1,14 +1,13 @@
 <script lang="ts">
-  import { Label, Button, Form, FormGroup, Row, Col } from "sveltestrap";
+  import { Button, Form,  Row, Col } from "sveltestrap";
   import { createEventDispatcher } from "svelte";
   import Captcha from "./Captcha.svelte";
   import { _ } from "@/i18n";
   const dispatch = createEventDispatcher();
 
-  export let captcha = false;
-  export let customSubmit = false;
+  let props = $props();
+  let { captcha = false, customSubmit = false, title= "" } = props;
   let valid_captcha = false;
-  export let title = "";
   function onSubmit(event) {
 
     event.preventDefault();
@@ -25,9 +24,6 @@
     dispatch("response", record);
   }
 
-  // novalidate
-  // was-validated
-  // needs-validation
 </script>
 
 <Form on:submit={onSubmit} class="needs-validation">
@@ -38,7 +34,7 @@
       </Col>
     </Row>
   {/if}
-  <slot />
+  {@render props.children()}
   {#if captcha}
     <Captcha bind:valid={valid_captcha} />
   {/if}

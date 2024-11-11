@@ -17,8 +17,8 @@
     <Col>
       <Row><p>{message}</p></Row>
       <Row>
-        <Col class={'d-flex justify-content-start'}><Button color={"primary"} on:click={handleAction}>Fix it</Button></Col>
-        <Col class={'d-flex justify-content-end'}><Button color={"secondary"} on:click={handleClose}>Close</Button></Col>
+        <Col class={'d-flex justify-content-start'}><Button color={"primary"} onclick={handleAction}>Fix it</Button></Col>
+        <Col class={'d-flex justify-content-end'}><Button color={"secondary"} onclick={handleClose}>Close</Button></Col>
       </Row>
     </Col>
   </Container>

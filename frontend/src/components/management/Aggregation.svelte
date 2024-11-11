@@ -2,7 +2,7 @@
   import { Button, Col, Input, Row } from "sveltestrap";
   import Icon from "../Icon.svelte";
 
-  export let aggregation_data;
+  let { aggregation_data = $bindable({}) } : {aggregation_data: object} = $props();
 
   let currentSection = "load"; // Default to "load" section
 
@@ -38,7 +38,7 @@
         <option value="reducers">Reducers</option>
       </Input>
       <div class="input-group-append">
-        <Button on:click={(e) => addInput(e)}>
+        <Button onclick={(e) => addInput(e)}>
           <Icon name="patch-plus" />
         </Button>
       </div>
@@ -75,7 +75,7 @@
             <Input type="text" class="form-control" bind:value={input.args} />
             <div class="input-group-append">
                 <Button
-                  on:click={(e) => deleteInput(e, index)}
+                  onclick={(e) => deleteInput(e, index)}
                   class="btn btn-danger"><Icon name="patch-minus" /></Button
                 >
               </div>
@@ -86,10 +86,10 @@
       <Row>
         <Col sm="12">
           <div class="input-group mb-2">
-            <Input type="text" class="form-control" bind:value={input} />
+            <Input type="text" class="form-control" bind:value={aggregation_data[currentSection][index]} />
             <div class="input-group-append">
               <Button
-                on:click={(e) => deleteInput(e, index)}
+                onclick={(e) => deleteInput(e, index)}
                 class="btn btn-danger"><Icon name="patch-minus" /></Button
               >
             </div>

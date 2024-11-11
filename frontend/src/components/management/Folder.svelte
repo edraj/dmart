@@ -10,9 +10,15 @@
   import { type ApiResponseRecord, get_children, ResourceType } from "@/dmart";
   import { fly } from "svelte/transition";
 
-  export let space_name: string;
-  export let folder: ApiResponseRecord;
-  let expanded = false;
+  let {
+      space_name,
+      folder
+  } : {
+      space_name: string,
+      folder: ApiResponseRecord
+  } = $props();
+
+  let expanded = $state(false);
   let fullpath = `${space_name}/${
     folder.subpath == "/" ? "" : folder.subpath + "/"
   }${folder.shortname}`;
@@ -29,12 +35,12 @@
     }
   }
 
-  $: {
+  $effect(() => {
     // Let's collapse if we are already expanded but we are not on the active path any more
     if (expanded && !$active_path.startsWith(fullpath)) {
       expanded = false;
     }
-  }
+  });
 
   async function toggle() {
     // expanded = !expanded;
@@ -84,7 +90,7 @@
 <span
   class:expanded
   class="folder position-relative mt-1 ps-2"
-  on:click={toggle}
+  onclick={toggle}
   transition:fly={{ y: -10, duration: 200 }}
 >
   <span style="overflow: hidden;">

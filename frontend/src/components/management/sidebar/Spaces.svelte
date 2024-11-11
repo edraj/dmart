@@ -80,7 +80,7 @@
     }
   }
   let canCreateNewSpace = false;
-  $: {
+  $effect(() => {
     let permissions = [];
     if (typeof localStorage !== 'undefined')
       permissions = JSON.parse(localStorage.getItem("permissions"));
@@ -92,7 +92,7 @@
     if (Object.keys(permissions).includes(k)) {
       canCreateNewSpace = permissions[k].allowed_actions.includes("create");
     }
-  }
+  });
 
   const toggleModal = () => {
       isSpaceModalOpen = !isSpaceModalOpen;
@@ -111,7 +111,7 @@
           <div
             class="hover mb-2"
             style="cursor: pointer;"
-            on:click={async () => await expandSpace(space)}
+            onclick={async () => await expandSpace(space)}
           >
             <Icon name="diagram-3" class="me-1" /> <b>{displayname(space)}</b>
             <style>
@@ -152,7 +152,7 @@
     type="button"
     outline
     color="primary"
-    on:click={() => {
+    onclick={() => {
       isSpaceModalOpen = true;
     }}>Create new space</Button
   ></ListGroupItem>
@@ -175,7 +175,7 @@
       <Button
         type="button"
         color="secondary"
-        on:click={() => (isSpaceModalOpen = false)}>cancel</Button
+        onclick={() => (isSpaceModalOpen = false)}>cancel</Button
       >
       <Button type="submit" color="primary">Submit</Button>
     </ModalFooter>
