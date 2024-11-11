@@ -151,7 +151,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 if isinstance(v, str):
                     stm = f"(({k}) {'!' if flag_neg else ''}= '{v}'"
                     if "payload" in k:
-                        stm += f" OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"')"
+                        stm += f" OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"'"
                     stm += ")"
                     statement = statement.where(text(stm))
             elif is_list and vv and v:
