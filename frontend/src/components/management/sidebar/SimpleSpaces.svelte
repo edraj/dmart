@@ -29,7 +29,7 @@
       <div
         class="hover mb-2 mt-2"
         style="cursor: pointer;"
-        on:click={(e) => {
+        onclick={(e) => {
           handleClick(e, space);
         }}
       >

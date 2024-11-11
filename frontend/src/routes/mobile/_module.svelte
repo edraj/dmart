@@ -40,12 +40,12 @@
       }
     }
   }
+
+  let props = $props();
 </script>
+
 <svelte:body on:touchstart={onTouchStart} on:touchend={onTouchEnd} />
 <svelte:window bind:innerHeight={window_height} />
-
-
-
 
 <Offcanvas
   isOpen={isSidebarOpen}
@@ -59,7 +59,7 @@
 </Offcanvas>
 
 <div bind:clientHeight={header_height} class="fixed-top">
-  <Button outline color="primary" class="border rounded-3 py-0 ps-0 pe-2" on:click={toggleSidbar}><Icon name="list" class="bi-lg p-1"/>Menu</Button>
+  <Button outline color="primary" class="border rounded-3 py-0 ps-0 pe-2" onclick={toggleSidbar}><Icon name="list" class="bi-lg p-1"/>Menu</Button>
   <!--Header /-->
 
 
@@ -69,13 +69,13 @@
   class="position-relative p-0 my-0 w-100"
   style="top: {header_height}px; height: {window_height - header_height - footer_height - 2}px;"
 >
-  <slot />
+  {@render props.children()}
   <!--Row class="border border-success h-100 w-100 ms-0 my-0" noGutters>
     <Col sm="2" class="h-100 border border-warning overflow-auto"
       ><Sidebar /></Col
     >
     <Col sm="10" class="h-100 border border-info overflow-auto">
-      <slot />
+      {@render children()}
     </Col>
   </Row-->
 </Container>

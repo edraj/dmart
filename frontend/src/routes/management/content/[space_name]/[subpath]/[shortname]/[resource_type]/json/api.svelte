@@ -322,7 +322,7 @@
             class="justify-content-center text-center py-0 px-1"
             active={"view" === tab_option}
             title={$_("view")}
-            on:click={() => (tab_option = "view")}
+            onclick={() => (tab_option = "view")}
           >
             <Icon name="binoculars" />
           </Button>
@@ -335,7 +335,7 @@
               class="justify-content-center text-center py-0 px-1"
               active={"edit_meta" === tab_option}
               title={$_("edit") + " meta"}
-              on:click={() => (tab_option = "edit_meta")}
+              onclick={() => (tab_option = "edit_meta")}
             >
               <Icon name="code-slash" />
             </Button>
@@ -347,7 +347,7 @@
                 class="justify-content-center text-center py-0 px-1"
                 active={"edit_content" === tab_option}
                 title={$_("edit") + " payload"}
-                on:click={() => (tab_option = "edit_content")}
+                onclick={() => (tab_option = "edit_content")}
               >
                 <Icon name="pencil" />
               </Button>
@@ -358,7 +358,7 @@
                 class="justify-content-center text-center py-0 px-1"
                 active={"api_call" === tab_option}
                 title={$_("edit") + " payload"}
-                on:click={() => (tab_option = "api_call")}
+                onclick={() => (tab_option = "api_call")}
               >
                 <Icon name="send" />
               </Button>
@@ -372,7 +372,7 @@
             class="justify-content-center text-center py-0 px-1"
             active={"attachments" === tab_option}
             title={$_("attachments")}
-            on:click={() => (tab_option = "attachments")}
+            onclick={() => (tab_option = "attachments")}
           >
             <Icon name="paperclip" />
           </Button>
@@ -383,7 +383,7 @@
             class="justify-content-center text-center py-0 px-1"
             active={"history" === tab_option}
             title={$_("history")}
-            on:click={() => (tab_option = "history")}
+            onclick={() => (tab_option = "history")}
           >
             <Icon name="clock-history" />
           </Button>
@@ -396,7 +396,7 @@
               color="success"
               size="sm"
               title={$_("delete")}
-              on:click={handleDelete}
+              onclick={handleDelete}
               class="justify-content-center text-center py-0 px-1"
             >
               <Icon name="trash" />
@@ -480,10 +480,10 @@
                 </p>
               </Col>
               <Col class="d-flex justify-content-end">
-                <Button class="mx-1" on:click={toggleCurl}>Show curl</Button>
+                <Button class="mx-1" onclick={toggleCurl}>Show curl</Button>
                 <Button
                   color="success"
-                  on:click={async () => await call_api(request)}>Call</Button
+                  onclick={async () => await call_api(request)}>Call</Button
                 >
               </Col>
             </Row>

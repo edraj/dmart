@@ -1,8 +1,10 @@
 <script lang="ts">
   // import { goto } from '@roxi/routify';
-  import { Col, Container, Row } from "sveltestrap";
+  import { Container } from "sveltestrap";
   import Header from "@/components/Header.svelte";
   import Footer from "@/components/Footer.svelte";
+
+  let { children } : { children: any } = $props();
 
   // import Sidebar from "@/components/Sidebar.svelte";
   // import { user } from "@/stores/user";
@@ -10,9 +12,9 @@
   // import { useRegisterSW } from "virtual:pwa-register/svelte";
   //import Offline from "@/components/Offline.svelte";
 
-  let window_height: number;
-  let header_height: number;
-  let footer_height: number;
+  let window_height: number = $state(0);
+  let header_height: number = $state(0);
+  let footer_height: number = $state(0);
 
 
   // let isOffline = false;

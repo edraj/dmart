@@ -5,13 +5,22 @@ import {Button, Input} from "sveltestrap";
 import MarkdownEditor from "@/components/management/editors/MarkdownEditor.svelte";
 import HtmlEditor from "@/components/management/editors/HtmlEditor.svelte";
 
+let {
+    space_name,
+    subpath,
+    content_type,
+    body,
+    jseContent = $bindable(),
+    handleSave
+} : {
+    space_name: string,
+    subpath: string,
+    content_type: string,
+    body: string,
+    jseContent: string,
+    handleSave: any
+} = $props();
 
-export let space_name;
-export let subpath;
-export let content_type;
-export let body;
-export let jseContent;
-export let handleSave;
 </script>
 
 {#if content_type === "image"}
@@ -64,13 +73,13 @@ export let handleSave;
 {/if}
 {#if content_type === "html"}
   <div class="d-flex justify-content-end">
-    <Button on:click={handleSave}>Save</Button>
+    <Button onclick={handleSave}>Save</Button>
   </div>
   <HtmlEditor bind:content={jseContent} />
 {/if}
 {#if content_type === "text"}
   <div class="d-flex justify-content-end">
-    <Button on:click={handleSave}>Save</Button>
+    <Button onclick={handleSave}>Save</Button>
   </div>
   <Input class="mt-3" type="textarea" bind:value={jseContent} />
 {/if}

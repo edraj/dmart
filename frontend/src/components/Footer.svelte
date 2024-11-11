@@ -18,7 +18,7 @@
 <!--    <DropdownToggle><Icon name="palette-fill" /></DropdownToggle>-->
 <!--    <DropdownMenu end>-->
 <!--      {#each themesList as theme}-->
-<!--        <DropdownItem name={theme} on:click={handleThemeChange}>{theme}</DropdownItem>-->
+<!--        <DropdownItem name={theme} onclick={handleThemeChange}>{theme}</DropdownItem>-->
 <!--      {/each}-->
 <!--    </DropdownMenu>-->
 <!--  </Dropdown>-->

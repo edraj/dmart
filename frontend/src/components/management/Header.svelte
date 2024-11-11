@@ -67,7 +67,7 @@
         <NavLink
           href={$url("/management/" + section.name)}
           title={$_(section.name)}
-          on:click={() => {
+          onclick={() => {
             $active_section = section;
           }}
           active={$active_section.name === section.name}
@@ -89,11 +89,11 @@
           <Input
             type="search"
             placeholder={$_("searching_for_what")}
-            on:input={handleInput}
+            oninput={handleInput}
           />
           <!-- svelte-ignore a11y-click-events-have-key-events -->
           <!-- svelte-ignore a11y-no-static-element-interactions -->
-          <span on:click={handleSearch}>
+          <span onclick={handleSearch}>
             <InputGroupText><Icon name="search" /></InputGroupText>
           </span>
         </InputGroup>
@@ -103,7 +103,7 @@
       <SelectLanguage />
     </NavItem>
 
-      <NavLink href="#" title={$_("logout")} on:click={signout}>
+      <NavLink href="#" title={$_("logout")} onclick={signout}>
         <Icon name="power" />
       </NavLink>
 
@@ -112,7 +112,7 @@
 <!--        <DropdownToggle><Icon name="palette-fill" /></DropdownToggle>-->
 <!--        <DropdownMenu end>-->
 <!--          {#each themesList as theme}-->
-<!--            <DropdownItem name={theme} on:click={handleThemeChange}>{theme}</DropdownItem>-->
+<!--            <DropdownItem name={theme} onclick={handleThemeChange}>{theme}</DropdownItem>-->
 <!--          {/each}-->
 <!--        </DropdownMenu>-->
 <!--      </Dropdown>-->

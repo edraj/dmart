@@ -36,11 +36,19 @@
   import MarkdownEditor from "@/components/management/editors/MarkdownEditor.svelte";
   import HtmlEditor from "@/components/management/editors/HtmlEditor.svelte";
 
-  export let attachments: Array<any> = [];
-  export let resource_type: string;
-  export let space_name: string;
-  export let subpath: string;
-  export let parent_shortname: string;
+  let {
+    attachments = [],
+    resource_type,
+    space_name,
+    subpath,
+    parent_shortname
+  } :{
+    attachments: Array<any>,
+    resource_type: ResourceType,
+    space_name: string,
+    subpath: string,
+    parent_shortname: string
+  } = $props();
 
   async function fetchDataAssetsForAttachments() {
     for (const attachment of attachments.flat(1)) {
@@ -97,10 +105,10 @@
   }
 
   // exp rt let forceRefresh;
-  let shortname = "auto";
-  let isModalInUpdateMode = false;
-  let openViewAttachmentModal = false;
-  let openMetaEditAttachmentModal = false;
+  let shortname = $state("auto");
+  let isModalInUpdateMode = $state(false);
+  let openViewAttachmentModal = $state(false);
+  let openMetaEditAttachmentModal = $state(false);
 
   function toggleViewAttachmentModal() {
     openViewAttachmentModal = !openViewAttachmentModal;
@@ -110,16 +118,16 @@
     openMetaEditAttachmentModal = !openMetaEditAttachmentModal;
   }
 
-  let openCreateAttachemntModal = false;
+  let openCreateAttachemntModal = $state(false);
 
   function toggleCreateAttachemntModal() {
     openCreateAttachemntModal = !openCreateAttachemntModal;
   }
 
-  let content = {
+  let content = $state({
     json: {},
     text: undefined,
-  };
+  });
 
   function handleView(attachment) {
     content = {
@@ -171,13 +179,13 @@
     }
   }
 
-  let payloadFiles: FileList;
+  let payloadFiles: FileList = $state();
 
-  let payloadContent: any = { json: {}, text: undefined };
-  let payloadData: string;
-  let selectedSchema: string;
-  let resourceType: ResourceAttachmentType = ResourceAttachmentType.media;
-  let contentType: ContentType = ContentType.image;
+  let payloadContent: any = $state({ json: {}, text: undefined });
+  let payloadData: string = $state();
+  let selectedSchema: string = $state();
+  let resourceType: ResourceAttachmentType = $state(ResourceAttachmentType.media);
+  let contentType: ContentType = $state(ContentType.image);
 
   async function upload() {
     let response: ApiResponse;
@@ -324,7 +332,7 @@
     }
   }
 
-  $: {
+  $effect(() => {
     switch (resourceType) {
       case ResourceAttachmentType.media:
         contentType = ContentType.image;
@@ -336,7 +344,7 @@
         contentType = ContentType.json;
         break;
     }
-  }
+  });
 
   function handleMetaEditModal(attachment) {
     const _attachment = structuredClone(attachment);
@@ -411,11 +419,11 @@
     />
   </ModalBody>
   <ModalFooter>
-    <Button type="button" color="primary" on:click={updateMeta}>Update</Button>
+    <Button type="button" color="primary" onclick={updateMeta}>Update</Button>
     <Button
       type="button"
       color="secondary"
-      on:click={() => (openMetaEditAttachmentModal = false)}
+      onclick={() => (openMetaEditAttachmentModal = false)}
     >
       close
     </Button>
@@ -550,10 +558,10 @@
     <Button
       type="button"
       color="secondary"
-      on:click={() => (openCreateAttachemntModal = false)}
+      onclick={() => (openCreateAttachemntModal = false)}
       >close
     </Button>
-    <Button type="button" color="primary" on:click={upload}>Upload</Button>
+    <Button type="button" color="primary" onclick={upload}>Upload</Button>
   </ModalFooter>
 </Modal>
 
@@ -575,7 +583,7 @@
     <Button
       type="button"
       color="secondary"
-      on:click={() => (openViewAttachmentModal = false)}
+      onclick={() => (openViewAttachmentModal = false)}
       >close
     </Button>
   </ModalFooter>
@@ -586,7 +594,7 @@
 <div class="d-flex justify-content-between mx-2 flex-row">
   <p>Number of attachments: {attachments.flat(1).length}</p>
   <div
-    on:click={() => {
+    onclick={() => {
       shortname = "auto";
       resourceType = ResourceAttachmentType.media;
       contentType = ContentType.image;
@@ -631,7 +639,7 @@
             <div
               class="mx-1"
               style="cursor: pointer;"
-              on:click={async () => await handleDelete(attachment)}
+              onclick={async () => await handleDelete(attachment)}
             >
               <Icon name="trash" color="red" />
             </div>
@@ -640,7 +648,7 @@
             <div
               class="mx-1"
               style="cursor: pointer;"
-              on:click={() => {
+              onclick={() => {
                 handleView(attachment);
               }}
             >
@@ -651,7 +659,7 @@
             <div
               class="mx-1"
               style="cursor: pointer;"
-              on:click={() => {
+              onclick={() => {
                 handleMetaEditModal(attachment);
               }}
             >
@@ -663,7 +671,7 @@
               <div
                 class="mx-1"
                 style="cursor: pointer;"
-                on:click={() => {
+                onclick={() => {
                   handleContentEditModal(attachment);
                 }}
               >

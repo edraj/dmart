@@ -70,7 +70,7 @@
     bsSize="lg"
     {invalid}
     {valid}
-    on:input={handleInput}
+    oninput={handleInput}
   />
 </FormGroup>
 

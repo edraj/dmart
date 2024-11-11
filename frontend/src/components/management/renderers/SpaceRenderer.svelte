@@ -36,16 +36,21 @@
   import { isDeepEqual, removeEmpty } from "@/utils/compare";
   import Table2Cols from "@/components/management/Table2Cols.svelte";
 
+  let {
+      space_name,
+      current_space
+  } : {
+      space_name: string,
+      current_space: ResponseEntry
+  } = $props();
 
-  let header_height: number;
-  export let space_name: string;
+  let header_height: number = $state();
 
-  export let current_space: ResponseEntry;
-  let content = { json: current_space || {}, text: undefined };
-  let oldContent = { json: current_space || {}, text: undefined };
-  let entryContent = { json: current_space || {}, text: undefined };
+  let content = $state({ json: current_space || {}, text: undefined });
+  let oldContent = $state({ json: current_space || {}, text: undefined });
+  let entryContent = $state({ json: current_space || {}, text: undefined });
 
-  let tab_option = "list";
+  let tab_option = $state("list");
 
   onDestroy(() => status_line.set(""));
   status_line.set("none FIXME");
@@ -56,7 +61,7 @@
   // isSchemaValidated =  (v === undefined || v.length === 0)
   //}
 
-  let errorContent = null;
+  let errorContent = $state(null);
   async function handleSave() {
     // if (!isSchemaValidated) {
     //   alert("The content does is not validated agains the schema");
@@ -112,12 +117,12 @@
     ]);
   }
 
-  let isModalOpen = false;
+  let isModalOpen = $state(false);
   let modalFlag = "create";
-  let entryType = "folder";
-  let contentShortname = "";
-  let selectedSchema = "";
-  let new_resource_type: ResourceType = ResourceType.content;
+  let entryType = $state("folder");
+  let contentShortname = $state("");
+  let selectedSchema = $state("");
+  let new_resource_type: ResourceType = $state(ResourceType.content);
 
   async function handleSubmit(event: Event) {
     event.preventDefault();
@@ -284,7 +289,7 @@
       <Button
         type="button"
         color="secondary"
-        on:click={() => {
+        onclick={() => {
           isModalOpen = false;
           contentShortname = "";
         }}>cancel</Button
@@ -314,7 +319,7 @@
         class="justify-content-center text-center py-0 px-1"
         active={"list" === tab_option}
         title={$_("list")}
-        on:click={() => (tab_option = "list")}
+        onclick={() => (tab_option = "list")}
       >
         <Icon name="card-list" />
       </Button>
@@ -326,7 +331,7 @@
         class="justify-content-center text-center py-0 px-1"
         active={"view" === tab_option}
         title={$_("view")}
-        on:click={() => (tab_option = "view")}
+        onclick={() => (tab_option = "view")}
       >
         <Icon name="binoculars" />
       </Button>
@@ -337,7 +342,7 @@
         class="justify-content-center text-center py-0 px-1"
         active={"edit" === tab_option}
         title={$_("edit")}
-        on:click={() => (tab_option = "edit")}
+        onclick={() => (tab_option = "edit")}
       >
         <Icon name="pencil" />
       </Button>
@@ -349,7 +354,7 @@
         color="success"
         size="sm"
         title={$_("delete")}
-        on:click={handleDelete}
+        onclick={handleDelete}
         class="justify-content-center text-center py-0 px-1"
       >
         <Icon name="trash" />
@@ -361,7 +366,7 @@
             size="sm"
             title={$_("create_entry")}
             class="justify-contnet-center text-center py-0 px-1"
-            on:click={() => {
+            onclick={() => {
               entryType = "content";
               isModalOpen = true;
             }}
@@ -374,7 +379,7 @@
             size="sm"
             title={$_("create_folder")}
             class="justify-contnet-center text-center py-0 px-1"
-            on:click={() => {
+            onclick={() => {
                 entryType = "folder";
                 new_resource_type = ResourceType.folder;
                 isModalOpen = true;

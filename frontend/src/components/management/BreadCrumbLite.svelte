@@ -1,16 +1,25 @@
-<script>
+<script lang="ts">
   import { ResourceType } from "@/dmart";
   import { goto } from "@roxi/routify";
   import { onMount } from "svelte";
   import { ButtonGroup } from "sveltestrap";
 
-  export let space_name;
-  export let subpath;
-  export let shortname;
-  export let resource_type;
-  export let schema_name;
+  let {
+      space_name,
+      subpath,
+      shortname,
+      resource_type,
+      schema_name
+  } : {
+      space_name: string,
+      subpath: string,
+      shortname?: string,
+      resource_type: ResourceType,
+      schema_name?: string
+  } = $props();
 
-  let items = [];
+
+  let items = $state([]);
   onMount(() => {
     const parts = subpath.split("/");
     items = parts.filter((item) => item !== "").map((part, index) => ({
@@ -35,7 +44,7 @@
       <span dir="ltr"
         class="text-success"
         style="cursor: pointer;"
-        on:click={() => {
+        onclick={() => {
           $goto("/management/content/[space_name]", {
             space_name: space_name,
           });
@@ -47,7 +56,7 @@
         <span dir="ltr"
           class="text-primary"
           style="cursor: pointer;"
-          on:click={item.action}>{item.text}</span>
+          onclick={item.action}>{item.text}</span>
       {/each}
       {#if resource_type !== ResourceType.folder}: <strong>{shortname}</strong>
       {/if}

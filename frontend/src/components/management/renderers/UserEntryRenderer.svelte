@@ -24,13 +24,19 @@
     import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
     import {REGEX} from "@/utils/regex";
 
-    export let entry: ResponseEntry;
-    export let space_name: string;
-    export let subpath: string;
-    export let errorContent: any;
+    let {
+        entry = $bindable(),
+        space_name,
+        subpath,
+        errorContent = $bindable(),
+    } : {
+        entry: ResponseEntry,
+        space_name: string,
+        subpath: string,
+        errorContent: any | ResponseEntry,
+    } = $props();
 
     const resource_type: ResourceType = ResourceType.user;
-
 
     let contentMeta: any = {json: {}, text: undefined};
     let validatorMeta: Validator = createAjvValidator({schema: metaUserSchema});
@@ -43,7 +49,7 @@
     onDestroy(() => status_line.set(""));
 
 
-    let user: any = {displayname: {ar: "", en: "", kd: ""}};
+    let user: any = $state({displayname: {ar: "", en: "", kd: ""}});
 
     onMount(async () => {
         user = {
@@ -121,7 +127,7 @@
         }
     }
 
-    $: {
+    $effect(() => {
         if (
             schema === null &&
             entry &&
@@ -130,7 +136,7 @@
         ) {
             get_schema();
         }
-    }
+    });
 
     onDestroy(() => {
         history.replaceState;
@@ -208,7 +214,7 @@
         }
     }
 
-    $: user && contentMeta &&
+    $effect(() => user && contentMeta &&
     (() => {
         if (contentMeta.text) {
             contentMeta.json = JSON.parse(contentMeta.text);
@@ -223,11 +229,11 @@
         };
         contentMeta.text = undefined;
         contentMeta = structuredClone(contentMeta);
-    })()
+    })());
 
-    $: {
+    $effect(() => {
         contentContent = structuredClone(contentContent);
-    }
+    });
 </script>
 
 <svelte:window on:beforeunload={beforeUnload}/>

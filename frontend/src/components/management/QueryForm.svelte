@@ -90,7 +90,7 @@
       })
     );
   }
-  $: {
+  $effect(() => {
     if (spacename) {
       subpaths = [];
       (async () => {
@@ -99,7 +99,8 @@
         subpaths = [...tempSubpaths];
       })();
     }
-  }
+  });
+
   async function handleDownload() {
     const {
       space_name,
@@ -189,7 +190,7 @@
     <Col class="d-flex justify-content-between">
       <Button outline type="submit">{$_("submit")}</Button>
       {#if formData}
-        <Button outline type="button" on:click={handleDownload}
+        <Button outline type="button" onclick={handleDownload}
           >{$_("download_csv")}</Button
         >
       {/if}
