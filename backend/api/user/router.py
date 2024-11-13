@@ -262,20 +262,21 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 user_shortname=shortname,
             )
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
+        is_password_valid = password_hashing.verify_password(
+            request.password or "", user.password or ""
+        )
         if (
             user
             and user.is_active
             and (
                 request.invitation
-                or password_hashing.verify_password(
-                    request.password or "", user.password or ""
-                )
+                or is_password_valid
             )
         ):
             await clear_failed_password_attempts(shortname)
             
             record = await process_user_login(user, response, user_updates, request.firebase_token)
-            print(f"{record=}")
+            await reset_failed_login_attempt(user)
             await plugin_manager.after_action(
                 core.Event(
                     space_name=MANAGEMENT_SPACE,
@@ -287,10 +288,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 )
             )
             return api.Response(status=api.Status.success, records=[record])
-        # Check if user entered a wrong password 
-        is_password_valid = password_hashing.verify_password(
-            request.password or "", user.password or ""
-        )
+        # Check if user entered a wrong password
         if not is_password_valid:
             await handle_failed_login_attempt(user)
         raise api.Exception(
@@ -984,6 +982,9 @@ async def process_user_login(
         
     return record
 
+
+async def reset_failed_login_attempt(user: core.User):
+    await set_failed_password_attempt_count(user.shortname, 0)
 
 async def handle_failed_login_attempt(user: core.User):
     failed_login_attempts_count: int = await get_failed_password_attempt_count(user.shortname)
