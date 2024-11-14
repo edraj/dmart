@@ -1174,7 +1174,7 @@ class SQLAdapter(BaseDataAdapter):
             active_session = ActiveSessions.model_validate(result)
             if auth_token is not None and auth_token != active_session.token:
                 raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=status.HTTP_401_UNAUTHORIZED,
                     error=api.Error(
                         type="session",
                         code=InternalErrorCode.INVALID_TOKEN,
