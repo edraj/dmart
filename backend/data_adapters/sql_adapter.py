@@ -433,6 +433,7 @@ class SQLAdapter(BaseDataAdapter):
 
     async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
         with self.get_session() as session:
+            results: list[core.Meta] = []
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
                 for _table in tables:
@@ -446,7 +447,6 @@ class SQLAdapter(BaseDataAdapter):
                             statement = statement.where(text(f"{k}=:{k}")).params({k: v})
                         _results = session.exec(statement).all()
 
-                        results: list[core.Meta] = []
                         if len(_results) > 0:
                             for result in _results:
                                 core_model_class : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
@@ -466,12 +466,11 @@ class SQLAdapter(BaseDataAdapter):
 
                     _results = session.exec(statement).all()
 
-                    results: list[core.Meta] = []
                     if len(_results) > 0:
                         for result in _results:
-                            core_model_class: core.Meta = getattr(sys.modules["models.core"],
+                            _core_model_class: core.Meta = getattr(sys.modules["models.core"],
                                                                   camel_case(result.resource_type))
-                            results.append(core_model_class.model_validate(result.model_dump()))
+                            results.append(_core_model_class.model_validate(result.model_dump()))
                         return results
                 return None
 
