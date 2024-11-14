@@ -441,8 +441,8 @@ class SQLAdapter(BaseDataAdapter):
                     for k, v in criteria.items():
                         if isinstance(v, str):
                             statement = statement.where(
-                                text(f"{k}::text LIKE :{k}")
-                            ).params({k: f"{v}%"})
+                                text(f"{k}::text=:{k}")
+                            ).params({k: f"{v}"})
                         else:
                             statement = statement.where(text(f"{k}=:{k}")).params({k: v})
                         _results = session.exec(statement).all()
@@ -459,8 +459,8 @@ class SQLAdapter(BaseDataAdapter):
                 for k, v in criteria.items():
                     if isinstance(v, str):
                         statement = statement.where(
-                            text(f"{k}::text LIKE :{k}")
-                        ).params({k: f"{v}%"})
+                            text(f"{k}::text=:{k}")
+                        ).params({k: f"{v}"})
                     else:
                         statement = statement.where(text(f"{k}=:{k}")).params({k: v})
 
