@@ -578,12 +578,12 @@ class AccessControl:
             else:
                 return None
         else:
-            user = await db.get_entry_by_criteria(
+            _user = await db.get_entry_by_criteria(
                 {key: value},
                 Users
             )
-            if user:
-                return str(user.shortname)
+            if len(_user) > 0:
+                return str(_user[0].shortname)
             return None
 
     async def get_user_roles_from_groups(self, user_meta: User) -> list:

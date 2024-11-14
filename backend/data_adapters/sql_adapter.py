@@ -431,7 +431,7 @@ class SQLAdapter(BaseDataAdapter):
                 logger.error(f"Failed parsing an entry. Error: {e}")
                 return None
 
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Meta | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
         with self.get_session() as session:
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
@@ -444,10 +444,15 @@ class SQLAdapter(BaseDataAdapter):
                             ).params({k: f"{v}%"})
                         else:
                             statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-                        result = session.exec(statement).one_or_none()
-                        if result:
-                            core_model_class : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
-                            return core_model_class.model_validate(result.model_dump())
+                        _results = session.exec(statement).all()
+
+                        results: list[core.Meta] = []
+                        if len(_results) > 0:
+                            for result in _results:
+                                core_model_class : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
+                                results.append(core_model_class.model_validate(result.model_dump()))
+
+                            return results
                 return None
             else:
                 statement = select(table)
@@ -458,10 +463,16 @@ class SQLAdapter(BaseDataAdapter):
                         ).params({k: f"{v}%"})
                     else:
                         statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-                    result = session.exec(statement).one_or_none()
-                    if result:
-                        core_model_class2 : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
-                        return core_model_class2.model_validate(result.model_dump())
+
+                    _results = session.exec(statement).all()
+
+                    results: list[core.Meta] = []
+                    if len(_results) > 0:
+                        for result in _results:
+                            core_model_class: core.Meta = getattr(sys.modules["models.core"],
+                                                                  camel_case(result.resource_type))
+                            results.append(core_model_class.model_validate(result.model_dump()))
+                        return results
                 return None
 
     async def query(
