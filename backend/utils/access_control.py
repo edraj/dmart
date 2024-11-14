@@ -582,9 +582,9 @@ class AccessControl:
                 {key: value},
                 Users
             )
-            if len(_user) > 0:
-                return str(_user[0].shortname)
-            return None
+            if _user is None or len(_user) == 0:
+                return None
+            return str(_user[0].shortname)
 
     async def get_user_roles_from_groups(self, user_meta: User) -> list:
 

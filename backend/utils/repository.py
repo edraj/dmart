@@ -1660,9 +1660,9 @@ async def get_entry_by_var(
 ):
     if settings.active_data_db == "sql":
         _result = await db.get_entry_by_criteria({key: val})
-        if len(_result) > 0:
-            return _result[0]
-        return None
+        if _result is None or len(_result) == 0:
+            return None
+        return _result[0]
 
     spaces = await db.get_spaces()
     entry_doc = None
