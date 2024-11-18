@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ResourceType } from "@/dmart";
   import { goto } from "@roxi/routify";
+  $goto // this should initiate the helper at component initialization
   import { onMount } from "svelte";
   import { ButtonGroup } from "sveltestrap";
 

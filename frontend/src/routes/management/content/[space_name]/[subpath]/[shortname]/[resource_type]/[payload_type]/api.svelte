@@ -76,14 +76,14 @@
     errorContent = null;
 
     const x = contentMeta.json
-      ? structuredClone(contentMeta.json)
+      ? {...contentMeta.json}
       : JSON.parse(contentMeta.text);
 
-    let data: any = structuredClone(x);
+    let data: any = {...x};
     if (entry?.payload) {
       if (entry?.payload?.content_type === "json") {
         const y = contentContent.json
-          ? structuredClone(contentContent.json)
+          ? {...contentContent.json}
           : JSON.parse(contentContent.text);
         if (data.payload) {
           data.payload.body = y;

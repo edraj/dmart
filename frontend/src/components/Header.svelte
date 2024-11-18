@@ -19,6 +19,7 @@
   // import LocalizedValue from "./LocalizedValue.svelte";
   import markdownFiles from "@/md_indexer.json";
   import {goto} from "@roxi/routify";
+  $goto // this should initiate the helper at component initialization
 
   // let search : string = "";
   // function handleClick(event: Event) {

@@ -1,5 +1,4 @@
 <script lang="ts">
-  // import { goto } from '@roxi/routify';
   import { Container } from "sveltestrap";
   import Header from "@/components/Header.svelte";
   import Footer from "@/components/Footer.svelte";
