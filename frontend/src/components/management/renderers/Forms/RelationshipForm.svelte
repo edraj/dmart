@@ -1,7 +1,6 @@
 <script lang="ts">
     import {Card, CardBody, Form, FormGroup, Label, Input, Button, Icon, Alert} from 'sveltestrap';
     import {ResourceType} from "@/dmart";
-    import {onMount} from "svelte";
     import {JSONEditor, Mode} from "svelte-jsoneditor";
 
 

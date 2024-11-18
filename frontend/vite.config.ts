@@ -65,7 +65,7 @@ export default defineConfig({
       ]
     }),
     routify({
-      "render.ssr": { enable: true /*production*/ },
+      "render.ssr": { enable: false /*production*/ },
       // ssr: { enable: false /*production*/ },
     }),
     svelte({
