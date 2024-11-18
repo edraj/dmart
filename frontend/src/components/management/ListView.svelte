@@ -104,8 +104,14 @@
   let propNumberOfPages: number = $state(1);
   let numberRowsPerPage: number =
     parseInt(typeof localStorage !==  'undefined' && localStorage.getItem("rowPerPage")) || 15;
-  let paginationBottomInfoFrom = $state(0);
-  let paginationBottomInfoTo = $state(0);
+  let paginationBottomInfoFrom = $derived(
+      objectDatatable.numberRowsPerPage *  (objectDatatable.numberActivePage - 1) + 1
+  );
+  let paginationBottomInfoTo = $derived(
+      (objectDatatable.numberRowsPerPage * objectDatatable.numberActivePage) >= total ? total : (
+          objectDatatable.numberRowsPerPage * objectDatatable.numberActivePage
+      )
+  );
 
   function setQueryParam(pair: any) {
     const urlSearchParams = new URLSearchParams(window.location.search);
@@ -179,6 +185,7 @@
     const schema_shortname = record.attributes?.payload?.schema_shortname;
     let tmp_subpath = record.subpath.replaceAll("/", "-");
 
+    console.log("$goto", record);
     if (schema_shortname) {
       $goto(
         "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
@@ -244,14 +251,19 @@
       if (_subpath.length > 0 && _subpath[_subpath.length - 1] === "/")
         _subpath = _subpath.slice(0, -1);
 
-      $goto("/management/content/[space_name]/[subpath]", {
-        space_name: space_name,
-        subpath: _subpath.replaceAll("/", "-"),
-      });
+      console.log("goto", _subpath);
+      xyz(_subpath)
       return;
     }
 
     redirectToEntry(record);
+  }
+
+  function xyz(_subpath) {
+      $goto("/management/content/[space_name]/[subpath]", {
+          space_name: space_name,
+          subpath: _subpath.replaceAll("/", "-"),
+      });
   }
 
   $effect(() => {
@@ -299,32 +311,40 @@
         fetchPageRecords(true, x);
         sort = structuredClone(x);
       }
-      if (objectDatatable.numberRowsPerPage !== numberRowsPerPage) {
-        numberRowsPerPage = objectDatatable.numberRowsPerPage;
-        if (typeof localStorage !== 'undefined') {
-            localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
-        }
-        (async() => {
-            await fetchPageRecords(true);
-            handleAllBulk(null, isAllBulkChecked);
-        })();
-      }
-      if (objectDatatable.numberActivePage !== numberActivePage) {
-        setQueryParam({page: objectDatatable.numberActivePage.toString()});
-        numberActivePage = objectDatatable.numberActivePage;
-        (async() => {
-            await fetchPageRecords(false);
-            handleAllBulk(null, false);
-        })();
-
-      }
-
-      paginationBottomInfoFrom = objectDatatable.numberRowsPerPage *  (objectDatatable.numberActivePage - 1) + 1;
-      paginationBottomInfoTo =
-        objectDatatable.numberRowsPerPage * objectDatatable.numberActivePage;
-      paginationBottomInfoTo =
-        paginationBottomInfoTo >= total ? total : paginationBottomInfoTo;
     }
+  });
+  $effect(() => {
+      if (objectDatatable.numberRowsPerPage !== numberRowsPerPage) {
+          numberRowsPerPage = objectDatatable.numberRowsPerPage;
+          if (typeof localStorage !== 'undefined') {
+              localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
+          }
+          (async() => {
+              await fetchPageRecords(true);
+              handleAllBulk(null, isAllBulkChecked);
+          })();
+      }
+  });
+  $effect(() => {
+      if (objectDatatable.numberActivePage !== numberActivePage) {
+          setQueryParam({page: objectDatatable.numberActivePage.toString()});
+          numberActivePage = objectDatatable.numberActivePage;
+          (async() => {
+              await fetchPageRecords(false);
+              handleAllBulk(null, false);
+          })();
+
+      }
+  });
+
+  $effect(() => {
+      console.log("objectDatatable", objectDatatable);
+      console.log("total", total);
+      // paginationBottomInfoFrom = objectDatatable.numberRowsPerPage *  (objectDatatable.numberActivePage - 1) + 1;
+      // paginationBottomInfoTo =
+      //     objectDatatable.numberRowsPerPage * objectDatatable.numberActivePage;
+      // paginationBottomInfoTo =
+      //     paginationBottomInfoTo >= total ? total : paginationBottomInfoTo;
   });
 
   const toggelModal = () => {

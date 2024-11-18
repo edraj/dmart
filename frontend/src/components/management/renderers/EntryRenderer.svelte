@@ -147,7 +147,7 @@
     //// meta
     let jseMeta: any = $state({text: "{}"});
     let validatorMeta: Validator = $state(setMetaValidator());
-    let oldJSEMeta = structuredClone(jseMeta);
+    // let oldJSEMeta = structuredClone(jseMeta);
     /// content (payload)
     let jseContent: any = $state({text: "{}"});
     let validatorModalContent: Validator = $state(createAjvValidator({schema: {}}));
@@ -233,7 +233,7 @@
             // jseMeta.text = JSON.stringify(cpy,null,2)
             if (jseMetaRef) {
                 jseMetaRef.set({text: JSON.stringify(cpy, null, 2)});
-                oldJSEMeta = structuredClone(jseMeta);
+                // oldJSEMeta = structuredClone(jseMeta);
             }
 
 
@@ -360,7 +360,7 @@
 
         if (response.status == Status.success) {
             showToast(Level.info);
-            oldJSEMeta = structuredClone(jseMeta);
+            // oldJSEMeta = structuredClone(jseMeta);
 
             window.location.reload();
         } else {
@@ -484,7 +484,7 @@
 
         if (response.status == Status.success) {
             showToast(Level.info);
-            oldJSEMeta = structuredClone(jseMeta);
+            // oldJSEMeta = structuredClone(jseMeta);
 
             if (data.shortname !== entry.shortname) {
                 const moveAttrb = {
