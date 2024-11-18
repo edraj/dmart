@@ -14,6 +14,7 @@
   import { search } from "@/stores/management/triggers";
   import Prism from "@/components/Prism.svelte";
   import { goto } from "@roxi/routify";
+  $goto // this should initiate the helper at component initialization
   import { fade } from "svelte/transition";
   import { isDeepEqual } from "@/utils/compare";
   import { folderRenderingColsToListCols } from "@/utils/columnsUtils";
@@ -252,18 +253,16 @@
         _subpath = _subpath.slice(0, -1);
 
       console.log("goto", _subpath);
-      xyz(_subpath)
-      return;
-    }
 
-    redirectToEntry(record);
-  }
-
-  function xyz(_subpath) {
       $goto("/management/content/[space_name]/[subpath]", {
           space_name: space_name,
           subpath: _subpath.replaceAll("/", "-"),
       });
+
+      return;
+    }
+
+    redirectToEntry(record);
   }
 
   $effect(() => {
