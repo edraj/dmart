@@ -92,15 +92,12 @@
   async function get_ticket_payload() {
       ticketPayload = await retrieve_entry(ResourceType.content, space_name, "workflows", entry.workflow_shortname, true)
       ticketPayload = ticketPayload.payload.body;
-      console.log({ticketPayload})
   }
 
   let ticketStates = $state([]);
     $effect(() => {
       if (ticketPayload){
         ticketStates = ticketPayload.states.filter((e) => e.state === entry.state)[0]?.next;
-          console.log({state: entry.state})
-          console.log({ticketStates})
      }
   });
 
@@ -108,13 +105,11 @@
     $effect(() => {
       if ((ticketStates??[]).length){
           ticketResolutions = ticketPayload.states.filter((e) => e.state === ticket_status)[0]?.resolutions ?? [];
-          console.log({ticketResolutions})
       }
   });
 
-    $effect(() => {
-      ticket_action = ticketStates?.filter((e) => e.state === ticket_status)[0]?.action ?? null;
-      console.log({ticket_action})
+  $effect(() => {
+    ticket_action = ticketStates?.filter((e) => e.state === ticket_status)[0]?.action ?? null;
   });
 
     $effect(() => {

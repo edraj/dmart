@@ -82,7 +82,7 @@
     if (entry?.payload) {
       if (entry?.payload?.content_type === "json") {
         const y = contentContent.json
-          ? structuredClone(contentContent.json)
+          ? {...contentContent.json}
           : JSON.parse(contentContent.text);
         if (data.payload) {
           data.payload.body = y;

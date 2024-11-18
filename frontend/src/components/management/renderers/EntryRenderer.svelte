@@ -311,7 +311,6 @@
                 };
 
                 ws.onmessage = (event) => {
-                    console.log({event})
                     const data = JSON.parse(event?.data ?? "");
                     if (data?.message?.title) {
                         isNeedRefresh = true;
