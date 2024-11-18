@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "@roxi/routify";
+  $goto // this should initiate the helper at component initialization
   import {
     space,
     get_children,

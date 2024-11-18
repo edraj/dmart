@@ -14,6 +14,8 @@
     import { isNetworkError } from "@/stores/management/error_network";
     import { onMount } from "svelte";
     import {metadata} from "@/stores/management/metadata";
+    import { goto } from "@roxi/routify";
+    $goto // this should initiate the helper at component initialization
 
     let props = $props();
     let isOffline = false;
