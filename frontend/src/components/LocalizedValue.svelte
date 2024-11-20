@@ -12,7 +12,7 @@
       } else {
         const _values = Object.values(field);
         if (_values.length > 0) {
-          value = _values[0];
+          value = _values[0] as string;
         }
       }
     } else if (typeof field === "string") {
