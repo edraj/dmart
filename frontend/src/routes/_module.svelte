@@ -56,7 +56,7 @@
     class="position-relative pt-4 ps-4 m-2 w-100 overflow-auto"
     style="top: {header_height}px; height: {window_height - header_height - footer_height - 2}px;"
   >
-        <slot />
+    {@render children()}
     <!--Row class="h-100 w-100 ms-0 my-0"--> <!-- noGutters-->
       <!--<Col sm="2" class="h-100 overflow-auto"><Sidebar /></Col>-->
       <!--Col sm="12" class="h-100 overflow-auto">
