@@ -34,7 +34,7 @@
       {#key isOk}
         <div
           class={isOk ? "progress-bar-value-ok" : "progress-bar-value-nok"}
-        />
+        ></div>
       {/key}
     </div>
   </div>
