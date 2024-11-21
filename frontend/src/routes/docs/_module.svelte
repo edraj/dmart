@@ -73,7 +73,7 @@
   <Col sm="10"  style="padding-right: 1.5rem; padding-top: 1rem;">
     <Card class="px-4" style="overflow-y: auto; height:88vh">
       <CardBody>
-        {@render props.children()}
+        <slot />
       </CardBody>
     </Card>
   </Col>

@@ -4,7 +4,8 @@
 
 </script>
 <!--Container fluid={true} class="pt-4 ps-4 pe-4"-->
-<Row><Col>
+<Row>
+<Col>
 
 > #### What is DMART?
 > DMART is an open-source general-purpose low-code data platform that is capable of assimilating and servcing a wide variety of data.
