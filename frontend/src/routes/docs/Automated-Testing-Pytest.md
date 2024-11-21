@@ -62,24 +62,20 @@ client = TestClient(app)
 **Example Test Functions**
 
 ```python
-
 def test_set_superman_cookie():
-response = client.post("/set_superman_cookie")
-assert response.status_code == status.HTTP_200_OK
-assert response.cookies.get("superman") is not None
+    response = client.post("/set_superman_cookie")
+    assert response.status_code == status.HTTP_200_OK
+    assert response.cookies.get("superman") is not None
 
 def test_set_alibaba_cookie():
-response = client.post("/set_alibaba_cookie")
-assert response.status_code == status.HTTP_200_OK
-assert response.cookies.get("alibaba") is not None
-
+    response = client.post("/set_alibaba_cookie")
+    assert response.status_code == status.HTTP_200_OK
+    assert response.cookies.get("alibaba") is not None
 
 def test_init_test_db():
-response = client.post("/init_test_db")
-assert response.status_code == status.HTTP_201_CREATED
-assert response.json() == {"status": "success"}
-
-
+    response = client.post("/init_test_db")
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json() == {"status": "success"}
 ```
 
 **Test Setup and Teardown**

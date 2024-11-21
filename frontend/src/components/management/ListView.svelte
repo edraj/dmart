@@ -186,7 +186,6 @@
     const schema_shortname = record.attributes?.payload?.schema_shortname;
     let tmp_subpath = record.subpath.replaceAll("/", "-");
 
-    console.log("$goto", record);
     if (schema_shortname) {
       $goto(
         "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]/[payload_type]/[schema_name]",
@@ -251,8 +250,6 @@
         _subpath = _subpath.substring(1);
       if (_subpath.length > 0 && _subpath[_subpath.length - 1] === "/")
         _subpath = _subpath.slice(0, -1);
-
-      console.log("goto", _subpath);
 
       $goto("/management/content/[space_name]/[subpath]", {
           space_name: space_name,
@@ -336,15 +333,6 @@
       }
   });
 
-  $effect(() => {
-      console.log("objectDatatable", objectDatatable);
-      console.log("total", total);
-      // paginationBottomInfoFrom = objectDatatable.numberRowsPerPage *  (objectDatatable.numberActivePage - 1) + 1;
-      // paginationBottomInfoTo =
-      //     objectDatatable.numberRowsPerPage * objectDatatable.numberActivePage;
-      // paginationBottomInfoTo =
-      //     paginationBottomInfoTo >= total ? total : paginationBottomInfoTo;
-  });
 
   const toggelModal = () => {
       open != open;

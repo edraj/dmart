@@ -21,6 +21,7 @@
     import {toast} from "@zerodevx/svelte-toast";
     import ToastActionComponent from "@/components/management/ToastActionComponent.svelte";
     import {goto} from "@roxi/routify";
+    $goto // this should initiate the helper at component initialization
     import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
     import {REGEX} from "@/utils/regex";
 
@@ -65,7 +66,7 @@
             user.displayname = entry.displayname;
         }
 
-        const cpy = structuredClone(entry);
+        const cpy = {...entry};
 
         if (contentContent === null) {
             contentContent = {json: {}, text: undefined};
@@ -76,10 +77,10 @@
         delete cpy?.attachments;
         contentMeta.json = cpy;
 
-        contentContent = structuredClone(contentContent);
-        oldContentContent = structuredClone(contentContent);
-        contentMeta = structuredClone(contentMeta);
-        oldContentMeta = structuredClone(contentMeta);
+        contentContent = {...contentContent};
+        oldContentContent = {...contentContent};
+        contentMeta = {...contentMeta};
+        oldContentMeta = {...contentMeta};
     });
 
     let schema = null;
@@ -160,7 +161,7 @@
     async function handleUserSubmit(e) {
         e.preventDefault();
         const oldMeta = oldContentMeta.json
-            ? structuredClone(oldContentMeta.json)
+            ? {...oldContentMeta.json}
             : JSON.parse(oldContentMeta.text);
 
         if (oldMeta.email !== user.email) {
@@ -220,7 +221,7 @@
             contentMeta.json = JSON.parse(contentMeta.text);
             contentMeta.text = undefined;
         }
-        const meta = structuredClone(contentMeta.json);
+        const meta = {...contentMeta.json};
 
         contentMeta.json = {...meta, ...user};
         meta.displayname = {
@@ -228,11 +229,11 @@
             ...user.displayname,
         };
         contentMeta.text = undefined;
-        contentMeta = structuredClone(contentMeta);
+        contentMeta = {...contentMeta.json};
     })());
 
     $effect(() => {
-        contentContent = structuredClone(contentContent);
+        contentContent = {...contentContent};
     });
 </script>
 

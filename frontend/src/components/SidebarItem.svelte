@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "@roxi/routify";
+  $goto // this should initiate the helper at component initialization
   import { _ } from "@/i18n";
   // import { active_subsection } from "../_stores/active_subsection";
   import Icon from "./Icon.svelte";

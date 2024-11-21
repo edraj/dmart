@@ -254,7 +254,6 @@
           id="retrieve_attachments"
           type="checkbox"
           title={$_("retrieve_attachments")}
-          value={true}
         /></Col
       >
     </Row>
@@ -275,7 +274,6 @@
           id="retrieve_json_payload"
           type="checkbox"
           title={$_("retrieve_json_payload")}
-          value={true}
         /></Col
       >
     </Row>

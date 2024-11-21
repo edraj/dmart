@@ -7,6 +7,7 @@
   import Icon from "../Icon.svelte";
   import { _ } from "@/i18n";
   import { goto } from "@roxi/routify";
+  $goto // this should initiate the helper at component initialization
   import { type ApiResponseRecord, get_children, ResourceType } from "@/dmart";
   import { fly } from "svelte/transition";
 
