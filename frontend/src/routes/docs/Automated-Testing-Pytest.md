@@ -75,7 +75,6 @@ def test_set_alibaba_cookie():
 def test_init_test_db():
     response = client.post("/init_test_db")
     assert response.status_code == status.HTTP_201_CREATED
-    assert response.json() == {"status": "success"}
 ```
 
 **Test Setup and Teardown**
