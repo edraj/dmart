@@ -17,7 +17,13 @@
     <p style="margin: 0px"><b>Body:</b>{attributes.body}</p>
   </div>
 {:else if content_type.includes("image")}
+  {#if url.endsWith('svg')}
+    <object data={url} type="image/svg+xml">
+      <img src={url} alt={displayname} class="mw-100 border" />
+    </object>
+  {:else}
   <img src={url} alt={displayname} class="mw-100 border" />
+  {/if}
 {:else if content_type.includes("audio")}
   <audio controls src={url}>
     <track kind="captions" />
