@@ -332,7 +332,7 @@
         return ws == null || ws.readyState !== ws.OPEN;
     }
 
-    let aclContent = entry.acl ?? [];
+    let aclContent = $state(entry.acl ?? []);
 
     async function handleSaveACL(e: Event) {
         e.preventDefault();
@@ -1015,7 +1015,7 @@
         downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
     }
 
-    let openUploadByCSVModal = false;
+    let openUploadByCSVModal = $state(false);
     async function handleUpload(){
         let response = await upload_records_csv(
             space_name,
@@ -1810,7 +1810,7 @@
               {#if entry.payload.content_type === ContentType.html}
                 {@html entry.payload.body}
               {:else if entry.payload.content_type === ContentType.text}
-                <textarea value={entry.payload.body.toString()} disabled/>
+                <textarea value={entry.payload.body.toString()} disabled></textarea>
               {:else if entry.payload.content_type === ContentType.markdown}
                 <MarkdownRenderer doc={entry.payload.body.toString()}/>
               {:else if entry.payload.content_type === ContentType.json}

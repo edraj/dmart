@@ -17,7 +17,7 @@
     import { goto } from "@roxi/routify";
     $goto // this should initiate the helper at component initialization
 
-    let props = $props();
+    // let props = $props();
     let isOffline = false;
 
     /*const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW({

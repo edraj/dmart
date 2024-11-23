@@ -179,8 +179,8 @@
     // }
   }
 
-  let modalData: any = {};
-  let open = false;
+  let modalData: any = $state({});
+  let open = $state(false);
 
   function redirectToEntry(record: any) {
     const shortname = record.shortname;
@@ -435,7 +435,7 @@
                   <td style="cursor: pointer;"><Input id={row.shortname} type="checkbox" on:change={handleBulk} name={index.toString()} /></td>
                 {/if}
                 {#each Object.keys(columns) as col}
-                  <!-- svelte-ignore a11y-click-events-have-key-events -->
+                  <!-- svelte-ignore a11y_click_events_have_key_events -->
                   <td
                     style="cursor: pointer;"
                     onclick={() => onListClick(row)}

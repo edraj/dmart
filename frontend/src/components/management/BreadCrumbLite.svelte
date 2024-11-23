@@ -40,8 +40,8 @@
 <ButtonGroup size="sm" class="align-items-center">
   <span dir="ltr" class="font-monospace">
     <small>
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <span dir="ltr"
         class="text-success"
         style="cursor: pointer;"
@@ -51,8 +51,8 @@
           });
         }}>{space_name}</span
       >
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       {#each items as item (item.text)}
         <span dir="ltr"
           class="text-primary"

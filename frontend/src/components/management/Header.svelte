@@ -91,8 +91,8 @@
             placeholder={$_("searching_for_what")}
             oninput={handleInput}
           />
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
           <span onclick={handleSearch}>
             <InputGroupText><Icon name="search" /></InputGroupText>
           </span>

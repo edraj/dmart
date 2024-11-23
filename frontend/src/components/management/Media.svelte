@@ -18,7 +18,7 @@
   </div>
 {:else if content_type.includes("image")}
   {#if url.endsWith('svg')}
-    <object data={url} type="image/svg+xml">
+    <object data={url} type="image/svg+xml" title="{displayname}">
       <img src={url} alt={displayname} class="mw-100 border" />
     </object>
   {:else}

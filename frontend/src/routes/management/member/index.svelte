@@ -120,8 +120,8 @@
       <div class="my-3"><b>Roles:</b></div>
       <ul class="d-flex p-0">
         {#each userRecord?.attributes?.roles || [] as role}
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div onclick="{()=>handleSelectedRole(role)}">
             <Badge class="m-1 p-3" color="{
                 permissionList[role] === null ? 'danger' : (selectedRole===role?'primary':'secondary')
@@ -140,8 +140,8 @@
           <CardBody class="flex-row p-0">
             <ul class="d-flex p-0">
               {#each permissionList[selectedRole] || [] as permission}
-                <!-- svelte-ignore a11y-click-events-have-key-events -->
-                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div onclick="{()=>handleSelectedPermission(permission)}">
                   <Badge class="m-1 p-3" color="{
                     permissionDetails[permission] === null ? 'danger' : (selectedPermission===permission?'primary':'secondary')
