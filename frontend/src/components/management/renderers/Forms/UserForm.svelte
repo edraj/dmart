@@ -1,11 +1,15 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import {Col, Container, Input, Label, Row, TabContent, TabPane} from "sveltestrap";
-    import {JSONEditor} from "svelte-jsoneditor";
+    import { JSONEditor } from "svelte-jsoneditor";
 
-
-    export let content: any = [];
-    export let payload: any = {};
+    let {
+        content = $bindable([]),
+        payload = $bindable({})
+    } : {
+        content: any[],
+        payload: any
+    } = $props();
 
     let _user = {
         "is_active": true,
@@ -43,11 +47,11 @@
         });
     });
 
-    $: {
+    $effect(() => {
         if (inputs){
             content = inputs;
         }
-    }
+    });
 
     function formatting(str){
         return (str.charAt(0).toUpperCase() + str.slice(1)).replaceAll("_", " ");

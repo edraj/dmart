@@ -9,14 +9,16 @@
     TabPane,
   } from "sveltestrap";
 
-  export let content: any = {};
+  let { content = $bindable({})} : {
+      content: any
+  } = $props();
 
-  let subpaths = [{ space: "", subpathList: [""] }];
-  let resource_types = [{ value: "" }];
-  let conditions = [{ value: "" }];
-  let actions = [{ value: "" }];
-  let restricted_fields = [{ value: "" }];
-  let allowed_fields_values = [{ field: "", values: [""] }];
+  let subpaths = $state([{ space: "", subpathList: [""] }]);
+  let resource_types = $state([{ value: "" }]);
+  let conditions = $state([{ value: "" }]);
+  let actions = $state([{ value: "" }]);
+  let restricted_fields = $state([{ value: "" }]);
+  let allowed_fields_values = $state([{ field: "", values: [""] }]);
 
   // subpaths
   function convertObjectSubpaths(inputObject) {
@@ -121,47 +123,53 @@
       field_index
     ].values.filter((_, i) => i !== value_index);
   }
-  $: {
+
+  $effect(() => {
     if (allowed_fields_values) {
         content.allowed_fields_values = convertObjectAllowValues(
             allowed_fields_values
         ).values;
     }
-  }
-  $: {
+  });
+
+  $effect(() => {
     if(subpaths){
         content.subpaths = convertObjectSubpaths(subpaths).subpaths;
     }
-  }
-  $: {
+  });
+
+  $effect(() => {
     if (resource_types) {
         content.resource_types = resource_types
             .map((i) => i.value)
             .filter((i) => i.length);
     }
-  }
-  $: {
+  });
+
+  $effect(() => {
     if (actions) {
         content.actions = actions.map((i) => i.value).filter((i) => i.length);
     }
-  }
-  $: {
+  });
+
+  $effect(() =>{
     if(restricted_fields){
         content.restricted_fields = restricted_fields
             .map((i) => i.value)
             .filter((i) => i.length);
     }
-  }
-  $: {
+  });
+
+  $effect(() => {
     if (conditions) {
         content.conditions = conditions.map((i) => i.value).filter((i) => i.length);
     } 
-  }
+  });
 </script>
 
 <TabContent>
   <TabPane class="py-3" tabId="subpaths" tab="Subpaths" active>
-    {#each subpaths as { space, subpathList }, space_index}
+    {#each subpaths as subpath, space_index}
       <div class="input-group mb-3">
         {#if space_index !== 0}
           <Col sm="1" class="text-center align-self-center p-0">
@@ -180,17 +188,17 @@
             type="text"
             class="form-control"
             placeholder="Space..."
-            bind:value={space}
+            bind:value={subpath.space}
           />
         </Col>
         <Col sm="5" class="mx-2">
-          {#each subpathList as subpath, subpath_index}
+          {#each subpath.subpathList as _, subpath_index}
             <div class="d-flex">
               <Input
                 type="text"
                 class="form-control"
                 placeholder="Subpath..."
-                bind:value={subpath}
+                bind:value={subpath.subpathList}
               />
               <Icon
                 class="mx-1"
@@ -215,7 +223,7 @@
         </Col>
       </div>
     {/each}
-    <Button color="primary" class="w-100" on:click={addSpaceSubpath}
+    <Button color="primary" class="w-100" onclick={addSpaceSubpath}
       >Add Space</Button
     >
   </TabPane>
@@ -344,7 +352,7 @@
     tabId="allowed_fields_values"
     tab="Allowed fields values"
   >
-    {#each allowed_fields_values as { field, values }, field_index}
+    {#each allowed_fields_values as allowedFieldsValue, field_index}
       <div class="input-group mb-3">
         {#if field_index !== 0}
           <Col sm="1" class="text-center align-self-center p-0">
@@ -363,17 +371,17 @@
             type="text"
             class="form-control"
             placeholder="Field..."
-            bind:value={field}
+            bind:value={allowedFieldsValue.field}
           />
         </Col>
         <Col sm="5" class="mx-2">
-          {#each values as value, value_index}
+          {#each allowedFieldsValue.values as _, value_index}
             <div class="d-flex">
               <Input
                 type="text"
                 class="form-control"
                 placeholder="Value..."
-                bind:value
+                bind:value={allowedFieldsValue.values[value_index]}
               />
               <Icon
                 class="mx-1"
@@ -398,6 +406,6 @@
         </Col>
       </div>
     {/each}
-    <Button color="primary" class="w-100" on:click={addField}>Add permission</Button>
+    <Button color="primary" class="w-100" onclick={addField}>Add permission</Button>
   </TabPane>
 </TabContent>

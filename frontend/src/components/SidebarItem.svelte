@@ -1,11 +1,14 @@
 <script lang="ts">
   import { goto } from "@roxi/routify";
+  $goto // this should initiate the helper at component initialization
   import { _ } from "@/i18n";
   // import { active_subsection } from "../_stores/active_subsection";
   import Icon from "./Icon.svelte";
   import { type Item } from "./types";
 
-  export let item: Item;
+  let { item } : { item: Item; } = $props();
+
+  // export let item: Item;
   // export let path : Array<string>;
   // export let id : string;
   // export let type;
@@ -13,7 +16,7 @@
   // export let description = undefined;
   // export let link;
 
-  $: displayname = $_(item.id);
+  let displayname = $derived($_(item.id));
   async function show_item() {
     //console.log("Requested to show item: ", path.join("|"), id, displayname);
     // $active_subsection = { path: null, id: item.id, displayname: displayname };
@@ -31,7 +34,7 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
-<span on:click={show_item} class=" " title={item.description}>
+<span onclick={show_item} class=" " title={item.description}>
   <Icon name={item.icon} class="" />
   {displayname}
 </span>

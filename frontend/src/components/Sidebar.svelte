@@ -18,7 +18,7 @@
 
 <!-- TODO add search to the top -->
 <Navbar color="light" light expand="md" class="px-1 me-0 mt-1 rounded-3" container={false}>
-  <NavbarToggler on:click="{() => (isOpen = !isOpen)}" />
+  <NavbarToggler onclick="{() => (isOpen = !isOpen)}" />
   <Collapse isOpen="{isOpen}" navbar expand="md" on:update="{handleUpdate}" class="mx-0">
     <ul class="w-100 px-0 mx-0">
       {#each sections as section}

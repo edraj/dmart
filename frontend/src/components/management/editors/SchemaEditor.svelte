@@ -9,8 +9,9 @@
   // import {JSONEditor, Mode} from "svelte-jsoneditor";
   // import Prism from "@/components/Prism.svelte";
 
-  export let content = {json: {}, text: undefined};
-  let items = [
+  let {content = $bindable({json: {}, text: undefined})} : {content: any} = $props();
+
+  let items = $state([
       {
           id: generateUUID(),
           name: "root",
@@ -18,7 +19,7 @@
           title: "title",
           description: "",
       },
-  ];
+  ]);
 
 
   if (Object.keys(content.json).length !== 0){

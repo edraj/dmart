@@ -2,14 +2,17 @@
   import { generateUUID } from "@/utils/uuid";
   import {Col, Row, Input, Icon, Card, Label} from "sveltestrap";
 
-  export let parent;
-  export let item;
-  export let refresh;
-  export let parentRefresh;
-  export let root = false;
-  export let level = 1;
+  let { parent, item, refresh, parentRefresh, root = false, level = 1 } : {
+    parent: any,
+    item: any,
+    refresh: () => void,
+    parentRefresh: (newParent: any) => void,
+    root: boolean,
+    level: number
+  } = $props();
 
-  $: isRequired = !!parent?.required?.includes(item.name);
+
+  let isRequired = $derived(!!parent?.required?.includes(item.name));
 
   const types = ["string", "number", "array", "object", "boolean", "integer"];
 
@@ -64,10 +67,10 @@
     // parentRefresh(parent);
   }
 
-  $: item && refresh();
+  $effect(() => item && refresh() );
 
   let oldType = item?.type?.toString();
-  $: {
+  $effect(() => {
     if (item.type !== oldType) {
       if (oldType==="number" || oldType==="integer"){
           delete item.minimum;
@@ -85,7 +88,7 @@
       oldType = item.type.toString();
       refresh();
     }
-  }
+  });
 
   function handleRequired(e: any){
       e.preventDefault();

@@ -9,14 +9,14 @@
   let shortname: string;
   let refresh = false;
 
-  $: {
-    if (typeof $params.subpath == "string" && $params.subpath) {
-      const arr = $params.subpath.split("-");
-      parent_subpath = arr.slice(0, arr.length - 1).join("/");
-      if (!parent_subpath) parent_subpath = "__root__";
-      shortname = arr[arr.length - 1];
-    }
+
+  if (typeof $params.subpath == "string" && $params.subpath) {
+    const arr = $params.subpath.split("-");
+    parent_subpath = arr.slice(0, arr.length - 1).join("/");
+    if (!parent_subpath) parent_subpath = "__root__";
+    shortname = arr[arr.length - 1];
   }
+
 </script>
 
 {#key refresh}

@@ -1,7 +1,6 @@
 <script lang="ts">
     import {Card, CardBody, Form, FormGroup, Label, Input, Button, Icon, Alert} from 'sveltestrap';
     import {ResourceType} from "@/dmart";
-    import {onMount} from "svelte";
     import {JSONEditor, Mode} from "svelte-jsoneditor";
 
 
@@ -103,6 +102,6 @@
         </Card>
       {/each}
     {/if}
-    <Button color="primary" class="w-100 mt-2" on:click={addNewItem}>Add Relation</Button>
+    <Button color="primary" class="w-100 mt-2" onclick={addNewItem}>Add Relation</Button>
   </Form>
 </Card>

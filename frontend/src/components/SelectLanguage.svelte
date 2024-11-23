@@ -17,7 +17,7 @@
       color="primary"
       active={key === $locale}
       size="sm"
-      on:click={(event) => selectLocale(event, key)}>{key}</Button
+      onclick={(event) => selectLocale(event, key)}>{key}</Button
     >
   {/each}
 </ButtonGroup>

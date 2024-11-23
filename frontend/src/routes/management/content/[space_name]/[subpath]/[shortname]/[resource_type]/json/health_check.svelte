@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto, params } from "@roxi/routify";
+  $goto // this should initiate the helper at component initialization
   import {
     ListGroup,
     ListGroupItem,
@@ -65,9 +66,9 @@
     <p><b>Exception:</b><br /> {modalData.exception}</p>
   </ModalBody>
   <ModalFooter style="justify-content: space-between;">
-    <Button color="secondary" on:click={() => (open = false)}>Close</Button>
+    <Button color="secondary" onclick={() => (open = false)}>Close</Button>
     {#if isEntryExist}
-    <Button color="primary" on:click={handleEdit}>Edit</Button>
+    <Button color="primary" onclick={handleEdit}>Edit</Button>
     {:else}
     <Button color="warning">Entry does not exist</Button>
     {/if}
@@ -118,7 +119,7 @@
               {#each response.payload.body["folders_report"][key_entry].invalid_entries as err_entry}
                 <ListGroupItem
                 style={"cursor: pointer;"}
-                  on:click={() => {
+                  onclick={() => {
                     handleErrorEntryClick(err_entry, { subpath: key_entry });
                   }}>{err_entry.shortname}</ListGroupItem
                 >

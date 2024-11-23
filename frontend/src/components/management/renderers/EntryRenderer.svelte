@@ -90,19 +90,27 @@
     import ACLForm from "@/components/management/renderers/Forms/ACLForm.svelte";
     import MarkdownRenderer from "@/components/management/renderers/MarkdownRenderer.svelte";
 
-
     marked.use(mangle());
     marked.use(gfmHeadingId({
         prefix: "my-prefix-",
     }));
 
     // props
-    export let entry: ResponseEntry;
-    export let space_name: string;
-    export let subpath: string;
-    export let resource_type: ResourceType;
-    export let schema_name: string | undefined = null;
-    export let refresh = {};
+    let {
+        entry,
+        space_name,
+        subpath,
+        resource_type,
+        schema_name = null,
+        refresh = $bindable({}),
+    }: {
+        entry: ResponseEntry,
+        space_name: string,
+        subpath: string,
+        resource_type: ResourceType,
+        schema_name?: string | null,
+        refresh?: any,
+    } = $props();
 
     // auth
     const canCreateFolder = checkAccessv2(
@@ -111,24 +119,25 @@
         subpath,
         ResourceType.folder
     );
-    let canCreateEntry = false;
+    let canCreateEntry = $state(false);
     const canUpdate = checkAccessv2("update", space_name, subpath, resource_type);
     const canDelete =
         checkAccessv2("delete", space_name, subpath, resource_type) &&
         !(space_name === "management" && subpath === "/");
 
     // misc
-    let header_height: number;
-    let ws = null;
-    let schema = null;
-    let isNeedRefresh = false;
+    let header_height: number = $state();
+    let ws = $state(null);
+    let schema = $state(null);
+    let isNeedRefresh = $state(false);
 
     // view
-    let tab_option =
+    let tab_option = $state(
         resource_type === ResourceType.folder ||
         resource_type === ResourceType.space
             ? "list"
-            : "view";
+            : "view"
+    );
     const isContentPreviewable: boolean =
         resource_type === ResourceType.content &&
         !!entry?.payload?.content_type &&
@@ -136,53 +145,53 @@
 
     // editors
     //// meta
-    let jseMeta: any = {text: "{}"};
-    let validatorMeta: Validator = setMetaValidator();
-    let oldJSEMeta = structuredClone(jseMeta);
+    let jseMeta: any = $state({text: "{}"});
+    let validatorMeta: Validator = $state(setMetaValidator());
+    // let oldJSEMeta = structuredClone(jseMeta);
     /// content (payload)
-    let jseContent: any = {text: "{}"};
-    let validatorModalContent: Validator = createAjvValidator({schema: {}});
-    let validatorContent: Validator = createAjvValidator({schema: {}});
+    let jseContent: any = $state({text: "{}"});
+    let validatorModalContent: Validator = $state(createAjvValidator({schema: {}}));
+    let validatorContent: Validator = $state(createAjvValidator({schema: {}}));
     let oldJSEContent = {json: {}, text: undefined};
     /// schema
     // let selectedSchemaContent: any = {};
     // let selectedSchemaData: any = {json:{}, text: undefined};
     /// handler
-    let errorContent = null;
+    let errorContent = $state(null);
     /// ref
-    let jseMetaRef;
-    let schemaContentRef;
-    let jseContentRef;
+    let jseMetaRef: any = $state();
+    let schemaContentRef = $state();
+    let jseContentRef: any = $state();
     // let schemaFormRefModal;
-    let schemaFormRefContent;
-    let relationshipContent = structuredClone(entry)?.relationships ?? null;
+    let schemaFormRefContent: any = $state();
+    let relationshipContent = $state(structuredClone(entry)?.relationships ?? null);
 
     // modal
     /// flags
-    let isModalOpen = false;
-    let entryType = "folder";
+    let isModalOpen = $state(false);
+    let entryType = $state("folder");
     let isSchemaEntryInForm = true;
     let isModalContentEntryInForm = true;
     /// content
-    let schemaContent = {json: {}, text: undefined};
-    let contentShortname = "";
-    let workflowShortname = "";
-    let selectedSchema = subpath === "workflows" ? "workflow" : null;
-    let selectedContentType: any = ContentType.json;
-    let new_resource_type: ResourceType;
+    let schemaContent = $state({json: {}, text: undefined});
+    let contentShortname = $state("");
+    let workflowShortname = $state("");
+    let selectedSchema = $state(subpath === "workflows" ? "workflow" : null);
+    let selectedContentType: any = $state(ContentType.json);
+    let new_resource_type: ResourceType = $state();
 
-    let payloadFiles: FileList;
+    let payloadFiles: FileList = $state();
     // editors
     let jseModalMetaRef;
-    let jseModalMeta: any = {text: "{}"};
-    let jseModalContentRef;
-    let jseModalContent: any = {text: "{}"};
-    let formModalContent: any;
-    let formModalContentPayload: any = {json: {}, text: undefined};
-    let isNewEntryHasRelationship = false;
-    let relationshipModalContent = null;
+    let jseModalMeta: any = $state({text: "{}"});
+    let jseModalContentRef: any = $state();
+    let jseModalContent: any = $state({text: "{}"});
+    let formModalContent: any = $state();
+    let formModalContentPayload: any = $state({json: {}, text: undefined});
+    let isNewEntryHasRelationship = $state(false);
+    let relationshipModalContent = $state(null);
 
-    let allowedResourceTypes = [ResourceType.content];
+    let allowedResourceTypes = $state([ResourceType.content]);
 
     function setMetaValidator(): Validator {
         let schema = {};
@@ -224,7 +233,7 @@
             // jseMeta.text = JSON.stringify(cpy,null,2)
             if (jseMetaRef) {
                 jseMetaRef.set({text: JSON.stringify(cpy, null, 2)});
-                oldJSEMeta = structuredClone(jseMeta);
+                // oldJSEMeta = structuredClone(jseMeta);
             }
 
 
@@ -302,7 +311,6 @@
                 };
 
                 ws.onmessage = (event) => {
-                    console.log({event})
                     const data = JSON.parse(event?.data ?? "");
                     if (data?.message?.title) {
                         isNeedRefresh = true;
@@ -351,7 +359,7 @@
 
         if (response.status == Status.success) {
             showToast(Level.info);
-            oldJSEMeta = structuredClone(jseMeta);
+            // oldJSEMeta = structuredClone(jseMeta);
 
             window.location.reload();
         } else {
@@ -475,7 +483,7 @@
 
         if (response.status == Status.success) {
             showToast(Level.info);
-            oldJSEMeta = structuredClone(jseMeta);
+            // oldJSEMeta = structuredClone(jseMeta);
 
             if (data.shortname !== entry.shortname) {
                 const moveAttrb = {
@@ -1172,7 +1180,7 @@
     }
 
     let oldSelectedContentType = ""
-    $: {
+    $effect(() => {
         if (oldSelectedContentType !== selectedContentType) {
             if (selectedContentType === "json") {
                 jseModalContent = {text: "{}"};
@@ -1181,18 +1189,18 @@
             }
             oldSelectedContentType = structuredClone(selectedContentType);
         }
-    }
+    });
 
     let old_new_resource_type = undefined;
-    $: {
+    $effect(() => {
         if (old_new_resource_type !== new_resource_type
             && [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)) {
             setPrepModalContentPayloadFromLocalSchema();
         }
-    }
+    });
 
     let oldSelectedSchema = null;
-    $: {
+    $effect(() => {
         if (selectedSchema === null) {
             validatorModalContent = createAjvValidator({schema: {}});
             jseModalContent = {text: JSON.stringify({}, null, 2)};
@@ -1200,7 +1208,7 @@
         } else if (selectedSchema !== oldSelectedSchema) {
             setPrepModalContentPayloadFromFetchedSchema();
         }
-    }
+    });
 
     function handleCreateEntryModal() {
         entryType = "content";
@@ -1278,9 +1286,9 @@
     <Button
       type="button"
       color="secondary"
-      on:click={() => (openUploadByCSVModal = false)}
+      onclick={() => (openUploadByCSVModal = false)}
     >close</Button>
-    <Button type="button" color="primary" on:click={handleUpload}>Upload</Button>
+    <Button type="button" color="primary" onclick={handleUpload}>Upload</Button>
   </ModalFooter>
 </Modal>
 
@@ -1438,21 +1446,21 @@
               </TabPane>
               <TabPane tabId="editor" tab="Editor">
                 <JSONEditor
-                        bind:this={jseModalContentRef}
-                        bind:content={jseModalContent}
-                        bind:validator={validatorModalContent}
-                        onRenderMenu={handleRenderMenu}
-                        mode={Mode.text}
-                />
-              </TabPane>
-            </TabContent>
-          {:else}
-            <JSONEditor
                     bind:this={jseModalContentRef}
                     bind:content={jseModalContent}
                     bind:validator={validatorModalContent}
                     onRenderMenu={handleRenderMenu}
                     mode={Mode.text}
+                />
+              </TabPane>
+            </TabContent>
+          {:else}
+            <JSONEditor
+                bind:this={jseModalContentRef}
+                bind:content={jseModalContent}
+                bind:validator={validatorModalContent}
+                onRenderMenu={handleRenderMenu}
+                mode={Mode.text}
             />
           {/if}
         {/if}
@@ -1490,7 +1498,7 @@
     <Button
             type="button"
             color="secondary"
-            on:click={() => {
+            onclick={() => {
         isModalOpen = false;
         contentShortname = "";
       }}
@@ -1525,7 +1533,7 @@
                   class="justify-content-center text-center py-0 px-1"
                   active={"list" === tab_option}
                   title={$_("list")}
-                  on:click={() => (tab_option = "list")}
+                  onclick={() => (tab_option = "list")}
           >
             <Icon name="card-list"/>
           </Button>
@@ -1537,7 +1545,7 @@
                 class="justify-content-center text-center py-0 px-1"
                 active={"view" === tab_option}
                 title={$_("view")}
-                on:click={() => (tab_option = "view")}
+                onclick={() => (tab_option = "view")}
         >
           <Icon name="binoculars"/>
         </Button>
@@ -1549,7 +1557,7 @@
                   class="justify-content-center text-center py-0 px-1"
                   active={"acl" === tab_option}
                   title={'ACL'}
-                  on:click={() => (tab_option = "acl")}
+                  onclick={() => (tab_option = "acl")}
           >
             <Icon name="key"/>
           </Button>
@@ -1562,7 +1570,7 @@
                   class="justify-content-center text-center py-0 px-1"
                   active={"edit_meta" === tab_option}
                   title={$_("edit") + " meta"}
-                  on:click={() => (tab_option = "edit_meta")}
+                  onclick={() => (tab_option = "edit_meta")}
           >
             <Icon name="code-slash"/>
           </Button>
@@ -1574,7 +1582,7 @@
                     class="justify-content-center text-center py-0 px-1"
                     active={"edit_content" === tab_option}
                     title={$_("edit") + " payload"}
-                    on:click={() => (tab_option = "edit_content")}
+                    onclick={() => (tab_option = "edit_content")}
             >
               <Icon name="pencil"/>
             </Button>
@@ -1586,7 +1594,7 @@
                       class="justify-content-center text-center py-0 px-1"
                       active={"edit_content_form" === tab_option}
                       title={$_("edit") + " payload"}
-                      on:click={() => (tab_option = "edit_content_form")}
+                      onclick={() => (tab_option = "edit_content_form")}
               >
                 <Icon name="pencil-square"/>
               </Button>
@@ -1599,7 +1607,7 @@
                       class="justify-content-center text-center py-0 px-1"
                       active={"workflow" === tab_option}
                       title={$_("edit") + " payload"}
-                      on:click={() => (tab_option = "workflow")}
+                      onclick={() => (tab_option = "workflow")}
               >
                 <Icon name="diagram-3"/>
               </Button>
@@ -1613,7 +1621,7 @@
                     class="justify-content-center text-center py-0 px-1"
                     active={"visualization" === tab_option}
                     title={$_("edit") + " payload"}
-                    on:click={() => (tab_option = "visualization")}
+                    onclick={() => (tab_option = "visualization")}
             >
               <Icon name="diagram-3"/>
             </Button>
@@ -1627,7 +1635,7 @@
                   class="justify-content-center text-center py-0 px-1"
                   active={"relationships" === tab_option}
                   title={$_("relationships")}
-                  on:click={() => (tab_option = "relationships")}
+                  onclick={() => (tab_option = "relationships")}
           >
             <Icon name="link"/>
           </Button>
@@ -1639,7 +1647,7 @@
                 class="justify-content-center text-center py-0 px-1"
                 active={"attachments" === tab_option}
                 title={$_("attachments")}
-                on:click={() => (tab_option = "attachments")}
+                onclick={() => (tab_option = "attachments")}
         >
           <Icon name="paperclip"/>
         </Button>
@@ -1650,7 +1658,7 @@
                 class="justify-content-center text-center py-0 px-1"
                 active={"history" === tab_option}
                 title={$_("history")}
-                on:click={() => (tab_option = "history")}
+                onclick={() => (tab_option = "history")}
         >
           <Icon name="clock-history"/>
         </Button>
@@ -1669,7 +1677,7 @@
                     size="sm"
                     title={$_("create_entry")}
                     class="justify-contnet-center text-center py-0 px-1"
-                    on:click={handleCreateEntryModal}
+                    onclick={handleCreateEntryModal}
             >
               <Icon name="file-plus"/>
             </Button>
@@ -1681,7 +1689,7 @@
                     size="sm"
                     title={$_("create_folder")}
                     class="justify-contnet-center text-center py-0 px-1"
-                    on:click={() => {
+                    onclick={() => {
                   entryType = "folder";
                   new_resource_type = ResourceType.folder;
                   selectedSchema = "folder_rendering";
@@ -1699,7 +1707,7 @@
               size="sm"
               title={$_("refresh")}
               class="justify-contnet-center text-center py-0 px-1"
-              on:click={() => {
+              onclick={() => {
               refresh = !refresh;
             }}
           >
@@ -1713,7 +1721,7 @@
                   color="success"
                   size="sm"
                   title={$_("delete")}
-                  on:click={handleDelete}
+                  onclick={handleDelete}
                   class="justify-content-center text-center py-0 px-1"
           >
             <Icon name="trash"/>
@@ -1725,7 +1733,7 @@
                   color="success"
                   size="sm"
                   title={$_("download")}
-                  on:click={handleDownload}
+                  onclick={handleDownload}
                   class="justify-content-center text-center py-0 px-1"
           >
             <Icon name="cloud-download"/>
@@ -1737,7 +1745,7 @@
                   color="success"
                   size="sm"
                   title={$_("upload")}
-                  on:click={()=>{
+                  onclick={()=>{
                       new_resource_type = null;
                       selectedSchema = null;
                       openUploadByCSVModal = true;
@@ -1755,7 +1763,7 @@
                   color="success"
                   size="sm"
                   title={$_("delete_selected")}
-                  on:click={handleDeleteBulk}
+                  onclick={handleDeleteBulk}
                   class="justify-content-center text-center py-0 px-1"
           >
             <Icon name="trash"/>
@@ -1832,10 +1840,10 @@
           <TicketEntryRenderer {space_name} {subpath} bind:entry/>
         {:else if resource_type === ResourceType.user}
           <UserEntryRenderer
-                  {space_name}
-                  {subpath}
-                  bind:entry
-                  bind:errorContent
+            {space_name}
+            {subpath}
+            bind:entry
+            bind:errorContent
           />
         {/if}
         <JSONEditor
@@ -1902,7 +1910,7 @@
           {/if}
           {#if entry.payload.content_type === "json" && typeof jseContent === "object" && jseContent !== null}
             <div class="d-flex justify-content-end my-1">
-              <Button on:click={handleSave}>Save</Button>
+              <Button onclick={handleSave}>Save</Button>
             </div>
             <JSONEditor
                     bind:this={jseContentRef}
@@ -1989,7 +1997,7 @@
       <div class="tab-pane" class:active={tab_option === "acl"}>
         <div class="d-flex justify-content-end my-2 mx-5 flex-row">
           <div>
-            <Button on:click={handleSaveACL}>Save</Button>
+            <Button onclick={handleSaveACL}>Save</Button>
           </div>
         </div>
         <div class="px-5">
@@ -2000,7 +2008,7 @@
     <div class="tab-pane" class:active={tab_option === "relationships"}>
       <div class="d-flex justify-content-end my-2 mx-5 flex-row">
         <div>
-          <Button on:click={(e)=>handleSave(e, "relationships")}>Save</Button>
+          <Button onclick={(e)=>handleSave(e, "relationships")}>Save</Button>
         </div>
       </div>
       <div class="px-5">

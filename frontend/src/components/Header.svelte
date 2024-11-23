@@ -19,6 +19,7 @@
   // import LocalizedValue from "./LocalizedValue.svelte";
   import markdownFiles from "@/md_indexer.json";
   import {goto} from "@roxi/routify";
+  $goto // this should initiate the helper at component initialization
 
   // let search : string = "";
   // function handleClick(event: Event) {
@@ -78,18 +79,18 @@
       <div class="position-relative w-50 align-content-center">
       <input type="text" class="form-control" placeholder="Search..."
        bind:value={term}
-       on:input={handleInputChange}
-       on:focusout={()=>{
+       oninput={handleInputChange}
+       onfocusout={()=>{
         setTimeout(()=>{
             suggestions = [];
         }, 200);
      }}
-       on:focusin={handleInputChange}>
+       onfocusin={handleInputChange}>
       {#if suggestions.length > 0}
         <ul class="list-group suggestion-list">
           {#each suggestions as suggestion}
             <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-click-events-have-key-events -->
-            <li class="search-item list-group-item" on:click={() => handleSuggestionClick(suggestion)}>
+            <li class="search-item list-group-item" onclick={() => handleSuggestionClick(suggestion)}>
               <h5>{suggestion.title}</h5>
               {@html suggestion.description}
             </li>
@@ -106,7 +107,7 @@
           <DropdownItem href="/management/content" title="{$_('login')}">
             {$_('dashboard')}
           </DropdownItem>
-          <DropdownItem title="{$_('logout')}" on:click="{signout}">
+          <DropdownItem title="{$_('logout')}" onclick="{signout}">
             {$_('logout')}
           </DropdownItem>
         </DropdownMenu>

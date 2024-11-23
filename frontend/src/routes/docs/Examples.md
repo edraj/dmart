@@ -69,18 +69,6 @@ Specify the location, the Meta data, and the Payload (actual product data) data
                 "is_active": true, // Meta data
                 "tags": ["red", "awesome"], // Meta data
 
-                "payload": {
-                    "content_type": "json", // Explained at Concepts -> Content Types
-                    "schema_shortname": "product", // The shortname of the created schema
-                    // The attributes values of the product entry
-                    "body": {
-                        "title": "Iphone 14",
-                        "description": "Red, 128GB",
-                        "price": 799.99,
-                        "category": "Mobile Phones",
-                        "image": "https://dmart.com/media/iphone-14-red"
-                    }
-                }
             }
         }
     ]
@@ -102,7 +90,6 @@ we call the `/query` API with the following request body
   "filter_shortnames": [],
   "type": "subpath",
   "search": "",
-  "space_name": "myspace",
   "subpath": "/",
   "exact_subpath": true,
   "limit": 15,
@@ -117,8 +104,5 @@ And the results would be:
 
 <ListView
 type={QueryType.subpath}
-space_name={"myspace"}
-subpath={"/"}
 is_clickable={false}
-scope={"public"}
 />

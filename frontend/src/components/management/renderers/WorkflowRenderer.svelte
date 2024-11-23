@@ -2,8 +2,10 @@
   import { encode } from "plantuml-encoder";
   import {jsonTOplantUML} from "@/utils/renderer/workflowRendererUtils";
 
-  export let shortname: string;
-  export let workflowContent: any;
+  let { shortname, workflowContent } : {
+    shortname: string,
+    workflowContent: string
+  } = $props();
 
   let currentDiagram = {
     name: shortname,
@@ -12,8 +14,6 @@
       return encode(this.content);
     },
   };
-
-
 </script>
 
 

@@ -14,21 +14,30 @@
 
   onDestroy(() => status_line.set(""));
 
-  export let space_name: string;
-  export let subpath: string;
-  export let shortname: string = null;
-  export let type: QueryType = QueryType.search;
+  let {
+      space_name,
+      subpath,
+      shortname = null,
+      type = QueryType.search
+  } : {
+      space_name: string,
+      subpath: string,
+      shortname?: string,
+      type?: QueryType
+  } = $props();
 
-  let total: number = 0;
+  let total: number = $state(0);
 
-  let objectDatatable = functionCreateDatatable({
-    parData: [],
-    parSearchableColumns: Object.keys(columns),
-    parRowsPerPage: (typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage") as `${number}`) || "15",
-    parSearchString: "",
-    parSortBy: "shortname",
-    parSortOrder: "ascending",
-  });
+  let objectDatatable = $state(
+      functionCreateDatatable({
+        parData: [],
+        parSearchableColumns: Object.keys(columns),
+        parRowsPerPage: (typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage") as `${number}`) || "15",
+        parSearchString: "",
+        parSortBy: "shortname",
+        parSortOrder: "ascending",
+      })
+  );
 
   function parseRequestHeader(data) {
     if (data === undefined) {
@@ -58,10 +67,10 @@
     );
   }
 
-  let height: number;
+  let height: number = $state();
 
   let numberActivePage = 1;
-  let propNumberOfPages = 1;
+  let propNumberOfPages = $state(1);
   let numberRowsPerPage: number =
     parseInt(typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage")) || 15;
 
@@ -96,14 +105,14 @@
     }
   }
 
-  let paginationBottomInfoFrom = 0;
-  let paginationBottomInfoTo = 0;
+  let paginationBottomInfoFrom = $state(0);
+  let paginationBottomInfoTo = $state(0);
   let sort = {
     sort_by: "shortname",
     sort_type: "ascending",
   };
 
-  $: {
+  $effect(() =>{
     if (objectDatatable === undefined) {
       objectDatatable = functionCreateDatatable({
         parData: [],
@@ -115,9 +124,9 @@
         parSortOrder: "ascending",
       });
     }
-  }
+  });
 
-  $: {
+  $effect(() =>{
     if (objectDatatable) {
       if (
         !isDeepEqual(sort, {
@@ -152,7 +161,7 @@
       paginationBottomInfoTo =
         paginationBottomInfoTo >= total ? total : paginationBottomInfoTo;
     }
-  }
+  });
 
   //! TBD: FIX THIS WORK AROUND AFTER VACATION
   function returnASmallStupidValueCuzSvelteCantCastInMarkup(

@@ -12,8 +12,14 @@
       prefix: "my-prefix-",
   }));
 
-  export let content = "";
-  export let handleSave = () => {};
+  let {
+      content = $bindable(""),
+      handleSave = $bindable(() => {})
+  } : {
+      content: string,
+      handleSave?: () => void
+  } = $props();
+
 
   if (typeof(content) !== "string"){
       content = "";
@@ -104,18 +110,18 @@
     <TabContent>
       <TabPane tabId="editor" tab="Editor" active>
         <textarea
-          on:blur={(e)=>{
+          onblur={(e)=>{
             e.preventDefault();
             textarea.focus();
           }}
-          on:keydown={handleKeyDown}
+          onkeydown={handleKeyDown}
           bind:this={textarea}
-          on:select={handleSelect}
+          onselect={handleSelect}
           rows="22"
           maxlength="4096"
           class="h-100 w-100 m-0 font-monospace form-control form-control-sm"
           bind:value={content}
-          on:input={() => dispatch("changed")}
+          oninput={() => dispatch("changed")}
         />
       </TabPane>
       <TabPane tabId="preview" tab="Preview">

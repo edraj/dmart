@@ -14,7 +14,10 @@
     import { isNetworkError } from "@/stores/management/error_network";
     import { onMount } from "svelte";
     import {metadata} from "@/stores/management/metadata";
+    import { goto } from "@roxi/routify";
+    $goto // this should initiate the helper at component initialization
 
+    let props = $props();
     let isOffline = false;
 
     /*const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW({
@@ -32,7 +35,7 @@
       needRefresh.set(false);
     }*/
 
-    let _isNetworkError = false;
+    let _isNetworkError = $state(false);
     onMount(()=>{
         isNetworkError.subscribe((v)=>{
             _isNetworkError = v;
@@ -56,8 +59,8 @@
         })();
     });
 
-    let window_height: number;
-    let header_height: number;
+    let window_height: number = $state(0);
+    let header_height: number = $state(0);
 </script>
 
 <svelte:window bind:innerHeight={window_height}/>
@@ -98,7 +101,7 @@
                     <Sidebar/>
                 </Col>
                 <Col sm="10" class="h-100 border-end border-light px-1 overflow-auto">
-                    <slot/>
+                    <slot />
                 </Col>
             {/await}
         </Row>

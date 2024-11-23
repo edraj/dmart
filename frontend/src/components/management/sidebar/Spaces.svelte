@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "@roxi/routify";
+  $goto // this should initiate the helper at component initialization
   import {
     space,
     get_children,
@@ -25,7 +26,7 @@
   import { Level, showToast } from "@/utils/toast";
   import refresh_spaces from "@/stores/management/refresh_spaces";
 
-  let expanded: string;
+  let expanded: string = $state(undefined);
   function displayname(space_entry: ApiResponseRecord): string {
     let lang = null;
     if (typeof localStorage !== 'undefined') {
@@ -50,8 +51,8 @@
     }
   }
 
-  let isSpaceModalOpen = false;
-  let space_name_shortname = "";
+  let isSpaceModalOpen = $state(false);
+  let space_name_shortname =$state("") ;
   // let refresh : boolean = false;
   async function handleCreateSpace(e: Event) {
     e.preventDefault();
@@ -79,8 +80,8 @@
       showToast(Level.warn);
     }
   }
-  let canCreateNewSpace = false;
-  $: {
+  let canCreateNewSpace = $state(false);
+  $effect(() => {
     let permissions = [];
     if (typeof localStorage !== 'undefined')
       permissions = JSON.parse(localStorage.getItem("permissions"));
@@ -92,7 +93,7 @@
     if (Object.keys(permissions).includes(k)) {
       canCreateNewSpace = permissions[k].allowed_actions.includes("create");
     }
-  }
+  });
 
   const toggleModal = () => {
       isSpaceModalOpen = !isSpaceModalOpen;
@@ -111,7 +112,7 @@
           <div
             class="hover mb-2"
             style="cursor: pointer;"
-            on:click={async () => await expandSpace(space)}
+            onclick={async () => await expandSpace(space)}
           >
             <Icon name="diagram-3" class="me-1" /> <b>{displayname(space)}</b>
             <style>
@@ -152,7 +153,7 @@
     type="button"
     outline
     color="primary"
-    on:click={() => {
+    onclick={() => {
       isSpaceModalOpen = true;
     }}>Create new space</Button
   ></ListGroupItem>
@@ -175,7 +176,7 @@
       <Button
         type="button"
         color="secondary"
-        on:click={() => (isSpaceModalOpen = false)}>cancel</Button
+        onclick={() => (isSpaceModalOpen = false)}>cancel</Button
       >
       <Button type="submit" color="primary">Submit</Button>
     </ModalFooter>

@@ -51,17 +51,17 @@ Create a config.ini file or set the environment variable BACKEND_ENV to point to
 
 - _help_: Displays the help table.
 - _pwd_: Prints the current subpath.
-- _cd <folder>_: Changes the current directory.
-- _ls <folder>_: Lists entries under the current subpath.
-- _create folder <folder_name>_: Creates a new folder in the current space.
-- _attach <args>_: Attaches a file to a resource.
-- _upload csv <args>_: Uploads a CSV file to the current space.
-- _upload schema <args>_: Uploads a schema to the current space.
-- _request <args>_: Adds or manages a resource in the space.
-- _move <args>_: Moves a resource to a new location.
-- _rm <shortname>_: Deletes a resource or attachment.
-- _progress <args>_: Progresses a ticket into a new state.
-- _switch <space_name>_: Switches the current space.
+- _cd folder_: Changes the current directory.
+- _ls folder_: Lists entries under the current subpath.
+- _create folder folder_name_: Creates a new folder in the current space.
+- _attach args_: Attaches a file to a resource.
+- _upload csv args_: Uploads a CSV file to the current space.
+- _upload schema args_: Uploads a schema to the current space.
+- _request args_: Adds or manages a resource in the space.
+- _move args_: Moves a resource to a new location.
+- _rm shortname_: Deletes a resource or attachment.
+- _progress args_: Progresses a ticket into a new state.
+- _switch space_name_: Switches the current space.
 
 **Usage Examples**
 
