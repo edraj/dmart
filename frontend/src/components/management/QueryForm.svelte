@@ -74,14 +74,14 @@
     dispatch("response", response);
   }
 
-  let spacename = $state("management");
-  let subpath = $state("/");
+  let spacename: string = $state("management"); 
+  let subpath: string = $state("/");
   let tempSubpaths = $state([]);
   let subpaths = $state([{ records: [{ shortname: "/", resource_type: "folder" }] }]);
 
-  async function buildSubpaths(base, _subpaths) {
+  async function buildSubpaths(base : string, _subpaths: any) {
     await Promise.all(
-      await _subpaths.records.map(async (_subpath) => {
+      await _subpaths.records.map(async (_subpath : any) => {
         if (_subpath.resource_type === "folder") {
           const _subpaths = await get_children(spacename, _subpath.shortname);
           await buildSubpaths(`${base}/${_subpath.shortname}`, _subpaths);
@@ -157,7 +157,12 @@
       <option value={space.shortname}>{space.shortname}</option>
     {/each}
   </Input>
-  <Input id="subpath" type="select" title={$_("subpath")} bind:value={subpath}>
+  <Input
+    id="subpath"
+    type="select"
+    title={$_("subpath")}
+    bind:value={subpath}
+  >
     {#each subpaths as subpath}
       <option value={subpath}>{subpath}</option>
     {/each}
