@@ -17,6 +17,8 @@ from sqlmodel import select
 
 
 '''
+--space and --subpath are optional
+
 # add new key to the records
 ## with default value
 ./schema_modulate.py --space management --subpath users -t +payload.body.xxx -v 123
@@ -92,6 +94,8 @@ def handle_sql_modulation(args):
 
             if space not in [Users, Roles, Permissions, Spaces, Attachments]:
                 statement = statement.where(space.shortname == args.space)
+                if args.subpath:
+                    statement = statement.where(space.subpath == args.subpath)
 
             records = session.exec(statement).all()
             print("[info] # Records found:", len(records))
@@ -166,14 +170,15 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--space",
-        default=None
+        required=True
     )
     parser.add_argument(
         "--subpath",
         default=None
     )
     parser.add_argument(
-        "-t", "--target"
+        "-t", "--target",
+        required=True
     )
     parser.add_argument(
         "-v", "--value",
