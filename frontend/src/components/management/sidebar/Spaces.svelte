@@ -26,7 +26,7 @@
   import { Level, showToast } from "@/utils/toast";
   import refresh_spaces from "@/stores/management/refresh_spaces";
 
-  let expanded: string;
+  let expanded: string = $state(undefined);
   function displayname(space_entry: ApiResponseRecord): string {
     let lang = null;
     if (typeof localStorage !== 'undefined') {
@@ -51,8 +51,8 @@
     }
   }
 
-  let isSpaceModalOpen = false;
-  let space_name_shortname = "";
+  let isSpaceModalOpen = $state(false);
+  let space_name_shortname =$state("") ;
   // let refresh : boolean = false;
   async function handleCreateSpace(e: Event) {
     e.preventDefault();
@@ -80,7 +80,7 @@
       showToast(Level.warn);
     }
   }
-  let canCreateNewSpace = false;
+  let canCreateNewSpace = $state(false);
   $effect(() => {
     let permissions = [];
     if (typeof localStorage !== 'undefined')

@@ -24,10 +24,9 @@
     folder.subpath == "/" ? "" : folder.subpath + "/"
   }${folder.shortname}`;
 
-  let children = [];
+  let children = $state([]);
 
   function displayname(): string {
-
     let lang = JSON.parse(typeof localStorage !== 'undefined' && localStorage.getItem("preferred_locale") || "ar");
     if (folder?.attributes?.displayname && lang in folder?.attributes?.displayname) {
       return folder?.attributes?.displayname[lang] ?? folder.shortname;
@@ -140,18 +139,4 @@
   li {
     padding: 0;
   }
-
-  /*
-  .toolbar {
-    display: none;
-    color: brown;
-  }
-
-  .toolbar span:hover {
-    color: green;
-  }
-
-  .folder:hover .toolbar {
-    display: flex;
-  }*/
 </style>
