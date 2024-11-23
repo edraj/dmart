@@ -17,16 +17,17 @@ from sqlmodel import select
 
 
 '''
--a --atrb: only with [description, displayname]
-
 # add new key to the records
-./schema_modulate.py -a --space management --subpath users  -t +description.pt
+## with default value
+./schema_modulate.py --space management --subpath users -t +payload.body.xxx -v 123
+## default value is None
+./schema_modulate.py --space management --subpath users -t +payload.body.xxx
 
 # remove key from the records
-./schema_modulate.py -a --space management --subpath users  -t ~description.pt
+./schema_modulate.py --space management --subpath users -t ~payload.body.xxx
 
 # update key in the records
-./schema_modulate.py -a --space management --subpath users  -t description.en -v EN
+./schema_modulate.py --space management --subpath users -t payload.body.xxx -v yyy
 '''
 
 class ResourceType(StrEnum):
@@ -60,85 +61,97 @@ def handle_sql_modulation(args):
     else:
         spaces = [Entries, Users, Roles, Permissions, Spaces, Attachments]
 
-    if args.atrb:
-        targets = args.target.split(".")
-        if len(targets) != 2:
-            raise Exception("target must be in the format 'model.field'")
+    targets = args.target.split(".")
 
-        state = ResourceType.update
-        if targets[0].startswith("+"):
-            print(f"Adding new key '{targets[0]}' to the records")
-            state = ResourceType.add
-            targets[0] = targets[0][1:]
+    state = ResourceType.update
+    if targets[0].startswith("+"):
+        print(f"[info] Adding new key '{targets[0]}' to the records")
+        state = ResourceType.add
+        targets[0] = targets[0][1:]
 
-            if args.value:
-                print(f"flag -v --value is not required for adding new key")
-        if targets[0].startswith("~"):
-            print(f"Removing key '{targets[0]}' from the records")
-            state = ResourceType.remove
-            targets[0] = targets[0][1:]
+        if args.value:
+            print(f"[warn] flag -v --value is not required for adding new key")
+    if targets[0].startswith("~"):
+        print(f"[info] Removing key '{targets[0]}' from the records")
+        state = ResourceType.remove
+        targets[0] = targets[0][1:]
 
-            if args.value:
-                print(f"flag -v --value is not required for removing key")
-        else:
-            print(f"Altering the key '{targets[0]}' fo records")\
+        if args.value:
+            print(f"[warn] flag -v --value is not required for removing key")
+    else:
+        print(f"[info] Altering the key '{targets[0]}' fo records")\
 
-        if targets[0] not in ["description", "displayname"]:
-            raise Exception("target must be either 'description' or 'displayname'")
+    if targets[0] not in ["description", "displayname", "payload"]:
+        raise Exception("target must be either 'description', 'displayname' or 'payload'")
 
-        with SQLAdapter().get_session() as session:
-            for space in spaces:
-                print("Processing...", space)
+    with SQLAdapter().get_session() as session:
+        for space in spaces:
+            print("[info] Processing...", space)
 
-                statement = select(space)
+            statement = select(space)
 
-                if space not in [Users, Roles, Permissions, Spaces, Attachments]:
-                    statement = statement.where(space.shortname == args.space)
+            if space not in [Users, Roles, Permissions, Spaces, Attachments]:
+                statement = statement.where(space.shortname == args.space)
 
-                records = session.exec(statement).all()
-                print("# Records found:", len(records))
-                print("state:", state)
-                for record in records:
-                    if hasattr(record, targets[0]):
-                        if state == ResourceType.update:
-                            obj = getattr(record, targets[0])
-                            if obj and targets[1] in obj.keys():
-                                obj[args.value] = obj.pop(targets[1])
-                                # setattr(record, targets[0], obj)
-                                record.description = obj
-                        elif state == ResourceType.add:
-                            obj = getattr(record, targets[0])
-                            if obj is None:
-                                obj = {targets[1]: None}
-                                record.description = obj
-                            if obj is not None and targets[1] not in obj.keys():
-                                obj[targets[1]] = None
-                                record.description = obj
-                        elif state == ResourceType.remove:
-                            obj = getattr(record, targets[0])
-                            if obj is not None and targets[1] in obj.keys():
-                                obj.pop(targets[1])
-                                record.description = obj
+            records = session.exec(statement).all()
+            print("[info] # Records found:", len(records))
+            print("[info] state:", state)
+            for record in records:
+                if hasattr(record, targets[0]):
+                    if state == ResourceType.update:
+                        obj = getattr(record, targets[0])
+                        if obj:
+                            keys = targets
+                            sub_obj = obj
+                            for key in keys[1:-1]:
+                                if not bool(sub_obj):
+                                    break
+                                sub_obj = sub_obj.get(key, {})
 
-                    # session.add(record)
-                    stmt = update(space).where(space.uuid == record.uuid).values(
-                        **{targets[0]: getattr(record, targets[0])})
-                    session.exec(stmt)
-                session.commit()
+                            if not bool(sub_obj):
+                                continue
 
-        return
+                            if keys[-1] in sub_obj:
+                                sub_obj[args.value] = sub_obj.pop(keys[-1])
 
-    if args.atrb:
-        print("SQL Modulation", args.payload)
+                    elif state == ResourceType.add:
+                        obj = getattr(record, targets[0])
+                        if obj is None:
+                            setattr(record, targets[0], {})
+                        keys = targets
+                        sub_obj = obj
+                        for key in keys[1:-1]:
+                            if not bool(sub_obj):
+                                break
+                            sub_obj = sub_obj.get(key, {})
 
-        return
+                        if not bool(sub_obj):
+                            continue
 
-    # print("SQL Modulation", args.atrb)
-    # print("SQL Modulation", args.payload)
-    # print("SQL Modulation", args.target)
-    # print("SQL Modulation", args.value)
+                        if keys[-1] not in sub_obj:
+                            sub_obj[keys[-1]] = args.value
 
-    raise NotImplementedError
+                    elif state == ResourceType.remove:
+                        obj = getattr(record, targets[0])
+                        if obj:
+                            keys = targets
+                            sub_obj = obj
+                            for key in keys[1:-1]:
+                                sub_obj = sub_obj.get(key, {})
+                            if not bool(sub_obj):
+                                continue
+                            if keys[-1] in sub_obj:
+                                sub_obj.pop(keys[-1])
+
+                            print(obj)
+                            setattr(record, targets[0], obj)
+
+                stmt = update(space).where(space.uuid == record.uuid).values(
+                    **{targets[0]: getattr(record, targets[0])})
+                session.exec(stmt)
+            session.commit()
+
+
 
 def handle_file_modulation(args):
     pass
@@ -149,18 +162,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Modulate schema field type",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "-a",
-        "--atrb",
-        help="Alter attribute",
-        action='store_true'
-    )
-    parser.add_argument(
-        "-p",
-        "--payload",
-        help="Alter Payload",
-        action='store_true'
     )
 
     parser.add_argument(
@@ -179,11 +180,7 @@ if __name__ == "__main__":
         default=None
     )
 
-
     args = parser.parse_args()
-
-    if not (bool(args.atrb) ^ bool(args.payload)):
-        parser.error("Please provide either -a or -p flag")
 
     if settings.active_data_db == "sql":
         handle_sql_modulation(args)
