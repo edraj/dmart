@@ -208,18 +208,7 @@ var (respRequestFolder, err) = await Dmart.request(action);
 ActionRequestRecord actionRequestRecord = ActionRequestRecord(
     resourceType: ResourceType.content,
     subpath: 'my_subpath',
-    shortname: 'my_content',
-    attributes: {
-        "is_active": true,
-        "relationships": [],
-        "payload": {
-            "content_type": "json",
-            "schema_shortname": null,
-            "body": {
-              "isAlive": true
-            }
-        }
-    },
+    shortname: 'my_content'
 );
 ActionRequest action = ActionRequest(
     spaceName: 'my_space',
@@ -232,18 +221,7 @@ var (respRequestContent, err) = await Dmart.request(action);
 ActionRequestRecord actionRequestRecord = ActionRequestRecord(
     resourceType: ResourceType.json,
     subpath: 'my_subpath/my_content',
-    shortname: 'auto',
-    attributes: {
-        "is_active": true,
-        "payload": {
-            "content_type": "json",
-            "schema_shortname": null,
-            "body": {
-                "attachmentName": "my attachment",
-                "isImportant": "very important"
-            }
-        }
-    },
+    shortname: 'auto'
 );
 ActionRequest action = ActionRequest(
     spaceName: 'my_space',

@@ -1,7 +1,12 @@
 <!-- adapted from https://github.com/movingbrands/svelte-portable-text -->
-<script>
-    export let children = [];
-    export let components = new Map;
+<script lang="ts">
+    let {
+      children = [],
+      components = new Map
+    } : {
+      children: any[],
+      components: Map<string, any>
+    } = $props();
 </script>
 
 {#each children as child}

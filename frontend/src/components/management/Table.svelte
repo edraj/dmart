@@ -2,8 +2,10 @@
   import { Table } from "sveltestrap";
   import { _, number } from "@/i18n";
 
-  export let cols = {};
-  export let rows = [];
+  let { cols = $bindable({}), rows = $bindable([])} : {
+    cols: object,
+    rows: any[]
+  } = $props();
 
   function value(path: string, data : [], type : string) {
    if (data===null){

@@ -1,9 +1,11 @@
 <script lang="ts">
   //import classnames from './utils';
 
+  let {name, ...restProps} = $props();
+
   let className = "";
   export { className as class };
-  export let name : string;
+
 
   function toClassName(value : any) {
     let result = "";
@@ -30,7 +32,7 @@
     return args.map(toClassName).filter(Boolean).join(" ");
   }
 
-  $: classes = classnames(className, `bi-${name} icon`);
+  let classes = $derived(classnames(className, `bi-${name} icon`));
 </script>
 
-<i {...$$restProps} class="{classes}"></i>
+<i {...restProps} class="{classes}"></i>

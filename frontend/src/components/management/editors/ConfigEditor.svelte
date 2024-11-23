@@ -33,13 +33,13 @@
       <tr>
         <td><Input bind:value={entry["key"]} /></td>
         <td><Input bind:value={entry["value"]} /></td>
-        <td><Button on:click={() => removeEntry(index)}><Icon name="trash" /></Button></td>
+        <td><Button onclick={() => removeEntry(index)}><Icon name="trash" /></Button></td>
       </tr>
     {/each}
     <tr>
       <td><Input bind:value={tempNew["key"]} placeholder={"New key"} /></td>
       <td><Input bind:value={tempNew["value"]} placeholder={"New value"} /></td>
-      <td><Button on:click={appendEntry}>Add</Button></td>
+      <td><Button onclick={appendEntry}>Add</Button></td>
     </tr>
   </tbody>
 </Table>

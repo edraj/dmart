@@ -177,7 +177,7 @@
           <h4
             class="my-4"
             style="cursor: pointer;"
-            on:click={() => (isDisplayFilter = !isDisplayFilter)}
+            onclick={() => (isDisplayFilter = !isDisplayFilter)}
           >
             <Icon
               name={isDisplayFilter ? "filter-circle-fill" : "filter-circle"}
@@ -254,7 +254,6 @@
           id="retrieve_attachments"
           type="checkbox"
           title={$_("retrieve_attachments")}
-          value={true}
         /></Col
       >
     </Row>
@@ -275,7 +274,6 @@
           id="retrieve_json_payload"
           type="checkbox"
           title={$_("retrieve_json_payload")}
-          value={true}
         /></Col
       >
     </Row>
@@ -288,7 +286,7 @@
     <Col class="d-flex justify-content-between mb-2">
       <Button outline type="submit">{$_("submit")}</Button>
       {#if formData}
-        <Button outline type="button" on:click={handleDownload}
+        <Button outline type="button" onclick={handleDownload}
           >{$_("download_csv")}</Button
         >
       {/if}

@@ -1,14 +1,9 @@
 <script lang="ts">
   import { FormFeedback, FormGroup, Label, Input, Row, Col } from "sveltestrap";
 
-  export let id;
-  export let type;
-  export let title;
-  export let placeholder = "";
-  export let value: any = "";
-  export let required = false;
-  export let multiple = false;
-  export let readonly = false;
+  let {value = $bindable(""), ...props} = $props();
+  const children: any = props.children;
+  let { id, type, title, placeholder = "", required = false, multiple = false, readonly = false } = props;
 
   let valid = false;
   function handleInput(event) {
@@ -38,10 +33,10 @@
     invalid={!valid && required}
     bind:value
     {valid}
-    on:input={handleInput}
+    oninput={handleInput}
     {multiple}
   >
-    <slot />
+    {@render children?.()}
   </Input>
   <!--FormFeedback tooltip={true} {valid}> required </FormFeedback-->
   <!--div class="col-md-1 invalid-feedback text-start">required</div-->

@@ -16,11 +16,11 @@
 
 {message}
 
-<Button color="primary" on:click={mytoast}>
+<Button color="primary" onclick={mytoast}>
   Nice! <Icon name="emoji-smile-fill" />
 </Button>
 
-<Button color="primary" on:click={toggle}>Hello World!</Button>
+<Button color="primary" onclick={toggle}>Hello World!</Button>
 <Modal body {isOpen} {toggle} header="Hello World!">
   <p>There's a song that we're singing. Come on</p>
   <img

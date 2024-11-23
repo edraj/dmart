@@ -2,9 +2,9 @@
     import { onMount } from "svelte";
     import { Col, Icon, Input, Row } from "sveltestrap";
 
-    export let content: any = [];
+    let { content = $bindable([])} : { content: string[] } = $props();
 
-    let inputs = [];
+    let inputs = $state([]);
 
     onMount(() => {
         if (content.length) {
@@ -26,9 +26,9 @@
         inputs = inputs.filter((_, i) => i !== index);
     }
 
-    $: {
+    $effect(() => {
         content = inputs.map((i) => i.value).filter((i) => i.length);
-    }
+    });
 </script>
 
 {#each inputs as input, index}

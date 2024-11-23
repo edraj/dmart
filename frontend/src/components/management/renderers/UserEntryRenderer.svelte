@@ -21,16 +21,23 @@
     import {toast} from "@zerodevx/svelte-toast";
     import ToastActionComponent from "@/components/management/ToastActionComponent.svelte";
     import {goto} from "@roxi/routify";
+    $goto // this should initiate the helper at component initialization
     import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
     import {REGEX} from "@/utils/regex";
 
-    export let entry: ResponseEntry;
-    export let space_name: string;
-    export let subpath: string;
-    export let errorContent: any;
+    let {
+        entry = $bindable(),
+        space_name,
+        subpath,
+        errorContent = $bindable(),
+    } : {
+        entry: ResponseEntry,
+        space_name: string,
+        subpath: string,
+        errorContent: any | ResponseEntry,
+    } = $props();
 
     const resource_type: ResourceType = ResourceType.user;
-
 
     let contentMeta: any = {json: {}, text: undefined};
     let validatorMeta: Validator = createAjvValidator({schema: metaUserSchema});
@@ -43,7 +50,7 @@
     onDestroy(() => status_line.set(""));
 
 
-    let user: any = {displayname: {ar: "", en: "", kd: ""}};
+    let user: any = $state({displayname: {ar: "", en: "", kd: ""}});
 
     onMount(async () => {
         user = {
@@ -59,7 +66,7 @@
             user.displayname = entry.displayname;
         }
 
-        const cpy = structuredClone(entry);
+        const cpy = {...entry};
 
         if (contentContent === null) {
             contentContent = {json: {}, text: undefined};
@@ -70,10 +77,10 @@
         delete cpy?.attachments;
         contentMeta.json = cpy;
 
-        contentContent = structuredClone(contentContent);
-        oldContentContent = structuredClone(contentContent);
-        contentMeta = structuredClone(contentMeta);
-        oldContentMeta = structuredClone(contentMeta);
+        contentContent = {...contentContent};
+        oldContentContent = {...contentContent};
+        contentMeta = {...contentMeta};
+        oldContentMeta = {...contentMeta};
     });
 
     let schema = null;
@@ -121,7 +128,7 @@
         }
     }
 
-    $: {
+    $effect(() => {
         if (
             schema === null &&
             entry &&
@@ -130,7 +137,7 @@
         ) {
             get_schema();
         }
-    }
+    });
 
     onDestroy(() => {
         history.replaceState;
@@ -154,7 +161,7 @@
     async function handleUserSubmit(e) {
         e.preventDefault();
         const oldMeta = oldContentMeta.json
-            ? structuredClone(oldContentMeta.json)
+            ? {...oldContentMeta.json}
             : JSON.parse(oldContentMeta.text);
 
         if (oldMeta.email !== user.email) {
@@ -208,13 +215,13 @@
         }
     }
 
-    $: user && contentMeta &&
+    $effect(() => user && contentMeta &&
     (() => {
         if (contentMeta.text) {
             contentMeta.json = JSON.parse(contentMeta.text);
             contentMeta.text = undefined;
         }
-        const meta = structuredClone(contentMeta.json);
+        const meta = {...contentMeta.json};
 
         contentMeta.json = {...meta, ...user};
         meta.displayname = {
@@ -222,12 +229,12 @@
             ...user.displayname,
         };
         contentMeta.text = undefined;
-        contentMeta = structuredClone(contentMeta);
-    })()
+        contentMeta = {...contentMeta.json};
+    })());
 
-    $: {
-        contentContent = structuredClone(contentContent);
-    }
+    $effect(() => {
+        contentContent = {...contentContent};
+    });
 </script>
 
 <svelte:window on:beforeunload={beforeUnload}/>

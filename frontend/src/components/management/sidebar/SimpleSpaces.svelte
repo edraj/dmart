@@ -4,6 +4,7 @@
   import Icon from "../../Icon.svelte";
   import { _ } from "@/i18n";
   import { goto } from "@roxi/routify";
+  $goto // this should initiate the helper at component initialization
   // import { fade } from 'svelte/transition';
   export let name;
 
@@ -29,7 +30,7 @@
       <div
         class="hover mb-2 mt-2"
         style="cursor: pointer;"
-        on:click={(e) => {
+        onclick={(e) => {
           handleClick(e, space);
         }}
       >

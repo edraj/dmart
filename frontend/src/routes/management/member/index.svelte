@@ -122,7 +122,7 @@
         {#each userRecord?.attributes?.roles || [] as role}
           <!-- svelte-ignore a11y-click-events-have-key-events -->
           <!-- svelte-ignore a11y-no-static-element-interactions -->
-          <div on:click="{()=>handleSelectedRole(role)}">
+          <div onclick="{()=>handleSelectedRole(role)}">
             <Badge class="m-1 p-3" color="{
                 permissionList[role] === null ? 'danger' : (selectedRole===role?'primary':'secondary')
               }" style="font-size: 1rem; cursor: pointer">
@@ -142,7 +142,7 @@
               {#each permissionList[selectedRole] || [] as permission}
                 <!-- svelte-ignore a11y-click-events-have-key-events -->
                 <!-- svelte-ignore a11y-no-static-element-interactions -->
-                <div on:click="{()=>handleSelectedPermission(permission)}">
+                <div onclick="{()=>handleSelectedPermission(permission)}">
                   <Badge class="m-1 p-3" color="{
                     permissionDetails[permission] === null ? 'danger' : (selectedPermission===permission?'primary':'secondary')
                   }" style="font-size: 1rem; cursor: pointer">

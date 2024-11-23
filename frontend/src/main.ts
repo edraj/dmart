@@ -1,8 +1,6 @@
-import App from './App.svelte'
+import { mount } from 'svelte';
+import App from './App.svelte';
 
-const app = new App({
+mount(App, {
     target: document.body,
-    hydrate: true, // import.meta.env.ROUTIFY_SSR_ENABLE,
 })
-
-export default app

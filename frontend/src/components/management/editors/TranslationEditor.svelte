@@ -36,14 +36,14 @@
         {#each columns as key}
           <td><Input bind:value={entry[key]} /></td>
         {/each}
-        <td><Button on:click={() => removeEntry(index)}><Icon name="trash" /></Button></td>
+        <td><Button onclick={() => removeEntry(index)}><Icon name="trash" /></Button></td>
       </tr>
     {/each}
     <tr>
       {#each columns as key}
         <td><Input bind:value={tempNew[key]} placeholder={`New ${key}`} /></td>
       {/each}
-      <td><Button on:click={appendEntry}>Add</Button></td>
+      <td><Button onclick={appendEntry}>Add</Button></td>
     </tr>
     </tbody>
 </Table>

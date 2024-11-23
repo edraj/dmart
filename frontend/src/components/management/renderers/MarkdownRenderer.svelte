@@ -5,7 +5,8 @@
     import ListView from "@/components/management/ListView.svelte";
     import {QueryType} from "@/dmart/index.js";
 
-    export let doc = "";
+    let { doc = "" } = $props();
+
     const config = {
         tags: {
             ListView: {

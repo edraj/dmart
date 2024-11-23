@@ -55,7 +55,7 @@
         </select>
       </FormGroup>
       <div class="d-flex justify-content-end">
-        <Button class="btn-danger" on:click={() => deleteUser(index)}>Delete</Button>
+        <Button class="btn-danger" onclick={() => deleteUser(index)}>Delete</Button>
       </div>
     </CardBody>
   </Card>
@@ -85,7 +85,7 @@
         </select>
       </FormGroup>
       <div class="d-flex justify-content-end">
-        <Button class="btn-success" on:click={addACL}>Add ACL</Button>
+        <Button class="btn-success" onclick={addACL}>Add ACL</Button>
       </div>
     </Form>
   </CardBody>
