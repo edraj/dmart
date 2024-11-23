@@ -29,7 +29,7 @@
 
   let term = '';
   let suggestions = [];
-  let delayTimer;
+  let delayTimer : any;
   async function handleInputChange(event: any) {
       clearTimeout(delayTimer);
       delayTimer = setTimeout(async function() {
@@ -89,7 +89,7 @@
       {#if suggestions.length > 0}
         <ul class="list-group suggestion-list">
           {#each suggestions as suggestion}
-            <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events -->
             <li class="search-item list-group-item" onclick={() => handleSuggestionClick(suggestion)}>
               <h5>{suggestion.title}</h5>
               {@html suggestion.description}

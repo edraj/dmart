@@ -16,7 +16,7 @@
   import { Level, showToast } from "@/utils/toast";
 
   const dispatch = createEventDispatcher();
-  let spaces = [];
+  let spaces = $state([]);
 
   onMount(() => {
     async function setup() {
@@ -25,8 +25,8 @@
     setup();
   });
 
-  let formData = null;
-  async function handleResponse(event) {
+  let formData = $state(null);
+  async function handleResponse(event : any) {
     event.preventDefault();
 
     const fd = new FormData(event.target);
@@ -74,10 +74,10 @@
     dispatch("response", response);
   }
 
-  let spacename = "management";
-  let subpath = "/";
-  let tempSubpaths = [];
-  let subpaths = [{ records: [{ shortname: "/", resource_type: "folder" }] }];
+  let spacename = $state("management");
+  let subpath = $state("/");
+  let tempSubpaths = $state([]);
+  let subpaths = $state([{ records: [{ shortname: "/", resource_type: "folder" }] }]);
 
   async function buildSubpaths(base, _subpaths) {
     await Promise.all(

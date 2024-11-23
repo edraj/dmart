@@ -83,7 +83,7 @@
   shortname={$params.shortname}
 />
 
-<div class="mx-2 mt-3 mb-3" />
+<div class="mx-2 mt-3 mb-3"></div>
 {#if $params.shortname}
   {#key $params.shortname}
     {#await retrieve_entry(ResourceType.content, "management", "health_check/", $params.shortname, true, true)}

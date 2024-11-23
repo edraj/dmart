@@ -4,7 +4,7 @@
 
   let { aggregation_data = $bindable({}) } : {aggregation_data: object} = $props();
 
-  let currentSection = "load"; // Default to "load" section
+  let currentSection = $state("load"); // Default to "load" section
 
   function addInput(event) {
     event.preventDefault();

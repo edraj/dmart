@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   import { isSlowNetwork } from "@/stores/management/slow_network";
   import { writable } from "svelte/store";
   export const isLoading = writable(0);

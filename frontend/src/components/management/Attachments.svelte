@@ -589,8 +589,8 @@
   </ModalFooter>
 </Modal>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<!-- svelte-ignore a11y-no-static-element-interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="d-flex justify-content-between mx-2 flex-row">
   <p>Number of attachments: {attachments.flat(1).length}</p>
   <div
@@ -634,8 +634,8 @@
             download>{attachment.shortname}</a
           >
           <div class="col-1 d-flex justify-content-between">
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
               class="mx-1"
               style="cursor: pointer;"
@@ -643,8 +643,8 @@
             >
               <Icon name="trash" color="red" />
             </div>
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
               class="mx-1"
               style="cursor: pointer;"
@@ -654,8 +654,8 @@
             >
               <Icon name="eyeglasses" color="grey" />
             </div>
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
               class="mx-1"
               style="cursor: pointer;"
@@ -666,8 +666,8 @@
               <Icon name="code-slash" />
             </div>
             {#if [ResourceType.json, ResourceType.content, ResourceType.comment].includes(attachment.resource_type) || [ContentType.markdown, ContentType.html, ContentType.text].includes(attachment.attributes.payload.content_type)}
-              <!-- svelte-ignore a11y-click-events-have-key-events -->
-              <!-- svelte-ignore a11y-no-static-element-interactions -->
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div
                 class="mx-1"
                 style="cursor: pointer;"

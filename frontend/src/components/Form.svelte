@@ -6,9 +6,9 @@
   const dispatch = createEventDispatcher();
 
   let props = $props();
-  let { captcha = false, customSubmit = false, title= "" } = props;
-  let valid_captcha = false;
-  function onSubmit(event) {
+  let { captcha = false, customSubmit = false, title= ""} = props;
+  let valid_captcha = $state(false);
+  function onSubmit(event : any) {
 
     event.preventDefault();
     if (captcha && !valid_captcha) {

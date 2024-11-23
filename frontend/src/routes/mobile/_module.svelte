@@ -6,11 +6,11 @@
   // import Footer from "@/components/Footer.svelte";
   // import Sidebar from "@/components/Sidebar.svelte";
 
-  let window_height: number;
-  let header_height: number;
-  let footer_height: number;
+  let window_height: number = $state(0);
+  let header_height: number = $state(0);
+  let footer_height: number = $state(0);
 
-  let isSidebarOpen = false;
+  let isSidebarOpen = $state(false);
   const toggleSidbar = async () => (isSidebarOpen = !isSidebarOpen);
   
   const swipeMin = 50;
@@ -41,7 +41,7 @@
     }
   }
 
-  let props = $props();
+  // let props = $props();
 </script>
 
 <svelte:body on:touchstart={onTouchStart} on:touchend={onTouchEnd} />
@@ -69,13 +69,13 @@
   class="position-relative p-0 my-0 w-100"
   style="top: {header_height}px; height: {window_height - header_height - footer_height - 2}px;"
 >
-  {@render props.children()}
+  <slot />
   <!--Row class="border border-success h-100 w-100 ms-0 my-0" noGutters>
     <Col sm="2" class="h-100 border border-warning overflow-auto"
       ><Sidebar /></Col
     >
     <Col sm="10" class="h-100 border border-info overflow-auto">
-      {@render children()}
+      {@render props.children()}
     </Col>
   </Row-->
 </Container>

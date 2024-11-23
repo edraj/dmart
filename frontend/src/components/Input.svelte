@@ -1,12 +1,12 @@
 <script lang="ts">
   import { FormFeedback, FormGroup, Label, Input, Row, Col } from "sveltestrap";
 
-  let {value = $bindable(""), ...props} = $props();
-  const children: any = props.children;
+  // let {value = $bindable(""), ...props} = $props();
+  let props = $props()
   let { id, type, title, placeholder = "", required = false, multiple = false, readonly = false } = props;
 
-  let valid = false;
-  function handleInput(event) {
+  let valid = $state(false);
+  function handleInput(event : any) {
     if (type == "email") {
       valid = /^[^@]+@[^@]+$/.test(event.target.value) || !required;
     } else {
@@ -23,7 +23,7 @@
     class="py-0 form-control form-control-sm"
     {type}
     {id}
-    checked={type === "checkbox" ? value : false}
+    checked={type === "checkbox" ? props.$bindable("") : false}
     label={type === "checkbox" ? title : ""}
     name={id}
     on:change
@@ -31,12 +31,12 @@
     {readonly}
     bsSize="sm"
     invalid={!valid && required}
-    bind:value
+    bind={props.$bindable("")}
     {valid}
     oninput={handleInput}
     {multiple}
   >
-    {@render children?.()}
+    {@render props.children()}
   </Input>
   <!--FormFeedback tooltip={true} {valid}> required </FormFeedback-->
   <!--div class="col-md-1 invalid-feedback text-start">required</div-->
