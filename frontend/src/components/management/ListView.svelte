@@ -9,7 +9,7 @@
     Sort,
   } from "svelte-datatables-net";
   import { query, QueryType } from "@/dmart";
-  import { onDestroy } from "svelte";
+  import {onDestroy, onMount} from "svelte";
   import cols from "@/stores/management/list_cols.json";
   import { search } from "@/stores/management/triggers";
   import Prism from "@/components/Prism.svelte";
@@ -29,6 +29,10 @@
   import {bulkBucket} from "@/stores/management/bulk_bucket";
 
   $bulkBucket = [];
+
+  onMount(() => {
+      fetchPageRecords();
+  });
 
   onDestroy(() => status_line.set(""));
 
@@ -67,7 +71,7 @@
       columns = folderRenderingColsToListCols(folderColumns);
   }
 
-  let total: number = $state(0);
+  let total: number = $state(null);
   const { sortBy, sortOrder, page } = $params;
   let sort = {
       sort_by: (sortBy ?? sort_by) || "shortname",
@@ -117,7 +121,7 @@
   function setQueryParam(pair: any) {
     const urlSearchParams = new URLSearchParams(window.location.search);
     let href = window.location.pathname + "?";
-    
+
     for (const [k, v] of Object.entries(pair)) {
       if (urlSearchParams.has(k)) {
         urlSearchParams.delete(k);
@@ -133,7 +137,7 @@
         href += "&" + urlSearchParams.toString();
       }
 
-    window.history.pushState({ path: href }, "", href);
+    window.history.replaceState(history.state, '', href)
   }
 
   function setNumberOfPages() {
@@ -167,15 +171,6 @@
         setNumberOfPages();
       }
     }
-    // if (resp.status === "success") {
-      // api_status = "success";
-      // status_line.set(
-      //   `<small>Loaded: <strong>${objectDatatable.numberRowsPerPage} of ${total}</strong><br/>Api: <strong>${api_status}</strong></small>`
-      // );
-    // } else {
-      // api_status = resp.error.message || "Unknown error";
-      // status_line.set(`api: ${api_status}`);
-    // }
   }
 
   let modalData: any = $state({});
@@ -304,11 +299,15 @@
           sortBy: objectDatatable.stringSortBy.toString(),
           sortOrder: objectDatatable.stringSortOrder,
         });
-        fetchPageRecords(true, x);
+        fetchPageRecords(true, {
+            sort_by: objectDatatable.stringSortBy.toString(),
+            sort_type: objectDatatable.stringSortOrder,
+        });
         sort = structuredClone(x);
       }
     }
   });
+
   $effect(() => {
       if (objectDatatable.numberRowsPerPage !== numberRowsPerPage) {
           numberRowsPerPage = objectDatatable.numberRowsPerPage;
@@ -320,8 +319,7 @@
               handleAllBulk(null, isAllBulkChecked);
           })();
       }
-  });
-  $effect(() => {
+
       if (objectDatatable.numberActivePage !== numberActivePage) {
           setQueryParam({page: objectDatatable.numberActivePage.toString()});
           numberActivePage = objectDatatable.numberActivePage;
@@ -329,7 +327,6 @@
               await fetchPageRecords(false);
               handleAllBulk(null, false);
           })();
-
       }
   });
 
@@ -402,9 +399,9 @@
 <svelte:window bind:innerHeight={height} />
 
 <div class="list">
-  {#await fetchPageRecords()}
+  {#if total === null}
     READING DATA...
-  {:then _}
+  {:else}
     {#if objectDatatable}
       <Engine bind:propDatatable={objectDatatable} />
     {/if}
@@ -479,7 +476,7 @@
         </div>
       {/if}
     </div>
-  {/await}
+  {/if}
 </div>
 
 <style>
