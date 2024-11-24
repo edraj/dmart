@@ -87,7 +87,7 @@ export default defineConfig({
                 })
             ],
             onwarn: (warning, defaultHandler) => {
-                // Ignore a11y-click-events-have-key-events warning from sveltestrap
+                // Ignore a11y_click_events_have_key_events warning from sveltestrap
                 if (
                     warning.code?.startsWith("a11y") ||
                     // warning.filename?.startsWith("/node_modules/svelte-jsoneditor")
