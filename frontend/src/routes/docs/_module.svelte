@@ -36,6 +36,7 @@
                 `/docs/${file.replace('.md', '').replace('index','')}` === window.location.pathname
         )
     );
+
 </script>
 
 <style>
@@ -53,7 +54,8 @@
       <ul class="nav nav-pills flex-column px-2" style="height:92vh;width: 100%;padding-top: 16px;">
         {#key $url}
           {#each docFiles as file, index}
-            <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <li
               onclick={()=> selectedIndex = index}
               class={
@@ -78,7 +80,7 @@
   <Col sm="10"  style="padding-right: 1.5rem; padding-top: 1rem;">
     <Card class="px-4" style="overflow-y: auto; height:88vh">
       <CardBody>
-        <slot />
+        {@render props.children()}
       </CardBody>
     </Card>
   </Col>
