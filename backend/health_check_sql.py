@@ -16,7 +16,6 @@ from typing import Any
 from models import core, api
 from models.enums import ContentType, RequestType, ResourceType
 from api.managed.router import serve_request
-from datetime import datetime
 
 
 duplicated_entries : dict= {}
@@ -66,40 +65,42 @@ async def hard_space_check(space):
         entries = list(session.exec(sql_stm).all())
         folders_report: dict[str, dict[str, Any]] = {}
 
-        sql_stm = select(Spaces).where(Spaces.shortname == space)
-        target_space = session.exec(sql_stm).first()
-        schema_data_space = session.exec(
-            select(Entries)
-            .where(Entries.shortname == 'metafile')
-            .where(Entries.subpath == "/schema")
-        ).first()
-        if "/" not in folders_report:
-            folders_report["/" ] = {
-                "valid_entries": 0,
-            }
+        _sql_stm = select(Spaces).where(col(Spaces.shortname) == space)
+        target_space: Spaces | None = session.exec(_sql_stm).first()
+        if target_space:
+            schema_data_space: Entries | None = session.exec(
+                select(Entries)
+                .where(Entries.shortname == 'metafile')
+                .where(Entries.subpath == "/schema")
+            ).first()
+            if "/" not in folders_report:
+                folders_report["/" ] = {
+                    "valid_entries": 0,
+                }
 
-        try:
-            Draft7Validator(
-                schema_data_space.payload["body"]
-            ).validate(
-                json.loads(target_space.model_dump_json())
-            )
-            folders_report['/']["valid_entries"] += 1
-        except ValidationError as e:
-            issue = {
-                "issues": ["payload"],
-                "uuid": str(target_space.uuid),
-                "shortname": target_space.shortname,
-                "resource_type": 'space',
-                "exception": str(e),
-            }
-            if folders_report['/'].get("invalid_entries", None) is None:
-                folders_report['/']["invalid_entries"] = []
-            folders_report['/']["invalid_entries"] = [
-                *folders_report['/']["invalid_entries"],
-                issue
-            ]
-
+            if schema_data_space and schema_data_space.payload:
+                try:
+                    if isinstance(schema_data_space.payload, dict):
+                        Draft7Validator(
+                            schema_data_space.payload["body"]
+                        ).validate(
+                            json.loads(target_space.model_dump_json())
+                        )
+                    folders_report['/']["valid_entries"] += 1
+                except ValidationError as e:
+                    issue = {
+                        "issues": ["payload"],
+                        "uuid": str(target_space.uuid),
+                        "shortname": target_space.shortname,
+                        "resource_type": 'space',
+                        "exception": str(e),
+                    }
+                    if folders_report['/'].get("invalid_entries", None) is None:
+                        folders_report['/']["invalid_entries"] = []
+                    folders_report['/']["invalid_entries"] = [
+                        *folders_report['/']["invalid_entries"],
+                        issue
+                    ]
 
         for entry in entries:
             subpath = entry.subpath[1:]
