@@ -13,7 +13,7 @@ import svelteMd from "vite-plugin-svelte-md";
 const production = process.env.NODE_ENV === "production";
 
 export default defineConfig({
-    base: "sysadmin/",  // "/"
+    base: "/sysadmin",  // "/"
     clearScreen: false,
     resolve: {
         alias: {
