@@ -13,7 +13,7 @@ from utils.jwt import JWTBearer
 
 router = APIRouter()
 
-git_info = None
+git_info: dict[str,str|None] = {}
 service_start_time: datetime = datetime.now()
 if __file__.endswith(".pyc"):
     info = open(Path(__file__).resolve().parent.parent.parent / "info.json")

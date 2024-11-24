@@ -57,7 +57,7 @@
 </script>
 
 <FormGroup row={true} class="mx-1 py-0">
-  <canvas bind:this={canvas_div} width="150" height="60" />
+  <canvas bind:this={canvas_div} width="150" height="60"></canvas>
   <Label class="col-md-3 text-start px-1 py-0 m-0" for="captcha" size="sm">
     {$_("verfication")}
   </Label>

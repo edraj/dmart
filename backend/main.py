@@ -37,7 +37,7 @@ from api.managed.router import router as managed
 from api.qr.router import router as qr
 from api.public.router import router as public
 from api.user.router import router as user
-from api.info.router import router as info
+from api.info.router import router as info, git_info
 from utils.redis_services import RedisServices
 from utils.internal_error_code import InternalErrorCode
 
@@ -73,7 +73,7 @@ app = FastAPI(
     lifespan=lifespan,
     title="Datamart API",
     description="Structured Content Management System",
-    version="1.1.0",
+    version=str(git_info["tag"]),
     redoc_url=None,
     docs_url=f"{settings.base_path}/docs",
     openapi_url=f"{settings.base_path}/openapi.json",

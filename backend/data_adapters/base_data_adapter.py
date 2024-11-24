@@ -60,7 +60,7 @@ class BaseDataAdapter(ABC):
         """Load a Meta Json according to the reuqested Class type"""
         pass
 
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Meta | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
         return None
 
     async def query(self, query: api.Query, user_shortname: str | None = None) \

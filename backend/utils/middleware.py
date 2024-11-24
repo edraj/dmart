@@ -60,12 +60,17 @@ class ChannelMiddleware:
         request = Request(scope, receive)
         channel_key = request.headers.get("x-channel-key")
         if not channel_key:
-            raise api.Exception(
-                status_code=status.HTTP_403_FORBIDDEN,
-                error=api.Error(
-                    type="channel_auth", code=InternalErrorCode.NOT_ALLOWED, message="Requested method or path is forbidden"
-                ),
-            )
+            for channel in settings.channels:
+                for pattern in channel["allowed_api_patterns"]:
+                    if pattern.search(request.scope['path']):
+                        raise api.Exception(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            error=api.Error(
+                                type="channel_auth", code=InternalErrorCode.NOT_ALLOWED, message="Requested method or path is forbidden"
+                            ),
+                        )
+            await self.app(scope, receive, send)
+            return
 
         request_channel: dict[str, Any] | None = None
         for channel in settings.channels:

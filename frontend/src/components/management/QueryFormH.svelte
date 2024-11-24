@@ -1,7 +1,7 @@
 <script lang="ts">
   import { _ } from "@/i18n";
   import {
-    type AggregationType,
+    // type AggregationType,
     type QueryRequest,
     QueryType,
     ResourceType,
@@ -18,7 +18,7 @@
   import Aggregation from "./Aggregation.svelte";
 
   const dispatch = createEventDispatcher();
-  let spaces = [];
+  let spaces = $state([]);
 
   onMount(() => {
     async function setup() {
@@ -27,13 +27,13 @@
     setup();
   });
 
-  let aggregation_data = {
+  let aggregation_data = $state({
     load: [],
     group_by: [],
     reducers: [],
-  };
-  let formData = null;
-  async function handleResponse(event) {
+  });
+  let formData = $state(null);
+  async function handleResponse(event : any) {
     event.preventDefault();
 
     const fd = new FormData(event.target);
@@ -94,16 +94,17 @@
     dispatch("response", response);
   }
 
-  let spacename = "management";
-  let queryType = "";
-  let selectedSpacename = "";
-  let subpath = "/";
-  let tempSubpaths = [];
-  let subpaths = [{ records: [{ shortname: "/", resource_type: "folder" }] }];
+  let spacename : string = $state("management");
+  let queryType : QueryType= $state();
+  let subpath : string = $state("/");
 
-  async function buildSubpaths(base, _subpaths) {
+  let selectedSpacename = "";
+  let tempSubpaths = $state([]);
+  let subpaths = $state([{ records: [{ shortname: "/", resource_type: "folder" }] }]);
+
+  async function buildSubpaths(base: string, _subpaths: any) {
     await Promise.all(
-      await _subpaths.records.map(async (_subpath) => {
+      await _subpaths.records.map(async (_subpath: any) => {
         if (_subpath.resource_type === "folder") {
           const _subpaths = await get_children(spacename, _subpath.shortname);
           await buildSubpaths(`${base}/${_subpath.shortname}`, _subpaths);
@@ -112,21 +113,20 @@
       })
     );
   }
-  $: spacename,
-    (() => {
-      if (selectedSpacename !== spacename) {
-        (async () => {
-          subpaths = [];
-          tempSubpaths = [];
-          const _subpaths = await get_children(spacename, "/");
-          await buildSubpaths("", _subpaths);
+  $effect(() => {
+    if (selectedSpacename !== spacename) {
+      (async () => {
+        subpaths = [];
+        tempSubpaths = [];
+        const _subpaths = await get_children(spacename, "/");
+        await buildSubpaths("", _subpaths);
 
           subpaths = [...tempSubpaths.reverse()];
           selectedSpacename = `${spacename}`;
         })();
       }
-    })();
-  let isDisplayFilter = false;
+    });
+  let isDisplayFilter = $state(false);
   async function handleDownload() {
     const {
       space_name,

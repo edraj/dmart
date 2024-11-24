@@ -8,9 +8,8 @@ export const website = {
   default_language: "ar",
 
   backend: "https://api.dmart.cc",
-  // backend: "https://api.oodi.iq/dmart",
-  // websocket: "wss://api.dmart.cc/ws",
-  //
+  websocket: "wss://api.dmart.cc/ws",
+
   // backend: "http://localhost:8282",
-  websocket: "ws://0.0.0.0:8484/ws",
+  // websocket: "ws://0.0.0.0:8484/ws",
 };
