@@ -6,7 +6,7 @@
 
   let currentSection = $state("load"); // Default to "load" section
 
-  function addInput(event) {
+  function addInput(event : any ) {
     event.preventDefault();
 
     aggregation_data[currentSection].push(
@@ -21,7 +21,7 @@
     aggregation_data = { ...aggregation_data };
   }
 
-  function deleteInput(event, index) {
+  function deleteInput(event : any, index : number) {
     event.preventDefault();
 
     aggregation_data[currentSection].splice(index, 1);
@@ -38,7 +38,7 @@
         <option value="reducers">Reducers</option>
       </Input>
       <div class="input-group-append">
-        <Button onclick={(e) => addInput(e)}>
+        <Button onclick={(e : any) => addInput(e)}>
           <Icon name="patch-plus" />
         </Button>
       </div>

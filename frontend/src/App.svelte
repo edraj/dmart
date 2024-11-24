@@ -8,6 +8,8 @@
   // const rtlUrl = new URL('./../assets/morph/bootstrap.rtl.min.css', import.meta.url).href;
   // const ltrUrl = new URL('./../assets/morph/bootstrap.min.css', import.meta.url).href;
 
+  const prefix="sysadmin"; // ""
+
   const options = {
     duration: 2500, // duration of progress bar tween to the `next` value
     initial: 1, // initial progress bar value
@@ -50,6 +52,7 @@
           routes: routes,
           urlRewrite: {
               toInternal: (url) => {
+                  url = url.replace(`/${prefix}`, "");
                   url = url === "" ? "/" : url;
 
                   if (url.startsWith("/management")){
@@ -121,7 +124,8 @@
 
                   return url;
               },
-              toExternal: (url) => url,
+             //  toExternal: (url) => url,
+              toExternal: (url) => `/${prefix}${url}`,
           },
       });
   }
@@ -139,7 +143,7 @@
       />
     {:else}
       <link rel="stylesheet" id="bootstrap" media="screen"
-            href="{new URL($themesStore.ltrUrl, import.meta.url).href}"
+            href="{new URL($themesStore.ltrUrl, import.meta.url).href.replace('assets',`${prefix}/assets`)}"
       />
     {/if}
   {/key}
