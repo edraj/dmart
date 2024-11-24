@@ -377,3 +377,7 @@ def generate_tables():
     engine = create_engine(postgresql_url, echo=False)
     SQLModel.metadata.create_all(engine)
 
+# ALERMBIC
+def init_db():
+    generate_tables()
+    print("Tables created")
