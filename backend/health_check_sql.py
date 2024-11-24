@@ -5,12 +5,12 @@ import asyncio
 
 from jsonschema import ValidationError
 from jsonschema.validators import Draft7Validator
-
+import json
 import time
-from sqlmodel import select
+from sqlmodel import select, col, delete
 from data_adapters.sql_adapter import SQLAdapter
 from data_adapters.adapter import data_adapter as db
-from utils.database.create_tables import Entries
+from utils.database.create_tables import Entries, Spaces
 from typing import Any
 
 from models import core, api
@@ -29,6 +29,12 @@ spaces_schemas: dict[str, dict[str, dict]] = {}
 
 
 async def main(health_type: str, space_param: str, schemas_param: list):
+    with SQLAdapter().get_session() as session:
+        session.execute(
+            delete(Entries).where(col(Entries.subpath) == "/health_check")
+        )
+        session.commit()
+
     health_type = "hard" if health_type is None else health_type
     space_param = "all" if space_param is None else space_param
 
@@ -38,7 +44,7 @@ async def main(health_type: str, space_param: str, schemas_param: list):
 
     spaces = await db.get_spaces()
     spaces_names : list = []
-    print(f"{spaces=}")
+
     if space_param != "all":
         if space_param not in spaces.keys():
             print(f"space name {space_param} is not found")
@@ -59,6 +65,42 @@ async def hard_space_check(space):
         sql_stm = select(Entries).where(Entries.space_name == space)
         entries = list(session.exec(sql_stm).all())
         folders_report: dict[str, dict[str, Any]] = {}
+
+        sql_stm = select(Spaces).where(Spaces.shortname == space)
+        target_space = session.exec(sql_stm).first()
+        schema_data_space = session.exec(
+            select(Entries)
+            .where(Entries.shortname == 'metafile')
+            .where(Entries.subpath == "/schema")
+        ).first()
+        if "/" not in folders_report:
+            folders_report["/" ] = {
+                "valid_entries": 0,
+            }
+
+        try:
+            Draft7Validator(
+                schema_data_space.payload["body"]
+            ).validate(
+                json.loads(target_space.model_dump_json())
+            )
+            folders_report['/']["valid_entries"] += 1
+        except ValidationError as e:
+            issue = {
+                "issues": ["payload"],
+                "uuid": str(target_space.uuid),
+                "shortname": target_space.shortname,
+                "resource_type": 'space',
+                "exception": str(e),
+            }
+            if folders_report['/'].get("invalid_entries", None) is None:
+                folders_report['/']["invalid_entries"] = []
+            folders_report['/']["invalid_entries"] = [
+                *folders_report['/']["invalid_entries"],
+                issue
+            ]
+
+
         for entry in entries:
             subpath = entry.subpath[1:]
             if subpath == "":
@@ -71,15 +113,15 @@ async def hard_space_check(space):
                 payload = entry.payload
             else:
                 continue
-            
+
             if not payload.schema_shortname:
                 continue
 
             body = payload.body
             schema_data = session.exec(
                 select(Entries)
-              .where(Entries.shortname == payload.schema_shortname)
-              .where(Entries.subpath == "/schema")
+                .where(Entries.shortname == payload.schema_shortname)
+                .where(Entries.subpath == "/schema")
             ).first()
 
             if not schema_data:
@@ -112,7 +154,7 @@ async def hard_space_check(space):
             except ValidationError as e:
                 issue = {
                     "issues": ["payload"],
-                    "uuid": entry.uuid,
+                    "uuid": str(entry.uuid),
                     "shortname": entry.shortname,
                     "resource_type": entry.resource_type,
                     "exception": str(e),
@@ -130,29 +172,31 @@ async def hard_space_check(space):
 
 
 async def save_health_check_entry(health_check, space_name: str):
-    await serve_request(
-        request=api.Request(
-            space_name="management",
-            request_type=RequestType.create,
-            records=[
-                core.Record(
-                    resource_type=ResourceType.content,
-                    shortname=space_name,
-                    subpath="/health_check",
-                    attributes={
-                        "is_active": True,
-                        "updated_at": str(datetime.now()),
-                        "payload": {
-                            "schema_shortname": "health_check",
-                            "content_type": ContentType.json,
-                            "body": health_check
-                        }
-                    },
-                )
-            ],
-        ),
-        owner_shortname='dmart',
-    )
+    try:
+        await serve_request(
+            request=api.Request(
+                space_name="management",
+                request_type=RequestType.create,
+                records=[
+                    core.Record(
+                        resource_type=ResourceType.content,
+                        shortname=space_name,
+                        subpath="/health_check",
+                        attributes={
+                            "is_active": True,
+                            "payload": {
+                                "schema_shortname": "health_check",
+                                "content_type": ContentType.json,
+                                "body": health_check
+                            }
+                        },
+                    )
+                ],
+            ),
+            owner_shortname='dmart',
+        )
+    except Exception as e:
+        print(e)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
