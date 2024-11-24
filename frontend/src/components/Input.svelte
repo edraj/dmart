@@ -5,8 +5,8 @@
   const children: any = props.children;
   let { id, type, title, placeholder = "", required = false, multiple = false, readonly = false } = props;
 
-  let valid = false;
-  function handleInput(event) {
+  let valid = $state(false);
+  function handleInput(event: any) {
     if (type == "email") {
       valid = /^[^@]+@[^@]+$/.test(event.target.value) || !required;
     } else {

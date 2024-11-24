@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from "@roxi/routify";
-  $goto // this should initiate the helper at component initialization
+  $goto
   import { _ } from "@/i18n";
   // import { active_subsection } from "../_stores/active_subsection";
   import Icon from "./Icon.svelte";
@@ -32,8 +32,8 @@
   // type = type; // Silence the warning
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<!-- svelte-ignore a11y-no-static-element-interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <span onclick={show_item} class=" " title={item.description}>
   <Icon name={item.icon} class="" />
   {displayname}

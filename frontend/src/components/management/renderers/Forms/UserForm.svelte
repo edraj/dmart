@@ -37,7 +37,7 @@
         "force_password_change": false,
     };
 
-    let inputs = [];
+    let inputs = $state([]);
 
     let keys = Object.keys(_user);
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { generateUUID } from "@/utils/uuid";
-  import {Col, Row, Input, Icon, Card, Label} from "sveltestrap";
+  import {Col, Row, Input, Icon, Label} from "sveltestrap";
+  import JsonSchemaChild from "./JsonSchemaChild.svelte";
 
   let { parent, item, refresh, parentRefresh, root = false, level = 1 } : {
     parent: any,
@@ -108,7 +109,7 @@
       parentRefresh(parent);
   }
 
-  let isDisplayFilter = false;
+  let isDisplayFilter = $state(false);
 </script>
 
 <div class={
@@ -208,7 +209,8 @@
     {#if item.properties}
       {#key item.properties}
         {#each (item?.properties ?? []) as prop}
-          <svelte:self
+          <JsonSchemaChild
+            root={false}
             parent={item.properties}
             item={prop}
             {refresh}
@@ -220,7 +222,8 @@
     {:else if item.items}
       {#key item.items.properties}
         {#each (item?.items?.properties ?? []) as prop}
-          <svelte:self
+          <JsonSchemaChild
+            root={false}
             parent={item.items.properties}
             item={prop}
             {refresh}

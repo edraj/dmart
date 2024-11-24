@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   import { Router, createRouter } from "@roxi/routify";
   import routes from "../.routify/routes.default";
   import { SvelteToast } from "@zerodevx/svelte-toast";

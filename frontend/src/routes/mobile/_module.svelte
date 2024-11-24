@@ -1,16 +1,16 @@
 <!-- routify:meta reset -->
 <script lang="ts">
-  import {Offcanvas, Container, Row, Col, Collapse, Button} from "sveltestrap";
+  import {Offcanvas, Container, Button} from "sveltestrap";
   import Icon from "@/components/Icon.svelte";
   // import Header from "@/components/Header.svelte";
   // import Footer from "@/components/Footer.svelte";
   // import Sidebar from "@/components/Sidebar.svelte";
 
-  let window_height: number;
-  let header_height: number;
-  let footer_height: number;
+  let window_height: number = $state(0);
+  let header_height: number = $state(0);
+  let footer_height: number = $state(0);
 
-  let isSidebarOpen = false;
+  let isSidebarOpen: boolean = $state(false);
   const toggleSidbar = async () => (isSidebarOpen = !isSidebarOpen);
   
   const swipeMin = 50;

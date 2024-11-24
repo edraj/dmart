@@ -21,7 +21,7 @@
     import {toast} from "@zerodevx/svelte-toast";
     import ToastActionComponent from "@/components/management/ToastActionComponent.svelte";
     import {goto} from "@roxi/routify";
-    $goto // this should initiate the helper at component initialization
+    $goto
     import {cleanUpSchema} from "@/utils/renderer/rendererUtils";
     import {REGEX} from "@/utils/regex";
 
