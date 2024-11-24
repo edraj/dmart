@@ -1,8 +1,9 @@
 <script lang="ts">
   import { FormGroup, Label, Input } from "sveltestrap";
 
-  let { value = $bindable(""), checked = false, id, type, title, placeholder = "", required = false, multiple = false, readonly = false } = $props();
 
+  let { value = $bindable(""), id = "", type = "", title = "", placeholder = "", required = false, multiple = false, readonly = false }  = $props();
+  let checked = $state(false);
   let valid = $state(false);
   function handleInput(event : any) {
     if (type == "email") {
@@ -29,12 +30,12 @@
     {readonly}
     bsSize="sm"
     invalid={!valid && required}
-    bind=value
+    bind:value={value}
     {valid}
     oninput={handleInput}
     {multiple}
   >
-    <slot /> 
+    <slot />
   </Input>
   <!--FormFeedback tooltip={true} {valid}> required </FormFeedback-->
   <!--div class="col-md-1 invalid-feedback text-start">required</div-->
