@@ -20,7 +20,7 @@
         'Data-Organization.md',
         'Tools.md',
         'System-Admin-Tool.md',
-     'Examples.md',
+        'Examples.md',
          'Automated-Testing.md',
         'Clients-and-Libraries.md',  
         'Use-Cases.md',
@@ -30,7 +30,13 @@
         'FAQs.ar.md'
     ];
 
-    let selectedIndex = $state(docFiles.findIndex(file => `/docs/${file.replace('.md', '').replace('index','')}`===window.location.pathname ));
+    let selectedIndex = $state(
+        docFiles.findIndex(
+            file =>
+                `/docs/${file.replace('.md', '').replace('index','')}` === window.location.pathname
+        )
+    );
+
 </script>
 
 <style>

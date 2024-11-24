@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto, params } from "@roxi/routify";
-  $goto // this should initiate the helper at component initialization
+  $goto
   import {
     ListGroup,
     ListGroupItem,
