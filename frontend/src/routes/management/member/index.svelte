@@ -1,22 +1,22 @@
 <script lang="ts">
     import {get_profile, ResourceType, retrieve_entry} from "@/dmart";
-    import {user} from "@/stores/user";
-    import {Badge, Card, CardBody, CardText, CardTitle, Col, ListGroup, ListGroupItem, Row} from "sveltestrap";
+
+    import {Card, CardBody, CardText, CardTitle, Col, ListGroup, ListGroupItem, Row} from "sveltestrap";
     import Icon from "@/components/Icon.svelte";
     import {Level, showToast} from "@/utils/toast";
     import Prism from "@/components/Prism.svelte";
 
-    let userRecord: any = {};
+    let userRecord: any = $state({});
     (async () => {
         userRecord = await get_profile();
         userRecord = userRecord.records[0];
     })()
 
-    let selectedRole = null;
-    let selectedPermission = null;
+    let selectedRole = $state(null);
+    let selectedPermission = $state(null);
 
-    const permissionList = {}
-    const permissionDetails = {}
+    const permissionList = $state({});
+    const permissionDetails = $state({});
 
     async function handleSelectedRole(role: any) {
         if (selectedRole === role) {
@@ -67,7 +67,6 @@
 
         selectedPermission = permission;
     }
-
 </script>
 
 
@@ -123,11 +122,11 @@
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div onclick="{()=>handleSelectedRole(role)}">
-            <Badge class="m-1 p-3" color="{
-                permissionList[role] === null ? 'danger' : (selectedRole===role?'primary':'secondary')
+            <span class="{
+                'badge text-bg-' + (permissionList[role] === null ? 'danger' : (selectedRole===role?'primary':'secondary')) + ' m-1 p-3'
               }" style="font-size: 1rem; cursor: pointer">
               {role}
-            </Badge>
+            </span>
           </div>
         {/each}
       </ul>
@@ -143,11 +142,11 @@
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div onclick="{()=>handleSelectedPermission(permission)}">
-                  <Badge class="m-1 p-3" color="{
-                    permissionDetails[permission] === null ? 'danger' : (selectedPermission===permission?'primary':'secondary')
+                  <span class="{
+                    'badge text-bg-' + (permissionDetails[permission] === null ? 'danger' : (selectedPermission===permission?'primary':'secondary')) + ' m-1 p-3'
                   }" style="font-size: 1rem; cursor: pointer">
                     {permission}
-                  </Badge>
+                  </span>
                 </div>
               {/each}
             </ul>

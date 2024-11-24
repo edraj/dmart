@@ -199,8 +199,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             if query.sort_by:
                 if "." in query.sort_by:
                     t = transform_keys_to_sql(query.sort_by)
-                    t += " DESC" if query.sort_type == SortType.descending else ""
                     statement = statement.order_by(text(f"CASE WHEN ({t}) ~ '^[0-9]+$' THEN ({t})::float END, ({t})"))
+                    t += " DESC" if query.sort_type == SortType.descending else ""
                 else:
                     if query.sort_type == SortType.ascending:
                         statement = statement.order_by(getattr(table, query.sort_by))
