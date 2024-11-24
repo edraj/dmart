@@ -172,8 +172,8 @@
     <Col sm="4">
       <Row>
         <Col class="d-flex align-items-center" sm="1">
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
           <h4
             class="my-4"
             style="cursor: pointer;"

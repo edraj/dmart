@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   import { writable } from "svelte/store";
   const active_path = writable("notassigned");
 </script>
@@ -7,9 +7,10 @@
   import Icon from "../Icon.svelte";
   import { _ } from "@/i18n";
   import { goto } from "@roxi/routify";
-  $goto // this should initiate the helper at component initialization
+  $goto
   import { type ApiResponseRecord, get_children, ResourceType } from "@/dmart";
   import { fly } from "svelte/transition";
+  import Folder from "./Folder.svelte";
 
   let {
       space_name,
@@ -85,8 +86,8 @@
   }
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<!-- svelte-ignore a11y-no-static-element-interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <span
   class:expanded
   class="folder position-relative mt-1 ps-2"
@@ -104,7 +105,7 @@
     {#if children.length > 0}
       {#each children as child}
         <li>
-          <svelte:self folder={child} {space_name} />
+          <Folder folder={child} {space_name} />
         </li>
       {/each}
     {/if}

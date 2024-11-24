@@ -122,14 +122,14 @@
           class="h-100 w-100 m-0 font-monospace form-control form-control-sm"
           bind:value={content}
           oninput={() => dispatch("changed")}
-        />
+        ></textarea>
       </TabPane>
       <TabPane tabId="preview" tab="Preview">
         <div class="h-100 w-100 p-3" style="overflow: hidden auto">
           {@html marked(content)}
         </div>
       </TabPane>
-      <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events -->
       <div class="d-flex justify-content-end flex-grow-1">
         <TabPane class="m-0 p-0" onClick={()=>handleFormatting("**")}><p class="text-dark p-0 m-0" slot="tab"><strong>B</strong></p></TabPane>
         <TabPane onClick={()=>handleFormatting("_")}><p class="text-dark p-0 m-0" slot="tab"><i>I</i></p></TabPane>

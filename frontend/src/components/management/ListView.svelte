@@ -14,7 +14,7 @@
   import { search } from "@/stores/management/triggers";
   import Prism from "@/components/Prism.svelte";
   import { goto } from "@roxi/routify";
-  $goto // this should initiate the helper at component initialization
+  $goto
   import { fade } from "svelte/transition";
   import { isDeepEqual } from "@/utils/compare";
   import { folderRenderingColsToListCols } from "@/utils/columnsUtils";
@@ -178,8 +178,8 @@
     // }
   }
 
-  let modalData: any = {};
-  let open = false;
+  let modalData: any = $state({});
+  let open = $state(false);
 
   function redirectToEntry(record: any) {
     const shortname = record.shortname;
@@ -434,7 +434,7 @@
                   <td style="cursor: pointer;"><Input id={row.shortname} type="checkbox" on:change={handleBulk} name={index.toString()} /></td>
                 {/if}
                 {#each Object.keys(columns) as col}
-                  <!-- svelte-ignore a11y-click-events-have-key-events -->
+                  <!-- svelte-ignore a11y_click_events_have_key_events -->
                   <td
                     style="cursor: pointer;"
                     onclick={() => onListClick(row)}
@@ -484,8 +484,7 @@
 
 <style>
   :global(.virtual-list-wrapper) {
-    margin: 0 0px;
-    background: #fff;
+    margin: 0 0;
     border-radius: 2px;
     box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14),
       0 3px 1px -2px rgba(0, 0, 0, 0.2), 0 1px 5px 0 rgba(0, 0, 0, 0.12);
