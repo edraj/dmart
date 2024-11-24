@@ -2,18 +2,12 @@
 from enum import StrEnum
 
 from sqlalchemy import update
-
+from typing import Any
 from data_adapters.sql_adapter import SQLAdapter
 from utils.database.create_tables import Users, Roles, Permissions, Entries, Spaces, Attachments
-from utils.password_hashing import hash_password
 from utils.settings import settings
 import argparse
-import json
-import getpass
-import subprocess
-import utils.regex as regex
-import re
-from sqlmodel import select
+from sqlmodel import select, col
 
 
 '''
@@ -39,10 +33,11 @@ class ResourceType(StrEnum):
 
 
 def handle_sql_modulation(args):
+    spaces: list[Any] = []
     if args.space:
         if args.space == "management":
             if args.subpath is None:
-                spaces = [Users, Roles, Permissions, Spaces, Attachments]
+                spaces = []
             if args.subpath == "~attachments":
                 spaces = [Attachments]
             else:
@@ -72,14 +67,14 @@ def handle_sql_modulation(args):
         targets[0] = targets[0][1:]
 
         if args.value:
-            print(f"[warn] flag -v --value is not required for adding new key")
+            print("[warn] flag -v --value is not required for adding new key")
     if targets[0].startswith("~"):
         print(f"[info] Removing key '{targets[0]}' from the records")
         state = ResourceType.remove
         targets[0] = targets[0][1:]
 
         if args.value:
-            print(f"[warn] flag -v --value is not required for removing key")
+            print("[warn] flag -v --value is not required for removing key")
     else:
         print(f"[info] Altering the key '{targets[0]}' fo records")\
 
@@ -150,9 +145,9 @@ def handle_sql_modulation(args):
                             print(obj)
                             setattr(record, targets[0], obj)
 
-                stmt = update(space).where(space.uuid == record.uuid).values(
+                stmt = update(space).where(col(space.uuid )== record.uuid).values(
                     **{targets[0]: getattr(record, targets[0])})
-                session.exec(stmt)
+                session.exec(stmt)  #type: ignore
             session.commit()
 
 
