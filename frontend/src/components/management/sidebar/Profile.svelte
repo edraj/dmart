@@ -21,7 +21,7 @@
     {#await get_children("personal", `/people/${profile_data.records[0].shortname}`, 10, 0, [ResourceType.folder])}
       <!--h4> Loading {space.shortname} </h4-->
     {:then children_data}
-      {#each children_data.records as folder}
+      {#each children_data?.records ?? [] as folder}
         <Folder {folder} space_name="personal" />
       {/each}
     {:catch error}
