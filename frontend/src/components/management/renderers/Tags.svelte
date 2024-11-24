@@ -1,6 +1,8 @@
 <!-- adapted from https://github.com/movingbrands/svelte-portable-text -->
 <script lang="ts">
+
     import Tags from "./Tags.svelte";
+
     let {
       children = [],
       components = new Map

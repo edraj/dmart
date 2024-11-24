@@ -142,6 +142,7 @@
 
   function setNumberOfPages() {
     propNumberOfPages = Math.ceil(total / numberRowsPerPage);
+    localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
   }
 
   let old_search = "";
