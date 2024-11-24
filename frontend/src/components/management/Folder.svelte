@@ -7,10 +7,10 @@
   import Icon from "../Icon.svelte";
   import { _ } from "@/i18n";
   import { goto } from "@roxi/routify";
-  import Folder from "./Folder.svelte";
-  $goto // this should initiate the helper at component initialization
+  $goto
   import { type ApiResponseRecord, get_children, ResourceType } from "@/dmart";
   import { fly } from "svelte/transition";
+  import Folder from "./Folder.svelte";
 
   let {
       space_name,

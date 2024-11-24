@@ -1,5 +1,4 @@
 <script lang="ts">
-  // import { Form, Input, Button, Navbar, NavbarBrand, Nav, NavLink } from "sveltestrap";
   import {
       Navbar,
       NavbarBrand,
@@ -8,28 +7,19 @@
       Collapse,
       Dropdown,
       DropdownToggle,
-      DropdownMenu, DropdownItem
+      DropdownMenu,
+      DropdownItem
   } from "sveltestrap";
   import { _ } from "@/i18n";
-  // import { website } from "@/config";
-  // import Icon from "@/components/Icon.svelte";
-  // import signedin_user from "../management/_stores/signedin_user";
   import { user, signout } from "@/stores/user";
-  // import { redirect } from "@roxi/routify";
-  // import LocalizedValue from "./LocalizedValue.svelte";
   import markdownFiles from "@/md_indexer.json";
   import {goto} from "@roxi/routify";
-  $goto // this should initiate the helper at component initialization
+  $goto
 
-  // let search : string = "";
-  // function handleClick(event: Event) {
-  //    event.preventDefault();
-  // //   $redirect(`/search/posts?q=${encodeURI(search)}`);
-  // }
+  let term = $state('');
+  let suggestions = $state([]);
+  let delayTimer = $state(null);
 
-  let term = '';
-  let suggestions = [];
-  let delayTimer : any;
   async function handleInputChange(event: any) {
       clearTimeout(delayTimer);
       delayTimer = setTimeout(async function() {
@@ -65,16 +55,15 @@
       suggestions = [];
   }
 
-  let isOpen = false;
-  function handleUpdate(event) {
-      isOpen = event.detail.isOpen;
-  }
+  let isOpen = $state(false);
 </script>
-<Navbar color="light" light expand="md" class="px-2 w-100 py-0" style="border-bottom: solid #cecece">
-  <NavbarBrand href="/" title="{$_('home')}">{$_('home')}</NavbarBrand>
-  <Collapse {isOpen} navbar expand="md" on:update={handleUpdate}>
+<Navbar color="light" light expand="md"
+        class="px-2 w-100 py-0"
+        style="border-bottom: solid #cecece">
+  <NavbarBrand href="/" title={$_('home')}>{$_('home')}</NavbarBrand>
+  <Collapse {isOpen} navbar expand="md">
   <Nav class="w-100 align-items-center" navbar>
-    <NavLink href="/docs" title="{$_('docs')}">{$_('docs')}</NavLink>
+    <NavLink href="/docs" title={$_('docs')}>{$_('docs')}</NavLink>
     <div class="w-100 d-flex justify-content-end">
       <div class="position-relative w-50 align-content-center">
       <input type="text" class="form-control" placeholder="Search..."
@@ -89,7 +78,10 @@
       {#if suggestions.length > 0}
         <ul class="list-group suggestion-list">
           {#each suggestions as suggestion}
-            <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events -->
+
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+
             <li class="search-item list-group-item" onclick={() => handleSuggestionClick(suggestion)}>
               <h5>{suggestion.title}</h5>
               {@html suggestion.description}
@@ -104,16 +96,16 @@
       <Dropdown>
         <DropdownToggle caret>{$user.localized_displayname}</DropdownToggle>
         <DropdownMenu end>
-          <DropdownItem href="/management/content" title="{$_('login')}">
+          <DropdownItem href="/management/content" title={$_('login')}>
             {$_('dashboard')}
           </DropdownItem>
-          <DropdownItem title="{$_('logout')}" onclick="{signout}">
+          <DropdownItem title={$_('logout')} onclick={signout}>
             {$_('logout')}
           </DropdownItem>
         </DropdownMenu>
       </Dropdown>
     {:else}
-      <NavLink href="/management/content" title="{$_('login')}">{$_('login')}</NavLink>
+      <NavLink href="/management/content" title={$_('login')}>{$_('login')}</NavLink>
     {/if}
   </Nav>
   </Collapse>

@@ -9,9 +9,9 @@
   // import { useRegisterSW } from "virtual:pwa-register/svelte";
   //import Offline from "@/components/Offline.svelte";
 
-  let window_height: number = $state(0);
-  let header_height: number = $state(0);
-  let footer_height: number = $state(0);
+  let window_height: number = $state(32);
+  let header_height: number = $state(32);
+  let footer_height: number = $state(32);
 
 
   // let isOffline = false;
