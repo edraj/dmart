@@ -22,7 +22,14 @@
     issues: [];
     exception: string;
   };
-  let modalData: ModalData;
+  let modalData: ModalData = $state({
+    subpath: "",
+    shortname: "",
+    resource_type: ResourceType.content,
+    uuid: "",
+    issues: [],
+    exception: "",
+  });
 
   function handleEdit() {    
     $goto(
@@ -37,8 +44,8 @@
     );
   }
 
-  let open = false;
-  let isEntryExist = false;
+  let open = $state(false);
+  let isEntryExist = $state(false);
   async function handleErrorEntryClick(err_entry: ModalData, extra: any) {
     modalData = { ...err_entry, ...extra };
 
@@ -57,7 +64,8 @@
 </script>
 
 <Modal isOpen={open} toggle={toggleModal} size={"lg"}>
-  <ModalHeader toggle={toggleModal}>{modalData.shortname}</ModalHeader>
+<!--  <ModalHeader toggle={toggleModal}>{modalData.shortname}</ModalHeader>-->
+  <h5 class="modal-header modal-title">{modalData.shortname}</h5>
   <ModalBody>
     <p><b>UUID:</b> {modalData.uuid}</p>
     <p><b>Space name:</b> {$params.shortname}</p>
