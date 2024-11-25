@@ -1,4 +1,5 @@
 {
+  "shortname": "own_changed_notification",
 	"is_active": true,
 	"filters": {
 		"subpaths": ["__ALL__"],

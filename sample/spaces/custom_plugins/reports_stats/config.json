@@ -1,4 +1,5 @@
 {
+  "shortname": "reports_stats",
   "is_active": true,
   "filters": {
     "subpaths": [

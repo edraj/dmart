@@ -1,4 +1,5 @@
 {
+  "shortname": "missed",
 	"is_active": false,
 	"filters": {
 		"subpaths": ["__ALL__"],

@@ -1,4 +1,5 @@
 {
+  "shortname": "update_access_controls",
 	"is_active": true,
 	"filters": {
 		"subpaths": ["roles", "groups", "permissions", "users"],
