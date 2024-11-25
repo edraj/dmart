@@ -1,5 +1,6 @@
 {
-    "is_active": true,
+  "shortname": "admin_notification_sender",
+  "is_active": true,
 	"filters": {
 		"subpaths": ["notifications/admin"],
 		"resource_types": ["content"],

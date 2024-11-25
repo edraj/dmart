@@ -1,5 +1,6 @@
 {
-    "is_active": true,
+  "shortname": "action_log",
+  "is_active": true,
 	"filters": {
 		"subpaths": ["__ALL__"],
 		"resource_types": ["__ALL__"],
