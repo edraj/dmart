@@ -10,7 +10,7 @@ from utils.database.create_tables import \
     Spaces, Users, Roles, Permissions, \
     Entries, Histories, Attachments, Sessions, \
     Locks, URLShorts, ActiveSessions, Invitations, \
-    FailedLoginAttempts, metadata
+    metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

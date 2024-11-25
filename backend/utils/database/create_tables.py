@@ -181,6 +181,7 @@ class Users(Metas, table=True):
     google_id: str | None = None
     facebook_id: str | None = None
     social_avatar_url: str | None = None
+    attempt_count: int | None = None
 
 
 class Roles(Metas, table=True):
@@ -357,13 +358,6 @@ class Invitations(SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     invitation_token: str = Field(...)
     invitation_value: str = Field(...)
-    timestamp: datetime = Field(default_factory=datetime.now)
-
-
-class FailedLoginAttempts(SQLModel, table=True):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    shortname: str = Field(regex=regex.SHORTNAME)
-    attempt_count: int = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
