@@ -16,6 +16,8 @@ from utils.settings import settings
 import utils.password_hashing as password_hashing
 
 
+metadata = SQLModel.metadata
+
 def get_model_from_sql_instance(db_record_type) :
     match db_record_type:
         case Roles.__class__:
@@ -179,6 +181,7 @@ class Users(Metas, table=True):
     google_id: str | None = None
     facebook_id: str | None = None
     social_avatar_url: str | None = None
+    attempt_count: int | None = None
 
 
 class Roles(Metas, table=True):
@@ -358,13 +361,6 @@ class Invitations(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
-class FailedLoginAttempts(SQLModel, table=True):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    shortname: str = Field(regex=regex.SHORTNAME)
-    attempt_count: int = Field(...)
-    timestamp: datetime = Field(default_factory=datetime.now)
-
-
 class URLShorts(SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     token_uuid: str = Field(...)
@@ -377,3 +373,7 @@ def generate_tables():
     engine = create_engine(postgresql_url, echo=False)
     SQLModel.metadata.create_all(engine)
 
+# ALERMBIC
+def init_db():
+    generate_tables()
+    print("Tables created")
