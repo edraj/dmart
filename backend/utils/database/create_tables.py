@@ -16,6 +16,8 @@ from utils.settings import settings
 import utils.password_hashing as password_hashing
 
 
+metadata = SQLModel.metadata
+
 def get_model_from_sql_instance(db_record_type) :
     match db_record_type:
         case Roles.__class__:
