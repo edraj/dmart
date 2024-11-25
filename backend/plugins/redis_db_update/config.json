@@ -1,4 +1,5 @@
 {
+  "shortname": "redis_db_update",
 	"is_active": true,
 	"filters": {
 		"subpaths": ["__ALL__"],
