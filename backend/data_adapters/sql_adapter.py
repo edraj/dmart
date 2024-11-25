@@ -30,7 +30,7 @@ from utils.database.create_tables import (
     Locks,
     Sessions,
     Invitations,
-    URLShorts, 
+    URLShorts,
 )
 from utils.helpers import (
     arr_remove_common,
@@ -136,38 +136,43 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
     if query.subpath and table is Entries:
         statement = statement.where(table.subpath == query.subpath)
     if query.search:
-        for k, v in parse_search_string(query.search, table).items():
-            flag_neg = False
-            if "!" in v:
-                flag_neg = True
-            vv, v = validate_search_range(v)
-            if isinstance(v, str):
-                v = v.replace("!", "")
-            is_list = isinstance(v, list) or ("[" in v and "]" in v)
-            if is_list:
-                v = string_to_list(v)
-
-            if "->" in k:
+        if not query.search.startswith("@"):
+            statement = statement.where(text(
+                f"to_tsvector(shortname || ' ' || tags || ' ' || displayname || ' ' || description) @@ to_tsquery('{query.search}:*')"
+            ))
+        else:
+            for k, v in parse_search_string(query.search, table).items():
+                flag_neg = False
+                if "!" in v:
+                    flag_neg = True
+                vv, v = validate_search_range(v)
                 if isinstance(v, str):
-                    stm = f"(({k}) {'!' if flag_neg else ''}= '{v}'"
+                    v = v.replace("!", "")
+                is_list = isinstance(v, list) or ("[" in v and "]" in v)
+                if is_list:
+                    v = string_to_list(v)
+
+                if "->" in k:
+                    if isinstance(v, str):
+                        stm = f"(({k}) {'!' if flag_neg else ''}= '{v}'"
+                        if "payload" in k:
+                            stm += f" OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"'"
+                        stm += ")"
+                        statement = statement.where(text(stm))
+                elif is_list and vv and v:
+                    statement = statement.where(text(f"({k}) {'NOT' if flag_neg else ''} BETWEEN '{v[0]}' AND '{v[1]}'"))
+                elif is_list and v:
+                    in_1 = ', '.join([f"'{_v}'" for _v in v])
+                    stm = f"(({k}) {'NOT' if flag_neg else ''} IN ({in_1})"
                     if "payload" in k:
-                        stm += f" OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"'"
+                        in_2 = ', '.join([f'"{_v}"' for _v in v])
+                        stm += f" OR ({k.replace('>>', '>')})::jsonb @> '[{in_2}]'"
                     stm += ")"
                     statement = statement.where(text(stm))
-            elif is_list and vv and v:
-                statement = statement.where(text(f"({k}) {'NOT' if flag_neg else ''} BETWEEN '{v[0]}' AND '{v[1]}'"))
-            elif is_list and v:
-                in_1 = ', '.join([f"'{_v}'" for _v in v])
-                stm = f"(({k}) {'NOT' if flag_neg else ''} IN ({in_1})"
-                if "payload" in k:
-                    in_2 = ', '.join([f'"{_v}"' for _v in v])
-                    stm += f" OR ({k.replace('>>', '>')})::jsonb @> '[{in_2}]'"
-                stm += ")"
-                statement = statement.where(text(stm))
-            elif isinstance(v, str):
-                statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= '{v}'"))
-            else:
-                statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= {v}"))
+                elif isinstance(v, str):
+                    statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= '{v}'"))
+                else:
+                    statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= {v}"))
 
     if query.filter_schema_names:
         if 'meta' in query.filter_schema_names:
@@ -219,7 +224,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
     return statement
 
 class SQLAdapter(BaseDataAdapter):
-    session: Session 
+    session: Session
 
     def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
         locators: list[core.Locator] = []
@@ -243,13 +248,13 @@ class SQLAdapter(BaseDataAdapter):
     ) -> str:
         return ""
 
-    def metapath(self, 
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            class_type: Type[MetaChild],
-            schema_shortname: str | None = None,
-            ) -> tuple[Path, str]:
+    def metapath(self,
+                 space_name: str,
+                 subpath: str,
+                 shortname: str,
+                 class_type: Type[MetaChild],
+                 schema_shortname: str | None = None,
+                 ) -> tuple[Path, str]:
         return (Path(), "")
 
     def __init__(self):
@@ -469,7 +474,7 @@ class SQLAdapter(BaseDataAdapter):
                     if len(_results) > 0:
                         for result in _results:
                             _core_model_class: core.Meta = getattr(sys.modules["models.core"],
-                                                                  camel_case(result.resource_type))
+                                                                   camel_case(result.resource_type))
                             results.append(_core_model_class.model_validate(result.model_dump()))
                         return results
                 return None
@@ -496,11 +501,11 @@ class SQLAdapter(BaseDataAdapter):
                     return 0, []
 
             if (query.space_name
-                and query.type == QueryType.spaces
-                and query.space_name == "management"
-                and query.subpath == "/"):
-                    statement = select(Spaces)
-                    statement_total = select(func.count(col(Spaces.uuid)))
+                    and query.type == QueryType.spaces
+                    and query.space_name == "management"
+                    and query.subpath == "/"):
+                statement = select(Spaces)
+                statement_total = select(func.count(col(Spaces.uuid)))
             else:
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
@@ -537,20 +542,20 @@ class SQLAdapter(BaseDataAdapter):
             schema_shortname: str | None = None,
     ) -> MetaChild | None:
 
-            result = await self.db_load_or_none(space_name, subpath, shortname, class_type, user_shortname,schema_shortname)
-            if not result:
-                return None
+        result = await self.db_load_or_none(space_name, subpath, shortname, class_type, user_shortname,schema_shortname)
+        if not result:
+            return None
 
-            try:
-                if hasattr(result, 'payload') and result.payload and isinstance(result.payload, dict):
-                    if result.payload.get("body", None) is None:
-                        result.payload["body"] = {}
-                    result.payload = core.Payload.model_validate( result.payload, strict=False)
-            except Exception as e:
-                print("[!load]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
-            return class_type.model_validate(result.model_dump())
-            
+        try:
+            if hasattr(result, 'payload') and result.payload and isinstance(result.payload, dict):
+                if result.payload.get("body", None) is None:
+                    result.payload["body"] = {}
+                result.payload = core.Payload.model_validate( result.payload, strict=False)
+        except Exception as e:
+            print("[!load]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+        return class_type.model_validate(result.model_dump())
+
 
     async def load(
             self,
@@ -572,7 +577,7 @@ class SQLAdapter(BaseDataAdapter):
                 ),
             )
 
-        return meta 
+        return meta
 
     async def load_resource_payload(
             self,
@@ -671,7 +676,7 @@ class SQLAdapter(BaseDataAdapter):
         await self.save(space_name, subpath, meta)
 
     async def save_payload(
-        self, space_name: str, subpath: str, meta: core.Meta, attachment
+            self, space_name: str, subpath: str, meta: core.Meta, attachment
     ):
         if meta.__class__ != core.Content:
             media = await attachment.read()
@@ -1379,9 +1384,9 @@ class SQLAdapter(BaseDataAdapter):
             subpath = f"/{subpath}"
 
         with self.get_session() as session:
-            statement = select(Attachments.media)\
-                .where(Attachments.space_name == space_name)\
-                .where(Attachments.subpath == subpath)\
+            statement = select(Attachments.media) \
+                .where(Attachments.space_name == space_name) \
+                .where(Attachments.subpath == subpath) \
                 .where(Attachments.shortname == shortname)
 
             result = session.exec(statement).one_or_none()
