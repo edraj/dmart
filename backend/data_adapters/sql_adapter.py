@@ -20,7 +20,6 @@ from models.enums import QueryType, LockAction, ResourceType, SortType, ContentT
 from utils.database.create_tables import (
     ActiveSessions,
     Entries,
-    FailedLoginAttempts,
     Histories,
     Permissions,
     Roles,
@@ -1325,8 +1324,12 @@ class SQLAdapter(BaseDataAdapter):
     async def clear_failed_password_attempts(self, user_shortname: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = select(FailedLoginAttempts).where(FailedLoginAttempts.shortname == user_shortname)
-                session.exec(statement)
+                statement = select(Users).where(Users.shortname == user_shortname)
+                result = session.exec(statement).one_or_none()
+                if result is None:
+                    return False
+                result.attempt_count = 0
+                session.add(result)
                 session.commit()
                 return True
             except Exception as e:
@@ -1335,34 +1338,24 @@ class SQLAdapter(BaseDataAdapter):
 
     async def get_failed_password_attempt_count(self, user_shortname: str) -> int:
         with self.get_session() as session:
-            statement = select(FailedLoginAttempts).where(FailedLoginAttempts.shortname == user_shortname)
+            statement = select(Users).where(Users.shortname == user_shortname)
 
             result = session.exec(statement).one_or_none()
             if result is None:
                 return 0
 
-            failed_login_attempt = FailedLoginAttempts.model_validate(result)
-
-            return failed_login_attempt.attempt_count
+            failed_login_attempt = Users.model_validate(result)
+            return 0 if failed_login_attempt.attempt_count is None else failed_login_attempt.attempt_count
 
     async def set_failed_password_attempt_count(self, user_shortname: str, attempt_count: int) -> bool:
         with self.get_session() as session:
             try:
-                statement = select(FailedLoginAttempts).where(FailedLoginAttempts.shortname == user_shortname)
+                statement = select(Users).where(Users.shortname == user_shortname)
                 result = session.exec(statement).one_or_none()
-
                 if result is None:
-                    session.add(
-                        FailedLoginAttempts(
-                            uuid=uuid4(),
-                            shortname=user_shortname,
-                            attempt_count=attempt_count,
-                            timestamp=datetime.now(),
-                        )
-                    )
-                else:
-                    result.attempt_count = attempt_count
-
+                    return False
+                result.attempt_count = attempt_count
+                session.add(result)
                 session.commit()
                 return True
             except Exception as e:
