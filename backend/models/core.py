@@ -515,7 +515,7 @@ class EventFilter(BaseModel):
 
 
 class PluginWrapper(Resource):
-    shortname: str = Field(default=None, pattern=regex.SHORTNAME)
+    shortname: str = Field(pattern=regex.SHORTNAME)
     is_active: bool = False
     filters: EventFilter | None = None
     listen_time: EventListenTime | None = None

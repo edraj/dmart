@@ -5,11 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from sqlmodel import SQLModel
 from utils.database.create_tables import \
-    Spaces, Users, Roles, Permissions, \
-    Entries, Histories, Attachments, Sessions, \
-    Locks, URLShorts, ActiveSessions, Invitations, \
     metadata
 
 # this is the Alembic Config object, which provides
