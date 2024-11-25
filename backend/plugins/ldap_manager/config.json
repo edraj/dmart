@@ -1,4 +1,5 @@
 {
+  "shortname": "ldap_manager",
 	"is_active": false,
 	"filters": {
 		"subpaths": ["users"],
