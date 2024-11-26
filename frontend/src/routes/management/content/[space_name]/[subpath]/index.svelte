@@ -2,7 +2,7 @@
   import { params } from "@roxi/routify";
   import { retrieve_entry, ResourceType } from "@/dmart";
   import EntryRenderer from "@/components/management/renderers/EntryRenderer.svelte";
-  import { Alert } from "sveltestrap";
+
   // import { fade } from 'svelte/transition';
 
   let parent_subpath: string;
@@ -33,9 +33,9 @@
         bind:refresh
       />
     {:catch error}
-      <Alert color="danger text-center mt-5">
+      <div class="alert alert-danger text-center m-5">
         <h4 class="alert-heading text-capitalize">{error}</h4>
-      </Alert>
+      </div>
     {/await}
   {:else}
     <h4>For some reason ... params doesn't have the needed info</h4>
