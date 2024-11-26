@@ -201,6 +201,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
         if not is_for_count:
             if query.sort_by:
+                if query.sort_by.startswith('attributes.'):
+                    query.sort_by = query.sort_by[11:]
                 if "." in query.sort_by:
                     t = transform_keys_to_sql(query.sort_by)
                     sort_type = " DESC" if query.sort_type == SortType.descending else ""
@@ -212,7 +214,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                     if query.sort_type == SortType.descending:
                         statement = statement.order_by(getattr(table, query.sort_by).desc())
     except Exception as e:
-        print(e)
+        print("[!set_sql_statement_from_query]", e)
 
     if not is_for_count:
         if query.offset:
