@@ -18,7 +18,6 @@
   import { Level, showToast } from "@/utils/toast";
   import Media from "./Media.svelte";
   import {
-      Alert,
       Button,
       Col,
       Input,
@@ -690,11 +689,11 @@
             }
               {#if [ResourceType.parquet, ResourceType.csv].includes(attachment.resource_type)}
                 {#if Object.keys(attachment.dataAsset).includes('code')}
-                  <Alert class="w-100" color="danger">
+                  <div class="alert alert-danger text-center m-5 w-100">
                     <h4>{attachment.dataAsset.code}</h4>
                     <p>{attachment.dataAsset.message}</p>
                     <p>{attachment.dataAsset?.details}</p>
-                  </Alert>
+                  </div>
                   {:else}
                   <table class="table table-striped table-sm">
                     <thead>

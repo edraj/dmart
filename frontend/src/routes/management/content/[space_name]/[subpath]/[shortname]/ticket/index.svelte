@@ -2,7 +2,7 @@
   import { params } from "@roxi/routify";
   import { retrieve_entry, ResourceType } from "@/dmart";
   import EntryRenderer from "@/components/management/renderers/EntryRenderer.svelte";
-  import { Alert } from "sveltestrap";
+
 </script>
 
 {#if $params.space_name && $params.subpath && $params.shortname}
@@ -16,9 +16,9 @@
       subpath={$params.subpath?.replaceAll("-", "/")}
     />
   {:catch error}
-    <Alert color="danger text-center mt-5">
+    <div class="alert alert-danger text-center m-5">
       <h4 class="alert-heading text-capitalize">{error}</h4>
-    </Alert>
+    </div>
   {/await}
 {:else}
   <h4>We shouldn't be here ...</h4>

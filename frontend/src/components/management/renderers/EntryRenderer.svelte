@@ -19,7 +19,6 @@
         upload_with_payload,
     } from "@/dmart";
     import {
-        Alert,
         Button,
         ButtonGroup,
         Form,
@@ -2026,11 +2025,11 @@
     </div>
   </div>
 {:else}
-  <Alert color="danger text-center mt-5">
+  <div class="alert alert-danger text-center m-5">
     <h4 class="alert-heading text-capitalize">
       Failed to load the entry, please check its existence or try again.
     </h4>
-  </Alert>
+  </div>
 {/if}
 
 <style>

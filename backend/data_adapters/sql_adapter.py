@@ -203,8 +203,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             if query.sort_by:
                 if "." in query.sort_by:
                     t = transform_keys_to_sql(query.sort_by)
-                    statement = statement.order_by(text(f"CASE WHEN ({t}) ~ '^[0-9]+$' THEN ({t})::float END, ({t})"))
-                    t += " DESC" if query.sort_type == SortType.descending else ""
+                    sort_type = " DESC" if query.sort_type == SortType.descending else ""
+                    t = f"CASE WHEN ({t}) ~ '^[0-9]+$' THEN ({t})::float END {sort_type}, ({t}) {sort_type}"
+                    statement = statement.order_by(text(t))
                 else:
                     if query.sort_type == SortType.ascending:
                         statement = statement.order_by(getattr(table, query.sort_by))
@@ -231,11 +232,6 @@ class SQLAdapter(BaseDataAdapter):
         match query.type:
             case api.QueryType.subpath:
                 pass
-                # connection_string = (
-                #     f"{self.database_connection_string}/{query.space_name}"
-                # )
-                # engine = create_engine(connection_string, echo=True)
-                # session = Session(engine)
                 #!TODO finsih...
         return total, locators
 
@@ -259,7 +255,7 @@ class SQLAdapter(BaseDataAdapter):
     def __init__(self):
         self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
         connection_string = f"{self.database_connection_string}/{settings.database_name}"
-        engine = create_engine(connection_string, echo=False)
+        engine = create_engine(connection_string, echo=True)
         self.session = Session(engine)
 
 

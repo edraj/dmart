@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {Card, CardBody, Form, FormGroup, Label, Input, Button, Icon, Alert} from 'sveltestrap';
+    import {Card, CardBody, Form, FormGroup, Label, Input, Button, Icon} from 'sveltestrap';
     import {ResourceType} from "@/dmart";
     import {JSONEditor, Mode} from "svelte-jsoneditor";
 
@@ -59,9 +59,10 @@
             <div class="form-item">
               <FormGroup>
                 {#if item.error}
-                  <Alert color="danger">
+                  sss
+                  <div class="alert alert-danger text-center m-5">
                     {item.error}
-                  </Alert>
+                  </div>
                 {/if}
                 <div class="d-flex justify-content-between mb-2">
                   <Label>Resource Type</Label>

@@ -43,7 +43,7 @@ async def generate_qr_user_profile(
             api.Error(type="qr", code=InternalErrorCode.QR_ERROR,
                       message="QR cannot be generated"),
         )
-    m = hmac.new(settings.jwt_secret.encode(), digestmod=hashlib.blake2s)
+    m = hmac.new(settings.jwt_secret.encode(), digestmod=hashlib.sha256)
     data = f"{resource_type}/{space_name}/{subpath}/{shortname}"
     date = int(time())
     m.update(f"{date}.{data}".encode())
@@ -93,7 +93,7 @@ async def validate_qr_user_profile(
                       message="QR did expire"),
         )
     data = f"{resource_type}/{space_name}/{subpath}/{shortname}"
-    m = hmac.new(settings.jwt_secret.encode(), digestmod=hashlib.blake2s)
+    m = hmac.new(settings.jwt_secret.encode(), digestmod=hashlib.sha256)
     m.update(f"{req_date}.{data}".encode())
     hexed_data = m.hexdigest()
 
