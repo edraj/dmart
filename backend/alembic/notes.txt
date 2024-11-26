@@ -1,7 +1,10 @@
+# 1st : Make sure in alembic.ini to have proper db config for sqlalchemy.url
+
+
 # To establish the base for a previously created database run the following
 
-CREATE TABLE alembic_version (                                                                          
-    version_num VARCHAR(32) NOT NULL, 
+CREATE TABLE alembic_version (
+    version_num VARCHAR(32) NOT NULL,
     CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)
 );
 
