@@ -3,19 +3,12 @@
   import { retrieve_entry, ResourceType } from "@/dmart";
   import EntryRenderer from "@/components/management/renderers/EntryRenderer.svelte";
 
-  // import { fade } from 'svelte/transition';
-
-  let parent_subpath: string;
-  let shortname: string;
-  let refresh = false;
-
-
-  if (typeof $params.subpath == "string" && $params.subpath) {
-    const arr = $params.subpath.split("-");
-    parent_subpath = arr.slice(0, arr.length - 1).join("/");
-    if (!parent_subpath) parent_subpath = "__root__";
-    shortname = arr[arr.length - 1];
-  }
+  let _parent_subpath = $derived($params.subpath.split("-"))
+  let parent_subpath: string = $derived(
+      _parent_subpath.slice(0, _parent_subpath.length - 1).join("/") || "__root__"
+  );
+  let shortname: string =  $derived(_parent_subpath[_parent_subpath.length - 1]);
+  let refresh: boolean = $state(false);
 
 </script>
 
