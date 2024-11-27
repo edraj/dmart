@@ -37,7 +37,6 @@
   }
 
   $effect(() => {
-    // Let's collapse if we are already expanded but we are not on the active path any more
     if (expanded && !$active_path.startsWith(fullpath)) {
       expanded = false;
     }
@@ -62,6 +61,7 @@
         0,
         [ResourceType.folder]
       );
+
       children = data.records;
 
       let subpath = `${folder.subpath}/${folder.shortname}`.replace(
@@ -70,13 +70,17 @@
       );
 
       // Trim leading or traling '/'
-      if (subpath.length > 0 && subpath[0] === "/")
-        subpath = subpath.substring(1);
-      if (subpath.length > 0 && subpath[subpath.length - 1] === "/")
-        subpath = subpath.slice(0, -1);
+      if (subpath.length > 0 && subpath[0] === "/") {
+          subpath = subpath.substring(1);
+      }
+      if (subpath.length > 0 && subpath[subpath.length - 1] === "/") {
+          subpath = subpath.slice(0, -1);
+      }
 
       // If empty, use __root__ magic word
-      if (subpath.length === 0) subpath = "__root__";
+      if (subpath.length === 0) {
+          subpath = "__root__";
+      }
 
       $goto("/management/content/[space_name]/[subpath]", {
         space_name: space_name,
