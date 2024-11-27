@@ -74,10 +74,10 @@
       sort_by: (sortBy ?? sort_by) || "shortname",
       sort_order: (sortOrder ?? sort_order) || "ascending",
   };
+
   let objectDatatable = $state(
       functionCreateDatatable({
           parData: [],
-          parSearchableColumns: Object.keys(columns),
           parRowsPerPage: (typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage") as `${number}`) || "15",
           parSearchString: "",
           parSortBy: (sortBy ?? sort_by) || "shortname",
@@ -85,6 +85,10 @@
           parActivePage: Number(page) || 1,
       })
   );
+
+  $effect(() => {
+      objectDatatable.arraySearchableColumns = Object.keys(columns);
+  });
 
   function value(path: string, data, type) {
     if (data === null) {
@@ -265,21 +269,6 @@
     ) {
       // objectDatatable.stringSortBy = "shortname";
       fetchPageRecords(true);
-    }
-  });
-
-  $effect(() => {
-    if (objectDatatable === undefined) {
-      objectDatatable = functionCreateDatatable({
-        parData: [],
-        parSearchableColumns: Object.keys(columns),
-        parRowsPerPage:
-          (typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage") as `${number}`) || "15",
-        parSearchString: "",
-        parSortBy: sortBy || "shortname",
-        parSortOrder: sortOrder || "ascending",
-        parActivePage: Number(page) || 1,
-      });
     }
   });
 
