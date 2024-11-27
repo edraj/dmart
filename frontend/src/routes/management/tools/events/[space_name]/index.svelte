@@ -11,7 +11,7 @@
       type={QueryType.events}
       space_name={$params.space_name}
       subpath={"/"}
-      columns={cols_events}
+      folderColumns={cols_events}
     />
   {/if}
 {/key}

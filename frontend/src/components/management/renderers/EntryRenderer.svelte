@@ -692,7 +692,7 @@
                 body.is_active = true;
             }
             if (body.invitation === undefined) {
-                body.invitation = "sysadmin";
+                body.invitation = "";
             }
             if (!!body.type === false) {
                 body.type = "web";
@@ -1240,7 +1240,6 @@
     size={"lg"}
 >
   <ModalBody>
-
     <Label for="resource_type" class="mt-3">Resource type</Label>
     <Input
       id="resource_type"
@@ -1780,18 +1779,18 @@
   >
     <div class="tab-pane" class:active={tab_option === "list"}>
       <ListView
-              {space_name}
-              {subpath}
-              folderColumns={entry?.payload?.body?.index_attributes ?? null}
-              sort_by={entry?.payload?.body?.sort_by ?? null}
-              sort_order={entry?.payload?.body?.sort_order ?? null}
-              canDelete={canDelete}
+        {space_name}
+        {subpath}
+        folderColumns={entry?.payload?.body?.index_attributes ?? null}
+        sort_by={entry?.payload?.body?.sort_by ?? null}
+        sort_order={entry?.payload?.body?.sort_order ?? null}
+        canDelete={canDelete}
       />
     </div>
     <div class="tab-pane" class:active={tab_option === "source"}>
       <div
-              class="px-1 pb-1"
-              style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
+        class="px-1 pb-1"
+        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
       >
         <pre>
         {JSON.stringify(entry, undefined, 1)}
