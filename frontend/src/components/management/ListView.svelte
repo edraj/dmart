@@ -41,7 +41,6 @@
     subpath = $bindable(),
     shortname = $bindable(null),
     type = $bindable(QueryType.search),
-    columns = $bindable(null),
     folderColumns = $bindable(null),
     sort_by = $bindable(null),
     sort_order = $bindable(null),
@@ -53,7 +52,6 @@
     subpath?: string,
     shortname?: string,
     type?: QueryType,
-    columns?: any,
     folderColumns?: any,
     sort_by?: string,
     sort_order?: string,
@@ -62,9 +60,8 @@
     scope?: string,
   } = $props();
 
-  if (columns !== null && folderColumns !== null){
-      throw new Error('columns and folderColumns cannot co-exist!');
-  }
+  let columns = $state(null);
+
   if (folderColumns === null || folderColumns.length === 0) {
       columns = cols;
   } else {
@@ -77,10 +74,10 @@
       sort_by: (sortBy ?? sort_by) || "shortname",
       sort_order: (sortOrder ?? sort_order) || "ascending",
   };
+
   let objectDatatable = $state(
       functionCreateDatatable({
           parData: [],
-          parSearchableColumns: Object.keys(columns),
           parRowsPerPage: (typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage") as `${number}`) || "15",
           parSearchString: "",
           parSortBy: (sortBy ?? sort_by) || "shortname",
@@ -88,6 +85,10 @@
           parActivePage: Number(page) || 1,
       })
   );
+
+  $effect(() => {
+      objectDatatable.arraySearchableColumns = Object.keys(columns);
+  });
 
   function value(path: string, data, type) {
     if (data === null) {
@@ -136,7 +137,7 @@
       } else {
         href += "&" + urlSearchParams.toString();
       }
-
+    //TODO: Fix this, url not being updated
     window.history.replaceState(history.state, '', href)
   }
 
@@ -242,10 +243,12 @@
       );
 
       // Trim leading or traling '/'
-      if (_subpath.length > 0 && subpath[0] === "/")
-        _subpath = _subpath.substring(1);
-      if (_subpath.length > 0 && _subpath[_subpath.length - 1] === "/")
-        _subpath = _subpath.slice(0, -1);
+      if (_subpath.length > 0 && subpath[0] === "/") {
+          _subpath = _subpath.substring(1);
+      }
+      if (_subpath.length > 0 && _subpath[_subpath.length - 1] === "/") {
+          _subpath = _subpath.slice(0, -1);
+      }
 
       $goto("/management/content/[space_name]/[subpath]", {
           space_name: space_name,
@@ -266,21 +269,6 @@
     ) {
       // objectDatatable.stringSortBy = "shortname";
       fetchPageRecords(true);
-    }
-  });
-
-  $effect(() => {
-    if (objectDatatable === undefined) {
-      objectDatatable = functionCreateDatatable({
-        parData: [],
-        parSearchableColumns: Object.keys(columns),
-        parRowsPerPage:
-          (typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage") as `${number}`) || "15",
-        parSearchString: "",
-        parSortBy: sortBy || "shortname",
-        parSortOrder: sortOrder || "ascending",
-        parActivePage: Number(page) || 1,
-      });
     }
   });
 
