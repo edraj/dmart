@@ -137,7 +137,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
     if query.search:
         if not query.search.startswith("@"):
             statement = statement.where(text(
-                f"to_tsvector(shortname || ' ' || tags || ' ' || displayname || ' ' || description) @@ to_tsquery('{query.search}:*')"
+                f"(shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload) ILIKE '%' || '{query.search}' || '%'"
             ))
         else:
             for k, v in parse_search_string(query.search, table).items():
@@ -147,6 +147,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 vv, v = validate_search_range(v)
                 if isinstance(v, str):
                     v = v.replace("!", "")
+
                 is_list = isinstance(v, list) or ("[" in v and "]" in v)
                 if is_list:
                     v = string_to_list(v)
@@ -171,6 +172,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 elif isinstance(v, str):
                     statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= '{v}'"))
                 else:
+
                     statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= {v}"))
 
     if query.filter_schema_names:
