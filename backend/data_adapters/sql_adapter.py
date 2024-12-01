@@ -137,7 +137,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
     if query.search:
         if not query.search.startswith("@"):
             statement = statement.where(text(
-                f"(shortname || ' ' || tags || ' ' || displayname || ' ' || description) ILIKE '%' || '{query.search}' || '%'"
+                f"(shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload) ILIKE '%' || '{query.search}' || '%'"
             ))
         else:
             for k, v in parse_search_string(query.search, table).items():
