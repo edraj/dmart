@@ -65,7 +65,7 @@ def process_attachments(session, space_folder):
 
         media_path = f"{dir_path}/attachments.{attachment.resource_type}"
         ensure_directory_exists(media_path)
-        if attachment.payload.get("body", None):
+        if attachment.payload.get("body", None) is not None:
             if attachment.payload["content_type"] == 'json':
                 write_json_file(f"{media_path}/{attachment.shortname}.json", attachment.payload.get("body", {}))
                 attachment.payload["body"] = f"{attachment.shortname}.json"
@@ -89,16 +89,16 @@ def process_entries(session, space_folder):
             ensure_directory_exists(dir_meta_path)
             _entry = entry.model_dump()
             body = None
-            if payload := _entry.get("payload", {}):
-                if payload.get("body", None):
-                    body = payload["body"]
+            if _entry.get("payload", None) is not None:
+                if _entry.get("payload", None).get("body", None) is not None:
+                    body = _entry.get("payload", None)["body"]
                 _entry["payload"]["body"] = f"{entry.shortname}.json"
             del _entry["space_name"]
             del _entry["subpath"]
             del _entry["resource_type"]
 
             write_json_file(f"{dir_meta_path}/meta.folder.json", _entry)
-            if body:
+            if body is not None:
                 write_json_file(f"{dir_path}/{entry.shortname}.json", body)
             continue
 
@@ -115,9 +115,9 @@ def process_entries(session, space_folder):
                 print(f"Warning : empty content type for @{entry.space_name}:{entry.subpath}/{entry.shortname}")
             elif entry.payload["content_type"] == core.ContentType.json:
 
-                if body := _entry["payload"].get("body", None):
-                    if isinstance(body, dict):
-                        write_json_file(f"{dir_path}/{entry.shortname}.json", body)
+                if _entry["payload"].get("body", None) is not None:
+                    if isinstance(_entry["payload"].get("body", None), dict):
+                        write_json_file(f"{dir_path}/{entry.shortname}.json", _entry["payload"].get("body", None))
 
                     _entry["payload"]["body"] = f"{entry.shortname}.json"
             else:
