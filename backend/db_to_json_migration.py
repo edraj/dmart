@@ -114,11 +114,11 @@ def process_entries(session, space_folder):
             if "content_type" not in entry.payload:
                 print(f"Warning : empty content type for @{entry.space_name}:{entry.subpath}/{entry.shortname}")
             elif entry.payload["content_type"] == core.ContentType.json:
-                if _entry["payload"]["body"]:
-                    write_json_file(
-                        f"{dir_path}/{entry.shortname}.json",
-                        _entry["payload"]["body"]
-                    )
+
+                if body := _entry["payload"].get("body", None):
+                    if isinstance(body, dict):
+                        write_json_file(f"{dir_path}/{entry.shortname}.json", body)
+
                     _entry["payload"]["body"] = f"{entry.shortname}.json"
             else:
                 print(f"Unprocessed content type({entry.payload['content_type']}): @{entry.space_name}:{entry.subpath}/{entry.shortname}")

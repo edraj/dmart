@@ -109,7 +109,23 @@ async def hard_space_check(space):
 
             payload : core.Payload
             if entry.payload and isinstance(entry.payload, dict):
-                payload = core.Payload.model_validate(entry.payload)
+                try:
+                    payload = core.Payload.model_validate(entry.payload)
+                except Exception as e:
+                    issue = {
+                        "issues": ["payload"],
+                        "uuid": str(target_space.uuid),
+                        "shortname": target_space.shortname,
+                        "resource_type": 'space',
+                        "exception": str(e),
+                    }
+                    if folders_report['/'].get("invalid_entries", None) is None:
+                        folders_report['/']["invalid_entries"] = []
+                    folders_report['/']["invalid_entries"] = [
+                        *folders_report['/']["invalid_entries"],
+                        issue
+                    ]
+                    continue
             elif isinstance(entry.payload, core.Payload):
                 payload = entry.payload
             else:
