@@ -114,8 +114,8 @@ async def hard_space_check(space):
                 except Exception as e:
                     issue = {
                         "issues": ["payload"],
-                        "uuid": str(target_space.uuid),
-                        "shortname": target_space.shortname,
+                        "uuid": str(entry.uuid),
+                        "shortname": entry.shortname,
                         "resource_type": 'space',
                         "exception": str(e),
                     }
