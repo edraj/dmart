@@ -1295,12 +1295,22 @@
   toggle={modalToggle}
   size={new_resource_type === "schema" ? "xl" : "lg"}
 >
-<ModalHeader toggle={modalToggle}>
-  Creating a {new_resource_type} under
-  <span class="text-success">{space_name}</span>/<span class="text-primary"
->{subpath}</span
->
-</ModalHeader>
+<!--<ModalHeader toggle={modalToggle}>-->
+<!--  Creating a {new_resource_type} under-->
+<!--  <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>-->
+<!--</ModalHeader>-->
+
+  <div class="modal-header">
+    <h5 class="modal-title">
+      Creating a {new_resource_type} under
+      <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>
+    </h5>
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <button type="button" onclick={modalToggle} class="btn-close" aria-label="Close">
+    </button>
+  </div>
+
 <Form on:submit={async (e) => await handleSubmit(e)}>
   <ModalBody>
     <FormGroup>

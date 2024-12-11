@@ -368,7 +368,18 @@
     toggle={toggelModal}
     size={"lg"}
   >
-    <ModalHeader toggle={toggelModal}>{modalData.shortname}</ModalHeader>
+<!--    <ModalHeader toggle={toggelModal}>{}</ModalHeader>-->
+
+    <div class="modal-header">
+      <h5 class="modal-title">
+        {modalData.shortname}
+      </h5>
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <button type="button" onclick={toggelModal} class="btn-close" aria-label="Close">
+      </button>
+    </div>
+
     <ModalBody>
       <Prism code={modalData} />
     </ModalBody>

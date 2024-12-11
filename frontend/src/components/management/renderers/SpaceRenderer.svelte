@@ -227,7 +227,14 @@
 <svelte:window on:beforeunload={beforeUnload} />
 
 <Modal isOpen={isModalOpen} toggle={toggelModal} size={"lg"}>
-  <ModalHeader toggle={toggelModal} />
+<!--  <ModalHeader toggle={toggelModal} />-->
+
+  <div class="modal-header">
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <button type="button" onclick={toggelModal} class="btn-close" aria-label="Close">
+    </button>
+  </div>
   <Form on:submit={async (e) => await handleSubmit(e)}>
     <ModalBody>
       <FormGroup>
