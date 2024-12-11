@@ -11,6 +11,7 @@ import sqlalchemy
 from fastapi import status
 from fastapi.logger import logger
 from sqlalchemy import text, func
+from sqlalchemy.orm import load_only
 from sqlmodel import create_engine, Session, select, col, delete, update
 import io
 
@@ -200,6 +201,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         statement = statement.where(table.created_at >= query.from_date)
     if query.to_date:
         statement = statement.where(table.created_at <= query.to_date)
+
     try:
         if not is_for_count:
             if query.sort_by:
@@ -215,6 +217,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         statement = statement.order_by(getattr(table, query.sort_by))
                     if query.sort_type == SortType.descending:
                         statement = statement.order_by(getattr(table, query.sort_by).desc())
+
     except Exception as e:
         print("[!set_sql_statement_from_query]", e)
 
@@ -513,6 +516,13 @@ class SQLAdapter(BaseDataAdapter):
                 total = session.exec(statement_total).one()
                 if query.type == QueryType.counters:
                     return total, []
+
+                # TODO EFFECIVENESS
+                # if not query.retrieve_json_payload:
+                #     cols = list(table.model_fields.keys())
+                #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
+                #     statement = statement.options(load_only(*cols))
+
                 results = list(session.exec(statement).all())
                 if len(results) == 0:
                     return 0, []
@@ -1303,6 +1313,13 @@ class SQLAdapter(BaseDataAdapter):
 
     async def _set_query_final_results(self, table, query, results):
         for idx, item in enumerate(results):
+            if not query.retrieve_json_payload:
+                if results[idx].payload and results[idx].payload.get("body", False):
+                    results[idx].payload = {
+                        **results[idx].payload,
+                        "body": None
+                    }
+
             if query.type == QueryType.aggregation:
                 results = set_results_from_aggregation(
                     query, item, results, idx
@@ -1311,6 +1328,7 @@ class SQLAdapter(BaseDataAdapter):
                 results[idx] = table.model_validate(item).to_record(
                     query.subpath, item.shortname
                 )
+
             if query.type not in [QueryType.history, QueryType.events]:
                 if query.retrieve_attachments:
                     results[idx].attachments = await self.get_entry_attachments(
