@@ -295,6 +295,12 @@
   size="lg"
 >
   <ModalHeader toggle={toggleCurl}/>
+  <div class="modal-header">
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <button type="button" onclick={toggleCurl} class="btn-close" aria-label="Close">
+    </button>
+  </div>
   <Prism language="bash" code={curl} />
 </Modal>
 
