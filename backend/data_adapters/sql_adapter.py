@@ -1186,7 +1186,7 @@ class SQLAdapter(BaseDataAdapter):
                     ),
                 )
 
-            if settings.jwt_access_expires + active_session.timestamp.timestamp() < time.time():
+            if settings.session_inactivity_ttl + active_session.timestamp.timestamp() < time.time():
                 await self.remove_sql_active_session(user_shortname)
                 return None
             return active_session.token
@@ -1201,7 +1201,7 @@ class SQLAdapter(BaseDataAdapter):
 
             user_session = Sessions.model_validate(result)
 
-            if settings.jwt_access_expires + user_session.timestamp.timestamp() < time.time():
+            if settings.session_inactivity_ttl + user_session.timestamp.timestamp() < time.time():
                 await self.remove_sql_user_session(user_shortname)
                 return None
             return user_session.token
