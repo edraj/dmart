@@ -409,7 +409,6 @@
   toggle={toggleMetaEditAttachmentModal}
   size={"lg"}
 >
-  <ModalHeader />
   <ModalBody>
     <JSONEditor
       onRenderMenu={handleRenderMenu}
@@ -434,11 +433,22 @@
   toggle={toggleCreateAttachemntModal}
   size={"lg"}
 >
-  <ModalHeader toggle={toggleCreateAttachemntModal}>
-    <h3>
+<!--  <ModalHeader toggle={toggleCreateAttachemntModal}>-->
+<!--    <h3>-->
+<!--      {isModalInUpdateMode ? "Update attachment" : "Add attachment"}-->
+<!--    </h3>-->
+<!--  </ModalHeader>-->
+
+  <div class="modal-header">
+    <h5 class="modal-title">
       {isModalInUpdateMode ? "Update attachment" : "Add attachment"}
-    </h3>
-  </ModalHeader>
+    </h5>
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <button type="button" onclick={toggleCreateAttachemntModal} class="btn-close" aria-label="Close">
+    </button>
+  </div>
+
   <ModalBody>
     <div class="d-flex flex-column">
       <Label>Attachment shortname</Label>
@@ -569,7 +579,6 @@
   toggle={toggleViewAttachmentModal}
   size={"lg"}
 >
-  <ModalHeader />
   <ModalBody>
     <JSONEditor
       onRenderMenu={handleRenderMenu}
