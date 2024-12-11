@@ -1313,13 +1313,6 @@ class SQLAdapter(BaseDataAdapter):
 
     async def _set_query_final_results(self, table, query, results):
         for idx, item in enumerate(results):
-            if not query.retrieve_json_payload:
-                if results[idx].payload and results[idx].payload.get("body", False):
-                    results[idx].payload = {
-                        **results[idx].payload,
-                        "body": None
-                    }
-
             if query.type == QueryType.aggregation:
                 results = set_results_from_aggregation(
                     query, item, results, idx
@@ -1330,6 +1323,14 @@ class SQLAdapter(BaseDataAdapter):
                 )
 
             if query.type not in [QueryType.history, QueryType.events]:
+                if not query.retrieve_json_payload:
+                    if (results[idx].attributes
+                            and results[idx].attributes.get("payload", {})
+                            and results[idx].attributes.get("payload", {}).get("body", False)):
+                        results[idx].attributes["payload"] = {
+                            **results[idx].attributes["payload"],
+                            "body": None
+                        }
                 if query.retrieve_attachments:
                     results[idx].attachments = await self.get_entry_attachments(
                         query.subpath,
