@@ -30,6 +30,9 @@ def ensure_directory_exists(path: str):
     os.makedirs(path, exist_ok=True)
 
 def clean_json(data: dict):
+    if not isinstance(data, dict):
+        return data
+
     for key, value in list(data.items()):
         if key in ["tags", "mirrors", "active_plugins", "roles", "groups"]:
             continue
