@@ -185,7 +185,7 @@
     let jseModalMeta: any = $state({text: "{}"});
     let jseModalContentRef: any = $state();
     let jseModalContent: any = $state({text: "{}"});
-    let formModalContent: any = $state();
+    let formModalContent: any = $state({});
     let formModalContentPayload: any = $state({json: {}, text: undefined});
     let isNewEntryHasRelationship = $state(false);
     let relationshipModalContent = $state(null);
@@ -617,13 +617,13 @@
                 formModalContent.forEach(item => {
                     body[item.key] = item.value;
                 });
-                body = structuredClone(body);
+                body = structuredClone($state.snapshot(body));
                 if (typeof body.roles === 'string') {
                     body.roles = body.roles.split(",");
                 }
 
                 const formModalContentPayloadJson = formModalContentPayload.json
-                    ? structuredClone(formModalContentPayload.json)
+                    ? structuredClone($state.snapshot(formModalContentPayload).json)
                     : JSON.parse(formModalContentPayload.text);
 
                 if (Object.keys(formModalContentPayloadJson).length) {
@@ -1487,9 +1487,9 @@
       {/if}
       <hr/>
       <Input
-              bind:checked={isNewEntryHasRelationship}
-              type="checkbox"
-              label="Add relationship ?"
+          bind:checked={isNewEntryHasRelationship}
+          type="checkbox"
+          label="Add relationship ?"
       />
       {#if isNewEntryHasRelationship}
         <RelationshipForm bind:content={relationshipModalContent}/>

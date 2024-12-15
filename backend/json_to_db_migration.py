@@ -1,5 +1,5 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
-
+import hashlib
 import json
 import logging
 import os
@@ -9,7 +9,7 @@ from uuid import uuid4
 from sqlmodel import Session, create_engine, text
 
 from utils.database.create_tables import Entries, Users, generate_tables, Attachments, \
-    Roles, Permissions, Histories, Spaces
+    Roles, Permissions, Spaces, Histories
 from utils.settings import settings
 
 logging.basicConfig()
@@ -33,9 +33,10 @@ try:
     session = Session(engine)
     sql = f"CREATE DATABASE {settings.database_name}"
     session.execute(text(sql))
-    engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 except Exception as e:
     print(e)
+finally:
+    engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 
 try:
     generate_tables()
@@ -64,7 +65,7 @@ with Session(engine) as session:
             continue
 
         if space_name.startswith('.git'):
-            continue 
+            continue
 
         print(f"Processing {space_name}/{subpath} ... ")
         if subpath == '' or subpath == '/':
@@ -85,6 +86,10 @@ with Session(engine) as session:
                                 ))
                             else:
                                 body = payload
+                            sha1 = hashlib.sha1()
+                            sha1.update(json.dumps(body).encode())
+                            checksum = sha1.hexdigest()
+                            entry['payload']['checksum'] = checksum
                             entry['payload']['body'] = body
                     else:
                         entry['payload'] = None
@@ -161,7 +166,10 @@ with Session(engine) as session:
                                     _attachment_body = json.load(open(os.path.join(root, dir, _body)))
                                     _attachment['payload']['body'] = _attachment_body
                                 elif _body:
-                                    _attachment['media'] = open(os.path.join(root, dir, _body), 'rb').read()
+                                    if  _attachment.get('payload', {}).get('content_type', False):
+                                        _attachment['media'] = _body
+                                    else:
+                                        _attachment['media'] = open(os.path.join(root, dir, _body), 'rb').read()
                                 if _attachment.get('payload', None) is None:
                                     _attachment['payload'] = {}
                             try:
@@ -188,6 +196,11 @@ with Session(engine) as session:
                                         print(e)
                                 else:
                                     body = payload
+
+                                sha1 = hashlib.sha1()
+                                sha1.update(json.dumps(body).encode())
+                                checksum = sha1.hexdigest()
+                                entry['payload']['checksum'] = checksum
                                 entry['payload']['body'] = body
                         else:
                             entry['payload'] = None
@@ -252,4 +265,3 @@ with Session(engine) as session:
 
 if settings.active_data_db == 'file':
     print("[Warning] you are using active_data_db='file', please don't forget to set it to active_data_db='sql' in your config.env")
-
