@@ -11,7 +11,6 @@ import sqlalchemy
 from fastapi import status
 from fastapi.logger import logger
 from sqlalchemy import text, func
-from sqlalchemy.orm import load_only
 from sqlmodel import create_engine, Session, select, col, delete, update
 import io
 
