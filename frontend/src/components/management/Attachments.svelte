@@ -255,7 +255,7 @@
       ].includes(contentType)
     ) {
       let _payloadContent = payloadContent.json
-        ? structuredClone(payloadContent.json)
+        ? structuredClone($state.snapshot(payloadContent).json)
         : JSON.parse(payloadContent.text ?? "{}");
       let request_dict = {
         space_name,
@@ -312,8 +312,8 @@
     }
 
     let _payloadContent = payloadContent.json
-      ? structuredClone(payloadContent.json)
-      : JSON.parse(payloadContent.text ?? "{}");
+      ? structuredClone($state.snapshot(payloadContent).json)
+      : JSON.parse($state.snapshot(payloadContent).text ?? "{}");
 
     _payloadContent.subpath = `${subpath}/${parent_shortname}`;
     const request_dict = {
