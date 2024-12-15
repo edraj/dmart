@@ -69,7 +69,7 @@
     // }
     errorContent = null;
     const data = content.json
-      ? structuredClone(content.json)
+      ? structuredClone($state.snapshot(content).json)
       : JSON.parse(content.text);
     const response = await space({
       space_name: current_space.shortname,
@@ -85,7 +85,7 @@
     });
     if (response.status == Status.success) {
       showToast(Level.info);
-      oldContent = structuredClone(content);
+      oldContent = structuredClone($state.snapshot(content));
     } else {
       errorContent = response;
       showToast(Level.warn);

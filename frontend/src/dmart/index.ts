@@ -41,7 +41,14 @@ axios.interceptors.response.use(
         }
 
         if (error.code === "ERR_NETWORK") {
-            isNetworkError.set(true);
+            showToast(
+                Level.warn,
+                "Something went wrong with the network. Please check your connection.",
+                {
+                    dismissable: true,
+                    initial: 0,
+                }
+            );
         }
 
         if (
@@ -50,6 +57,8 @@ axios.interceptors.response.use(
         ) {
             await signout();
         }
+
+        console.log(error.response)
 
         if (Object.keys(error?.response?.data || {}).includes("Log-Id")) {
             showToast(
@@ -60,6 +69,8 @@ axios.interceptors.response.use(
                     initial: 0,
                 }
             );
+        } else {
+
         }
 
         isLoading.update((n) => n - 1);
