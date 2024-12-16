@@ -248,8 +248,11 @@ async def middle(request: Request, call_next):
     start_time = time.time()
     response_body: str | dict = {}
     exception_data: dict[str, Any] | None = None
+
+
     try:
-        response = await call_next(request)
+
+        response = await asyncio.wait_for(call_next(request), timeout=settings.request_timeout)
         raw_response = [section async for section in response.body_iterator]
         response.body_iterator = iterate_in_threadpool(iter(raw_response))
         raw_data = b"".join(raw_response)
@@ -258,6 +261,11 @@ async def middle(request: Request, call_next):
                 response_body = json.loads(raw_data)
             except Exception:
                 response_body = {}
+    except asyncio.TimeoutError:
+        response = JSONResponse(content={'status':'failed',
+            'error': {"code":504, "message": 'Request processing time excedeed limit'}},
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT)
+        response_body = json.loads(str(response.body, 'utf8'))
     except api.Exception as e:
         response = JSONResponse(
             status_code=e.status_code,
