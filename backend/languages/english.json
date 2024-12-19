@@ -1,5 +1,6 @@
 {
     "invitation_message": "Congratulations, your account is now created, please follow this link to confirm and login: {link} This link can be used once and within the next 48 hours.",
+    "reset_message": "A password reset link has been sent to your email. {link} This link can be used once and within the next 48 hours.",
     "rejected": "rejected",
     "accepted": "accepted",
     "pending": "pending",

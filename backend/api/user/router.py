@@ -887,7 +887,7 @@ async def user_reset(
                 msisdn=user.msisdn,
                 message=languages[
                     user.language
-                ]["invitation_message"].replace(
+                ]["reset_message"].replace(
                     "{link}",
                     sms_link
                 ),
