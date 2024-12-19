@@ -1198,6 +1198,11 @@ class SQLAdapter(BaseDataAdapter):
             if settings.session_inactivity_ttl + active_session.timestamp.timestamp() < time.time():
                 await self.remove_sql_active_session(user_shortname)
                 return None
+
+            result.timestamp = datetime.now()
+            session.add(result)
+            session.commit()
+
             return active_session.token
 
     async def get_sql_user_session(self, user_shortname: str) -> str | None:
@@ -1213,6 +1218,11 @@ class SQLAdapter(BaseDataAdapter):
             if settings.session_inactivity_ttl + user_session.timestamp.timestamp() < time.time():
                 await self.remove_sql_user_session(user_shortname)
                 return None
+
+            result.timestamp = datetime.now()
+            session.add(result)
+            session.commit()
+
             return user_session.token
 
     async def remove_sql_active_session(self, user_shortname: str) -> bool:
