@@ -484,8 +484,7 @@ async def update_profile(
         if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
             await update_user_payload(profile, profile_user, user, shortname)
 
-    print("user.is_active", user.is_active)
-    if user.is_active == True and profile_user.attributes.get("is_active", None) == False:
+    if user.is_active == True and profile.attributes.get("is_active", None) == False:
         await db.remove_sql_active_session(user.shortname)
         await db.remove_sql_user_session(user.shortname)
 
