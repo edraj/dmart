@@ -484,6 +484,10 @@ async def update_profile(
         if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
             await update_user_payload(profile, profile_user, user, shortname)
 
+    if user.is_active == True and profile.attributes.get("is_active", None) == False:
+        await db.remove_sql_active_session(user.shortname)
+        await db.remove_sql_user_session(user.shortname)
+
     history_diff = await db.update(
         MANAGEMENT_SPACE,
         USERS_SUBPATH,
@@ -1001,6 +1005,9 @@ async def handle_failed_login_attempt(user: core.User):
 
             old_version_flattend = flatten_dict(user.model_dump())
             user.is_active = False
+
+            await db.remove_sql_active_session(user.shortname)
+            await db.remove_sql_user_session(user.shortname)
 
             await db.update(
                 MANAGEMENT_SPACE,
