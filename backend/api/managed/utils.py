@@ -518,10 +518,11 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 )
 
             if (
-                    isinstance(resource_obj, core.User) and
-                    record.attributes.get("is_active") is False
+                isinstance(resource_obj, core.User) and
+                record.attributes.get("is_active") is False
             ):
-                await remove_active_session(record.shortname)
+                await db.remove_sql_active_session(record.shortname)
+                await db.remove_sql_user_session(record.shortname)
 
             records.append(
                 resource_obj.to_record(

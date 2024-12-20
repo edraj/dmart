@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 from sqlalchemy import JSON, LargeBinary
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
 from sqlmodel._compat import SQLModelConfig
 from utils.helpers import camel_case, remove_none_dict
@@ -48,15 +49,15 @@ class Metas(Unique, table=False):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     is_active: bool = False
     slug: str | None = None
-    displayname: dict | core.Translation | None = Field(default=None, sa_type=JSON)
-    description: dict | core.Translation | None = Field(default=None, sa_type=JSON)
-    tags: list[str] = Field(default_factory=dict, sa_type=JSON)
+    displayname: dict | core.Translation | None = Field(default=None, sa_type=JSONB)
+    description: dict | core.Translation | None = Field(default=None, sa_type=JSONB)
+    tags: list[str] = Field(default_factory=dict, sa_type=JSONB)
     created_at: datetime | None = None
     updated_at: datetime | None = None
     owner_shortname: str | None = None
-    acl: list[core.ACL] | None = Field(default=[], sa_type=JSON)
-    payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSON)
-    relationships: list[core.Relationship] | None = Field(default=[], sa_type=JSON)
+    acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
+    payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
+    relationships: list[core.Relationship] | None = Field(default=[], sa_type=JSONB)
 
     resource_type: str = Field()
     @staticmethod
@@ -165,10 +166,10 @@ class Metas(Unique, table=False):
 
 class Users(Metas, table=True):
     password: str | None = None
-    roles: list[str] = Field(default_factory=dict, sa_type=JSON)
-    groups: list[str] = Field(default_factory=dict, sa_type=JSON)
-    acl: list[core.ACL] | None = Field(default=[], sa_type=JSON)
-    relationships: list[core.Relationship] | None = Field(default_factory=None, sa_type=JSON)
+    roles: list[str] = Field(default_factory=dict, sa_type=JSONB)
+    groups: list[str] = Field(default_factory=dict, sa_type=JSONB)
+    acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
+    relationships: list[core.Relationship] | None = Field(default_factory=None, sa_type=JSONB)
     type: UserType = Field(default=UserType.web)
     # language: Language = Field(default=Language.en)
     language: Language = Field(Column(Enum(Language)))
@@ -185,25 +186,25 @@ class Users(Metas, table=True):
 
 
 class Roles(Metas, table=True):
-    permissions: list[str] = Field(default_factory=dict, sa_type=JSON)
+    permissions: list[str] = Field(default_factory=dict, sa_type=JSONB)
 
 
 class Permissions(Metas, table=True):
-    subpaths: dict = Field(default_factory=dict, sa_type=JSON)
-    resource_types: list[str] = Field(default_factory=dict, sa_type=JSON)
-    actions: list[str] = Field(default_factory=dict, sa_type=JSON)
-    conditions: list[str] = Field(default_factory=dict, sa_type=JSON)
-    restricted_fields: list[str] | None = Field(default_factory=None, sa_type=JSON)
-    allowed_fields_values: dict | list[dict] | None = Field(default_factory=None, sa_type=JSON)
+    subpaths: dict = Field(default_factory=dict, sa_type=JSONB)
+    resource_types: list[str] = Field(default_factory=dict, sa_type=JSONB)
+    actions: list[str] = Field(default_factory=dict, sa_type=JSONB)
+    conditions: list[str] = Field(default_factory=dict, sa_type=JSONB)
+    restricted_fields: list[str] | None = Field(default_factory=None, sa_type=JSONB)
+    allowed_fields_values: dict | list[dict] | None = Field(default_factory=None, sa_type=JSONB)
 
 
 class Entries(Metas, table=True):
     # Tickets
     state: str | None = None
     is_open: bool | None = None
-    reporter: dict | core.Reporter | None = Field(None, default_factory=None, sa_type=JSON)
+    reporter: dict | core.Reporter | None = Field(None, default_factory=None, sa_type=JSONB)
     workflow_shortname: str | None = None
-    collaborators: dict[str, str] | None = Field(None, default_factory=None, sa_type=JSON)
+    collaborators: dict[str, str] | None = Field(None, default_factory=None, sa_type=JSONB)
     resolution_reason: str | None = None
 
 
@@ -215,8 +216,8 @@ class Attachments(Metas, table=True):
 
 class Histories(SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    request_headers: dict = Field(default_factory=dict, sa_type=JSON)
-    diff: dict = Field(default_factory=dict, sa_type=JSON)
+    request_headers: dict = Field(default_factory=dict, sa_type=JSONB)
+    diff: dict = Field(default_factory=dict, sa_type=JSONB)
     timestamp: datetime = Field(default_factory=datetime.now)
     owner_shortname: str | None = None
 
@@ -262,12 +263,12 @@ class Spaces(Metas, table=True):
     indexing_enabled: bool = False
     capture_misses: bool = False
     check_health: bool = False
-    languages: list[Language] = Field(default_factory=list, sa_type=JSON)
+    languages: list[Language] = Field(default_factory=list, sa_type=JSONB)
     icon: str = ""
-    mirrors: list[str] | None = Field(default_factory=None, sa_type=JSON)
-    hide_folders: list[str] | None = Field(default_factory=None, sa_type=JSON)
+    mirrors: list[str] | None = Field(default_factory=None, sa_type=JSONB)
+    hide_folders: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     hide_space: bool | None = None
-    active_plugins: list[str] | None = Field(default_factory=None, sa_type=JSON)
+    active_plugins: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     ordinal: int | None = None
 
 
@@ -284,8 +285,8 @@ class Aggregated(Unique, table=False):
     uuid: UUID | None = None
     slug: str | None = None
     is_active: bool | None = None
-    displayname: dict | core.Translation | None = Field(default_factory=None, sa_type=JSON)
-    description: dict | core.Translation | None = Field(default_factory=None, sa_type=JSON)
+    displayname: dict | core.Translation | None = Field(default_factory=None, sa_type=JSONB)
+    description: dict | core.Translation | None = Field(default_factory=None, sa_type=JSONB)
     tags: list[str]| None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -337,7 +338,7 @@ class Locks(Unique, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     owner_shortname: str = Field(regex=regex.SHORTNAME)
     timestamp: datetime = Field(default_factory=datetime.now)
-    payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSON)
+    payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
 
 
 class Sessions(SQLModel, table=True):
