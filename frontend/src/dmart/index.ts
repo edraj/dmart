@@ -6,6 +6,8 @@ import {signout} from "@/stores/user";
 import {website} from "@/config";
 import {isNetworkError} from "@/stores/management/error_network";
 
+axios.defaults.timeout = 40000;
+
 axios.defaults.withCredentials = true;
 
 axios.interceptors.request.use(
@@ -36,6 +38,17 @@ axios.interceptors.response.use(
         return response;
     },
     async function (error) {
+        if (error.code === "ECONNABORTED") {
+            showToast(
+                Level.warn,
+                "Connection times out. Please try again.",
+                {
+                    dismissable: true,
+                    initial: 0,
+                }
+            );
+        }
+
         if (error.name === "CanceledError") {
             return Promise.reject(error);
         }
