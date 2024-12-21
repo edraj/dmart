@@ -261,7 +261,7 @@ class SQLAdapter(BaseDataAdapter):
     def __init__(self):
         self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
         connection_string = f"{self.database_connection_string}/{settings.database_name}"
-        engine = create_engine(connection_string, echo=False, pool_size=75)
+        engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
         self.session = Session(engine)
 
 
