@@ -1,15 +1,16 @@
-import bcrypt
+from argon2 import PasswordHasher
+
+ph = PasswordHasher(
+    memory_cost=102400,
+    time_cost=1,
+    parallelism=8
+)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
-        return bcrypt.checkpw(
-            plain_password.encode('utf-8'), 
-            hashed_password.encode('utf-8')
-        )
+        return ph.verify(hashed_password, plain_password)
     except Exception:
         return False
 
 def hash_password(password: str) -> str:
-    bytes = password.encode('utf-8')
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(bytes, salt).decode("ascii")
+    return ph.hash(password)
