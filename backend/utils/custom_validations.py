@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Any
 import aiofiles
 from fastapi import status
@@ -84,6 +85,63 @@ def get_schema_path(space_name: str, schema_shortname: str):
 async def validate_uniqueness(
     space_name: str, record: Record, action: str = RequestType.create
 ):
+    if settings.active_data_db == "file":
+        return await validate_uniqueness_file(space_name, record, action)
+    else:
+        return await validate_uniqueness_sql(space_name, record, action)
+
+
+async def validate_uniqueness_sql(
+    space_name: str, record: Record, action: str = RequestType.create
+):
+    """
+    Get list of unique fields from entry's folder meta data
+    ensure that each sub-list in the list is unique across all entries
+    """
+    parent_subpath, folder_shortname = os.path.split(record.subpath)
+    folder_meta = await db.load(space_name, parent_subpath, folder_shortname, core.Folder)
+
+    if folder_meta and  not isinstance(folder_meta.payload.body.get("unique_fields", None), list):
+        return True
+
+    entry_dict_flattened: dict[Any, Any] = flatten_list_of_dicts_in_dict(
+        flatten_dict(record.attributes)
+    )
+
+    for composite_unique_keys in folder_meta.payload.body["unique_fields"]:
+        query_conditions = []
+        for unique_key in composite_unique_keys:
+            if unique_key not in entry_dict_flattened:
+                continue
+            query_conditions.append(f"{unique_key} = :{unique_key}")
+
+        if not query_conditions:
+            continue
+
+        query_str = f"SELECT COUNT(*) FROM {space_name} WHERE {' AND '.join(query_conditions)}"
+        if action == RequestType.update:
+            query_str += " AND shortname != :shortname"
+
+        params = {key: entry_dict_flattened[key] for key in composite_unique_keys if key in entry_dict_flattened}
+        params["shortname"] = record.shortname
+
+        result = await db.execute(query_str, params)
+        count = result.scalar()
+
+        if count > 0:
+            raise API_Exception(
+                status.HTTP_400_BAD_REQUEST,
+                API_Error(
+                    type="request",
+                    code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
+                    message=f"Entry should have unique values on the following fields: {', '.join(composite_unique_keys)}",
+                ),
+            )
+
+
+async def validate_uniqueness_file(
+    space_name: str, record: Record, action: str = RequestType.create
+):
     """
     Get list of unique fields from entry's folder meta data
     ensure that each sub-list in the list is unique across all entries
@@ -119,9 +177,9 @@ async def validate_uniqueness(
         for unique_key in composite_unique_keys:
             base_unique_key = unique_key
             if unique_key.endswith("_unescaped"):
-                unique_key = unique_key.replace("_unescaped", "") 
+                unique_key = unique_key.replace("_unescaped", "")
             if unique_key.endswith("_replace_specials"):
-                unique_key = unique_key.replace("_replace_specials", "") 
+                unique_key = unique_key.replace("_replace_specials", "")
             if not entry_dict_flattened.get(unique_key, None) :
                 continue
 
@@ -151,7 +209,7 @@ async def validate_uniqueness(
                     .translate(redis_replace_chars)
                     .replace("\\\\", "\\")
                 )
-                
+
             elif(
                 isinstance(entry_dict_flattened[unique_key], list)
             ):
@@ -181,7 +239,7 @@ async def validate_uniqueness(
                     + f":[{entry_dict_flattened[unique_key]} {entry_dict_flattened[unique_key]}]"
                 )
 
-            
+
 
             else:
                 continue
