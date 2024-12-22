@@ -3,7 +3,7 @@ import os
 from typing import Any
 import aiofiles
 from fastapi import status
-
+from data_adapters.sql_adapter import SQLAdapter
 from models import core
 from models.core import Record
 from models.enums import RequestType
@@ -101,14 +101,14 @@ async def validate_uniqueness_sql(
     parent_subpath, folder_shortname = os.path.split(record.subpath)
     folder_meta = await db.load(space_name, parent_subpath, folder_shortname, core.Folder)
 
-    if folder_meta and  not isinstance(folder_meta.payload.body.get("unique_fields", None), list):
+    if folder_meta and folder_meta.payload and isinstance(folder_meta.payload.body, dict) and not isinstance(folder_meta.payload.body.get("unique_fields", None), list):
         return True
 
     entry_dict_flattened: dict[Any, Any] = flatten_list_of_dicts_in_dict(
         flatten_dict(record.attributes)
     )
 
-    for composite_unique_keys in folder_meta.payload.body["unique_fields"]:
+    for composite_unique_keys in folder_meta.payload.body["unique_fields"]:  # type: ignore
         query_conditions = []
         for unique_key in composite_unique_keys:
             if unique_key not in entry_dict_flattened:
@@ -125,18 +125,19 @@ async def validate_uniqueness_sql(
         params = {key: entry_dict_flattened[key] for key in composite_unique_keys if key in entry_dict_flattened}
         params["shortname"] = record.shortname
 
-        result = await db.execute(query_str, params)
-        count = result.scalar()
+        with SQLAdapter().get_session() as session:
+            result = await session.execute(query_str, params)
+            count = result.scalar()
 
-        if count > 0:
-            raise API_Exception(
-                status.HTTP_400_BAD_REQUEST,
-                API_Error(
-                    type="request",
-                    code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
-                    message=f"Entry should have unique values on the following fields: {', '.join(composite_unique_keys)}",
-                ),
-            )
+            if count > 0:
+                raise API_Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    API_Error(
+                        type="request",
+                        code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
+                        message=f"Entry should have unique values on the following fields: {', '.join(composite_unique_keys)}",
+                    ),
+                )
 
 
 async def validate_uniqueness_file(
