@@ -20,3 +20,4 @@ psycopg
 alembic
 jinja2
 pytest-cov
+argon2-cffi
