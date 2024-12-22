@@ -9,7 +9,7 @@ from uuid import uuid4
 from sqlmodel import Session, create_engine, text
 
 from utils.database.create_tables import Entries, Users, generate_tables, Attachments, \
-    Roles, Permissions, Spaces, Histories
+    Roles, Permissions, Spaces
 from utils.settings import settings
 
 logging.basicConfig()
