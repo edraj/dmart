@@ -1,8 +1,9 @@
 import json
+import os
 from typing import Any
 import aiofiles
 from fastapi import status
-
+from data_adapters.sql_adapter import SQLAdapter
 from models import core
 from models.core import Record
 from models.enums import RequestType
@@ -15,6 +16,8 @@ from pathlib import Path as FSPath
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 from data_adapters.adapter import data_adapter as db
+from sqlmodel import select, func, col
+from utils.database.create_tables import Entries
 
 
 async def validate_payload_with_schema(
@@ -84,6 +87,66 @@ def get_schema_path(space_name: str, schema_shortname: str):
 async def validate_uniqueness(
     space_name: str, record: Record, action: str = RequestType.create
 ):
+    if settings.active_data_db == "file":
+        return await validate_uniqueness_file(space_name, record, action)
+    else:
+        return await validate_uniqueness_sql(space_name, record, action)
+
+
+async def validate_uniqueness_sql(
+    space_name: str, record: Record, action: str = RequestType.create
+):
+    """
+    Get list of unique fields from entry's folder meta data
+    ensure that each sub-list in the list is unique across all entries
+    """
+    return True
+    parent_subpath, folder_shortname = os.path.split(record.subpath)
+    folder_meta = await db.load(space_name, parent_subpath, folder_shortname, core.Folder)
+
+    if folder_meta and folder_meta.payload and isinstance(folder_meta.payload.body, dict) and not isinstance(folder_meta.payload.body.get("unique_fields", None), list):
+        return True
+
+    entry_dict_flattened: dict[Any, Any] = flatten_list_of_dicts_in_dict(
+        flatten_dict(record.attributes)
+    )
+
+    for composite_unique_keys in folder_meta.payload.body["unique_fields"]:  # type: ignore
+        query_conditions = []
+        query = select(func.count(col(Entries.uuid))).where(Entries.space_name == space_name)
+        for unique_key in composite_unique_keys:
+            if unique_key not in entry_dict_flattened:
+                continue
+            query_conditions.append(f"{unique_key} = :{unique_key}")
+            # TBD FIXME query = query.where()
+
+        if not query_conditions:
+            continue
+
+        # TBD FIXME
+        # query_str = f"SELECT COUNT(*) FROM {space_name} WHERE {' AND '.join(query_conditions)}"
+        # if action == RequestType.update:
+        #     query_str += " AND shortname != :shortname"
+        #
+        # params = {key: entry_dict_flattened[key] for key in composite_unique_keys if key in entry_dict_flattened}
+        # params["shortname"] = record.shortname
+
+        with SQLAdapter().get_session() as session:
+            count = session.exec(query).one()
+            if count is not None and count > 0:
+                raise API_Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    API_Error(
+                        type="request",
+                        code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
+                        message=f"Entry should have unique values on the following fields: {', '.join(composite_unique_keys)}",
+                    ),
+                )
+
+
+async def validate_uniqueness_file(
+    space_name: str, record: Record, action: str = RequestType.create
+):
     """
     Get list of unique fields from entry's folder meta data
     ensure that each sub-list in the list is unique across all entries
@@ -119,9 +182,9 @@ async def validate_uniqueness(
         for unique_key in composite_unique_keys:
             base_unique_key = unique_key
             if unique_key.endswith("_unescaped"):
-                unique_key = unique_key.replace("_unescaped", "") 
+                unique_key = unique_key.replace("_unescaped", "")
             if unique_key.endswith("_replace_specials"):
-                unique_key = unique_key.replace("_replace_specials", "") 
+                unique_key = unique_key.replace("_replace_specials", "")
             if not entry_dict_flattened.get(unique_key, None) :
                 continue
 
@@ -151,7 +214,7 @@ async def validate_uniqueness(
                     .translate(redis_replace_chars)
                     .replace("\\\\", "\\")
                 )
-                
+
             elif(
                 isinstance(entry_dict_flattened[unique_key], list)
             ):
@@ -181,7 +244,7 @@ async def validate_uniqueness(
                     + f":[{entry_dict_flattened[unique_key]} {entry_dict_flattened[unique_key]}]"
                 )
 
-            
+
 
             else:
                 continue

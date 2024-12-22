@@ -1,3 +1,4 @@
+jsf
 types-psutil
 types-pyinstaller
 pyinstaller
