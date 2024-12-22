@@ -6,11 +6,11 @@ ph = PasswordHasher(
     parallelism=8
 )
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def verify_password(plain_password: str, hashed_password: str):
     try:
         return ph.verify(hashed_password, plain_password)
     except Exception:
         return False
 
-def hash_password(password: str) -> str:
+def hash_password(password: str):
     return ph.hash(password)
