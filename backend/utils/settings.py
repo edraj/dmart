@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     ldap_pass: str = ""
     max_query_limit: int = 10000
     session_inactivity_ttl: int = 60 * 60 * 24 * 7  # 7 days
+    request_timeout: int = 35 # In seconds the time of dmart requests.
 
     url_shorter_expires: int = 60 * 60 * 48  # 48 hours
 
