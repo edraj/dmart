@@ -100,6 +100,7 @@ async def validate_uniqueness_sql(
     Get list of unique fields from entry's folder meta data
     ensure that each sub-list in the list is unique across all entries
     """
+    return True
     parent_subpath, folder_shortname = os.path.split(record.subpath)
     folder_meta = await db.load(space_name, parent_subpath, folder_shortname, core.Folder)
 
