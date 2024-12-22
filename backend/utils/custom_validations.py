@@ -16,6 +16,8 @@ from pathlib import Path as FSPath
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 from data_adapters.adapter import data_adapter as db
+from sqlmodel import select, func, col
+from utils.database.create_tables import Entries
 
 
 async def validate_payload_with_schema(
@@ -110,26 +112,27 @@ async def validate_uniqueness_sql(
 
     for composite_unique_keys in folder_meta.payload.body["unique_fields"]:  # type: ignore
         query_conditions = []
+        query = select(func.count(col(Entries.uuid))).where(Entries.space_name == space_name)
         for unique_key in composite_unique_keys:
             if unique_key not in entry_dict_flattened:
                 continue
             query_conditions.append(f"{unique_key} = :{unique_key}")
+            # TBD FIXME query = query.where()
 
         if not query_conditions:
             continue
 
-        query_str = f"SELECT COUNT(*) FROM {space_name} WHERE {' AND '.join(query_conditions)}"
-        if action == RequestType.update:
-            query_str += " AND shortname != :shortname"
-
-        params = {key: entry_dict_flattened[key] for key in composite_unique_keys if key in entry_dict_flattened}
-        params["shortname"] = record.shortname
+        # TBD FIXME
+        # query_str = f"SELECT COUNT(*) FROM {space_name} WHERE {' AND '.join(query_conditions)}"
+        # if action == RequestType.update:
+        #     query_str += " AND shortname != :shortname"
+        #
+        # params = {key: entry_dict_flattened[key] for key in composite_unique_keys if key in entry_dict_flattened}
+        # params["shortname"] = record.shortname
 
         with SQLAdapter().get_session() as session:
-            result = await session.execute(query_str, params)
-            count = result.scalar()
-
-            if count > 0:
+            count = session.exec(query).one()
+            if count is not None and count > 0:
                 raise API_Exception(
                     status.HTTP_400_BAD_REQUEST,
                     API_Error(
