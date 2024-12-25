@@ -3,7 +3,6 @@ import os
 from typing import Any
 import aiofiles
 from fastapi import status
-from data_adapters.sql_adapter import SQLAdapter
 from models import core
 from models.core import Record
 from models.enums import QueryType, RequestType
@@ -16,8 +15,6 @@ from pathlib import Path as FSPath
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 from data_adapters.adapter import data_adapter as db
-from sqlmodel import select, func, col
-from utils.database.create_tables import Entries
 
 
 async def validate_payload_with_schema(
@@ -111,10 +108,10 @@ async def validate_uniqueness_sql(
     folder_meta = None
     try:
         folder_meta = await db.load(space_name, parent_subpath, folder_shortname, core.Folder)
-    except Exception as e:
+    except Exception:
         folder_meta = None
 
-    if folder_meta is None or folder_meta.payload is None or isinstance(folder_meta.payload.body, dict) == False or isinstance(folder_meta.payload.body.get("unique_fields", None), list) == False:
+    if folder_meta is None or folder_meta.payload is None or isinstance(folder_meta.payload.body, dict) == False or isinstance(folder_meta.payload.body.get("unique_fields", None), list) == False: # type: ignore
         return True
 
     print("@@@@@", folder_meta.payload)
