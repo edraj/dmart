@@ -108,11 +108,16 @@ async def validate_uniqueness_sql(
     ensure that each sub-list in the list is unique across all entries
     """
     parent_subpath, folder_shortname = os.path.split(record.subpath)
-    folder_meta = await db.load(space_name, parent_subpath, folder_shortname, core.Folder)
+    folder_meta = None
+    try:
+        folder_meta = await db.load(space_name, parent_subpath, folder_shortname, core.Folder)
+    except Exception as e:
+        folder_meta = None
 
-    if folder_meta and folder_meta.payload and isinstance(folder_meta.payload.body, dict) and not isinstance(folder_meta.payload.body.get("unique_fields", None), list):
+    if folder_meta is None or folder_meta.payload is None or isinstance(folder_meta.payload.body, dict) == False or isinstance(folder_meta.payload.body.get("unique_fields", None), list) == False:
         return True
 
+    print("@@@@@", folder_meta.payload)
 
     for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
         query_string = ""
