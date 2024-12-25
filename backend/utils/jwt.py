@@ -87,16 +87,21 @@ class JWTBearer():
             )
 
         if settings.one_session_per_user:
+            # FIXME TBD check the following if-body it doesn't seem right.
+            # why get_active_session is called w/o checking the returned value?
+            # Why does it not support jwt-token-only access? 
+            # Why did I have to fold the lines following the next one into the if-condition
+            # Why do we maintain session for all cases? basic jwt does not require a session in the sessions table.
             await get_active_session(user_shortname, auth_token)
 
-        user_session_token = await get_user_session(user_shortname)
-        if not isinstance(user_session_token, str):
-            raise api.Exception(
-                status.HTTP_401_UNAUTHORIZED,
-                api.Error(
-                    type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [3]"
-                ),
-            )
+            user_session_token = await get_user_session(user_shortname)
+            if not isinstance(user_session_token, str):
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [3]"
+                    ),
+                )
 
         return user_shortname 
 

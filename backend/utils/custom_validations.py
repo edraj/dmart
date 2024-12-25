@@ -3,21 +3,18 @@ import os
 from typing import Any
 import aiofiles
 from fastapi import status
-from data_adapters.sql_adapter import SQLAdapter
 from models import core
 from models.core import Record
-from models.enums import RequestType
+from models.enums import QueryType, RequestType
 from utils.helpers import csv_file_to_json, flatten_dict, flatten_list_of_dicts_in_dict
 from utils.internal_error_code import InternalErrorCode
 from utils.redis_services import RedisServices
-from models.api import Exception as API_Exception, Error as API_Error
+from models.api import Exception as API_Exception, Error as API_Error, Query
 from utils.settings import settings
 from pathlib import Path as FSPath
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 from data_adapters.adapter import data_adapter as db
-from sqlmodel import select, func, col
-from utils.database.create_tables import Entries
 
 
 async def validate_payload_with_schema(
@@ -93,6 +90,13 @@ async def validate_uniqueness(
         return await validate_uniqueness_sql(space_name, record, action)
 
 
+def get_nested_value(data, key):
+    keys = key.split('.')
+    for k in keys:
+        data = data[k]
+    return data
+
+
 async def validate_uniqueness_sql(
     space_name: str, record: Record, action: str = RequestType.create
 ):
@@ -100,48 +104,40 @@ async def validate_uniqueness_sql(
     Get list of unique fields from entry's folder meta data
     ensure that each sub-list in the list is unique across all entries
     """
-    return True
     parent_subpath, folder_shortname = os.path.split(record.subpath)
-    folder_meta = await db.load(space_name, parent_subpath, folder_shortname, core.Folder)
+    folder_meta = None
+    try:
+        folder_meta = await db.load(space_name, parent_subpath, folder_shortname, core.Folder)
+    except Exception:
+        folder_meta = None
 
-    if folder_meta and folder_meta.payload and isinstance(folder_meta.payload.body, dict) and not isinstance(folder_meta.payload.body.get("unique_fields", None), list):
+    if folder_meta is None or folder_meta.payload is None or isinstance(folder_meta.payload.body, dict) == False or isinstance(folder_meta.payload.body.get("unique_fields", None), list) == False: # type: ignore
         return True
 
-    entry_dict_flattened: dict[Any, Any] = flatten_list_of_dicts_in_dict(
-        flatten_dict(record.attributes)
-    )
+    print("@@@@@", folder_meta.payload)
 
-    for composite_unique_keys in folder_meta.payload.body["unique_fields"]:  # type: ignore
-        query_conditions = []
-        query = select(func.count(col(Entries.uuid))).where(Entries.space_name == space_name)
-        for unique_key in composite_unique_keys:
-            if unique_key not in entry_dict_flattened:
-                continue
-            query_conditions.append(f"{unique_key} = :{unique_key}")
-            # TBD FIXME query = query.where()
-
-        if not query_conditions:
-            continue
-
-        # TBD FIXME
-        # query_str = f"SELECT COUNT(*) FROM {space_name} WHERE {' AND '.join(query_conditions)}"
-        # if action == RequestType.update:
-        #     query_str += " AND shortname != :shortname"
-        #
-        # params = {key: entry_dict_flattened[key] for key in composite_unique_keys if key in entry_dict_flattened}
-        # params["shortname"] = record.shortname
-
-        with SQLAdapter().get_session() as session:
-            count = session.exec(query).one()
-            if count is not None and count > 0:
-                raise API_Exception(
-                    status.HTTP_400_BAD_REQUEST,
-                    API_Error(
-                        type="request",
-                        code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
-                        message=f"Entry should have unique values on the following fields: {', '.join(composite_unique_keys)}",
-                    ),
-                )
+    for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
+        query_string = ""
+        for composite_unique_key in compound:
+            query_string += f"@{composite_unique_key}:{get_nested_value(record.attributes, composite_unique_key)} "
+        q = Query(
+            space_name=space_name,
+            subpath=record.subpath,
+            type=QueryType.subpath,
+            search=query_string
+        )
+        total, _ = await db.query(q, record.attributes["owner_shortname"])
+        max_limit = 0 if action is RequestType.create else 1
+        if total != max_limit:
+            raise API_Exception(
+                status.HTTP_400_BAD_REQUEST,
+                API_Error(
+                    type="request",
+                    code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
+                    message=f"Entry properties should be unique: {query_string}",
+                ),
+            )
+    return True
 
 
 async def validate_uniqueness_file(

@@ -11,5 +11,5 @@ types-aiofiles
 types-ldap3
 types-jsonschema
 types-psutil
-jsf
 types-requests
+
