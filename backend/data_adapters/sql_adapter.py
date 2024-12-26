@@ -18,7 +18,6 @@ import models.api as api
 import models.core as core
 from models.enums import QueryType, LockAction, ResourceType, SortType, ContentType
 from utils.database.create_tables import (
-    ActiveSessions,
     Entries,
     Histories,
     Permissions,
@@ -1134,32 +1133,11 @@ class SQLAdapter(BaseDataAdapter):
             print("[!fetch_space]", e)
             return None
 
-    async def set_sql_active_session(self, user_shortname: str, token: str) -> bool:
-        with self.get_session() as session:
-            try:
-                last_session = await self.get_sql_active_session(user_shortname, None)
-                if last_session is not None:
-                    await self.remove_sql_active_session(user_shortname)
-                timestamp = datetime.now()
-                session.add(
-                    ActiveSessions(
-                        uuid=uuid4(),
-                        shortname=user_shortname,
-                        token=token,
-                        timestamp=timestamp,
-                    )
-                )
-                session.commit()
-                return True
-            except Exception as e:
-                print("[!set_sql_active_session]", e)
-                return False
-
     async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
         with self.get_session() as session:
             try:
-                last_session = await self.get_sql_user_session(user_shortname)
-                if last_session is not None:
+                last_session = await self.get_sql_user_session(user_shortname, token)
+                if settings.one_session_per_user and last_session is not None:
                     await self.remove_sql_user_session(user_shortname)
                 timestamp = datetime.now()
                 session.add(
@@ -1176,39 +1154,14 @@ class SQLAdapter(BaseDataAdapter):
                 print("[!set_sql_user_session]", e)
                 return False
 
-    async def get_sql_active_session(self, user_shortname: str, auth_token: str | None) -> str | None:
+    async def get_sql_user_session(self, user_shortname: str, token: str) -> str | None:
         with self.get_session() as session:
-            statement = select(ActiveSessions).where(ActiveSessions.shortname == user_shortname)
-
-            result = session.exec(statement).one_or_none()
-            if result is None:
-                return None
-
-            active_session = ActiveSessions.model_validate(result)
-            if auth_token is not None and auth_token != active_session.token:
-                raise api.Exception(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    error=api.Error(
-                        type="session",
-                        code=InternalErrorCode.INVALID_TOKEN,
-                        message="invalid token!",
-                    ),
-                )
-
-            if settings.session_inactivity_ttl + active_session.timestamp.timestamp() < time.time():
-                await self.remove_sql_active_session(user_shortname)
-                return None
-
-            result.timestamp = datetime.now()
-            session.add(result)
-            session.commit()
-
-            return active_session.token
-
-    async def get_sql_user_session(self, user_shortname: str) -> str | None:
-        with self.get_session() as session:
-            statement = select(Sessions).where(Sessions.shortname == user_shortname)
-
+            statement = select(Sessions) \
+            .where(Sessions.shortname == user_shortname) \
+            .where(Sessions.token == hash_password(token))
+            print("@@@@@@@")
+            print(user_shortname, token, hash_password(token))
+            print("@@@@@@@")
             result = session.exec(statement).one_or_none()
             if result is None:
                 return None
@@ -1224,17 +1177,6 @@ class SQLAdapter(BaseDataAdapter):
             session.commit()
 
             return user_session.token
-
-    async def remove_sql_active_session(self, user_shortname: str) -> bool:
-        with self.get_session() as session:
-            try:
-                statement = delete(ActiveSessions).where(col(ActiveSessions.shortname) == user_shortname)
-                session.execute(statement)
-                session.commit()
-                return True
-            except Exception as e:
-                print("[!remove_sql_active_session]", e)
-                return False
 
     async def remove_sql_user_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
