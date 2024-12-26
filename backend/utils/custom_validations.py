@@ -91,12 +91,9 @@ async def validate_uniqueness(
 
 
 def get_nested_value(data, key):
-    print("####", data, key)
     keys = key.split('.')
-    print("####", keys)
     if len(keys) == 0:
         return None
-    print("####", keys[0] not in data)
     for k in keys:
         if k in data:
             data = data[k]
