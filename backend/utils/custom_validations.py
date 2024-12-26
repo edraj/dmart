@@ -91,9 +91,17 @@ async def validate_uniqueness(
 
 
 def get_nested_value(data, key):
+    print("####", data, key)
     keys = key.split('.')
+    print("####", keys)
+    if len(keys) == 0:
+        return None
+    print("####", keys[0] not in data)
     for k in keys:
-        data = data[k]
+        if k in data:
+            data = data[k]
+        else:
+            return None
     return data
 
 
@@ -104,6 +112,7 @@ async def validate_uniqueness_sql(
     Get list of unique fields from entry's folder meta data
     ensure that each sub-list in the list is unique across all entries
     """
+    print("@@@@", record)
     parent_subpath, folder_shortname = os.path.split(record.subpath)
     folder_meta = None
     try:
@@ -115,11 +124,13 @@ async def validate_uniqueness_sql(
         return True
 
     print("@@@@@", folder_meta.payload)
+    print("@@@@@", folder_meta.payload.body["unique_fields"])
 
     for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
         query_string = ""
         for composite_unique_key in compound:
             query_string += f"@{composite_unique_key}:{get_nested_value(record.attributes, composite_unique_key)} "
+        print("@@@@@@@@@@@@@@@@@", query_string)
         q = Query(
             space_name=space_name,
             subpath=record.subpath,
@@ -127,6 +138,7 @@ async def validate_uniqueness_sql(
             search=query_string
         )
         total, _ = await db.query(q, record.attributes["owner_shortname"])
+        print("@@@@@@@@@@@@@@@@@", total)
         max_limit = 0 if action is RequestType.create else 1
         if total != max_limit:
             raise API_Exception(
