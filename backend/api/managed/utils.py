@@ -251,7 +251,7 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                         message=f"This shortname {record.shortname} already exists",
                     ),
                 )
-
+            record.attributes["owner_shortname"] = owner_shortname
             await validate_uniqueness(request.space_name, record)
 
             resource_obj = core.Meta.from_record(

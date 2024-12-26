@@ -61,7 +61,7 @@ class BaseDataAdapter(ABC):
         pass
 
     async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
-        return None
+        pass
 
     async def query(self, query: api.Query, user_shortname: str | None = None) \
             -> Tuple[int, list[core.Record]]:

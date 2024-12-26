@@ -92,8 +92,13 @@ async def validate_uniqueness(
 
 def get_nested_value(data, key):
     keys = key.split('.')
+    if len(keys) == 0:
+        return None
     for k in keys:
-        data = data[k]
+        if k in data:
+            data = data[k]
+        else:
+            return None
     return data
 
 
@@ -114,12 +119,11 @@ async def validate_uniqueness_sql(
     if folder_meta is None or folder_meta.payload is None or isinstance(folder_meta.payload.body, dict) == False or isinstance(folder_meta.payload.body.get("unique_fields", None), list) == False: # type: ignore
         return True
 
-    print("@@@@@", folder_meta.payload)
-
     for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
         query_string = ""
         for composite_unique_key in compound:
             query_string += f"@{composite_unique_key}:{get_nested_value(record.attributes, composite_unique_key)} "
+
         q = Query(
             space_name=space_name,
             subpath=record.subpath,

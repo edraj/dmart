@@ -118,7 +118,8 @@ def validate_search_range(v_str):
 
 
 def parse_search_string(string, entity):
-    list_criteria = string.split("@")
+    string = " " + string
+    list_criteria = string.split(" @")
     list_criteria = [item.strip() for item in list_criteria if item.strip()]
     result = {}
     flag_neg = False
