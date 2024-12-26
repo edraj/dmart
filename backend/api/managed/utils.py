@@ -24,7 +24,7 @@ from models.enums import (
 )
 import sys
 import json
-from utils.jwt import remove_active_session
+from utils.jwt import remove_user_session
 from utils.access_control import access_control
 import utils.repository as repository
 from utils.helpers import (
@@ -251,8 +251,8 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                         message=f"This shortname {record.shortname} already exists",
                     ),
                 )
-            record.attributes["owner_shortname"] = owner_shortname
-            await validate_uniqueness(request.space_name, record)
+
+            await validate_uniqueness(request.space_name, record, RequestType.create, owner_shortname)
 
             resource_obj = core.Meta.from_record(
                 record=record, owner_shortname=owner_shortname
@@ -455,7 +455,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 new_version_flattend = flatten_dict(new_version_flattend)
 
                 await validate_uniqueness(
-                    request.space_name, record, RequestType.update
+                    request.space_name, record, RequestType.update, owner_shortname
                 )
             # VALIDATE SEPARATE PAYLOAD BODY
             if (
@@ -649,7 +649,7 @@ async def serve_request_patch(request, owner_shortname: str):
                 new_version_flattend = flatten_dict(new_version_flattend)
 
                 await validate_uniqueness(
-                    request.space_name, record, RequestType.update
+                    request.space_name, record, RequestType.update, owner_shortname
                 )
 
             if record.resource_type == ResourceType.log:
@@ -719,7 +719,7 @@ async def serve_request_patch(request, owner_shortname: str):
                 isinstance(resource_obj, core.User) and
                 record.attributes.get("is_active") is False
             ):
-                await remove_active_session(record.shortname)
+                await remove_user_session(record.shortname)
 
             records.append(
                 resource_obj.to_record(
