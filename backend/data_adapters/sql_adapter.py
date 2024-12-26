@@ -37,7 +37,7 @@ from utils.helpers import (
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
-from utils.password_hashing import hash_password
+from utils.password_hashing import hash_password, verify_password
 from utils.settings import settings
 from .base_data_adapter import BaseDataAdapter, MetaChild
 from .sql_adapter_helpers import (
@@ -1157,16 +1157,21 @@ class SQLAdapter(BaseDataAdapter):
     async def get_sql_user_session(self, user_shortname: str, token: str) -> str | None:
         with self.get_session() as session:
             statement = select(Sessions) \
-            .where(Sessions.shortname == user_shortname) \
-            .where(Sessions.token == hash_password(token))
-            print("@@@@@@@")
-            print(user_shortname, token, hash_password(token))
-            print("@@@@@@@")
-            result = session.exec(statement).one_or_none()
-            if result is None:
+            .where(Sessions.shortname == user_shortname)
+
+            result = session.exec(statement).all()
+            if len(result) == 0:
                 return None
 
-            user_session = Sessions.model_validate(result)
+            user_session = None
+            for r in result:
+                if verify_password(token, r.token):
+                    user_session = Sessions.model_validate(result)
+                    break
+
+            if user_session is None:
+                return None
+            # user_session = Sessions.model_validate(result)
 
             if settings.session_inactivity_ttl + user_session.timestamp.timestamp() < time.time():
                 await self.remove_sql_user_session(user_shortname)

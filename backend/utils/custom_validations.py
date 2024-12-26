@@ -82,12 +82,12 @@ def get_schema_path(space_name: str, schema_shortname: str):
 
 
 async def validate_uniqueness(
-    space_name: str, record: Record, action: str = RequestType.create
+    space_name: str, record: Record, action: str = RequestType.create, user_shortname = None
 ):
     if settings.active_data_db == "file":
         return await validate_uniqueness_file(space_name, record, action)
     else:
-        return await validate_uniqueness_sql(space_name, record, action)
+        return await validate_uniqueness_sql(space_name, record, action, user_shortname)
 
 
 def get_nested_value(data, key):
@@ -103,7 +103,7 @@ def get_nested_value(data, key):
 
 
 async def validate_uniqueness_sql(
-    space_name: str, record: Record, action: str = RequestType.create
+    space_name: str, record: Record, action: str = RequestType.create, user_shortname = None
 ):
     """
     Get list of unique fields from entry's folder meta data
@@ -122,7 +122,13 @@ async def validate_uniqueness_sql(
     for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
         query_string = ""
         for composite_unique_key in compound:
-            query_string += f"@{composite_unique_key}:{get_nested_value(record.attributes, composite_unique_key)} "
+            value = get_nested_value(record.attributes, composite_unique_key)
+            if value is None:
+                continue
+            query_string += f"@{composite_unique_key}:{value} "
+
+        if query_string == "":
+            continue
 
         q = Query(
             space_name=space_name,
@@ -130,8 +136,15 @@ async def validate_uniqueness_sql(
             type=QueryType.subpath,
             search=query_string
         )
-        total, _ = await db.query(q, record.attributes["owner_shortname"])
+        owner = record.attributes.get("owner_shortname", None) if user_shortname is None else user_shortname
+        total, _ = await db.query(q, owner)
+        print("############3")
+        print(q, owner, total)
+        print("############3")
         max_limit = 0 if action is RequestType.create else 1
+        print("############3")
+        print(total, max_limit, total != max_limit, action)
+        print("############3")
         if total != max_limit:
             raise API_Exception(
                 status.HTTP_400_BAD_REQUEST,

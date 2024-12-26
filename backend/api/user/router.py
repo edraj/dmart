@@ -138,7 +138,7 @@ async def create_user(record: core.Record) -> api.Response:
         record=record,
         owner_shortname=record.shortname
     )
-    await validate_uniqueness(MANAGEMENT_SPACE, record)
+    await validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, record.shortname)
 
     separate_payload_data: str | dict[str, Any] = {}
     if "payload" in record.attributes and "body" in record.attributes["payload"]:
@@ -472,7 +472,7 @@ async def update_profile(
         elif profile_user.msisdn:
             user.is_msisdn_verified = True
     else:
-        await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update)
+        await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update, shortname)
         if "email" in profile.attributes and user.email != profile_user.email:
             user.email = profile_user.email
             user.is_email_verified = False
