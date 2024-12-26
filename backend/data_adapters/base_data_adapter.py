@@ -65,7 +65,7 @@ class BaseDataAdapter(ABC):
 
     async def query(self, query: api.Query, user_shortname: str | None = None) \
             -> Tuple[int, list[core.Record]]:
-        pass
+        return (0, [])
 
     @abstractmethod
     async def load(
