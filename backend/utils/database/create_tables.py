@@ -347,14 +347,6 @@ class Sessions(SQLModel, table=True):
     token: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
 
-
-class ActiveSessions(SQLModel, table=True):
-    shortname: str = Field(regex=regex.SHORTNAME, unique=True)
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
-    token: str = Field(...)
-    timestamp: datetime = Field(default_factory=datetime.now)
-
-
 class Invitations(SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     invitation_token: str = Field(...)
