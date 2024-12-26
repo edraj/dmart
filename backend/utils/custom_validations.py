@@ -112,7 +112,6 @@ async def validate_uniqueness_sql(
     Get list of unique fields from entry's folder meta data
     ensure that each sub-list in the list is unique across all entries
     """
-    print("@@@@", record)
     parent_subpath, folder_shortname = os.path.split(record.subpath)
     folder_meta = None
     try:
@@ -123,14 +122,11 @@ async def validate_uniqueness_sql(
     if folder_meta is None or folder_meta.payload is None or isinstance(folder_meta.payload.body, dict) == False or isinstance(folder_meta.payload.body.get("unique_fields", None), list) == False: # type: ignore
         return True
 
-    print("@@@@@", folder_meta.payload)
-    print("@@@@@", folder_meta.payload.body["unique_fields"])
-
     for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
         query_string = ""
         for composite_unique_key in compound:
             query_string += f"@{composite_unique_key}:{get_nested_value(record.attributes, composite_unique_key)} "
-        print("@@@@@@@@@@@@@@@@@", query_string)
+
         q = Query(
             space_name=space_name,
             subpath=record.subpath,
@@ -138,7 +134,6 @@ async def validate_uniqueness_sql(
             search=query_string
         )
         total, _ = await db.query(q, record.attributes["owner_shortname"])
-        print("@@@@@@@@@@@@@@@@@", total)
         max_limit = 0 if action is RequestType.create else 1
         if total != max_limit:
             raise API_Exception(
