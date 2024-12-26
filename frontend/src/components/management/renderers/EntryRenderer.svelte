@@ -1519,9 +1519,9 @@
 
 {#if entry}
   <div
-          bind:clientHeight={header_height}
-          class="pt-3 pb-2 px-2"
-          transition:fade={{ delay: 25 }}
+    bind:clientHeight={header_height}
+    class="pt-3 pb-2 px-2"
+    transition:fade={{ delay: 25 }}
   >
     <div class="d-flex justify-content-end w-100">
       <BreadCrumbLite
@@ -1793,7 +1793,7 @@
         {subpath}
         folderColumns={entry?.payload?.body?.index_attributes ?? null}
         sort_by={entry?.payload?.body?.sort_by ?? null}
-        sort_order={entry?.payload?.body?.sort_order ?? null}
+        sort_order={entry?.payload?.body?.sort_type ?? null}
         canDelete={canDelete}
       />
     </div>

@@ -17,7 +17,7 @@ from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import JWTBearer, remove_active_session, remove_user_session, sign_jwt, decode_jwt
+from utils.jwt import JWTBearer, remove_user_session, sign_jwt, decode_jwt
 from typing import Any
 from utils.settings import settings
 import utils.repository as repository
@@ -138,7 +138,7 @@ async def create_user(record: core.Record) -> api.Response:
         record=record,
         owner_shortname=record.shortname
     )
-    await validate_uniqueness(MANAGEMENT_SPACE, record)
+    await validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, record.shortname)
 
     separate_payload_data: str | dict[str, Any] = {}
     if "payload" in record.attributes and "body" in record.attributes["payload"]:
@@ -472,7 +472,7 @@ async def update_profile(
         elif profile_user.msisdn:
             user.is_msisdn_verified = True
     else:
-        await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update)
+        await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update, shortname)
         if "email" in profile.attributes and user.email != profile_user.email:
             user.email = profile_user.email
             user.is_email_verified = False
@@ -537,7 +537,6 @@ async def logout(
     response.set_cookie(value="", max_age=0, key="auth_token",
                         httponly=True, secure=True, samesite="none")
 
-    await remove_active_session(shortname)
     await remove_user_session(shortname)
 
     user = await db.load(
@@ -583,7 +582,6 @@ async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
     )
     await db.delete(MANAGEMENT_SPACE, USERS_SUBPATH, user, shortname)
 
-    await remove_active_session(shortname)
     await remove_user_session(shortname)
 
     await plugin_manager.after_action(

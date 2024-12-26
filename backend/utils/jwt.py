@@ -86,11 +86,8 @@ class JWTBearer():
                 api.Error(type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [2]"),
             )
 
-        if settings.one_session_per_user:
-            await get_active_session(user_shortname, auth_token)
-
         if settings.session_inactivity_ttl:
-            user_session_token = await get_user_session(user_shortname)
+            user_session_token = await get_user_session(user_shortname, auth_token)
             if not isinstance(user_session_token, str):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -125,16 +122,7 @@ async def sign_jwt(data: dict, expires: int = 86400) -> str:
     token = generate_jwt(data, expires)
     if settings.session_inactivity_ttl:
         await set_user_session(data["shortname"], token)
-    if settings.one_session_per_user:
-        await set_active_session(data["shortname"], token)
     return token
-
-
-async def set_active_session(user_shortname: str, token: str) -> bool:
-    if settings.active_data_db == "file":
-        return await set_redis_active_session(user_shortname, token)
-    else:
-        return bool(await db.set_sql_active_session(user_shortname, token))
 
 
 async def set_user_session(user_shortname: str, token: str) -> bool:
@@ -144,25 +132,11 @@ async def set_user_session(user_shortname: str, token: str) -> bool:
         return bool(await db.set_sql_user_session(user_shortname, token))
 
 
-async def get_active_session(user_shortname: str, auth_token: str = ""):
-    if settings.active_data_db == "file":
-        return await get_redis_active_session(user_shortname)
-    else:
-        return await db.get_sql_active_session(user_shortname, auth_token)
-
-
-async def get_user_session(user_shortname: str):
+async def get_user_session(user_shortname: str, token: str):
     if settings.active_data_db == "file":
         return await get_redis_user_session(user_shortname)
     else:
-        return await db.get_sql_user_session(user_shortname)
-
-
-async def remove_active_session(user_shortname: str) -> bool:
-    if settings.active_data_db == "file":
-        return await remove_redis_active_session(user_shortname)
-    else:
-        return bool(await db.remove_sql_active_session(user_shortname))
+        return await db.get_sql_user_session(user_shortname, token)
 
 
 async def remove_user_session(user_shortname: str) -> bool:
@@ -172,44 +146,22 @@ async def remove_user_session(user_shortname: str) -> bool:
         return bool(await db.remove_sql_user_session(user_shortname))
 
 
-async def set_redis_active_session(user_shortname: str, token: str) -> bool:
-    async with RedisServices() as redis:
-        return bool(await redis.set_key(
-            key=f"active_session:{user_shortname}",
-            value=hash_password(token),
-            ex=settings.session_inactivity_ttl,
-        ))
-
-
 async def set_redis_user_session(user_shortname: str, token: str) -> bool:
     async with RedisServices() as redis:
+        if settings.one_session_per_user:
+            if await get_redis_user_session(user_shortname):
+                await remove_redis_user_session(user_shortname)
         return bool(await redis.set_key(
             key=f"user_session:{user_shortname}",
             value=hash_password(token),
             ex=settings.session_inactivity_ttl,
         ))
 
-
-async def get_redis_active_session(user_shortname: str):
-    async with RedisServices() as redis:
-        return await redis.get_key(
-            f"active_session:{user_shortname}"
-        )
-
-
 async def get_redis_user_session(user_shortname: str):
     async with RedisServices() as redis:
         return await redis.get_key(
             f"user_session:{user_shortname}"
         )
-
-
-async def remove_redis_active_session(user_shortname: str) -> bool:
-    async with RedisServices() as redis:
-        return bool(
-            await redis.del_keys([f"active_session:{user_shortname}"])
-        )
-
 
 async def remove_redis_user_session(user_shortname: str) -> bool:
     async with RedisServices() as redis:

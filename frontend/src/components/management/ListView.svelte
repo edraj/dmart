@@ -8,7 +8,7 @@
     RowsPerPage,
     Sort,
   } from "svelte-datatables-net";
-  import { query, QueryType } from "@/dmart";
+  import {query, QueryType, SortyType} from "@/dmart";
   import {onDestroy, onMount} from "svelte";
   import cols from "@/stores/management/list_cols.json";
   import { search } from "@/stores/management/triggers";
@@ -71,7 +71,7 @@
   let total: number = $state(null);
   const { sortBy, sortOrder, page } = $params;
   let sort = {
-      sort_by: (sortBy ?? sort_by) || "shortname",
+      sort_by: (sortBy ?? sort_by) || "shortname", // descending
       sort_order: (sortOrder ?? sort_order) || "ascending",
   };
 
@@ -155,6 +155,8 @@
       subpath: subpath,
       exact_subpath: true,
       limit: objectDatatable.numberRowsPerPage,
+      sort_by: objectDatatable.stringSortBy.toString(),
+      sort_type: SortyType[objectDatatable.stringSortOrder],
       offset:
         objectDatatable.numberRowsPerPage *
         (objectDatatable.numberActivePage - 1),
@@ -337,6 +339,7 @@
           }
       } catch (e){}
   }
+
   let isAllBulkChecked = false;
   function handleAllBulk(e, override = null) {
       isAllBulkChecked = override === null ? !isAllBulkChecked : override;
