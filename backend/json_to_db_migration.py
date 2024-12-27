@@ -34,14 +34,14 @@ try:
     sql = f"CREATE DATABASE {settings.database_name}"
     session.execute(text(sql))
 except Exception as e:
-    print(e)
+    print("Warning : While creating DB: ", str(e))
 finally:
     engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 
 try:
     generate_tables()
 except Exception as e:
-    print(e)
+    print("Warning: While generating tables: ", str(e))
 
 with Session(engine) as session:
     target_path = settings.spaces_folder
