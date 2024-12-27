@@ -10,8 +10,6 @@ aiohttp
 python-multipart
 jsonschema
 email-validator
-passlib[bcrypt]
-bcrypt
 asgi-correlation-id
 pydantic-settings
 fastapi-sso
