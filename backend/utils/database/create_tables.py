@@ -342,7 +342,7 @@ class Locks(Unique, table=True):
 
 
 class Sessions(SQLModel, table=True):
-    shortname: str = Field(regex=regex.SHORTNAME, unique=True)
+    shortname: str = Field(regex=regex.SHORTNAME)
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     token: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
