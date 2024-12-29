@@ -1159,29 +1159,22 @@ class SQLAdapter(BaseDataAdapter):
             statement = select(Sessions) \
             .where(Sessions.shortname == user_shortname)
 
-            result = session.exec(statement).all()
-            if len(result) == 0:
+            results = session.exec(statement).all()
+            if len(results) == 0:
                 return None
 
-            user_session = None
-            for r in result:
+            for r in results:
                 if verify_password(token, r.token):
-                    user_session = Sessions.model_validate(result)
-                    break
+                    if settings.session_inactivity_ttl + r.timestamp.timestamp() < time.time():
+                        await self.remove_sql_user_session(user_shortname)
+                        return None
 
-            if user_session is None:
-                return None
-            # user_session = Sessions.model_validate(result)
+                    r.timestamp = datetime.now()
+                    session.add(r)
+                    session.commit()
 
-            if settings.session_inactivity_ttl + user_session.timestamp.timestamp() < time.time():
-                await self.remove_sql_user_session(user_shortname)
-                return None
-
-            result.timestamp = datetime.now()
-            session.add(result)
-            session.commit()
-
-            return user_session.token
+                    return token
+        return None
 
     async def remove_sql_user_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
