@@ -223,8 +223,8 @@ async def events_query(
     for line in result:
         action_obj = json.loads(line)
         if (
-                query.from_date
-                and str_to_datetime(action_obj["timestamp"]) < query.from_date
+            query.from_date
+            and str_to_datetime(action_obj["timestamp"]) < query.from_date
         ):
             continue
 

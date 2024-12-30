@@ -52,7 +52,6 @@ from .sql_adapter_helpers import (
 from utils.custom_validations import get_nested_value
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
-from pathlib import Path as FSPath
 
 
 def query_aggregation(table, query):
@@ -492,7 +491,7 @@ class SQLAdapter(BaseDataAdapter):
                 return None
 
     async def query(
-            self, query: api.Query, user_shortname: str | None = None
+        self, query: api.Query, user_shortname: str | None = None
     ) -> Tuple[int, list[core.Record]]:
         total : int
         results : list
@@ -549,7 +548,7 @@ class SQLAdapter(BaseDataAdapter):
                         message=str(e),
                     ),
                 )
-        return (total, results)
+        return total, results
 
     async def load_or_none(
             self,
