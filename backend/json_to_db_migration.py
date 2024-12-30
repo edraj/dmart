@@ -1,4 +1,5 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
+import asyncio
 import hashlib
 import json
 import logging
@@ -8,6 +9,8 @@ from pathlib import Path
 from uuid import uuid4
 from sqlmodel import Session, create_engine, text
 
+from health_check_sql import save_health_check_entry
+from models.enums import ResourceType
 from utils.database.create_tables import Entries, Users, generate_tables, Attachments, \
     Roles, Permissions, Spaces
 from utils.settings import settings
@@ -26,15 +29,23 @@ def subpath_checker(subpath: str):
 
 folders_report = {}
 invalid_entries = []
-def save_issue(type, resource_type, entry, e):
-    issue = {
-        "issues": [type],
-        "uuid": str(entry.uuid),
-        "shortname": entry.shortname,
+def save_issue(resource_type, entry, e):
+    entry_uuid = None
+    entry_shortname = None
+    if isinstance(entry, dict):
+        entry_uuid = str(entry["uuid"])
+        entry_shortname = entry["shortname"]
+    else:
+        entry_uuid = str(entry.uuid)
+        entry_shortname = entry.shortname
+
+    return {
+        "issues": ["entry"],
+        "uuid": entry_uuid,
+        "shortname": entry_shortname,
         "resource_type": resource_type,
         "exception": str(e),
     }
-    invalid_entries.append(issue)
 
 def save_report(isubpath: str, issue):
     if folders_report.get(isubpath, False):
@@ -53,7 +64,7 @@ def save_report(isubpath: str, issue):
                 issue
             ]
         }
-
+    print(">>>>>>>>>> ",folders_report)
 
 
 postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
@@ -131,9 +142,11 @@ with Session(engine) as session:
                     entry['hide_folders'] = entry.get('hide_folders', [])
                     entry['relationships'] = entry.get('relationships', [])
                     entry['hide_space'] = entry.get('hide_space', False)
+                    print(">>>>>>>", entry, Spaces.model_validate(entry))
                     session.add(Spaces.model_validate(entry))
                 except Exception as e:
-                    print(f"Error processing Spaces {space_name}/{subpath}/{entry} ... ")
+                    print(f"Error processing Spaces {space_name}/{subpath}/{entry} ...")
+                    save_report('/', save_issue(ResourceType.space, entry, e))
                     print(e)
             continue
 
@@ -210,6 +223,7 @@ with Session(engine) as session:
                             except Exception as e:
                                 print(f"Error processing Attachments {space_name}/{subpath}/{dir}/{file} ... ")
                                 print(e)
+                                save_report('/', save_issue(_attachment['resource_type'], _attachment, e))
                     elif file.endswith('.json'):
                         entry = json.load(open(p))
                         entry['space_name'] = space_name
@@ -224,6 +238,7 @@ with Session(engine) as session:
                                         ))
                                     except Exception as e:
                                         print(f"Error processing payload {space_name}/{subpath}/{dir}/{entry} ... ")
+                                        save_report('/', save_issue(ResourceType.json, entry, e))
                                         print(e)
                                 else:
                                     body = payload
@@ -285,6 +300,7 @@ with Session(engine) as session:
                                 session.add(Entries.model_validate(entry))
                         except Exception as e:
                             print(f"Error processing Entries {space_name}/{subpath}/{dir}/{entry} ... ")
+                            save_report('/', save_issue(entry['resource_type'], entry, e))
                             print(e)
             try:
                 session.commit()
@@ -296,3 +312,8 @@ with Session(engine) as session:
 if settings.active_data_db == 'file':
     print("[Warning] you are using active_data_db='file', please don't forget to set it to active_data_db='sql' in your config.env")
 
+asyncio.run(
+    save_health_check_entry(
+        {"folders_report": folders_report}, "migration_json_to_db"
+    )
+)
