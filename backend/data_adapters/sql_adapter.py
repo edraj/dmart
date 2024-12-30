@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import time
 from copy import copy
@@ -258,10 +259,16 @@ class SQLAdapter(BaseDataAdapter):
         return (Path(), "")
 
     def __init__(self):
-        self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
-        connection_string = f"{self.database_connection_string}/{settings.database_name}"
-        engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
-        self.session = Session(engine)
+        try:
+            self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+            connection_string = f"{self.database_connection_string}/{settings.database_name}"
+            engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
+            self.session = Session(engine)
+            with self.get_session() as session:
+                session.exec(text("SELECT 1")).one_or_none()
+        except Exception as e:
+            print("[!FATAL]", e)
+            sys.exit(127)
 
 
     def get_session(self):
