@@ -269,7 +269,7 @@ class SQLAdapter(BaseDataAdapter):
             engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
             self.session = Session(engine)
             with self.get_session() as session:
-                session.exec(text("SELECT 1")).one_or_none()
+                session.execute(text("SELECT 1")).one_or_none()
         except Exception as e:
             print("[!FATAL]", e)
             sys.exit(127)
@@ -1368,7 +1368,7 @@ class SQLAdapter(BaseDataAdapter):
 
     async def validate_uniqueness(
         self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
-    ):
+    ) -> bool:
         """
         Get list of unique fields from entry's folder meta data
         ensure that each sub-list in the list is unique across all entries
@@ -1380,9 +1380,9 @@ class SQLAdapter(BaseDataAdapter):
         except Exception:
             folder_meta = None
 
-        if folder_meta is None or folder_meta.payload is None or isinstance(folder_meta.payload.body,
-                                                                            dict) == False or isinstance(
-                folder_meta.payload.body.get("unique_fields", None), list) == False:  # type: ignore
+        if folder_meta is None or folder_meta.payload is None or not isinstance(folder_meta.payload.body,
+                                                                            dict) or not isinstance(
+                folder_meta.payload.body.get("unique_fields", None), list):  # type: ignore
             return True
 
         for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore

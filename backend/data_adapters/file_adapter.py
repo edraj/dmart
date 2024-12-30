@@ -954,7 +954,7 @@ class FileAdapter(BaseDataAdapter):
 
     async def validate_uniqueness(
         self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
-    ):
+    ) -> bool:
         """
         Get list of unique fields from entry's folder meta data
         ensure that each sub-list in the list is unique across all entries
@@ -1096,6 +1096,7 @@ class FileAdapter(BaseDataAdapter):
                         message=f"Entry should have unique values on the following fields: {', '.join(composite_unique_keys)}",
                     ),
                 )
+        return True
 
     async def validate_payload_with_schema(
         self,
@@ -1128,38 +1129,38 @@ class FileAdapter(BaseDataAdapter):
 
         Draft7Validator(schema).validate(data)  # type: ignore
 
-    async def get_failed_password_attempt_count(self, shortname: str) -> int:
+    async def get_failed_password_attempt_count(self, user_shortname: str) -> int:
         async with RedisServices() as redis_services:
             failed_login_attempts_count = 0
-            raw_failed_login_attempts_count = await redis_services.get(f"users:failed_login_attempts/{shortname}")
+            raw_failed_login_attempts_count = await redis_services.get(f"users:failed_login_attempts/{user_shortname}")
             if raw_failed_login_attempts_count:
                 failed_login_attempts_count = int(raw_failed_login_attempts_count)
             return failed_login_attempts_count
 
-    async def clear_failed_password_attempts(self, shortname: str):
+    async def clear_failed_password_attempts(self, user_shortname: str):
         async with RedisServices() as redis_services:
-            return await redis_services.del_keys([f"users:failed_login_attempts/{shortname}"])
+            return await redis_services.del_keys([f"users:failed_login_attempts/{user_shortname}"])
 
 
-    async def set_failed_password_attempt_count(self, shortname: str, attempt_count: int):
+    async def set_failed_password_attempt_count(self, user_shortname: str, attempt_count: int):
         async with RedisServices() as redis_services:
-            return await redis_services.set(f"users:failed_login_attempts/{shortname}", attempt_count)
+            return await redis_services.set(f"users:failed_login_attempts/{user_shortname}", attempt_count)
 
-    async def get_invitation_token(self, invitation: str):
+    async def get_invitation_token(self, invitation_token: str):
         async with RedisServices() as redis_services:
             # FIXME invitation_token = await redis_services.getdel_key(
-            invitation_token = await redis_services.get_key(
-                f"users:login:invitation:{invitation}"
+            token = await redis_services.get_key(
+                f"users:login:invitation:{invitation_token}"
             )
 
-        if not invitation_token:
+        if not token:
             raise Exception(
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(
                     type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
             )
 
-        return invitation_token
+        return token
 
     async def get_url_shortner(self, token_uuid: str) -> str | None:
         async with RedisServices() as redis_services:
