@@ -49,7 +49,6 @@ from models.enums import (
     TaskType,
 )
 from utils.access_control import access_control
-from utils.custom_validations import validate_payload_with_schema
 from utils.helpers import (
     camel_case,
     csv_file_to_json,
@@ -913,7 +912,7 @@ async def retrieve_entry_meta(
     )
 
     if meta.payload and meta.payload.schema_shortname and validate_schema and payload_body:
-        await validate_payload_with_schema(
+        await db.validate_payload_with_schema(
             payload_data=payload_body,
             space_name=space_name,
             schema_shortname=meta.payload.schema_shortname,
@@ -1248,17 +1247,10 @@ async def execute(
 async def shoting_url(
         token: str,
 ):
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_services:
-            if url := await redis_services.get_key(f"short/{token}"):
-                return RedirectResponse(url=url)
-            else:
-                return RedirectResponse(url="/frontend")
-    else:
-        if url := await db.get_url_shortner(token):
-            return RedirectResponse(url=url)
-        else:
-            return RedirectResponse(url="/frontend")
+    if url := await db.get_url_shortner(token):
+        return RedirectResponse(url=url)
+
+    return RedirectResponse(url="/frontend")
 
 
 @router.post(

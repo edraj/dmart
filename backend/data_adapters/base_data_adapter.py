@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Tuple, Type, TypeVar
-
+from starlette.datastructures import UploadFile
 import models.api as api
 import models.core as core
 from models.enums import LockAction
 import io
+from models.core import Record
+from models.enums import RequestType
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
 
@@ -277,4 +279,17 @@ class BaseDataAdapter(ABC):
         return {}
 
     async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
+        pass
+
+    async def validate_uniqueness(
+        self, space_name: str, record: Record, action: str = RequestType.create, user_shortname=None
+    ):
+        pass
+
+    async def validate_payload_with_schema(
+        self,
+        payload_data: UploadFile | dict,
+        space_name: str,
+        schema_shortname: str,
+    ):
         pass

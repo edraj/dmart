@@ -13,16 +13,21 @@ from fastapi import status
 from fastapi.logger import logger
 
 import models.api as api
+from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
 from utils import regex
+from utils.custom_validations import get_schema_path
 from .base_data_adapter import BaseDataAdapter, MetaChild
 from models.enums import ContentType, ResourceType, LockAction
-from utils.helpers import arr_remove_common, read_jsonl_file, snake_case, camel_case
+from utils.helpers import arr_remove_common, read_jsonl_file, snake_case, camel_case, flatten_list_of_dicts_in_dict, flatten_dict
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
 from utils.redis_services import RedisServices
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN
 from utils.settings import settings
+from jsonschema import Draft7Validator
+from starlette.datastructures import UploadFile
+from pathlib import Path as FSPath
 
 
 def sort_alteration(attachments_dict, attachments_path):
@@ -946,3 +951,216 @@ class FileAdapter(BaseDataAdapter):
             if isinstance(value, dict):
                 return value
             return {}
+
+    async def validate_uniqueness(
+        self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
+    ):
+        """
+        Get list of unique fields from entry's folder meta data
+        ensure that each sub-list in the list is unique across all entries
+        """
+        folder_meta_path = (
+                settings.spaces_folder
+                / space_name
+                / f"{record.subpath[1:] if record.subpath[0] == '/' else record.subpath}.json"
+        )
+
+        if not folder_meta_path.is_file():
+            return True
+
+        async with aiofiles.open(folder_meta_path, "r") as file:
+            content = await file.read()
+        folder_meta = json.loads(content)
+
+        if not isinstance(folder_meta.get("unique_fields", None), list):
+            return True
+
+        entry_dict_flattened: dict[Any, Any] = flatten_list_of_dicts_in_dict(
+            flatten_dict(record.attributes)
+        )
+        redis_escape_chars = str.maketrans(
+            {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
+        )
+        redis_replace_chars: dict[int, str] = str.maketrans(
+            {".": r".", "@": r".", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
+        )
+        # Go over each composite unique array of fields and make sure there's no entry with those values
+        for composite_unique_keys in folder_meta["unique_fields"]:
+            redis_search_str = ""
+            for unique_key in composite_unique_keys:
+                base_unique_key = unique_key
+                if unique_key.endswith("_unescaped"):
+                    unique_key = unique_key.replace("_unescaped", "")
+                if unique_key.endswith("_replace_specials"):
+                    unique_key = unique_key.replace("_replace_specials", "")
+                if not entry_dict_flattened.get(unique_key, None):
+                    continue
+
+                redis_column = unique_key.split("payload.body.")[-1].replace(".", "_")
+
+                # construct redis search string
+                if (
+                        base_unique_key.endswith("_unescaped")
+                ):
+                    redis_search_str += (
+                            " @"
+                            + base_unique_key
+                            + ":{"
+                            + entry_dict_flattened[unique_key]
+                            .translate(redis_escape_chars)
+                            .replace("\\\\", "\\")
+                            + "}"
+                    )
+                elif (
+                        base_unique_key.endswith("_replace_specials") or unique_key.endswith('email')
+                ):
+                    redis_search_str += (
+                            " @"
+                            + redis_column
+                            + ":"
+                            + entry_dict_flattened[unique_key]
+                            .translate(redis_replace_chars)
+                            .replace("\\\\", "\\")
+                    )
+
+                elif (
+                        isinstance(entry_dict_flattened[unique_key], list)
+                ):
+                    redis_search_str += (
+                            " @"
+                            + redis_column
+                            + ":{"
+                            + "|".join([
+                        item.translate(redis_escape_chars).replace("\\\\", "\\") for item in
+                        entry_dict_flattened[unique_key]
+                    ])
+                            + "}"
+                    )
+                elif isinstance(entry_dict_flattened[unique_key], (str, bool)):  # booleans are indexed as TextField
+                    redis_search_str += (
+                            " @"
+                            + redis_column
+                            + ":"
+                            + entry_dict_flattened[unique_key]
+                            .translate(redis_escape_chars)
+                            .replace("\\\\", "\\")
+                    )
+
+                elif isinstance(entry_dict_flattened[unique_key], int):
+                    redis_search_str += (
+                            " @"
+                            + redis_column
+                            + f":[{entry_dict_flattened[unique_key]} {entry_dict_flattened[unique_key]}]"
+                    )
+                else:
+                    continue
+
+            if not redis_search_str:
+                continue
+
+            subpath = record.subpath
+            if subpath[0] == "/":
+                subpath = subpath[1:]
+
+            redis_search_str += f" @subpath:{subpath}"
+
+            if action == api.RequestType.update:
+                redis_search_str += f" (-@shortname:{record.shortname})"
+
+            schema_name = record.attributes.get("payload", {}).get("schema_shortname", None)
+
+            for index in RedisServices.CUSTOM_INDICES:
+                if space_name == index["space"] and index["subpath"] == subpath:
+                    schema_name = "meta"
+                    break
+
+            if not schema_name:
+                continue
+
+            async with RedisServices() as redis_services:
+                redis_search_res = await redis_services.search(
+                    space_name=space_name,
+                    search=redis_search_str,
+                    limit=1,
+                    offset=0,
+                    filters={},
+                    schema_name=schema_name,
+                )
+
+            if redis_search_res and redis_search_res["total"] > 0:
+                raise API_Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    API_Error(
+                        type="request",
+                        code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
+                        message=f"Entry should have unique values on the following fields: {', '.join(composite_unique_keys)}",
+                    ),
+                )
+
+    async def validate_payload_with_schema(
+        self,
+        payload_data: UploadFile | dict,
+        space_name: str,
+        schema_shortname: str,
+    ):
+        if not isinstance(payload_data, (dict, UploadFile)):
+            raise API_Exception(
+                status.HTTP_400_BAD_REQUEST,
+                API_Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_DATA,
+                    message="Invalid payload.body",
+                ),
+            )
+
+        schema_path = get_schema_path(
+            space_name=space_name,
+            schema_shortname=f"{schema_shortname}.json",
+        )
+
+        schema = json.loads(FSPath(schema_path).read_text())
+
+        if not isinstance(payload_data, dict):
+            data = json.load(payload_data.file)
+            payload_data.file.seek(0)
+        else:
+            data = payload_data
+
+        Draft7Validator(schema).validate(data)  # type: ignore
+
+    async def get_failed_password_attempt_count(self, shortname: str) -> int:
+        async with RedisServices() as redis_services:
+            failed_login_attempts_count = 0
+            raw_failed_login_attempts_count = await redis_services.get(f"users:failed_login_attempts/{shortname}")
+            if raw_failed_login_attempts_count:
+                failed_login_attempts_count = int(raw_failed_login_attempts_count)
+            return failed_login_attempts_count
+
+    async def clear_failed_password_attempts(self, shortname: str):
+        async with RedisServices() as redis_services:
+            return await redis_services.del_keys([f"users:failed_login_attempts/{shortname}"])
+
+
+    async def set_failed_password_attempt_count(self, shortname: str, attempt_count: int):
+        async with RedisServices() as redis_services:
+            return await redis_services.set(f"users:failed_login_attempts/{shortname}", attempt_count)
+
+    async def get_invitation_token(self, invitation: str):
+        async with RedisServices() as redis_services:
+            # FIXME invitation_token = await redis_services.getdel_key(
+            invitation_token = await redis_services.get_key(
+                f"users:login:invitation:{invitation}"
+            )
+
+        if not invitation_token:
+            raise Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
+            )
+
+        return invitation_token
+
+    async def get_url_shortner(self, token_uuid: str) -> str | None:
+        async with RedisServices() as redis_services:
+            return await redis_services.get_key(f"short/{token_uuid}")
