@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 from sqlmodel import Session, create_engine, text
 
@@ -27,8 +28,8 @@ def subpath_checker(subpath: str):
         subpath = '/' + subpath
     return subpath
 
-folders_report = {}
-invalid_entries = []
+folders_report: Any = {}
+invalid_entries: Any = []
 def save_issue(resource_type, entry, e):
     entry_uuid = None
     entry_shortname = None
