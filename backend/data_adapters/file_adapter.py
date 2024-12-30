@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import shutil
@@ -1165,3 +1166,47 @@ class FileAdapter(BaseDataAdapter):
     async def get_url_shortner(self, token_uuid: str) -> str | None:
         async with RedisServices() as redis_services:
             return await redis_services.get_key(f"short/{token_uuid}")
+
+
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
+        async with RedisServices() as redis_services:
+            _search_query = ""
+            for k, v in criteria.items():
+                _search_query += f"@{k}:({v.replace('@', '?')}) "
+            r_search = await redis_services.search(
+                space_name=settings.management_space,
+                search=_search_query,
+                filters={"subpath": [table]},
+                limit=10000,
+                offset=0,
+            )
+        if not r_search["data"]:
+            return None
+
+        records = []
+        for data in r_search["data"]:
+            records.append(
+                json.loads(data)
+            )
+        return records
+
+    async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
+        pass
+
+    async def get_sql_user_session(self, user_shortname: str, token: str) -> str | None:
+        return None
+
+    async def remove_sql_user_session(self, user_shortname: str) -> bool:
+        return True
+
+    async def set_invitation(self, invitation_token: str, invitation_value):
+        pass
+
+    async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
+        return True
+
+    async def set_url_shortner(self, token_uuid: str, url: str):
+        pass
+
+    async def delete_url_shortner(self, token_uuid: str) -> bool:
+        return True
