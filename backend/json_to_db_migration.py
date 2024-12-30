@@ -24,6 +24,37 @@ def subpath_checker(subpath: str):
         subpath = '/' + subpath
     return subpath
 
+folders_report = {}
+invalid_entries = []
+def save_issue(type, resource_type, entry, e):
+    issue = {
+        "issues": [type],
+        "uuid": str(entry.uuid),
+        "shortname": entry.shortname,
+        "resource_type": resource_type,
+        "exception": str(e),
+    }
+    invalid_entries.append(issue)
+
+def save_report(isubpath: str, issue):
+    if folders_report.get(isubpath, False):
+        if folders_report[isubpath].get("invalid_entries", False):
+            folders_report[isubpath]["invalid_entries"] = [
+                *folders_report[isubpath]["invalid_entries"],
+                issue
+            ]
+        else:
+            folders_report[isubpath]["invalid_entries"] = [
+                issue
+            ]
+    else:
+        folders_report[isubpath] = {
+            "invalid_entries": [
+                issue
+            ]
+        }
+
+
 
 postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
 engine = create_engine(f"{postgresql_url}/postgres", echo=False, isolation_level="AUTOCOMMIT")
@@ -255,7 +286,6 @@ with Session(engine) as session:
                         except Exception as e:
                             print(f"Error processing Entries {space_name}/{subpath}/{dir}/{entry} ... ")
                             print(e)
-
             try:
                 session.commit()
             except Exception as e:
@@ -265,3 +295,4 @@ with Session(engine) as session:
 
 if settings.active_data_db == 'file':
     print("[Warning] you are using active_data_db='file', please don't forget to set it to active_data_db='sql' in your config.env")
+
