@@ -58,7 +58,6 @@ from utils.helpers import (
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import GetJWTToken, JWTBearer
 from utils.plugin_manager import plugin_manager
-from utils.redis_services import RedisServices
 from utils.router_helper import is_space_exist
 from utils.settings import settings
 from utils.spaces import initialize_spaces

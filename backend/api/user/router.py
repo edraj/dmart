@@ -481,7 +481,6 @@ async def update_profile(
 
     if user.is_active and profile.attributes.get("is_active", None) is not None:
         if not profile.attributes.get("is_active"):
-            await db.remove_sql_active_session(user.shortname)
             await db.remove_sql_user_session(user.shortname)
 
     history_diff = await db.update(
@@ -1000,7 +999,6 @@ async def handle_failed_login_attempt(user: core.User):
             old_version_flattend = flatten_dict(user.model_dump())
             user.is_active = False
 
-            await db.remove_sql_active_session(user.shortname)
             await db.remove_sql_user_session(user.shortname)
 
             await db.update(

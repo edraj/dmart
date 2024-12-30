@@ -62,12 +62,14 @@ class BaseDataAdapter(ABC):
         """Load a Meta Json according to the reuqested Class type"""
         pass
 
+    @abstractmethod
     async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
         pass
 
+    @abstractmethod
     async def query(self, query: api.Query, user_shortname: str | None = None) \
             -> Tuple[int, list[core.Record]]:
-        return (0, [])
+        pass
 
     @abstractmethod
     async def load(
@@ -214,14 +216,17 @@ class BaseDataAdapter(ABC):
     ):
         pass
 
+    @abstractmethod
     async def lock_handler(
             self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
     ) -> dict|None:
         pass
 
+    @abstractmethod
     async def fetch_space(self, space_name: str) -> core.Space | None:
         pass
 
+    @abstractmethod
     async def get_entry_attachments(
             self,
             subpath: str,
@@ -233,59 +238,65 @@ class BaseDataAdapter(ABC):
     ) -> dict:
         return {}
 
-    async def set_sql_active_session(self, user_shortname: str, token: str) -> bool:
-        return False
-
+    @abstractmethod
     async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
-        return False
+        pass
 
-    async def get_sql_active_session(self, user_shortname: str, auth_token: str | None) -> str | None:
-        return None
-
+    @abstractmethod
     async def get_sql_user_session(self, user_shortname: str, token: str) -> str | None:
         pass
 
-    async def remove_sql_active_session(self, user_shortname: str) -> bool:
-        return False
-
+    @abstractmethod
     async def remove_sql_user_session(self, user_shortname: str) -> bool:
-        return False
+        pass
 
+    @abstractmethod
     async def set_invitation(self, invitation_token: str, invitation_value):
         pass
 
+    @abstractmethod
     async def get_invitation_token(self, invitation_token: str) -> str | None:
         pass
 
+    @abstractmethod
     async def set_url_shortner(self, token_uuid: str, url: str):
         pass
 
+    @abstractmethod
     async def get_url_shortner(self, token_uuid: str) -> str | None:
-        return None
+        pass
 
+    @abstractmethod
     async def delete_url_shortner(self, token_uuid: str) -> bool:
-        return False
+        pass
 
+    @abstractmethod
     async def clear_failed_password_attempts(self, user_shortname: str) -> bool:
-        return False
+        pass
 
+    @abstractmethod
     async def get_failed_password_attempt_count(self, user_shortname: str) -> int:
         return 0
 
+    @abstractmethod
     async def set_failed_password_attempt_count(self, user_shortname: str, attempt_count: int) -> bool:
-        return False
+        pass
 
+    @abstractmethod
     async def get_spaces(self) -> dict:
         return {}
 
+    @abstractmethod
     async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass
 
+    @abstractmethod
     async def validate_uniqueness(
         self, space_name: str, record: Record, action: str = RequestType.create, user_shortname=None
-    ):
+    ) -> bool:
         pass
 
+    @abstractmethod
     async def validate_payload_with_schema(
         self,
         payload_data: UploadFile | dict,

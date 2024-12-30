@@ -61,7 +61,7 @@ async def main(health_type: str, space_param: str, schemas_param: list):
 
 async def hard_space_check(space):
     with SQLAdapter().get_session() as session:
-        sql_stm = select(Entries).where(Entries.space_name == space)
+        sql_stm = select(Entries).where(col(Entries.space_name) == space)
         entries = list(session.exec(sql_stm).all())
         folders_report: dict[str, dict[str, Any]] = {}
 
