@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import time
 from copy import copy
@@ -15,6 +16,7 @@ from sqlmodel import create_engine, Session, select, col, delete, update
 import io
 
 import models.api as api
+from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
 from models.enums import QueryType, LockAction, ResourceType, SortType, ContentType
 from utils.database.create_tables import (
@@ -47,6 +49,9 @@ from .sql_adapter_helpers import (
     subpath_checker, parse_search_string, validate_search_range, sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
 )
+from utils.custom_validations import get_nested_value
+from jsonschema import Draft7Validator
+from starlette.datastructures import UploadFile
 
 
 def query_aggregation(table, query):
@@ -258,10 +263,16 @@ class SQLAdapter(BaseDataAdapter):
         return (Path(), "")
 
     def __init__(self):
-        self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
-        connection_string = f"{self.database_connection_string}/{settings.database_name}"
-        engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
-        self.session = Session(engine)
+        try:
+            self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+            connection_string = f"{self.database_connection_string}/{settings.database_name}"
+            engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
+            self.session = Session(engine)
+            with self.get_session() as session:
+                session.execute(text("SELECT 1")).one_or_none()
+        except Exception as e:
+            print("[!FATAL]", e)
+            sys.exit(127)
 
 
     def get_session(self):
@@ -480,7 +491,7 @@ class SQLAdapter(BaseDataAdapter):
                 return None
 
     async def query(
-            self, query: api.Query, user_shortname: str | None = None
+        self, query: api.Query, user_shortname: str | None = None
     ) -> Tuple[int, list[core.Record]]:
         total : int
         results : list
@@ -537,7 +548,7 @@ class SQLAdapter(BaseDataAdapter):
                         message=str(e),
                     ),
                 )
-        return (total, results)
+        return total, results
 
     async def load_or_none(
             self,
@@ -1306,7 +1317,7 @@ class SQLAdapter(BaseDataAdapter):
 
     async def get_failed_password_attempt_count(self, user_shortname: str) -> int:
         with self.get_session() as session:
-            statement = select(Users).where(Users.shortname == user_shortname)
+            statement = select(Users).where(col(Users.shortname) == user_shortname)
 
             result = session.exec(statement).one_or_none()
             if result is None:
@@ -1318,7 +1329,7 @@ class SQLAdapter(BaseDataAdapter):
     async def set_failed_password_attempt_count(self, user_shortname: str, attempt_count: int) -> bool:
         with self.get_session() as session:
             try:
-                statement = select(Users).where(Users.shortname == user_shortname)
+                statement = select(Users).where(col(Users.shortname) == user_shortname)
                 result = session.exec(statement).one_or_none()
                 if result is None:
                     return False
@@ -1355,3 +1366,84 @@ class SQLAdapter(BaseDataAdapter):
                 return io.BytesIO(result)
         return None
 
+    async def validate_uniqueness(
+        self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
+    ) -> bool:
+        """
+        Get list of unique fields from entry's folder meta data
+        ensure that each sub-list in the list is unique across all entries
+        """
+        parent_subpath, folder_shortname = os.path.split(record.subpath)
+        folder_meta = None
+        try:
+            folder_meta = await self.load(space_name, parent_subpath, folder_shortname, core.Folder)
+        except Exception:
+            folder_meta = None
+
+        if folder_meta is None or folder_meta.payload is None or not isinstance(folder_meta.payload.body,
+                                                                            dict) or not isinstance(
+                folder_meta.payload.body.get("unique_fields", None), list):  # type: ignore
+            return True
+
+        for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
+            query_string = ""
+            for composite_unique_key in compound:
+                value = get_nested_value(record.attributes, composite_unique_key)
+                if value is None:
+                    continue
+                query_string += f"@{composite_unique_key}:{value} "
+
+            if query_string == "":
+                continue
+
+            q = api.Query(
+                space_name=space_name,
+                subpath=record.subpath,
+                type=QueryType.subpath,
+                search=query_string
+            )
+            owner = record.attributes.get("owner_shortname", None) if user_shortname is None else user_shortname
+            total, _ = await self.query(q, owner)
+
+            max_limit = 0 if action is api.RequestType.create else 1
+
+            if total != max_limit:
+                raise API_Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    API_Error(
+                        type="request",
+                        code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
+                        message=f"Entry properties should be unique: {query_string}",
+                    ),
+                )
+        return True
+
+    async def validate_payload_with_schema(
+            self,
+            payload_data: UploadFile | dict,
+            space_name: str,
+            schema_shortname: str,
+    ):
+        if not isinstance(payload_data, (dict, UploadFile)):
+            raise API_Exception(
+                status.HTTP_400_BAD_REQUEST,
+                API_Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_DATA,
+                    message="Invalid payload.body",
+                ),
+            )
+
+        if schema_shortname in ["folder_rendering", "meta_schema"]:
+            space_name = "management"
+        schema = await self.load(space_name, "/schema", schema_shortname, core.Schema)
+        if schema.payload:
+            schema = schema.payload.model_dump()['body']
+
+        if not isinstance(payload_data, dict):
+            data = json.load(payload_data.file)
+            payload_data.file.seek(0)
+        else:
+            data = payload_data
+
+        Draft7Validator(schema).validate(data)  # type: ignore

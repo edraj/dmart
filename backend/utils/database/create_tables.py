@@ -52,8 +52,8 @@ class Metas(Unique, table=False):
     displayname: dict | core.Translation | None = Field(default=None, sa_type=JSONB)
     description: dict | core.Translation | None = Field(default=None, sa_type=JSONB)
     tags: list[str] = Field(default_factory=dict, sa_type=JSONB)
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
     owner_shortname: str | None = None
     acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)

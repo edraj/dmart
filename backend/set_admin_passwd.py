@@ -13,7 +13,7 @@ from sqlmodel import select
 
 users : dict[str, dict]= {"dmart":{}, "alibaba": {}}
 
-while True: 
+while True:
     password = getpass.getpass("Enter the admin/testuser password then hit enter: ")
     if re.match(regex.PASSWORD, password):
         break

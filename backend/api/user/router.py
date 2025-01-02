@@ -11,11 +11,9 @@ from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
 import models.api as api
 import models.core as core
 from models.enums import ActionType, RequestType, ResourceType, ContentType
-from utils.custom_validations import validate_uniqueness
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
-from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, remove_user_session, sign_jwt, decode_jwt
 from typing import Any
@@ -32,14 +30,11 @@ from .service import (
     send_sms,
     send_otp,
     email_send_otp,
-    fetch_invitation,
     get_shortname_from_identifier,
     check_user_validation,
     set_user_profile,
-    update_user_payload, get_otp_confirmation_email_or_msisdn,
-    get_failed_password_attempt_count,
-    set_failed_password_attempt_count,
-    clear_failed_password_attempts,
+    update_user_payload, 
+    get_otp_confirmation_email_or_msisdn,
 )
 from .model.requests import (
     ConfirmOTPRequest,
@@ -138,7 +133,7 @@ async def create_user(record: core.Record) -> api.Response:
         record=record,
         owner_shortname=record.shortname
     )
-    await validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, record.shortname)
+    await db.validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, record.shortname)
 
     separate_payload_data: str | dict[str, Any] = {}
     if "payload" in record.attributes and "body" in record.attributes["payload"]:
@@ -157,7 +152,7 @@ async def create_user(record: core.Record) -> api.Response:
                 separate_payload_data, Path
             ):
                 if user.payload.schema_shortname:
-                    await validate_payload_with_schema(
+                    await db.validate_payload_with_schema(
                         payload_data=separate_payload_data,
                         space_name=MANAGEMENT_SPACE,
                         schema_shortname=user.payload.schema_shortname,
@@ -192,7 +187,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     identifier = request.check_fields()
     try:
         if request.invitation:
-            invitation_token = await fetch_invitation(request.invitation)
+            invitation_token = await db.get_invitation_token(request.invitation)
 
             data = decode_jwt(request.invitation)
             shortname = data.get("shortname", None)
@@ -273,7 +268,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 or is_password_valid
             )
         ):
-            await clear_failed_password_attempts(shortname)
+            await db.clear_failed_password_attempts(shortname)
             
             record = await process_user_login(user, response, user_updates, request.firebase_token)
             await reset_failed_login_attempt(user)
@@ -472,7 +467,7 @@ async def update_profile(
         elif profile_user.msisdn:
             user.is_msisdn_verified = True
     else:
-        await validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update, shortname)
+        await db.validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update, shortname)
         if "email" in profile.attributes and user.email != profile_user.email:
             user.email = profile_user.email
             user.is_email_verified = False
@@ -486,7 +481,6 @@ async def update_profile(
 
     if user.is_active and profile.attributes.get("is_active", None) is not None:
         if not profile.attributes.get("is_active"):
-            await db.remove_sql_active_session(user.shortname)
             await db.remove_sql_user_session(user.shortname)
 
     history_diff = await db.update(
@@ -987,10 +981,10 @@ async def process_user_login(
 
 
 async def reset_failed_login_attempt(user: core.User):
-    await set_failed_password_attempt_count(user.shortname, 0)
+    await db.set_failed_password_attempt_count(user.shortname, 0)
 
 async def handle_failed_login_attempt(user: core.User):
-    failed_login_attempts_count: int = await get_failed_password_attempt_count(user.shortname)
+    failed_login_attempts_count: int = await db.get_failed_password_attempt_count(user.shortname)
 
     # Increment the failed login attempts counter
     failed_login_attempts_count += 1
@@ -998,14 +992,13 @@ async def handle_failed_login_attempt(user: core.User):
     if failed_login_attempts_count >= settings.max_failed_login_attempts:
         # If the user reach the configured limit, lock the user by setting the is_active to false
         if user.is_active:
-            await set_failed_password_attempt_count(user.shortname, failed_login_attempts_count)
+            await db.set_failed_password_attempt_count(user.shortname, failed_login_attempts_count)
 
             logger.info(f"User {user.shortname} reached the maximum failed login attempts ({settings.max_failed_login_attempts}) disabling the user")
 
             old_version_flattend = flatten_dict(user.model_dump())
             user.is_active = False
 
-            await db.remove_sql_active_session(user.shortname)
             await db.remove_sql_user_session(user.shortname)
 
             await db.update(
@@ -1030,7 +1023,7 @@ async def handle_failed_login_attempt(user: core.User):
             )
     else:
         # Count until the failed attempts reach the limit
-        await set_failed_password_attempt_count(user.shortname, failed_login_attempts_count)
+        await db.set_failed_password_attempt_count(user.shortname, failed_login_attempts_count)
 
 
 if settings.social_login_allowed:

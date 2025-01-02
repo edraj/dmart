@@ -12,7 +12,6 @@ import models.core as core
 import sys
 from models.enums import ContentType, ResourceType
 from utils.helpers import camel_case, divide_chunks
-from utils.custom_validations import validate_payload_with_schema
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from utils.redis_services import RedisServices
 from utils.repository import generate_payload_string
@@ -127,7 +126,7 @@ async def generate_redis_docs(locators: list) -> list:
                             one.space_name, one.subpath, myclass
                         ) / str(meta.payload.body)
                         payload_data = json.loads(payload_path.read_text())
-                        await validate_payload_with_schema(
+                        await db.validate_payload_with_schema(
                             payload_data=payload_data,
                             space_name=one.space_name,
                             schema_shortname=meta.payload.schema_shortname,

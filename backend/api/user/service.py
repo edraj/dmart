@@ -11,7 +11,6 @@ from utils.async_request import AsyncRequest
 from utils.internal_error_code import InternalErrorCode
 from utils.redis_services import RedisServices
 from utils.settings import settings
-from utils.custom_validations import validate_payload_with_schema
 from fastapi.logger import logger
 from fastapi import status
 
@@ -172,26 +171,6 @@ async def send_email(from_address: str, to_address: str, message: str, subject: 
 
     return True
 
-
-async def fetch_invitation(invitation: str):
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_services:
-            # FIXME invitation_token = await redis_services.getdel_key(
-            invitation_token = await redis_services.get_key(
-                f"users:login:invitation:{invitation}"
-            )
-    else:
-        invitation_token = await db.get_invitation_token(invitation)
-    if not invitation_token:
-        raise Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            Error(
-                type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
-        )
-
-    return invitation_token
-
-
 async def get_shortname_from_identifier(access_control, key, value):
     if isinstance(value, str) and isinstance(key, str):
         shortname = await access_control.get_user_by_criteria(key, value)
@@ -268,7 +247,7 @@ async def update_user_payload(profile, profile_user, user, shortname):
 
     if user.payload and separate_payload_data:
         if profile_user.payload.schema_shortname:
-            await validate_payload_with_schema(
+            await db.validate_payload_with_schema(
                 payload_data=separate_payload_data,
                 space_name=MANAGEMENT_SPACE,
                 schema_shortname=str(user.payload.schema_shortname),
@@ -280,30 +259,4 @@ async def update_user_payload(profile, profile_user, user, shortname):
         user,
         separate_payload_data,
     )
-
-async def clear_failed_password_attempts(shortname: str):
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_services:
-            await redis_services.del_keys([f"users:failed_login_attempts/{shortname}"])
-    else:
-        return await db.clear_failed_password_attempts(shortname)
-
-async def get_failed_password_attempt_count(shortname: str) -> int:
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_services:
-            failed_login_attempts_count = 0
-            raw_failed_login_attempts_count = await redis_services.get(f"users:failed_login_attempts/{shortname}")
-            if raw_failed_login_attempts_count:
-                failed_login_attempts_count = int(raw_failed_login_attempts_count)
-            return failed_login_attempts_count
-    else:
-        failed_password_count: int = await db.get_failed_password_attempt_count(shortname)
-        return failed_password_count
-    
-async def set_failed_password_attempt_count(shortname: str, attempt_count: int):
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_services:
-            await redis_services.set(f"users:failed_login_attempts/{shortname}", attempt_count)
-    else:
-        return await db.set_failed_password_attempt_count(shortname, attempt_count)
     

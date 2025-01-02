@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import status
 from utils.generate_email import generate_email_from_template, generate_subject
-from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema, validate_uniqueness
+from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema
 from utils.internal_error_code import InternalErrorCode
 from utils.router_helper import is_space_exist
 from utils.ticket_sys_utils import (
@@ -31,7 +31,6 @@ from utils.helpers import (
     camel_case,
     flatten_dict,
 )
-from utils.custom_validations import validate_payload_with_schema
 from utils.settings import settings
 from utils.plugin_manager import plugin_manager
 from api.user.service import (
@@ -252,7 +251,7 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                     ),
                 )
 
-            await validate_uniqueness(request.space_name, record, RequestType.create, owner_shortname)
+            await db.validate_uniqueness(request.space_name, record, RequestType.create, owner_shortname)
 
             resource_obj = core.Meta.from_record(
                 record=record, owner_shortname=owner_shortname
@@ -266,7 +265,7 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                 and resource_obj.payload.schema_shortname
                 and isinstance(separate_payload_data, dict)
             ):
-                await validate_payload_with_schema(
+                await db.validate_payload_with_schema(
                     payload_data=separate_payload_data,
                     space_name=request.space_name,
                     schema_shortname=resource_obj.payload.schema_shortname,
@@ -454,7 +453,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                     }
                 new_version_flattend = flatten_dict(new_version_flattend)
 
-                await validate_uniqueness(
+                await db.validate_uniqueness(
                     request.space_name, record, RequestType.update, owner_shortname
                 )
             # VALIDATE SEPARATE PAYLOAD BODY
@@ -464,7 +463,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 and resource_obj.payload.schema_shortname
                 and new_resource_payload_data is not None
             ):
-                await validate_payload_with_schema(
+                await db.validate_payload_with_schema(
                     payload_data=new_resource_payload_data,
                     space_name=request.space_name,
                     schema_shortname=resource_obj.payload.schema_shortname,
@@ -522,7 +521,6 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 record.attributes.get("is_active", None) is not None
             ):
                 if not record.attributes.get("is_active"):
-                    await db.remove_sql_active_session(record.shortname)
                     await db.remove_sql_user_session(record.shortname)
 
             records.append(
@@ -648,7 +646,7 @@ async def serve_request_patch(request, owner_shortname: str):
                     }
                 new_version_flattend = flatten_dict(new_version_flattend)
 
-                await validate_uniqueness(
+                await db.validate_uniqueness(
                     request.space_name, record, RequestType.update, owner_shortname
                 )
 
@@ -689,7 +687,7 @@ async def serve_request_patch(request, owner_shortname: str):
                     and resource_obj.payload.schema_shortname
                     and new_resource_payload_data is not None
                 ):
-                    await validate_payload_with_schema(
+                    await db.validate_payload_with_schema(
                         payload_data=resource_obj.payload.body,
                         space_name=request.space_name,
                         schema_shortname=resource_obj.payload.schema_shortname,
@@ -1654,7 +1652,7 @@ async def create_or_update_resource_with_payload_handler(
         resource_content_type == ContentType.json
         and resource_obj.payload.schema_shortname
     ):
-        await validate_payload_with_schema(
+        await db.validate_payload_with_schema(
             payload_data=payload_file,
             space_name=space_name,
             schema_shortname=resource_obj.payload.schema_shortname,

@@ -17,7 +17,6 @@ from models.enums import ContentType, Language, ResourceType
 from models.core import Record
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
-from utils.custom_validations import validate_payload_with_schema
 from utils.database.create_tables import Users
 from utils.helpers import (
     camel_case,
@@ -175,7 +174,7 @@ async def _serve_query_subpath_check_payload(resource_base_record, path, resourc
             )
 
     if query.validate_schema:
-        await validate_payload_with_schema(
+        await db.validate_payload_with_schema(
             payload_data=payload_body,
             space_name=query.space_name,
             schema_shortname=resource_obj.payload.schema_shortname,
@@ -1094,7 +1093,7 @@ async def folder_meta_content_check(
                 core.Folder,
             )
             if folder_meta_content.payload.schema_shortname and folder_meta_payload:
-                await validate_payload_with_schema(
+                await db.validate_payload_with_schema(
                     payload_data=folder_meta_payload,
                     space_name=space_name,
                     schema_shortname=folder_meta_content.payload.schema_shortname,
@@ -1365,7 +1364,7 @@ async def health_check_entry(
             resource_class,
         )
         if entry_meta_obj.payload.schema_shortname and payload_file_content:
-            await validate_payload_with_schema(
+            await db.validate_payload_with_schema(
                 payload_data=payload_file_content,
                 space_name=space_name,
                 schema_shortname=entry_meta_obj.payload.schema_shortname,
@@ -1439,7 +1438,7 @@ async def internal_sys_update_model(
             meta.shortname
         )
     if payload_updated and meta.payload and meta.payload.schema_shortname:
-        await validate_payload_with_schema(
+        await db.validate_payload_with_schema(
             payload_dict, space_name, meta.payload.schema_shortname
         )
         await db.save_payload_from_json(
@@ -1638,7 +1637,7 @@ async def get_record_from_redis_doc(
             and payload_doc_content is not None
             and validate_schema
     ):
-        await validate_payload_with_schema(
+        await db.validate_payload_with_schema(
             payload_data=payload_doc_content,
             space_name=space_name,
             schema_shortname=resource_obj.payload.schema_shortname,

@@ -8,6 +8,8 @@ from alembic import context
 from utils.database.create_tables import \
     metadata
 
+from utils.settings import settings
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -16,6 +18,10 @@ config = context.config
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+connection_string = f"{database_connection_string}/{settings.database_name}"
+config.set_main_option('sqlalchemy.url', connection_string)
 
 # add your model's MetaData object here
 # for 'autogenerate' support

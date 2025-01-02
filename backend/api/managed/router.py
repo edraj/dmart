@@ -49,7 +49,6 @@ from models.enums import (
     TaskType,
 )
 from utils.access_control import access_control
-from utils.custom_validations import validate_payload_with_schema
 from utils.helpers import (
     camel_case,
     csv_file_to_json,
@@ -59,7 +58,6 @@ from utils.helpers import (
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import GetJWTToken, JWTBearer
 from utils.plugin_manager import plugin_manager
-from utils.redis_services import RedisServices
 from utils.router_helper import is_space_exist
 from utils.settings import settings
 from utils.spaces import initialize_spaces
@@ -913,7 +911,7 @@ async def retrieve_entry_meta(
     )
 
     if meta.payload and meta.payload.schema_shortname and validate_schema and payload_body:
-        await validate_payload_with_schema(
+        await db.validate_payload_with_schema(
             payload_data=payload_body,
             space_name=space_name,
             schema_shortname=meta.payload.schema_shortname,
@@ -1248,17 +1246,10 @@ async def execute(
 async def shoting_url(
         token: str,
 ):
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_services:
-            if url := await redis_services.get_key(f"short/{token}"):
-                return RedirectResponse(url=url)
-            else:
-                return RedirectResponse(url="/frontend")
-    else:
-        if url := await db.get_url_shortner(token):
-            return RedirectResponse(url=url)
-        else:
-            return RedirectResponse(url="/frontend")
+    if url := await db.get_url_shortner(token):
+        return RedirectResponse(url=url)
+
+    return RedirectResponse(url="/frontend")
 
 
 @router.post(
