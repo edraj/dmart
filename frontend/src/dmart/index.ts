@@ -415,7 +415,7 @@ export async function login(shortname: string, password: string) {
     // FIXME settins Authorization is only needed when the code is running on the server
     //headers.Authorization = "";
     if (data.status == Status.success && data.records.length > 0) {
-      headers.Authorization = "Bearer " + data.records[0].attributes.access_token;
+        headers.Authorization = "Bearer " + data.records[0].attributes.access_token;
     }
     return data;
 }
@@ -689,13 +689,23 @@ export async function fetchDataAsset(
 }
 
 export async function get_spaces(): Promise<ApiResponse> {
-    return await query({
+    const spaces: any = await query({
         type: QueryType.spaces,
         space_name: "management",
         subpath: "/",
         search: "",
         limit: 100,
     });
+
+    spaces.records = spaces.records.filter(e => e.attributes.hide_space === false)
+    spaces.records = spaces.records.map(e=>{
+        if (e.attributes.ordinal === null ) {
+            e.attributes.ordinal = 9999;
+        }
+        return e;
+    })
+    spaces.records.sort((a, b) => a.attributes.ordinal - b.attributes.ordinal);
+    return spaces;
 }
 
 export async function get_children(
@@ -705,7 +715,7 @@ export async function get_children(
     offset: number = 0,
     restrict_types: Array<ResourceType> = []
 ): Promise<ApiResponse> {
-    return await query({
+    const folders = await query({
         type: QueryType.search,
         space_name: space_name,
         subpath: subpath,
@@ -715,6 +725,7 @@ export async function get_children(
         limit: limit,
         offset: offset,
     });
+    return folders
 }
 
 export function get_attachment_url(
