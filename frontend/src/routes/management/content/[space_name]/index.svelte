@@ -3,7 +3,6 @@
   import { retrieve_entry, ResourceType } from "@/dmart";
   import EntryRenderer from "@/components/management/renderers/EntryRenderer.svelte";
 
-
   let refresh = false;
 </script>
 
