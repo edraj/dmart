@@ -553,6 +553,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
             )
     return records, failed_records
 
+
 async def serve_request_patch(request, owner_shortname: str):
     records: list[core.Record] = []
     failed_records: list[dict] = []
@@ -748,6 +749,7 @@ async def serve_request_patch(request, owner_shortname: str):
                 }
             )
     return records, failed_records
+
 
 async def serve_request_assign(request, owner_shortname: str):
     records: list[core.Record] = []
@@ -1417,6 +1419,7 @@ async def serve_space_update(request, record, owner_shortname: str):
     )
     return history_diff
 
+
 async def serve_space_delete(request, record, owner_shortname: str):
     if request.space_name == "management":
         raise api.Exception(
@@ -1606,7 +1609,7 @@ async def import_resources_from_csv_handler(
 
 
 async def create_or_update_resource_with_payload_handler(
-        record, owner_shortname, space_name, payload_file, payload_filename, checksum, sha, resource_content_type
+    record, owner_shortname, space_name, payload_file, payload_filename, checksum, sha, resource_content_type
 ):
     if record.resource_type == ResourceType.ticket:
         record = await set_init_state_from_record(
