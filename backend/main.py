@@ -1,5 +1,6 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 """ Main module """
+import redis
 from starlette.datastructures import UploadFile
 from contextlib import asynccontextmanager
 import asyncio
@@ -38,7 +39,7 @@ from api.qr.router import router as qr
 from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info, git_info
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from utils.internal_error_code import InternalErrorCode
 
 
@@ -61,7 +62,9 @@ async def lifespan(app: FastAPI):
         # await plugin_manager.load_plugins(app, capture_body)
 
         yield
-
+    except redis.exceptions.ConnectionError as e:
+        print("[!FATAL]", e)
+        sys.exit(127)
     finally:
         await RedisServices().close_pool()
 
