@@ -1,10 +1,18 @@
 import json
 import logging
 import logging.config
+import os
+
 from utils.settings import settings
 
 
 class CustomFormatter(logging.Formatter):
+    def __init__(self):
+        log_dir = os.path.dirname(settings.log_file)
+        if not os.path.exists(log_dir):
+            os.mkdir(log_dir)
+        super().__init__()
+
     def format(self, record):
         correlation_id = getattr(record, "correlation_id", "")
         if correlation_id == "ROOT" and getattr(record, "props", None):

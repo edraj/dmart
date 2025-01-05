@@ -6,7 +6,6 @@ from models.enums import AttachmentType, ContentType, ResourceType, TaskType
 from data_adapters.adapter import data_adapter as db
 import models.api as api
 from utils.helpers import camel_case
-from utils.custom_validations import validate_payload_with_schema
 from utils.internal_error_code import InternalErrorCode
 import utils.regex as regex
 import models.core as core
@@ -157,7 +156,7 @@ async def retrieve_entry_meta(
     )
 
     if meta.payload and meta.payload.schema_shortname and payload_body:
-        await validate_payload_with_schema(
+        await db.validate_payload_with_schema(
             payload_data=payload_body,
             space_name=space_name,
             schema_shortname=meta.payload.schema_shortname,
@@ -391,7 +390,7 @@ async def create_entry(
     )
 
     if content_obj.payload and content_obj.payload.schema_shortname:
-        await validate_payload_with_schema(
+        await db.validate_payload_with_schema(
             payload_data=body_dict,
             space_name=space_name,
             schema_shortname=content_obj.payload.schema_shortname,
