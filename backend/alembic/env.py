@@ -5,7 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from utils.database.create_tables import \
+from data_adapters.sql.create_tables import \
     metadata
 
 from utils.settings import settings

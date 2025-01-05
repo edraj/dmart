@@ -17,7 +17,7 @@ from models.enums import ContentType, Language, ResourceType
 from models.core import Record
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
-from utils.database.create_tables import Users
+from data_adapters.sql.create_tables import Users
 from utils.helpers import (
     camel_case,
     flatten_all,
@@ -26,7 +26,7 @@ from utils.helpers import (
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import generate_jwt
 from utils.plugin_manager import plugin_manager
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from utils.settings import settings
 
 

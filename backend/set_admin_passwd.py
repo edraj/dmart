@@ -1,6 +1,6 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
-from data_adapters.sql_adapter import SQLAdapter
-from utils.database.create_tables import Users
+from data_adapters.sql.sql_adapter import SQLAdapter
+from data_adapters.sql.create_tables import Users
 from utils.password_hashing import hash_password
 from utils.settings import settings
 import json

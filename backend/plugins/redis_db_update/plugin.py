@@ -5,9 +5,9 @@ from utils.repository import generate_payload_string
 from data_adapters.adapter import data_adapter as db
 from models import core
 from models.enums import ContentType, ResourceType
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from fastapi.logger import logger
-from create_index import main as reload_redis
+from data_adapters.file.create_index import main as reload_redis
 from utils.settings import settings
 from typing import Any
 

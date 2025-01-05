@@ -1,8 +1,8 @@
 from typing import Type
 
 from .base_data_adapter import BaseDataAdapter
-from .file_adapter import FileAdapter
-from .sql_adapter import SQLAdapter
+from data_adapters.file.file_adapter import FileAdapter
+from data_adapters.sql.sql_adapter import SQLAdapter
 from utils.settings import settings
 
 

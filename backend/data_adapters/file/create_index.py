@@ -13,7 +13,7 @@ import sys
 from models.enums import ContentType, ResourceType
 from utils.helpers import camel_case, divide_chunks
 from jsonschema.exceptions import ValidationError as SchemaValidationError
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from utils.repository import generate_payload_string
 from utils.settings import settings
 import utils.regex as regex
@@ -25,8 +25,8 @@ from multiprocessing import Pool
 
 
 async def load_data_to_redis(
-    space_name, 
-    subpath, 
+    space_name,
+    subpath,
     allowed_resource_types
 ) -> dict:
     """

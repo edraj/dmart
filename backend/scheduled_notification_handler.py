@@ -4,7 +4,7 @@ import json
 from models.core import Content, Notification, NotificationData, Translation
 from data_adapters.adapter import data_adapter as db
 from utils.notification import NotificationManager
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from utils.repository import (
     internal_save_model,
     internal_sys_update_model,

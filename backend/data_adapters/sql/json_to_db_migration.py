@@ -12,7 +12,7 @@ from sqlmodel import Session, create_engine, text
 
 from health_check_sql import save_health_check_entry
 from models.enums import ResourceType
-from utils.database.create_tables import Entries, Users, generate_tables, Attachments, \
+from data_adapters.sql.create_tables import Entries, Users, generate_tables, Attachments, \
     Roles, Permissions, Spaces
 from utils.settings import settings
 
