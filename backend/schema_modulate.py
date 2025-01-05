@@ -3,8 +3,8 @@ from enum import StrEnum
 
 from sqlalchemy import update
 from typing import Any
-from data_adapters.sql_adapter import SQLAdapter
-from utils.database.create_tables import Users, Roles, Permissions, Entries, Spaces, Attachments
+from data_adapters.sql.sql_adapter import SQLAdapter
+from data_adapters.sql.create_tables import Users, Roles, Permissions, Entries, Spaces, Attachments
 from utils.settings import settings
 import argparse
 from sqlmodel import select, col

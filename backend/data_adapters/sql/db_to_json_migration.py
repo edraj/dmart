@@ -4,7 +4,7 @@ import os
 import json
 from datetime import datetime
 from sqlmodel import Session, create_engine, select
-from utils.database.create_tables import (
+from data_adapters.sql.create_tables import (
     Entries,
     Users,
     Attachments,

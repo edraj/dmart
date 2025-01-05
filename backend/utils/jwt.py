@@ -8,7 +8,7 @@ import jwt
 import models.api as api
 from utils.internal_error_code import InternalErrorCode
 from utils.password_hashing import hash_password
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from utils.settings import settings
 from data_adapters.adapter import data_adapter as db
 

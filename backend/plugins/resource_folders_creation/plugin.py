@@ -1,6 +1,6 @@
 from models.core import Folder, PluginBase, Event
 from models.enums import ResourceType
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from utils.repository import internal_save_model
 from fastapi.logger import logger
 

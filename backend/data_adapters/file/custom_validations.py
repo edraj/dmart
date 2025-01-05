@@ -31,18 +31,6 @@ def get_schema_path(space_name: str, schema_shortname: str):
     
     return schema_path
 
-
-def get_nested_value(data, key):
-    keys = key.split('.')
-    if len(keys) == 0:
-        return None
-    for k in keys:
-        if k in data:
-            data = data[k]
-        else:
-            return None
-    return data
-
 async def validate_jsonl_with_schema(
     file_path: FSPath,
     space_name: str,

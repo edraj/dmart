@@ -9,7 +9,7 @@ from models.enums import ContentType
 from utils import password_hashing
 from utils.async_request import AsyncRequest
 from utils.internal_error_code import InternalErrorCode
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from utils.settings import settings
 from fastapi.logger import logger
 from fastapi import status

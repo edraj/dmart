@@ -21,7 +21,7 @@ from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from models.api import Error, Exception, Status
 from utils.social_sso import get_facebook_sso, get_google_sso
 from .service import (

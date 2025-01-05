@@ -6,7 +6,7 @@ from pathlib import Path
 import models.api as api
 import models.core as core
 from models.enums import QueryType
-from utils.database.create_tables import (
+from data_adapters.sql.create_tables import (
     Entries,
     Histories,
     Permissions,

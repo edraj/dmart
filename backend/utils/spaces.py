@@ -1,6 +1,6 @@
 import models.core as core
 from utils.settings import settings
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from utils.regex import SPACES_PATTERN
 
 

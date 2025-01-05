@@ -17,13 +17,13 @@ import models.api as api
 from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
 from utils import regex
-from utils.custom_validations import get_schema_path
-from .base_data_adapter import BaseDataAdapter, MetaChild
+from data_adapters.file.custom_validations import get_schema_path
+from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
 from models.enums import ContentType, ResourceType, LockAction
 from utils.helpers import arr_remove_common, read_jsonl_file, snake_case, camel_case, flatten_list_of_dicts_in_dict, flatten_dict
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN
 from utils.settings import settings
 from jsonschema import Draft7Validator
@@ -128,6 +128,7 @@ def locator_query_sub_folder(locators, query, subfolders_iterator, total):
 
 
 class FileAdapter(BaseDataAdapter):
+
     def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
         locators: list[core.Locator] = []
         total: int = 0

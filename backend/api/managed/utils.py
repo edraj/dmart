@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import status
 from utils.generate_email import generate_email_from_template, generate_subject
-from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema
+from data_adapters.file.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema
 from utils.internal_error_code import InternalErrorCode
 from utils.router_helper import is_space_exist
 from utils.ticket_sys_utils import (
@@ -37,7 +37,7 @@ from api.user.service import (
     send_email,
     send_sms,
 )
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from languages.loader import languages
 from data_adapters.adapter import data_adapter as db
 

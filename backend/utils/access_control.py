@@ -9,12 +9,12 @@ from redis.commands.search.query import Query
 
 from models.core import Meta, ACL, ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
-from utils.database.create_tables import Users
+from data_adapters.sql.create_tables import Users
 from utils.helpers import camel_case, flatten_dict
 from utils.settings import settings
 from data_adapters.adapter import data_adapter as db
 from utils.regex import FILE_PATTERN
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 
 
 class AccessControl:

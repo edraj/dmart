@@ -19,7 +19,7 @@ import models.api as api
 from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
 from models.enums import QueryType, LockAction, ResourceType, SortType, ContentType
-from utils.database.create_tables import (
+from data_adapters.sql.create_tables import (
     Entries,
     Histories,
     Permissions,
@@ -41,15 +41,15 @@ from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
 from utils.password_hashing import hash_password, verify_password
 from utils.settings import settings
-from .base_data_adapter import BaseDataAdapter, MetaChild
-from .sql_adapter_helpers import (
+from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
+from data_adapters.sql.sql_adapter_helpers import (
     set_results_from_aggregation,
     set_table_for_query,
     events_query,
     subpath_checker, parse_search_string, validate_search_range, sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
 )
-from utils.custom_validations import get_nested_value
+from data_adapters.helpers import get_nested_value
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 
