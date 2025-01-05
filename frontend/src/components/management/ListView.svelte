@@ -8,7 +8,7 @@
     RowsPerPage,
     Sort,
   } from "svelte-datatables-net";
-  import {query, QueryType, SortyType} from "@/dmart";
+  import {get_spaces, query, QueryType, SortyType} from "@/dmart";
   import {onDestroy, onMount} from "svelte";
   import cols from "@/stores/management/list_cols.json";
   import { search } from "@/stores/management/triggers";
@@ -27,6 +27,7 @@
   } from "sveltestrap";
   import { params } from "@roxi/routify";
   import {bulkBucket} from "@/stores/management/bulk_bucket";
+  import {spaces} from "@/stores/management/spaces";
 
   $bulkBucket = [];
 
@@ -148,6 +149,17 @@
 
   let old_search = "";
   async function fetchPageRecords(isSetPage = true, requestExtra = {}) {
+    let _search = $search;
+
+    if(subpath==="/") {
+      if($spaces.length === 0){
+        await get_spaces();
+      }
+      const currentSpace = $spaces.find((e) => e.shortname === space_name);
+      const hideFolders = currentSpace.attributes.hide_folders;
+      _search += ` -@shortname:${hideFolders.join('|')}`;
+    }
+
     const resp = await query({
       filter_shortnames: shortname ? [shortname] : [],
       type,
@@ -160,7 +172,7 @@
       offset:
         objectDatatable.numberRowsPerPage *
         (objectDatatable.numberActivePage - 1),
-      search: $search,
+      search: _search.trim(),
       ...requestExtra,
       retrieve_json_payload: true
     }, scope);

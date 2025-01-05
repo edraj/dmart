@@ -128,7 +128,7 @@
           </div>
 
           {#if expanded === space.shortname}
-            {#await get_children( space.shortname, "/", 10, 0, [ResourceType.folder] )}
+            {#await get_children( space.shortname, "/", 10, 0, [ResourceType.folder], loaded_spaces )}
               <!--h4> Loading {space.shortname} </h4-->
             {:then children_data}
               {#each (children_data?.records ?? []) as folder}

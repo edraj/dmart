@@ -139,7 +139,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
     if query.subpath and table is Entries:
         statement = statement.where(table.subpath == query.subpath)
     if query.search:
-        if not query.search.startswith("@"):
+        if not query.search.startswith("@") and not query.search.startswith("-"):
             statement = statement.where(text(
                 f"(shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload) ILIKE '%' || '{query.search}' || '%'"
             ))
@@ -176,7 +176,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 elif isinstance(v, str):
                     statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= '{v}'"))
                 else:
-
                     statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= {v}"))
 
     if query.filter_schema_names:
