@@ -5,6 +5,7 @@ import axios from "axios";
 import {signout} from "@/stores/user";
 import {website} from "@/config";
 import {isNetworkError} from "@/stores/management/error_network";
+import {spaces} from "@/stores/management/spaces";
 
 axios.defaults.timeout = 40000;
 
@@ -415,7 +416,7 @@ export async function login(shortname: string, password: string) {
     // FIXME settins Authorization is only needed when the code is running on the server
     //headers.Authorization = "";
     if (data.status == Status.success && data.records.length > 0) {
-      headers.Authorization = "Bearer " + data.records[0].attributes.access_token;
+        headers.Authorization = "Bearer " + data.records[0].attributes.access_token;
     }
     return data;
 }
@@ -688,8 +689,9 @@ export async function fetchDataAsset(
     }
 }
 
+
 export async function get_spaces(): Promise<ApiResponse> {
-    const spaces: any = await query({
+    const _spaces: any = await query({
         type: QueryType.spaces,
         space_name: "management",
         subpath: "/",
@@ -697,15 +699,16 @@ export async function get_spaces(): Promise<ApiResponse> {
         limit: 100,
     });
 
-    spaces.records = spaces.records.filter(e => e.attributes.hide_space === false)
-    spaces.records = spaces.records.map(e=>{
+    _spaces.records = _spaces.records.filter(e => e.attributes.hide_space === false)
+    _spaces.records = _spaces.records.map(e=>{
         if (e.attributes.ordinal === null ) {
             e.attributes.ordinal = 9999;
         }
         return e;
-    })
-    spaces.records.sort((a, b) => a.attributes.ordinal - b.attributes.ordinal);
-    return spaces;
+    });
+    _spaces.records.sort((a, b) => a.attributes.ordinal - b.attributes.ordinal);
+    spaces.set(_spaces.records);
+    return _spaces;
 }
 
 export async function get_children(
@@ -713,7 +716,8 @@ export async function get_children(
     subpath: string,
     limit: number = 20,
     offset: number = 0,
-    restrict_types: Array<ResourceType> = []
+    restrict_types: Array<ResourceType> = [],
+    spaces: any = null
 ): Promise<ApiResponse> {
     const folders = await query({
         type: QueryType.search,
@@ -725,6 +729,14 @@ export async function get_children(
         limit: limit,
         offset: offset,
     });
+    if(spaces !== null){
+        const selectedSpace = spaces.records.find(record => record.shortname === space_name);
+        const hiddenFolders: string[] = selectedSpace.attributes.hide_folders;
+        if(hiddenFolders){
+            folders.records = folders.records.filter(record => hiddenFolders.includes(record.shortname) === false);
+        }
+
+    }
     return folders
 }
 
