@@ -14,7 +14,7 @@ from fastapi.logger import logger
 from sqlalchemy import text, func
 from sqlmodel import create_engine, Session, select, col, delete, update
 import io
-
+from sys import modules as sys_modules
 import models.api as api
 from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
@@ -35,7 +35,7 @@ from data_adapters.sql.create_tables import (
 from utils.helpers import (
     arr_remove_common,
     get_removed_items,
-    camel_case,
+    camel_case, resolve_schema_references,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
@@ -48,7 +48,7 @@ from data_adapters.sql.sql_adapter_helpers import (
     sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
 )
-from data_adapters.helpers import get_nested_value
+from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 
@@ -1142,12 +1142,12 @@ class SQLAdapter(BaseDataAdapter):
             print("[!fetch_space]", e)
             return None
 
-    async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
+    async def set_user_session(self, user_shortname: str, token: str) -> bool:
         with self.get_session() as session:
             try:
-                last_session = await self.get_sql_user_session(user_shortname, token)
+                last_session = await self.get_user_session(user_shortname, token)
                 if settings.one_session_per_user and last_session is not None:
-                    await self.remove_sql_user_session(user_shortname)
+                    await self.remove_user_session(user_shortname)
                 timestamp = datetime.now()
                 session.add(
                     Sessions(
@@ -1163,7 +1163,7 @@ class SQLAdapter(BaseDataAdapter):
                 print("[!set_sql_user_session]", e)
                 return False
 
-    async def get_sql_user_session(self, user_shortname: str, token: str) -> str | None:
+    async def get_user_session(self, user_shortname: str, token: str) -> str | None:
         with self.get_session() as session:
             statement = select(Sessions) \
             .where(Sessions.shortname == user_shortname)
@@ -1175,7 +1175,7 @@ class SQLAdapter(BaseDataAdapter):
             for r in results:
                 if verify_password(token, r.token):
                     if settings.session_inactivity_ttl + r.timestamp.timestamp() < time.time():
-                        await self.remove_sql_user_session(user_shortname)
+                        await self.remove_user_session(user_shortname)
                         return None
 
                     r.timestamp = datetime.now()
@@ -1185,7 +1185,7 @@ class SQLAdapter(BaseDataAdapter):
                     return token
         return None
 
-    async def remove_sql_user_session(self, user_shortname: str) -> bool:
+    async def remove_user_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
             try:
                 statement = delete(Sessions).where(col(Sessions.shortname) == user_shortname)
@@ -1445,3 +1445,155 @@ class SQLAdapter(BaseDataAdapter):
             data = payload_data
 
         Draft7Validator(schema).validate(data)  # type: ignore
+
+    async def get_schema(self, space_name: str, schema_shortname: str, owner_shortname: str) -> dict:
+        schema_content = await self.load(
+            space_name=space_name,
+            subpath="/schema",
+            shortname=schema_shortname,
+            class_type=core.Schema,
+            user_shortname=owner_shortname,
+        )
+
+        if schema_content and schema_content.payload and isinstance(schema_content.payload.body, dict):
+            return resolve_schema_references(schema_content.payload.body)
+
+        return {}
+
+    async def check_uniqueness(self, unique_fields, search_str, redis_escape_chars) -> dict:
+        for key, value in unique_fields.items():
+            if value is None:
+                continue
+            if key == "email_unescaped":
+                key = "email"
+
+            result = await self.get_entry_by_criteria({key: value}, Users)
+
+            if result is not None:
+                return {"unique": False, "field": key}
+
+        return {"unique": True}
+
+    async def get_role_permissions(self, role: core.Role) -> list[core.Permission]:
+        role_records = await self.load_or_none(
+            settings.management_space, 'roles', role.shortname, core.Role
+        )
+
+        if role_records is None:
+            return []
+
+        role_permissions: list[core.Permission] = []
+
+        for permission in role_records.permissions:
+            permission_record = await self.load_or_none(
+                settings.management_space, 'permissions', permission, core.Permission
+            )
+            if permission_record is None:
+                continue
+            role_permissions.append(permission_record)
+
+        return role_permissions
+
+    async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
+        try:
+            user = await self.load_or_none(
+                settings.management_space, settings.users_subpath, user_shortname, core.User
+            )
+
+            if user is None:
+                return {}
+
+            user_roles: dict[str, core.Role] = {}
+            for role in user.roles:
+                role_record = await self.load_or_none(
+                    settings.management_space, 'roles', role, core.Role
+                )
+                if role_record is None:
+                    continue
+
+                user_roles[role] = role_record
+            return user_roles
+        except Exception as e:
+            print(f"Error: {e}")
+            return {}
+
+    async def load_user_meta(self, user_shortname: str) -> Any:
+        user = await self.load(
+            space_name=settings.management_space,
+            shortname=user_shortname,
+            subpath="users",
+            class_type=core.User,
+            user_shortname=user_shortname,
+        )
+
+        return user
+
+    async def generate_user_permissions(self, user_shortname: str) -> dict:
+        user_permissions: dict = {}
+
+        user_roles = await self.get_user_roles(user_shortname)
+
+        for _, role in user_roles.items():
+            role_permissions = await self.get_role_permissions(role)
+            permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
+                                                            core.Permission)
+            if permission_world_record:
+                role_permissions.append(permission_world_record)
+
+            for permission in role_permissions:
+                for space_name, permission_subpaths in permission.subpaths.items():
+                    for permission_subpath in permission_subpaths:
+                        permission_subpath = trans_magic_words(permission_subpath, user_shortname)
+                        for permission_resource_types in permission.resource_types:
+                            actions = set(permission.actions)
+                            conditions = set(permission.conditions)
+                            if (
+                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                                    in user_permissions
+                            ):
+                                old_perm = user_permissions[
+                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                                ]
+
+                                if isinstance(actions, list):
+                                    actions = set(actions)
+                                actions |= set(old_perm["allowed_actions"])
+
+                                if isinstance(conditions, list):
+                                    conditions = set(conditions)
+                                conditions |= set(old_perm["conditions"])
+
+                            user_permissions[
+                                f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                            ] = {
+                                "allowed_actions": list(actions),
+                                "conditions": list(conditions),
+                                "restricted_fields": permission.restricted_fields,
+                                "allowed_fields_values": permission.allowed_fields_values
+                            }
+        return user_permissions
+
+    async def get_user_permissions(self, user_shortname: str) -> dict:
+        return await self.generate_user_permissions(user_shortname)
+
+    async def get_user_by_criteria(self, key: str, value: str) -> str | None:
+        _user = await self.get_entry_by_criteria(
+            {key: value},
+            Users
+        )
+        if _user is None or len(_user) == 0:
+            return None
+        return str(_user[0].shortname)
+
+    async def get_payload_from_event(self, event) -> dict:
+        notification_request_meta = await self.load(
+            event.space_name,
+            event.subpath,
+            event.shortname,
+            getattr(sys_modules["models.core"], camel_case(event.resource_type)),
+            event.user_shortname,
+        )
+        return notification_request_meta.payload.body # type: ignore
+
+    async def get_user_roles_from_groups(self, user_meta: core.User) -> list:
+        return []

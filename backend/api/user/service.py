@@ -173,7 +173,7 @@ async def send_email(from_address: str, to_address: str, message: str, subject: 
 
 async def get_shortname_from_identifier(access_control, key, value):
     if isinstance(value, str) and isinstance(key, str):
-        shortname = await access_control.get_user_by_criteria(key, value)
+        shortname = await db.get_user_by_criteria(key, value)
         if not (await access_control.is_user_verified(shortname, key)):
             raise Exception(
                 status.HTTP_401_UNAUTHORIZED,

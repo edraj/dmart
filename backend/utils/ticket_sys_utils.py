@@ -2,7 +2,6 @@ import models.api as api
 from fastapi import status
 from data_adapters.adapter import data_adapter as db
 import models.core as core
-from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
 from typing import Any
@@ -12,7 +11,7 @@ async def set_init_state_from_request(ticket: api.Request, logged_in_user):
     workflow_attr = ticket.records[0].attributes
     workflow_shortname = workflow_attr["workflow_shortname"]
 
-    _user_roles = await access_control.get_user_roles(logged_in_user)
+    _user_roles = await db.get_user_roles(logged_in_user)
     user_roles = _user_roles.keys()
 
     workflows_data: core.Content = await db.load(
