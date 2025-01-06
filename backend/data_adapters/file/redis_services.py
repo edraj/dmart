@@ -220,13 +220,11 @@ class RedisServices(Redis):
                             decode_responses=True)
     
     def __new__(cls):
-        print("#####")
         if not hasattr(cls, 'instance'):
             cls.instance = super(RedisServices, cls).__new__(cls)
         return cls.instance
 
     def __init__(self):
-        print("-----")
         super().__init__(connection_pool=RedisServices.POOL)
 
     async def close_pool(self):
