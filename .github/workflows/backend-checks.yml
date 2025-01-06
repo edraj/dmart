@@ -46,7 +46,7 @@ jobs:
         dropdb --if-exists -h 127.0.0.1 -U dmart dmart
         createdb -h 127.0.0.1 -U dmart dmart
         alembic upgrade head
-        ./data_adapters/sql/json_to_db_migration.py
+        .migrate.py json_to_db
         ./reload.sh
         ./curl.sh
         systemctl --user stop dmart
