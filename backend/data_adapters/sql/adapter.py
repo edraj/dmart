@@ -43,10 +43,9 @@ from utils.password_hashing import hash_password, verify_password
 from utils.settings import settings
 from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
 from data_adapters.sql.sql_adapter_helpers import (
-    set_results_from_aggregation,
-    set_table_for_query,
-    events_query,
-    subpath_checker, parse_search_string, validate_search_range, sqlite_aggregate_functions, mysql_aggregate_functions,
+    set_results_from_aggregation, set_table_for_query, events_query,
+    subpath_checker, parse_search_string, validate_search_range,
+    sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
 )
 from data_adapters.helpers import get_nested_value
