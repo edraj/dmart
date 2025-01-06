@@ -17,7 +17,6 @@ from models.enums import ContentType, Language, ResourceType
 from models.core import Record
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
-from data_adapters.sql.create_tables import Users
 from utils.helpers import (
     camel_case,
     flatten_all,
@@ -1747,17 +1746,7 @@ async def get_entry_by_var(
 
 async def url_shortner(url: str) -> str:
     token_uuid = str(uuid4())[:8]
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_services:
-            await redis_services.set_key(
-                f"short/{token_uuid}",
-                url,
-                ex=settings.url_shorter_expires,
-                nx=False,
-            )
-    else:
-        await db.set_url_shortner(token_uuid, url)
-
+    await db.set_url_shortner(token_uuid, url)
     return f"{settings.public_app_url}/managed/s/{token_uuid}"
 
 
@@ -1780,14 +1769,8 @@ async def store_user_invitation_token(user: core.User, channel: str) -> str | No
         {"shortname": user.shortname, "channel": channel},
         settings.jwt_access_expires,
     )
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_services:
-            await redis_services.set_key(
-                f"users:login:invitation:{invitation_token}",
-                invitation_value
-            )
-    else:
-        await db.set_invitation(invitation_token, invitation_value)
+
+    await db.set_invitation(invitation_token, invitation_value)
 
     return core.User.invitation_url_template() \
         .replace("{url}", settings.invitation_link) \
@@ -1805,36 +1788,3 @@ async def delete_space(space_name, record, owner_shortname):
 
     os.system(f"rm -r {settings.spaces_folder}/{space_name}")
 
-
-async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dict:
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis_man:
-            for key, value in unique_fields.items():
-                if not value:
-                    continue
-                value = value.translate(redis_escape_chars).replace("\\\\", "\\")
-                if key == "email_unescaped":
-                    value = f"{{{value}}}"
-                redis_search_res = await redis_man.search(
-                    space_name=settings.management_space,
-                    search=search_str + f" @{key}:{value}",
-                    limit=0,
-                    offset=0,
-                    filters={},
-                )
-
-                if redis_search_res and redis_search_res["total"] > 0:
-                    return {"unique": False, "field": key}
-    else:
-        for key, value in unique_fields.items():
-            if value is None:
-                continue
-            if key == "email_unescaped":
-                key = "email"
-
-            result = await db.get_entry_by_criteria({key: value}, Users)
-
-            if result is not None:
-                return {"unique": False, "field": key}
-
-    return {"unique": True}

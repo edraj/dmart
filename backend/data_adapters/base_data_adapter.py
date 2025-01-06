@@ -239,15 +239,15 @@ class BaseDataAdapter(ABC):
         return {}
 
     @abstractmethod
-    async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
+    async def set_user_session(self, user_shortname: str, token: str) -> bool:
         pass
 
     @abstractmethod
-    async def get_sql_user_session(self, user_shortname: str, token: str) -> str | None:
+    async def get_user_session(self, user_shortname: str, token: str) -> str | None:
         pass
 
     @abstractmethod
-    async def remove_sql_user_session(self, user_shortname: str) -> bool:
+    async def remove_user_session(self, user_shortname: str) -> bool:
         pass
 
     @abstractmethod
@@ -303,4 +303,44 @@ class BaseDataAdapter(ABC):
         space_name: str,
         schema_shortname: str,
     ):
+        pass
+
+    @abstractmethod
+    async def get_schema(self, space_name: str, schema_shortname: str, owner_shortname: str) -> dict:
+        pass
+
+    @abstractmethod
+    async def check_uniqueness(self, unique_fields, search_str, redis_escape_chars) -> dict:
+        pass
+
+    @abstractmethod
+    async def get_role_permissions(self, role: core.Role) -> list[core.Permission]:
+        pass
+
+    @abstractmethod
+    async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
+        pass
+
+    @abstractmethod
+    async def load_user_meta(self, user_shortname: str) -> Any:
+        pass
+
+    @abstractmethod
+    async def generate_user_permissions(self, user_shortname: str) -> dict:
+        pass
+
+    @abstractmethod
+    async def get_user_permissions(self, user_shortname: str) -> dict:
+        pass
+
+    @abstractmethod
+    async def get_user_by_criteria(self, key: str, value: str) -> str | None:
+        pass
+
+    @abstractmethod
+    async def get_payload_from_event(self, event) -> dict:
+        pass
+
+    @abstractmethod
+    async def get_user_roles_from_groups(self, user_meta: core.User) -> list:
         pass

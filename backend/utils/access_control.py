@@ -1,7 +1,5 @@
-import json
 import re
 import sys
-from typing import Any
 
 from redis.commands.search.field import TextField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
@@ -9,7 +7,6 @@ from redis.commands.search.query import Query
 
 from models.core import Meta, ACL, ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
-from data_adapters.sql.create_tables import Users
 from utils.helpers import camel_case, flatten_dict
 from utils.settings import settings
 from data_adapters.adapter import data_adapter as db
@@ -101,9 +98,6 @@ class AccessControl:
                 if len(keys) > 0:
                     await redis_services.del_keys(keys)
 
-    def generate_user_permission_doc_id(self, user_shortname: str):
-        return f"users_permissions_{user_shortname}"
-
     async def is_user_verified(self, user_shortname: str | None, identifier: str | None):
         async with RedisServices() as redis_services:
             user: dict = await redis_services.get_doc_by_id(f"management:master:meta:users/{user_shortname}")
@@ -112,24 +106,6 @@ class AccessControl:
             if identifier == "email":
                 return user.get("is_email_verified", True)
             return False
-
-    async def get_user_permissions(self, user_shortname: str) -> dict:
-        # file: fetch from op if not found
-        #       get from files then save it in op db
-        # sql: fetch directly thought db
-        if settings.active_data_db == "file":
-            async with RedisServices() as redis_services:
-                user_permissions: dict = await redis_services.get_doc_by_id(
-                    self.generate_user_permission_doc_id(user_shortname)
-                )
-
-                if not user_permissions:
-                    return await self.generate_user_permissions(user_shortname)
-
-                return user_permissions
-        else:
-            return await self.generate_user_permissions(user_shortname)
-
 
     async def check_access(
             self,
@@ -151,9 +127,9 @@ class AccessControl:
                 entry_shortname
             )
         # print("Checking check_space_access access")
-        user_permissions = await self.get_user_permissions(user_shortname)
+        user_permissions = await db.get_user_permissions(user_shortname)
 
-        user_groups = (await self.load_user_meta(user_shortname)).groups or []
+        user_groups = (await db.load_user_meta(user_shortname)).groups or []
 
         # Generate set of achevied conditions on the resource
         # ex: {"is_active", "own"}
@@ -354,270 +330,10 @@ class AccessControl:
         return True
 
     async def check_space_access(self, user_shortname: str, space_name: str) -> bool:
-        user_permissions = await access_control.get_user_permissions(user_shortname)
+        user_permissions = await db.get_user_permissions(user_shortname)
         prog = re.compile(f"{space_name}:*|{settings.all_spaces_mw}:*")
         return bool(list(filter(prog.match, user_permissions.keys())))
 
-    def trans_magic_words(self, subpath: str, user_shortname: str):
-        subpath = subpath.replace(settings.current_user_mw, user_shortname)
-        subpath = subpath.replace("//", "/")
-
-        if len(subpath) == 0:
-            subpath = "/"
-        if subpath[0] == "/" and len(subpath) > 1:
-            subpath = subpath[1:]
-        if subpath[-1] == "/" and len(subpath) > 1:
-            subpath = subpath[:-1]
-        return subpath
-
-    async def generate_user_permissions(self, user_shortname: str) -> dict:
-        user_permissions: dict = {}
-
-        user_roles = await self.get_user_roles(user_shortname)
-
-        for _, role in user_roles.items():
-            role_permissions = await self.get_role_permissions(role)
-            permission_world_record = await db.load_or_none( settings.management_space, 'permissions', "world", Permission)
-            if permission_world_record:
-                role_permissions.append(permission_world_record)
-
-            for permission in role_permissions:
-                for space_name, permission_subpaths in permission.subpaths.items():
-                    for permission_subpath in permission_subpaths:
-                        permission_subpath = self.trans_magic_words(permission_subpath, user_shortname)
-                        for permission_resource_types in permission.resource_types:
-                            actions = set(permission.actions)
-                            conditions = set(permission.conditions)
-                            if (
-                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                                    in user_permissions
-                            ):
-                                old_perm = user_permissions[
-                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                                ]
-
-                                if isinstance(actions, list):
-                                    actions = set(actions)
-                                actions |= set(old_perm["allowed_actions"])
-
-                                if isinstance(conditions, list):
-                                    conditions = set(conditions)
-                                conditions |= set(old_perm["conditions"])
-
-                            user_permissions[
-                                f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                            ] = {
-                                "allowed_actions": list(actions),
-                                "conditions": list(conditions),
-                                "restricted_fields": permission.restricted_fields,
-                                "allowed_fields_values": permission.allowed_fields_values
-                            }
-        if settings.active_data_db == "file":
-            async with RedisServices() as redis_services:
-                await redis_services.save_doc(
-                    self.generate_user_permission_doc_id(user_shortname), user_permissions
-                )
-        return user_permissions
-
-    async def get_role_permissions(self, role: Role) -> list[Permission]:
-        if settings.active_data_db == "file":
-            return await self.get_role_permissions_operational(role)
-        else:
-            return await self.get_role_permissions_database(role)
-
-    async def get_role_permissions_operational(self, role: Role) -> list[Permission]:
-        permissions_options = "|".join(role.permissions)
-        async with RedisServices() as redis_services:
-            permissions_search = await redis_services.search(
-                space_name=settings.management_space,
-                search=f"@shortname:{permissions_options}",
-                filters={"subpath": ["permissions"]},
-                limit=10000,
-                offset=0,
-            )
-        if not permissions_search:
-            return []
-
-        role_permissions: list[Permission] = []
-
-        for permission_doc in permissions_search["data"]:
-            permission = Permission.model_validate(json.loads(permission_doc))
-            role_permissions.append(permission)
-
-        return role_permissions
-
-    async def get_role_permissions_database(self, role: Role) -> list[Permission]:
-        role_records = await db.load_or_none(
-            settings.management_space, 'roles', role.shortname, Role
-        )
-
-        if role_records is None:
-            return []
-
-        role_permissions: list[Permission] = []
-
-        for permission in role_records.permissions:
-            permission_record = await db.load_or_none(
-                settings.management_space, 'permissions', permission, Permission
-            )
-            if permission_record is None:
-                continue
-            role_permissions.append(permission_record)
-
-        return role_permissions
-
-    async def get_user_roles(self, user_shortname: str) -> dict[str, Role]:
-        if settings.active_data_db == "file":
-            return await self.get_user_roles_operational(user_shortname)
-        else:
-            return await self.get_user_roles_database(user_shortname)
-
-    async def get_user_roles_operational(self, user_shortname: str) -> dict[str, Role]:
-        user_meta: User = await self.load_user_meta(user_shortname)
-        user_associated_roles = user_meta.roles
-        user_associated_roles.append("logged_in")
-        async with RedisServices() as redis_services:
-            roles_search = await redis_services.search(
-                space_name=settings.management_space,
-                search="@shortname:(" + "|".join(user_associated_roles) + ")",
-                filters={"subpath": ["roles"]},
-                limit=10000,
-                offset=0,
-            )
-
-        user_roles_from_groups = await self.get_user_roles_from_groups(user_meta)
-        if not roles_search and not user_roles_from_groups:
-            return {}
-
-        user_roles: dict[str, Role] = {}
-
-        all_user_roles_from_redis = []
-        for redis_document in roles_search["data"]:
-            all_user_roles_from_redis.append(redis_document)
-
-        all_user_roles_from_redis.extend(user_roles_from_groups)
-        for role_json in all_user_roles_from_redis:
-            role = Role.model_validate(json.loads(role_json))
-            user_roles[role.shortname] = role
-
-        return user_roles
-
-    async def get_user_roles_database(self, user_shortname: str) -> dict[str, Role]:
-        try:
-            user = await db.load_or_none(
-                settings.management_space, settings.users_subpath, user_shortname, User
-            )
-
-            if user is None:
-                return {}
-
-            user_roles: dict[str, Role] = {}
-            for role in user.roles:
-                role_record = await db.load_or_none(
-                    settings.management_space, 'roles', role, Role
-                )
-                if role_record is None:
-                    continue
-
-                user_roles[role] = role_record
-            return user_roles
-        except Exception as e:
-            print(f"Error: {e}")
-            return {}
-
-    async def load_user_meta(self, user_shortname: str) -> Any:
-        async with RedisServices() as redis_services:
-            # file: fetch from op if not found
-            #       get from files then save it in op db
-            # sql: fetch directly thought db
-            if settings.active_data_db == "file":
-                user_meta_doc_id = redis_services.generate_doc_id(
-                    space_name=settings.management_space,
-                    schema_shortname="meta",
-                    subpath="users",
-                    shortname=user_shortname,
-                )
-                value: dict = await redis_services.get_doc_by_id(user_meta_doc_id)
-            else:
-                value = {}
-            if not value:
-                user = await db.load(
-                    space_name=settings.management_space,
-                    shortname=user_shortname,
-                    subpath="users",
-                    class_type=User,
-                    user_shortname=user_shortname,
-                )
-                if settings.active_data_db == "file":
-                    await redis_services.save_meta_doc(
-                        settings.management_space,
-                        "users",
-                        user,
-                    )
-                return user
-            else:
-                user = User(**value)
-                return user
-
-    async def get_user_by_criteria(self, key: str, value: str) -> str | None:
-        if settings.active_data_db == "file":
-            async with RedisServices() as redis_services:
-                user_search = await redis_services.search(
-                    space_name=settings.management_space,
-                    search=f"@{key}:({value.replace('@', '?')})",
-                    filters={"subpath": ["users"]},
-                    limit=10000,
-                    offset=0,
-                )
-            if not user_search["data"]:
-                return None
-
-            data = json.loads(user_search["data"][0])
-            if data.get("shortname") and isinstance(data["shortname"], str):
-                return data["shortname"]
-            else:
-                return None
-        else:
-            _user = await db.get_entry_by_criteria(
-                {key: value},
-                Users
-            )
-            if _user is None or len(_user) == 0:
-                return None
-            return str(_user[0].shortname)
-
-    async def get_user_roles_from_groups(self, user_meta: User) -> list:
-
-        if not user_meta.groups:
-            return []
-
-        async with RedisServices() as redis_services:
-            groups_search = await redis_services.search(
-                space_name=settings.management_space,
-                search="@shortname:(" + "|".join(user_meta.groups) + ")",
-                filters={"subpath": ["groups"]},
-                limit=10000,
-                offset=0,
-            )
-            if not groups_search:
-                return []
-
-            roles = []
-            for group in groups_search["data"]:
-                group_json = json.loads(group)
-                for role_shortname in group_json["roles"]:
-                    role = await redis_services.get_doc_by_id(
-                        redis_services.generate_doc_id(
-                            space_name=settings.management_space,
-                            schema_shortname="meta",
-                            shortname=role_shortname,
-                            subpath="roles"
-                        )
-                    )
-                    if role:
-                        roles.append(role)
-
-        return roles
 
     async def get_user_query_policies(
             self,
@@ -635,8 +351,8 @@ class AccessControl:
             "products:offers:content:*", # IF conditions = {}
         ]
         """
-        user_permissions = await self.get_user_permissions(user_shortname)
-        user_groups = (await self.load_user_meta(user_shortname)).groups or []
+        user_permissions = await db.get_user_permissions(user_shortname)
+        user_groups = (await db.load_user_meta(user_shortname)).groups or []
         user_groups.append(user_shortname)
 
         redis_query_policies = []

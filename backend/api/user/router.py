@@ -15,7 +15,7 @@ from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import JWTBearer, remove_user_session, sign_jwt, decode_jwt
+from utils.jwt import JWTBearer, sign_jwt, decode_jwt
 from typing import Any
 from utils.settings import settings
 import utils.repository as repository
@@ -75,7 +75,7 @@ async def check_existing_user_fields(
         {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
 
-    attributes = await repository.check_uniqueness(unique_fields, search_str, redis_escape_chars)
+    attributes = await db.check_uniqueness(unique_fields, search_str, redis_escape_chars)
     return api.Response(status=api.Status.success, attributes=attributes)
 
 
@@ -359,7 +359,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     attributes["is_msisdn_verified"] = user.is_msisdn_verified
     attributes["force_password_change"] = user.force_password_change
 
-    attributes["permissions"] = await access_control.get_user_permissions(shortname)
+    attributes["permissions"] = await db.get_user_permissions(shortname)
     attributes["roles"] = user.roles
     attributes["groups"] = user.groups
 
@@ -481,7 +481,7 @@ async def update_profile(
 
     if user.is_active and profile.attributes.get("is_active", None) is not None:
         if not profile.attributes.get("is_active"):
-            await db.remove_sql_user_session(user.shortname)
+            await db.remove_user_session(user.shortname)
 
     history_diff = await db.update(
         MANAGEMENT_SPACE,
@@ -531,7 +531,7 @@ async def logout(
     response.set_cookie(value="", max_age=0, key="auth_token",
                         httponly=True, secure=True, samesite="none")
 
-    await remove_user_session(shortname)
+    await db.remove_user_session(shortname)
 
     user = await db.load(
             space_name=MANAGEMENT_SPACE,
@@ -576,7 +576,7 @@ async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
     )
     await db.delete(MANAGEMENT_SPACE, USERS_SUBPATH, user, shortname)
 
-    await remove_user_session(shortname)
+    await db.remove_user_session(shortname)
 
     await plugin_manager.after_action(
         core.Event(
@@ -654,7 +654,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     )
 
     key, value = list(result.items())[0]
-    shortname = await access_control.get_user_by_criteria(key, value)
+    shortname = await db.get_user_by_criteria(key, value)
     if shortname is None:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -999,7 +999,7 @@ async def handle_failed_login_attempt(user: core.User):
             old_version_flattend = flatten_dict(user.model_dump())
             user.is_active = False
 
-            await db.remove_sql_user_session(user.shortname)
+            await db.remove_user_session(user.shortname)
 
             await db.update(
                 MANAGEMENT_SPACE,

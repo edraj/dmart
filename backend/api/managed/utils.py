@@ -24,7 +24,6 @@ from models.enums import (
 )
 import sys
 import json
-from utils.jwt import remove_user_session
 from utils.access_control import access_control
 import utils.repository as repository
 from utils.helpers import (
@@ -521,7 +520,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 record.attributes.get("is_active", None) is not None
             ):
                 if not record.attributes.get("is_active"):
-                    await db.remove_sql_user_session(record.shortname)
+                    await db.remove_user_session(record.shortname)
 
             records.append(
                 resource_obj.to_record(
@@ -718,7 +717,7 @@ async def serve_request_patch(request, owner_shortname: str):
                 isinstance(resource_obj, core.User) and
                 record.attributes.get("is_active") is False
             ):
-                await remove_user_session(record.shortname)
+                await db.remove_user_session(record.shortname)
 
             records.append(
                 resource_obj.to_record(

@@ -106,7 +106,7 @@ def flatten_list_of_dicts_in_dict(d: dict) -> dict:
     return flattened_d
 
 
-def resolve_schema_references(schema: dict, refs: dict = {}):
+def resolve_schema_references(schema: dict, refs: dict = {}) -> dict:
     """Resolves and replaces json-schema $refs with the appropriate dict.
 
     Recursively walks the given schema dict, converting every instance
@@ -132,7 +132,7 @@ def resolve_schema_references(schema: dict, refs: dict = {}):
     return resolved_schema
 
 
-def _resolve_schema_references(schema, resolver):
+def _resolve_schema_references(schema: dict, resolver) -> dict:
     if "$ref" in schema:
         reference_path = schema.pop("$ref", None)
         resolved = resolver.resolve(reference_path)[1]
