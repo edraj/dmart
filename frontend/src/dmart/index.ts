@@ -79,7 +79,7 @@ axios.interceptors.response.use(
                 Level.warn,
                 `WAF issue detected.<br/>ID: ${error.response.data["Log-Id"]}.`,
                 {
-                    dismissable: false,
+                    dismissable: true,
                     initial: 0,
                 }
             );
@@ -735,8 +735,13 @@ export async function get_children(
         if(hiddenFolders){
             folders.records = folders.records.filter(record => hiddenFolders.includes(record.shortname) === false);
         }
-
     }
+
+    folders.records = folders.records.sort((leftSide, rightSide) => {
+        if (leftSide.shortname.toLowerCase() < rightSide.shortname.toLowerCase()) return -1;
+        if (leftSide.shortname.toLowerCase() > rightSide.shortname.toLowerCase()) return 1;
+        return 0;
+    });
     return folders
 }
 
