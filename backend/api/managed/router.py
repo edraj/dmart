@@ -727,7 +727,7 @@ async def import_resources_from_csv(
     buffer = StringIO(decoded)
     csv_reader = csv.DictReader(buffer)
 
-    schema_content = db.get_schema(space_name, schema_shortname, owner_shortname)
+    schema_content = await db.get_schema(space_name, schema_shortname, owner_shortname)
 
     data_types_mapper: dict[str, Callable] = {
         "integer": int,
