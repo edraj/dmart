@@ -8,7 +8,7 @@ from jsonschema.validators import Draft7Validator
 import json
 import time
 from sqlmodel import select, col, delete
-from data_adapters.sql.sql_adapter import SQLAdapter
+from data_adapters.sql.adapter import SQLAdapter
 from data_adapters.adapter import data_adapter as db
 from data_adapters.sql.create_tables import Entries, Spaces
 from typing import Any
