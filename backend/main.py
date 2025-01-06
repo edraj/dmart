@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI):
         # await plugin_manager.load_plugins(app, capture_body)
 
         yield
-    except redis.exceptions.ConnectionError as e:
+    except redis.exceptions.ConnectionError as e: # type: ignore
         print("[!FATAL]", e)
         sys.exit(127)
     finally:
