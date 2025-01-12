@@ -36,7 +36,6 @@ from api.user.service import (
     send_email,
     send_sms,
 )
-from data_adapters.file.redis_services import RedisServices
 from languages.loader import languages
 from data_adapters.adapter import data_adapter as db
 
@@ -1449,14 +1448,8 @@ async def serve_space_delete(request, record, owner_shortname: str):
             ),
         )
     await repository.delete_space(request.space_name, record, owner_shortname)
-    if settings.active_data_db == 'file':
-        async with RedisServices() as redis_services:
-            x = await redis_services.list_indices()
-            if x:
-                indices: list[str] = x
-                for index in indices:
-                    if index.startswith(f"{request.space_name}:"):
-                        await redis_services.drop_index(index, True)
+    await db.drop_index(request.space_name)
+
 
 
 async def data_asset_attachments_handler(query, attachments):

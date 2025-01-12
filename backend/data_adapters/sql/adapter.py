@@ -42,7 +42,7 @@ from utils.middleware import get_request_data
 from utils.password_hashing import hash_password, verify_password
 from utils.settings import settings
 from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
-from data_adapters.sql.sql_adapter_helpers import (
+from data_adapters.sql.adapter_helpers import (
     set_results_from_aggregation, set_table_for_query, events_query,
     subpath_checker, parse_search_string, validate_search_range,
     sqlite_aggregate_functions, mysql_aggregate_functions,
@@ -1597,3 +1597,18 @@ class SQLAdapter(BaseDataAdapter):
 
     async def get_user_roles_from_groups(self, user_meta: core.User) -> list:
         return []
+
+    async def drop_index(self, space_name):
+        pass
+
+    async def initialize_spaces(self) -> None:
+        pass
+
+    async def create_user_premission_index(self) -> None:
+        pass
+
+    async def store_modules_to_redis(self) -> None:
+        pass
+
+    async def delete_user_permissions_map_in_redis(self) -> None:
+        pass

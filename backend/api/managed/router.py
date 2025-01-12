@@ -59,7 +59,6 @@ from utils.jwt import GetJWTToken, JWTBearer
 from utils.plugin_manager import plugin_manager
 from utils.router_helper import is_space_exist
 from utils.settings import settings
-from utils.spaces import initialize_spaces
 
 router = APIRouter()
 
@@ -240,7 +239,7 @@ async def serve_space(
                 ),
             )
 
-    await initialize_spaces()
+    await db.initialize_spaces()
 
     await access_control.load_permissions_and_roles()
 

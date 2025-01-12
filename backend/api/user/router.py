@@ -1082,8 +1082,8 @@ if settings.social_login_allowed:
                 )
             content = await response.json()
             provider_user = await sso.openid_from_response(content)
-            
-            
+
+
         async with RedisServices() as redis_man:
             redis_search_res = await redis_man.search(
                 space_name=MANAGEMENT_SPACE,
@@ -1113,6 +1113,7 @@ if settings.social_login_allowed:
         else:
             redis_doc_dict = json.loads(redis_search_res["data"][0])
             user_record = await repository.get_record_from_redis_doc(
+                db,
                 space_name=MANAGEMENT_SPACE,
                 doc=redis_doc_dict,
                 retrieve_json_payload=True,

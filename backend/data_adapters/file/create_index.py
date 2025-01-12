@@ -18,9 +18,7 @@ from utils.repository import generate_payload_string
 from utils.settings import settings
 import utils.regex as regex
 import asyncio
-from utils.spaces import initialize_spaces
 from utils.access_control import access_control
-# from time import time
 from multiprocessing import Pool
 
 
@@ -281,7 +279,7 @@ async def main(
                 await redis_man.flushall()
 
             print("Intializing spaces")
-            await initialize_spaces()
+            await db.initialize_spaces()
 
             print(f"Creating Redis indices: {for_space=} {for_schemas=}")
             await access_control.load_permissions_and_roles()
