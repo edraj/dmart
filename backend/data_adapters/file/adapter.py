@@ -1,20 +1,16 @@
 import io
-import json
-import os
 import shutil
-import sys
 from copy import copy
-from datetime import datetime
-from pathlib import Path
 from shutil import copy2 as copy_file
 from typing import Type, Any, Tuple
 
 from sys import modules as sys_modules
-import aiofiles
-from fastapi import status
 from fastapi.logger import logger
+from redis.commands.search.field import TextField
+from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.query import Query
 
-import models.api as api
+from data_adapters.file.adapter_helpers import *
 from data_adapters.helpers import trans_magic_words
 from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
@@ -28,7 +24,7 @@ from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
 from data_adapters.file.redis_services import RedisServices
 from utils.password_hashing import hash_password
-from utils.regex import FILE_PATTERN, FOLDER_PATTERN
+from utils.regex import FILE_PATTERN, FOLDER_PATTERN, SPACES_PATTERN
 from utils.settings import settings
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
@@ -248,9 +244,40 @@ class FileAdapter(BaseDataAdapter):
         except Exception as _:
             return None
 
-    async def query(self, query: api.Query | None = None, user_shortname: str | None = None) \
+    async def query(self, query: api.Query, user_shortname: str | None = None) \
             -> Tuple[int, list[core.Record]]:
-        return (0, [])
+        records: list[core.Record] = []
+        total: int = 0
+
+        match query.type:
+            case api.QueryType.spaces:
+                total, records = await serve_query_space(self, query, user_shortname)
+
+            case api.QueryType.search:
+                total, records = await serve_query_search(self, query, user_shortname)
+
+            case api.QueryType.subpath:
+                total, records = await serve_query_subpath(self, query, user_shortname)
+
+            case api.QueryType.counters:
+                total, records = await serve_query_counters(query, user_shortname)
+
+            case api.QueryType.tags:
+                total, records = await serve_query_tags(query, user_shortname)
+
+            case api.QueryType.random:
+                total, records = await serve_query_random(self, query, user_shortname)
+
+            case api.QueryType.history:
+                total, records = await serve_query_history(query, user_shortname)
+
+            case api.QueryType.events:
+                total, records = await serve_query_events(query, user_shortname)
+
+            case api.QueryType.aggregation:
+                total, records = await serve_query_aggregation(query, user_shortname)
+
+        return total, records
 
     async def load(
             self,
@@ -1470,3 +1497,71 @@ class FileAdapter(BaseDataAdapter):
                         roles.append(role)
 
         return roles
+
+    async def drop_index(self, space_name):
+        async with RedisServices() as redis_services:
+            x = await redis_services.list_indices()
+            if x:
+                indices: list[str] = x
+                for index in indices:
+                    if index.startswith(f"{space_name}:"):
+                        await redis_services.drop_index(index, True)
+
+    async def initialize_spaces(self) -> None:
+        if not settings.spaces_folder.is_dir():
+            raise NotADirectoryError(
+                f"{settings.spaces_folder} directory does not exist!"
+            )
+
+        spaces: dict[str, str] = {}
+        for one in settings.spaces_folder.glob("*/.dm/meta.space.json"):
+            match = SPACES_PATTERN.search(str(one))
+            if not match:
+                continue
+            space_name = match.group(1)
+
+            space_obj = core.Space.model_validate_json(one.read_text())
+            spaces[space_name] = space_obj.model_dump_json()
+
+        async with RedisServices() as redis_services:
+            await redis_services.save_doc("spaces", spaces)
+
+    async def create_user_premission_index(self) -> None:
+        async with RedisServices() as redis_services:
+            try:
+                # Check if index already exist
+                await redis_services.ft("user_permission").info()
+            except Exception:
+                await redis_services.ft("user_permission").create_index(
+                    fields=[TextField("name")],
+                    definition=IndexDefinition(
+                        prefix=["users_permissions"],
+                        index_type=IndexType.JSON,
+                    )
+                )
+
+    async def store_modules_to_redis(self) -> None:
+        modules = [
+            "roles",
+            "groups",
+            "permissions",
+        ]
+        async with RedisServices() as redis_services:
+            for module_name in modules:
+                class_var = getattr(self, module_name)
+                for _, object in class_var.items():
+                    await redis_services.save_meta_doc(
+                        space_name=settings.management_space,
+                        subpath=module_name,
+                        meta=object,
+                    )
+
+    async def delete_user_permissions_map_in_redis(self) -> None:
+        async with RedisServices() as redis_services:
+            search_query = Query("*").no_content()
+            redis_res = await redis_services.ft("user_permission").search(search_query)
+            if redis_res and isinstance(redis_res, dict) and "results" in redis_res:
+                results = redis_res["results"]
+                keys = [doc["id"] for doc in results]
+                if len(keys) > 0:
+                    await redis_services.del_keys(keys)

@@ -1,10 +1,6 @@
 import re
 import sys
 
-from redis.commands.search.field import TextField
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
-from redis.commands.search.query import Query
-
 from models.core import Meta, ACL, ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
 from utils.helpers import camel_case, flatten_dict
@@ -54,49 +50,10 @@ class AccessControl:
                         # print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
                         raise ex
 
-            await self.create_user_premission_index()
-            await self.store_modules_to_redis()
-            await self.delete_user_permissions_map_in_redis()
+            await db.create_user_premission_index()
+            await db.store_modules_to_redis()
+            await db.delete_user_permissions_map_in_redis()
 
-    async def create_user_premission_index(self) -> None:
-        async with RedisServices() as redis_services:
-            try:
-                # Check if index already exist
-                await redis_services.ft("user_permission").info()
-            except Exception:
-                await redis_services.ft("user_permission").create_index(
-                    fields=[TextField("name")],
-                    definition=IndexDefinition(
-                        prefix=["users_permissions"],
-                        index_type=IndexType.JSON,
-                    )
-                )
-
-    async def store_modules_to_redis(self) -> None:
-        modules = [
-            "roles",
-            "groups",
-            "permissions",
-        ]
-        async with RedisServices() as redis_services:
-            for module_name in modules:
-                class_var = getattr(self, module_name)
-                for _, object in class_var.items():
-                    await redis_services.save_meta_doc(
-                        space_name=settings.management_space,
-                        subpath=module_name,
-                        meta=object,
-                    )
-
-    async def delete_user_permissions_map_in_redis(self) -> None:
-        async with RedisServices() as redis_services:
-            search_query = Query("*").no_content()
-            redis_res = await redis_services.ft("user_permission").search(search_query)
-            if redis_res and isinstance(redis_res, dict) and "results" in redis_res:
-                results = redis_res["results"]
-                keys = [doc["id"] for doc in results]
-                if len(keys) > 0:
-                    await redis_services.del_keys(keys)
 
     async def is_user_verified(self, user_shortname: str | None, identifier: str | None):
         async with RedisServices() as redis_services:

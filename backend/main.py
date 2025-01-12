@@ -18,7 +18,6 @@ from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
-from utils.spaces import initialize_spaces
 from fastapi import Depends, FastAPI, Request, Response, status
 from utils.logger import logging_schema
 from fastapi.logger import logger
@@ -33,7 +32,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import models.api as api
 from utils.settings import settings
 from asgi_correlation_id import CorrelationIdMiddleware
-
+from data_adapters.adapter import data_adapter as db
 from api.managed.router import router as managed
 from api.qr.router import router as qr
 from api.public.router import router as public
@@ -57,7 +56,7 @@ async def lifespan(app: FastAPI):
                     responses.pop("422")
         app.openapi_schema = openapi_schema
 
-        await initialize_spaces()
+        await db.initialize_spaces()
         await access_control.load_permissions_and_roles()
         # await plugin_manager.load_plugins(app, capture_body)
 

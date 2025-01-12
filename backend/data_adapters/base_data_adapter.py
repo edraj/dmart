@@ -344,3 +344,23 @@ class BaseDataAdapter(ABC):
     @abstractmethod
     async def get_user_roles_from_groups(self, user_meta: core.User) -> list:
         pass
+
+    @abstractmethod
+    async def drop_index(self, space_name):
+        pass
+
+    @abstractmethod
+    async def initialize_spaces(self) -> None:
+        pass
+
+    @abstractmethod
+    async def create_user_premission_index(self) -> None:
+        pass
+
+    @abstractmethod
+    async def store_modules_to_redis(self) -> None:
+        pass
+
+    @abstractmethod
+    async def delete_user_permissions_map_in_redis(self) -> None:
+        pass

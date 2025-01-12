@@ -16,7 +16,7 @@ from multiprocessing import freeze_support
 from hypercorn.config import Config
 from hypercorn.run import run
 
-from archive import archive
+from data_adapters.file.archive import archive
 from data_adapters.file.create_index import main as create_index
 from data_adapters.file.health_check import main as health_check
 from main import main as server
