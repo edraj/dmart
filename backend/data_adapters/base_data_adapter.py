@@ -243,7 +243,7 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_sql_user_session(self, user_shortname: str, token: str) -> str | None:
+    async def get_sql_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
         pass
 
     @abstractmethod
