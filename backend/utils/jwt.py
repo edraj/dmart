@@ -136,7 +136,8 @@ async def get_user_session(user_shortname: str, token: str):
     if settings.active_data_db == "file":
         return await get_redis_user_session(user_shortname)
     else:
-        return await db.get_sql_user_session(user_shortname, token)
+        _, _token = await db.get_sql_user_session(user_shortname, token)
+        return _token
 
 
 async def remove_user_session(user_shortname: str) -> bool:
@@ -148,7 +149,7 @@ async def remove_user_session(user_shortname: str) -> bool:
 
 async def set_redis_user_session(user_shortname: str, token: str) -> bool:
     async with RedisServices() as redis:
-        if settings.one_session_per_user:
+        if settings.max_sessions_per_user == 1:
             if await get_redis_user_session(user_shortname):
                 await remove_redis_user_session(user_shortname)
         return bool(await redis.set_key(
