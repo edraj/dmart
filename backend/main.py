@@ -38,7 +38,6 @@ from api.qr.router import router as qr
 from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info, git_info
-from data_adapters.file.redis_services import RedisServices
 from utils.internal_error_code import InternalErrorCode
 
 
@@ -46,26 +45,21 @@ from utils.internal_error_code import InternalErrorCode
 async def lifespan(app: FastAPI):
     logger.info("Starting up")
     print('{"stage":"starting up"}')
-    try:
-        openapi_schema = app.openapi()
-        paths = openapi_schema["paths"]
-        for path in paths:
-            for method in paths[path]:
-                responses = paths[path][method]["responses"]
-                if responses.get("422"):
-                    responses.pop("422")
-        app.openapi_schema = openapi_schema
 
-        await db.initialize_spaces()
-        await access_control.load_permissions_and_roles()
-        # await plugin_manager.load_plugins(app, capture_body)
+    openapi_schema = app.openapi()
+    paths = openapi_schema["paths"]
+    for path in paths:
+        for method in paths[path]:
+            responses = paths[path][method]["responses"]
+            if responses.get("422"):
+                responses.pop("422")
+    app.openapi_schema = openapi_schema
 
-        yield
-    except redis.exceptions.ConnectionError as e: # type: ignore
-        print("[!FATAL]", e)
-        sys.exit(127)
-    finally:
-        await RedisServices().close_pool()
+    await db.initialize_spaces()
+    await access_control.load_permissions_and_roles()
+    # await plugin_manager.load_plugins(app, capture_body)
+    yield
+
 
     logger.info("Application shutting down")
     print('{"stage":"shutting down"}')

@@ -13,7 +13,6 @@ from models.core import (
 )
 from utils.notification import NotificationManager
 from utils.helpers import camel_case, replace_message_vars
-from utils.repository import internal_save_model, get_group_users
 from utils.settings import settings
 from fastapi.logger import logger
 from data_adapters.adapter import data_adapter as db
@@ -87,7 +86,7 @@ class Plugin(PluginBase):
         # if entry.get("collaborators", None):
         #     notification_subscribers.extend(entry["collaborators"].values())
         if entry.get("owner_group_shortname", None):
-            group_users = await get_group_users(entry["owner_group_shortname"])
+            group_users = await db.get_group_users(entry["owner_group_shortname"])
             group_members = [
                 json.loads(user_doc)["shortname"] for user_doc in group_users
             ]
@@ -124,7 +123,7 @@ class Plugin(PluginBase):
                     notification_obj = await Notification.from_request(
                         notification_dict, entry
                     )
-                    await internal_save_model(
+                    await db.internal_save_model(
                         "personal",
                         f"people/{receiver}/notifications",
                         notification_obj,

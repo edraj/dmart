@@ -5,7 +5,6 @@ from models import api
 from models.core import Notification, NotificationData, PluginBase, Event, Translation
 from utils.helpers import camel_case
 from utils.notification import NotificationManager
-from utils.repository import internal_save_model
 from utils.settings import settings
 from fastapi.logger import logger
 from data_adapters.adapter import data_adapter as db
@@ -74,7 +73,7 @@ class Plugin(PluginBase):
         for receiver in set(receivers_shortnames):
             if not formatted_req["push_only"]:
                 notification_obj = await Notification.from_request(notification_dict)
-                await internal_save_model(
+                await db.internal_save_model(
                     "personal",
                     f"people/{receiver}/notifications",
                     notification_obj,

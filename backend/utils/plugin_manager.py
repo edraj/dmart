@@ -4,12 +4,9 @@ import sys
 from importlib.util import find_spec, module_from_spec
 from inspect import iscoroutine
 from pathlib import Path
-
 import aiofiles
 from fastapi import Depends, FastAPI
 from fastapi.logger import logger
-
-from data_adapters.adapter import data_adapter as db
 from models.core import (
     ActionType,
     PluginWrapper,
@@ -158,6 +155,7 @@ class PluginManager:
         if event.action_type not in self.plugins_wrappers:
             return
 
+        from data_adapters.adapter import data_adapter as db
         space = await db.fetch_space(event.space_name)
         if space is None:
             return
@@ -185,6 +183,7 @@ class PluginManager:
         if event.action_type not in self.plugins_wrappers:
             return
 
+        from data_adapters.adapter import data_adapter as db
         space = await db.fetch_space(event.space_name)
         if space is None:
             return

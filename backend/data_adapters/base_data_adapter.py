@@ -364,3 +364,63 @@ class BaseDataAdapter(ABC):
     @abstractmethod
     async def delete_user_permissions_map_in_redis(self) -> None:
         pass
+
+    @abstractmethod
+    async def get_entry_by_var(
+            self,
+            key: str,
+            val: str,
+            logged_in_user,
+            retrieve_json_payload: bool = False,
+            retrieve_attachments: bool = False,
+            retrieve_lock_status: bool = False,
+    ):
+        pass
+
+    @abstractmethod
+    async def internal_save_model(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            payload: dict | None = None
+    ):
+        pass
+
+    @abstractmethod
+    async def internal_sys_update_model(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            updates: dict,
+            sync_redis: bool = True,
+            payload_dict: dict[str, Any] = {},
+    ):
+        pass
+
+    @abstractmethod
+    async def delete_space(self, space_name, record, owner_shortname):
+        pass
+
+    @abstractmethod
+    async def get_last_updated_entry(
+            self,
+            space_name: str,
+            schema_names: list,
+            retrieve_json_payload: bool,
+            logged_in_user: str,
+    ):
+        pass
+
+    @abstractmethod
+    async def get_group_users(self, group_name: str):
+        pass
+
+    @abstractmethod
+    async def is_user_verified(self, user_shortname: str | None, identifier: str | None):
+        pass
+
+    @abstractmethod
+    async def test_connection(self):
+        pass

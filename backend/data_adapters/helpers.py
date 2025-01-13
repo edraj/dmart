@@ -24,3 +24,4 @@ def trans_magic_words(subpath: str, user_shortname: str):
     if subpath[-1] == "/" and len(subpath) > 1:
         subpath = subpath[:-1]
     return subpath
+

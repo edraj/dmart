@@ -1,8 +1,6 @@
-import json
 import os
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -10,35 +8,15 @@ from fastapi import status
 import models.api as api
 import models.core as core
 import utils.regex as regex
-from data_adapters.file.adapter_helpers import get_record_from_redis_doc
-from models.enums import ContentType, Language, ResourceType
+from models.enums import ContentType, Language
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.helpers import (
     camel_case,
-    flatten_all,
-    snake_case,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import generate_jwt
-from utils.plugin_manager import plugin_manager
-from data_adapters.file.redis_services import RedisServices
 from utils.settings import settings
-
-
-def parse_redis_response(rows: list) -> list:
-    mylist: list = []
-    for one in rows:
-        mydict = {}
-        key: str | None = None
-        for i, value in enumerate(one):
-            if i % 2 == 0:
-                key = value
-            elif key:
-                mydict[key] = value
-        mylist.append(mydict)
-    return mylist
-
 
 async def serve_query(
         query: api.Query, logged_in_user: str
@@ -108,53 +86,6 @@ async def get_last_updated_entry(
     return records[0] if records else None
 
 
-
-
-
-# def is_entry_exist(
-#     space_name: str,
-#     subpath: str,
-#     shortname: str,
-#     resource_type: ResourceType,
-#     schema_shortname: str | None = None,
-# ) -> bool:
-#     """Check if an entry with the given name already exist or not in the given path
-#
-#     Args:
-#         space_name (str): The target space name
-#         subpath (str): The target subpath
-#         shortname (str): the target shortname
-#         class_type (core.Meta): The target class of the entry
-#         schema_shortname (str | None, optional): schema shortname of the entry. Defaults to None.
-#
-#     Returns:
-#         bool: True if it's already exist, False otherwise
-#     """
-#     if subpath[0] == "/":
-#         subpath = f".{subpath}"
-#
-#     payload_file = settings.spaces_folder / space_name / \
-#         subpath / f"{shortname}.json"
-#     if payload_file.is_file():
-#         return True
-#
-#     for r_type in ResourceType:
-#         # Spaces compared with each others only
-#         if r_type == ResourceType.space and r_type != resource_type:
-#             continue
-#         resource_cls = getattr(
-#             sys.modules["models.core"], camel_case(r_type.value), None
-#         )
-#         if not resource_cls:
-#             continue
-#         meta_path, meta_file = db.metapath(
-#             space_name, subpath, shortname, resource_cls, schema_shortname)
-#         if (meta_path/meta_file).is_file():
-#             return True
-#
-#     return False
-
-
 async def get_resource_obj_or_none(
         *,
         space_name: str,
@@ -197,23 +128,6 @@ async def get_payload_obj_or_none(
         return None
 
 
-async def get_group_users(group_name: str):
-    async with RedisServices() as redis_services:
-        users_docs = await redis_services.search(
-            space_name=settings.management_space,
-            schema_name="meta",
-            filters={"subpath": ["users"]},
-            limit=10000,
-            offset=0,
-            search=f"@groups:{{{group_name}}}",
-        )
-
-    if users_docs:
-        return users_docs["data"]
-
-    return []
-
-
 async def folder_meta_content_check(
         space_name, subpath, folder_name, spaces_path_parts,
         user_shortname, folder_name_index, invalid_folders
@@ -227,8 +141,8 @@ async def folder_meta_content_check(
             user_shortname=user_shortname,
         )
         if (
-                folder_meta_content.payload
-                and folder_meta_content.payload.content_type == ContentType.json
+            folder_meta_content.payload
+            and folder_meta_content.payload.content_type == ContentType.json
         ):
             payload_path = "/"
             subpath_parts = subpath.split("/")
@@ -528,279 +442,6 @@ async def health_check_entry(
             f"payload.checksum not equal payload.client_checksum {subpath}/{entry_meta_obj.shortname}"
         )
 
-
-async def internal_sys_update_model(
-        space_name: str,
-        subpath: str,
-        meta: core.Meta,
-        updates: dict,
-        sync_redis: bool = True,
-        payload_dict: dict[str, Any] = {},
-) -> bool:
-    """
-    Update @meta entry and its payload by @updates dict of attributes in the
-    *Used by the system only, not APIs*
-    """
-
-    meta.updated_at = datetime.now()
-    meta_updated = False
-    payload_updated = False
-
-    if not payload_dict:
-        try:
-            body = str(meta.payload.body) if meta and meta.payload else ""
-            mydict = await db.load_resource_payload(
-                space_name, subpath, body, core.Content
-            )
-            payload_dict = mydict if mydict else {}
-        except Exception:
-            pass
-
-    restricted_fields = [
-        "uuid",
-        "shortname",
-        "created_at",
-        "updated_at",
-        "owner_shortname",
-        "payload",
-    ]
-    old_version_flattend = {**meta.model_dump()}
-    for key, value in updates.items():
-        if key in restricted_fields:
-            continue
-
-        if key in meta.model_fields.keys():
-            meta_updated = True
-            meta.__setattr__(key, value)
-        elif payload_dict:
-            payload_dict[key] = value
-            payload_updated = True
-
-    if meta_updated:
-        await db.update(
-            space_name,
-            subpath,
-            meta,
-            old_version_flattend,
-            {**meta.model_dump()},
-            list(updates.keys()),
-            meta.shortname
-        )
-    if payload_updated and meta.payload and meta.payload.schema_shortname:
-        await db.validate_payload_with_schema(
-            payload_dict, space_name, meta.payload.schema_shortname
-        )
-        await db.save_payload_from_json(
-            space_name, subpath, meta, payload_dict
-        )
-
-    if not sync_redis:
-        return True
-
-    async with RedisServices() as redis_services:
-        await redis_services.save_meta_doc(space_name, subpath, meta)
-        if payload_updated:
-            payload_dict.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
-            await redis_services.save_payload_doc(
-                space_name,
-                subpath,
-                meta,
-                payload_dict,
-                ResourceType(snake_case(type(meta).__name__)),
-            )
-
-    return True
-
-
-async def internal_save_model(
-        space_name: str,
-        subpath: str,
-        meta: core.Meta,
-        payload: dict | None = None
-):
-    await db.save(
-        space_name=space_name,
-        subpath=subpath,
-        meta=meta,
-    )
-
-    if settings.active_data_db == "file":
-        async with RedisServices() as redis:
-            await redis.save_meta_doc(
-                space_name,
-                subpath,
-                meta,
-            )
-
-            if payload:
-                await db.save_payload_from_json(
-                    space_name=space_name,
-                    subpath=subpath,
-                    meta=meta,
-                    payload_data=payload,
-                )
-                payload.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
-                await redis.save_payload_doc(
-                    space_name,
-                    subpath,
-                    meta,
-                    payload,
-                    ResourceType(snake_case(type(meta).__name__))
-                )
-
-
-async def generate_payload_string(
-        space_name: str,
-        subpath: str,
-        shortname: str,
-        payload: dict,
-):
-    payload_string = ""
-    # Remove system related attributes from payload
-    for attr in RedisServices.SYS_ATTRIBUTES:
-        if attr in payload:
-            del payload[attr]
-
-    # Generate direct payload string
-    payload_values = set(flatten_all(payload).values())
-    payload_string += ",".join([str(i)
-                                for i in payload_values if i is not None])
-
-    # Generate attachments payload string
-    attachments: dict[str, list] = await db.get_entry_attachments(
-        subpath=f"{subpath}/{shortname}",
-        attachments_path=(
-                settings.spaces_folder
-                / f"{space_name}/{subpath}/.dm/{shortname}"
-        ),
-        retrieve_json_payload=True,
-        include_fields=[
-            "shortname",
-            "displayname",
-            "description",
-            "payload",
-            "tags",
-            "owner_shortname",
-            "owner_group_shortname",
-            "body",
-            "state",
-        ],
-    )
-    if not attachments:
-        return payload_string.strip(",")
-
-    # Convert Record objects to dict
-    dict_attachments = {}
-    for k, v in attachments.items():
-        dict_attachments[k] = [i.model_dump() for i in v]
-
-    attachments_values = set(flatten_all(dict_attachments).values())
-    attachments_payload_string = ",".join(
-        [str(i) for i in attachments_values if i is not None]
-    )
-    payload_string += attachments_payload_string
-    return payload_string.strip(",")
-
-
-
-
-async def get_entry_by_var(
-        key: str,
-        val: str,
-        logged_in_user,
-        retrieve_json_payload: bool = False,
-        retrieve_attachments: bool = False,
-        retrieve_lock_status: bool = False,
-):
-    if settings.active_data_db == "sql":
-        _result = await db.get_entry_by_criteria({key: val})
-        if _result is None or len(_result) == 0:
-            return None
-        return _result[0]
-
-    spaces = await db.get_spaces()
-    entry_doc = None
-    entry_space = None
-    async with RedisServices() as redis_services:
-        for space_name, space in spaces.items():
-            space = json.loads(space)
-            if not space['indexing_enabled']:
-                continue
-            search_res = await redis_services.search(
-                space_name=space_name,
-                search=f"@{key}:{val}*",
-                limit=1,
-                offset=0,
-                filters={},
-            )
-            if search_res["total"] > 0:
-                entry_doc = json.loads(search_res["data"][0])
-                entry_space = space_name
-                break
-
-    if not entry_doc or not entry_space:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
-            ),
-        )
-
-    if not await access_control.check_access(
-            user_shortname=logged_in_user,
-            space_name=entry_space,
-            subpath=entry_doc["subpath"],
-            resource_type=entry_doc["resource_type"],
-            action_type=core.ActionType.view,
-            resource_is_active=entry_doc["is_active"],
-            resource_owner_shortname=entry_doc.get("owner_shortname"),
-            resource_owner_group=entry_doc.get("owner_group_shortname"),
-            entry_shortname=entry_doc.get("shortname")
-    ):
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="request",
-                code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [12]",
-            ),
-        )
-
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=entry_space,
-            subpath=entry_doc["subpath"],
-            shortname=entry_doc["shortname"],
-            action_type=core.ActionType.view,
-            resource_type=entry_doc["resource_type"],
-            user_shortname=logged_in_user,
-        )
-    )
-
-    resource_base_record = await get_record_from_redis_doc(
-        db,
-        space_name=entry_space,
-        doc=entry_doc,
-        retrieve_json_payload=retrieve_json_payload,
-        retrieve_attachments=retrieve_attachments,
-        validate_schema=True,
-        retrieve_lock_status=retrieve_lock_status,
-    )
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=entry_space,
-            subpath=entry_doc["subpath"],
-            shortname=entry_doc["shortname"],
-            action_type=core.ActionType.view,
-            resource_type=entry_doc["resource_type"],
-            user_shortname=logged_in_user,
-        )
-    )
-
-    return resource_base_record
-
-
 async def url_shortner(url: str) -> str:
     token_uuid = str(uuid4())[:8]
     await db.set_url_shortner(token_uuid, url)
@@ -834,14 +475,3 @@ async def store_user_invitation_token(user: core.User, channel: str) -> str | No
         .replace("{token}", invitation_token) \
         .replace("{lang}", Language.code(user.language)) \
         .replace("{user_type}", user.type)
-
-
-async def delete_space(space_name, record, owner_shortname):
-    if settings.active_data_db == "sql":
-        resource_obj = core.Meta.from_record(
-            record=record, owner_shortname=owner_shortname
-        )
-        await db.delete(space_name, record.subpath, resource_obj, owner_shortname)
-
-    os.system(f"rm -r {settings.spaces_folder}/{space_name}")
-

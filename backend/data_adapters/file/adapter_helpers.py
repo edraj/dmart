@@ -7,12 +7,12 @@ from pathlib import Path
 from fastapi import status
 from fastapi.encoders import jsonable_encoder
 import aiofiles
-
 from data_adapters.file.redis_services import RedisServices
 from models import core, api
+from models.enums import ConditionType
 from utils import regex
 
-from utils.helpers import camel_case, alter_dict_keys, str_to_datetime
+from utils.helpers import camel_case, alter_dict_keys, str_to_datetime, flatten_all
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
 
@@ -281,8 +281,8 @@ async def serve_query_search(db, query, logged_in_user):
     total = 0
 
     from utils.access_control import access_control
-    redis_query_policies = await access_control.get_user_query_policies(
-        logged_in_user, query.space_name, query.subpath
+    redis_query_policies = await get_user_query_policies(
+        db, logged_in_user, query.space_name, query.subpath
     )
 
     search_res, total = await redis_query_search(query, logged_in_user, redis_query_policies)
@@ -641,13 +641,12 @@ async def serve_query_counters(query, logged_in_user):
     return total, records
 
 
-async def serve_query_tags(query, user_shortname):
+async def serve_query_tags(db, query, user_shortname):
     records = []
     total = 0
 
-    from utils.access_control import access_control
-    redis_query_policies = await access_control.get_user_query_policies(
-        user_shortname, query.space_name, query.subpath
+    redis_query_policies = await get_user_query_policies(
+        db, user_shortname, query.space_name, query.subpath
     )
 
     query.sort_by = "tags"
@@ -682,7 +681,7 @@ async def serve_query_random(db, query, user_shortname):
     total = 0
 
     from utils.access_control import access_control
-    redis_query_policies = await access_control.get_user_query_policies(
+    redis_query_policies = await get_user_query_policies(
         user_shortname, query.space_name, query.subpath
     )
     query.aggregation_data = api.RedisAggregate(
@@ -932,7 +931,7 @@ async def serve_query_aggregation(query, user_shortname):
     total = 0
 
     from utils.access_control import access_control
-    redis_query_policies = await access_control.get_user_query_policies(
+    redis_query_policies = await get_user_query_policies(
         user_shortname, query.space_name, query.subpath
     )
     rows = await redis_query_aggregate(
@@ -949,3 +948,116 @@ async def serve_query_aggregation(query, user_shortname):
         records.append(record)
 
     return total, records
+
+def parse_redis_response(rows: list) -> list:
+    mylist: list = []
+    for one in rows:
+        mydict = {}
+        key: str | None = None
+        for i, value in enumerate(one):
+            if i % 2 == 0:
+                key = value
+            elif key:
+                mydict[key] = value
+        mylist.append(mydict)
+    return mylist
+
+async def generate_payload_string(
+        db,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        payload: dict,
+):
+    payload_string = ""
+    # Remove system related attributes from payload
+    for attr in RedisServices.SYS_ATTRIBUTES:
+        if attr in payload:
+            del payload[attr]
+
+    # Generate direct payload string
+    payload_values = set(flatten_all(payload).values())
+    payload_string += ",".join([str(i)
+                                for i in payload_values if i is not None])
+
+    # Generate attachments payload string
+    attachments: dict[str, list] = await db.get_entry_attachments(
+        subpath=f"{subpath}/{shortname}",
+        attachments_path=(
+                settings.spaces_folder
+                / f"{space_name}/{subpath}/.dm/{shortname}"
+        ),
+        retrieve_json_payload=True,
+        include_fields=[
+            "shortname",
+            "displayname",
+            "description",
+            "payload",
+            "tags",
+            "owner_shortname",
+            "owner_group_shortname",
+            "body",
+            "state",
+        ],
+    )
+    if not attachments:
+        return payload_string.strip(",")
+
+    # Convert Record objects to dict
+    dict_attachments = {}
+    for k, v in attachments.items():
+        dict_attachments[k] = [i.model_dump() for i in v]
+
+    attachments_values = set(flatten_all(dict_attachments).values())
+    attachments_payload_string = ",".join(
+        [str(i) for i in attachments_values if i is not None]
+    )
+    payload_string += attachments_payload_string
+    return payload_string.strip(",")
+
+async def get_user_query_policies(
+    db,
+    user_shortname: str,
+    space_name: str,
+    subpath: str
+) -> list:
+    """
+    Generate list of query policies based on user's permissions
+    ex: [
+        "products:offers:content:true:admin_shortname", # IF conditions = {"is_active", "own"}
+        "products:offers:content:true:*", # IF conditions = {"is_active"}
+        "products:offers:content:false:admin_shortname|products:offers:content:true:admin_shortname",
+        # ^^^ IF conditions = {"own"}
+        "products:offers:content:*", # IF conditions = {}
+    ]
+    """
+    user_permissions = await db.get_user_permissions(user_shortname)
+    user_groups = (await db.load_user_meta(user_shortname)).groups or []
+    user_groups.append(user_shortname)
+
+    redis_query_policies = []
+    for perm_key, permission in user_permissions.items():
+        if (
+                not perm_key.startswith(space_name) and
+                not perm_key.startswith(settings.all_spaces_mw)
+        ):
+            continue
+        perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
+        perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
+        perm_key = perm_key.strip("/")
+        if (
+                ConditionType.is_active in permission["conditions"]
+                and ConditionType.own in permission["conditions"]
+        ):
+            for user_group in user_groups:
+                redis_query_policies.append(f"{perm_key}:true:{user_group}")
+        elif ConditionType.is_active in permission["conditions"]:
+            redis_query_policies.append(f"{perm_key}:true:*")
+        elif ConditionType.own in permission["conditions"]:
+            for user_group in user_groups:
+                redis_query_policies.append(
+                    f"{perm_key}:true:{user_shortname}|{perm_key}:false:{user_group}"
+                )
+        else:
+            redis_query_policies.append(f"{perm_key}:*")
+    return redis_query_policies
