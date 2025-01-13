@@ -1146,9 +1146,22 @@ class SQLAdapter(BaseDataAdapter):
     async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
         with self.get_session() as session:
             try:
-                last_session = await self.get_sql_user_session(user_shortname, token)
-                if settings.one_session_per_user and last_session is not None:
+                total, last_session = await self.get_sql_user_session(user_shortname, token)
+                if settings.max_sessions_per_user == 1 and last_session is not None:
                     await self.remove_sql_user_session(user_shortname)
+                elif settings.max_sessions_per_user != 0 and total > settings.max_sessions_per_user:
+                        try:
+                            statement = select(Sessions).where(col(Sessions.shortname) == user_shortname).order_by(
+                                Sessions.timestamp.asc()
+                            ).limit(1)
+                            oldest_session = session.exec(statement).one_or_none()
+                            if oldest_session:
+                                session.delete(oldest_session)
+                                session.commit()
+                        except Exception as e:
+                            print("[!remove_sql_user_session]", e)
+                            return False
+
                 timestamp = datetime.now()
                 session.add(
                     Sessions(
@@ -1164,27 +1177,25 @@ class SQLAdapter(BaseDataAdapter):
                 print("[!set_sql_user_session]", e)
                 return False
 
-    async def get_sql_user_session(self, user_shortname: str, token: str) -> str | None:
+    async def get_sql_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
         with self.get_session() as session:
             statement = select(Sessions) \
             .where(Sessions.shortname == user_shortname)
 
             results = session.exec(statement).all()
             if len(results) == 0:
-                return None
+                return 0, None
 
             for r in results:
                 if verify_password(token, r.token):
                     if settings.session_inactivity_ttl + r.timestamp.timestamp() < time.time():
                         await self.remove_sql_user_session(user_shortname)
-                        return None
-
+                        return 0, None
                     r.timestamp = datetime.now()
                     session.add(r)
                     session.commit()
-
-                    return token
-        return None
+                    return len(results), token
+        return len(results), None
 
     async def remove_sql_user_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
