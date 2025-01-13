@@ -1193,8 +1193,8 @@ class FileAdapter(BaseDataAdapter):
     async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass
 
-    async def get_sql_user_session(self, user_shortname: str, token: str) -> str | None:
-        return None
+    async def get_sql_user_session(self, user_shortname: str, token: str) ->  Tuple[int, str | None]:
+        return 0, None
 
     async def remove_sql_user_session(self, user_shortname: str) -> bool:
         return True
