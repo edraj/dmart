@@ -1,13 +1,11 @@
 import re
 import sys
-
 from models.core import Meta, ACL, ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
 from utils.helpers import camel_case, flatten_dict
 from utils.settings import settings
 from data_adapters.adapter import data_adapter as db
 from utils.regex import FILE_PATTERN
-from data_adapters.file.redis_services import RedisServices
 
 
 class AccessControl:
@@ -54,15 +52,6 @@ class AccessControl:
             await db.store_modules_to_redis()
             await db.delete_user_permissions_map_in_redis()
 
-
-    async def is_user_verified(self, user_shortname: str | None, identifier: str | None):
-        async with RedisServices() as redis_services:
-            user: dict = await redis_services.get_doc_by_id(f"management:master:meta:users/{user_shortname}")
-            if identifier == "msisdn":
-                return user.get("is_msisdn_verified", True)
-            if identifier == "email":
-                return user.get("is_email_verified", True)
-            return False
 
     async def check_access(
             self,
@@ -290,54 +279,6 @@ class AccessControl:
         user_permissions = await db.get_user_permissions(user_shortname)
         prog = re.compile(f"{space_name}:*|{settings.all_spaces_mw}:*")
         return bool(list(filter(prog.match, user_permissions.keys())))
-
-
-    async def get_user_query_policies(
-            self,
-            user_shortname: str,
-            space_name: str,
-            subpath: str
-    ) -> list:
-        """
-        Generate list of query policies based on user's permissions
-        ex: [
-            "products:offers:content:true:admin_shortname", # IF conditions = {"is_active", "own"}
-            "products:offers:content:true:*", # IF conditions = {"is_active"}
-            "products:offers:content:false:admin_shortname|products:offers:content:true:admin_shortname",
-            # ^^^ IF conditions = {"own"}
-            "products:offers:content:*", # IF conditions = {}
-        ]
-        """
-        user_permissions = await db.get_user_permissions(user_shortname)
-        user_groups = (await db.load_user_meta(user_shortname)).groups or []
-        user_groups.append(user_shortname)
-
-        redis_query_policies = []
-        for perm_key, permission in user_permissions.items():
-            if (
-                    not perm_key.startswith(space_name) and
-                    not perm_key.startswith(settings.all_spaces_mw)
-            ):
-                continue
-            perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
-            perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
-            perm_key = perm_key.strip("/")
-            if (
-                    ConditionType.is_active in permission["conditions"]
-                    and ConditionType.own in permission["conditions"]
-            ):
-                for user_group in user_groups:
-                    redis_query_policies.append(f"{perm_key}:true:{user_group}")
-            elif ConditionType.is_active in permission["conditions"]:
-                redis_query_policies.append(f"{perm_key}:true:*")
-            elif ConditionType.own in permission["conditions"]:
-                for user_group in user_groups:
-                    redis_query_policies.append(
-                        f"{perm_key}:true:{user_shortname}|{perm_key}:false:{user_group}"
-                    )
-            else:
-                redis_query_policies.append(f"{perm_key}:*")
-        return redis_query_policies
 
 
 access_control = AccessControl()

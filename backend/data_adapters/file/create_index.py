@@ -14,7 +14,7 @@ from models.enums import ContentType, ResourceType
 from utils.helpers import camel_case, divide_chunks
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from data_adapters.file.redis_services import RedisServices
-from utils.repository import generate_payload_string
+from data_adapters.file.adapter_helpers import generate_payload_string
 from utils.settings import settings
 import utils.regex as regex
 import asyncio
@@ -147,6 +147,7 @@ async def generate_redis_docs(locators: list) -> list:
                         print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
 
                 meta_data["payload_string"] = await generate_payload_string(
+                    db,
                     space_name=one.space_name, 
                     subpath=one.subpath, 
                     shortname=one.shortname, 

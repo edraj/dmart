@@ -260,7 +260,8 @@ class SQLAdapter(BaseDataAdapter):
                  ) -> tuple[Path, str]:
         return (Path(), "")
 
-    def __init__(self):
+
+    async def test_connection(self):
         try:
             self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
             connection_string = f"{self.database_connection_string}/{settings.database_name}"
@@ -1612,3 +1613,118 @@ class SQLAdapter(BaseDataAdapter):
 
     async def delete_user_permissions_map_in_redis(self) -> None:
         pass
+
+    async def internal_save_model(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            payload: dict | None = None
+    ):
+        await self.save(
+            space_name=space_name,
+            subpath=subpath,
+            meta=meta,
+        )
+
+    async def internal_sys_update_model(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            updates: dict,
+            sync_redis: bool = True,
+            payload_dict: dict[str, Any] = {},
+    ):
+        meta.updated_at = datetime.now()
+        meta_updated = False
+        payload_updated = False
+
+        if not payload_dict:
+            try:
+                body = str(meta.payload.body) if meta and meta.payload else ""
+                mydict = await self.load_resource_payload(
+                    space_name, subpath, body, core.Content
+                )
+                payload_dict = mydict if mydict else {}
+            except Exception:
+                pass
+
+        restricted_fields = [
+            "uuid",
+            "shortname",
+            "created_at",
+            "updated_at",
+            "owner_shortname",
+            "payload",
+        ]
+        old_version_flattend = {**meta.model_dump()}
+        for key, value in updates.items():
+            if key in restricted_fields:
+                continue
+
+            if key in meta.model_fields.keys():
+                meta_updated = True
+                meta.__setattr__(key, value)
+            elif payload_dict:
+                payload_dict[key] = value
+                payload_updated = True
+
+        if meta_updated:
+            await self.update(
+                space_name,
+                subpath,
+                meta,
+                old_version_flattend,
+                {**meta.model_dump()},
+                list(updates.keys()),
+                meta.shortname
+            )
+        if payload_updated and meta.payload and meta.payload.schema_shortname:
+            await self.validate_payload_with_schema(
+                payload_dict, space_name, meta.payload.schema_shortname
+            )
+            await self.save_payload_from_json(
+                space_name, subpath, meta, payload_dict
+            )
+
+    async def get_entry_by_var(
+            self,
+            key: str,
+            val: str,
+            logged_in_user,
+            retrieve_json_payload: bool = False,
+            retrieve_attachments: bool = False,
+            retrieve_lock_status: bool = False,
+    ):
+        _result = await self.get_entry_by_criteria({key: val})
+        if _result is None or len(_result) == 0:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+                ),
+            )
+        return _result[0]
+
+    async def delete_space(self, space_name, record, owner_shortname):
+        resource_obj = core.Meta.from_record(
+            record=record, owner_shortname=owner_shortname
+        )
+        await self.delete(space_name, record.subpath, resource_obj, owner_shortname)
+        os.system(f"rm -r {settings.spaces_folder}/{space_name}")
+
+    async def get_last_updated_entry(
+            self,
+            space_name: str,
+            schema_names: list,
+            retrieve_json_payload: bool,
+            logged_in_user: str,
+    ):
+        pass
+
+    async def get_group_users(self, group_name: str):
+        pass
+
+    async def is_user_verified(self, user_shortname: str | None, identifier: str | None):
+        return True

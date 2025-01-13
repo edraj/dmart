@@ -1,3 +1,4 @@
+import asyncio
 import re
 import json
 import sys
@@ -225,7 +226,11 @@ class RedisServices(Redis):
         return cls.instance
 
     def __init__(self):
-        super().__init__(connection_pool=RedisServices.POOL)
+        try:
+            super().__init__(connection_pool=RedisServices.POOL)
+        except redis.exceptions.ConnectionError as e:  # type: ignore
+            print("[!FATAL]", e)
+            sys.exit(127)
 
     async def close_pool(self):
         # print('{"Disconnecting connection pool":"initated"}')

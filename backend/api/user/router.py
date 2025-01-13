@@ -541,7 +541,7 @@ async def logout(
             user_shortname=shortname,
         )
     if user.firebase_token:
-        await repository.internal_sys_update_model(
+        await db.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             meta=user,
@@ -860,7 +860,7 @@ async def user_reset(
         )
 
     if not user.force_password_change:
-        await repository.internal_sys_update_model(
+        await db.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             meta=user,
@@ -969,7 +969,7 @@ async def process_user_login(
         user_updates["firebase_token"] = firebase_token
 
     if user_updates:
-        await repository.internal_sys_update_model(
+        await db.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             meta=user,
