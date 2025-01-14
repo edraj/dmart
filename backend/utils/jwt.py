@@ -120,7 +120,7 @@ def generate_jwt(data: dict, expires: int = 86400) -> str:
 
 async def sign_jwt(data: dict, expires: int = 86400) -> str:
     token = generate_jwt(data, expires)
-    if settings.session_inactivity_ttl:
+    if data["type"] != "bot" and settings.session_inactivity_ttl:
         await set_user_session(data["shortname"], token)
     return token
 
