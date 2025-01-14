@@ -1192,7 +1192,7 @@ class SQLAdapter(BaseDataAdapter):
         with self.get_session() as session:
             try:
                 statement = select(Sessions).where(col(Sessions.shortname) == user_shortname).order_by(
-                    Sessions.timestamp.desc()
+                    col(Sessions.timestamp).desc()
                 ).offset(settings.max_sessions_per_user)
                 oldest_sessions = session.exec(statement).all()
 
