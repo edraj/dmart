@@ -80,13 +80,14 @@ class JWTBearer():
 
         decoded = decode_jwt(auth_token)
         user_shortname = decoded["shortname"]
+        user_type = decoded["type"]
         if not user_shortname:
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [2]"),
             )
 
-        if settings.session_inactivity_ttl:
+        if settings.session_inactivity_ttl and user_type != "bot":
             user_session_token = await get_user_session(user_shortname, auth_token)
             if not isinstance(user_session_token, str):
                 raise api.Exception(
