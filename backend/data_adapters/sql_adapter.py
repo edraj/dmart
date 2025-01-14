@@ -1144,23 +1144,13 @@ class SQLAdapter(BaseDataAdapter):
             return None
 
     async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
-        with self.get_session() as session:
+        with (self.get_session() as session):
             try:
                 total, last_session = await self.get_sql_user_session(user_shortname, token)
-                if settings.max_sessions_per_user == 1 and last_session is not None:
+
+                if (settings.max_sessions_per_user == 1 and last_session is not None) \
+                    or (settings.max_sessions_per_user != 0 and total >= settings.max_sessions_per_user):
                     await self.remove_sql_user_session(user_shortname)
-                elif settings.max_sessions_per_user != 0 and total > settings.max_sessions_per_user:
-                        try:
-                            statement = select(Sessions).where(col(Sessions.shortname) == user_shortname).order_by(
-                                Sessions.timestamp.asc()
-                            ).limit(1)
-                            oldest_session = session.exec(statement).one_or_none()
-                            if oldest_session:
-                                session.delete(oldest_session)
-                                session.commit()
-                        except Exception as e:
-                            print("[!remove_sql_user_session]", e)
-                            return False
 
                 timestamp = datetime.now()
                 session.add(
@@ -1172,6 +1162,7 @@ class SQLAdapter(BaseDataAdapter):
                     )
                 )
                 session.commit()
+
                 return True
             except Exception as e:
                 print("[!set_sql_user_session]", e)
@@ -1200,8 +1191,13 @@ class SQLAdapter(BaseDataAdapter):
     async def remove_sql_user_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = delete(Sessions).where(col(Sessions.shortname) == user_shortname)
-                session.execute(statement)
+                statement = select(Sessions).where(col(Sessions.shortname) == user_shortname).order_by(
+                    Sessions.timestamp.desc()
+                ).offset(settings.max_sessions_per_user)
+                oldest_sessions = session.exec(statement).all()
+                print(f"oldest_sessions: {len(oldest_sessions)}")
+                for oldest_session in oldest_sessions:
+                    session.delete(oldest_session)
                 session.commit()
                 return True
             except Exception as e:
