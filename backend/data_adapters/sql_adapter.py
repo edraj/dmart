@@ -1199,6 +1199,7 @@ class SQLAdapter(BaseDataAdapter):
                 for oldest_session in oldest_sessions:
                     session.delete(oldest_session)
                 session.commit()
+                return True
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
                 return False
