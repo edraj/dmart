@@ -86,7 +86,7 @@ class JWTBearer():
                 api.Error(type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [2]"),
             )
 
-        if settings.session_inactivity_ttl:
+        if decoded["type"] != 'bot' and settings.session_inactivity_ttl:
             user_session_token = await get_user_session(user_shortname, auth_token)
             if not isinstance(user_session_token, str):
                 raise api.Exception(
