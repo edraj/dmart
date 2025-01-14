@@ -1195,7 +1195,7 @@ class SQLAdapter(BaseDataAdapter):
                     Sessions.timestamp.desc()
                 ).offset(settings.max_sessions_per_user)
                 oldest_sessions = session.exec(statement).all()
-                print(f"oldest_sessions: {len(oldest_sessions)}")
+
                 for oldest_session in oldest_sessions:
                     session.delete(oldest_session)
                 session.commit()
