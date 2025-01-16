@@ -80,7 +80,6 @@ class JWTBearer():
 
         decoded = decode_jwt(auth_token)
         user_shortname = decoded["shortname"]
-        user_type = decoded["type"]
         if not user_shortname:
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
