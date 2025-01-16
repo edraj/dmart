@@ -65,7 +65,7 @@ async def send_otp(msisdn: str, language: str):
             response = await client.post(
                 settings.send_sms_otp_api,
                 headers={**headers, "skel-accept-language": language},
-                json={"msisdn": msisdn, "message": message},
+                json={"msisdn": msisdn, "text": message},
             )
             json = await response.json()
             status = response.status
@@ -99,7 +99,7 @@ async def send_sms(msisdn: str, message: str) -> bool:
         response = await client.post(
             settings.send_sms_api,
             headers={**headers},
-            json={"msisdn": msisdn, "message": message},
+            json={"msisdn": msisdn, "text": message},
         )
         json = await response.json()
         status = response.status
