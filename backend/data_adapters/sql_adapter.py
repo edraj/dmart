@@ -1391,12 +1391,21 @@ class SQLAdapter(BaseDataAdapter):
                 folder_meta.payload.body.get("unique_fields", None), list):  # type: ignore
             return True
 
+        current_user = None
+        if action is api.RequestType.update and record.resource_type is ResourceType.user:
+            current_user = await self.load(space_name, record.subpath, record.shortname, core.User)
+
+
         for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
             query_string = ""
             for composite_unique_key in compound:
                 value = get_nested_value(record.attributes, composite_unique_key)
-                if value is None:
+                if value is None or value == "":
                     continue
+                if current_user is not None and hasattr(current_user,composite_unique_key) \
+                        and getattr(current_user,composite_unique_key) == value:
+                    continue
+
                 query_string += f"@{composite_unique_key}:{value} "
 
             if query_string == "":
