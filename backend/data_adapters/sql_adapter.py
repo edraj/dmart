@@ -1420,9 +1420,7 @@ class SQLAdapter(BaseDataAdapter):
             owner = record.attributes.get("owner_shortname", None) if user_shortname is None else user_shortname
             total, _ = await self.query(q, owner)
 
-            max_limit = 0 if action is api.RequestType.create else 1
-
-            if total != max_limit:
+            if total != 0:
                 raise API_Exception(
                     status.HTTP_400_BAD_REQUEST,
                     API_Error(
