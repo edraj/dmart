@@ -3,8 +3,8 @@
   import routes from "../.routify/routes.default";
   import { SvelteToast } from "@zerodevx/svelte-toast";
   // import "bootstrap-icons/font/bootstrap-icons.min.css"
-  // const rtlUrl = new URL('bootstrap/dist/css/bootstrap.rtl.min.css', import.meta.url).href;
-  // const ltrUrl = new URL('bootstrap/dist/css/bootstrap.min.css', import.meta.url).href;
+  const rtlUrl = new URL('bootstrap/dist/css/bootstrap.rtl.min.css', import.meta.url).href;
+  const ltrUrl = new URL('bootstrap/dist/css/bootstrap.min.css', import.meta.url).href;
   // const rtlUrl = new URL('./../assets/morph/bootstrap.rtl.min.css', import.meta.url).href;
   // const ltrUrl = new URL('./../assets/morph/bootstrap.min.css', import.meta.url).href;
 
@@ -47,8 +47,10 @@
           return null;
       }
   }
+  var appRouter = null;
   async function prepareRouter() {
-      return createRouter({
+      if (appRouter) return appRouter;
+      appRouter = createRouter({
           routes: routes,
           urlRewrite: {
               toInternal: (url) => {
@@ -128,6 +130,7 @@
               toExternal: (url) => `/${prefix}${url}`,
           },
       });
+      return appRouter;
   }
   setupI18n();
   $effect(() => { document.dir = $dir; refresh_spaces.refresh(); });
@@ -139,11 +142,11 @@
   {#key $themesStore}
     {#if $dir === "rtl"}
       <link rel="stylesheet" id="bootstrap" media="screen"
-            href="{new URL($themesStore.rtlUrl, import.meta.url).href}"
+            href="{rtlUrl}"
       />
     {:else}
       <link rel="stylesheet" id="bootstrap" media="screen"
-            href="{new URL($themesStore.ltrUrl, import.meta.url).href.replace('assets',`${prefix}/assets`)}"
+            href="{ltrUrl}"
       />
     {/if}
   {/key}
