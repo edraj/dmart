@@ -144,7 +144,7 @@ async def create_user(record: core.Record) -> api.Response:
             body=record.attributes["payload"]["body"] if record.attributes["payload"].get("body", False) else "",
         )
         if user.payload:
-            separate_payload_data = user.payload.body
+            separate_payload_data = user.payload.body # type: ignore
             user.payload.body = record.shortname + ".json"
 
         if user.payload and separate_payload_data:
@@ -191,7 +191,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
             data = decode_jwt(request.invitation)
             shortname = data.get("shortname", None)
-            if shortname is None:
+            if (shortname is None) or (request.shortname is not None and request.shortname != shortname):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
