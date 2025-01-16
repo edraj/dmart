@@ -49,7 +49,7 @@ class Payload(Resource):
     schema_shortname: str | None = None
     client_checksum: str | None = None
     checksum: str | None = None
-    body: str | dict[str, Any]
+    body: str | dict[str, Any] | None
 
     def __init__(self, **data):
         BaseModel.__init__(self, **data)
