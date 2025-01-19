@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     redis_password: str = ""
     redis_port: int = 6379
     redis_pool_max_connections: int = 20
-    one_session_per_user: bool = False
+    max_sessions_per_user: int = 5
     management_space: str = "management"
     users_subpath: str = "users"
     spaces_folder: Path = Path("../sample/spaces/")

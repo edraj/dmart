@@ -1159,6 +1159,7 @@ class SQLAdapter(BaseDataAdapter):
                     )
                 )
                 session.commit()
+
                 return True
             except Exception as e:
                 print("[!set_sql_user_session]", e)
@@ -1182,15 +1183,19 @@ class SQLAdapter(BaseDataAdapter):
                     r.timestamp = datetime.now()
                     session.add(r)
                     session.commit()
-
-                    return token
-        return None
+                    return len(results), token
+        return len(results), None
 
     async def remove_user_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = delete(Sessions).where(col(Sessions.shortname) == user_shortname)
-                session.execute(statement)
+                statement = select(Sessions).where(col(Sessions.shortname) == user_shortname).order_by(
+                    col(Sessions.timestamp).desc()
+                ).offset(settings.max_sessions_per_user)
+                oldest_sessions = session.exec(statement).all()
+
+                for oldest_session in oldest_sessions:
+                    session.delete(oldest_session)
                 session.commit()
                 return True
             except Exception as e:
@@ -1215,7 +1220,7 @@ class SQLAdapter(BaseDataAdapter):
 
     async def get_invitation_token(self, invitation_token: str) -> str | None:
         with self.get_session() as session:
-            statement = select(Invitations).where(Invitations.invitation_token == invitation_token)
+            statement = select(Invitations).where(col(Invitations.invitation_token )== invitation_token)
 
             result = session.exec(statement).one_or_none()
             if result is None:
@@ -1223,11 +1228,22 @@ class SQLAdapter(BaseDataAdapter):
 
             user_session = Invitations.model_validate(result)
 
-            statement = select(Invitations).where(Invitations.invitation_token == invitation_token)
+            statement = select(Invitations).where(col(Invitations.invitation_token ) == invitation_token)
             session.exec(statement)
             session.commit()
 
             return user_session.invitation_value
+
+    async def delete_invitation_token(self, invitation_token: str) -> bool:
+        with self.get_session() as session:
+            try:
+                statement = select(Invitations).where(col(Invitations.invitation_token) == invitation_token)
+                session.exec(statement)
+                session.commit()
+                return True
+            except Exception as e:
+                print("[!remove_sql_user_session]", e)
+                return False
 
     async def set_url_shortner(self, token_uuid: str, url: str):
         with self.get_session() as session:
@@ -1384,12 +1400,21 @@ class SQLAdapter(BaseDataAdapter):
                 folder_meta.payload.body.get("unique_fields", None), list):  # type: ignore
             return True
 
+        current_user = None
+        if action is api.RequestType.update and record.resource_type is ResourceType.user:
+            current_user = await self.load(space_name, record.subpath, record.shortname, core.User)
+
+
         for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
             query_string = ""
             for composite_unique_key in compound:
                 value = get_nested_value(record.attributes, composite_unique_key)
-                if value is None:
+                if value is None or value == "":
                     continue
+                if current_user is not None and hasattr(current_user,composite_unique_key) \
+                        and getattr(current_user,composite_unique_key) == value:
+                    continue
+
                 query_string += f"@{composite_unique_key}:{value} "
 
             if query_string == "":
@@ -1404,9 +1429,7 @@ class SQLAdapter(BaseDataAdapter):
             owner = record.attributes.get("owner_shortname", None) if user_shortname is None else user_shortname
             total, _ = await self.query(q, owner)
 
-            max_limit = 0 if action is api.RequestType.create else 1
-
-            if total != max_limit:
+            if total != 0:
                 raise API_Exception(
                     status.HTTP_400_BAD_REQUEST,
                     API_Error(

@@ -259,6 +259,10 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
+    async def delete_invitation_token(self, invitation_token: str) -> bool:
+        pass
+
+    @abstractmethod
     async def set_url_shortner(self, token_uuid: str, url: str):
         pass
 
