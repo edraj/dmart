@@ -48,6 +48,7 @@ from fastapi_sso.sso.google import GoogleSSO
 from fastapi_sso.sso.facebook import FacebookSSO
 from fastapi_sso.sso.base import SSOBase
 from fastapi.logger import logger
+from data_adapters.file.adapter_helpers import get_record_from_redis_doc
 
 router = APIRouter()
 
@@ -1112,7 +1113,7 @@ if settings.social_login_allowed:
 
         else:
             redis_doc_dict = json.loads(redis_search_res["data"][0])
-            user_record = await repository.get_record_from_redis_doc(
+            user_record = await get_record_from_redis_doc(
                 db,
                 space_name=MANAGEMENT_SPACE,
                 doc=redis_doc_dict,

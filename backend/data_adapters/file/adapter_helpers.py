@@ -280,7 +280,6 @@ async def serve_query_search(db, query, logged_in_user):
     records = []
     total = 0
 
-    from utils.access_control import access_control
     redis_query_policies = await get_user_query_policies(
         db, logged_in_user, query.space_name, query.subpath
     )
@@ -680,9 +679,8 @@ async def serve_query_random(db, query, user_shortname):
     records = []
     total = 0
 
-    from utils.access_control import access_control
     redis_query_policies = await get_user_query_policies(
-        user_shortname, query.space_name, query.subpath
+        db, user_shortname, query.space_name, query.subpath
     )
     query.aggregation_data = api.RedisAggregate(
         load=["@__key"],
@@ -926,13 +924,12 @@ async def serve_query_events(query, logged_in_user):
     return total, records
 
 
-async def serve_query_aggregation(query, user_shortname):
+async def serve_query_aggregation(db, query, user_shortname):
     records = []
     total = 0
 
-    from utils.access_control import access_control
     redis_query_policies = await get_user_query_policies(
-        user_shortname, query.space_name, query.subpath
+        db, user_shortname, query.space_name, query.subpath
     )
     rows = await redis_query_aggregate(
         query=query, redis_query_policies=redis_query_policies

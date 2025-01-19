@@ -446,9 +446,9 @@ class SQLAdapter(BaseDataAdapter):
                 logger.error(f"Failed parsing an entry. Error: {e}")
                 return None
 
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
         with self.get_session() as session:
-            results: list[core.Meta] = []
+            results: list[core.Record] = []
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
                 for _table in tables:
@@ -465,7 +465,11 @@ class SQLAdapter(BaseDataAdapter):
                         if len(_results) > 0:
                             for result in _results:
                                 core_model_class : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
-                                results.append(core_model_class.model_validate(result.model_dump()))
+                                results.append(
+                                    core_model_class.model_validate(
+                                        result.model_dump()
+                                    ).to_record(result.subpath, result.shortname)
+                               )
 
                             return results
                 return None
@@ -485,7 +489,11 @@ class SQLAdapter(BaseDataAdapter):
                         for result in _results:
                             _core_model_class: core.Meta = getattr(sys.modules["models.core"],
                                                                    camel_case(result.resource_type))
-                            results.append(_core_model_class.model_validate(result.model_dump()))
+                            results.append(
+                                _core_model_class.model_validate(
+                                    result.model_dump()
+                                ).to_record(result.subpath, result.shortname)
+                            )
                         return results
                 return None
 
@@ -1144,11 +1152,14 @@ class SQLAdapter(BaseDataAdapter):
             return None
 
     async def set_user_session(self, user_shortname: str, token: str) -> bool:
-        with self.get_session() as session:
+        with (self.get_session() as session):
             try:
-                last_session = await self.get_user_session(user_shortname, token)
-                if settings.one_session_per_user and last_session is not None:
+                total, last_session = await self.get_user_session(user_shortname, token)
+
+                if (settings.max_sessions_per_user == 1 and last_session is not None) \
+                    or (settings.max_sessions_per_user != 0 and total >= settings.max_sessions_per_user):
                     await self.remove_user_session(user_shortname)
+
                 timestamp = datetime.now()
                 session.add(
                     Sessions(
@@ -1165,26 +1176,27 @@ class SQLAdapter(BaseDataAdapter):
                 print("[!set_sql_user_session]", e)
                 return False
 
-    async def get_user_session(self, user_shortname: str, token: str) -> str | None:
+
+    async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
         with self.get_session() as session:
             statement = select(Sessions) \
-            .where(Sessions.shortname == user_shortname)
+                .where(col(Sessions.shortname) == user_shortname)
 
             results = session.exec(statement).all()
             if len(results) == 0:
-                return None
+                return 0, None
 
             for r in results:
                 if verify_password(token, r.token):
                     if settings.session_inactivity_ttl + r.timestamp.timestamp() < time.time():
                         await self.remove_user_session(user_shortname)
-                        return None
-
+                        return 0, None
                     r.timestamp = datetime.now()
                     session.add(r)
                     session.commit()
                     return len(results), token
         return len(results), None
+
 
     async def remove_user_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
@@ -1719,8 +1731,9 @@ class SQLAdapter(BaseDataAdapter):
             retrieve_json_payload: bool = False,
             retrieve_attachments: bool = False,
             retrieve_lock_status: bool = False,
-    ):
+    ) -> core.Record:
         _result = await self.get_entry_by_criteria({key: val})
+
         if _result is None or len(_result) == 0:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
@@ -1728,6 +1741,7 @@ class SQLAdapter(BaseDataAdapter):
                     type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
                 ),
             )
+
         return _result[0]
 
     async def delete_space(self, space_name, record, owner_shortname):
@@ -1747,7 +1761,7 @@ class SQLAdapter(BaseDataAdapter):
         pass
 
     async def get_group_users(self, group_name: str):
-        pass
+        return []
 
-    async def is_user_verified(self, user_shortname: str | None, identifier: str | None):
+    async def is_user_verified(self, user_shortname: str | None, identifier: str | None) -> bool:
         return True
