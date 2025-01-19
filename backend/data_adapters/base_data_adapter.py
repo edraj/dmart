@@ -63,7 +63,7 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
         pass
 
     @abstractmethod
@@ -243,7 +243,7 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_user_session(self, user_shortname: str, token: str) -> str | None:
+    async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
         pass
 
     @abstractmethod
@@ -378,7 +378,7 @@ class BaseDataAdapter(ABC):
             retrieve_json_payload: bool = False,
             retrieve_attachments: bool = False,
             retrieve_lock_status: bool = False,
-    ):
+    ) -> core.Record:
         pass
 
     @abstractmethod
@@ -418,11 +418,11 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_group_users(self, group_name: str):
+    async def get_group_users(self, group_name: str) -> list:
         pass
 
     @abstractmethod
-    async def is_user_verified(self, user_shortname: str | None, identifier: str | None):
+    async def is_user_verified(self, user_shortname: str | None, identifier: str | None) -> bool:
         pass
 
     @abstractmethod

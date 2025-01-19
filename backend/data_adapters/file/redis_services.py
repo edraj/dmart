@@ -1,4 +1,3 @@
-import asyncio
 import re
 import json
 import sys
@@ -23,6 +22,7 @@ from utils.settings import settings
 import models.api as api
 from fastapi import status
 from fastapi.logger import logger
+import redis
 
 
 class RedisServices(Redis):

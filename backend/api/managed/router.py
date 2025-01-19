@@ -923,7 +923,7 @@ async def get_entry_by_uuid(
         retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
-    return await repository.get_entry_by_var(
+    return await db.get_entry_by_var(
         "uuid",
         uuid,
         logged_in_user,
@@ -941,7 +941,7 @@ async def get_entry_by_slug(
         retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
-    return await repository.get_entry_by_var(
+    return await db.get_entry_by_var(
         "slug",
         slug,
         logged_in_user,

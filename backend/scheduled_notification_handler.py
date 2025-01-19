@@ -1,6 +1,5 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 from datetime import datetime, timedelta
-import json
 
 from models.api import Query
 from models.core import Content, Notification, NotificationData, Translation
@@ -24,13 +23,14 @@ async def trigger_admin_notifications() -> None:
         return
 
     notification_manager = NotificationManager()
-    for notification_dict in admin_notifications:
+    for notification in admin_notifications:
+        notification_dict = notification.model_dump()
         formatted_req = await prepare_request(notification_dict)
 
         # Get notification receivers users
         search_criteria = notification_dict.get('msisdns_search_string')
         if not search_criteria:
-            search_criteria = '@msisdn:' + '|'.join(notification_dict.get('msisdns'))
+            search_criteria = '@msisdn:' + '|'.join(notification_dict.get('msisdns', ""))
 
         total, receivers = await db.query(Query(
             space_name=settings.management_space, schema_name="user",
@@ -48,11 +48,11 @@ async def trigger_admin_notifications() -> None:
             for receiver_data in receivers:
                 if not formatted_req["push_only"]:
                     notification_obj = await Notification.from_request(
-                        notification_dict.to_dict()
+                        notification_dict
                     )
                     await db.internal_save_model(
                         space_name="personal",
-                        subpath=f"people/{receiver_data['shortname']}/notifications",
+                        subpath=f"people/{receiver_data.shortname}/notifications",
                         meta=notification_obj,
                     )
 
@@ -60,7 +60,7 @@ async def trigger_admin_notifications() -> None:
                     await notification_manager.send(
                         platform=platform,
                         data=NotificationData(
-                            receiver=receiver_data["shortname"],
+                            receiver=receiver_data.to_dict(),
                             title=formatted_req["title"],
                             body=formatted_req["body"],
                             image_urls=formatted_req["images_urls"],

@@ -1,6 +1,5 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 """ Main module """
-import redis
 from starlette.datastructures import UploadFile
 from contextlib import asynccontextmanager
 import asyncio

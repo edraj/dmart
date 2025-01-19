@@ -1,17 +1,21 @@
-import asyncio
 import io
 import shutil
 from copy import copy
 from shutil import copy2 as copy_file
 from typing import Type, Any, Tuple
-
+import os
+import sys
 from sys import modules as sys_modules
 from fastapi.logger import logger
 from redis.commands.search.field import TextField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
-
-from data_adapters.file.adapter_helpers import *
+from datetime import datetime
+import aiofiles
+from pathlib import Path
+from data_adapters.file.adapter_helpers import serve_query_space, serve_query_search, serve_query_subpath, \
+    serve_query_counters, serve_query_tags, serve_query_random, serve_query_history, serve_query_events, \
+    serve_query_aggregation, get_record_from_redis_doc
 from data_adapters.helpers import trans_magic_words
 from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
@@ -32,6 +36,9 @@ from utils.settings import settings
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 from pathlib import Path as FSPath
+import models.api as api
+from fastapi import status
+import json
 
 
 def sort_alteration(attachments_dict, attachments_path):
@@ -287,7 +294,7 @@ class FileAdapter(BaseDataAdapter):
                 total, records = await serve_query_events(query, user_shortname)
 
             case api.QueryType.aggregation:
-                total, records = await serve_query_aggregation(query, user_shortname)
+                total, records = await serve_query_aggregation(self, query, user_shortname)
 
         return total, records
 
@@ -1218,7 +1225,7 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             return await redis_services.get_key(f"short/{token_uuid}")
 
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
         async with RedisServices() as redis_services:
             _search_query = ""
             for k, v in criteria.items():
@@ -1243,9 +1250,9 @@ class FileAdapter(BaseDataAdapter):
     async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass
 
-    async def get_user_session(self, user_shortname: str, token: str) -> str | None:
+    async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
         async with RedisServices() as redis:
-            return await redis.get_key(
+            return 1, await redis.get_key(
                 f"user_session:{user_shortname}"
             )
 
@@ -1264,7 +1271,7 @@ class FileAdapter(BaseDataAdapter):
 
     async def set_user_session(self, user_shortname: str, token: str) -> bool:
         async with RedisServices() as redis:
-            if settings.one_session_per_user:
+            if settings.max_sessions_per_user == 1:
                 if await redis.get_key(
                         f"user_session:{user_shortname}"
                 ):
@@ -1708,7 +1715,7 @@ class FileAdapter(BaseDataAdapter):
             retrieve_json_payload: bool = False,
             retrieve_attachments: bool = False,
             retrieve_lock_status: bool = False,
-    ):
+    ) -> core.Record:
         spaces = await self.get_spaces()
         entry_doc = None
         entry_space = None
@@ -1820,11 +1827,11 @@ class FileAdapter(BaseDataAdapter):
 
         return []
 
-    async def is_user_verified(self, user_shortname: str | None, identifier: str | None):
+    async def is_user_verified(self, user_shortname: str | None, identifier: str | None) -> bool:
         async with RedisServices() as redis_services:
             user: dict = await redis_services.get_doc_by_id(f"management:master:meta:users/{user_shortname}")
             if identifier == "msisdn":
-                return user.get("is_msisdn_verified", True)
+                return bool(user.get("is_msisdn_verified", True))
             if identifier == "email":
-                return user.get("is_email_verified", True)
+                return bool(user.get("is_email_verified", True))
             return False
