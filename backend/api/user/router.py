@@ -221,7 +221,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         message="Invalid invitation or data provided",
                     ),
                 )
-            
+            await db.delete_invitation_token(request.invitation)
             user_updates["force_password_change"] = True
 
             user_updates = check_user_validation(user, data, user_updates, invitation_token)
