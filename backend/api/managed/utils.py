@@ -332,19 +332,21 @@ async def serve_request_update_r_replace_fetch_payload(
         old_resource_obj.model_dump()
     )
     if (
-            record.resource_type != ResourceType.log
-            and old_resource_obj.payload
-            and old_resource_obj.payload.content_type == ContentType.json
-            and isinstance(old_resource_obj.payload.body, str)
+        record.resource_type != ResourceType.log
+        and old_resource_obj.payload
+        and old_resource_obj.payload.content_type == ContentType.json
     ):
         try:
-            mybody = await db.load_resource_payload(
-                space_name=request.space_name,
-                subpath=record.subpath,
-                filename=old_resource_obj.payload.body,
-                class_type=resource_cls,
-                schema_shortname=schema_shortname,
-            )
+            if isinstance(old_resource_obj.payload.body, str):
+                mybody = await db.load_resource_payload(
+                    space_name=request.space_name,
+                    subpath=record.subpath,
+                    filename=old_resource_obj.payload.body,
+                    class_type=resource_cls,
+                    schema_shortname=schema_shortname,
+                )
+            else:
+                mybody = old_resource_obj.payload.body
             old_resource_payload_body = mybody if mybody else {}
         except api.Exception as e:
             if request.request_type == api.RequestType.update:
