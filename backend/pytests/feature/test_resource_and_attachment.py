@@ -178,6 +178,30 @@ async def test_create_invalid_json_resource(client: AsyncClient):
 
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
+async def test_update_json_content_resource_missing_payload_info(client: AsyncClient) -> None:
+    endpoint = "/managed/request"
+    request_data = {
+        "space_name": DEMO_SPACE,
+        "request_type": RequestType.update,
+        "records": [
+            {
+                "resource_type": ResourceType.content,
+                "subpath": DEMO_SUBPATH,
+                "shortname": json_entry_shortname,
+                "attributes": {
+                    "payload": {
+                        "body": {"price": 25000.99, "name": "Buyer UPDATEDDDD"},
+                    },
+                },
+            }
+        ],
+    }
+
+    assert_code_and_status_success(await client.post(endpoint, json=request_data))
+
+
+@pytest.mark.run(order=2)
+@pytest.mark.anyio
 async def test_update_json_content_resource(client: AsyncClient) -> None:
     endpoint = "/managed/request"
     request_data = {

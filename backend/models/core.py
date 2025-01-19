@@ -67,9 +67,8 @@ class Payload(Resource):
     def update(
             self, payload: dict, old_body: dict | None = None, replace: bool = False
     ) -> dict | None:
-        self.content_type = ContentType(payload["content_type"])
 
-        if self.content_type == ContentType.json:
+        if isinstance(payload["body"], dict):
             if old_body and not replace:
                 separate_payload_body = dict(
                     remove_none_dict(
@@ -258,9 +257,9 @@ class Meta(Resource):
                 self.__setattr__(field_name, record.attributes[field_name])
 
         if (
-                not self.payload
-                and "payload" in record.attributes
-                and "content_type" in record.attributes["payload"]
+            not self.payload
+            and "payload" in record.attributes
+            and "content_type" in record.attributes["payload"]
         ):
             self.payload = Payload(
                 content_type=ContentType(record.attributes["payload"]["content_type"]),
