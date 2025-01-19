@@ -1163,6 +1163,10 @@ class FileAdapter(BaseDataAdapter):
 
         return token
 
+    async def delete_invitation_token(self, invitation_token: str) -> bool:
+        async with RedisServices() as redis_services:
+            return await redis_services.delete_key(f"users:login:invitation:{invitation_token}")
+
     async def get_url_shortner(self, token_uuid: str) -> str | None:
         async with RedisServices() as redis_services:
             return await redis_services.get_key(f"short/{token_uuid}")
