@@ -1827,7 +1827,7 @@ async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dic
                     return {"unique": False, "field": key}
     else:
         for key, value in unique_fields.items():
-            if value is None:
+            if value is None or value == "":
                 continue
             if key == "email_unescaped":
                 key = "email"
