@@ -144,7 +144,7 @@ async def create_user(record: core.Record) -> api.Response:
             body=record.attributes["payload"]["body"] if record.attributes["payload"].get("body", False) else "",
         )
         if user.payload:
-            separate_payload_data = user.payload.body
+            separate_payload_data = user.payload.body # type: ignore
             user.payload.body = record.shortname + ".json"
 
         if user.payload and separate_payload_data:
@@ -191,7 +191,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
             data = decode_jwt(request.invitation)
             shortname = data.get("shortname", None)
-            if shortname is None:
+            if (shortname is None) or (request.shortname is not None and request.shortname != shortname):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
@@ -221,7 +221,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         message="Invalid invitation or data provided",
                     ),
                 )
-            
+            await db.delete_invitation_token(request.invitation)
             user_updates["force_password_change"] = True
 
             user_updates = check_user_validation(user, data, user_updates, invitation_token)
@@ -942,7 +942,7 @@ async def process_user_login(
     firebase_token: str | None = None
 ) -> core.Record:
     access_token = await sign_jwt(
-        {"shortname": user.shortname}, settings.jwt_access_expires
+        {"shortname": user.shortname, "type": user.type}, settings.jwt_access_expires
     )
 
     response.set_cookie(

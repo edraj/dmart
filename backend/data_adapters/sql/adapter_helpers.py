@@ -119,7 +119,7 @@ def validate_search_range(v_str):
 
 def parse_search_string(string, entity):
     # string = " " + string
-    string = string.replace("@", "%40")
+    string = re.sub(r'(?<=\w)@(?=\w)', '%40', string)
     list_criteria = string.split("@")
     list_criteria = [item.strip() for item in list_criteria if item.strip()]
     list_criteria = [item.replace("%40", "@") for item in list_criteria if item.strip()]

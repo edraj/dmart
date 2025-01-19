@@ -475,3 +475,47 @@ async def store_user_invitation_token(user: core.User, channel: str) -> str | No
         .replace("{token}", invitation_token) \
         .replace("{lang}", Language.code(user.language)) \
         .replace("{user_type}", user.type)
+
+
+async def delete_space(space_name, record, owner_shortname):
+    if settings.active_data_db == "sql":
+        resource_obj = core.Meta.from_record(
+            record=record, owner_shortname=owner_shortname
+        )
+        await db.delete(space_name, record.subpath, resource_obj, owner_shortname)
+
+    os.system(f"rm -r {settings.spaces_folder}/{space_name}")
+
+
+async def check_uniqueness(unique_fields, search_str, redis_escape_chars) -> dict:
+    if settings.active_data_db == "file":
+        async with RedisServices() as redis_man:
+            for key, value in unique_fields.items():
+                if not value:
+                    continue
+                value = value.translate(redis_escape_chars).replace("\\\\", "\\")
+                if key == "email_unescaped":
+                    value = f"{{{value}}}"
+                redis_search_res = await redis_man.search(
+                    space_name=settings.management_space,
+                    search=search_str + f" @{key}:{value}",
+                    limit=0,
+                    offset=0,
+                    filters={},
+                )
+
+                if redis_search_res and redis_search_res["total"] > 0:
+                    return {"unique": False, "field": key}
+    else:
+        for key, value in unique_fields.items():
+            if value is None or value == "":
+                continue
+            if key == "email_unescaped":
+                key = "email"
+
+            result = await db.get_entry_by_criteria({key: value}, Users)
+
+            if result is not None:
+                return {"unique": False, "field": key}
+
+    return {"unique": True}
