@@ -1276,7 +1276,7 @@ class SQLAdapter(BaseDataAdapter):
     async def delete_url_shortner(self, token_uuid: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = delete(URLShorts).where(URLShorts.token_uuid == token_uuid)
+                statement = delete(URLShorts).where(col(URLShorts.token_uuid) == token_uuid)
                 session.exec(statement)
                 session.commit()
                 return True

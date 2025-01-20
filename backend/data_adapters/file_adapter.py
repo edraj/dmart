@@ -1225,4 +1225,4 @@ class FileAdapter(BaseDataAdapter):
 
     async def delete_url_shortner_by_token(self, invitation_token: str) -> bool:
         # TODO: implement this method
-        pass
+        return True
