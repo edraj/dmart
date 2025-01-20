@@ -1196,7 +1196,7 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             return await redis_services.set(f"users:failed_login_attempts/{user_shortname}", attempt_count)
 
-    async def get_invitation_token(self, invitation_token: str):
+    async def get_invitation(self, invitation_token: str):
         async with RedisServices() as redis_services:
             # FIXME invitation_token = await redis_services.getdel_key(
             token = await redis_services.get_key(
@@ -1212,7 +1212,7 @@ class FileAdapter(BaseDataAdapter):
 
         return token
 
-    async def delete_invitation_token(self, invitation_token: str) -> bool:
+    async def delete_invitation(self, invitation_token: str) -> bool:
         async with RedisServices() as redis_services:
             try:
                 await redis_services.delete(f"users:login:invitation:{invitation_token}")
@@ -1293,7 +1293,16 @@ class FileAdapter(BaseDataAdapter):
             )
 
     async def delete_url_shortner(self, token_uuid: str) -> bool:
-        return True
+        async with RedisServices() as redis_services:
+            return bool(
+                await redis_services.del_keys([f"short/{token_uuid}"])
+            )
+
+
+    async def delete_url_shortner_by_token(self, invitation_token: str) -> bool:
+        #TODO: implement this method
+        pass
+
 
     async def get_schema(self, space_name: str, schema_shortname: str, owner_shortname: str) -> dict:
         schema_path = (

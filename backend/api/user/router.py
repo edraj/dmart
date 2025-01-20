@@ -188,7 +188,16 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     identifier = request.check_fields()
     try:
         if request.invitation:
-            invitation_token = await db.get_invitation_token(request.invitation)
+            invitation_token = await db.get_invitation(request.invitation)
+            if invitation_token is None:
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="jwtauth",
+                        code=InternalErrorCode.INVALID_INVITATION,
+                        message="Expired or invalid invitation",
+                    ),
+                )
 
             data = decode_jwt(request.invitation)
             shortname = data.get("shortname", None)
@@ -222,7 +231,9 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         message="Invalid invitation or data provided",
                     ),
                 )
-            await db.delete_invitation_token(request.invitation)
+
+            await db.delete_invitation(request.invitation)
+            await db.delete_url_shortner_by_token(request.invitation)
             user_updates["force_password_change"] = True
 
             user_updates = check_user_validation(user, data, user_updates, invitation_token)

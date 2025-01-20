@@ -1230,9 +1230,9 @@ class SQLAdapter(BaseDataAdapter):
             except Exception as e:
                 print("[!set_invitation]", e)
 
-    async def get_invitation_token(self, invitation_token: str) -> str | None:
+    async def get_invitation(self, invitation_token: str) -> str | None:
         with self.get_session() as session:
-            statement = select(Invitations).where(col(Invitations.invitation_token )== invitation_token)
+            statement = select(Invitations).where(col(Invitations.invitation_token) == invitation_token)
 
             result = session.exec(statement).one_or_none()
             if result is None:
@@ -1246,10 +1246,10 @@ class SQLAdapter(BaseDataAdapter):
 
             return user_session.invitation_value
 
-    async def delete_invitation_token(self, invitation_token: str) -> bool:
+    async def delete_invitation(self, invitation_token: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = select(Invitations).where(col(Invitations.invitation_token) == invitation_token)
+                statement = delete(Invitations).where(col(Invitations.invitation_token) == invitation_token)
                 session.exec(statement)
                 session.commit()
                 return True
@@ -1290,7 +1290,18 @@ class SQLAdapter(BaseDataAdapter):
     async def delete_url_shortner(self, token_uuid: str) -> bool:
         with self.get_session() as session:
             try:
-                statement = select(URLShorts).where(URLShorts.token_uuid == token_uuid)
+                statement = delete(URLShorts).where(URLShorts.token_uuid == token_uuid)
+                session.exec(statement)
+                session.commit()
+                return True
+            except Exception as e:
+                print("[!remove_sql_user_session]", e)
+                return False
+
+    async def delete_url_shortner_by_token(self, invitation_token: str) -> bool:
+        with self.get_session() as session:
+            try:
+                statement = delete(URLShorts).where(col(URLShorts.url).ilike(f"%{invitation_token}%"))
                 session.exec(statement)
                 session.commit()
                 return True
