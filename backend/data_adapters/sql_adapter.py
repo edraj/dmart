@@ -1222,7 +1222,7 @@ class SQLAdapter(BaseDataAdapter):
 
     async def get_invitation_token(self, invitation_token: str) -> str | None:
         with self.get_session() as session:
-            statement = select(Invitations).where(Invitations.invitation_token == invitation_token)
+            statement = select(Invitations).where(col(Invitations.invitation_token )== invitation_token)
 
             result = session.exec(statement).one_or_none()
             if result is None:
@@ -1230,11 +1230,22 @@ class SQLAdapter(BaseDataAdapter):
 
             user_session = Invitations.model_validate(result)
 
-            statement = select(Invitations).where(Invitations.invitation_token == invitation_token)
+            statement = select(Invitations).where(col(Invitations.invitation_token ) == invitation_token)
             session.exec(statement)
             session.commit()
 
             return user_session.invitation_value
+
+    async def delete_invitation_token(self, invitation_token: str) -> bool:
+        with self.get_session() as session:
+            try:
+                statement = select(Invitations).where(col(Invitations.invitation_token) == invitation_token)
+                session.exec(statement)
+                session.commit()
+                return True
+            except Exception as e:
+                print("[!remove_sql_user_session]", e)
+                return False
 
     async def set_url_shortner(self, token_uuid: str, url: str):
         with self.get_session() as session:
