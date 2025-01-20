@@ -34,7 +34,7 @@
       </Col>
     </Row>
   {/if}
-  {@render props.children()}
+  <slot/>
   {#if captcha}
     <Captcha bind:valid={valid_captcha} />
   {/if}
