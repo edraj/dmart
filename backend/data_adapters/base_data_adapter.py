@@ -255,11 +255,11 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_invitation_token(self, invitation_token: str) -> str | None:
+    async def get_invitation(self, invitation_token: str) -> str | None:
         pass
 
     @abstractmethod
-    async def delete_invitation_token(self, invitation_token: str) -> bool:
+    async def delete_invitation(self, invitation_token: str) -> bool:
         pass
 
     @abstractmethod
@@ -272,6 +272,10 @@ class BaseDataAdapter(ABC):
 
     @abstractmethod
     async def delete_url_shortner(self, token_uuid: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def delete_url_shortner_by_token(self, invitation_token: str) -> bool:
         pass
 
     @abstractmethod
