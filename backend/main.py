@@ -279,6 +279,7 @@ async def middle(request: Request, call_next):
             content={
                 "status": "failed",
                 "error": {
+                    "type": "validation",
                     "code": 422,
                     "message": "Validation error [2]",
                     "info": jsonable_encoder(e.errors()),
@@ -294,6 +295,7 @@ async def middle(request: Request, call_next):
             content={
                 "status": "failed",
                 "error": {
+                    "type": "validation",
                     "code": 422,
                     "message": "Validation error [3]",
                     "info": [{
@@ -312,7 +314,7 @@ async def middle(request: Request, call_next):
             exception_message = str(ee)
             exception_data = {"props": {"exception": str(ee), "stack": stack}}
 
-        error_log = {"code": 99, "message": exception_message}
+        error_log = {"type": "general", "code": 99, "message": exception_message}
         if settings.debug_enabled:
             error_log["stack"] = stack
         response = JSONResponse(
