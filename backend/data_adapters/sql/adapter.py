@@ -1240,10 +1240,6 @@ class SQLAdapter(BaseDataAdapter):
 
             user_session = Invitations.model_validate(result)
 
-            statement = select(Invitations).where(col(Invitations.invitation_token ) == invitation_token)
-            session.exec(statement)
-            session.commit()
-
             return user_session.invitation_value
 
     async def delete_invitation(self, invitation_token: str) -> bool:
@@ -1306,7 +1302,7 @@ class SQLAdapter(BaseDataAdapter):
                 session.commit()
                 return True
             except Exception as e:
-                print("[!remove_sql_user_session]", e)
+                print("[!delete_url_shortner_by_token]", e)
                 return False
 
     async def _set_query_final_results(self, table, query, results):
