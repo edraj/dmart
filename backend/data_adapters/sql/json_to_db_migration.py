@@ -143,7 +143,6 @@ def main():
                         entry['hide_folders'] = entry.get('hide_folders', [])
                         entry['relationships'] = entry.get('relationships', [])
                         entry['hide_space'] = entry.get('hide_space', False)
-                        print(">>>>>>>", entry, Spaces.model_validate(entry))
                         session.add(Spaces.model_validate(entry))
                     except Exception as e:
                         print(f"Error processing Spaces {space_name}/{subpath}/{entry} ...")
