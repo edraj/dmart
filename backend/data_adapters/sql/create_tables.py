@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 from sqlalchemy import LargeBinary
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT
 from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
 from sqlmodel._compat import SQLModelConfig
 from utils.helpers import camel_case, remove_none_dict
@@ -58,8 +58,6 @@ class Metas(Unique, table=False):
     acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
     relationships: list[core.Relationship] | None = Field(default=[], sa_type=JSONB)
-
-    query_policies: list[str] = Field(default=[], sa_type=JSONB)
 
     resource_type: str = Field()
     @staticmethod
@@ -186,9 +184,12 @@ class Users(Metas, table=True):
     social_avatar_url: str | None = None
     attempt_count: int | None = None
 
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))
 
 class Roles(Metas, table=True):
     permissions: list[str] = Field(default_factory=dict, sa_type=JSONB)
+
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))
 
 
 class Permissions(Metas, table=True):
@@ -199,6 +200,8 @@ class Permissions(Metas, table=True):
     restricted_fields: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     allowed_fields_values: dict | list[dict] | None = Field(default_factory=None, sa_type=JSONB)
 
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))
+
 
 class Entries(Metas, table=True):
     # Tickets
@@ -208,6 +211,8 @@ class Entries(Metas, table=True):
     workflow_shortname: str | None = None
     collaborators: dict[str, str] | None = Field(None, default_factory=None, sa_type=JSONB)
     resolution_reason: str | None = None
+
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))
 
 
 class Attachments(Metas, table=True):
@@ -272,6 +277,8 @@ class Spaces(Metas, table=True):
     hide_space: bool | None = None
     active_plugins: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     ordinal: int | None = None
+
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))
 
 
 class AggregatedRecord(Unique, table=False):
