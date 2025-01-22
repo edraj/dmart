@@ -12,12 +12,11 @@ from redis.commands.search.field import TextField, NumericField, TagField, Field
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from datetime import datetime
 
-# from redis.commands.search.aggregation import AggregateRequest
-# from redis.commands.search.reducers import count as count_reducer
 from redis.commands.search import Search, aggregation
 from redis.commands.search.query import Query
 from utils.helpers import camel_case, resolve_schema_references
 from utils.internal_error_code import InternalErrorCode
+from utils.query_policies_helper import generate_query_policies
 from utils.settings import settings
 import models.api as api
 from fastapi import status
@@ -539,56 +538,6 @@ class RedisServices(Redis):
         subpath = subpath.strip("/")
         return f"{space_name}:{schema_shortname}:{subpath}/{shortname}"
 
-    def generate_query_policies(
-        self,
-        space_name: str,
-        subpath: str,
-        resource_type: str,
-        is_active: bool,
-        owner_shortname: str,
-        owner_group_shortname: str | None,
-        entry_shortname: str | None = None,
-    ) -> list:
-        subpath_parts = ["/"]
-        subpath_parts += subpath.strip("/").split("/")
-
-        if resource_type == ResourceType.folder and entry_shortname:
-            subpath_parts.append(entry_shortname)
-
-        query_policies: list = []
-        full_subpath = ""
-        for subpath_part in subpath_parts:
-            full_subpath += subpath_part
-            query_policies.append(
-                f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}:{owner_shortname}"
-            )
-            if owner_group_shortname is None:
-                query_policies.append(
-                    f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}"
-                )
-            else:
-                query_policies.append(
-                    f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}:{owner_group_shortname}"
-                )
-
-            full_subpath_parts = full_subpath.split("/")
-            if len(full_subpath_parts) > 1:
-                subpath_with_magic_keyword = (
-                    "/".join(full_subpath_parts[:1]) + "/" + settings.all_subpaths_mw
-                )
-                if len(full_subpath_parts) > 2:
-                    subpath_with_magic_keyword += "/" + "/".join(full_subpath_parts[2:])
-                query_policies.append(
-                    f"{space_name}:{subpath_with_magic_keyword.strip('/')}:{resource_type}:{str(is_active).lower()}"
-                )
-
-            if full_subpath == "/":
-                full_subpath = ""
-            else:
-                full_subpath += "/"
-
-        return query_policies
-
     def prepare_meta_doc(
         self, space_name: str, subpath: str, meta: core.Meta
     ):
@@ -606,7 +555,7 @@ class RedisServices(Redis):
             )
         meta.model_rebuild()
         meta_json = json.loads(meta.model_dump_json(serialize_as_any=False, exclude_none=True,warnings="error"))
-        meta_json["query_policies"] = self.generate_query_policies(
+        meta_json["query_policies"] = generate_query_policies(
             space_name,
             subpath,
             resource_type,
@@ -677,7 +626,7 @@ class RedisServices(Redis):
             subpath,
         )
 
-        payload["query_policies"] = self.generate_query_policies(
+        payload["query_policies"] = generate_query_policies(
             space_name,
             subpath,
             resource_type,
