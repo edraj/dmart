@@ -59,6 +59,8 @@ class Metas(Unique, table=False):
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
     relationships: list[core.Relationship] | None = Field(default=[], sa_type=JSONB)
 
+    query_policies: list[str] = Field(default=[], sa_type=JSONB)
+
     resource_type: str = Field()
     @staticmethod
     def from_record(record: core.Record, owner_shortname: str):

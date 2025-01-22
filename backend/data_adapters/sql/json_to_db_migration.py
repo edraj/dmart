@@ -10,6 +10,7 @@ from typing import Any
 from uuid import uuid4
 from sqlmodel import Session, create_engine, text
 
+from utils.query_policies_helper import generate_query_policies
 from .health_check_sql import save_health_check_entry
 from models.enums import ResourceType
 from data_adapters.sql.create_tables import Entries, Users, generate_tables, Attachments, \
@@ -120,6 +121,15 @@ def main():
                         entry = json.load(open(p))
                         entry['space_name'] = space_name
                         entry['shortname'] = space_name
+                        entry['query_policies'] = generate_query_policies(
+                            space_name=space_name,
+                            subpath=subpath,
+                            resource_type=ResourceType.space,
+                            is_active=True,
+                            owner_shortname=entry('owner_shortname', 'dmart'),
+                            owner_group_shortname=entry('owner_group_shortname', None),
+                        )
+
                         _payload = entry.get('payload', {})
                         if _payload:
                             if payload := _payload.get('body', None):
@@ -255,6 +265,14 @@ def main():
                             entry['relationships'] = entry.get('relationships', [])
                             try:
                                 if file.startswith("meta.user"):
+                                    entry['query_policies'] = generate_query_policies(
+                                        space_name=space_name,
+                                        subpath=subpath,
+                                        resource_type=ResourceType.user,
+                                        is_active=True,
+                                        owner_shortname=entry('owner_shortname', 'dmart'),
+                                        owner_group_shortname=entry('owner_group_shortname', None),
+                                    )
                                     entry['resource_type'] = 'user'
                                     entry['firebase_token'] = entry.get('firebase_token', '')
                                     entry['type'] = entry.get('type', 'web')
@@ -266,10 +284,26 @@ def main():
                                     entry['description'] = entry.get('description', {})
                                     session.add(Users.model_validate(entry))
                                 elif file.startswith("meta.role"):
+                                    entry['query_policies'] = generate_query_policies(
+                                        space_name=space_name,
+                                        subpath=subpath,
+                                        resource_type=ResourceType.role,
+                                        is_active=True,
+                                        owner_shortname=entry('owner_shortname', 'dmart'),
+                                        owner_group_shortname=entry('owner_group_shortname', None),
+                                    )
                                     entry['resource_type'] = 'role'
                                     entry['permissions'] = entry.get('permissions', [])
                                     session.add(Roles.model_validate(entry))
                                 elif file.startswith("meta.permission"):
+                                    entry['query_policies'] = generate_query_policies(
+                                        space_name=space_name,
+                                        subpath=subpath,
+                                        resource_type=ResourceType.permission,
+                                        is_active=True,
+                                        owner_shortname=entry('owner_shortname', 'dmart'),
+                                        owner_group_shortname=entry('owner_group_shortname', None),
+                                    )
                                     entry['resource_type'] = 'permission'
                                     entry['subpaths'] = entry.get('subpaths', {})
                                     entry['resource_types'] = entry.get('resource_types', [])
@@ -280,6 +314,16 @@ def main():
                                     session.add(Permissions.model_validate(entry))
                                 else:
                                     entry['resource_type'] = file.replace('.json', '').replace('meta.', '')
+
+                                    entry['query_policies'] = generate_query_policies(
+                                        space_name=space_name,
+                                        subpath=subpath,
+                                        resource_type=entry['resource_type'],
+                                        is_active=True,
+                                        owner_shortname=entry('owner_shortname', 'dmart'),
+                                        owner_group_shortname=entry('owner_group_shortname', None),
+                                    )
+
                                     if entry['resource_type'] == 'folder':
                                         new_subpath = entry['subpath'].split('/')
                                         entry['subpath'] = '/'.join(new_subpath[:-1]) + '/'
