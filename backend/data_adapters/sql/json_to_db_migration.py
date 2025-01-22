@@ -126,8 +126,8 @@ def main():
                             subpath=subpath,
                             resource_type=ResourceType.space,
                             is_active=True,
-                            owner_shortname=entry('owner_shortname', 'dmart'),
-                            owner_group_shortname=entry('owner_group_shortname', None),
+                            owner_shortname=entry.get('owner_shortname', 'dmart'),
+                            owner_group_shortname=entry.get('owner_group_shortname', None),
                         )
 
                         _payload = entry.get('payload', {})
@@ -270,8 +270,8 @@ def main():
                                         subpath=subpath,
                                         resource_type=ResourceType.user,
                                         is_active=True,
-                                        owner_shortname=entry('owner_shortname', 'dmart'),
-                                        owner_group_shortname=entry('owner_group_shortname', None),
+                                        owner_shortname=entry.get('owner_shortname', 'dmart'),
+                                        owner_group_shortname=entry.get('owner_group_shortname', None),
                                     )
                                     entry['resource_type'] = 'user'
                                     entry['firebase_token'] = entry.get('firebase_token', '')
@@ -289,8 +289,8 @@ def main():
                                         subpath=subpath,
                                         resource_type=ResourceType.role,
                                         is_active=True,
-                                        owner_shortname=entry('owner_shortname', 'dmart'),
-                                        owner_group_shortname=entry('owner_group_shortname', None),
+                                        owner_shortname=entry.get('owner_shortname', 'dmart'),
+                                        owner_group_shortname=entry.get('owner_group_shortname', None),
                                     )
                                     entry['resource_type'] = 'role'
                                     entry['permissions'] = entry.get('permissions', [])
@@ -301,8 +301,8 @@ def main():
                                         subpath=subpath,
                                         resource_type=ResourceType.permission,
                                         is_active=True,
-                                        owner_shortname=entry('owner_shortname', 'dmart'),
-                                        owner_group_shortname=entry('owner_group_shortname', None),
+                                        owner_shortname=entry.get('owner_shortname', 'dmart'),
+                                        owner_group_shortname=entry.get('owner_group_shortname', None),
                                     )
                                     entry['resource_type'] = 'permission'
                                     entry['subpaths'] = entry.get('subpaths', {})
@@ -320,8 +320,8 @@ def main():
                                         subpath=subpath,
                                         resource_type=entry['resource_type'],
                                         is_active=True,
-                                        owner_shortname=entry('owner_shortname', 'dmart'),
-                                        owner_group_shortname=entry('owner_group_shortname', None),
+                                        owner_shortname=entry.get('owner_shortname', 'dmart'),
+                                        owner_group_shortname=entry.get('owner_group_shortname', None),
                                     )
 
                                     if entry['resource_type'] == 'folder':
