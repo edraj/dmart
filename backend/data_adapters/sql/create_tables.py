@@ -282,6 +282,7 @@ class Spaces(Metas, table=True):
 
 
 class AggregatedRecord(Unique, table=False):
+    space_name: str | None = None
     resource_type: ResourceType | None = None
     uuid: UUID | None = None
     attributes: dict[str, Any] | None = None
@@ -293,9 +294,13 @@ class AggregatedRecord(Unique, table=False):
 class Aggregated(Unique, table=False):
     uuid: UUID | None = None
     slug: str | None = None
+    space_name: str | None = None
+    subpath: str | None = None
+    shortname: str | None = None
+    slug: str | None = None
     is_active: bool | None = None
-    displayname: dict | core.Translation | None = Field(default_factory=None, sa_type=JSONB)
-    description: dict | core.Translation | None = Field(default_factory=None, sa_type=JSONB)
+    displayname: dict | core.Translation | None = None
+    description: dict | core.Translation | None = None
     tags: list[str]| None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -339,8 +344,10 @@ class Aggregated(Unique, table=False):
             **attributes,
             **(extra if extra is not None else {})
         }
-
+        print("!record_fields", record_fields)
+        print("!!record_fields", AggregatedRecord(**record_fields))
         return AggregatedRecord(**record_fields)
+
 
 
 class Locks(Unique, table=True):
