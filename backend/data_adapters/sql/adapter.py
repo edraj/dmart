@@ -40,7 +40,7 @@ from utils.helpers import (
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
 from utils.password_hashing import hash_password, verify_password
-from utils.query_policies_helper import get_user_query_policies
+from utils.query_policies_helper import get_user_query_policies, generate_query_policies
 from utils.settings import settings
 from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
 from data_adapters.sql.adapter_helpers import (
@@ -515,11 +515,7 @@ class SQLAdapter(BaseDataAdapter):
         total : int
         results : list
         with (self.get_session() as session):
-
-            user_query_policies = await get_user_query_policies(
-                self, user_shortname, query.space_name, query.subpath
-            )
-
+            user_query_policies = []
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -534,14 +530,18 @@ class SQLAdapter(BaseDataAdapter):
                 except Exception as e:
                     print(e)
                     return 0, []
-
+            is_fetching_spaces = False
             if (query.space_name
                     and query.type == QueryType.spaces
                     and query.space_name == "management"
                     and query.subpath == "/"):
+                is_fetching_spaces = True
                 statement = select(Spaces)
                 statement_total = select(func.count(col(Spaces.uuid)))
             else:
+                user_query_policies = await get_user_query_policies(
+                    self, user_shortname, query.space_name, query.subpath
+                )
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
@@ -555,10 +555,19 @@ class SQLAdapter(BaseDataAdapter):
                 #     cols = list(table.model_fields.keys())
                 #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
                 #     statement = statement.options(load_only(*cols))
-                statement = statement.where(text("query_policies && ARRAY[:query_policies]::text[]")).params(
-                    query_policies=user_query_policies
-                )
+                if table not in [Attachments, Histories] and user_query_policies:
+                    statement = statement.where(
+                        text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp LIKE ANY (ARRAY[:query_policies]))")
+                    ).params(
+                        query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
+                    )
+
                 results = list(session.exec(statement).all())
+                if is_fetching_spaces:
+                    from utils.access_control import access_control
+                    results = [result for result in results if await access_control.check_space_access(
+                        user_shortname, result.shortname
+                    )]
                 if len(results) == 0:
                     return 0, []
 
@@ -685,6 +694,16 @@ class SQLAdapter(BaseDataAdapter):
                         }
                     entity['resource_type'] = meta.__class__.__name__.lower()
                     data = self.get_base_model(meta.__class__, entity)
+
+                    if not isinstance(data, Attachments) and not isinstance(data, Histories):
+                        data.query_policies = generate_query_policies(
+                            space_name=space_name,
+                            subpath=subpath,
+                            resource_type=entity['resource_type'],
+                            is_active=entity['is_active'],
+                            owner_shortname=entity.get('owner_shortname', 'dmart'),
+                            owner_group_shortname=entity.get('owner_group_shortname', None),
+                        )
 
                     session.add(data)
                     session.commit()

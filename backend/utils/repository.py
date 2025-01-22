@@ -25,18 +25,6 @@ async def serve_query(
     total: int = 0
 
     total, records = await db.query(query, logged_in_user)
-    init_length = len(records)
-    records = [record for record in records if await access_control.check_access(
-        user_shortname=logged_in_user,
-        space_name=query.space_name,
-        subpath=query.subpath,
-        resource_type=record.resource_type,
-        action_type=core.ActionType.query,
-        entry_shortname=record.shortname,
-    )]
-    new_length = len(records)
-    total -= init_length - new_length
-
 
     if query.jq_filter:
         try:
