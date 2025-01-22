@@ -40,6 +40,7 @@ from utils.helpers import (
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
 from utils.password_hashing import hash_password, verify_password
+from utils.query_policies_helper import get_user_query_policies
 from utils.settings import settings
 from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
 from data_adapters.sql.adapter_helpers import (
@@ -514,6 +515,11 @@ class SQLAdapter(BaseDataAdapter):
         total : int
         results : list
         with (self.get_session() as session):
+
+            user_query_policies = await get_user_query_policies(
+                self, user_shortname, query.space_name, query.subpath
+            )
+
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -549,7 +555,9 @@ class SQLAdapter(BaseDataAdapter):
                 #     cols = list(table.model_fields.keys())
                 #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
                 #     statement = statement.options(load_only(*cols))
-
+                statement = statement.where(text("query_policies && ARRAY[:query_policies]::text[]")).params(
+                    query_policies=user_query_policies
+                )
                 results = list(session.exec(statement).all())
                 if len(results) == 0:
                     return 0, []
