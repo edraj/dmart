@@ -56,58 +56,61 @@ from starlette.datastructures import UploadFile
 
 def query_aggregation(table, query):
     aggregate_functions: list = []
-    if settings.database_driver == "sqlite":
+
+    if "sqlite" in settings.database_driver:
         aggregate_functions = sqlite_aggregate_functions
-    elif settings.database_driver == "mysql":
+    elif "mysql" in settings.database_driver:
         aggregate_functions = mysql_aggregate_functions
-    elif settings.database_driver == "postgresql":
+    elif "postgresql" in settings.database_driver:
         aggregate_functions = postgres_aggregate_functions
 
-    # for reducer in query.aggregation_data.reducers:
-    # if reducer.reducer_name in aggregate_functions:
     statement = select(
         *[
             getattr(table, ll.replace("@", ""))
             for ll in query.aggregation_data.load
         ]
     )
-    statement = statement.group_by(
-        *[
-            table.__dict__[column]
-            for column in [
-                group_by.replace("@", "")
-                for group_by in query.aggregation_data.group_by
+
+    if bool(query.aggregation_data.group_by):
+        statement = statement.group_by(
+            *[
+                table.__dict__[column]
+                for column in [
+                    group_by.replace("@", "")
+                    for group_by in query.aggregation_data.group_by
+                ]
             ]
-        ]
-    )
-    for reducer in query.aggregation_data.reducers:
-        if reducer.reducer_name in aggregate_functions:
-            if len(reducer.args) == 0:
-                field = "*"
-            else:
-                if not hasattr(table, reducer.args[0]):
-                    continue
+        )
 
-                field = getattr(table, reducer.args[0])
-
-                if field is None:
-                    continue
-
-                if isinstance(
-                        field.type, sqlalchemy.Integer
-                ) or isinstance(field.type, sqlalchemy.Boolean):
-                    field = f"{field}::int"
-                elif isinstance(field.type, sqlalchemy.Float):
-                    field = f"{field}::float"
+    if bool(query.aggregation_data.reducers):
+        for reducer in query.aggregation_data.reducers:
+            if reducer.reducer_name in aggregate_functions:
+                if len(reducer.args) == 0:
+                    field = "*"
                 else:
-                    field = f"{field}::text"
+                    if not hasattr(table, reducer.args[0]):
+                        continue
 
-            statement = statement.add_columns(
-                getattr(func, reducer.reducer_name)(field).label(
-                    reducer.alias
+                    field = getattr(table, reducer.args[0])
+
+                    if field is None:
+                        continue
+
+                    if isinstance(field.type, sqlalchemy.Integer) \
+                            or isinstance(field.type, sqlalchemy.Boolean):
+                        field = f"{field}::int"
+                    elif isinstance(field.type, sqlalchemy.Float):
+                        field = f"{field}::float"
+                    else:
+                        field = f"{field}::text"
+
+                statement = select(
+                    getattr(func, reducer.reducer_name)(text(field)).label(reducer.alias),
+                    text(f"'{reducer.alias}' AS key")
                 )
-            )
+
     return statement
+
 
 def string_to_list(input_str):
     if isinstance(input_str, list):
@@ -121,7 +124,7 @@ def string_to_list(input_str):
 
 async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
-        if query.type == QueryType.aggregation:
+        if query.type == QueryType.aggregation and not is_for_count:
             statement = query_aggregation(table, query)
     except Exception as e:
         print("[!query]", e)
@@ -546,6 +549,11 @@ class SQLAdapter(BaseDataAdapter):
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
             try:
+                if query.type == QueryType.aggregation and bool(query.aggregation_data.group_by):
+                    statement_total = select(
+                        func.sum(statement_total.c["count"]).label('total_count')
+                    )
+
                 total = session.exec(statement_total).one()
                 if query.type == QueryType.counters:
                     return total, []
