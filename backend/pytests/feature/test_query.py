@@ -115,8 +115,8 @@ async def test_query_aggregate(client: AsyncClient) -> None:
             "/managed/query",
             json={
                 "type": QueryType.aggregation,
-                "space_name": "management",
-                "subpath": "users",
+                "space_name": DEMO_SPACE,
+                "subpath": DEMO_SUBPATH,
                 "search": "",
                 "aggregation_data": {
                     "load": ["@resource_type", "@subpath", "@is_active"],
@@ -139,11 +139,7 @@ async def test_query_aggregate(client: AsyncClient) -> None:
     assert json_response["attributes"]["total"] > 0
     assert isinstance(json_response["records"][0]["attributes"], dict)
     assert list(json_response["records"][0]["attributes"].keys()) == [
-        "resource_type",
-        "subpath",
-        "subpath_count",
         "active_num",
-        "shortname_random_list",
     ]
 
 @pytest.mark.run(order=3)

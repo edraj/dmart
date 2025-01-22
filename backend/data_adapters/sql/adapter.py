@@ -555,6 +555,7 @@ class SQLAdapter(BaseDataAdapter):
                     )
 
                 total = session.exec(statement_total).one()
+                total = int(total)
                 if query.type == QueryType.counters:
                     return total, []
 
