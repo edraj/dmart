@@ -10,7 +10,6 @@ import models.core as core
 import utils.regex as regex
 from models.enums import ContentType, Language
 from data_adapters.adapter import data_adapter as db
-from utils.access_control import access_control
 from utils.helpers import (
     camel_case,
 )

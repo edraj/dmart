@@ -9,7 +9,6 @@ from fastapi.encoders import jsonable_encoder
 import aiofiles
 from data_adapters.file.redis_services import RedisServices
 from models import core, api
-from models.enums import ConditionType
 from utils import regex
 
 from utils.helpers import camel_case, alter_dict_keys, str_to_datetime, flatten_all

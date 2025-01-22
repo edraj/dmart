@@ -543,13 +543,13 @@ class SQLAdapter(BaseDataAdapter):
                 statement_total = select(func.count(col(Spaces.uuid)))
             else:
                 user_query_policies = await get_user_query_policies(
-                    self, user_shortname, query.space_name, query.subpath
+                    self, user_shortname if user_shortname else "anonymous", query.space_name, query.subpath
                 )
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
             try:
-                if query.type == QueryType.aggregation and bool(query.aggregation_data.group_by):
+                if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
                     statement_total = select(
                         func.sum(statement_total.c["count"]).label('total_count')
                     )
@@ -575,7 +575,7 @@ class SQLAdapter(BaseDataAdapter):
                 if is_fetching_spaces:
                     from utils.access_control import access_control
                     results = [result for result in results if await access_control.check_space_access(
-                        user_shortname, result.shortname
+                        user_shortname if user_shortname else "anonymous", result.shortname
                     )]
                 if len(results) == 0:
                     return 0, []

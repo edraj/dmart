@@ -184,12 +184,12 @@ class Users(Metas, table=True):
     social_avatar_url: str | None = None
     attempt_count: int | None = None
 
-    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
 class Roles(Metas, table=True):
     permissions: list[str] = Field(default_factory=dict, sa_type=JSONB)
 
-    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
 
 class Permissions(Metas, table=True):
@@ -200,7 +200,7 @@ class Permissions(Metas, table=True):
     restricted_fields: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     allowed_fields_values: dict | list[dict] | None = Field(default_factory=None, sa_type=JSONB)
 
-    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))  # type: ignore
 
 
 class Entries(Metas, table=True):
@@ -212,7 +212,7 @@ class Entries(Metas, table=True):
     collaborators: dict[str, str] | None = Field(None, default_factory=None, sa_type=JSONB)
     resolution_reason: str | None = None
 
-    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
 
 class Attachments(Metas, table=True):
@@ -278,11 +278,13 @@ class Spaces(Metas, table=True):
     active_plugins: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     ordinal: int | None = None
 
-    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
 
-class AggregatedRecord(Unique, table=False):
+class AggregatedRecord:
     space_name: str | None = None
+    subpath: str | None = None
+    shortname: str | None = None
     resource_type: ResourceType | None = None
     uuid: UUID | None = None
     attributes: dict[str, Any] | None = None
@@ -291,13 +293,12 @@ class AggregatedRecord(Unique, table=False):
     # model_config = ConfigDict(extra="allow", validate_assignment=False)
 
 
-class Aggregated(Unique, table=False):
+class Aggregated:
     uuid: UUID | None = None
     slug: str | None = None
     space_name: str | None = None
     subpath: str | None = None
     shortname: str | None = None
-    slug: str | None = None
     is_active: bool | None = None
     displayname: dict | core.Translation | None = None
     description: dict | core.Translation | None = None
