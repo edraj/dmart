@@ -46,7 +46,7 @@ Pytest follows a simple syntax for writing tests, using functions prefixed with 
 import json
 from fastapi.testclient import TestClient
 from main import app
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from utils.plugin_manager import plugin_manager
 from utils.settings import settings
 from fastapi import status
