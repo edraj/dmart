@@ -6,10 +6,10 @@
 
   let {language = "json", code = $bindable()} : {language?: string | null, code: object | string} = $props();
 
-  let formatted: string = $state();
+  let formatted: string = $state("{}");
   $effect(() => {
     formatted = highlight(language=="json"?JSON.stringify(code, undefined,1):code as string,languages[language],language);
-  });
+  })
 </script>
 
 <pre class="language-{language}" data-output="2-17">

@@ -1,19 +1,10 @@
 <script lang="ts">
-  import { _ } from "@/i18n";
-  import {
-    // type AggregationType,
-    type QueryRequest,
-    QueryType,
-    ResourceType,
-    csv,
-    get_children,
-    get_spaces,
-    query,
-  } from "@/dmart";
-  import { createEventDispatcher, onMount } from "svelte";
-  import { Button, Col, Row, Form, Icon } from "sveltestrap";
+  import {_} from "@/i18n";
+  import {csv, get_children, get_spaces, query, type QueryRequest, QueryType, ResourceType,} from "@/dmart";
+  import {createEventDispatcher, onMount} from "svelte";
+  import {Button, Col, Form, Icon, Row} from "sveltestrap";
   import downloadFile from "@/utils/downloadFile";
-  import { Level, showToast } from "@/utils/toast";
+  import {Level, showToast} from "@/utils/toast";
   import Input from "../Input.svelte";
   import Aggregation from "./Aggregation.svelte";
 
@@ -94,38 +85,24 @@
     dispatch("response", response);
   }
 
-  let spacename : string = $state("management");
-  let queryType : QueryType= $state();
+  let spacename : string = $state(null);
+  let queryType : QueryType = $state(null);
   let subpath : string = $state("/");
 
-  let selectedSpacename = "";
+  let selectedSpacename = null;
   let tempSubpaths = $state([]);
   let subpaths = $state([{ records: [{ shortname: "/", resource_type: "folder" }] }]);
 
   async function buildSubpaths(base: string, _subpaths: any) {
-    await Promise.all(
-      await _subpaths.records.map(async (_subpath: any) => {
-        if (_subpath.resource_type === "folder") {
-          const _subpaths = await get_children(spacename, _subpath.shortname);
-          await buildSubpaths(`${base}/${_subpath.shortname}`, _subpaths);
-          tempSubpaths.push(`${base}/${_subpath.shortname}`);
-        }
-      })
-    );
-  }
-  $effect(() => {
-    if (selectedSpacename !== spacename) {
-      (async () => {
-        subpaths = [];
-        tempSubpaths = [];
-        const _subpaths = await get_children(spacename, "/");
-        await buildSubpaths("", _subpaths);
-
-          subpaths = [...tempSubpaths.reverse()];
-          selectedSpacename = `${spacename}`;
-        })();
+    for (const _subpath of _subpaths.records) {
+      if (_subpath.resource_type === "folder") {
+        const childSubpaths = await get_children(spacename, _subpath.shortname);
+        await buildSubpaths(`${base}/${_subpath.shortname}`, childSubpaths);
+        tempSubpaths.push(`${base}/${_subpath.shortname}`);
       }
-    });
+    }
+  }
+
   let isDisplayFilter = $state(false);
   async function handleDownload() {
     const {
@@ -165,6 +142,21 @@
       downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
     }
   }
+
+  $effect(() => {
+    if (spacename && selectedSpacename !== spacename) {
+      (async () => {
+        subpaths = [];
+        tempSubpaths = [];
+        const _subpaths = await get_children(spacename, "/");
+
+        await buildSubpaths("", _subpaths);
+
+        subpaths = [...tempSubpaths.reverse()];
+        selectedSpacename = `${spacename}`;
+      })();
+    }
+  });
 </script>
 
 <Form on:submit={handleResponse}>
@@ -191,10 +183,9 @@
             type="select"
             title={$_("query_type")}
             bind:value={queryType}
-            required
-          >
-            {#each Object.keys(QueryType) as queryType}
-              <option value={queryType}>{queryType}</option>
+            required>
+            {#each Object.keys(QueryType) as _queryType}
+              <option value={_queryType}>{_queryType}</option>
             {/each}
           </Input>
         </Col>
