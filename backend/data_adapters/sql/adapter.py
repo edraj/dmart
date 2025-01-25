@@ -8,11 +8,10 @@ from pathlib import Path
 from typing import Any, Type, Tuple
 from uuid import uuid4
 import ast
-import sqlalchemy
 from fastapi import status
 from fastapi.logger import logger
-from sqlalchemy import text, func
-from sqlmodel import create_engine, Session, select, col, delete, update
+from sqlmodel import create_engine, Session, select, col, delete, update, Integer, Float, Boolean,\
+    func, text
 import io
 from sys import modules as sys_modules
 import models.api as api
@@ -96,10 +95,10 @@ def query_aggregation(table, query):
                     if field is None:
                         continue
 
-                    if isinstance(field.type, sqlalchemy.Integer) \
-                            or isinstance(field.type, sqlalchemy.Boolean):
+                    if isinstance(field.type, Integer) \
+                            or isinstance(field.type, Boolean):
                         field = f"{field}::int"
-                    elif isinstance(field.type, sqlalchemy.Float):
+                    elif isinstance(field.type, Float):
                         field = f"{field}::float"
                     else:
                         field = f"{field}::text"
