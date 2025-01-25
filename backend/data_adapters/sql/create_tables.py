@@ -281,7 +281,7 @@ class Spaces(Metas, table=True):
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
 
-class AggregatedRecord:
+class AggregatedRecord(Unique, table=False):
     space_name: str | None = None
     subpath: str | None = None
     shortname: str | None = None
@@ -293,7 +293,7 @@ class AggregatedRecord:
     # model_config = ConfigDict(extra="allow", validate_assignment=False)
 
 
-class Aggregated:
+class Aggregated(Unique, table=False):
     uuid: UUID | None = None
     slug: str | None = None
     space_name: str | None = None
