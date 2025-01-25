@@ -237,6 +237,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
 class SQLAdapter(BaseDataAdapter):
     session: Session
+    engine: Any
 
     def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
         locators: list[core.Locator] = []
@@ -268,8 +269,8 @@ class SQLAdapter(BaseDataAdapter):
         try:
             self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
             connection_string = f"{self.database_connection_string}/{settings.database_name}"
-            engine = create_engine(connection_string, echo=True, pool_pre_ping=True)
-            self.session = Session(engine)
+            self.engine = create_engine(connection_string, echo=True, pool_pre_ping=True)
+            self.session = Session(self.engine)
             with self.get_session() as session:
                 session.execute(text("SELECT 1")).one_or_none()
         except Exception as e:
@@ -566,7 +567,7 @@ class SQLAdapter(BaseDataAdapter):
                 #     statement = statement.options(load_only(*cols))
                 if table not in [Attachments, Histories] and user_query_policies:
                     statement = statement.where(
-                        text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp LIKE ANY (ARRAY[:query_policies]))")
+                        text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
                     ).params(
                         query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
                     )
