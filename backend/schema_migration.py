@@ -7,7 +7,6 @@ from models.enums import ContentType
 from utils import helpers
 from data_adapters.adapter import data_adapter as db
 from models.core import Meta, Schema
-from utils.repository import internal_sys_update_model
 from utils.settings import settings
 
 
@@ -35,7 +34,7 @@ async def change_field_type(
 ):
     # 3-update field type to new_type
     schema_properties = schema_payload["properties"]
-    await internal_sys_update_model(
+    await db.internal_sys_update_model(
         space_name=space,
         subpath="schema",
         meta=schema_model,
@@ -100,7 +99,7 @@ async def change_field_type(
         for i in range(1, last_idx):
             field_to_update = main_field[field_tree[i]] #type: ignore
         field_to_update[field_tree[last_idx]] = FIELD_TYPE_PARSER[new_type](field_to_update[field_tree[last_idx]])#type: ignore
-        await internal_sys_update_model(
+        await db.internal_sys_update_model(
             space_name=space,
             subpath=subpath,
             meta=resource_obj,

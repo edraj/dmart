@@ -552,7 +552,7 @@ async def get_entry_by_uuid(
     retrieve_attachments: bool = False,
     retrieve_lock_status: bool = False
 ):
-    return await repository.get_entry_by_var(
+    return await db.get_entry_by_var(
         "uuid",
         uuid,
         "anonymous",
@@ -569,7 +569,7 @@ async def get_entry_by_slug(
     retrieve_attachments: bool = False,
     retrieve_lock_status: bool = False,
 ):
-    return await repository.get_entry_by_var(
+    return await db.get_entry_by_var(
         "slug",
         slug,
         "anonymous",

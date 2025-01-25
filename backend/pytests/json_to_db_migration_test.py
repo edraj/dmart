@@ -5,8 +5,8 @@ import os
 import json
 from pathlib import Path
 from sqlmodel import Session, create_engine, text
-from json_to_db_migration import subpath_checker, generate_tables
-from utils.database.create_tables import Attachments, Entries, Spaces, Histories, Users, Roles, Permissions
+from data_adapters.sql.json_to_db_migration import subpath_checker, generate_tables
+from data_adapters.sql.create_tables import Attachments, Entries, Spaces, Histories
 from sqlalchemy.exc import OperationalError
 from utils.settings import settings  # Use settings from your settings file
 

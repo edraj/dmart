@@ -8,18 +8,17 @@ from pathlib import Path
 from typing import Any, Type, Tuple
 from uuid import uuid4
 import ast
-import sqlalchemy
 from fastapi import status
 from fastapi.logger import logger
-from sqlalchemy import text, func
-from sqlmodel import create_engine, Session, select, col, delete, update
+from sqlmodel import create_engine, Session, select, col, delete, update, Integer, Float, Boolean,\
+    func, text
 import io
-
+from sys import modules as sys_modules
 import models.api as api
 from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
 from models.enums import QueryType, LockAction, ResourceType, SortType, ContentType
-from utils.database.create_tables import (
+from data_adapters.sql.create_tables import (
     Entries,
     Histories,
     Permissions,
@@ -35,79 +34,82 @@ from utils.database.create_tables import (
 from utils.helpers import (
     arr_remove_common,
     get_removed_items,
-    camel_case,
+    camel_case, resolve_schema_references,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
 from utils.password_hashing import hash_password, verify_password
+from utils.query_policies_helper import get_user_query_policies, generate_query_policies
 from utils.settings import settings
-from .base_data_adapter import BaseDataAdapter, MetaChild
-from .sql_adapter_helpers import (
-    set_results_from_aggregation,
-    set_table_for_query,
-    events_query,
-    subpath_checker, parse_search_string, validate_search_range, sqlite_aggregate_functions, mysql_aggregate_functions,
+from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
+from data_adapters.sql.adapter_helpers import (
+    set_results_from_aggregation, set_table_for_query, events_query,
+    subpath_checker, parse_search_string, validate_search_range,
+    sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
 )
-from utils.custom_validations import get_nested_value
+from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 
 
 def query_aggregation(table, query):
     aggregate_functions: list = []
-    if settings.database_driver == "sqlite":
+
+    if "sqlite" in settings.database_driver:
         aggregate_functions = sqlite_aggregate_functions
-    elif settings.database_driver == "mysql":
+    elif "mysql" in settings.database_driver:
         aggregate_functions = mysql_aggregate_functions
-    elif settings.database_driver == "postgresql":
+    elif "postgresql" in settings.database_driver:
         aggregate_functions = postgres_aggregate_functions
 
-    # for reducer in query.aggregation_data.reducers:
-    # if reducer.reducer_name in aggregate_functions:
     statement = select(
         *[
             getattr(table, ll.replace("@", ""))
             for ll in query.aggregation_data.load
         ]
     )
-    statement = statement.group_by(
-        *[
-            table.__dict__[column]
-            for column in [
-                group_by.replace("@", "")
-                for group_by in query.aggregation_data.group_by
+
+    if bool(query.aggregation_data.group_by):
+        statement = statement.group_by(
+            *[
+                table.__dict__[column]
+                for column in [
+                    group_by.replace("@", "")
+                    for group_by in query.aggregation_data.group_by
+                ]
             ]
-        ]
-    )
-    for reducer in query.aggregation_data.reducers:
-        if reducer.reducer_name in aggregate_functions:
-            if len(reducer.args) == 0:
-                field = "*"
-            else:
-                if not hasattr(table, reducer.args[0]):
-                    continue
+        )
 
-                field = getattr(table, reducer.args[0])
-
-                if field is None:
-                    continue
-
-                if isinstance(
-                        field.type, sqlalchemy.Integer
-                ) or isinstance(field.type, sqlalchemy.Boolean):
-                    field = f"{field}::int"
-                elif isinstance(field.type, sqlalchemy.Float):
-                    field = f"{field}::float"
+    if bool(query.aggregation_data.reducers):
+        for reducer in query.aggregation_data.reducers:
+            if reducer.reducer_name in aggregate_functions:
+                if len(reducer.args) == 0:
+                    field = "*"
                 else:
-                    field = f"{field}::text"
+                    if not hasattr(table, reducer.args[0]):
+                        continue
 
-            statement = statement.add_columns(
-                getattr(func, reducer.reducer_name)(field).label(
-                    reducer.alias
+                    field = getattr(table, reducer.args[0])
+
+                    if field is None:
+                        continue
+
+                    if isinstance(field.type, Integer) \
+                            or isinstance(field.type, Boolean):
+                        field = f"{field}::int"
+                    elif isinstance(field.type, Float):
+                        field = f"{field}::float"
+                    else:
+                        field = f"{field}::text"
+
+                statement = select(
+                    getattr(func, reducer.reducer_name)(text(field)).label(reducer.alias),
+                    text(f"'{reducer.alias}' AS key")
                 )
-            )
+
     return statement
+
 
 def string_to_list(input_str):
     if isinstance(input_str, list):
@@ -121,7 +123,7 @@ def string_to_list(input_str):
 
 async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
-        if query.type == QueryType.aggregation:
+        if query.type == QueryType.aggregation and not is_for_count:
             statement = query_aggregation(table, query)
     except Exception as e:
         print("[!query]", e)
@@ -234,6 +236,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
 class SQLAdapter(BaseDataAdapter):
     session: Session
+    engine: Any
 
     def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
         locators: list[core.Locator] = []
@@ -262,6 +265,18 @@ class SQLAdapter(BaseDataAdapter):
         return (Path(), "")
 
     def __init__(self):
+        try:
+            self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+            connection_string = f"{self.database_connection_string}/{settings.database_name}"
+            self.engine = create_engine(connection_string, echo=True, pool_pre_ping=True)
+            self.session = Session(self.engine)
+            with self.get_session() as session:
+                session.execute(text("SELECT 1")).one_or_none()
+        except Exception as e:
+            print("[!FATAL]", e)
+            sys.exit(127)
+
+    async def test_connection(self):
         try:
             self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
             connection_string = f"{self.database_connection_string}/{settings.database_name}"
@@ -446,9 +461,9 @@ class SQLAdapter(BaseDataAdapter):
                 logger.error(f"Failed parsing an entry. Error: {e}")
                 return None
 
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
         with self.get_session() as session:
-            results: list[core.Meta] = []
+            results: list[core.Record] = []
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
                 for _table in tables:
@@ -465,7 +480,11 @@ class SQLAdapter(BaseDataAdapter):
                         if len(_results) > 0:
                             for result in _results:
                                 core_model_class : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
-                                results.append(core_model_class.model_validate(result.model_dump()))
+                                results.append(
+                                    core_model_class.model_validate(
+                                        result.model_dump()
+                                    ).to_record(result.subpath, result.shortname)
+                               )
 
                             return results
                 return None
@@ -485,7 +504,11 @@ class SQLAdapter(BaseDataAdapter):
                         for result in _results:
                             _core_model_class: core.Meta = getattr(sys.modules["models.core"],
                                                                    camel_case(result.resource_type))
-                            results.append(_core_model_class.model_validate(result.model_dump()))
+                            results.append(
+                                _core_model_class.model_validate(
+                                    result.model_dump()
+                                ).to_record(result.subpath, result.shortname)
+                            )
                         return results
                 return None
 
@@ -495,6 +518,7 @@ class SQLAdapter(BaseDataAdapter):
         total : int
         results : list
         with (self.get_session() as session):
+            user_query_policies = []
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -509,19 +533,29 @@ class SQLAdapter(BaseDataAdapter):
                 except Exception as e:
                     print(e)
                     return 0, []
-
+            is_fetching_spaces = False
             if (query.space_name
                     and query.type == QueryType.spaces
                     and query.space_name == "management"
                     and query.subpath == "/"):
+                is_fetching_spaces = True
                 statement = select(Spaces)
                 statement_total = select(func.count(col(Spaces.uuid)))
             else:
+                user_query_policies = await get_user_query_policies(
+                    self, user_shortname if user_shortname else "anonymous", query.space_name, query.subpath
+                )
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
             try:
+                if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
+                    statement_total = select(
+                        func.sum(statement_total.c["count"]).label('total_count')
+                    )
+
                 total = session.exec(statement_total).one()
+                total = int(total)
                 if query.type == QueryType.counters:
                     return total, []
 
@@ -530,8 +564,19 @@ class SQLAdapter(BaseDataAdapter):
                 #     cols = list(table.model_fields.keys())
                 #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
                 #     statement = statement.options(load_only(*cols))
+                if table not in [Attachments, Histories] and user_query_policies:
+                    statement = statement.where(
+                        text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
+                    ).params(
+                        query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
+                    )
 
                 results = list(session.exec(statement).all())
+                if is_fetching_spaces:
+                    from utils.access_control import access_control
+                    results = [result for result in results if await access_control.check_space_access(
+                        user_shortname if user_shortname else "anonymous", result.shortname
+                    )]
                 if len(results) == 0:
                     return 0, []
 
@@ -658,6 +703,16 @@ class SQLAdapter(BaseDataAdapter):
                         }
                     entity['resource_type'] = meta.__class__.__name__.lower()
                     data = self.get_base_model(meta.__class__, entity)
+
+                    if not isinstance(data, Attachments) and not isinstance(data, Histories):
+                        data.query_policies = generate_query_policies(
+                            space_name=space_name,
+                            subpath=subpath,
+                            resource_type=entity['resource_type'],
+                            is_active=entity['is_active'],
+                            owner_shortname=entity.get('owner_shortname', 'dmart'),
+                            owner_group_shortname=entity.get('owner_group_shortname', None),
+                        )
 
                     session.add(data)
                     session.commit()
@@ -1143,14 +1198,14 @@ class SQLAdapter(BaseDataAdapter):
             print("[!fetch_space]", e)
             return None
 
-    async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
+    async def set_user_session(self, user_shortname: str, token: str) -> bool:
         with (self.get_session() as session):
             try:
-                total, last_session = await self.get_sql_user_session(user_shortname, token)
+                total, last_session = await self.get_user_session(user_shortname, token)
 
                 if (settings.max_sessions_per_user == 1 and last_session is not None) \
                     or (settings.max_sessions_per_user != 0 and total >= settings.max_sessions_per_user):
-                    await self.remove_sql_user_session(user_shortname)
+                    await self.remove_user_session(user_shortname)
 
                 timestamp = datetime.now()
                 session.add(
@@ -1168,10 +1223,11 @@ class SQLAdapter(BaseDataAdapter):
                 print("[!set_sql_user_session]", e)
                 return False
 
-    async def get_sql_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
+
+    async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
         with self.get_session() as session:
             statement = select(Sessions) \
-            .where(Sessions.shortname == user_shortname)
+                .where(col(Sessions.shortname) == user_shortname)
 
             results = session.exec(statement).all()
             if len(results) == 0:
@@ -1180,7 +1236,7 @@ class SQLAdapter(BaseDataAdapter):
             for r in results:
                 if verify_password(token, r.token):
                     if settings.session_inactivity_ttl + r.timestamp.timestamp() < time.time():
-                        await self.remove_sql_user_session(user_shortname)
+                        await self.remove_user_session(user_shortname)
                         return 0, None
                     r.timestamp = datetime.now()
                     session.add(r)
@@ -1188,7 +1244,8 @@ class SQLAdapter(BaseDataAdapter):
                     return len(results), token
         return len(results), None
 
-    async def remove_sql_user_session(self, user_shortname: str) -> bool:
+
+    async def remove_user_session(self, user_shortname: str) -> bool:
         with self.get_session() as session:
             try:
                 statement = select(Sessions).where(col(Sessions.shortname) == user_shortname).order_by(
@@ -1222,7 +1279,7 @@ class SQLAdapter(BaseDataAdapter):
 
     async def get_invitation(self, invitation_token: str) -> str | None:
         with self.get_session() as session:
-            statement = select(Invitations).where(col(Invitations.invitation_token)== invitation_token)
+            statement = select(Invitations).where(col(Invitations.invitation_token) == invitation_token)
 
             result = session.exec(statement).one_or_none()
             if result is None:
@@ -1281,7 +1338,7 @@ class SQLAdapter(BaseDataAdapter):
                 session.commit()
                 return True
             except Exception as e:
-                print("[!delete_url_shortner]", e)
+                print("[!remove_sql_user_session]", e)
                 return False
 
     async def delete_url_shortner_by_token(self, invitation_token: str) -> bool:
@@ -1478,3 +1535,287 @@ class SQLAdapter(BaseDataAdapter):
             data = payload_data
 
         Draft7Validator(schema).validate(data)  # type: ignore
+
+    async def get_schema(self, space_name: str, schema_shortname: str, owner_shortname: str) -> dict:
+        schema_content = await self.load(
+            space_name=space_name,
+            subpath="/schema",
+            shortname=schema_shortname,
+            class_type=core.Schema,
+            user_shortname=owner_shortname,
+        )
+
+        if schema_content and schema_content.payload and isinstance(schema_content.payload.body, dict):
+            return resolve_schema_references(schema_content.payload.body)
+
+        return {}
+
+    async def check_uniqueness(self, unique_fields, search_str, redis_escape_chars) -> dict:
+        for key, value in unique_fields.items():
+            if value is None:
+                continue
+            if key == "email_unescaped":
+                key = "email"
+
+            result = await self.get_entry_by_criteria({key: value}, Users)
+
+            if result is not None:
+                return {"unique": False, "field": key}
+
+        return {"unique": True}
+
+    async def get_role_permissions(self, role: core.Role) -> list[core.Permission]:
+        role_records = await self.load_or_none(
+            settings.management_space, 'roles', role.shortname, core.Role
+        )
+
+        if role_records is None:
+            return []
+
+        role_permissions: list[core.Permission] = []
+
+        for permission in role_records.permissions:
+            permission_record = await self.load_or_none(
+                settings.management_space, 'permissions', permission, core.Permission
+            )
+            if permission_record is None:
+                continue
+            role_permissions.append(permission_record)
+
+        return role_permissions
+
+    async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
+        try:
+            user = await self.load_or_none(
+                settings.management_space, settings.users_subpath, user_shortname, core.User
+            )
+
+            if user is None:
+                return {}
+
+            user_roles: dict[str, core.Role] = {}
+            for role in user.roles:
+                role_record = await self.load_or_none(
+                    settings.management_space, 'roles', role, core.Role
+                )
+                if role_record is None:
+                    continue
+
+                user_roles[role] = role_record
+            return user_roles
+        except Exception as e:
+            print(f"Error: {e}")
+            return {}
+
+    async def load_user_meta(self, user_shortname: str) -> Any:
+        user = await self.load(
+            space_name=settings.management_space,
+            shortname=user_shortname,
+            subpath="users",
+            class_type=core.User,
+            user_shortname=user_shortname,
+        )
+
+        return user
+
+    async def generate_user_permissions(self, user_shortname: str) -> dict:
+        user_permissions: dict = {}
+
+        user_roles = await self.get_user_roles(user_shortname)
+
+        for _, role in user_roles.items():
+            role_permissions = await self.get_role_permissions(role)
+            permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
+                                                            core.Permission)
+            if permission_world_record:
+                role_permissions.append(permission_world_record)
+
+            for permission in role_permissions:
+                for space_name, permission_subpaths in permission.subpaths.items():
+                    for permission_subpath in permission_subpaths:
+                        permission_subpath = trans_magic_words(permission_subpath, user_shortname)
+                        for permission_resource_types in permission.resource_types:
+                            actions = set(permission.actions)
+                            conditions = set(permission.conditions)
+                            if (
+                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                                    in user_permissions
+                            ):
+                                old_perm = user_permissions[
+                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                                ]
+
+                                if isinstance(actions, list):
+                                    actions = set(actions)
+                                actions |= set(old_perm["allowed_actions"])
+
+                                if isinstance(conditions, list):
+                                    conditions = set(conditions)
+                                conditions |= set(old_perm["conditions"])
+
+                            user_permissions[
+                                f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                            ] = {
+                                "allowed_actions": list(actions),
+                                "conditions": list(conditions),
+                                "restricted_fields": permission.restricted_fields,
+                                "allowed_fields_values": permission.allowed_fields_values
+                            }
+        return user_permissions
+
+    async def get_user_permissions(self, user_shortname: str) -> dict:
+        return await self.generate_user_permissions(user_shortname)
+
+    async def get_user_by_criteria(self, key: str, value: str) -> str | None:
+        _user = await self.get_entry_by_criteria(
+            {key: value},
+            Users
+        )
+        if _user is None or len(_user) == 0:
+            return None
+        return str(_user[0].shortname)
+
+    async def get_payload_from_event(self, event) -> dict:
+        notification_request_meta = await self.load(
+            event.space_name,
+            event.subpath,
+            event.shortname,
+            getattr(sys_modules["models.core"], camel_case(event.resource_type)),
+            event.user_shortname,
+        )
+        return notification_request_meta.payload.body # type: ignore
+
+    async def get_user_roles_from_groups(self, user_meta: core.User) -> list:
+        return []
+
+    async def drop_index(self, space_name):
+        pass
+
+    async def initialize_spaces(self) -> None:
+        pass
+
+    async def create_user_premission_index(self) -> None:
+        pass
+
+    async def store_modules_to_redis(self) -> None:
+        pass
+
+    async def delete_user_permissions_map_in_redis(self) -> None:
+        pass
+
+    async def internal_save_model(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            payload: dict | None = None
+    ):
+        await self.save(
+            space_name=space_name,
+            subpath=subpath,
+            meta=meta,
+        )
+
+    async def internal_sys_update_model(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            updates: dict,
+            sync_redis: bool = True,
+            payload_dict: dict[str, Any] = {},
+    ):
+        meta.updated_at = datetime.now()
+        meta_updated = False
+        payload_updated = False
+
+        if not payload_dict:
+            try:
+                body = str(meta.payload.body) if meta and meta.payload else ""
+                mydict = await self.load_resource_payload(
+                    space_name, subpath, body, core.Content
+                )
+                payload_dict = mydict if mydict else {}
+            except Exception:
+                pass
+
+        restricted_fields = [
+            "uuid",
+            "shortname",
+            "created_at",
+            "updated_at",
+            "owner_shortname",
+            "payload",
+        ]
+        old_version_flattend = {**meta.model_dump()}
+        for key, value in updates.items():
+            if key in restricted_fields:
+                continue
+
+            if key in meta.model_fields.keys():
+                meta_updated = True
+                meta.__setattr__(key, value)
+            elif payload_dict:
+                payload_dict[key] = value
+                payload_updated = True
+
+        if meta_updated:
+            await self.update(
+                space_name,
+                subpath,
+                meta,
+                old_version_flattend,
+                {**meta.model_dump()},
+                list(updates.keys()),
+                meta.shortname
+            )
+        if payload_updated and meta.payload and meta.payload.schema_shortname:
+            await self.validate_payload_with_schema(
+                payload_dict, space_name, meta.payload.schema_shortname
+            )
+            await self.save_payload_from_json(
+                space_name, subpath, meta, payload_dict
+            )
+
+    async def get_entry_by_var(
+            self,
+            key: str,
+            val: str,
+            logged_in_user,
+            retrieve_json_payload: bool = False,
+            retrieve_attachments: bool = False,
+            retrieve_lock_status: bool = False,
+    ) -> core.Record:
+        _result = await self.get_entry_by_criteria({key: val})
+
+        if _result is None or len(_result) == 0:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+                ),
+            )
+
+        return _result[0]
+
+    async def delete_space(self, space_name, record, owner_shortname):
+        resource_obj = core.Meta.from_record(
+            record=record, owner_shortname=owner_shortname
+        )
+        await self.delete(space_name, record.subpath, resource_obj, owner_shortname)
+        os.system(f"rm -r {settings.spaces_folder}/{space_name}")
+
+    async def get_last_updated_entry(
+            self,
+            space_name: str,
+            schema_names: list,
+            retrieve_json_payload: bool,
+            logged_in_user: str,
+    ):
+        pass
+
+    async def get_group_users(self, group_name: str):
+        return []
+
+    async def is_user_verified(self, user_shortname: str | None, identifier: str | None) -> bool:
+        return True

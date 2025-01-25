@@ -1,34 +1,44 @@
 import io
-import json
-import os
 import shutil
-import sys
 from copy import copy
-from datetime import datetime
-from pathlib import Path
 from shutil import copy2 as copy_file
 from typing import Type, Any, Tuple
-
-import aiofiles
-from fastapi import status
+import os
+import sys
+from sys import modules as sys_modules
 from fastapi.logger import logger
-
-import models.api as api
+from redis.commands.search.field import TextField
+from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.query import Query
+from datetime import datetime
+import aiofiles
+from pathlib import Path
+from data_adapters.file.adapter_helpers import serve_query_space, serve_query_search, serve_query_subpath, \
+    serve_query_counters, serve_query_tags, serve_query_random, serve_query_history, serve_query_events, \
+    serve_query_aggregation, get_record_from_redis_doc
+from data_adapters.helpers import trans_magic_words
 from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
 from utils import regex
-from utils.custom_validations import get_schema_path
-from .base_data_adapter import BaseDataAdapter, MetaChild
+from data_adapters.file.custom_validations import get_schema_path
+from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
 from models.enums import ContentType, ResourceType, LockAction
-from utils.helpers import arr_remove_common, read_jsonl_file, snake_case, camel_case, flatten_list_of_dicts_in_dict, flatten_dict
+
+from utils.helpers import arr_remove_common, read_jsonl_file, snake_case, camel_case, flatten_list_of_dicts_in_dict, \
+    flatten_dict, resolve_schema_references
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
-from utils.redis_services import RedisServices
-from utils.regex import FILE_PATTERN, FOLDER_PATTERN
+from data_adapters.file.redis_services import RedisServices
+from utils.password_hashing import hash_password
+from utils.plugin_manager import plugin_manager
+from utils.regex import FILE_PATTERN, FOLDER_PATTERN, SPACES_PATTERN
 from utils.settings import settings
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 from pathlib import Path as FSPath
+import models.api as api
+from fastapi import status
+import json
 
 
 def sort_alteration(attachments_dict, attachments_path):
@@ -47,15 +57,15 @@ def sort_alteration(attachments_dict, attachments_path):
 
 def is_file_check(retrieve_json_payload, resource_obj, resource_record_obj, attachment_entry):
     return (
-        retrieve_json_payload
-        and resource_obj
-        and resource_record_obj
-        and resource_obj.payload
-        and resource_obj.payload.content_type
-        and resource_obj.payload.content_type == ContentType.json
-        and Path(
-            f"{attachment_entry.path}/{resource_obj.payload.body}"
-        ).is_file()
+            retrieve_json_payload
+            and resource_obj
+            and resource_record_obj
+            and resource_obj.payload
+            and resource_obj.payload.content_type
+            and resource_obj.payload.content_type == ContentType.json
+            and Path(
+        f"{attachment_entry.path}/{resource_obj.payload.body}"
+    ).is_file()
     )
 
 
@@ -73,14 +83,14 @@ def locator_query_path_sub_folder(locators, query, subpath_iterator, total):
         shortname = match.group(1)
         resource_name = match.group(2).lower()
         if (
-            query.filter_types
-            and ResourceType(resource_name) not in query.filter_types
+                query.filter_types
+                and ResourceType(resource_name) not in query.filter_types
         ):
             continue
 
         if (
-            query.filter_shortnames
-            and shortname not in query.filter_shortnames
+                query.filter_shortnames
+                and shortname not in query.filter_shortnames
         ):
             continue
 
@@ -127,16 +137,26 @@ def locator_query_sub_folder(locators, query, subfolders_iterator, total):
     return locators, total
 
 
+
+
 class FileAdapter(BaseDataAdapter):
+    async def test_connection(self):
+        try:
+            async with RedisServices() as redis_services:
+                await redis_services.get_doc_by_id("spaces")
+        except Exception as e:
+            print("[!FATAL]", e)
+            sys.exit(127)
+
     def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
         locators: list[core.Locator] = []
         total: int = 0
         if query.type != api.QueryType.subpath:
             return total, locators
         path = (
-            settings.spaces_folder
-            / query.space_name
-            / query.subpath
+                settings.spaces_folder
+                / query.space_name
+                / query.subpath
         )
 
         if query.include_fields is None:
@@ -168,7 +188,6 @@ class FileAdapter(BaseDataAdapter):
             shortname: str,
     ):
         return f"{settings.spaces_folder}/{space_name}/{subpath}/{shortname}"
-
 
     def metapath(
             self,
@@ -244,9 +263,40 @@ class FileAdapter(BaseDataAdapter):
         except Exception as _:
             return None
 
-    async def query(self, query: api.Query | None = None, user_shortname: str | None = None) \
+    async def query(self, query: api.Query, user_shortname: str | None = None) \
             -> Tuple[int, list[core.Record]]:
-        return (0, [])
+        records: list[core.Record] = []
+        total: int = 0
+
+        match query.type:
+            case api.QueryType.spaces:
+                total, records = await serve_query_space(self, query, user_shortname)
+
+            case api.QueryType.search:
+                total, records = await serve_query_search(self, query, user_shortname)
+
+            case api.QueryType.subpath:
+                total, records = await serve_query_subpath(self, query, user_shortname)
+
+            case api.QueryType.counters:
+                total, records = await serve_query_counters(query, user_shortname)
+
+            case api.QueryType.tags:
+                total, records = await serve_query_tags(self, query, user_shortname)
+
+            case api.QueryType.random:
+                total, records = await serve_query_random(self, query, user_shortname)
+
+            case api.QueryType.history:
+                total, records = await serve_query_history(query, user_shortname)
+
+            case api.QueryType.events:
+                total, records = await serve_query_events(query, user_shortname)
+
+            case api.QueryType.aggregation:
+                total, records = await serve_query_aggregation(self, query, user_shortname)
+
+        return total, records
 
     async def load(
             self,
@@ -842,7 +892,8 @@ class FileAdapter(BaseDataAdapter):
             if isinstance(meta, core.Folder) and Path(history_path).is_dir():
                 shutil.rmtree(history_path)
 
-    async def lock_handler(self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction) -> dict | None:
+    async def lock_handler(self, space_name: str, subpath: str, shortname: str, user_shortname: str,
+                           action: LockAction) -> dict | None:
         match action:
             case LockAction.lock:
                 async with RedisServices() as redis_services:
@@ -872,7 +923,6 @@ class FileAdapter(BaseDataAdapter):
         if space_name not in spaces:
             return None
         return core.Space.model_validate_json(spaces[space_name])
-
 
     async def get_entry_attachments(
             self,
@@ -954,7 +1004,7 @@ class FileAdapter(BaseDataAdapter):
             return {}
 
     async def validate_uniqueness(
-        self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
+            self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
     ) -> bool:
         """
         Get list of unique fields from entry's folder meta data
@@ -1100,10 +1150,10 @@ class FileAdapter(BaseDataAdapter):
         return True
 
     async def validate_payload_with_schema(
-        self,
-        payload_data: UploadFile | dict,
-        space_name: str,
-        schema_shortname: str,
+            self,
+            payload_data: UploadFile | dict,
+            space_name: str,
+            schema_shortname: str,
     ):
         if not isinstance(payload_data, (dict, UploadFile)):
             raise API_Exception(
@@ -1142,7 +1192,6 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             return await redis_services.del_keys([f"users:failed_login_attempts/{user_shortname}"])
 
-
     async def set_failed_password_attempt_count(self, user_shortname: str, attempt_count: int):
         async with RedisServices() as redis_services:
             return await redis_services.set(f"users:failed_login_attempts/{user_shortname}", attempt_count)
@@ -1176,8 +1225,7 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             return await redis_services.get_key(f"short/{token_uuid}")
 
-
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
         async with RedisServices() as redis_services:
             _search_query = ""
             for k, v in criteria.items():
@@ -1202,20 +1250,47 @@ class FileAdapter(BaseDataAdapter):
     async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass
 
-    async def get_sql_user_session(self, user_shortname: str, token: str) ->  Tuple[int, str | None]:
-        return 0, None
+    async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
+        async with RedisServices() as redis:
+            return 1, await redis.get_key(
+                f"user_session:{user_shortname}"
+            )
 
-    async def remove_sql_user_session(self, user_shortname: str) -> bool:
-        return True
+    async def remove_user_session(self, user_shortname: str) -> bool:
+        async with RedisServices() as redis:
+            return bool(
+                await redis.del_keys([f"user_session:{user_shortname}"])
+            )
 
     async def set_invitation(self, invitation_token: str, invitation_value):
-        pass
+        async with RedisServices() as redis_services:
+            await redis_services.set_key(
+                f"users:login:invitation:{invitation_token}",
+                invitation_value
+            )
 
-    async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
-        return True
+    async def set_user_session(self, user_shortname: str, token: str) -> bool:
+        async with RedisServices() as redis:
+            if settings.max_sessions_per_user == 1:
+                if await redis.get_key(
+                        f"user_session:{user_shortname}"
+                ):
+                    await redis.del_keys([f"user_session:{user_shortname}"])
+
+            return bool(await redis.set_key(
+                key=f"user_session:{user_shortname}",
+                value=hash_password(token),
+                ex=settings.session_inactivity_ttl,
+            ))
 
     async def set_url_shortner(self, token_uuid: str, url: str):
-        pass
+        async with RedisServices() as redis_services:
+            await redis_services.set_key(
+                f"short/{token_uuid}",
+                url,
+                ex=settings.url_shorter_expires,
+                nx=False,
+            )
 
     async def delete_url_shortner(self, token_uuid: str) -> bool:
         async with RedisServices() as redis_services:
@@ -1223,6 +1298,549 @@ class FileAdapter(BaseDataAdapter):
                 await redis_services.del_keys([f"short/{token_uuid}"])
             )
 
+
     async def delete_url_shortner_by_token(self, invitation_token: str) -> bool:
-        # TODO: implement this method
+        #TODO: implement this method
         return True
+
+
+    async def get_schema(self, space_name: str, schema_shortname: str, owner_shortname: str) -> dict:
+        schema_path = (
+                self.payload_path(space_name, "schema", core.Schema)
+                / f"{schema_shortname}.json"
+        )
+        with open(schema_path) as schema_file:
+            schema_content = json.load(schema_file)
+
+        return resolve_schema_references(schema_content)
+
+    async def check_uniqueness(self, unique_fields, search_str, redis_escape_chars) -> dict:
+        async with RedisServices() as redis_man:
+            for key, value in unique_fields.items():
+                if not value:
+                    continue
+
+                value = value.translate(redis_escape_chars).replace("\\\\", "\\")
+                if key == "email_unescaped":
+                    value = f"{{{value}}}"
+
+                redis_search_res = await redis_man.search(
+                    space_name=settings.management_space,
+                    search=search_str + f" @{key}:{value}",
+                    limit=0,
+                    offset=0,
+                    filters={},
+                )
+
+                if redis_search_res and redis_search_res["total"] > 0:
+                    return {"unique": False, "field": key}
+
+        return {"unique": True}
+
+    async def get_role_permissions(self, role: core.Role) -> list[core.Permission]:
+        permissions_options = "|".join(role.permissions)
+        async with RedisServices() as redis_services:
+            permissions_search = await redis_services.search(
+                space_name=settings.management_space,
+                search=f"@shortname:{permissions_options}",
+                filters={"subpath": ["permissions"]},
+                limit=10000,
+                offset=0,
+            )
+        if not permissions_search:
+            return []
+
+        role_permissions: list[core.Permission] = []
+
+        for permission_doc in permissions_search["data"]:
+            permission = core.Permission.model_validate(json.loads(permission_doc))
+            role_permissions.append(permission)
+
+        return role_permissions
+
+    async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
+        user_meta: core.User = await self.load_user_meta(user_shortname)
+        user_associated_roles = user_meta.roles
+        user_associated_roles.append("logged_in")
+        async with RedisServices() as redis_services:
+            roles_search = await redis_services.search(
+                space_name=settings.management_space,
+                search="@shortname:(" + "|".join(user_associated_roles) + ")",
+                filters={"subpath": ["roles"]},
+                limit=10000,
+                offset=0,
+            )
+
+        user_roles_from_groups = await self.get_user_roles_from_groups(user_meta)
+        if not roles_search and not user_roles_from_groups:
+            return {}
+
+        user_roles: dict[str, core.Role] = {}
+
+        all_user_roles_from_redis = []
+        for redis_document in roles_search["data"]:
+            all_user_roles_from_redis.append(redis_document)
+
+        all_user_roles_from_redis.extend(user_roles_from_groups)
+        for role_json in all_user_roles_from_redis:
+            role = core.Role.model_validate(json.loads(role_json))
+            user_roles[role.shortname] = role
+
+        return user_roles
+
+    async def load_user_meta(self, user_shortname: str) -> Any:
+        async with RedisServices() as redis_services:
+            user_meta_doc_id = redis_services.generate_doc_id(
+                space_name=settings.management_space,
+                schema_shortname="meta",
+                subpath="users",
+                shortname=user_shortname,
+            )
+            value: dict = await redis_services.get_doc_by_id(user_meta_doc_id)
+
+            if not value:
+                user = await self.load(
+                    space_name=settings.management_space,
+                    shortname=user_shortname,
+                    subpath="users",
+                    class_type=core.User,
+                    user_shortname=user_shortname,
+                )
+                await redis_services.save_meta_doc(
+                    settings.management_space,
+                    "users",
+                    user,
+                )
+            else:
+                user = core.User.model_validate(value)
+            return user
+
+    async def generate_user_permissions(self, user_shortname: str) -> dict:
+        user_permissions: dict = {}
+
+        user_roles = await self.get_user_roles(user_shortname)
+
+        for _, role in user_roles.items():
+            role_permissions = await self.get_role_permissions(role)
+            permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
+                                                              core.Permission)
+            if permission_world_record:
+                role_permissions.append(permission_world_record)
+
+            for permission in role_permissions:
+                for space_name, permission_subpaths in permission.subpaths.items():
+                    for permission_subpath in permission_subpaths:
+                        permission_subpath = trans_magic_words(permission_subpath, user_shortname)
+                        for permission_resource_types in permission.resource_types:
+                            actions = set(permission.actions)
+                            conditions = set(permission.conditions)
+                            if (
+                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                                    in user_permissions
+                            ):
+                                old_perm = user_permissions[
+                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                                ]
+
+                                if isinstance(actions, list):
+                                    actions = set(actions)
+                                actions |= set(old_perm["allowed_actions"])
+
+                                if isinstance(conditions, list):
+                                    conditions = set(conditions)
+                                conditions |= set(old_perm["conditions"])
+
+                            user_permissions[
+                                f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                            ] = {
+                                "allowed_actions": list(actions),
+                                "conditions": list(conditions),
+                                "restricted_fields": permission.restricted_fields,
+                                "allowed_fields_values": permission.allowed_fields_values
+                            }
+
+        async with RedisServices() as redis_services:
+            await redis_services.save_doc(
+                f"users_permissions_{user_shortname}", user_permissions
+            )
+        return user_permissions
+
+    async def get_user_permissions(self, user_shortname: str) -> dict:
+        async with RedisServices() as redis_services:
+            user_permissions: dict = await redis_services.get_doc_by_id(
+                f"users_permissions_{user_shortname}"
+            )
+
+            if not user_permissions:
+                return await self.generate_user_permissions(user_shortname)
+
+            return user_permissions
+
+    async def get_user_by_criteria(self, key: str, value: str) -> str | None:
+        async with RedisServices() as redis_services:
+            user_search = await redis_services.search(
+                space_name=settings.management_space,
+                search=f"@{key}:({value.replace('@', '?')})",
+                filters={"subpath": ["users"]},
+                limit=10000,
+                offset=0,
+            )
+        if not user_search["data"]:
+            return None
+
+        data = json.loads(user_search["data"][0])
+        if data.get("shortname") and isinstance(data["shortname"], str):
+            return data["shortname"]
+        else:
+            return None
+
+    async def get_payload_from_event(self, event) -> dict:
+        mypayload = await self.load_resource_payload(
+            event.space_name,
+            event.subpath,
+            event.payload.body,
+            getattr(sys_modules["models.core"], camel_case(event.resource_type)),
+        )
+        return mypayload if mypayload else {}
+
+    async def get_user_roles_from_groups(self, user_meta: core.User) -> list:
+        if not user_meta.groups:
+            return []
+
+        async with RedisServices() as redis_services:
+            groups_search = await redis_services.search(
+                space_name=settings.management_space,
+                search="@shortname:(" + "|".join(user_meta.groups) + ")",
+                filters={"subpath": ["groups"]},
+                limit=10000,
+                offset=0,
+            )
+            if not groups_search:
+                return []
+
+            roles = []
+            for group in groups_search["data"]:
+                group_json = json.loads(group)
+                for role_shortname in group_json["roles"]:
+                    role = await redis_services.get_doc_by_id(
+                        redis_services.generate_doc_id(
+                            space_name=settings.management_space,
+                            schema_shortname="meta",
+                            shortname=role_shortname,
+                            subpath="roles"
+                        )
+                    )
+                    if role:
+                        roles.append(role)
+
+        return roles
+
+    async def drop_index(self, space_name):
+        async with RedisServices() as redis_services:
+            x = await redis_services.list_indices()
+            if x:
+                indices: list[str] = x
+                for index in indices:
+                    if index.startswith(f"{space_name}:"):
+                        await redis_services.drop_index(index, True)
+
+    async def initialize_spaces(self) -> None:
+        if not settings.spaces_folder.is_dir():
+            raise NotADirectoryError(
+                f"{settings.spaces_folder} directory does not exist!"
+            )
+
+        spaces: dict[str, str] = {}
+        for one in settings.spaces_folder.glob("*/.dm/meta.space.json"):
+            match = SPACES_PATTERN.search(str(one))
+            if not match:
+                continue
+            space_name = match.group(1)
+
+            space_obj = core.Space.model_validate_json(one.read_text())
+            spaces[space_name] = space_obj.model_dump_json()
+
+        async with RedisServices() as redis_services:
+            await redis_services.save_doc("spaces", spaces)
+
+    async def create_user_premission_index(self) -> None:
+        async with RedisServices() as redis_services:
+            try:
+                # Check if index already exist
+                await redis_services.ft("user_permission").info()
+            except Exception:
+                await redis_services.ft("user_permission").create_index(
+                    fields=[TextField("name")],
+                    definition=IndexDefinition(
+                        prefix=["users_permissions"],
+                        index_type=IndexType.JSON,
+                    )
+                )
+
+    async def store_modules_to_redis(self) -> None:
+        modules = [
+            "roles",
+            "groups",
+            "permissions",
+        ]
+        async with RedisServices() as redis_services:
+            for module_name in modules:
+                class_var = getattr(self, module_name)
+                for _, object in class_var.items():
+                    await redis_services.save_meta_doc(
+                        space_name=settings.management_space,
+                        subpath=module_name,
+                        meta=object,
+                    )
+
+    async def delete_user_permissions_map_in_redis(self) -> None:
+        async with RedisServices() as redis_services:
+            search_query = Query("*").no_content()
+            redis_res = await redis_services.ft("user_permission").search(search_query)
+            if redis_res and isinstance(redis_res, dict) and "results" in redis_res:
+                results = redis_res["results"]
+                keys = [doc["id"] for doc in results]
+                if len(keys) > 0:
+                    await redis_services.del_keys(keys)
+
+    async def internal_save_model(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            payload: dict | None = None
+    ):
+        await self.save(
+            space_name=space_name,
+            subpath=subpath,
+            meta=meta,
+        )
+
+        async with RedisServices() as redis:
+            await redis.save_meta_doc(
+                space_name,
+                subpath,
+                meta,
+            )
+
+            if payload:
+                await self.save_payload_from_json(
+                    space_name=space_name,
+                    subpath=subpath,
+                    meta=meta,
+                    payload_data=payload,
+                )
+                payload.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
+                await redis.save_payload_doc(
+                    space_name,
+                    subpath,
+                    meta,
+                    payload,
+                    ResourceType(snake_case(type(meta).__name__))
+                )
+
+    async def internal_sys_update_model(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            updates: dict,
+            sync_redis: bool = True,
+            payload_dict: dict[str, Any] = {},
+    ):
+        meta.updated_at = datetime.now()
+        meta_updated = False
+        payload_updated = False
+
+        if not payload_dict:
+            try:
+                body = str(meta.payload.body) if meta and meta.payload else ""
+                mydict = await self.load_resource_payload(
+                    space_name, subpath, body, core.Content
+                )
+                payload_dict = mydict if mydict else {}
+            except Exception:
+                pass
+
+        restricted_fields = [
+            "uuid",
+            "shortname",
+            "created_at",
+            "updated_at",
+            "owner_shortname",
+            "payload",
+        ]
+        old_version_flattend = {**meta.model_dump()}
+        for key, value in updates.items():
+            if key in restricted_fields:
+                continue
+
+            if key in meta.model_fields.keys():
+                meta_updated = True
+                meta.__setattr__(key, value)
+            elif payload_dict:
+                payload_dict[key] = value
+                payload_updated = True
+
+        if meta_updated:
+            await self.update(
+                space_name,
+                subpath,
+                meta,
+                old_version_flattend,
+                {**meta.model_dump()},
+                list(updates.keys()),
+                meta.shortname
+            )
+        if payload_updated and meta.payload and meta.payload.schema_shortname:
+            await self.validate_payload_with_schema(
+                payload_dict, space_name, meta.payload.schema_shortname
+            )
+            await self.save_payload_from_json(
+                space_name, subpath, meta, payload_dict
+            )
+
+        if not sync_redis:
+            return
+
+        async with RedisServices() as redis_services:
+            await redis_services.save_meta_doc(space_name, subpath, meta)
+            if payload_updated:
+                payload_dict.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
+                await redis_services.save_payload_doc(
+                    space_name,
+                    subpath,
+                    meta,
+                    payload_dict,
+                    ResourceType(snake_case(type(meta).__name__)),
+                )
+
+
+    async def get_entry_by_var(
+            self,
+            key: str,
+            val: str,
+            logged_in_user,
+            retrieve_json_payload: bool = False,
+            retrieve_attachments: bool = False,
+            retrieve_lock_status: bool = False,
+    ) -> core.Record:
+        spaces = await self.get_spaces()
+        entry_doc = None
+        entry_space = None
+        async with RedisServices() as redis_services:
+            for space_name, space in spaces.items():
+                space = json.loads(space)
+                if not space['indexing_enabled']:
+                    continue
+                search_res = await redis_services.search(
+                    space_name=space_name,
+                    search=f"@{key}:{val}*",
+                    limit=1,
+                    offset=0,
+                    filters={},
+                )
+                if search_res["total"] > 0:
+                    entry_doc = json.loads(search_res["data"][0])
+                    entry_space = space_name
+                    break
+
+        if not entry_doc or not entry_space:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+                ),
+            )
+
+        from utils.access_control import access_control
+        if not await access_control.check_access(
+                user_shortname=logged_in_user,
+                space_name=entry_space,
+                subpath=entry_doc["subpath"],
+                resource_type=entry_doc["resource_type"],
+                action_type=core.ActionType.view,
+                resource_is_active=entry_doc["is_active"],
+                resource_owner_shortname=entry_doc.get("owner_shortname"),
+                resource_owner_group=entry_doc.get("owner_group_shortname"),
+                entry_shortname=entry_doc.get("shortname")
+        ):
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="You don't have permission to this action [12]",
+                ),
+            )
+
+        await plugin_manager.before_action(
+            core.Event(
+                space_name=entry_space,
+                subpath=entry_doc["subpath"],
+                shortname=entry_doc["shortname"],
+                action_type=core.ActionType.view,
+                resource_type=entry_doc["resource_type"],
+                user_shortname=logged_in_user,
+            )
+        )
+
+        resource_base_record = await get_record_from_redis_doc(
+            self,
+            space_name=entry_space,
+            doc=entry_doc,
+            retrieve_json_payload=retrieve_json_payload,
+            retrieve_attachments=retrieve_attachments,
+            validate_schema=True,
+            retrieve_lock_status=retrieve_lock_status,
+        )
+
+        await plugin_manager.after_action(
+            core.Event(
+                space_name=entry_space,
+                subpath=entry_doc["subpath"],
+                shortname=entry_doc["shortname"],
+                action_type=core.ActionType.view,
+                resource_type=entry_doc["resource_type"],
+                user_shortname=logged_in_user,
+            )
+        )
+
+        return resource_base_record
+
+    async def delete_space(self, space_name, record, owner_shortname):
+        os.system(f"rm -r {settings.spaces_folder}/{space_name}")
+
+    async def get_last_updated_entry(
+            self,
+            space_name: str,
+            schema_names: list,
+            retrieve_json_payload: bool,
+            logged_in_user: str,
+    ):
+        pass
+
+    async def get_group_users(self, group_name: str):
+        async with RedisServices() as redis_services:
+            users_docs = await redis_services.search(
+                space_name=settings.management_space,
+                schema_name="meta",
+                filters={"subpath": ["users"]},
+                limit=10000,
+                offset=0,
+                search=f"@groups:{{{group_name}}}",
+            )
+
+        if users_docs:
+            return users_docs["data"]
+
+        return []
+
+    async def is_user_verified(self, user_shortname: str | None, identifier: str | None) -> bool:
+        async with RedisServices() as redis_services:
+            user: dict = await redis_services.get_doc_by_id(f"management:master:meta:users/{user_shortname}")
+            if identifier == "msisdn":
+                return bool(user.get("is_msisdn_verified", True))
+            if identifier == "email":
+                return bool(user.get("is_email_verified", True))
+            return False

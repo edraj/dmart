@@ -1,14 +1,10 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 from datetime import datetime, timedelta
-import json
+
+from models.api import Query
 from models.core import Content, Notification, NotificationData, Translation
 from data_adapters.adapter import data_adapter as db
 from utils.notification import NotificationManager
-from utils.redis_services import RedisServices
-from utils.repository import (
-    internal_save_model,
-    internal_sys_update_model,
-)
 from utils.settings import settings
 from fastapi.logger import logger
 import asyncio
@@ -17,52 +13,46 @@ import asyncio
 async def trigger_admin_notifications() -> None:
     from_time = int((datetime.now() - timedelta(minutes=15)).timestamp() * 1000)
     to_time = int(datetime.now().timestamp() * 1000)
-    async with RedisServices() as redis_services:
-        admin_notifications = await redis_services.search(
-            space_name=settings.management_space,
-            schema_name="admin_notification_request",
-            search=f"@subpath:/notifications/admin (-@status:finished) @scheduled_at:[{from_time} {to_time}]",
-            filters={},
-            limit=10000,
-            offset=0,
-        )
-    if admin_notifications["total"] == 0:
+    total, admin_notifications = await db.query(Query(
+        space_name=settings.management_space, schema_name="admin_notification_request",
+        search=f"@subpath:/notifications/admin (-@status:finished) @scheduled_at:[{from_time} {to_time}]",
+        filters={}, limit=10000, offset=0)
+    )
+
+    if total == 0:
         return
 
     notification_manager = NotificationManager()
-    for notification_doc in admin_notifications["data"]:
-        notification_dict = json.loads(notification_doc)
+    for notification in admin_notifications:
+        notification_dict = notification.model_dump()
         formatted_req = await prepare_request(notification_dict)
 
         # Get notification receivers users
         search_criteria = notification_dict.get('msisdns_search_string')
         if not search_criteria:
-            search_criteria = '@msisdn:' + '|'.join(notification_dict.get('msisdns'))
-        async with RedisServices() as redis_services:
-            receivers = await redis_services.search(
-                space_name=settings.management_space,
-                search=f"@subpath:users {search_criteria}",
-                filters={},
-                limit=10000,
-                offset=0,
-            )
+            search_criteria = '@msisdn:' + '|'.join(notification_dict.get('msisdns', ""))
 
-        if not receivers:
+        total, receivers = await db.query(Query(
+            space_name=settings.management_space, schema_name="user",
+            search=f"@subpath:users {search_criteria}",
+            filters={}, limit=10000, offset=0)
+        )
+
+        if total == 0:
             continue
 
         # Try to send the notification
         # and update the notification status to finished
         formatted_req = await prepare_request(notification_dict)
         try:
-            for receiver in receivers["data"]:
-                receiver_data = json.loads(receiver)
+            for receiver_data in receivers:
                 if not formatted_req["push_only"]:
                     notification_obj = await Notification.from_request(
                         notification_dict
                     )
-                    await internal_save_model(
+                    await db.internal_save_model(
                         space_name="personal",
-                        subpath=f"people/{receiver_data['shortname']}/notifications",
+                        subpath=f"people/{receiver_data.shortname}/notifications",
                         meta=notification_obj,
                     )
 
@@ -70,7 +60,7 @@ async def trigger_admin_notifications() -> None:
                     await notification_manager.send(
                         platform=platform,
                         data=NotificationData(
-                            receiver=receiver_data["shortname"],
+                            receiver=receiver_data.to_dict(),
                             title=formatted_req["title"],
                             body=formatted_req["body"],
                             image_urls=formatted_req["images_urls"],
@@ -88,7 +78,7 @@ async def trigger_admin_notifications() -> None:
             if notification_meta is None:
                 return
 
-            await internal_sys_update_model(
+            await db.internal_sys_update_model(
                 settings.management_space,
                 notification_dict["subpath"],
                 notification_meta,

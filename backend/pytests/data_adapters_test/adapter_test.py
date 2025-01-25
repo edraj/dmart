@@ -1,6 +1,6 @@
-from data_adapters.adapter import AVAILABLE_DATA_REPOSITORIES, data_adapter
-from data_adapters.file_adapter import FileAdapter
-from data_adapters.sql_adapter import SQLAdapter
+from data_adapters.adapter import AVAILABLE_DATA_REPOSITORIES
+from data_adapters.file.adapter import FileAdapter
+from data_adapters.sql.adapter import SQLAdapter
 from utils.settings import settings
 
 def test_available_data_repositories():

@@ -5,7 +5,6 @@ from models import api
 from models.core import Notification, NotificationData, PluginBase, Event, Translation
 from utils.helpers import camel_case
 from utils.notification import NotificationManager
-from utils.repository import internal_save_model
 from utils.settings import settings
 from fastapi.logger import logger
 from data_adapters.adapter import data_adapter as db
@@ -36,16 +35,7 @@ class Plugin(PluginBase):
 
         notification_dict = notification_request_meta.dict()
         notification_dict["subpath"] = data.subpath
-        if settings.active_data_db == "file":
-            mypayload = await db.load_resource_payload(
-                data.space_name,
-                data.subpath,
-                notification_request_meta.payload.body,
-                getattr(sys_modules["models.core"], camel_case(data.resource_type)),
-            )
-            notification_request_payload = mypayload if mypayload else {}
-        else:
-            notification_request_payload = notification_request_meta.payload.body
+        notification_request_payload = await db.get_payload_from_event(data)
 
         notification_dict.update(notification_request_payload)
 
@@ -83,7 +73,7 @@ class Plugin(PluginBase):
         for receiver in set(receivers_shortnames):
             if not formatted_req["push_only"]:
                 notification_obj = await Notification.from_request(notification_dict)
-                await internal_save_model(
+                await db.internal_save_model(
                     "personal",
                     f"people/{receiver}/notifications",
                     notification_obj,

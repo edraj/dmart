@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import status
 from utils.generate_email import generate_email_from_template, generate_subject
-from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema
+from data_adapters.file.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema
 from utils.internal_error_code import InternalErrorCode
 from utils.router_helper import is_space_exist
 from utils.ticket_sys_utils import (
@@ -24,7 +24,6 @@ from models.enums import (
 )
 import sys
 import json
-from utils.jwt import remove_user_session
 from utils.access_control import access_control
 import utils.repository as repository
 from utils.helpers import (
@@ -37,7 +36,6 @@ from api.user.service import (
     send_email,
     send_sms,
 )
-from utils.redis_services import RedisServices
 from languages.loader import languages
 from data_adapters.adapter import data_adapter as db
 
@@ -523,7 +521,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 record.attributes.get("is_active", None) is not None
             ):
                 if not record.attributes.get("is_active"):
-                    await db.remove_sql_user_session(record.shortname)
+                    await db.remove_user_session(record.shortname)
 
             records.append(
                 resource_obj.to_record(
@@ -554,6 +552,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 }
             )
     return records, failed_records
+
 
 async def serve_request_patch(request, owner_shortname: str):
     records: list[core.Record] = []
@@ -719,7 +718,7 @@ async def serve_request_patch(request, owner_shortname: str):
                 isinstance(resource_obj, core.User) and
                 record.attributes.get("is_active") is False
             ):
-                await remove_user_session(record.shortname)
+                await db.remove_user_session(record.shortname)
 
             records.append(
                 resource_obj.to_record(
@@ -750,6 +749,7 @@ async def serve_request_patch(request, owner_shortname: str):
                 }
             )
     return records, failed_records
+
 
 async def serve_request_assign(request, owner_shortname: str):
     records: list[core.Record] = []
@@ -1419,6 +1419,7 @@ async def serve_space_update(request, record, owner_shortname: str):
     )
     return history_diff
 
+
 async def serve_space_delete(request, record, owner_shortname: str):
     if request.space_name == "management":
         raise api.Exception(
@@ -1449,14 +1450,8 @@ async def serve_space_delete(request, record, owner_shortname: str):
             ),
         )
     await repository.delete_space(request.space_name, record, owner_shortname)
-    if settings.active_data_db == 'file':
-        async with RedisServices() as redis_services:
-            x = await redis_services.list_indices()
-            if x:
-                indices: list[str] = x
-                for index in indices:
-                    if index.startswith(f"{request.space_name}:"):
-                        await redis_services.drop_index(index, True)
+    await db.drop_index(request.space_name)
+
 
 
 async def data_asset_attachments_handler(query, attachments):
@@ -1608,7 +1603,7 @@ async def import_resources_from_csv_handler(
 
 
 async def create_or_update_resource_with_payload_handler(
-        record, owner_shortname, space_name, payload_file, payload_filename, checksum, sha, resource_content_type
+    record, owner_shortname, space_name, payload_file, payload_filename, checksum, sha, resource_content_type
 ):
     if record.resource_type == ResourceType.ticket:
         record = await set_init_state_from_record(

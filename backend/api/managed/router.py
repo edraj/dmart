@@ -53,14 +53,12 @@ from utils.helpers import (
     camel_case,
     csv_file_to_json,
     flatten_dict,
-    resolve_schema_references,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import GetJWTToken, JWTBearer
 from utils.plugin_manager import plugin_manager
 from utils.router_helper import is_space_exist
 from utils.settings import settings
-from utils.spaces import initialize_spaces
 
 router = APIRouter()
 
@@ -241,7 +239,7 @@ async def serve_space(
                 ),
             )
 
-    await initialize_spaces()
+    await db.initialize_spaces()
 
     await access_control.load_permissions_and_roles()
 
@@ -371,7 +369,7 @@ async def update_state(
 ) -> api.Response:
     await is_space_exist(space_name)
 
-    _user_roles = await access_control.get_user_roles(logged_in_user)
+    _user_roles = await db.get_user_roles(logged_in_user)
     user_roles = _user_roles.keys()
 
     await plugin_manager.before_action(
@@ -728,24 +726,7 @@ async def import_resources_from_csv(
     buffer = StringIO(decoded)
     csv_reader = csv.DictReader(buffer)
 
-    if settings.active_data_db == "file":
-        schema_path = (
-                db.payload_path(space_name, "schema", core.Schema)
-                / f"{schema_shortname}.json"
-        )
-        with open(schema_path) as schema_file:
-            schema_content = json.load(schema_file)
-        schema_content = resolve_schema_references(schema_content)
-    else:
-        schema_content = await db.load(
-            space_name=space_name,
-            subpath="/schema",
-            shortname=schema_shortname,
-            class_type=core.Schema,
-            user_shortname=owner_shortname,
-        )
-        if schema_content and schema_content.payload and isinstance(schema_content.payload.body, dict):
-            schema_content = resolve_schema_references(schema_content.payload.body)
+    schema_content = await db.get_schema(space_name, schema_shortname, owner_shortname)
 
     data_types_mapper: dict[str, Callable] = {
         "integer": int,
@@ -942,7 +923,7 @@ async def get_entry_by_uuid(
         retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
-    return await repository.get_entry_by_var(
+    return await db.get_entry_by_var(
         "uuid",
         uuid,
         logged_in_user,
@@ -960,7 +941,7 @@ async def get_entry_by_slug(
         retrieve_lock_status: bool = False,
         logged_in_user=Depends(JWTBearer()),
 ):
-    return await repository.get_entry_by_var(
+    return await db.get_entry_by_var(
         "slug",
         slug,
         logged_in_user,

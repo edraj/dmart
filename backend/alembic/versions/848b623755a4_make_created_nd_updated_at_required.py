@@ -25,49 +25,61 @@ def upgrade() -> None:
     with op.batch_alter_table('attachments', schema=None) as batch_op:
         batch_op.alter_column('created_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
         batch_op.alter_column('updated_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
 
     with op.batch_alter_table('entries', schema=None) as batch_op:
         batch_op.alter_column('created_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
         batch_op.alter_column('updated_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
 
     with op.batch_alter_table('permissions', schema=None) as batch_op:
         batch_op.alter_column('created_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
         batch_op.alter_column('updated_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
 
     with op.batch_alter_table('roles', schema=None) as batch_op:
         batch_op.alter_column('created_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
         batch_op.alter_column('updated_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
 
     with op.batch_alter_table('spaces', schema=None) as batch_op:
         batch_op.alter_column('created_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
         batch_op.alter_column('updated_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
 
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.alter_column('created_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
         batch_op.alter_column('updated_at',
                existing_type=postgresql.TIMESTAMP(),
+               server_default=sa.func.current_timestamp(),
                nullable=False)
 
     # ### end Alembic commands ###
