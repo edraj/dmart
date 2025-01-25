@@ -39,14 +39,14 @@ async def main(health_type: str, space_param: str, schemas_param: list):
         spaces = await db.get_spaces()
         if space_param != "all" and space_param not in spaces:
             print("space name is not found")
-            return None
+            return
         if space_param == "all":
             for space in spaces:
                 return await main(health_type, space, schemas_param)
         space_obj = core.Space.model_validate_json(spaces[space_param])
         if not space_obj.check_health:
             print(f"EARLY EXIT, health check disabled for space {space_param}")
-            return None
+            return
         
         await cleanup_spaces()
         is_full: bool = True if not args.space or args.space == 'all' else False
