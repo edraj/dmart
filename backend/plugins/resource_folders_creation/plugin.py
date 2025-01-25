@@ -1,9 +1,8 @@
 from models.core import Folder, PluginBase, Event
 from models.enums import ResourceType
-from utils.redis_services import RedisServices
-from utils.repository import internal_save_model
+from data_adapters.file.redis_services import RedisServices
 from fastapi.logger import logger
-
+from data_adapters.adapter import data_adapter as db
 from utils.settings import settings
 
 
@@ -62,7 +61,7 @@ class Plugin(PluginBase):
             folders = [(data.shortname, "/", "schema")]
 
         for folder in folders:
-            await internal_save_model(
+            await db.internal_save_model(
                 space_name=folder[0],
                 subpath=folder[1],
                 meta=Folder(

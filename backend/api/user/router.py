@@ -15,13 +15,13 @@ from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import JWTBearer, remove_user_session, sign_jwt, decode_jwt
+from utils.jwt import JWTBearer, sign_jwt, decode_jwt
 from typing import Any
 from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from models.api import Error, Exception, Status
 from utils.social_sso import get_facebook_sso, get_google_sso
 from .service import (
@@ -48,6 +48,7 @@ from fastapi_sso.sso.google import GoogleSSO
 from fastapi_sso.sso.facebook import FacebookSSO
 from fastapi_sso.sso.base import SSOBase
 from fastapi.logger import logger
+from data_adapters.file.adapter_helpers import get_record_from_redis_doc
 
 router = APIRouter()
 
@@ -75,7 +76,7 @@ async def check_existing_user_fields(
         {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
     )
 
-    attributes = await repository.check_uniqueness(unique_fields, search_str, redis_escape_chars)
+    attributes = await db.check_uniqueness(unique_fields, search_str, redis_escape_chars)
     return api.Response(status=api.Status.success, attributes=attributes)
 
 
@@ -230,6 +231,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         message="Invalid invitation or data provided",
                     ),
                 )
+
             await db.delete_invitation(request.invitation)
             await db.delete_url_shortner_by_token(request.invitation)
             user_updates["force_password_change"] = True
@@ -369,7 +371,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
     attributes["is_msisdn_verified"] = user.is_msisdn_verified
     attributes["force_password_change"] = user.force_password_change
 
-    attributes["permissions"] = await access_control.get_user_permissions(shortname)
+    attributes["permissions"] = await db.get_user_permissions(shortname)
     attributes["roles"] = user.roles
     attributes["groups"] = user.groups
 
@@ -491,7 +493,7 @@ async def update_profile(
 
     if user.is_active and profile.attributes.get("is_active", None) is not None:
         if not profile.attributes.get("is_active"):
-            await db.remove_sql_user_session(user.shortname)
+            await db.remove_user_session(user.shortname)
 
     history_diff = await db.update(
         MANAGEMENT_SPACE,
@@ -541,7 +543,7 @@ async def logout(
     response.set_cookie(value="", max_age=0, key="auth_token",
                         httponly=True, secure=True, samesite="none")
 
-    await remove_user_session(shortname)
+    await db.remove_user_session(shortname)
 
     user = await db.load(
             space_name=MANAGEMENT_SPACE,
@@ -551,7 +553,7 @@ async def logout(
             user_shortname=shortname,
         )
     if user.firebase_token:
-        await repository.internal_sys_update_model(
+        await db.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             meta=user,
@@ -586,7 +588,7 @@ async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
     )
     await db.delete(MANAGEMENT_SPACE, USERS_SUBPATH, user, shortname)
 
-    await remove_user_session(shortname)
+    await db.remove_user_session(shortname)
 
     await plugin_manager.after_action(
         core.Event(
@@ -664,7 +666,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     )
 
     key, value = list(result.items())[0]
-    shortname = await access_control.get_user_by_criteria(key, value)
+    shortname = await db.get_user_by_criteria(key, value)
     if shortname is None:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -870,7 +872,7 @@ async def user_reset(
         )
 
     if not user.force_password_change:
-        await repository.internal_sys_update_model(
+        await db.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             meta=user,
@@ -979,7 +981,7 @@ async def process_user_login(
         user_updates["firebase_token"] = firebase_token
 
     if user_updates:
-        await repository.internal_sys_update_model(
+        await db.internal_sys_update_model(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             meta=user,
@@ -1009,7 +1011,7 @@ async def handle_failed_login_attempt(user: core.User):
             old_version_flattend = flatten_dict(user.model_dump())
             user.is_active = False
 
-            await db.remove_sql_user_session(user.shortname)
+            await db.remove_user_session(user.shortname)
 
             await db.update(
                 MANAGEMENT_SPACE,
@@ -1092,8 +1094,8 @@ if settings.social_login_allowed:
                 )
             content = await response.json()
             provider_user = await sso.openid_from_response(content)
-            
-            
+
+
         async with RedisServices() as redis_man:
             redis_search_res = await redis_man.search(
                 space_name=MANAGEMENT_SPACE,
@@ -1122,7 +1124,8 @@ if settings.social_login_allowed:
 
         else:
             redis_doc_dict = json.loads(redis_search_res["data"][0])
-            user_record = await repository.get_record_from_redis_doc(
+            user_record = await get_record_from_redis_doc(
+                db,
                 space_name=MANAGEMENT_SPACE,
                 doc=redis_doc_dict,
                 retrieve_json_payload=True,

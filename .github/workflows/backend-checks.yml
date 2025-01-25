@@ -22,10 +22,12 @@ jobs:
       run: |
         source $HOME/.venv/bin/activate
         cd backend; 
+        cd requirements
         pip install -r requirements.txt
         pip install -r test-requirements.txt
         pip install -r plugins-requirements.txt
         pip install -r extra-requirements.txt
+        cd ..
         mkdir logs/
         cp ~/login_creds.sh ./
         cp ~/config.env ./
@@ -44,7 +46,7 @@ jobs:
         dropdb --if-exists -h 127.0.0.1 -U dmart dmart
         createdb -h 127.0.0.1 -U dmart dmart
         alembic upgrade head
-        ./json_to_db_migration.py
+        ./migrate.py json_to_db
         ./reload.sh
         ./curl.sh
         systemctl --user stop dmart

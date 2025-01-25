@@ -65,7 +65,9 @@
           resource_type: ResourceType.space,
           subpath: "/",
           shortname: space_name_shortname,
-          attributes: {},
+          attributes: {
+            is_active: true
+          },
         },
       ],
     };

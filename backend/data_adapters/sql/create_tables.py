@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 from sqlalchemy import LargeBinary
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT
 from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
 from sqlmodel._compat import SQLModelConfig
 from utils.helpers import camel_case, remove_none_dict
@@ -184,9 +184,12 @@ class Users(Metas, table=True):
     social_avatar_url: str | None = None
     attempt_count: int | None = None
 
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
 class Roles(Metas, table=True):
     permissions: list[str] = Field(default_factory=dict, sa_type=JSONB)
+
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
 
 class Permissions(Metas, table=True):
@@ -197,6 +200,8 @@ class Permissions(Metas, table=True):
     restricted_fields: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     allowed_fields_values: dict | list[dict] | None = Field(default_factory=None, sa_type=JSONB)
 
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))  # type: ignore
+
 
 class Entries(Metas, table=True):
     # Tickets
@@ -206,6 +211,8 @@ class Entries(Metas, table=True):
     workflow_shortname: str | None = None
     collaborators: dict[str, str] | None = Field(None, default_factory=None, sa_type=JSONB)
     resolution_reason: str | None = None
+
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
 
 class Attachments(Metas, table=True):
@@ -271,8 +278,13 @@ class Spaces(Metas, table=True):
     active_plugins: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     ordinal: int | None = None
 
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
-class AggregatedRecord(Unique, table=False):
+
+class AggregatedRecord(SQLModel, table=False):
+    space_name: str | None = None
+    subpath: str | None = None
+    shortname: str | None = None
     resource_type: ResourceType | None = None
     uuid: UUID | None = None
     attributes: dict[str, Any] | None = None
@@ -281,12 +293,15 @@ class AggregatedRecord(Unique, table=False):
     # model_config = ConfigDict(extra="allow", validate_assignment=False)
 
 
-class Aggregated(Unique, table=False):
+class Aggregated(SQLModel, table=False):
     uuid: UUID | None = None
     slug: str | None = None
+    space_name: str | None = None
+    subpath: str | None = None
+    shortname: str | None = None
     is_active: bool | None = None
-    displayname: dict | core.Translation | None = Field(default_factory=None, sa_type=JSONB)
-    description: dict | core.Translation | None = Field(default_factory=None, sa_type=JSONB)
+    displayname: dict | core.Translation | None = None
+    description: dict | core.Translation | None = None
     tags: list[str]| None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -330,8 +345,10 @@ class Aggregated(Unique, table=False):
             **attributes,
             **(extra if extra is not None else {})
         }
-
+        print("!record_fields", record_fields)
+        print("!!record_fields", AggregatedRecord(**record_fields))
         return AggregatedRecord(**record_fields)
+
 
 
 class Locks(Unique, table=True):

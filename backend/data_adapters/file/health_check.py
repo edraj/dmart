@@ -18,9 +18,9 @@ from api.managed.router import serve_request
 from models.core import Folder
 from utils import repository
 from data_adapters.adapter import data_adapter as db
-from utils.custom_validations import get_schema_path
+from data_adapters.file.custom_validations import get_schema_path
 from utils.helpers import camel_case
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from models import core, api
 from models.enums import ContentType, RequestType, ResourceType
 from utils.settings import settings
@@ -39,14 +39,14 @@ async def main(health_type: str, space_param: str, schemas_param: list):
         spaces = await db.get_spaces()
         if space_param != "all" and space_param not in spaces:
             print("space name is not found")
-            return None
+            return
         if space_param == "all":
             for space in spaces:
                 return await main(health_type, space, schemas_param)
         space_obj = core.Space.model_validate_json(spaces[space_param])
         if not space_obj.check_health:
             print(f"EARLY EXIT, health check disabled for space {space_param}")
-            return None
+            return
         
         await cleanup_spaces()
         is_full: bool = True if not args.space or args.space == 'all' else False

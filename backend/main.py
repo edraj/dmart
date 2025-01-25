@@ -17,7 +17,6 @@ from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
-from utils.spaces import initialize_spaces
 from fastapi import Depends, FastAPI, Request, Response, status
 from utils.logger import logging_schema
 from fastapi.logger import logger
@@ -32,13 +31,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import models.api as api
 from utils.settings import settings
 from asgi_correlation_id import CorrelationIdMiddleware
-
+from data_adapters.adapter import data_adapter as db
 from api.managed.router import router as managed
 from api.qr.router import router as qr
 from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info, git_info
-from utils.redis_services import RedisServices
 from utils.internal_error_code import InternalErrorCode
 
 
@@ -46,24 +44,21 @@ from utils.internal_error_code import InternalErrorCode
 async def lifespan(app: FastAPI):
     logger.info("Starting up")
     print('{"stage":"starting up"}')
-    try:
-        openapi_schema = app.openapi()
-        paths = openapi_schema["paths"]
-        for path in paths:
-            for method in paths[path]:
-                responses = paths[path][method]["responses"]
-                if responses.get("422"):
-                    responses.pop("422")
-        app.openapi_schema = openapi_schema
 
-        await initialize_spaces()
-        await access_control.load_permissions_and_roles()
-        # await plugin_manager.load_plugins(app, capture_body)
+    openapi_schema = app.openapi()
+    paths = openapi_schema["paths"]
+    for path in paths:
+        for method in paths[path]:
+            responses = paths[path][method]["responses"]
+            if responses.get("422"):
+                responses.pop("422")
+    app.openapi_schema = openapi_schema
 
-        yield
+    await db.initialize_spaces()
+    await access_control.load_permissions_and_roles()
+    # await plugin_manager.load_plugins(app, capture_body)
+    yield
 
-    finally:
-        await RedisServices().close_pool()
 
     logger.info("Application shutting down")
     print('{"stage":"shutting down"}')

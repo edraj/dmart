@@ -1,13 +1,13 @@
 import sys
 from models.core import ActionType, Attachment, PluginBase, Event, Space
 from utils.helpers import camel_case
-from utils.repository import generate_payload_string
+from data_adapters.file.adapter_helpers import generate_payload_string
 from data_adapters.adapter import data_adapter as db
 from models import core
 from models.enums import ContentType, ResourceType
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from fastapi.logger import logger
-from create_index import main as reload_redis
+from data_adapters.file.create_index import main as reload_redis
 from utils.settings import settings
 from typing import Any
 
@@ -111,6 +111,7 @@ class Plugin(PluginBase):
                     payload = mypayload if mypayload else {}
 
                 meta_json["payload_string"] = await generate_payload_string(
+                    db,
                     space_name=data.space_name,
                     subpath=meta_json["subpath"],
                     shortname=meta_json["shortname"],
@@ -176,6 +177,7 @@ class Plugin(PluginBase):
 
             # generate the payload string
             meta_doc["payload_string"] = await generate_payload_string(
+                db,
                 space_name=self.data.space_name,
                 subpath=parent_subpath,
                 shortname=parent_shortname,

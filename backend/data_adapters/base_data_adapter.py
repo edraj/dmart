@@ -63,7 +63,7 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Meta] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
         pass
 
     @abstractmethod
@@ -239,15 +239,15 @@ class BaseDataAdapter(ABC):
         return {}
 
     @abstractmethod
-    async def set_sql_user_session(self, user_shortname: str, token: str) -> bool:
+    async def set_user_session(self, user_shortname: str, token: str) -> bool:
         pass
 
     @abstractmethod
-    async def get_sql_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
+    async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
         pass
 
     @abstractmethod
-    async def remove_sql_user_session(self, user_shortname: str) -> bool:
+    async def remove_user_session(self, user_shortname: str) -> bool:
         pass
 
     @abstractmethod
@@ -311,4 +311,124 @@ class BaseDataAdapter(ABC):
         space_name: str,
         schema_shortname: str,
     ):
+        pass
+
+    @abstractmethod
+    async def get_schema(self, space_name: str, schema_shortname: str, owner_shortname: str) -> dict:
+        pass
+
+    @abstractmethod
+    async def check_uniqueness(self, unique_fields, search_str, redis_escape_chars) -> dict:
+        pass
+
+    @abstractmethod
+    async def get_role_permissions(self, role: core.Role) -> list[core.Permission]:
+        pass
+
+    @abstractmethod
+    async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
+        pass
+
+    @abstractmethod
+    async def load_user_meta(self, user_shortname: str) -> Any:
+        pass
+
+    @abstractmethod
+    async def generate_user_permissions(self, user_shortname: str) -> dict:
+        pass
+
+    @abstractmethod
+    async def get_user_permissions(self, user_shortname: str) -> dict:
+        pass
+
+    @abstractmethod
+    async def get_user_by_criteria(self, key: str, value: str) -> str | None:
+        pass
+
+    @abstractmethod
+    async def get_payload_from_event(self, event) -> dict:
+        pass
+
+    @abstractmethod
+    async def get_user_roles_from_groups(self, user_meta: core.User) -> list:
+        pass
+
+    @abstractmethod
+    async def drop_index(self, space_name):
+        pass
+
+    @abstractmethod
+    async def initialize_spaces(self) -> None:
+        pass
+
+    @abstractmethod
+    async def create_user_premission_index(self) -> None:
+        pass
+
+    @abstractmethod
+    async def store_modules_to_redis(self) -> None:
+        pass
+
+    @abstractmethod
+    async def delete_user_permissions_map_in_redis(self) -> None:
+        pass
+
+    @abstractmethod
+    async def get_entry_by_var(
+            self,
+            key: str,
+            val: str,
+            logged_in_user,
+            retrieve_json_payload: bool = False,
+            retrieve_attachments: bool = False,
+            retrieve_lock_status: bool = False,
+    ) -> core.Record:
+        pass
+
+    @abstractmethod
+    async def internal_save_model(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            payload: dict | None = None
+    ):
+        pass
+
+    @abstractmethod
+    async def internal_sys_update_model(
+            self,
+            space_name: str,
+            subpath: str,
+            meta: core.Meta,
+            updates: dict,
+            sync_redis: bool = True,
+            payload_dict: dict[str, Any] = {},
+    ):
+        pass
+
+    @abstractmethod
+    async def delete_space(self, space_name, record, owner_shortname):
+        pass
+
+    @abstractmethod
+    async def get_last_updated_entry(
+            self,
+            space_name: str,
+            schema_names: list,
+            retrieve_json_payload: bool,
+            logged_in_user: str,
+    ):
+        pass
+
+    @abstractmethod
+    async def get_group_users(self, group_name: str) -> list:
+        pass
+
+    @abstractmethod
+    async def is_user_verified(self, user_shortname: str | None, identifier: str | None) -> bool:
+        pass
+
+    @abstractmethod
+    async def test_connection(self):
         pass

@@ -13,20 +13,18 @@ import sys
 from models.enums import ContentType, ResourceType
 from utils.helpers import camel_case, divide_chunks
 from jsonschema.exceptions import ValidationError as SchemaValidationError
-from utils.redis_services import RedisServices
-from utils.repository import generate_payload_string
+from data_adapters.file.redis_services import RedisServices
+from data_adapters.file.adapter_helpers import generate_payload_string
 from utils.settings import settings
 import utils.regex as regex
 import asyncio
-from utils.spaces import initialize_spaces
 from utils.access_control import access_control
-# from time import time
 from multiprocessing import Pool
 
 
 async def load_data_to_redis(
-    space_name, 
-    subpath, 
+    space_name,
+    subpath,
     allowed_resource_types
 ) -> dict:
     """
@@ -149,6 +147,7 @@ async def generate_redis_docs(locators: list) -> list:
                         print(f"Error: @{one.space_name}:{one.subpath} {meta.shortname=}, {ex}")
 
                 meta_data["payload_string"] = await generate_payload_string(
+                    db,
                     space_name=one.space_name, 
                     subpath=one.subpath, 
                     shortname=one.shortname, 
@@ -281,7 +280,7 @@ async def main(
                 await redis_man.flushall()
 
             print("Intializing spaces")
-            await initialize_spaces()
+            await db.initialize_spaces()
 
             print(f"Creating Redis indices: {for_space=} {for_schemas=}")
             await access_control.load_permissions_and_roles()

@@ -9,7 +9,7 @@ import shutil
 import sys
 import argparse
 from utils.helpers import camel_case
-from utils.redis_services import RedisServices
+from data_adapters.file.redis_services import RedisServices
 from utils.settings import settings
 from typing import Awaitable
 

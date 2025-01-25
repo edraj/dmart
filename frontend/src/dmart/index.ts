@@ -699,7 +699,7 @@ export async function get_spaces(): Promise<ApiResponse> {
         limit: 100,
     });
 
-    _spaces.records = _spaces.records.filter(e => e.attributes.hide_space === false)
+    _spaces.records = _spaces.records.filter(e => !e.attributes.hide_space)
     _spaces.records = _spaces.records.map(e=>{
         if (e.attributes.ordinal === null ) {
             e.attributes.ordinal = 9999;
