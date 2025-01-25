@@ -1000,18 +1000,35 @@
     //     }
     // }
 
+
+    let openDownloadModal = $state(false);
+    let startDate = "";
+    let endDate = "";
+    let searchText = "";
+
+    function openDownloadDialog() {
+      openDownloadModal = true;
+    }
+
     async function handleDownload() {
-        const body = {
-            space_name,
-            subpath,
-            type: "search",
-            search: "",
-            retrieve_json_payload: true,
-            limit: 1000,
-            filter_schema_names: [],
-        };
-        const data = await csv(body);
-        downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
+      const body: any = {
+        space_name,
+        subpath,
+        type: "search",
+        search: searchText,
+        retrieve_json_payload: true,
+        limit: 1000,
+        filter_schema_names: [],
+      };
+      if(startDate){
+        body.from_date = startDate;
+      }
+        if(endDate){
+            body.to_date = endDate;
+        }
+      const data = await csv(body);
+      downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
+      openDownloadModal = false;
     }
 
     let openUploadByCSVModal = $state(false);
@@ -1233,6 +1250,40 @@
 </script>
 
 <!--<svelte:window on:beforeunload={beforeUnload} />-->
+
+<Modal isOpen={openDownloadModal} toggle={() => (openDownloadModal = false)} size="lg">
+  <div class="modal-header">
+    <h5 class="modal-title">Download Data</h5>
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <button type="button" onclick={() => (openDownloadModal = false)} class="btn-close" aria-label="Close">
+    </button>
+  </div>
+
+  <ModalBody>
+    <FormGroup>
+      <Label for="startDate">Start Date</Label>
+      <Input type="date" id="startDate" bind:value={startDate} />
+    </FormGroup>
+    <FormGroup>
+      <Label for="endDate">End Date</Label>
+      <Input type="date" id="endDate" bind:value={endDate} />
+    </FormGroup>
+    <FormGroup>
+      <Label for="searchText">Search Text</Label>
+      <Input type="text" id="searchText" bind:value={searchText} />
+    </FormGroup>
+    {#if errorContent}
+      <h3 class="mt-3">Error:</h3>
+      <Prism bind:code={errorContent} />
+    {/if}
+  </ModalBody>
+  <ModalFooter>
+    <Button color="secondary" onclick={() => (openDownloadModal = false)}>Cancel</Button>
+    <Button color="primary" onclick={handleDownload}>Download</Button>
+  </ModalFooter>
+</Modal>
+
 
 <Modal
     isOpen={openUploadByCSVModal}
@@ -1741,7 +1792,7 @@
                   color="success"
                   size="sm"
                   title={$_("download")}
-                  onclick={handleDownload}
+                  onclick={openDownloadDialog}
                   class="justify-content-center text-center py-0 px-1"
           >
             <Icon name="cloud-download"/>
