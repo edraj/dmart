@@ -268,7 +268,7 @@ class SQLAdapter(BaseDataAdapter):
         try:
             self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
             connection_string = f"{self.database_connection_string}/{settings.database_name}"
-            self.engine = create_engine(connection_string, echo=True, pool_pre_ping=True)
+            self.engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
             self.session = Session(self.engine)
             with self.get_session() as session:
                 session.execute(text("SELECT 1")).one_or_none()
