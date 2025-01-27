@@ -348,14 +348,16 @@ async def middle(request: Request, call_next):
 
     set_logging(response, extra, request, exception_data)
 
-    if settings.hide_stack_trace and stack is not None:
-        return JSONResponse(
-            status_code=500,
-            content={
-                "status": "failed",
-                "error": "Internal server error",
-            },
-        )
+    if settings.hide_stack_trace:
+        print("stack trace is hidden")
+        if (
+            response_body and isinstance(response_body, dict)
+            and "error" in response_body
+            and "stack" in response_body["error"]
+        ):
+            response_body["error"].pop("stack", None)
+
+        response.body_iterator = iterate_in_threadpool(iter([json.dumps(response_body).encode("utf-8")]))
 
     return response
 
