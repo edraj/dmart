@@ -1002,9 +1002,10 @@
 
 
     let openDownloadModal = $state(false);
-    let startDate = "";
-    let endDate = "";
-    let searchText = "";
+    let startDateCSVDownload = $state("");
+    let endDateCSVDownload = $state("");
+    let searchTextCSVDownload = $state("");
+    let limitCSVDownload = $state(0);
 
     function openDownloadDialog() {
       openDownloadModal = true;
@@ -1015,17 +1016,20 @@
         space_name,
         subpath,
         type: "search",
-        search: searchText,
+        search: searchTextCSVDownload,
         retrieve_json_payload: true,
         limit: 1000,
         filter_schema_names: [],
       };
-      if(startDate){
-        body.from_date = startDate;
+      if(startDateCSVDownload){
+        body.from_date = startDateCSVDownload;
       }
-        if(endDate){
-            body.to_date = endDate;
-        }
+      if(endDateCSVDownload){
+          body.to_date = endDateCSVDownload;
+      }
+      if(limitCSVDownload){
+          body.limit = limitCSVDownload;
+      }
       const data = await csv(body);
       downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
       openDownloadModal = false;
@@ -1263,15 +1267,19 @@
   <ModalBody>
     <FormGroup>
       <Label for="startDate">Start Date</Label>
-      <Input type="date" id="startDate" bind:value={startDate} />
+      <Input type="date" id="startDate" bind:value={startDateCSVDownload} />
     </FormGroup>
     <FormGroup>
       <Label for="endDate">End Date</Label>
-      <Input type="date" id="endDate" bind:value={endDate} />
+      <Input type="date" id="endDate" bind:value={endDateCSVDownload} />
+    </FormGroup>
+    <FormGroup>
+      <Label for="limit">Search Text</Label>
+      <Input type="number" id="limit" bind:value={limitCSVDownload} min="0"/>
     </FormGroup>
     <FormGroup>
       <Label for="searchText">Search Text</Label>
-      <Input type="text" id="searchText" bind:value={searchText} />
+      <Input type="text" id="searchText" bind:value={searchTextCSVDownload} />
     </FormGroup>
     {#if errorContent}
       <h3 class="mt-3">Error:</h3>
