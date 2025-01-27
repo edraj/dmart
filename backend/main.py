@@ -349,7 +349,6 @@ async def middle(request: Request, call_next):
     set_logging(response, extra, request, exception_data)
 
     if settings.hide_stack_trace:
-        print("stack trace is hidden")
         if (
             response_body and isinstance(response_body, dict)
             and "error" in response_body
