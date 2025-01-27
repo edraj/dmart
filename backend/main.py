@@ -235,9 +235,6 @@ def set_logging(response, extra, request, exception_data):
 
 
 def set_stack(e):
-    if settings.hide_stack_trace:
-        return {"error": "Internal server error"}
-
     return [
         {
             "file": frame.f_code.co_filename,
@@ -260,7 +257,6 @@ async def middle(request: Request, call_next):
 
 
     try:
-
         response = await asyncio.wait_for(call_next(request), timeout=settings.request_timeout)
         raw_response = [section async for section in response.body_iterator]
         response.body_iterator = iterate_in_threadpool(iter(raw_response))
@@ -351,6 +347,15 @@ async def middle(request: Request, call_next):
     extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
 
     set_logging(response, extra, request, exception_data)
+
+    if settings.hide_stack_trace and stack is not None:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "failed",
+                "error": "Internal server error",
+            },
+        )
 
     return response
 
