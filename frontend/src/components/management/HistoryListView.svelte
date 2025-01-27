@@ -112,62 +112,14 @@
     sort_type: "ascending",
   };
 
-  $effect(() =>{
-    if (objectDatatable === undefined) {
-      objectDatatable = functionCreateDatatable({
-        parData: [],
-        parSearchableColumns: Object.keys(columns),
-        parRowsPerPage:
-          (typeof localStorage !== 'undefined' &&  localStorage.getItem("rowPerPage") as `${number}`) || "15",
-        parSearchString: "",
-        parSortBy: "shortname",
-        parSortOrder: "ascending",
-      });
-    }
-  });
-
-  $effect(() =>{
-    if (objectDatatable) {
-      if (
-        !isDeepEqual(sort, {
-          sort_by: objectDatatable.stringSortBy,
-          sort_type: objectDatatable.stringSortOrder,
-        })
-      ) {
-        const x = {
-          sort_by: objectDatatable.stringSortBy.toString(),
-          sort_type: objectDatatable.stringSortOrder,
-        };
-        fetchPageRecords(true, x);
-        sort = structuredClone(x);
-      }
-      if (objectDatatable.numberRowsPerPage != numberRowsPerPage) {
-        numberRowsPerPage = objectDatatable.numberRowsPerPage;
-        if (typeof localStorage !== 'undefined')
-          localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
-        fetchPageRecords();
-      }
-      if (objectDatatable.numberActivePage != numberActivePage) {
-        numberActivePage = objectDatatable.numberActivePage;
-        fetchPageRecords(false);
-      }
-
-      paginationBottomInfoFrom =
-        objectDatatable.numberRowsPerPage *
-          (objectDatatable.numberActivePage - 1) +
-        1;
-      paginationBottomInfoTo =
-        objectDatatable.numberRowsPerPage * objectDatatable.numberActivePage;
-      paginationBottomInfoTo =
-        paginationBottomInfoTo >= total ? total : paginationBottomInfoTo;
-    }
-  });
-
   //! TBD: FIX THIS WORK AROUND AFTER VACATION
   function returnASmallStupidValueCuzSvelteCantCastInMarkup(
     v: any,
     key: string
   ) {
+    if(typeof (v[key]) === "object") {
+      return JSON.stringify(v[key]);
+    }
     return v[key] || "";
   }
 </script>
