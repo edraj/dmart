@@ -1018,7 +1018,7 @@
         type: "search",
         search: searchTextCSVDownload,
         retrieve_json_payload: true,
-        limit: 1000,
+        limit: limitCSVDownload,
         filter_schema_names: [],
       };
       if(startDateCSVDownload){
@@ -1026,9 +1026,6 @@
       }
       if(endDateCSVDownload){
           body.to_date = endDateCSVDownload;
-      }
-      if(limitCSVDownload){
-          body.limit = limitCSVDownload;
       }
       const data = await csv(body);
       downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
@@ -1274,7 +1271,7 @@
       <Input type="date" id="endDate" bind:value={endDateCSVDownload} />
     </FormGroup>
     <FormGroup>
-      <Label for="limit">Search Text</Label>
+      <Label for="limit">Limit</Label>
       <Input type="number" id="limit" bind:value={limitCSVDownload} min="0"/>
     </FormGroup>
     <FormGroup>
