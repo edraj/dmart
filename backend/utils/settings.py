@@ -93,7 +93,7 @@ class Settings(BaseSettings):
     database_host: str = 'localhost'
     database_port: int = 5432
     database_name: str = 'dmart'
-
+    hide_stack_trace: bool = False
     max_failed_login_attempts: int = 5
 
     model_config = SettingsConfigDict(
