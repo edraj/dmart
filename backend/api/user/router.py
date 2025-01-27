@@ -185,7 +185,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     shortname: str | None = None
     user = None
     user_updates: dict[str, Any] = {}
-    identifier = request.check_fields()
+    identifier = request.check_fields()[5]
     try:
         if request.invitation:
             invitation_token = await db.get_invitation(request.invitation)
