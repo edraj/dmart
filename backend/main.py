@@ -214,7 +214,18 @@ def set_middleware_response_headers(request, response):
     return response
 
 
+def mask_sensitive_data(data):
+    if isinstance(data, dict):
+        return {k: mask_sensitive_data(v) if k not in ['password', 'access_token', 'refresh_token', 'auth_token'] else '******' for k, v in data.items()}
+    elif isinstance(data, list):
+        return [mask_sensitive_data(item) for item in data]
+    elif isinstance(data, str) and 'auth_token' in data:
+        return '******'
+    return data
+
+
 def set_logging(response, extra, request, exception_data):
+    extra = mask_sensitive_data(extra)
     if 400 <= response.status_code < 500:
         logger.warning("Served request", extra=extra)
     elif response.status_code >= 500 or exception_data is not None:
@@ -224,6 +235,9 @@ def set_logging(response, extra, request, exception_data):
 
 
 def set_stack(e):
+    if settings.hide_stack_trace:
+        return {"error": "Internal server error"}
+
     return [
         {
             "file": frame.f_code.co_filename,
