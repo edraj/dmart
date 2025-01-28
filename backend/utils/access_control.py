@@ -49,7 +49,7 @@ class AccessControl:
                         raise ex
 
             await db.create_user_premission_index()
-            await db.store_modules_to_redis()
+            await db.store_modules_to_redis(self.roles, self.groups, self.permissions)
             await db.delete_user_permissions_map_in_redis()
 
 
