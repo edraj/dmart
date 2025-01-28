@@ -366,7 +366,7 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def store_modules_to_redis(self) -> None:
+    async def store_modules_to_redis(self, roles, groups, permissions) -> None:
         pass
 
     @abstractmethod

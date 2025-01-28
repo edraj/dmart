@@ -1577,19 +1577,18 @@ class FileAdapter(BaseDataAdapter):
                     )
                 )
 
-    async def store_modules_to_redis(self) -> None:
+    async def store_modules_to_redis(self, roles, groups, permissions) -> None:
         modules = [
-            "roles",
-            "groups",
-            "permissions",
+            {"subpath": "roles", "value": roles},
+            {"subpath": "groups", "value": groups},
+            {"subpath": "permissions", "value": permissions},
         ]
         async with RedisServices() as redis_services:
-            for module_name in modules:
-                class_var = getattr(self, module_name)
-                for _, object in class_var.items():
+            for module in modules:
+                for _, object in module['value'].items():
                     await redis_services.save_meta_doc(
                         space_name=settings.management_space,
-                        subpath=module_name,
+                        subpath=module['subpath'],
                         meta=object,
                     )
 
