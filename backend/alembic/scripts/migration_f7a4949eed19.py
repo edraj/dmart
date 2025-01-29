@@ -16,7 +16,7 @@ with SQLAdapter().get_session() as session:
             if not record.query_policies:
                 record.query_policies = generate_query_policies(
                     space_name=record.space_name,
-                    subpath=record.subpath,
+                    subpath=f"{record.subpath}/{record.shortname}" if record.resource_type == 'folder' else record.subpath,
                     resource_type=record.resource_type,
                     is_active=record.is_active,
                     owner_shortname=record.owner_shortname,
