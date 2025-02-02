@@ -66,7 +66,7 @@ def save_report(isubpath: str, issue):
             ]
         }
 
-def process_directory(root, dirs, subpath):
+def process_directory(root, dirs, space_name, subpath):
     postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
     engine = create_engine(postgresql_url, echo=False)
 
@@ -82,7 +82,7 @@ def process_directory(root, dirs, subpath):
                     if 'attachments' in p:
                         if file.startswith("meta") and file.endswith(".json"):
                             _attachment = json.load(open(os.path.join(root, dir, file)))
-                            _attachment['space_name'] = root.split(os.sep)[-2]
+                            _attachment['space_name'] = space_name
                             _attachment['uuid'] = _attachment.get('uuid', uuid4())
                             _attachment['subpath'] = subpath.replace('//', '/')
                             _attachment['subpath'] = subpath_checker(_attachment['subpath'])
@@ -126,7 +126,7 @@ def process_directory(root, dirs, subpath):
                                 save_report('/', save_issue(_attachment['resource_type'], _attachment, e))
                     elif file.endswith('.json'):
                         entry = json.load(open(p))
-                        entry['space_name'] = root.split(os.sep)[-2]
+                        entry['space_name'] = space_name
                         body = None
                         _payload = entry.get('payload', {})
                         if _payload:
@@ -156,7 +156,7 @@ def process_directory(root, dirs, subpath):
                         try:
                             if file.startswith("meta.user"):
                                 entry['query_policies'] = generate_query_policies(
-                                    space_name=root.split(os.sep)[-2],
+                                    space_name=space_name,
                                     subpath=subpath,
                                     resource_type=ResourceType.user,
                                     is_active=True,
@@ -175,7 +175,7 @@ def process_directory(root, dirs, subpath):
                                 session.add(Users.model_validate(entry))
                             elif file.startswith("meta.role"):
                                 entry['query_policies'] = generate_query_policies(
-                                    space_name=root.split(os.sep)[-2],
+                                    space_name=space_name,
                                     subpath=subpath,
                                     resource_type=ResourceType.role,
                                     is_active=True,
@@ -187,7 +187,7 @@ def process_directory(root, dirs, subpath):
                                 session.add(Roles.model_validate(entry))
                             elif file.startswith("meta.permission"):
                                 entry['query_policies'] = generate_query_policies(
-                                    space_name=root.split(os.sep)[-2],
+                                    space_name=space_name,
                                     subpath=subpath,
                                     resource_type=ResourceType.permission,
                                     is_active=True,
@@ -206,7 +206,7 @@ def process_directory(root, dirs, subpath):
                                 entry['resource_type'] = file.replace('.json', '').replace('meta.', '')
 
                                 entry['query_policies'] = generate_query_policies(
-                                    space_name=root.split(os.sep)[-2],
+                                    space_name=space_name,
                                     subpath=subpath,
                                     resource_type=entry['resource_type'],
                                     is_active=True,
@@ -346,7 +346,7 @@ def main():
                 if subpath == '':
                     subpath = '/'
 
-                futures.append(executor.submit(process_directory, root, dirs, subpath))
+                futures.append(executor.submit(process_directory, root, dirs, space_name, subpath))
 
             for future in as_completed(futures):
                 future.result()
