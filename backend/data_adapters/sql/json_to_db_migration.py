@@ -126,8 +126,10 @@ def process_directory(engine, root, dirs, space_name, subpath):
                                     _attachment['payload'] = {}
                             try:
                                 _attachment['resource_type'] = dir.replace('attachments.', '')
-                                attachments.append(_attachment)
+                                attachments.append(Attachments.model_validate(_attachment))
                             except Exception as e:
+                                print(f"Error processing Attachments {space_name}/{subpath}/{dir}/{file} ... ")
+                                print("!!", e)
                                 save_report('/', save_issue(_attachment['resource_type'], _attachment, e))
                     elif file.endswith('.json'):
                         entry = json.load(open(p))
