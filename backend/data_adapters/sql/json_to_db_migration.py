@@ -279,6 +279,11 @@ def main():
     )
 
     with Session(engine) as session:
+        session.execute(text("SET enable_indexscan = OFF;"))
+        session.execute(text("SET enable_indexonlyscan = OFF;"))
+        session.execute(text("SET enable_bitmapscan = OFF;"))
+        session.commit()
+
         target_path = settings.spaces_folder
 
         if len(sys.argv) == 2 and sys.argv[1] != 'json_to_db':
@@ -368,6 +373,11 @@ def main():
 
     if settings.active_data_db == 'file':
         print("[Warning] you are using active_data_db='file', please don't forget to set it to active_data_db='sql' in your config.env")
+
+    session.execute(text("SET enable_indexscan = ON;"))
+    session.execute(text("SET enable_indexonlyscan = ON;"))
+    session.execute(text("SET enable_bitmapscan = ON;"))
+    session.commit()
 
     asyncio.run(
         save_health_check_entry(
