@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 from sqlmodel import Session, create_engine, text
-
+from sqlalchemy.pool import QueuePool
 from utils.query_policies_helper import generate_query_policies
 from .health_check_sql import save_health_check_entry
 from models.enums import ResourceType
@@ -66,13 +66,21 @@ def save_report(isubpath: str, issue):
             ]
         }
 
-def process_directory(root, dirs, space_name, subpath):
-    postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
-    engine = create_engine(postgresql_url, echo=False)
+def bulk_insert_in_batches(session, model, records, batch_size=2000):
+    for i in range(0, len(records), batch_size):
+        batch = records[i:i + batch_size]
+        session.bulk_insert_mappings(model, batch)
+        session.commit()
+
+def process_directory(engine, root, dirs, space_name, subpath):
+    attachments = []
+    entries = []
+    users = []
+    roles = []
+    permissions = []
 
     with Session(engine) as session:
         for dir in dirs:
-            print(f"Processing {subpath}... ")
             for file in os.listdir(os.path.join(root, dir)):
                 if not file.startswith('meta'):
                     continue
@@ -117,12 +125,9 @@ def process_directory(root, dirs, space_name, subpath):
                                 if _attachment.get('payload', None) is None:
                                     _attachment['payload'] = {}
                             try:
-                                print(f"{dir=}")
                                 _attachment['resource_type'] = dir.replace('attachments.', '')
-                                session.add(Attachments.model_validate(_attachment))
+                                attachments.append(_attachment)
                             except Exception as e:
-                                print(f"Error processing Attachments {subpath}/{file} ... ")
-                                print(e)
                                 save_report('/', save_issue(_attachment['resource_type'], _attachment, e))
                     elif file.endswith('.json'):
                         entry = json.load(open(p))
@@ -137,9 +142,7 @@ def process_directory(root, dirs, space_name, subpath):
                                             os.path.join(root, dir, '../..', payload)
                                         ))
                                     except Exception as e:
-                                        print(f"Error processing payload {subpath}/{entry} ... ")
                                         save_report('/', save_issue(ResourceType.json, entry, e))
-                                        print(e)
                                 else:
                                     body = payload
 
@@ -172,7 +175,7 @@ def process_directory(root, dirs, space_name, subpath):
                                 entry['social_avatar_url'] = entry.get('social_avatar_url', '')
                                 entry['displayname'] = entry.get('displayname', {})
                                 entry['description'] = entry.get('description', {})
-                                session.add(Users.model_validate(entry))
+                                users.append(entry)
                             elif file.startswith("meta.role"):
                                 entry['query_policies'] = generate_query_policies(
                                     space_name=space_name,
@@ -184,7 +187,7 @@ def process_directory(root, dirs, space_name, subpath):
                                 )
                                 entry['resource_type'] = 'role'
                                 entry['permissions'] = entry.get('permissions', [])
-                                session.add(Roles.model_validate(entry))
+                                roles.append(entry)
                             elif file.startswith("meta.permission"):
                                 entry['query_policies'] = generate_query_policies(
                                     space_name=space_name,
@@ -201,7 +204,7 @@ def process_directory(root, dirs, space_name, subpath):
                                 entry['conditions'] = entry.get('conditions', [])
                                 entry['restricted_fields'] = entry.get('restricted_fields', [])
                                 entry['allowed_fields_values'] = entry.get('allowed_fields_values', {})
-                                session.add(Permissions.model_validate(entry))
+                                permissions.append(entry)
                             else:
                                 entry['resource_type'] = file.replace('.json', '').replace('meta.', '')
 
@@ -227,17 +230,20 @@ def process_directory(root, dirs, space_name, subpath):
                                     entry['displayname'] = entry.get('displayname', {})
                                     entry['description'] = entry.get('description', {})
                                     entry["subpath"] = subpath_checker(entry["subpath"])
-                                    session.add(Entries.model_validate(entry))
+                                    entries.append(entry)
                                     continue
                                 entry["subpath"] = subpath_checker(entry["subpath"])
 
-                                session.add(Entries.model_validate(entry))
+                                entries.append(entry)
                         except Exception as e:
-                            print(f"Error processing Entries {subpath}/{entry} ... ")
                             save_report('/', save_issue(entry['resource_type'], entry, e))
-                            print(e)
+
         try:
-            session.commit()
+            bulk_insert_in_batches(session, Attachments, attachments)
+            bulk_insert_in_batches(session, Entries, entries)
+            bulk_insert_in_batches(session, Users, users)
+            bulk_insert_in_batches(session, Roles, roles)
+            bulk_insert_in_batches(session, Permissions, permissions)
         except Exception as e:
             print(e)
             session.rollback()
@@ -259,6 +265,16 @@ def main():
         generate_tables()
     except Exception as e:
         print("Warning: While generating tables: ", str(e))
+
+    postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
+    engine = create_engine(
+        postgresql_url,
+        echo=False,
+        poolclass=QueuePool,
+        pool_size=10,
+        max_overflow=20,
+        pool_timeout=30,
+    )
 
     with Session(engine) as session:
         target_path = settings.spaces_folder
@@ -286,13 +302,13 @@ def main():
                 if space_name.startswith('.git'):
                     continue
 
-                print(f"Processing {space_name}/{subpath} ... ")
+                # print(f"Processing {space_name}/{subpath} ... ")
+                print(".", end='')
                 if subpath == '' or subpath == '/':
                     subpath = '/'
                     p = os.path.join(root, '.dm', 'meta.space.json')
                     entry = {}
                     if Path(p).is_file():
-                        print(f"Processing {space_name}/{subpath} ... ")
                         try:
                             entry = json.load(open(p))
                             entry['space_name'] = space_name
@@ -333,11 +349,8 @@ def main():
                             session.add(Spaces.model_validate(entry))
                             session.commit()
                         except Exception as e:
-                            print(f"Error processing Spaces {space_name}/{subpath}/{entry} ...")
                             save_report('/', save_issue(ResourceType.space, entry, e))
-                            print(e)
                     continue
-
 
                 subpath = subpath.replace('.dm', '')
                 if subpath != '/' and subpath.endswith('/'):
@@ -346,7 +359,7 @@ def main():
                 if subpath == '':
                     subpath = '/'
 
-                futures.append(executor.submit(process_directory, root, dirs, space_name, subpath))
+                futures.append(executor.submit(process_directory, engine, root, dirs, space_name, subpath))
 
             for future in as_completed(futures):
                 future.result()
