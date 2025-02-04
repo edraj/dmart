@@ -68,8 +68,6 @@
     // parentRefresh(parent);
   }
 
-  $effect(() => item && refresh() );
-
   let oldType = item?.type?.toString();
   $effect(() => {
     if (item.type !== oldType) {

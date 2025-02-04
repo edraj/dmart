@@ -51,16 +51,16 @@
   // let self;
   function handleRefresh() {
     // if (self) {
-      content.json = structuredClone(items)[0];
+      content.json = structuredClone($state.snapshot(items))[0];
       cleanUp(content.json);
       transformToProperBodyRequest(content.json);
-      content = structuredClone(content);
+      content = structuredClone($state.snapshot(content));
       // self.set(content);
     // }
   }
 
   function handleParentRefresh(newParent) {
-    items = structuredClone(newParent);
+    items = structuredClone($state.snapshot(newParent));
   }
 </script>
 
