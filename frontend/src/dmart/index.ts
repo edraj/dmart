@@ -690,7 +690,7 @@ export async function fetchDataAsset(
 }
 
 
-export async function get_spaces(): Promise<ApiResponse> {
+export async function get_spaces(ignoreFilter=false): Promise<ApiResponse> {
     const _spaces: any = await query({
         type: QueryType.spaces,
         space_name: "management",
@@ -698,8 +698,9 @@ export async function get_spaces(): Promise<ApiResponse> {
         search: "",
         limit: 100,
     });
-
-    _spaces.records = _spaces.records.filter(e => !e.attributes.hide_space)
+    if(ignoreFilter === false){
+        _spaces.records = _spaces.records.filter(e => !e.attributes.hide_space)
+    }
     _spaces.records = _spaces.records.map(e=>{
         if (e.attributes.ordinal === null ) {
             e.attributes.ordinal = 9999;
@@ -717,7 +718,8 @@ export async function get_children(
     limit: number = 20,
     offset: number = 0,
     restrict_types: Array<ResourceType> = [],
-    spaces: any = null
+    spaces: any = null,
+    ignoreFilter=false
 ): Promise<ApiResponse> {
     const folders = await query({
         type: QueryType.search,
@@ -729,7 +731,7 @@ export async function get_children(
         limit: limit,
         offset: offset,
     });
-    if(spaces !== null){
+    if(ignoreFilter == false && spaces !== null){
         const selectedSpace = spaces.records.find(record => record.shortname === space_name);
         const hiddenFolders: string[] = selectedSpace.attributes.hide_folders;
         if(hiddenFolders){
