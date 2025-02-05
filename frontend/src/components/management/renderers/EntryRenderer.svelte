@@ -1122,11 +1122,12 @@
           }
         } catch (e) {
             showToast(Level.warn, `Can't load the schema ${selectedSchema} !`);
-            if(selectedSchema==="folder"){
+            if(selectedSchema==="folder_rendering"){
               schemaContent = structuredClone(defaultFolderRendering);
               showToast(Level.warn, `Default schema ${selectedSchema} has been set !`);
+            } else {
+              return;
             }
-            return;
         }
         if (schemaContent === null) {
             showToast(Level.warn, `Can't load the schema ${selectedSchema} !`);
