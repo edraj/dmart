@@ -2,8 +2,9 @@
   import { generateUUID } from "@/utils/uuid";
   import {Col, Row, Input, Icon, Label} from "sveltestrap";
   import JsonSchemaChild from "./JsonSchemaChild.svelte";
+  import {object_equals} from "@/utils/deep_compare";
 
-  let { parent, item, refresh, parentRefresh, root = false, level = 1 } : {
+  let { parent = $bindable(), item = $bindable(), refresh, parentRefresh, root = false, level = 1 } : {
     parent: any,
     item: any,
     refresh: () => void,
@@ -12,6 +13,8 @@
     level: number
   } = $props();
 
+
+  let isDisplayFilter = $state(false);
 
   let isRequired = $derived(!!parent?.required?.includes(item.name));
 
@@ -46,6 +49,7 @@
     }
     refresh();
   }
+
   function handleDeleteParent() {
     if (root){
       return;
@@ -68,7 +72,13 @@
     // parentRefresh(parent);
   }
 
-  $effect(() => item && refresh() );
+  let oldItem = {}
+  $effect(() => {
+    if(!object_equals(oldItem, item)){
+        oldItem = structuredClone($state.snapshot(item));
+        refresh();
+    }
+  });
 
   let oldType = item?.type?.toString();
   $effect(() => {
@@ -108,8 +118,6 @@
       }
       parentRefresh(parent);
   }
-
-  let isDisplayFilter = $state(false);
 </script>
 
 <div class={
@@ -208,11 +216,11 @@
   <div class="px-2 py-1">
     {#if item.properties}
       {#key item.properties}
-        {#each (item?.properties ?? []) as prop}
+        {#each (item?.properties ?? []) as prop, i}
           <JsonSchemaChild
             root={false}
-            parent={item.properties}
-            item={prop}
+            bind:parent={item.properties}
+            bind:item={item.properties[i]}
             {refresh}
             parentRefresh={handleParentRefresh}
             level={level+1}
@@ -221,11 +229,11 @@
       {/key}
     {:else if item.items}
       {#key item.items.properties}
-        {#each (item?.items?.properties ?? []) as prop}
+        {#each (item?.items?.properties ?? []) as prop, i}
           <JsonSchemaChild
             root={false}
-            parent={item.items.properties}
-            item={prop}
+            bind:parent={item.items.properties}
+            bind:item={item.items.properties[i]}
             {refresh}
             parentRefresh={handleParentRefresh}
             level={level+1}
