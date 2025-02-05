@@ -88,6 +88,7 @@
     import {user} from "@/stores/user";
     import ACLForm from "@/components/management/renderers/Forms/ACLForm.svelte";
     import MarkdownRenderer from "@/components/management/renderers/MarkdownRenderer.svelte";
+    import defaultFolderRendering from "@/stores/management/default_folder_rendering.json";
 
     marked.use(mangle());
     marked.use(gfmHeadingId({
@@ -568,7 +569,7 @@
         let request_body: any = {};
         if (new_resource_type === "schema") {
             let body = schemaContent.json
-                ? structuredClone(schemaContent.json)
+                ? structuredClone($state.snapshot(schemaContent).json)
                 : JSON.parse(schemaContent.text);
 
             if (isSchemaEntryInForm) {
@@ -1100,23 +1101,32 @@
 
     async function setPrepModalContentPayloadFromFetchedSchema() {
         let schemaContent;
-        if (["folder_rendering"].includes(selectedSchema)) {
+        try {
+          if (["folder_rendering"].includes(selectedSchema)) {
             schemaContent = await retrieve_entry(
-                ResourceType.schema,
-                "management",
-                "schema",
-                selectedSchema,
-                true
+                    ResourceType.schema,
+                    "management",
+                    "schema",
+                    selectedSchema,
+                    true
             );
-        } else {
+          } else {
             schemaContent = await retrieve_entry(
-                ResourceType.schema,
-                space_name,
-                "schema",
-                selectedSchema,
-                true,
-                false
+                    ResourceType.schema,
+                    space_name,
+                    "schema",
+                    selectedSchema,
+                    true,
+                    false
             );
+          }
+        } catch (e) {
+            showToast(Level.warn, `Can't load the schema ${selectedSchema} !`);
+            if(selectedSchema==="folder"){
+              schemaContent = structuredClone(defaultFolderRendering);
+              showToast(Level.warn, `Default schema ${selectedSchema} has been set !`);
+            }
+            return;
         }
         if (schemaContent === null) {
             showToast(Level.warn, `Can't load the schema ${selectedSchema} !`);
@@ -1204,7 +1214,7 @@
             } else {
                 jseModalContent = "";
             }
-            oldSelectedContentType = structuredClone(selectedContentType);
+            oldSelectedContentType = structuredClone($state.snapshot(selectedContentType));
         }
     });
 
@@ -1748,17 +1758,17 @@
           {/if}
           {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
             <Button
-                    outline
-                    color="success"
-                    size="sm"
-                    title={$_("create_folder")}
-                    class="justify-contnet-center text-center py-0 px-1"
-                    onclick={() => {
-                  entryType = "folder";
-                  new_resource_type = ResourceType.folder;
-                  selectedSchema = "folder_rendering";
-                  isModalOpen = true;
-              }}
+                  outline
+                  color="success"
+                  size="sm"
+                  title={$_("create_folder")}
+                  class="justify-contnet-center text-center py-0 px-1"
+                  onclick={() => {
+                    entryType = "folder";
+                    new_resource_type = ResourceType.folder;
+                    selectedSchema = "folder_rendering";
+                    isModalOpen = true;
+                  }}
             >
               <Icon name="folder-plus"/>
             </Button>
