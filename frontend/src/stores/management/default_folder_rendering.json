@@ -1,0 +1,249 @@
+{
+  "uuid": "5bcc5d5e-2225-4e9a-aafd-be4640bc896c",
+  "shortname": "folder_rendering",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2022-08-23T07:44:36.390286",
+  "updated_at": "2022-08-23T07:44:36.390290",
+  "owner_shortname": "dmart",
+  "payload": {
+    "content_type": "json",
+    "schema_shortname": "meta_schema",
+    "checksum": "5e6bf7fa88669c6a303e6b47a9de664e701bea38",
+    "body": {
+      "type": "object",
+      "title": "Folder schema",
+      "required": [
+        "index_attributes"
+      ],
+      "properties": {
+        "icon": {
+          "type": "string",
+          "title": "folder main icon",
+          "description": "The icon displayed next to the folder"
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "subpath",
+                "search"
+              ],
+              "type": "string"
+            },
+            "search": {
+              "type": "string"
+            },
+            "filter_types": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "filter": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {}
+          },
+          "title": "Additional filter options"
+        },
+        "stream": {
+          "type": "boolean",
+          "title": "Enable websocket stream",
+          "description": "folder level websocket watch"
+        },
+        "sort_by": {
+          "type": "string",
+          "title": "sort by",
+          "description": "the field name to be used in ordering"
+        },
+        "allow_csv": {
+          "type": "boolean",
+          "title": "flag to enable or disable CSV download button",
+          "description": "Allow the user to download csv of the displayed list"
+        },
+        "sort_type": {
+          "enum": [
+            "ascending",
+            "descending"
+          ],
+          "type": "string",
+          "title": "sort order",
+          "description": "the ordering of the sort asc/desc"
+        },
+        "use_media": {
+          "type": "boolean",
+          "title": "does the content inside this folder has a media or not",
+          "description": "does the content inside this folder has a media or not"
+        },
+        "allow_view": {
+          "type": "boolean",
+          "title": "flag to enable or disable resource view inside this folder",
+          "description": "flag to enable or disable resource view inside this folder"
+        },
+        "csv_columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "title": "Key"
+              },
+              "name": {
+                "type": "string",
+                "title": "Name"
+              }
+            }
+          },
+          "title": "CSV columns",
+          "description": "CSV columns title"
+        },
+        "icon_closed": {
+          "type": "string",
+          "title": "folder closed icon",
+          "description": "The icon displayed next to the folder when closed"
+        },
+        "icon_opened": {
+          "type": "string",
+          "title": "folder opened icon",
+          "description": "The icon displayed next to the folder when opened"
+        },
+        "allow_create": {
+          "type": "boolean",
+          "title": "flag to enable or disable resource creation inside this folder",
+          "description": "flag to enable or disable resource creation inside this folder"
+        },
+        "allow_delete": {
+          "type": "boolean",
+          "title": "flag to enable or disable resource delete inside this folder",
+          "description": "flag to enable or disable resource delete inside this folder"
+        },
+        "allow_update": {
+          "type": "boolean",
+          "title": "flag to enable or disable resource update inside this folder",
+          "description": "flag to enable or disable resource update inside this folder"
+        },
+        "unique_fields": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "title": "Field Name"
+            },
+            "title": "Composite unique list"
+          },
+          "title": "Unique Fields",
+          "description": "List of list of composite fields which should be unique accross the folder entries"
+        },
+        "append_subpath": {
+          "type": "string",
+          "title": "Append string to subpath"
+        },
+        "disable_filter": {
+          "type": "boolean",
+          "title": "Disable filter",
+          "description": "The search filter icon / functionality is disabled"
+        },
+        "search_columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "title": "Key"
+              },
+              "name": {
+                "type": "string",
+                "title": "Name"
+              }
+            }
+          },
+          "title": "Search columns",
+          "description": "Search columns title"
+        },
+        "expand_children": {
+          "type": "boolean",
+          "title": "Expand folders' children",
+          "description": "If the folder should expand children"
+        },
+        "shortname_title": {
+          "type": "string",
+          "title": "shortname field title",
+          "description": "shortname field title"
+        },
+        "allow_upload_csv": {
+          "type": "boolean",
+          "title": "flag to enable or disable CSV upload feature",
+          "description": "Allow the user to upload  csv"
+        },
+        "index_attributes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "title": "Key"
+              },
+              "name": {
+                "type": "string",
+                "title": "Name"
+              }
+            }
+          },
+          "title": "index attributes",
+          "description": "the attributes from the schema that should be displayed in index page",
+          "uniqueItems": true
+        },
+        "workflow_shortnames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Workflow shortname",
+          "description": "workflow shortname field title"
+        },
+        "allow_create_category": {
+          "type": "boolean",
+          "title": "flag to enable or disable folder creation inside this folder",
+          "description": "flag to enable or disable folder creation inside this folder"
+        },
+        "content_resource_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Resource types",
+          "description": "Resource types"
+        },
+        "content_schema_shortnames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "schema shortname",
+          "description": "schema shortnames"
+        },
+        "enable_pdf_schema_shortnames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "List of schema shortnames for which pdf icon is displayed"
+        }
+      },
+      "description": "Folder schema description",
+      "additionalProperties": false
+    }
+  },
+  "relationships": [],
+  "acl": [],
+  "attachments": {}
+}
