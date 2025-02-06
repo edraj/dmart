@@ -58,6 +58,7 @@
     "marked-mangle": "^1.1.9",
     "plantuml-encoder": "^1.4.0",
     "svelte-datatables-net": "edraj/svelte-datatables-net",
+    "svelte-frappe-charts": "^1.10.0",
     "svelte-jsonschema-form": "edraj/svelte-jsonschema-form",
     "sveltestrap": "edraj/sveltestrap#extending-UI-2",
     "vite-plugin-svelte-md": "^0.1.7"

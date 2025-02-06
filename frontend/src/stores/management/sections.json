@@ -49,12 +49,12 @@
       {
         "name": "spaces",
         "type": "link",
-        "icon": "binoculars"
+        "icon": "bar-chart-steps"
       },
       {
         "name": "custom",
         "type": "link",
-        "icon": "info-circle"
+        "icon": "bar-chart-steps"
       }
     ]
   }
