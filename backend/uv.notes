@@ -1,8 +1,8 @@
 uv cache clean
 uv venv ~/.uvenv
 source ~/.uvenv/bin/activate
-uv pip install -r requirements.txt -r plugins-requirements.txt  -r test-requirements.txt  -r extra-requirements.txt
+uv pip install -r requirements/core.txt  -r requirements/extra.txt  -r requirements/plugins.txt  -r requirements/test.txt
 dropdb -h 127.0.0.1 -U dmart dmart
 createdb -h 127.0.0.1 -U dmart dmart
 alembic upgrade head
-./json_to_db_migration.py
+./migrate.py json_to_db
