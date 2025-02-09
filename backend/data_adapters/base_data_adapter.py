@@ -196,7 +196,7 @@ class BaseDataAdapter(ABC):
 
 
     @abstractmethod
-    def is_entry_exist(self,
+    async def is_entry_exist(self,
                        space_name: str,
                        subpath: str,
                        shortname: str,
