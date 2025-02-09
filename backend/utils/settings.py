@@ -95,6 +95,8 @@ class Settings(BaseSettings):
     database_name: str = 'dmart'
     hide_stack_trace: bool = False
     max_failed_login_attempts: int = 5
+    database_pool_size: int = 15
+    database_max_overflow: int = 30
 
     model_config = SettingsConfigDict(
         env_file=os.getenv(
