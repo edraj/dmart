@@ -20,7 +20,7 @@ while True:
     else:
         print("Password didn't match the rules: >= 8 chars that are Alphanumeric mix cap/small with _#@%*!?$^- ")
 
-print("Generating and storing the password for admin and testuser")
+print("Generating and storing the password for dmart and alibaba")
 hashed = hash_password(password)
 
 if settings.active_data_db == "file":

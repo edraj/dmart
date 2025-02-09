@@ -591,7 +591,7 @@ class SQLAdapter(BaseDataAdapter):
                 if len(results) == 0:
                     return 0, []
 
-                results = await self._set_query_final_results(table, query, results)
+                results = await self._set_query_final_results(query, results)
 
             except Exception as e:
                 print("[!!query]", e)
@@ -1363,7 +1363,7 @@ class SQLAdapter(BaseDataAdapter):
                 print("[!delete_url_shortner_by_token]", e)
                 return False
 
-    async def _set_query_final_results(self, table, query, results):
+    async def _set_query_final_results(self, query, results):
         is_aggregation = query.type == QueryType.aggregation
         not_history_event = query.type not in [QueryType.history, QueryType.events]
 
@@ -1373,7 +1373,7 @@ class SQLAdapter(BaseDataAdapter):
                     query, item, results, idx
                 )
             else:
-                results[idx] = table.model_validate(item).to_record(
+                results[idx] = item.to_record(
                     query.subpath, item.shortname
                 )
 
