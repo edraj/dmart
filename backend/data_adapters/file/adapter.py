@@ -779,7 +779,7 @@ class FileAdapter(BaseDataAdapter):
             )
             copy_file(src=src_payload_file_path, dst=dist_payload_file_path)
 
-    def is_entry_exist(
+    async def is_entry_exist(
             self,
             space_name: str,
             subpath: str,

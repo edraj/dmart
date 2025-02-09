@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import time
+from contextlib import contextmanager
 from copy import copy
 from datetime import datetime
 from pathlib import Path
@@ -268,8 +269,11 @@ class SQLAdapter(BaseDataAdapter):
         try:
             self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
             connection_string = f"{self.database_connection_string}/{settings.database_name}"
-            self.engine = create_engine(connection_string, echo=True, pool_pre_ping=True)
-            self.session = Session(self.engine)
+            self.engine = create_engine(
+                connection_string, echo=False,
+                max_overflow=128, pool_size=128,
+            )
+            # self.session = Session(self.engine)
             with self.get_session() as session:
                 session.execute(text("SELECT 1")).one_or_none()
         except Exception as e:
@@ -278,19 +282,26 @@ class SQLAdapter(BaseDataAdapter):
 
     async def test_connection(self):
         try:
-            self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
-            connection_string = f"{self.database_connection_string}/{settings.database_name}"
-            engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
-            self.session = Session(engine)
+            # self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+            # connection_string = f"{self.database_connection_string}/{settings.database_name}"
+            # engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
+            # self.session = Session(engine)
             with self.get_session() as session:
                 session.execute(text("SELECT 1")).one_or_none()
         except Exception as e:
             print("[!FATAL]", e)
             sys.exit(127)
 
-
+    @contextmanager
     def get_session(self):
-        return self.session
+        session = Session(self.engine)
+        try:
+            yield session
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     def get_table(
             self, class_type: Type[MetaChild]
@@ -1353,8 +1364,11 @@ class SQLAdapter(BaseDataAdapter):
                 return False
 
     async def _set_query_final_results(self, table, query, results):
+        is_aggregation = query.type == QueryType.aggregation
+        not_history_event = query.type not in [QueryType.history, QueryType.events]
+
         for idx, item in enumerate(results):
-            if query.type == QueryType.aggregation:
+            if is_aggregation:
                 results = set_results_from_aggregation(
                     query, item, results, idx
                 )
@@ -1363,15 +1377,16 @@ class SQLAdapter(BaseDataAdapter):
                     query.subpath, item.shortname
                 )
 
-            if query.type not in [QueryType.history, QueryType.events]:
+            if not_history_event:
                 if not query.retrieve_json_payload:
-                    if (results[idx].attributes
-                            and results[idx].attributes.get("payload", {})
-                            and results[idx].attributes.get("payload", {}).get("body", False)):
-                        results[idx].attributes["payload"] = {
-                            **results[idx].attributes["payload"],
-                            "body": None
-                        }
+                    attrb = results[idx].attributes
+                    if (
+                        attrb
+                        and attrb.get("payload", {})
+                        and attrb.get("payload", {}).get("body", False)
+                    ):
+                        attrb["payload"]["body"] = None
+
                 if query.retrieve_attachments:
                     results[idx].attachments = await self.get_entry_attachments(
                         query.subpath,
