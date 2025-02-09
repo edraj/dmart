@@ -5,6 +5,7 @@ import os
 import re
 import string
 import random
+import sys
 from venv import logger
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
@@ -124,11 +125,13 @@ class Settings(BaseSettings):
                 logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")    
 
 
-settings = None
-
 try:
-    settings = Settings()
-    settings.load_config_files()
+    Settings.model_validate(
+        Settings()
+    )
 except Exception as e:
     logger.error(f"Failed to load settings.\nError: {e}")
     sys.exit(1)
+
+settings = Settings()
+settings.load_config_files()
