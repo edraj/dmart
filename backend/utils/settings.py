@@ -97,8 +97,7 @@ class Settings(BaseSettings):
 
     hide_stack_trace: bool = False
     max_failed_login_attempts: int = 5
-    database_pool_size: int = 15
-    database_max_overflow: int = 30
+
 
     model_config = SettingsConfigDict(
         env_file=os.getenv(
@@ -123,9 +122,13 @@ class Settings(BaseSettings):
                     
             except Exception as e:
                 logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")    
-        
-        
 
 
-settings = Settings()
-settings.load_config_files()
+settings = None
+
+try:
+    settings = Settings()
+    settings.load_config_files()
+except Exception as e:
+    logger.error(f"Failed to load settings.\nError: {e}")
+    sys.exit(1)
