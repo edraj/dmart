@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import time
+from contextlib import contextmanager
 from copy import copy
 from datetime import datetime
 from pathlib import Path
@@ -268,8 +269,13 @@ class SQLAdapter(BaseDataAdapter):
         try:
             self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
             connection_string = f"{self.database_connection_string}/{settings.database_name}"
-            self.engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
-            self.session = Session(self.engine)
+            self.engine = create_engine(
+                connection_string,
+                echo=False,
+                max_overflow=settings.database_max_overflow,
+                pool_size=settings.database_pool_size,
+                pool_pre_ping=True
+            )
             with self.get_session() as session:
                 session.execute(text("SELECT 1")).one_or_none()
         except Exception as e:
@@ -278,10 +284,6 @@ class SQLAdapter(BaseDataAdapter):
 
     async def test_connection(self):
         try:
-            self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
-            connection_string = f"{self.database_connection_string}/{settings.database_name}"
-            engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
-            self.session = Session(engine)
             with self.get_session() as session:
                 session.execute(text("SELECT 1")).one_or_none()
         except Exception as e:
@@ -289,8 +291,16 @@ class SQLAdapter(BaseDataAdapter):
             sys.exit(127)
 
 
+    @contextmanager
     def get_session(self):
-        return self.session
+        session = Session(self.engine)
+        try:
+            yield session
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     def get_table(
             self, class_type: Type[MetaChild]
@@ -580,7 +590,7 @@ class SQLAdapter(BaseDataAdapter):
                 if len(results) == 0:
                     return 0, []
 
-                results = await self._set_query_final_results(table, query, results)
+                results = await self._set_query_final_results(query, results)
 
             except Exception as e:
                 print("[!!query]", e)
@@ -1293,7 +1303,7 @@ class SQLAdapter(BaseDataAdapter):
         with self.get_session() as session:
             try:
                 statement = delete(Invitations).where(col(Invitations.invitation_token) == invitation_token)
-                session.exec(statement)
+                session.execute(statement)
                 session.commit()
                 return True
             except Exception as e:
@@ -1334,7 +1344,7 @@ class SQLAdapter(BaseDataAdapter):
         with self.get_session() as session:
             try:
                 statement = delete(URLShorts).where(col(URLShorts.token_uuid) == token_uuid)
-                session.exec(statement)
+                session.execute(statement)
                 session.commit()
                 return True
             except Exception as e:
@@ -1345,21 +1355,21 @@ class SQLAdapter(BaseDataAdapter):
         with self.get_session() as session:
             try:
                 statement = delete(URLShorts).where(col(URLShorts.url).ilike(f"%{invitation_token}%"))
-                session.exec(statement)
+                session.execute(statement)
                 session.commit()
                 return True
             except Exception as e:
                 print("[!delete_url_shortner_by_token]", e)
                 return False
 
-    async def _set_query_final_results(self, table, query, results):
+    async def _set_query_final_results(self, query, results):
         for idx, item in enumerate(results):
             if query.type == QueryType.aggregation:
                 results = set_results_from_aggregation(
                     query, item, results, idx
                 )
             else:
-                results[idx] = table.model_validate(item).to_record(
+                results[idx] = item.to_record(
                     query.subpath, item.shortname
                 )
 
