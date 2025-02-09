@@ -37,7 +37,6 @@ class Settings(BaseSettings):
     users_subpath: str = "users"
     spaces_folder: Path = Path("../sample/spaces/")
     lock_period: int = 300
-    servername: str = ""  # This is for print purposes only.
     auto_uuid_rule: str = "auto"  # Used to generate a shortname from UUID
     google_application_credentials: str = ""
     is_registrable: bool = True
