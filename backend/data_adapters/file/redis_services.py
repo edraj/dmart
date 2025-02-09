@@ -1,4 +1,3 @@
-import asyncio
 import re
 import json
 import sys
@@ -762,8 +761,7 @@ class RedisServices(Redis):
     ):
         x = self.json().set(doc_id, path, payload, nx=nx)
         if x and isinstance(x, Awaitable):
-            # await x
-            asyncio.create_task(x)
+            await x
 
     async def save_bulk(self, data: list, path: str = Path.root_path()):
         pipe = self.pipeline()

@@ -42,7 +42,8 @@ async def main(health_type: str, space_param: str, schemas_param: list):
             return
         if space_param == "all":
             for space in spaces:
-                return await main(health_type, space, schemas_param)
+                await main(health_type, space, schemas_param)
+                return
         space_obj = core.Space.model_validate_json(spaces[space_param])
         if not space_obj.check_health:
             print(f"EARLY EXIT, health check disabled for space {space_param}")
