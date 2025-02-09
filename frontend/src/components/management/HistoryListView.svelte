@@ -141,8 +141,8 @@
         <table class="table table-striped table-sm mt-2">
           <thead>
             <tr style="text-align: center">
-              <th>Information</th>
-              <th>Request Headers</th>
+              <th style="width: 20%">Information</th>
+              <th style="width: 20%">Request Headers</th>
               <th>DIFF</th>
             </tr>
           </thead>
