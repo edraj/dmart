@@ -225,13 +225,14 @@ def mask_sensitive_data(data):
 
 
 def set_logging(response, extra, request, exception_data):
-    extra = mask_sensitive_data(extra)
-    if 400 <= response.status_code < 500:
-        logger.warning("Served request", extra=extra)
-    elif response.status_code >= 500 or exception_data is not None:
-        logger.error("Served request", extra=extra)
-    elif request.method != "OPTIONS":  # Do not log OPTIONS request, to reduce excessive logging
-        logger.info("Served request", extra=extra)
+    _extra = mask_sensitive_data(extra)
+    if isinstance(_extra, dict):
+        if 400 <= response.status_code < 500:
+            logger.warning("Served request", extra=_extra)
+        elif response.status_code >= 500 or exception_data is not None:
+            logger.error("Served request", extra=_extra)
+        elif request.method != "OPTIONS":  # Do not log OPTIONS request, to reduce excessive logging
+            logger.info("Served request", extra=_extra)
 
 
 def set_stack(e):
