@@ -285,15 +285,12 @@ class SQLAdapter(BaseDataAdapter):
 
     async def test_connection(self):
         try:
-            # self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
-            # connection_string = f"{self.database_connection_string}/{settings.database_name}"
-            # engine = create_engine(connection_string, echo=False, pool_pre_ping=True)
-            # self.session = Session(engine)
             with self.get_session() as session:
                 session.execute(text("SELECT 1")).one_or_none()
         except Exception as e:
             print("[!FATAL]", e)
             sys.exit(127)
+
 
     @contextmanager
     def get_session(self):
@@ -1307,7 +1304,7 @@ class SQLAdapter(BaseDataAdapter):
         with self.get_session() as session:
             try:
                 statement = delete(Invitations).where(col(Invitations.invitation_token) == invitation_token)
-                session.exec(statement)
+                session.execute(statement)
                 session.commit()
                 return True
             except Exception as e:
@@ -1348,7 +1345,7 @@ class SQLAdapter(BaseDataAdapter):
         with self.get_session() as session:
             try:
                 statement = delete(URLShorts).where(col(URLShorts.token_uuid) == token_uuid)
-                session.exec(statement)
+                session.execute(statement)
                 session.commit()
                 return True
             except Exception as e:
@@ -1359,7 +1356,7 @@ class SQLAdapter(BaseDataAdapter):
         with self.get_session() as session:
             try:
                 statement = delete(URLShorts).where(col(URLShorts.url).ilike(f"%{invitation_token}%"))
-                session.exec(statement)
+                session.execute(statement)
                 session.commit()
                 return True
             except Exception as e:
