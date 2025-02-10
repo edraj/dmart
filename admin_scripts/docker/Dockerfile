@@ -53,7 +53,6 @@ RUN set -eux \
   && echo "DATABASE_USERNAME='dmart'" >> /home/dmart/backend/config.env \
   && echo "DATABASE_PASSWORD='$(cat /tmp/pgpass)'" >> /home/dmart/backend/config.env \
   && echo "ACTIVE_DATA_DB='sql'" >> /home/dmart/backend/config.env \
-  && echo "SPACES_FOLDER='/home/dmart/sample/spaces'" >> /home/dmart/backend/config.env \
   && echo "BASE_PATH='/dmart'" >> /home/dmart/backend/config.env \
   && rm /tmp/pgpass \
   # && source /home/venv/bin/activate \
