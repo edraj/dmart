@@ -16,7 +16,7 @@ http://localhost:8000 {
 	}
 
 	handle /* {
-		root * /home/frontend/dist/client/
+		root * /home/dmart/frontend/dist/client/
 		encode gzip
 		try_files {path} /index.html
 		file_server
