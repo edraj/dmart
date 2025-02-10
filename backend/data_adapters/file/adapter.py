@@ -363,24 +363,35 @@ class FileAdapter(BaseDataAdapter):
                 error=api.Error(type="db", code=12, message=f"Request object is not available {path}"),
             )
 
-    async def save(self, space_name: str, subpath: str, meta: core.Meta):
+    async def save(self, space_name: str, subpath: str, meta: core.Meta) -> Any:
         """Save Meta Json to respectiv file"""
-        path, filename = self.metapath(
-            space_name,
-            subpath,
-            meta.shortname,
-            meta.__class__,
-            meta.payload.schema_shortname if meta.payload else None,
-        )
+        try:
+            path, filename = self.metapath(
+                space_name,
+                subpath,
+                meta.shortname,
+                meta.__class__,
+                meta.payload.schema_shortname if meta.payload else None,
+            )
 
-        if not path.is_dir():
-            os.makedirs(path)
+            if not path.is_dir():
+                os.makedirs(path)
 
-        meta_json = meta.model_dump_json(exclude_none=True, warnings="error")
-        with open(path / filename, "w") as file:
-            file.write(meta_json)
-            file.flush()
-            os.fsync(file)
+            meta_json = meta.model_dump_json(exclude_none=True, warnings="error")
+            with open(path / filename, "w") as file:
+                file.write(meta_json)
+                file.flush()
+                os.fsync(file)
+            return meta_json
+        except Exception as e:
+            raise API_Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=API_Error(
+                    type="create",
+                    code=InternalErrorCode.OBJECT_NOT_SAVED,
+                    message=e.__str__(),
+                ),
+            )
 
     async def create(self, space_name: str, subpath: str, meta: core.Meta):
         path, filename = self.metapath(
