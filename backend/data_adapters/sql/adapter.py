@@ -682,7 +682,7 @@ class SQLAdapter(BaseDataAdapter):
 
     async def save(
             self, space_name: str, subpath: str, meta: core.Meta
-    ):
+    ) -> Any:
         """Save"""
         try:
             with self.get_session() as session:
@@ -729,8 +729,14 @@ class SQLAdapter(BaseDataAdapter):
                     session.refresh(data)
                     return data
                 except Exception as e:
-                    logger.error(f"Failed parsing an entry. Error: {e}")
-                    return None
+                    raise API_Exception(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        error=API_Error(
+                            type="create",
+                            code=InternalErrorCode.OBJECT_NOT_SAVED,
+                            message=e.__str__(),
+                        ),
+                    )
 
         except Exception as e:
             print("[!save]", e)
