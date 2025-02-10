@@ -1,5 +1,6 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 """ Main module """
+import socket
 from starlette.datastructures import UploadFile
 from contextlib import asynccontextmanager
 import asyncio
@@ -152,7 +153,7 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
         "props": {
             "timestamp": start_time,
             "duration": 1000 * (time.time() - start_time),
-            "server": settings.servername,
+            "server": socket.gethostname(),
             "process_id": getpid(),
             "user_shortname": user_shortname,
             "request": {

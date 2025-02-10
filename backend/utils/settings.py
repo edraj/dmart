@@ -5,6 +5,7 @@ import os
 import re
 import string
 import random
+import sys
 from venv import logger
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
@@ -37,7 +38,6 @@ class Settings(BaseSettings):
     users_subpath: str = "users"
     spaces_folder: Path = Path("../sample/spaces/")
     lock_period: int = 300
-    servername: str = ""  # This is for print purposes only.
     auto_uuid_rule: str = "auto"  # Used to generate a shortname from UUID
     google_application_credentials: str = ""
     is_registrable: bool = True
@@ -99,6 +99,7 @@ class Settings(BaseSettings):
     hide_stack_trace: bool = False
     max_failed_login_attempts: int = 5
 
+
     model_config = SettingsConfigDict(
         env_file=os.getenv(
             "BACKEND_ENV",
@@ -122,9 +123,15 @@ class Settings(BaseSettings):
                     
             except Exception as e:
                 logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")    
-        
-        
 
+
+try:
+    Settings.model_validate(
+        Settings()
+    )
+except Exception as e:
+    logger.error(f"Failed to load settings.\nError: {e}")
+    sys.exit(1)
 
 settings = Settings()
 settings.load_config_files()

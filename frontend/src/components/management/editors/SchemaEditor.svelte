@@ -48,8 +48,6 @@
         }
   }
 
-  // let self;
-
   function handleRefresh() {
     // if (self) {
       content.json = $state.snapshot(items)[0];

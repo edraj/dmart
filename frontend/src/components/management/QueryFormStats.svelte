@@ -3,8 +3,6 @@
   import {csv, get_children, get_spaces, query, type QueryRequest, QueryType, ResourceType,} from "@/dmart";
   import {createEventDispatcher, onMount} from "svelte";
   import {Button, Col, Form, Icon, Row} from "sveltestrap";
-  import downloadFile from "@/utils/downloadFile";
-  import {Level, showToast} from "@/utils/toast";
   import Input from "../Input.svelte";
   import Aggregation from "./Aggregation.svelte";
 
@@ -61,8 +59,8 @@
       filter_shortnames: resource_shortnames
         ? resource_shortnames.split(",")
         : [],
-      retrieve_attachments,
-      retrieve_json_payload: retrieve_json_payload !== undefined,
+      retrieve_json_payload: true,
+      retrieve_attachments: false,
       exact_subpath: true,
       search: search || "",
       offset,
@@ -104,44 +102,6 @@
   }
 
   let isDisplayFilter = $state(false);
-  async function handleDownload() {
-    const {
-      space_name,
-      subpath,
-      resource_type,
-      resource_shortnames,
-      search,
-      from_date,
-      to_date,
-      offset,
-      limit,
-    } = formData;
-    const body: any = {
-      space_name,
-      subpath,
-      type: "search",
-      search: search || "",
-      retrieve_json_payload: true,
-      filter_types: resource_type ? [resource_type] : [],
-      filter_shortnames: resource_shortnames
-        ? resource_shortnames.split(",")
-        : [],
-      offset,
-      limit,
-    };
-    if (from_date) {
-      body.from_date = `${from_date}T00:00:00.000Z`;
-    }
-    if (to_date) {
-      body.from_date = `${to_date}T00:00:00.000Z`;
-    }
-    const data = await csv(body);
-    if (data?.status === "failed") {
-      showToast(Level.warn);
-    } else {
-      downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
-    }
-  }
 
   $effect(() => {
     if (spacename && selectedSpacename !== spacename) {
@@ -166,16 +126,16 @@
         <Col class="d-flex align-items-center" sm="1">
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <h4
-            class="my-4"
-            style="cursor: pointer;"
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            style=";cursor: pointer;"
             onclick={() => (isDisplayFilter = !isDisplayFilter)}
           >
             <Icon
               name={isDisplayFilter ? "filter-circle-fill" : "filter-circle"}
               size={32}
             />
-          </h4>
+          </div>
         </Col>
         <Col sm="11">
           <Input
@@ -233,38 +193,23 @@
         <Input id="resource_shortnames" type="text" title={$_("shortnames")} />
       </Col>
     </Row>
+
     <Row>
-      <Col sm="4">
+      <Col sm="3">
         <Input id="from_date" type="date" title={$_("from")} value={""} /></Col
       >
-      <Col sm="4">
+      <Col sm="3">
         <Input id="to_date" type="date" title={$_("to")} value={""} /></Col
       >
-      <Col class="d-flex align-items-end" sm="4">
-        <Input
-          id="retrieve_attachments"
-          type="checkbox"
-          title={$_("retrieve_attachments")}
-        /></Col
-      >
-    </Row>
-    <Row>
-      <Col sm="4">
+      <Col sm="3">
         <Input id="limit" type="number" title={$_("limit")} value={"10"} /></Col
       >
-      <Col sm="4">
+      <Col sm="">
         <Input
-          id="offset"
-          type="number"
-          title={$_("offset")}
-          value={"0"}
-        /></Col
-      >
-      <Col class="d-flex align-items-end" sm="4">
-        <Input
-          id="retrieve_json_payload"
-          type="checkbox"
-          title={$_("retrieve_json_payload")}
+                id="offset"
+                type="number"
+                title={$_("offset")}
+                value={"0"}
         /></Col
       >
     </Row>
@@ -272,15 +217,7 @@
   {#if queryType === QueryType.aggregation}
     <Aggregation bind:aggregation_data />
   {/if}
-
-  <Row>
-    <Col class="d-flex justify-content-between mb-2">
-      <Button outline type="submit">{$_("submit")}</Button>
-      {#if formData}
-        <Button outline type="button" onclick={handleDownload}
-          >{$_("download_csv")}</Button
-        >
-      {/if}
-    </Col>
+  <Row class="mx-5">
+      <Button color="primary" type="submit">{$_("submit")}</Button>
   </Row>
 </Form>

@@ -276,6 +276,7 @@ class SQLAdapter(BaseDataAdapter):
                 pool_size=settings.database_pool_size,
                 pool_pre_ping=True
             )
+            # self.session = Session(self.engine)
             with self.get_session() as session:
                 session.execute(text("SELECT 1")).one_or_none()
         except Exception as e:
@@ -1083,7 +1084,7 @@ class SQLAdapter(BaseDataAdapter):
     ):
         pass
 
-    def is_entry_exist(self,
+    async def is_entry_exist(self,
                        space_name: str,
                        subpath: str,
                        shortname: str,
@@ -1371,8 +1372,11 @@ class SQLAdapter(BaseDataAdapter):
                 return False
 
     async def _set_query_final_results(self, query, results):
+        is_aggregation = query.type == QueryType.aggregation
+        not_history_event = query.type not in [QueryType.history, QueryType.events]
+
         for idx, item in enumerate(results):
-            if query.type == QueryType.aggregation:
+            if is_aggregation:
                 results = set_results_from_aggregation(
                     query, item, results, idx
                 )
@@ -1381,15 +1385,16 @@ class SQLAdapter(BaseDataAdapter):
                     query.subpath, item.shortname
                 )
 
-            if query.type not in [QueryType.history, QueryType.events]:
+            if not_history_event:
                 if not query.retrieve_json_payload:
-                    if (results[idx].attributes
-                            and results[idx].attributes.get("payload", {})
-                            and results[idx].attributes.get("payload", {}).get("body", False)):
-                        results[idx].attributes["payload"] = {
-                            **results[idx].attributes["payload"],
-                            "body": None
-                        }
+                    attrb = results[idx].attributes
+                    if (
+                        attrb
+                        and attrb.get("payload", {})
+                        and attrb.get("payload", {}).get("body", False)
+                    ):
+                        attrb["payload"]["body"] = None
+
                 if query.retrieve_attachments:
                     results[idx].attachments = await self.get_entry_attachments(
                         query.subpath,

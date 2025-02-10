@@ -40,5 +40,22 @@
         "icon": "receipt-cutoff"
       }
     ]
+  },
+  {
+    "name": "analytics",
+    "icon": "bar-chart",
+    "is_expandable": false,
+    "children": [
+      {
+        "name": "spaces",
+        "type": "link",
+        "icon": "bar-chart-steps"
+      },
+      {
+        "name": "custom",
+        "type": "link",
+        "icon": "bar-chart-steps"
+      }
+    ]
   }
 ]
