@@ -21,6 +21,7 @@ RUN set -eux \
   && uv pip install -r /home/dmart/backend/requirements/core.txt \
   && uv cache clean \
   && cd /home/dmart/frontend/ \
+  && sed -i 's/sysadmin//g' /home/dmart/frontend/src/App.svelte /home/dmart/frontend/vite.config.ts \
   && yarn \
   && yarn build \
   && rm -rf node_modules \
@@ -52,7 +53,8 @@ RUN set -eux \
   && echo "DATABASE_USERNAME='dmart'" >> /home/dmart/backend/config.env \
   && echo "DATABASE_PASSWORD='$(cat /tmp/pgpass)'" >> /home/dmart/backend/config.env \
   && echo "ACTIVE_DATA_DB='sql'" >> /home/dmart/backend/config.env \
-  && echo "SPACES_FOLDER='/home/dmart/sample/spaces'" \
+  && echo "SPACES_FOLDER='/home/dmart/sample/spaces'" >> /home/dmart/backend/config.env \
+  && echo "BASE_PATH='/dmart'" >> /home/dmart/backend/config.env \
   && rm /tmp/pgpass \
   # && source /home/venv/bin/activate \
   && cd /home/dmart/backend \
