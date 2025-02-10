@@ -1344,7 +1344,7 @@ async def serve_space_create(request, record, owner_shortname: str):
             "resource_folders_creation",
         ]
 
-    await db.save(
+    return await db.save(
         request.space_name,
         record.subpath,
         resource_obj,

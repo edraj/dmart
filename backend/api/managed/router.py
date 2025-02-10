@@ -219,9 +219,10 @@ async def serve_space(
 ) -> api.Response:
     record = request.records[0]
     history_diff = {}
+    _record = None
     match request.request_type:
         case api.RequestType.create:
-            await serve_space_create(request, record, owner_shortname)
+            _record = await serve_space_create(request, record, owner_shortname)
 
         case api.RequestType.update:
             history_diff = await serve_space_update(request, record, owner_shortname)
@@ -255,7 +256,7 @@ async def serve_space(
         )
     )
 
-    return api.Response(status=api.Status.success)
+    return api.Response(status=api.Status.success, records=[_record if _record else record])
 
 
 @router.post("/query", response_model=api.Response, response_model_exclude_none=True)

@@ -726,6 +726,8 @@ class SQLAdapter(BaseDataAdapter):
 
                     session.add(data)
                     session.commit()
+                    session.refresh(data)
+                    return data
                 except Exception as e:
                     logger.error(f"Failed parsing an entry. Error: {e}")
                     return None
