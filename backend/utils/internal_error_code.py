@@ -51,3 +51,4 @@ class InternalErrorCode:
     EXPIRED_TOKEN = 48
     NOT_AUTHENTICATED = 49
     SESSION = 50
+    OBJECT_NOT_SAVED = 51
