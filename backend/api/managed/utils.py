@@ -230,7 +230,7 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                     request, owner_shortname
                 )
 
-            shortname_exists = db.is_entry_exist(
+            shortname_exists = await db.is_entry_exist(
                 space_name=request.space_name,
                 subpath=record.subpath,
                 shortname=record.shortname,

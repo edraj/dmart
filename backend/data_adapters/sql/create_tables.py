@@ -144,23 +144,18 @@ class Metas(Unique, table=False):
                 f"shortname in meta({subpath}/{self.shortname}) should be same as body({subpath}/{shortname})"
             )
 
-        record_fields = {
-            "resource_type": getattr(self, 'resource_type') if hasattr(self, 'resource_type') else get_model_from_sql_instance(self.__class__.__name__).__name__.lower(),
-            "uuid": self.uuid,
-            "shortname": self.shortname,
-            "subpath": subpath,
-        }
-
-        attributes = {}
-        for key, value in self.__dict__.items():
-            if key == '_sa_instance_state':
-                continue
-            if (not include or key in include) and key not in record_fields:
-                attributes[key] = copy.deepcopy(value)
-
-        record_fields["attributes"] = attributes
-
-        return core.Record(**record_fields)
+        local_prop_list = ["uuid","resource_type","shortname","subpath"]
+        return core.Record(
+            resource_type= getattr(self, 'resource_type') if hasattr(self, 'resource_type') else get_model_from_sql_instance(self.__class__.__name__).__name__.lower(),
+            uuid= self.uuid,
+            shortname= self.shortname,
+            subpath= subpath,
+            attributes= {
+                key: value
+                for key, value in self.__dict__.items()
+                if key != '_sa_instance_state' and (not include or key in include) and key not in local_prop_list
+            }
+        )
 
 
 
