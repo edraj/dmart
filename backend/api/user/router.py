@@ -134,7 +134,7 @@ async def create_user(record: core.Record) -> api.Response:
         record=record,
         owner_shortname=record.shortname
     )
-    await db.validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, record.shortname)
+    await db.validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, "dmart")
 
     separate_payload_data: str | dict[str, Any] = {}
     if "payload" in record.attributes and "body" in record.attributes["payload"]:
