@@ -241,9 +241,9 @@ def process_directory(engine, root, dirs, space_name, subpath):
                             save_report('/', save_issue(entry['resource_type'], entry, e))
 
         try:
+            bulk_insert_in_batches(session, Users, users)
             bulk_insert_in_batches(session, Attachments, attachments)
             bulk_insert_in_batches(session, Entries, entries)
-            bulk_insert_in_batches(session, Users, users)
             bulk_insert_in_batches(session, Roles, roles)
             bulk_insert_in_batches(session, Permissions, permissions)
         except Exception as e:
