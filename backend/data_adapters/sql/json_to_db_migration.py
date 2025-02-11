@@ -242,10 +242,10 @@ def process_directory(engine, root, dirs, space_name, subpath):
 
         try:
             bulk_insert_in_batches(session, Users, users)
-            bulk_insert_in_batches(session, Attachments, attachments)
-            bulk_insert_in_batches(session, Entries, entries)
             bulk_insert_in_batches(session, Roles, roles)
             bulk_insert_in_batches(session, Permissions, permissions)
+            bulk_insert_in_batches(session, Entries, entries)
+            bulk_insert_in_batches(session, Attachments, attachments)
         except Exception as e:
             print(e)
             session.rollback()
@@ -260,8 +260,6 @@ def main():
             session.execute(text(sql))
     except Exception as e:
         print("Warning : While creating DB: ", str(e))
-    finally:
-        engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 
     try:
         generate_tables()
@@ -293,9 +291,21 @@ def main():
             print(f"Space '{str(target_path).replace('/', '')}' does not exist")
             sys.exit(1)
 
+        all_dirs = []
+        for root, dirs, _ in os.walk(str(target_path)):
+            all_dirs.append((root, dirs))
+
+        all_dirs.sort(key=lambda x: (
+            not x[0].startswith(os.path.join(str(target_path), 'management/users/.dm/dmart')),
+            not x[0].startswith(os.path.join(str(target_path), 'management/users/.dm/')),
+            not x[0].startswith(os.path.join(str(target_path), 'management/users')),
+            not x[0].startswith(os.path.join(str(target_path), 'management')),
+            x[0]
+        ))
+        # Process directories in sorted order
         with ThreadPoolExecutor() as executor:
             futures = []
-            for root, dirs, _ in os.walk(str(target_path)):
+            for root, dirs in all_dirs:
                 tmp = root.replace(str(settings.spaces_folder), '')
                 if tmp == '':
                     continue
@@ -309,7 +319,6 @@ def main():
                 if space_name.startswith('.git'):
                     continue
 
-                # print(f"Processing {space_name}/{subpath} ... ")
                 print(".", end='')
                 if subpath == '' or subpath == '/':
                     subpath = '/'
