@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*' # Triggers on tags matching the pattern 'v*'
+    branches:
+      - master
   release:
     types: [published] # Triggers when a new release is published
 
