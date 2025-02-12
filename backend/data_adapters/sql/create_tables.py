@@ -54,7 +54,7 @@ class Metas(Unique, table=False):
     tags: list[str] = Field(default_factory=dict, sa_type=JSONB)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
-    owner_shortname: str | None = None
+    owner_shortname: str = Field(foreign_key="users.shortname")
     acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
     relationships: list[core.Relationship] | None = Field(default=[], sa_type=JSONB)
@@ -160,6 +160,7 @@ class Metas(Unique, table=False):
 
 
 class Users(Metas, table=True):
+    shortname: str = Field(regex=regex.SHORTNAME, unique=True)
     password: str | None = None
     roles: list[str] = Field(default_factory=dict, sa_type=JSONB)
     groups: list[str] = Field(default_factory=dict, sa_type=JSONB)
@@ -183,7 +184,7 @@ class Users(Metas, table=True):
 
 class Roles(Metas, table=True):
     permissions: list[str] = Field(default_factory=dict, sa_type=JSONB)
-
+    owner_shortname: str = Field(foreign_key="users.shortname")
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
 
