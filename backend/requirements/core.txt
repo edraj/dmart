@@ -15,6 +15,7 @@ pydantic-settings
 fastapi-sso
 sqlmodel
 psycopg
+asyncpg
 alembic
 jinja2
 pytest-cov
