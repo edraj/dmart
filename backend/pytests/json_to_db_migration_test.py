@@ -4,7 +4,7 @@ import pytest
 import os
 import json
 from pathlib import Path
-from sqlmodel import Session, create_engine, text
+from sqlmodel import Session, create_engine, text, SQLModel
 from data_adapters.sql.json_to_db_migration import subpath_checker, generate_tables
 from data_adapters.sql.create_tables import Attachments, Entries, Spaces, Histories
 from sqlalchemy.exc import OperationalError
@@ -63,14 +63,17 @@ def setup_database():
 @pytest.fixture(scope="module")
 def setup_environment(setup_database):
     # Set the database name from settings
-    postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+    driver = settings.database_driver.replace('+asyncpg', '')
+    postgresql_url = f"{driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
     engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 
     # Retry connecting to the newly created database
     connect_with_retry(engine)
 
     # Generate tables after ensuring connection
-    generate_tables()
+    postgresql_url = f"{driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
+    engine = create_engine(postgresql_url, echo=False)
+    SQLModel.metadata.create_all(engine)
 
     yield engine
 

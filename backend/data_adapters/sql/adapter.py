@@ -2,16 +2,17 @@ import json
 import os
 import sys
 import time
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 from copy import copy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Type, Tuple
+from typing import Any, Type, Tuple, AsyncGenerator
 from uuid import uuid4
 import ast
 from fastapi import status
 from fastapi.logger import logger
-from sqlmodel import create_engine, Session, select, col, delete, update, Integer, Float, Boolean,\
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean,\
     func, text
 import io
 from sys import modules as sys_modules
@@ -52,6 +53,7 @@ from data_adapters.sql.adapter_helpers import (
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 
 def query_aggregation(table, query):
@@ -269,39 +271,32 @@ class SQLAdapter(BaseDataAdapter):
         try:
             self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
             connection_string = f"{self.database_connection_string}/{settings.database_name}"
-            self.engine = create_engine(
+            self.engine = create_async_engine(
                 connection_string,
                 echo=False,
                 max_overflow=settings.database_max_overflow,
                 pool_size=settings.database_pool_size,
                 pool_pre_ping=True
             )
-            # self.session = Session(self.engine)
-            with self.get_session() as session:
-                session.execute(text("SELECT 1")).one_or_none()
+            # with Session(self.engine) as session:
+            #     session.exec(text("SELECT 1")).one_or_none()
         except Exception as e:
             print("[!FATAL]", e)
             sys.exit(127)
 
     async def test_connection(self):
         try:
-            with self.get_session() as session:
-                session.execute(text("SELECT 1")).one_or_none()
+            async with self.get_session() as session:
+                (await session.execute(text("SELECT 1"))).one_or_none()
         except Exception as e:
             print("[!FATAL]", e)
             sys.exit(127)
 
+    @asynccontextmanager
+    async def get_session(self) -> AsyncGenerator[Any, Any]:
+        async_session = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
+        yield async_session()
 
-    @contextmanager
-    def get_session(self):
-        session = Session(self.engine)
-        try:
-            yield session
-        except Exception:
-            session.rollback()
-            raise
-        finally:
-            session.close()
 
     def get_table(
             self, class_type: Type[MetaChild]
@@ -366,7 +361,7 @@ class SQLAdapter(BaseDataAdapter):
             retrieve_json_payload: bool = False,
     ) -> dict:
         attachments_dict: dict[str, list] = {}
-        with self.get_session() as session:
+        async with self.get_session() as session:
             if not subpath.startswith("/"):
                 subpath = f"/{subpath}"
 
@@ -379,12 +374,13 @@ class SQLAdapter(BaseDataAdapter):
                 .where(Attachments.space_name == space_name)
                 .where(Attachments.subpath == f"{subpath}/{shortname}")
             )
-            results = list(session.exec(statement).all())
+            results = list((await session.execute(statement)).all())
 
             if len(results) == 0:
                 return attachments_dict
 
             for idx, item in enumerate(results):
+                item = item[0]
                 attachment_record = Attachments.model_validate(item)
                 attachment_json = attachment_record.model_dump()
                 attachment = {
@@ -452,7 +448,7 @@ class SQLAdapter(BaseDataAdapter):
 
         shortname = shortname.replace("/", "")
 
-        with self.get_session() as session:
+        async with self.get_session() as session:
             table = self.get_table(class_type)
 
             statement = select(table).where(table.space_name == space_name)
@@ -461,10 +457,10 @@ class SQLAdapter(BaseDataAdapter):
             if table in [Entries, Attachments]:
                 statement = statement.where(table.subpath == subpath)
 
-            result : Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None = session.exec(statement).one_or_none()
-            if result is None:
+            _result = (await session.execute(statement)).one_or_none()
+            if _result is None:
                 return None
-
+            result : Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None = _result[0]
             try:
                 return result
             except Exception as e:
@@ -473,7 +469,7 @@ class SQLAdapter(BaseDataAdapter):
                 return None
 
     async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             results: list[core.Record] = []
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
@@ -486,8 +482,8 @@ class SQLAdapter(BaseDataAdapter):
                             ).params({k: f"{v}"})
                         else:
                             statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-                        _results = session.exec(statement).all()
-
+                        _results = (await session.execute(statement)).all()
+                        _results = [result[0] for result in _results]
                         if len(_results) > 0:
                             for result in _results:
                                 core_model_class : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
@@ -509,8 +505,8 @@ class SQLAdapter(BaseDataAdapter):
                     else:
                         statement = statement.where(text(f"{k}=:{k}")).params({k: v})
 
-                    _results = session.exec(statement).all()
-
+                    _results = (await session.execute(statement)).all()
+                    _results = [result[0] for result in _results]
                     if len(_results) > 0:
                         for result in _results:
                             _core_model_class: core.Meta = getattr(sys.modules["models.core"],
@@ -528,7 +524,7 @@ class SQLAdapter(BaseDataAdapter):
     ) -> Tuple[int, list[core.Record]]:
         total : int
         results : list
-        with (self.get_session() as session):
+        async with self.get_session() as session:
             user_query_policies = []
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
@@ -565,8 +561,9 @@ class SQLAdapter(BaseDataAdapter):
                         func.sum(statement_total.c["count"]).label('total_count')
                     )
 
-                total = session.exec(statement_total).one()
-                total = int(total)
+                _total = (await session.execute(statement_total)).one()
+
+                total = int(_total[0])
                 if query.type == QueryType.counters:
                     return total, []
 
@@ -582,7 +579,10 @@ class SQLAdapter(BaseDataAdapter):
                         query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
                     )
 
-                results = list(session.exec(statement).all())
+                results = list((await session.execute(statement)).all())
+
+                if query.type != QueryType.aggregation:
+                    results = [result[0] for result in results]
                 if is_fetching_spaces:
                     from utils.access_control import access_control
                     results = [result for result in results if await access_control.check_space_access(
@@ -661,7 +661,7 @@ class SQLAdapter(BaseDataAdapter):
             schema_shortname: str | None = None,
     ) -> dict[str, Any] | None:
         """Load a Meta class payload file"""
-        with self.get_session() as session:
+        async with self.get_session() as session:
             table = self.get_table(class_type)
             if not subpath.startswith("/"):
                 subpath = f"/{subpath}"
@@ -674,10 +674,10 @@ class SQLAdapter(BaseDataAdapter):
                     table.shortname == filename.replace('.json', '')
                 )
 
-            result = session.exec(statement).one_or_none()
+            result = (await session.execute(statement)).one_or_none()
             if result is None:
                 return None
-
+            result = result[0]
             var : dict = result.model_dump().get("payload", {}).get("body", {})
             return var
 
@@ -686,7 +686,7 @@ class SQLAdapter(BaseDataAdapter):
     ) -> Any:
         """Save"""
         try:
-            with self.get_session() as session:
+            async with self.get_session() as session:
                 entity = {
                     **meta.model_dump(),
                     "space_name": space_name,
@@ -726,8 +726,8 @@ class SQLAdapter(BaseDataAdapter):
                         )
 
                     session.add(data)
-                    session.commit()
-                    session.refresh(data)
+                    await session.commit()
+                    await session.refresh(data)
                     return data
                 except Exception as e:
                     raise API_Exception(
@@ -793,7 +793,7 @@ class SQLAdapter(BaseDataAdapter):
             meta: core.Meta,
             payload_data: dict[str, Any],
     ):
-        with self.get_session() as session:
+        async with self.get_session() as session:
             try:
                 result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
                 if result is None:
@@ -816,7 +816,7 @@ class SQLAdapter(BaseDataAdapter):
                 result.sqlmodel_update(meta.model_dump())
 
                 session.add(result)
-                session.commit()
+                await session.commit()
             except Exception as e:
                 print("[!save_payload_from_json]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -843,7 +843,7 @@ class SQLAdapter(BaseDataAdapter):
             attachment_media: Any | None = None,
     ) -> dict:
         """Update the entry, store the difference and return it"""
-        with self.get_session() as session:
+        async with self.get_session() as session:
             try:
                 result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
                 if result is None:
@@ -863,7 +863,7 @@ class SQLAdapter(BaseDataAdapter):
                     result.media = attachment_media
 
                 session.add(result)
-                session.commit()
+                await session.commit()
             except Exception as e:
                 print("[!]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -914,7 +914,7 @@ class SQLAdapter(BaseDataAdapter):
             updated_attributes_flattend: list,
             resource_type,
     ) -> dict:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             try:
                 diff_keys = list(old_version_flattend.keys())
                 diff_keys.extend(list(new_version_flattend.keys()))
@@ -956,7 +956,7 @@ class SQLAdapter(BaseDataAdapter):
                 )
 
                 session.add(Histories.model_validate(history_obj))
-                session.commit()
+                await session.commit()
 
                 return history_diff
             except Exception as e:
@@ -990,7 +990,7 @@ class SQLAdapter(BaseDataAdapter):
                 ),
             )
 
-        with self.get_session() as session:
+        async with self.get_session() as session:
             old_shortname = ""
             old_subpath = ""
             try:
@@ -1007,7 +1007,7 @@ class SQLAdapter(BaseDataAdapter):
                         table.shortname == dest_shortname
                     )
 
-                target = session.exec(statement).one_or_none()
+                target = (await session.execute(statement)).one_or_none()
                 if target is not None:
                     raise api.Exception(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -1024,7 +1024,7 @@ class SQLAdapter(BaseDataAdapter):
                     origin.subpath = dest_subpath
 
                 session.add(origin)
-                session.commit()
+                await session.commit()
                 try:
                     if table is Spaces:
                         session.add(
@@ -1039,14 +1039,14 @@ class SQLAdapter(BaseDataAdapter):
                             update(Attachments)
                             .where(col(Attachments.space_name) == space_name)
                             .values(space_name=dest_shortname))
-                        session.commit()
+                        await session.commit()
                 except Exception as e:
                     origin.shortname = old_shortname
                     if hasattr(origin, 'subpath'):
                         origin.subpath = old_subpath
 
                     session.add(origin)
-                    session.commit()
+                    await session.commit()
 
                     print("[!move]", e)
                     logger.error(f"Failed parsing an entry. Error: {e}")
@@ -1090,7 +1090,7 @@ class SQLAdapter(BaseDataAdapter):
                        shortname: str,
                        resource_type: ResourceType,
                        schema_shortname: str | None = None, ) -> bool:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             resource_cls = getattr(
                 sys.modules["models.core"], camel_case(resource_type)
             )
@@ -1122,7 +1122,8 @@ class SQLAdapter(BaseDataAdapter):
                     table.shortname == shortname
                 )
 
-            result = session.exec(statement).fetchall()
+            result = (await session.execute(statement)).fetchall()
+            result = [result[0] for result in result]
             return False if len(result) == 0 else True
 
     async def delete(
@@ -1135,19 +1136,19 @@ class SQLAdapter(BaseDataAdapter):
             retrieve_lock_status: bool | None = False,
     ):
         """Delete the file that match the criteria given, remove folder if empty"""
-        with self.get_session() as session:
+        async with self.get_session() as session:
             try:
                 if not subpath.startswith("/"):
                     subpath = f"/{subpath}"
 
                 result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
-                session.delete(result)
+                await session.delete(result)
                 if meta.__class__ == core.Space:
                     statement = delete(Entries).where(col(Entries.space_name) == space_name)
-                    session.execute(statement)
+                    await session.execute(statement)
                     statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name)
-                    session.execute(statement2)
-                session.commit()
+                    await session.execute(statement2)
+                await session.commit()
             except Exception as e:
                 print("[!delete]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -1164,13 +1165,13 @@ class SQLAdapter(BaseDataAdapter):
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
 
-        with self.get_session() as session:
+        async with self.get_session() as session:
             match action:
                 case LockAction.lock:
                     statement = select(Locks).where(Locks.space_name == space_name) \
                         .where(Locks.subpath == subpath) \
                         .where(Locks.shortname == shortname)
-                    result = session.exec(statement).one_or_none()
+                    result = (await session.execute(statement)).one_or_none()
                     if result:
                         raise api.Exception(
                             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1189,8 +1190,8 @@ class SQLAdapter(BaseDataAdapter):
                         owner_shortname=user_shortname,
                     )
                     session.add(lock)
-                    session.commit()
-                    session.refresh(lock)
+                    await session.commit()
+                    await session.refresh(lock)
                     return lock.model_dump()
                 case LockAction.fetch:
                     lock_payload = (await self.load(
@@ -1206,8 +1207,8 @@ class SQLAdapter(BaseDataAdapter):
                         .where(col(Locks.space_name) == space_name) \
                         .where(col(Locks.subpath) == subpath) \
                         .where(col(Locks.shortname) == shortname)
-                    session.execute(statement2)
-                    session.commit()
+                    await session.execute(statement2)
+                    await session.commit()
         return None
 
     async def fetch_space(self, space_name: str) -> core.Space | None:
@@ -1218,7 +1219,7 @@ class SQLAdapter(BaseDataAdapter):
             return None
 
     async def set_user_session(self, user_shortname: str, token: str) -> bool:
-        with (self.get_session() as session):
+        async with (self.get_session() as session):
             try:
                 total, last_session = await self.get_user_session(user_shortname, token)
 
@@ -1235,7 +1236,7 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=timestamp,
                     )
                 )
-                session.commit()
+                await session.commit()
 
                 return True
             except Exception as e:
@@ -1244,11 +1245,13 @@ class SQLAdapter(BaseDataAdapter):
 
 
     async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             statement = select(Sessions) \
                 .where(col(Sessions.shortname) == user_shortname)
 
-            results = session.exec(statement).all()
+            results = (await session.execute(statement)).all()
+            results = [result[0] for result in results]
+
             if len(results) == 0:
                 return 0, None
 
@@ -1259,29 +1262,29 @@ class SQLAdapter(BaseDataAdapter):
                         return 0, None
                     r.timestamp = datetime.now()
                     session.add(r)
-                    session.commit()
+                    await session.commit()
                     return len(results), token
         return len(results), None
 
 
     async def remove_user_session(self, user_shortname: str) -> bool:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             try:
                 statement = select(Sessions).where(col(Sessions.shortname) == user_shortname).order_by(
                     col(Sessions.timestamp).desc()
                 ).offset(settings.max_sessions_per_user)
-                oldest_sessions = session.exec(statement).all()
-
+                oldest_sessions = (await session.execute(statement)).all()
+                oldest_sessions = [oldest_session[0] for oldest_session in oldest_sessions]
                 for oldest_session in oldest_sessions:
-                    session.delete(oldest_session)
-                session.commit()
+                    await session.delete(oldest_session)
+                await session.commit()
                 return True
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
                 return False
 
     async def set_invitation(self, invitation_token: str, invitation_value):
-        with self.get_session() as session:
+        async with self.get_session() as session:
             timestamp = datetime.now()
             try:
                 session.add(
@@ -1292,35 +1295,35 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=timestamp,
                     )
                 )
-                session.commit()
+                await session.commit()
             except Exception as e:
                 print("[!set_invitation]", e)
 
     async def get_invitation(self, invitation_token: str) -> str | None:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             statement = select(Invitations).where(col(Invitations.invitation_token) == invitation_token)
 
-            result = session.exec(statement).one_or_none()
+            result = (await session.execute(statement)).one_or_none()
             if result is None:
                 return None
-
+            result = result[0]
             user_session = Invitations.model_validate(result)
 
             return user_session.invitation_value
 
     async def delete_invitation(self, invitation_token: str) -> bool:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             try:
                 statement = delete(Invitations).where(col(Invitations.invitation_token) == invitation_token)
-                session.execute(statement)
-                session.commit()
+                await session.execute(statement)
+                await session.commit()
                 return True
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
                 return False
 
     async def set_url_shortner(self, token_uuid: str, url: str):
-        with self.get_session() as session:
+        async with self.get_session() as session:
             try:
                 session.add(
                     URLShorts(
@@ -1330,18 +1333,18 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=datetime.now(),
                     )
                 )
-                session.commit()
+                await session.commit()
             except Exception as e:
                 print("[!set_url_shortner]", e)
 
     async def get_url_shortner(self, token_uuid: str) -> str | None:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             statement = select(URLShorts).where(URLShorts.token_uuid == token_uuid)
 
-            result = session.exec(statement).one_or_none()
+            result = (await session.execute(statement)).one_or_none()
             if result is None:
                 return None
-
+            result = result[0]
             url_shortner = URLShorts.model_validate(result)
             if settings.url_shorter_expires + url_shortner.timestamp.timestamp() < time.time():
                 await self.delete_url_shortner(token_uuid)
@@ -1350,22 +1353,22 @@ class SQLAdapter(BaseDataAdapter):
             return url_shortner.url
 
     async def delete_url_shortner(self, token_uuid: str) -> bool:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             try:
                 statement = delete(URLShorts).where(col(URLShorts.token_uuid) == token_uuid)
-                session.execute(statement)
-                session.commit()
+                await session.execute(statement)
+                await session.commit()
                 return True
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
                 return False
 
     async def delete_url_shortner_by_token(self, invitation_token: str) -> bool:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             try:
                 statement = delete(URLShorts).where(col(URLShorts.url).ilike(f"%{invitation_token}%"))
-                session.execute(statement)
-                session.commit()
+                await session.execute(statement)
+                await session.commit()
                 return True
             except Exception as e:
                 print("[!delete_url_shortner_by_token]", e)
@@ -1374,7 +1377,7 @@ class SQLAdapter(BaseDataAdapter):
     async def _set_query_final_results(self, query, results):
         is_aggregation = query.type == QueryType.aggregation
         not_history_event = query.type not in [QueryType.history, QueryType.events]
-
+        print("###", results)
         for idx, item in enumerate(results):
             if is_aggregation:
                 results = set_results_from_aggregation(
@@ -1405,50 +1408,53 @@ class SQLAdapter(BaseDataAdapter):
         return results
 
     async def clear_failed_password_attempts(self, user_shortname: str) -> bool:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             try:
                 statement = select(Users).where(Users.shortname == user_shortname)
-                result = session.exec(statement).one_or_none()
+                result = (await session.execute(statement)).one_or_none()
                 if result is None:
                     return False
+                result = result[0]
                 result.attempt_count = 0
                 session.add(result)
-                session.commit()
+                await session.commit()
                 return True
             except Exception as e:
                 print("[!clear_failed_password_attempts]", e)
                 return False
 
     async def get_failed_password_attempt_count(self, user_shortname: str) -> int:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             statement = select(Users).where(col(Users.shortname) == user_shortname)
 
-            result = session.exec(statement).one_or_none()
+            result = (await session.execute(statement)).one_or_none()
             if result is None:
                 return 0
-
+            result = result[0]
             failed_login_attempt = Users.model_validate(result)
             return 0 if failed_login_attempt.attempt_count is None else failed_login_attempt.attempt_count
 
     async def set_failed_password_attempt_count(self, user_shortname: str, attempt_count: int) -> bool:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             try:
                 statement = select(Users).where(col(Users.shortname) == user_shortname)
-                result = session.exec(statement).one_or_none()
+                result = (await session.execute(statement)).one_or_none()
                 if result is None:
                     return False
+                result = result[0]
                 result.attempt_count = attempt_count
                 session.add(result)
-                session.commit()
+                await session.commit()
                 return True
             except Exception as e:
                 print("[!set_failed_password_attempt_count]", e)
                 return False
 
     async def get_spaces(self) -> dict:
-        with self.get_session() as session:
+        async with self.get_session() as session:
             statement = select(Spaces)
-            results = session.exec(statement).all()
+            results = (await session.execute(statement)).all()
+            results = [result[0] for result in results]
             spaces = {}
             for idx, item in enumerate(results):
                 space = Spaces.model_validate(item)
@@ -1459,14 +1465,15 @@ class SQLAdapter(BaseDataAdapter):
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
 
-        with self.get_session() as session:
+        async with self.get_session() as session:
             statement = select(Attachments.media) \
                 .where(Attachments.space_name == space_name) \
                 .where(Attachments.subpath == subpath) \
                 .where(Attachments.shortname == shortname)
 
-            result = session.exec(statement).one_or_none()
+            result = (await session.execute(statement)).one_or_none()
             if result:
+                result = result[0]
                 return io.BytesIO(result)
         return None
 
