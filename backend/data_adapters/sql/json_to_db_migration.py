@@ -68,9 +68,27 @@ def save_report(isubpath: str, issue):
 
 def bulk_insert_in_batches(session, model, records, batch_size=2000):
     for i in range(0, len(records), batch_size):
-        batch = records[i:i + batch_size]
-        session.bulk_insert_mappings(model, batch)
-        session.commit()
+        batch = []
+        try:
+            batch = records[i:i + batch_size]
+            session.bulk_insert_mappings(model, batch)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            print("[!bulk_insert_in_batches]", e)
+            _batch = None
+            for _batch in batch:
+                try:
+                    session.add(model.model_validate(_batch))
+                    session.commit()
+                except Exception as e:
+                    session.rollback()
+                    print(
+                        "[!bulk_insert_in_batches_single]",
+                        e,
+                        f"* {_batch['subpath']}/{_batch['shortname']}"
+                    )
+                    save_report('/', save_issue(_batch['resource_type'], _batch, e))
 
 def process_directory(engine, root, dirs, space_name, subpath):
     attachments = []
@@ -241,11 +259,11 @@ def process_directory(engine, root, dirs, space_name, subpath):
                             save_report('/', save_issue(entry['resource_type'], entry, e))
 
         try:
-            bulk_insert_in_batches(session, Attachments, attachments)
-            bulk_insert_in_batches(session, Entries, entries)
             bulk_insert_in_batches(session, Users, users)
             bulk_insert_in_batches(session, Roles, roles)
             bulk_insert_in_batches(session, Permissions, permissions)
+            bulk_insert_in_batches(session, Entries, entries)
+            bulk_insert_in_batches(session, Attachments, attachments)
         except Exception as e:
             print(e)
             session.rollback()
@@ -260,8 +278,6 @@ def main():
             session.execute(text(sql))
     except Exception as e:
         print("Warning : While creating DB: ", str(e))
-    finally:
-        engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 
     try:
         generate_tables()
@@ -293,9 +309,95 @@ def main():
             print(f"Space '{str(target_path).replace('/', '')}' does not exist")
             sys.exit(1)
 
+        all_dirs = []
+        user_dirs = []
+        for root, dirs, _ in os.walk(str(target_path)):
+            if root.startswith(os.path.join(str(target_path), 'management/users')):
+                user_dirs.append((root, sorted(dirs, key=lambda d: d != 'dmart')))
+            else:
+                all_dirs.append((root, dirs))
+
+        user_dirs.sort(key=lambda x: (
+            not x[0].startswith(os.path.join(str(target_path), 'management/users/.dm')),
+            x[0]
+        ))
+
+        for root, dirs in user_dirs:
+            tmp = root.replace(str(settings.spaces_folder), '')
+            if tmp == '':
+                continue
+            if tmp[0] == '/':
+                tmp = tmp[1:]
+            space_name = tmp.split('/')[0]
+            subpath = '/'.join(tmp.split('/')[1:])
+            if space_name == '..':
+                continue
+
+            if space_name.startswith('.git'):
+                continue
+
+            print(".", end='')
+            if subpath == '' or subpath == '/':
+                subpath = '/'
+                p = os.path.join(root, '.dm', 'meta.space.json')
+                entry = {}
+                if Path(p).is_file():
+                    try:
+                        entry = json.load(open(p))
+                        entry['space_name'] = space_name
+                        entry['shortname'] = space_name
+                        entry['query_policies'] = generate_query_policies(
+                            space_name=space_name,
+                            subpath=subpath,
+                            resource_type=ResourceType.space,
+                            is_active=True,
+                            owner_shortname=entry.get('owner_shortname', 'dmart'),
+                            owner_group_shortname=entry.get('owner_group_shortname', None),
+                        )
+
+                        _payload = entry.get('payload', {})
+                        if _payload:
+                            if payload := _payload.get('body', None):
+                                if entry.get('payload', {}).get('content_type', None) == 'json':
+                                    body = json.load(open(
+                                        os.path.join(root, '.dm', '../..', str(payload))
+                                    ))
+                                else:
+                                    body = payload
+                                sha1 = hashlib.sha1()
+                                sha1.update(json.dumps(body).encode())
+                                checksum = sha1.hexdigest()
+                                entry['payload']['checksum'] = checksum
+                                entry['payload']['body'] = body
+                        else:
+                            entry['payload'] = None
+                        entry['subpath'] = '/'
+                        entry['resource_type'] = 'space'
+                        entry['tags'] = entry.get('tags', [])
+                        entry['acl'] = entry.get('acl', [])
+                        entry['hide_folders'] = entry.get('hide_folders', [])
+                        entry['relationships'] = entry.get('relationships', [])
+                        entry['hide_space'] = entry.get('hide_space', False)
+
+                        session.add(Spaces.model_validate(entry))
+                        session.commit()
+                    except Exception as e:
+                        save_report('/', save_issue(ResourceType.space, entry, e))
+                continue
+
+            subpath = subpath.replace('.dm', '')
+            if subpath != '/' and subpath.endswith('/'):
+                subpath = subpath[:-1]
+
+            if subpath == '':
+                subpath = '/'
+
+            process_directory(engine, root, dirs, space_name, subpath)
+
+        # Process directories in sorted order
         with ThreadPoolExecutor() as executor:
             futures = []
-            for root, dirs, _ in os.walk(str(target_path)):
+            for root, dirs in all_dirs:
                 tmp = root.replace(str(settings.spaces_folder), '')
                 if tmp == '':
                     continue
@@ -309,7 +411,6 @@ def main():
                 if space_name.startswith('.git'):
                     continue
 
-                # print(f"Processing {space_name}/{subpath} ... ")
                 print(".", end='')
                 if subpath == '' or subpath == '/':
                     subpath = '/'

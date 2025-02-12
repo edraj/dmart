@@ -9,7 +9,7 @@ echo "Ruff ..."
 python -m ruff check --exclude pytests --exclude alembic .
 RESULT+=$?
 echo "Mypy ..."
-python -m mypy --explicit-package-bases --warn-return-any --check-untyped-defs --exclude loadtest --exclude pytests .
+python -m mypy --explicit-package-bases --warn-return-any --check-untyped-defs --exclude loadtest --exclude pytests --exclude alembic .
 RESULT+=$?
 
 echo "Result : $RESULT"
