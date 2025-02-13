@@ -1,4 +1,5 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
+import asyncio
 from enum import StrEnum
 
 from sqlalchemy import update
@@ -32,7 +33,7 @@ class ResourceType(StrEnum):
     update = "update"
 
 
-def handle_sql_modulation(args):
+async def handle_sql_modulation(args):
     spaces: list[Any] = []
     if args.space:
         if args.space == "management":
@@ -81,7 +82,7 @@ def handle_sql_modulation(args):
     if targets[0] not in ["description", "displayname", "payload"]:
         raise Exception("target must be either 'description', 'displayname' or 'payload'")
 
-    with SQLAdapter().get_session() as session:
+    async with SQLAdapter().get_session() as session:
         for space in spaces:
             print("[info] Processing...", space)
 
@@ -92,7 +93,8 @@ def handle_sql_modulation(args):
                 if args.subpath:
                     statement = statement.where(space.subpath == args.subpath)
 
-            records = session.exec(statement).all()
+            records = (await session.execute(statement)).all()
+            records = [record[0] for record in records]
             print("[info] # Records found:", len(records))
             print("[info] state:", state)
             for record in records:
@@ -147,8 +149,8 @@ def handle_sql_modulation(args):
 
                 stmt = update(space).where(col(space.uuid )== record.uuid).values(
                     **{targets[0]: getattr(record, targets[0])})
-                session.exec(stmt)  #type: ignore
-            session.commit()
+                await session.execute(stmt)  #type: ignore
+            await session.commit()
 
 
 
@@ -183,6 +185,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if settings.active_data_db == "sql":
-        handle_sql_modulation(args)
+        asyncio.run(
+            handle_sql_modulation(args)
+        )
     else:
         handle_file_modulation(args)

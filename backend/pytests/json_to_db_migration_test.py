@@ -4,11 +4,18 @@ import pytest
 import os
 import json
 from pathlib import Path
-from sqlmodel import Session, create_engine, text
-from data_adapters.sql.json_to_db_migration import subpath_checker, generate_tables
+from sqlmodel import Session, create_engine, text, SQLModel
 from data_adapters.sql.create_tables import Attachments, Entries, Spaces, Histories
 from sqlalchemy.exc import OperationalError
-from utils.settings import settings  # Use settings from your settings file
+from utils.settings import settings
+
+
+def subpath_checker(subpath: str):
+    if subpath.endswith("/"):
+        subpath = subpath[:-1]
+    if not subpath.startswith("/"):
+        subpath = '/' + subpath
+    return subpath
 
 
 def connect_with_retry(engine, retries=5, delay=2):
@@ -29,7 +36,7 @@ def connect_with_retry(engine, retries=5, delay=2):
 @pytest.fixture(scope="module")
 def setup_database():
     # Use the settings to connect with the main `postgres` user
-    postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+    postgresql_url = f"{settings.database_driver.replace('+asyncpg','+psycopg')}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
     engine = create_engine(f"{postgresql_url}/postgres", echo=False, isolation_level="AUTOCOMMIT")
 
     # Create the database
@@ -63,14 +70,17 @@ def setup_database():
 @pytest.fixture(scope="module")
 def setup_environment(setup_database):
     # Set the database name from settings
-    postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+    driver = settings.database_driver.replace('+asyncpg', '+psycopg')
+    postgresql_url = f"{driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
     engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 
     # Retry connecting to the newly created database
     connect_with_retry(engine)
 
     # Generate tables after ensuring connection
-    generate_tables()
+    postgresql_url = f"{driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
+    engine = create_engine(postgresql_url, echo=False)
+    SQLModel.metadata.create_all(engine)
 
     yield engine
 
