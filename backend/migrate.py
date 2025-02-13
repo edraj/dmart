@@ -1,4 +1,5 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
+import asyncio
 import sys
 
 
@@ -11,7 +12,7 @@ def main():
 
     if command == "json_to_db":
         import data_adapters.sql.json_to_db_migration as json_to_db_migration
-        json_to_db_migration.main()
+        asyncio.run(json_to_db_migration.main())
     elif command == "db_to_json":
         import data_adapters.sql.db_to_json_migration as db_to_json_migration
         db_to_json_migration.main()
