@@ -36,7 +36,7 @@ def connect_with_retry(engine, retries=5, delay=2):
 @pytest.fixture(scope="module")
 def setup_database():
     # Use the settings to connect with the main `postgres` user
-    postgresql_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+    postgresql_url = f"{settings.database_driver.replace('+asyncpg','+psycopg')}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
     engine = create_engine(f"{postgresql_url}/postgres", echo=False, isolation_level="AUTOCOMMIT")
 
     # Create the database
@@ -70,7 +70,7 @@ def setup_database():
 @pytest.fixture(scope="module")
 def setup_environment(setup_database):
     # Set the database name from settings
-    driver = settings.database_driver.replace('+asyncpg', '')
+    driver = settings.database_driver.replace('+asyncpg', '+psycopg')
     postgresql_url = f"{driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
     engine = create_engine(f"{postgresql_url}/{settings.database_name}", echo=False)
 
