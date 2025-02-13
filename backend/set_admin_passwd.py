@@ -1,4 +1,6 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
+import asyncio
+
 from data_adapters.sql.adapter import SQLAdapter
 from data_adapters.sql.create_tables import Users
 from utils.password_hashing import hash_password
@@ -23,25 +25,27 @@ while True:
 print("Generating and storing the password for dmart and alibaba")
 hashed = hash_password(password)
 
-if settings.active_data_db == "file":
-    for key in users.keys():
-        file_name = settings.spaces_folder / f"management/users/.dm/{key}/meta.user.json"
-        with open(file_name, 'r') as read_file:
-            data = json.load(read_file)
-            data["password"] = hashed
-            with open(file_name, 'w') as write_file:
-                write_file.write(json.dumps(data))
-else:
-    with SQLAdapter().get_session() as session:
+async def main():
+    if settings.active_data_db == "file":
         for key in users.keys():
-            statement = select(Users).where(Users.shortname == key)
-            user = session.exec(statement).one()
-            user.password=hashed
-            user.is_active=True
-            session.add(user)
-            session.commit()
+            file_name = settings.spaces_folder / f"management/users/.dm/{key}/meta.user.json"
+            with open(file_name, 'r') as read_file:
+                data = json.load(read_file)
+                data["password"] = hashed
+                with open(file_name, 'w') as write_file:
+                    write_file.write(json.dumps(data))
+    else:
+        async with SQLAdapter().get_session() as session:
+            for key in users.keys():
+                statement = select(Users).where(Users.shortname == key)
+                user = (await session.execute(statement)).one()[0]
+                user.password=hashed
+                user.is_active=True
+                session.add(user)
+                await session.commit()
 
 
+asyncio.run(main())
 
 with open("./login_creds.sh", 'w') as creds:
     subprocess.run( [ "sed", f"s/xxxx/{password}/g", "login_creds.sh.sample" ], stdout=creds)

@@ -8,7 +8,7 @@ from jsonschema.validators import Draft7Validator
 import json
 import time
 from sqlmodel import select, col, delete
-from .adapter import SQLAdapter
+from adapter import SQLAdapter
 from data_adapters.adapter import data_adapter as db
 from data_adapters.sql.create_tables import Entries, Spaces
 from typing import Any
@@ -28,11 +28,11 @@ spaces_schemas: dict[str, dict[str, dict]] = {}
 
 
 async def main(health_type: str, space_param: str, schemas_param: list):
-    with SQLAdapter().get_session() as session:
+    async with SQLAdapter().get_session() as session:
         session.execute(
             delete(Entries).where(col(Entries.subpath) == "/health_check")
         )
-        session.commit()
+        await session.commit()
 
     health_type = "hard" if health_type is None else health_type
     space_param = "all" if space_param is None else space_param
@@ -60,9 +60,11 @@ async def main(health_type: str, space_param: str, schemas_param: list):
 
 
 async def hard_space_check(space):
-    with SQLAdapter().get_session() as session:
+    async with SQLAdapter().get_session() as session:
         sql_stm = select(Entries).where(col(Entries.space_name) == space)
-        entries = list(session.exec(sql_stm).all())
+        _result = session.exec(sql_stm).all()
+        _result = [r[0] for r in _result]
+        entries = list(_result)
         folders_report: dict[str, dict[str, Any]] = {}
 
         _sql_stm = select(Spaces).where(col(Spaces.shortname) == space)
