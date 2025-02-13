@@ -297,8 +297,8 @@ class SQLAdapter(BaseDataAdapter):
         async_session = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)()
         try:
             yield async_session
-        except Exception as e:
-            await async_session.close()
+        except Exception as _:
+            await async_session.close() # type: ignore
 
 
     def get_table(
