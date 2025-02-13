@@ -5,10 +5,17 @@ import os
 import json
 from pathlib import Path
 from sqlmodel import Session, create_engine, text, SQLModel
-from data_adapters.sql.json_to_db_migration import subpath_checker, generate_tables
 from data_adapters.sql.create_tables import Attachments, Entries, Spaces, Histories
 from sqlalchemy.exc import OperationalError
-from utils.settings import settings  # Use settings from your settings file
+from utils.settings import settings
+
+
+def subpath_checker(subpath: str):
+    if subpath.endswith("/"):
+        subpath = subpath[:-1]
+    if not subpath.startswith("/"):
+        subpath = '/' + subpath
+    return subpath
 
 
 def connect_with_retry(engine, retries=5, delay=2):

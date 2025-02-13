@@ -19,7 +19,8 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
+driver = settings.database_driver.replace('+asyncpg', '')
+database_connection_string = f"{driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
 connection_string = f"{database_connection_string}/{settings.database_name}"
 config.set_main_option('sqlalchemy.url', connection_string)
 
