@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from copy import copy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Type, Tuple, AsyncGenerator
+from typing import Any, Type, Tuple
 from uuid import uuid4
 import ast
 from fastapi import status
@@ -239,6 +239,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
 class SQLAdapter(BaseDataAdapter):
     session: Session
+    async_session: sessionmaker
     engine: Any
 
     def locators_query(self, query: api.Query) -> tuple[int, list[core.Locator]]:
@@ -267,6 +268,7 @@ class SQLAdapter(BaseDataAdapter):
                  ) -> tuple[Path, str]:
         return (Path(), "")
 
+
     def __init__(self):
         try:
             self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
@@ -278,6 +280,9 @@ class SQLAdapter(BaseDataAdapter):
                 pool_size=settings.database_pool_size,
                 pool_pre_ping=True,
             )
+            self.async_session = sessionmaker(
+                self.engine, class_=AsyncSession, expire_on_commit=False
+            ) # type: ignore
             # with Session(self.engine) as session:
             #     session.exec(text("SELECT 1")).one_or_none()
         except Exception as e:
@@ -293,11 +298,11 @@ class SQLAdapter(BaseDataAdapter):
             sys.exit(127)
 
     @asynccontextmanager
-    async def get_session(self) -> AsyncGenerator[Any, Any]:
-        async_session = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)()
+    async def get_session(self):
+        async_session = self.async_session()
         try:
             yield async_session
-        except Exception as _:
+        finally:
             await async_session.close() # type: ignore
 
 
