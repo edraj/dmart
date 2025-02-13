@@ -276,7 +276,7 @@ class SQLAdapter(BaseDataAdapter):
                 echo=False,
                 max_overflow=settings.database_max_overflow,
                 pool_size=settings.database_pool_size,
-                pool_pre_ping=True
+                pool_pre_ping=True,
             )
             # with Session(self.engine) as session:
             #     session.exec(text("SELECT 1")).one_or_none()
@@ -294,8 +294,11 @@ class SQLAdapter(BaseDataAdapter):
 
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[Any, Any]:
-        async_session = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
-        yield async_session()
+        async_session = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)()
+        try:
+            yield async_session
+        except Exception as e:
+            await async_session.close()
 
 
     def get_table(
@@ -865,7 +868,7 @@ class SQLAdapter(BaseDataAdapter):
                 session.add(result)
                 await session.commit()
             except Exception as e:
-                print("[!]", e)
+                print("[!update]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
