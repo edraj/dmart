@@ -608,7 +608,6 @@ async def retrieve_entry_or_attachment_payload(
 
     data = await db.get_media_attachments(space_name, subpath, shortname)
     if data:
-        print(meta.payload.body.endswith(".svg"))
         if meta.payload.body.endswith(".svg"):
             mine_type = "image/svg+xml"
         else:
