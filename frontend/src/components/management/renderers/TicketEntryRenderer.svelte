@@ -29,7 +29,7 @@
   let ticket_action = $state(null);
   let resolution = $state(null);
   let comment = $state("");
-  let to_shortname = $state("null");
+  let to_shortname = $state("");
   async function handleTicketSubmit(e) {
     e.preventDefault();
     if (ticket_action === null && to_shortname===""){
@@ -37,7 +37,7 @@
         return;
     }
 
-    if (to_shortname!=="") {
+    if (to_shortname) {
         const response = await request({
             space_name,
             request_type: RequestType.assign,
@@ -88,34 +88,24 @@
     }
   }
 
-  let ticketPayload = null;
+  let ticketPayload = $state(null);
+  let ticketStates = $state([]);
+  let ticketResolutions = $state([]);
   async function get_ticket_payload() {
       ticketPayload = await retrieve_entry(ResourceType.content, space_name, "workflows", entry.workflow_shortname, true)
       ticketPayload = ticketPayload.payload.body;
-  }
 
-  let ticketStates = $state([]);
-    $effect(() => {
       if (ticketPayload){
         ticketStates = ticketPayload.states.filter((e) => e.state === entry.state)[0]?.next;
-     }
-  });
 
-  let ticketResolutions = $state([]);
-    $effect(() => {
-      if ((ticketStates??[]).length){
+        if ((ticketStates??[]).length){
           ticketResolutions = ticketPayload.states.filter((e) => e.state === ticket_status)[0]?.resolutions ?? [];
+        }
       }
-  });
+  }
 
   $effect(() => {
     ticket_action = ticketStates?.filter((e) => e.state === ticket_status)[0]?.action ?? null;
-  });
-
-    $effect(() => {
-      if (ticket_status){
-          resolution = null;
-      }
   });
 </script>
 
@@ -127,11 +117,11 @@
           <Label>State</Label>
           <!-- on:change={handleInputChange} -->
           <Input
-                  class=""
-                  type="select"
-                  name="status"
-                  placeholder="Status..."
-                  bind:value={ticket_status}
+              class=""
+              type="select"
+              name="status"
+              placeholder="Status..."
+              bind:value={ticket_status}
           >
             <option value={null}>Select next state</option>
             {#each ticketStates as e}

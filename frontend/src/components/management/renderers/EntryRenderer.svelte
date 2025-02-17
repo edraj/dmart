@@ -222,6 +222,7 @@
                     jseContentRef.set({
                         text: JSON.stringify(cpy?.payload?.body ?? {}, null, 2),
                     });
+                    jseContent = {json: cpy?.payload?.body};
                 } else {
                     jseContent = cpy?.payload?.body;
                 }
@@ -431,7 +432,7 @@
                     }
                 }
                 const y = jseContent.json
-                    ? structuredClone(jseContent.json)
+                    ? structuredClone($state.snapshot(jseContent).json)
                     : JSON.parse(jseContent.text);
 
                 if (new_resource_type === "schema") {
@@ -1661,7 +1662,7 @@
             >
               <Icon name="pencil"/>
             </Button>
-            {#if schema && jseContent?.json}
+            {#if schema && jseContent}
               <Button
                       outline
                       color="success"
@@ -2010,12 +2011,16 @@
           {/if}
         </div>
       </div>
-      {#if schema && jseContent?.json}
+
+      {#if schema && jseContent}
+        <div class="d-flex justify-content-end my-1 mx-3">
+          <Button onclick={handleSave}>Save</Button>
+        </div>
         <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
           {#if resource_type === ResourceType.schema}
             <SchemaEditor bind:content={jseContent}/>
           {:else if resource_type === ResourceType.content && schema_name === "configuration"}
-            <ConfigEditor entries={jseContent.json.items}/>
+            <ConfigEditor bind:entries={jseContent.json.items}/>
           {:else if resource_type === ResourceType.content && schema_name === "translation"}
             <TranslationEditor
                     bind:entries={jseContent.json.items}
