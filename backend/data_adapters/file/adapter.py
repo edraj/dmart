@@ -1258,7 +1258,7 @@ class FileAdapter(BaseDataAdapter):
             )
         return records
 
-    async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
+    async def get_media_attachment(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass
 
     async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
