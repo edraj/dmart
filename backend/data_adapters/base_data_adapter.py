@@ -295,7 +295,7 @@ class BaseDataAdapter(ABC):
         return {}
 
     @abstractmethod
-    async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
+    async def get_media_attachment(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass
 
     @abstractmethod

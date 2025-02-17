@@ -1469,7 +1469,7 @@ class SQLAdapter(BaseDataAdapter):
                 spaces[space.shortname] = space.model_dump()
             return spaces
 
-    async def get_media_attachments(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
+    async def get_media_attachment(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
 
