@@ -22,8 +22,8 @@ elif systemctl is-active --quiet nginx; then
   #mkdir -p /usr/share/nginx/html/sysadmin/
   rm -rf /usr/share/nginx/html/sysadmin/*
   rsync -av dist/client/ /usr/share/nginx/html/
-  unlink /usr/share/nginx/html/index.html
-  ln -s /usr/share/nginx/html/sysadmin/index.html /usr/share/nginx/html/index.html
+  #unlink /usr/share/nginx/html/index.html
+  #ln -s /usr/share/nginx/html/sysadmin/index.html /usr/share/nginx/html/index.html
   #restorecon -v /usr/share/nginx/html/*
   #ausearch -m avc -c nginx -ts recent
   #systemctl restart nginx 
