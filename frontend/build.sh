@@ -5,7 +5,7 @@ git pull
 
 # Run Svelte check and build, then sync files
 yarn cache clean
-rm -rf node_modules yarn.lock /tmp/js-offline
+#rm -rf node_modules yarn.lock /tmp/js-offline
 yarn svelte-check && yarn build
 
 # Check if Caddy or Nginx is active and perform rsync accordingly
