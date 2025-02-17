@@ -79,8 +79,8 @@
     </div>
 {:else if !$user || !$user.signedin}
     <div
-            class="container-fluid d-flex align-items-start py-3 h-100"
-            id="login-container"
+        class="container-fluid d-flex align-items-start py-3 h-100"
+        id="login-container"
     >
         <Login/>
     </div>
@@ -89,9 +89,9 @@
         <Header/>
     </div>
     <Container
-            fluid={true}
-            class="position-relative p-0"
-            style="top: {header_height}px; height: {window_height -
+        fluid={true}
+        class="position-relative p-0"
+        style="top: {header_height}px; height: {window_height -
       header_height -
       8}px;"
     >
