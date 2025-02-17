@@ -21,7 +21,7 @@ elif systemctl is-active --quiet nginx; then
   echo "Nginx is active. Syncing files to /usr/share/nginx/html/"
   #mkdir -p /usr/share/nginx/html/sysadmin/
   rm -rf /usr/share/nginx/html/sysadmin/*
-  rsync -av dist/client/ /usr/share/nginx/html/
+  rsync -av dist/client/ /usr/share/nginx/html/sysadmin/
   #unlink /usr/share/nginx/html/index.html
   #ln -s /usr/share/nginx/html/sysadmin/index.html /usr/share/nginx/html/index.html
   #restorecon -v /usr/share/nginx/html/*
