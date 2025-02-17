@@ -11,7 +11,7 @@ from uuid import uuid4
 import ast
 from fastapi import status
 from fastapi.logger import logger
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, defer
 from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean,\
     func, text
 import io
@@ -537,9 +537,13 @@ class SQLAdapter(BaseDataAdapter):
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
-            table = set_table_for_query(query)
+            if query.type == QueryType.attachments:
+                table = Attachments
+                statement = select(table).options(defer(Attachments.media))
+            else:
+                table = set_table_for_query(query)
+                statement = select(table)
 
-            statement = select(table)
             statement_total = select(func.count(col(table.uuid)))
 
             if query and query.type == QueryType.events:
@@ -586,7 +590,6 @@ class SQLAdapter(BaseDataAdapter):
                     ).params(
                         query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
                     )
-
                 results = list((await session.execute(statement)).all())
 
                 if query.type != QueryType.aggregation:
@@ -1385,33 +1388,39 @@ class SQLAdapter(BaseDataAdapter):
     async def _set_query_final_results(self, query, results):
         is_aggregation = query.type == QueryType.aggregation
         not_history_event = query.type not in [QueryType.history, QueryType.events]
-        print("###", results)
-        for idx, item in enumerate(results):
-            if is_aggregation:
-                results = set_results_from_aggregation(
-                    query, item, results, idx
-                )
-            else:
+
+        if query.type == QueryType.attachments:
+            for idx, item in enumerate(results):
                 results[idx] = item.to_record(
                     query.subpath, item.shortname
                 )
-
-            if not_history_event:
-                if not query.retrieve_json_payload:
-                    attrb = results[idx].attributes
-                    if (
-                        attrb
-                        and attrb.get("payload", {})
-                        and attrb.get("payload", {}).get("body", False)
-                    ):
-                        attrb["payload"]["body"] = None
-
-                if query.retrieve_attachments:
-                    results[idx].attachments = await self.get_entry_attachments(
-                        query.subpath,
-                        Path(f"{query.space_name}/{results[idx].shortname}"),
-                        retrieve_json_payload=True,
+        else:
+            for idx, item in enumerate(results):
+                if is_aggregation:
+                    results = set_results_from_aggregation(
+                        query, item, results, idx
                     )
+                else:
+                    results[idx] = item.to_record(
+                        query.subpath, item.shortname
+                    )
+
+                if not_history_event:
+                    if not query.retrieve_json_payload:
+                        attrb = results[idx].attributes
+                        if (
+                            attrb
+                            and attrb.get("payload", {})
+                            and attrb.get("payload", {}).get("body", False)
+                        ):
+                            attrb["payload"]["body"] = None
+
+                    if query.retrieve_attachments:
+                        results[idx].attachments = await self.get_entry_attachments(
+                            query.subpath,
+                            Path(f"{query.space_name}/{results[idx].shortname}"),
+                            retrieve_json_payload=True,
+                        )
 
         return results
 
