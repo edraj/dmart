@@ -11,6 +11,7 @@ from uuid import uuid4
 import ast
 from fastapi import status
 from fastapi.logger import logger
+from sqlalchemy import literal_column
 from sqlalchemy.orm import sessionmaker, defer
 from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean,\
     func, text
@@ -54,6 +55,14 @@ from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+
+
+def query_attachment_aggregation(subpath):
+    return select(
+        literal_column("payload->'content_type'").label("content_type"),
+        func.count(text("*")).label("count")
+    ).group_by(text("payload->'content_type'")) \
+     .where(col(Attachments.subpath) == subpath)
 
 
 def query_aggregation(table, query):
@@ -124,10 +133,15 @@ def string_to_list(input_str):
     except (ValueError, SyntaxError):
         return [input_str]
 
+
 async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
+        if  query.type == QueryType.attachments_aggregation and not is_for_count:
+            return query_attachment_aggregation(query.subpath)
+
         if query.type == QueryType.aggregation and not is_for_count:
             statement = query_aggregation(table, query)
+
     except Exception as e:
         print("[!query]", e)
         raise api.Exception(
@@ -537,9 +551,9 @@ class SQLAdapter(BaseDataAdapter):
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
-            if query.type == QueryType.attachments:
+            if query.type in [QueryType.attachments, QueryType.attachments_aggregation]:
                 table = Attachments
-                statement = select(table).options(defer(Attachments.media))
+                statement = select(table).options(defer(table.media)) # type: ignore
             else:
                 table = set_table_for_query(query)
                 statement = select(table)
@@ -558,7 +572,7 @@ class SQLAdapter(BaseDataAdapter):
                     and query.space_name == "management"
                     and query.subpath == "/"):
                 is_fetching_spaces = True
-                statement = select(Spaces)
+                statement = select(Spaces) # type: ignore
                 statement_total = select(func.count(col(Spaces.uuid)))
             else:
                 user_query_policies = await get_user_query_policies(
@@ -591,7 +605,17 @@ class SQLAdapter(BaseDataAdapter):
                         query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
                     )
                 results = list((await session.execute(statement)).all())
-
+                if query.type == QueryType.attachments_aggregation:
+                    attributes = {}
+                    for item in results:
+                        attributes.update({item[0]: item[1]})
+                    return 1, [core.Record(
+                        resource_type=ResourceType.content,
+                        uuid=uuid4(),
+                        shortname='aggregation_result',
+                        subpath=query.subpath,
+                        attributes=attributes
+                    )]
                 if query.type != QueryType.aggregation:
                     results = [result[0] for result in results]
                 if is_fetching_spaces:
