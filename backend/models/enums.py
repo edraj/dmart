@@ -188,6 +188,8 @@ class QueryType(StrEnum):
     counters = "counters"
     reports = "reports"
     aggregation = "aggregation"
+    attachments = "attachments"
+    attachments_aggregation = "attachments_aggregation"
 
 
 class SortType(StrEnum):
