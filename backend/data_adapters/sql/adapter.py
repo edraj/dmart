@@ -155,7 +155,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
     if query.space_name:
         statement = statement.where(table.space_name == query.space_name)
-    if query.subpath and table is Entries:
+    if query.subpath and table in [Entries, Attachments]:
         statement = statement.where(table.subpath == query.subpath)
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
@@ -604,6 +604,7 @@ class SQLAdapter(BaseDataAdapter):
                     ).params(
                         query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
                     )
+                print("@@@@@@@@@@@@", statement)
                 results = list((await session.execute(statement)).all())
                 if query.type == QueryType.attachments_aggregation:
                     attributes = {}
