@@ -345,6 +345,10 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
 
     if user.displayname:
         attributes["displayname"] = user.displayname
+
+    if user.description:
+        attributes["displayname"] = user.description
+
     if user.msisdn:
         attributes["msisdn"] = user.msisdn
 
