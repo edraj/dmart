@@ -748,6 +748,12 @@ class SQLAdapter(BaseDataAdapter):
                             "body": entity['body'],
                             "state": entity['state']
                         }
+                    elif meta.__class__ == core.Reaction:
+                        entity["payload"] = {
+                            "content_type": ContentType.reaction,
+                            "body": entity['type'],
+                            "state": None
+                        }
                     entity['resource_type'] = meta.__class__.__name__.lower()
                     data = self.get_base_model(meta.__class__, entity)
 
@@ -760,7 +766,6 @@ class SQLAdapter(BaseDataAdapter):
                             owner_shortname=entity.get('owner_shortname', 'dmart'),
                             owner_group_shortname=entity.get('owner_group_shortname', None),
                         )
-
                     session.add(data)
                     await session.commit()
                     await session.refresh(data)
