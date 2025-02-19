@@ -12,9 +12,13 @@
 
 {#if resource_type === ResourceType.comment}
   <div>
-    <p style="margin: 0px"><b>State:</b>{attributes.state}</p>
+    <p style="margin: 0px"><b>State:</b> {attributes.state}</p>
     <br />
-    <p style="margin: 0px"><b>Body:</b>{attributes.body}</p>
+    <p style="margin: 0px"><b>Body:</b> {attributes.body}</p>
+  </div>
+{:else if resource_type === ResourceType.reaction}
+  <div>
+    <p style="margin: 0px"><b>Type: </b> {attributes.type ?? "N/A"}</p>
   </div>
 {:else if content_type.includes("image")}
   {#if url.endsWith('svg')}
