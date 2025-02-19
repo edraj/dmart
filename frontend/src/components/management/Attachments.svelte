@@ -198,7 +198,7 @@
           {
             resource_type: ResourceType.comment,
             shortname: shortname,
-            subpath: `${subpath}/${parent_shortname}`,
+            subpath: `${subpath}/${parent_shortname}`.replaceAll("//", "/"),
             attributes: {
               is_active: true,
               state: "commented",
@@ -673,7 +673,7 @@
             >
               <Icon name="code-slash" />
             </div>
-            {#if [ResourceType.json, ResourceType.content, ResourceType.comment].includes(attachment.resource_type) || [ContentType.markdown, ContentType.html, ContentType.text].includes(attachment.attributes.payload.content_type)}
+            {#if [ResourceType.json, ResourceType.content, ResourceType.comment, ResourceType.reaction].includes(attachment.resource_type) || [ContentType.markdown, ContentType.html, ContentType.text].includes(attachment.attributes.payload.content_type)}
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div
@@ -760,7 +760,7 @@
                 <div class="w-100">
                   <Prism code={attachment.attributes.payload.body} />
                 </div>
-            {:else if [ResourceType.media, ResourceType.comment].includes(attachment.resource_type)}
+            {:else if [ResourceType.media, ResourceType.comment, ResourceType.reaction].includes(attachment.resource_type)}
               <Media
                 resource_type={ResourceType[attachment.resource_type]}
                 attributes={attachment.attributes}
