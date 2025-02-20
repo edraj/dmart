@@ -388,7 +388,7 @@ class Share(Attachment):
 
 
 class Reaction(Attachment):
-    type: ReactionType
+    pass
 
 
 class Reply(Attachment):
@@ -396,8 +396,7 @@ class Reply(Attachment):
 
 
 class Comment(Attachment):
-    body: str
-    state: str | None = None
+    pass
 
 
 class Lock(Attachment):
