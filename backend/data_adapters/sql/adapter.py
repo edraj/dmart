@@ -58,10 +58,11 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 
 def query_attachment_aggregation(subpath):
+    # "payload->'content_type'"
     return select(
-        literal_column("payload->'content_type'").label("content_type"),
+        literal_column("resource_type").label("resource_type"),
         func.count(text("*")).label("count")
-    ).group_by(text("payload->'content_type'")) \
+    ).group_by(text("resource_type")) \
      .where(col(Attachments.subpath) == subpath)
 
 
