@@ -15,7 +15,6 @@ from models.enums import (
     Language,
     NotificationPriority,
     NotificationType,
-    ReactionType,
     ResourceType,
     UserType,
     ConditionType,
