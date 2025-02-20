@@ -15,7 +15,6 @@ from models.enums import (
     Language,
     NotificationPriority,
     NotificationType,
-    ReactionType,
     ResourceType,
     UserType,
     ConditionType,
@@ -388,7 +387,7 @@ class Share(Attachment):
 
 
 class Reaction(Attachment):
-    type: ReactionType
+    pass
 
 
 class Reply(Attachment):
@@ -396,8 +395,7 @@ class Reply(Attachment):
 
 
 class Comment(Attachment):
-    body: str
-    state: str | None = None
+    pass
 
 
 class Lock(Attachment):

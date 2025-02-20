@@ -268,7 +268,7 @@ async def test_create_comment_attachment(client: AsyncClient) -> None:
                 "resource_type": ResourceType.comment,
                 "subpath": f"{DEMO_SUBPATH}/{json_entry_shortname}",
                 "shortname": "my_comment",
-                "attributes": {"body": "A very speed car", "state": "on_road"},
+                "attributes": {"payload": {"content_type": ContentType.comment, "body": {"body": "A very speed car", "state": "on_road"}}},
             }
         ],
     }
