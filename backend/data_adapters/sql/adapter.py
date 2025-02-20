@@ -20,7 +20,7 @@ from sys import modules as sys_modules
 import models.api as api
 from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
-from models.enums import QueryType, LockAction, ResourceType, SortType, ContentType
+from models.enums import QueryType, LockAction, ResourceType, SortType
 from data_adapters.sql.create_tables import (
     Entries,
     Histories,
