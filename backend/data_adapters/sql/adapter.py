@@ -20,7 +20,7 @@ from sys import modules as sys_modules
 import models.api as api
 from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
-from models.enums import QueryType, LockAction, ResourceType, SortType, ContentType
+from models.enums import QueryType, LockAction, ResourceType, SortType
 from data_adapters.sql.create_tables import (
     Entries,
     Histories,
@@ -420,10 +420,6 @@ class SQLAdapter(BaseDataAdapter):
                 del attachment_json["acl"]
                 del attachment_json["space_name"]
                 attachment["attributes"] = {**attachment_json}
-                if attachment["resource_type"] == ResourceType.comment:
-                    attachment["attributes"]["body"] = attachment["attributes"]["payload"]["body"]
-                    attachment["attributes"]["state"] = attachment["attributes"]["payload"]["state"]
-                    del attachment["attributes"]["payload"]
                 if attachment_record.resource_type in attachments_dict:
                     attachments_dict[attachment_record.resource_type].append(attachment)
                 else:
@@ -604,7 +600,7 @@ class SQLAdapter(BaseDataAdapter):
                     ).params(
                         query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
                     )
-                print("@@@@@@@@@@@@", statement)
+
                 results = list((await session.execute(statement)).all())
                 if query.type == QueryType.attachments_aggregation:
                     attributes = {}
@@ -659,7 +655,7 @@ class SQLAdapter(BaseDataAdapter):
             if hasattr(result, 'payload') and result.payload and isinstance(result.payload, dict):
                 if result.payload.get("body", None) is None:
                     result.payload["body"] = {}
-                result.payload = core.Payload.model_validate( result.payload, strict=False)
+                result.payload = core.Payload.model_validate(result.payload, strict=False)
         except Exception as e:
             print("[!load]", e)
             logger.error(f"Failed parsing an entry. Error: {e}")
@@ -742,18 +738,6 @@ class SQLAdapter(BaseDataAdapter):
                     entity["subpath"] = subpath_checker(entity["subpath"])
 
                 try:
-                    if meta.__class__ == core.Comment:
-                        entity["payload"] = {
-                            "content_type": ContentType.comment,
-                            "body": entity['body'],
-                            "state": entity['state']
-                        }
-                    elif meta.__class__ == core.Reaction:
-                        entity["payload"] = {
-                            "content_type": ContentType.reaction,
-                            "body": entity['type'],
-                            "state": None
-                        }
                     entity['resource_type'] = meta.__class__.__name__.lower()
                     data = self.get_base_model(meta.__class__, entity)
 
