@@ -54,11 +54,11 @@ RUN set -eux \
   && echo "DATABASE_PASSWORD='$(cat /tmp/pgpass)'" >> /home/dmart/backend/config.env \
   && echo "ACTIVE_DATA_DB='sql'" >> /home/dmart/backend/config.env \
   && echo "BASE_PATH='/dmart'" >> /home/dmart/backend/config.env \
-  && rm /tmp/pgpass \
-  # && source /home/venv/bin/activate \
+  && rm -rf /tmp/* \
+  && source /home/venv/bin/activate \
   && cd /home/dmart/backend \
   # && su - postgres -c 'pg_ctl restart -t 5000 -D /var/lib/postgresql/17/data' \
-  # && alembic upgrade head \
+  && alembic upgrade head \
   && /home/venv/bin/python ./migrate.py json_to_db \
   # && echo 'data_dir="/var/lib/postgresql/17/data"' >> /etc/conf.d/postgresql \ 
   && rc-update add postgresql \
