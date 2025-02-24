@@ -15,6 +15,9 @@ class Plugin(PluginBase):
             logger.error("data.shortname is None and str is required at local_notification")
             return
 
+        if data.resource_type not in [ResourceType.ticket, ResourceType.reaction, ResourceType.comment, ResourceType.media]:
+            return
+
         class_type = getattr(
             sys.modules["models.core"], camel_case(ResourceType(data.resource_type))
         )
