@@ -1,5 +1,7 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 import json
+from contextlib import asynccontextmanager
+
 from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect, status
 from utils.jwt import decode_jwt
 import asyncio
@@ -110,7 +112,21 @@ class ConnectionManager:
 websocket_manager = ConnectionManager()
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting up")
+    print('{"stage":"starting up"}')
+
+    yield
+
+    logger.info("Application shutting down")
+    print('{"stage":"shutting down"}')
+
+
+app = FastAPI(
+    lifespan=lifespan,
+)
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str):
@@ -170,7 +186,7 @@ async def send_message(user_shortname: str, message: dict = Body(...)):
 @app.api_route(path="/broadcast-to-channels", methods=["post"])
 async def broadcast(data: dict = Body(...)):
     formatted_message = json.dumps({
-        "type": "notification_subscription",
+        "type": data["type"],
         "message": data["message"]
     })
 
@@ -196,17 +212,6 @@ async def service_info():
             } 
         }
     )
-
-@app.on_event("startup")
-async def app_startup() -> None:
-    logger.info("Starting up")
-    print('{"stage":"starting up"}')
-
-
-@app.on_event("shutdown")
-async def app_shutdown() -> None:
-    logger.info("Application shutting down")
-    print('{"stage":"shutting down"}')
 
 
 async def main():

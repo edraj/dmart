@@ -1,0 +1,13 @@
+{
+  "shortname": "local_notification",
+  "is_active": true,
+	"filters": {
+		"subpaths": ["__ALL__"],
+		"resource_types": ["ticket", "reaction", "comment"],
+		"schema_shortnames": ["catelog_post"],
+		"actions": ["create", "update", "progress_ticket"]
+	},
+	"type": "hook",
+	"ordinal": 1,
+	"listen_time": "after"
+}
