@@ -21,6 +21,7 @@ class Plugin(PluginBase):
         class_type = getattr(
             sys.modules["models.core"], camel_case(ResourceType(data.resource_type))
         )
+        parent_subpath, parent_shortname, parent_owner = None, None, None
 
         entry = await db.load(
             space_name=data.space_name,
@@ -30,21 +31,20 @@ class Plugin(PluginBase):
             user_shortname=data.user_shortname
         )
         if class_type in [Reaction, Comment]:
-            subpath, shortname = data.subpath.rsplit("/", 1)
+            parent_subpath, parent_shortname = data.subpath.rsplit("/", 1)
 
             parent = await db.load(
                 space_name=data.space_name,
-                subpath=subpath,
-                shortname=shortname,
+                subpath=parent_subpath,
+                shortname=parent_shortname,
                 class_type=Ticket,
                 user_shortname=data.user_shortname
             )
             if parent.owner_shortname == data.user_shortname:
                 return
 
-            entry.owner_shortname = parent.owner_shortname
-            data.subpath = subpath
-            data.shortname = shortname
+            parent_owner = parent.owner_shortname
+
         else:
             if not entry.owner_shortname or entry.owner_shortname == data.user_shortname:
                 return
@@ -63,14 +63,19 @@ class Plugin(PluginBase):
         )
         await db.save(
             "personal",
-            f"people/{entry.owner_shortname}/notifications",
+            f"people/{parent_owner}/notifications",
             meta_obj,
         )
 
         notification_obj = {
+            "parent_subpath": parent_subpath,
+            "parent_shortname": parent_shortname,
+            "parent_owner": parent_owner,
+
             "entry_space": data.space_name,
             "entry_subpath": data.subpath,
             "entry_shortname": data.shortname,
+
             "action_by": data.user_shortname,
             "action_type": data.action_type,
             "resource_type": data.resource_type,
@@ -79,7 +84,7 @@ class Plugin(PluginBase):
 
         await db.save_payload_from_json(
             "personal",
-            f"people/{entry.owner_shortname}/notifications",
+            f"people/{parent_owner}/notifications",
             meta_obj,
             notification_obj,
         )
@@ -89,9 +94,9 @@ class Plugin(PluginBase):
 
         async with AsyncRequest() as client:
             await client.post(
-                f"{settings.websocket_url}/broadcast-to-channels",
+                f"{settings.websocket_url}/send-message/{parent_owner}",
                 json={
-                    "type": "notification_subscription",
+                    "type": "notification",
                     "channels": [
                         f"{data.space_name}:__ALL__:__ALL__:__ALL__:__ALL__",
                     ],
