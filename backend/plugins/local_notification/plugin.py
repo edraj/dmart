@@ -5,12 +5,14 @@ from utils.helpers import camel_case
 from data_adapters.adapter import data_adapter as db
 from uuid import uuid4
 from fastapi.logger import logger
+from utils.async_request import AsyncRequest
+from utils.settings import settings
 
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
         if not isinstance(data.shortname, str):
-            logger.error(f"data.shortname is None and str is required at local_notification")
+            logger.error("data.shortname is None and str is required at local_notification")
             return
 
         class_type = getattr(
@@ -56,7 +58,7 @@ class Plugin(PluginBase):
                 body=f"{str(uuid)[:8]}.json"
             )
         )
-        result = await db.save(
+        await db.save(
             "personal",
             f"people/{entry.owner_shortname}/notifications",
             meta_obj,
@@ -78,3 +80,19 @@ class Plugin(PluginBase):
             meta_obj,
             notification_obj,
         )
+
+        if not settings.websocket_url:
+            return
+        
+        state = data.attributes.get("state", "__ALL__")
+        async with AsyncRequest() as client:
+            await client.post(
+                f"{settings.websocket_url}/broadcast-to-channels",
+                json={
+                    "type": "local_notification_subscription",
+                    "channels": [
+                        f"{data.space_name}:{data.subpath}:{data.schema_shortname}:{data.action_type}:{state}",
+                    ],
+                    "message": notification_obj
+                }
+            )
