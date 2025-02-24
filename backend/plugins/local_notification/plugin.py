@@ -83,15 +83,14 @@ class Plugin(PluginBase):
 
         if not settings.websocket_url:
             return
-        
-        state = data.attributes.get("state", "__ALL__")
+
         async with AsyncRequest() as client:
             await client.post(
                 f"{settings.websocket_url}/broadcast-to-channels",
                 json={
-                    "type": "local_notification_subscription",
+                    "type": "notification_subscription",
                     "channels": [
-                        f"{data.space_name}:{data.subpath}:{data.schema_shortname}:{data.action_type}:{state}",
+                        f"{data.space_name}:__ALL__:__ALL__:__ALL__:__ALL__",
                     ],
                     "message": notification_obj
                 }
