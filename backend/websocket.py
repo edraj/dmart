@@ -170,7 +170,7 @@ async def send_message(user_shortname: str, message: dict = Body(...)):
 @app.api_route(path="/broadcast-to-channels", methods=["post"])
 async def broadcast(data: dict = Body(...)):
     formatted_message = json.dumps({
-        "type": "notification_subscription",
+        "type": data["type"],
         "message": data["message"]
     })
 

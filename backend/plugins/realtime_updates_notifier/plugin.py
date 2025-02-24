@@ -35,13 +35,14 @@ class Plugin(PluginBase):
             ])
             subpath += "/"
 
-        if not settings.websocket_url : 
-            return 
+        if not settings.websocket_url:
+            return
 
         async with AsyncRequest() as client:
             await client.post(
                 f"{settings.websocket_url}/broadcast-to-channels",
                 json={
+                    "type": "notification_subscription",
                     "channels": [*set(channels)],
                     "message": {
                         "title": "updated",
