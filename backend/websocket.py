@@ -171,10 +171,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
 
 @app.api_route(path="/send-message/{user_shortname}", methods=["post"])
-async def send_message(user_shortname: str, message: dict = Body(...)):
+async def send_message(user_shortname: str, data: dict = Body(...)):
     formatted_message = json.dumps({
-        "type": "message",
-        "message": message
+        "type": data["type"],
+        "message": data["message"]
     })
     is_sent = await websocket_manager.send_message(formatted_message, user_shortname)
     return JSONResponse(
