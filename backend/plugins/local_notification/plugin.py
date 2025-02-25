@@ -48,6 +48,7 @@ class Plugin(PluginBase):
         else:
             if not entry.owner_shortname or entry.owner_shortname == data.user_shortname:
                 return
+            parent_owner = entry.owner_shortname
 
         uuid = uuid4()
         meta_obj = Content(
