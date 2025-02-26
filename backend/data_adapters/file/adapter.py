@@ -1581,7 +1581,7 @@ class FileAdapter(BaseDataAdapter):
                 await redis_services.ft("user_permission").info()
             except Exception:
                 await redis_services.ft("user_permission").create_index(
-                    fields=[TextField("name")],
+                    fields=[TextField("name")],  # type: ignore
                     definition=IndexDefinition(
                         prefix=["users_permissions"],
                         index_type=IndexType.JSON,
@@ -1606,7 +1606,7 @@ class FileAdapter(BaseDataAdapter):
     async def delete_user_permissions_map_in_redis(self) -> None:
         async with RedisServices() as redis_services:
             search_query = Query("*").no_content()
-            redis_res = await redis_services.ft("user_permission").search(search_query)
+            redis_res = await redis_services.ft("user_permission").search(search_query)  # type: ignore
             if redis_res and isinstance(redis_res, dict) and "results" in redis_res:
                 results = redis_res["results"]
                 keys = [doc["id"] for doc in results]

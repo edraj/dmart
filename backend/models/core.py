@@ -173,7 +173,7 @@ class Locator(Resource):
 
 
 class Relationship(Resource):
-    related_to: Locator
+    related_to: Locator | dict[str, Any]
     attributes: dict[str, Any]
 
 
@@ -195,7 +195,7 @@ class Meta(Resource):
     owner_shortname: str
     owner_group_shortname: str | None = None
     payload: Payload | None = None
-    relationships: list[Relationship] | None = None
+    relationships: list[Relationship] | list[dict[str, Any]] | None = None
     acl: list[ACL] | None = None
 
     model_config = ConfigDict(validate_assignment=True)
