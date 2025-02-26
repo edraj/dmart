@@ -30,6 +30,7 @@ class Plugin(PluginBase):
             class_type=class_type,
             user_shortname=data.user_shortname
         )
+        relationship = None
         if class_type in [Reaction, Comment]:
             parent_subpath, parent_shortname = data.subpath.rsplit("/", 1)
 
@@ -44,6 +45,18 @@ class Plugin(PluginBase):
                 return
 
             parent_owner = parent.owner_shortname
+
+            relationship = Relationship(
+                related_to=Locator(
+                    type=ResourceType.ticket,
+                    space_name=data.space_name,
+                    subpath=parent_subpath,
+                    shortname=parent_shortname
+                ),
+                attributes={
+                    "parent_owner": parent_owner
+                }
+            )
 
         else:
             if not entry.owner_shortname or entry.owner_shortname == data.user_shortname:
@@ -62,20 +75,9 @@ class Plugin(PluginBase):
                 schema_shortname="notification",
                 body=f"{str(uuid)[:8]}.json"
             ),
-            relationships=[
-                Relationship(
-                    related_to=Locator(
-                        type=ResourceType.ticket,
-                        space_name=data.space_name,
-                        subpath=parent_subpath,
-                        shortname=parent_shortname
-                    ),
-                    attributes={
-                        "parent_owner": parent_owner
-                    }
-                )
-            ]
         )
+        if relationship is not None:
+            meta_obj.relationships = [relationship]
 
         await db.save(
             "personal",
