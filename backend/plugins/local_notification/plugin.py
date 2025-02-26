@@ -1,5 +1,5 @@
 import sys
-from models.core import Content, Payload, PluginBase, Event, Ticket, Reaction, Comment
+from models.core import Content, Payload, PluginBase, Event, Ticket, Reaction, Comment, Relationship, Locator
 from models.enums import ContentType, ResourceType
 from utils.helpers import camel_case
 from data_adapters.adapter import data_adapter as db
@@ -51,6 +51,7 @@ class Plugin(PluginBase):
             parent_owner = entry.owner_shortname
 
         uuid = uuid4()
+
         meta_obj = Content(
             uuid=uuid,
             shortname=str(uuid)[:8],
@@ -60,8 +61,22 @@ class Plugin(PluginBase):
                 content_type=ContentType.json,
                 schema_shortname="notification",
                 body=f"{str(uuid)[:8]}.json"
-            )
+            ),
+            relationships=[
+                Relationship(
+                    related_to=Locator(
+                        type=ResourceType.ticket,
+                        space_name=data.space_name,
+                        subpath=parent_subpath,
+                        shortname=parent_shortname
+                    ),
+                    attributes={
+                        "parent_owner": parent_owner
+                    }
+                )
+            ]
         )
+
         await db.save(
             "personal",
             f"people/{parent_owner}/notifications",
@@ -69,10 +84,6 @@ class Plugin(PluginBase):
         )
 
         notification_obj = {
-            "parent_subpath": parent_subpath,
-            "parent_shortname": parent_shortname,
-            "parent_owner": parent_owner,
-
             "entry_space": data.space_name,
             "entry_subpath": data.subpath,
             "entry_shortname": data.shortname,
