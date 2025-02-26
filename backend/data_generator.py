@@ -14,12 +14,12 @@ async def main(
     schema_path: str,
     num: int
 ):
-    
+
     if not Path(schema_path).is_file():
         print("Invalid schema file path")
 
-    
-    faker = JSF.from_json(Path(schema_path))
+
+    faker = JSF.from_json(Path(schema_path)) # type: ignore
     for i in range(0, num):
         payload = faker.generate()
         uuid = uuid4()
@@ -42,12 +42,12 @@ async def main(
             payload=payload
         )
         print(f"Generated new doc with shortname: {shortname}")
-        
+
     print("====================================================")
     print(f"The generator script is finished, {num} of records generated")
     print("====================================================")
-                    
-            
+
+
 
 
 if __name__ == "__main__":
@@ -57,7 +57,7 @@ if __name__ == "__main__":
             Stores the data in the flat-file DB and Redis",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    
+
     parser.add_argument(
         "-p", "--space", help="Store records under this space"
     )
@@ -70,13 +70,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "-n", "--num", help="Number of records to be generated", type=int
     )
-    
+
     args = parser.parse_args()
 
     asyncio.run(main(
       args.space,
       args.subpath,
       args.schema_path,
-      args.num  
+      args.num
     ))
-    
