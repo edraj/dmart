@@ -185,7 +185,7 @@ async def soft_health_check(
             search_query = Query(query_string="*")
             search_query.paging(offset, limit)
             offset += limit
-            x = await ft_index.search(query=search_query)
+            x = await ft_index.search(query=search_query)  # type: ignore
             if x and isinstance(x, dict) and "results" in x:
                 res_data : list = [one["extra_attributes"]["$"] for one in x["results"] if "extra_attributes" in one]
                 if not res_data:
@@ -308,7 +308,7 @@ async def collect_duplicated_with_key(key, value) -> None:
                 continue
             search_query = Query(query_string=f"@{key}:{value}*")
             search_query.paging(0, 1000)
-            x = await ft_index.search(query=search_query)
+            x = await ft_index.search(query=search_query) # type: ignore
             if x and isinstance(x, Result):
                 res_data: Result = x
                 for redis_doc_dict in res_data.docs:
@@ -424,7 +424,7 @@ async def save_duplicated_entries() -> None:
             for i in range(0, int(index_info["num_docs"]), 10000):
                 search_query = Query(query_string="*")
                 search_query.paging(i, 10000)
-                x = await ft_index.search(query=search_query)
+                x = await ft_index.search(query=search_query) # type: ignore
                 if x and isinstance(x, dict) and "results" in x:
                     res_data : list = [ one["extra_attributes"]["$"] for one in x["results"] if 'extra_attributes' in one]
                     for redis_doc_dict in res_data:

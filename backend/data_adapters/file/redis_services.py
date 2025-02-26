@@ -26,104 +26,104 @@ import redis
 
 class RedisServices(Redis):
     META_SCHEMA : list[Field] = [
-        TextField("$.uuid", no_stem=True, as_name="uuid"),
-        TextField("$.shortname", sortable=True, no_stem=True, as_name="shortname"),
-        TextField("$.slug", sortable=True, no_stem=True, as_name="slug"),
-        TextField("$.subpath", sortable=True, no_stem=True, as_name="subpath"),
-        TagField("$.subpath", as_name="exact_subpath"),
+        TextField("$.uuid", no_stem=True, as_name="uuid"), # type: ignore
+        TextField("$.shortname", sortable=True, no_stem=True, as_name="shortname"), # type: ignore
+        TextField("$.slug", sortable=True, no_stem=True, as_name="slug"), # type: ignore
+        TextField("$.subpath", sortable=True, no_stem=True, as_name="subpath"), # type: ignore
+        TagField("$.subpath", as_name="exact_subpath"), # type: ignore
         TextField(
             "$.resource_type",
             sortable=True,
             no_stem=True,
             as_name="resource_type",
-        ),
-        TextField("$.displayname.en", sortable=True, as_name="displayname_en"),
-        TextField("$.displayname.ar", sortable=True, as_name="displayname_ar"),
-        TextField("$.displayname.kd", sortable=True, as_name="displayname_kd"),
-        TextField("$.description.en", sortable=True, as_name="description_en"),
-        TextField("$.description.ar", sortable=True, as_name="description_ar"),
-        TextField("$.description.kd", sortable=True, as_name="description_kd"),
-        TagField("$.is_active", as_name="is_active"),
+        ), # type: ignore
+        TextField("$.displayname.en", sortable=True, as_name="displayname_en"), # type: ignore
+        TextField("$.displayname.ar", sortable=True, as_name="displayname_ar"), # type: ignore
+        TextField("$.displayname.kd", sortable=True, as_name="displayname_kd"), # type: ignore
+        TextField("$.description.en", sortable=True, as_name="description_en"), # type: ignore
+        TextField("$.description.ar", sortable=True, as_name="description_ar"), # type: ignore
+        TextField("$.description.kd", sortable=True, as_name="description_kd"), # type: ignore
+        TagField("$.is_active", as_name="is_active"), # type: ignore
         TextField(
             "$.payload.content_type",
             no_stem=True,
             as_name="payload_content_type",
-        ),
+        ), # type: ignore
         TextField(
             "$.payload.schema_shortname",
             no_stem=True,
             as_name="schema_shortname",
-        ),
-        NumericField("$.created_at", sortable=True, as_name="created_at"),
-        NumericField("$.updated_at", sortable=True, as_name="updated_at"),
-        TagField("$.view_acl.*", as_name="view_acl"),
-        TagField("$.tags.*", as_name="tags"),
+        ), # type: ignore
+        NumericField("$.created_at", sortable=True, as_name="created_at"), # type: ignore
+        NumericField("$.updated_at", sortable=True, as_name="updated_at"), # type: ignore
+        TagField("$.view_acl.*", as_name="view_acl"), # type: ignore
+        TagField("$.tags.*", as_name="tags"), # type: ignore
         TextField(
             "$.owner_shortname",
             sortable=True,
             no_stem=True,
             as_name="owner_shortname",
-        ),
-        TagField("$.query_policies.*", as_name="query_policies"),
+        ), # type: ignore
+        TagField("$.query_policies.*", as_name="query_policies"), # type: ignore
         # User fields
-        TextField("$.msisdn", sortable=True, as_name="msisdn"),
-        TextField("$.email", sortable=True, as_name="email"),
-        TagField("$.email", as_name="email_unescaped"),
+        TextField("$.msisdn", sortable=True, as_name="msisdn"), # type: ignore
+        TextField("$.email", sortable=True, as_name="email"), # type: ignore
+        TagField("$.email", as_name="email_unescaped"), # type: ignore
         # Ticket fields
-        TextField("$.state", sortable=True, no_stem=True, as_name="state"),
-        TagField("$.is_open", as_name="is_open"),
+        TextField("$.state", sortable=True, no_stem=True, as_name="state"), # type: ignore
+        TagField("$.is_open", as_name="is_open"), # type: ignore
         TextField(
             "$.workflow_shortname",
             sortable=True,
             no_stem=True,
             as_name="workflow_shortname",
-        ),
+        ), # type: ignore
         TextField(
             "$.collaborators.delivered_by",
             sortable=True,
             no_stem=True,
             as_name="collaborators_delivered_by",
-        ),
+        ), # type: ignore
         TextField(
             "$.collaborators.processed_by",
             sortable=True,
             no_stem=True,
             as_name="collaborators_processed_by",
-        ),
+        ), # type: ignore
         TextField(
             "$.resolution_reason",
             sortable=True,
             no_stem=True,
             as_name="resolution_reason",
-        ),
+        ), # type: ignore
         # Notification fields
-        TextField("$.type", sortable=True, no_stem=True, as_name="type"),
-        TagField("$.is_read", as_name="is_read"),
-        TextField("$.priority", sortable=True, no_stem=True, as_name="priority"),
-        TextField("$.reporter.type", sortable=True, as_name="reporter_type"),
-        TextField("$.reporter.name", sortable=True, as_name="reporter_name"),
-        TextField("$.reporter.channel", sortable=True, as_name="reporter_channel"),
+        TextField("$.type", sortable=True, no_stem=True, as_name="type"), # type: ignore
+        TagField("$.is_read", as_name="is_read"), # type: ignore
+        TextField("$.priority", sortable=True, no_stem=True, as_name="priority"), # type: ignore
+        TextField("$.reporter.type", sortable=True, as_name="reporter_type"), # type: ignore
+        TextField("$.reporter.name", sortable=True, as_name="reporter_name"), # type: ignore
+        TextField("$.reporter.channel", sortable=True, as_name="reporter_channel"), # type: ignore
         TextField(
             "$.reporter.distributor",
             sortable=True,
             as_name="reporter_distributor",
-        ),
+        ), # type: ignore
         TextField(
             "$.reporter.governorate",
             sortable=True,
             as_name="reporter_governorate",
-        ),
+        ), # type: ignore
         TextField(
             "$.reporter.msisdn",
             sortable=True,
             as_name="reporter_msisdn",
-        ),
+        ), # type: ignore
         TextField(
             "$.payload_string",
             sortable=False,
             as_name="payload_string",
-        ),
-    ]
+        ),  # type: ignore
+    ]  # type: ignore
 
     CUSTOM_CLASSES: list[type[core.Meta]] = [
         core.Role,
@@ -497,7 +497,7 @@ class RedisServices(Redis):
                     ] = self.ft(f"{space_name}:{schema_shortname}")
                     field_names = [f.as_name for f in redis_schema_definition]
                     if "meta_doc_id" not in field_names:
-                        redis_schema_definition.append(TextField("$.meta_doc_id", no_stem=True, as_name="meta_doc_id"))
+                        redis_schema_definition.append(TextField("$.meta_doc_id", no_stem=True, as_name="meta_doc_id")) # type: ignore
 
                     await self.create_index(
                         f"{space_name}",
@@ -824,7 +824,7 @@ class RedisServices(Redis):
 
         try:
             # print(f"ARGS {search_query.get_args()} O {search_query.query_string()}")
-            search_res = await ft_index.search(query=search_query)
+            search_res = await ft_index.search(query=search_query) # type: ignore
             if (
                 isinstance(search_res, dict)
                 and "results" in search_res
@@ -1098,7 +1098,7 @@ class RedisServices(Redis):
         
         for offset in range(0, total_docs, batch_size):
             query = Query(search_str).paging(offset, batch_size)
-            results = ft_index.search(query)
+            results = ft_index.search(query)  # type: ignore
             if results and isinstance(results, Awaitable):
                 results = await results
             
