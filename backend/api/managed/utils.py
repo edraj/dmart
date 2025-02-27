@@ -492,6 +492,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                     )
 
                 if (settings.active_data_db == 'sql'
+                        and new_resource_payload_data is not None
                         and resource_obj.payload
                         and resource_obj.payload.content_type == ContentType.json):
                     resource_obj.payload.body = new_resource_payload_data
