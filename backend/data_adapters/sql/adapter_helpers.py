@@ -118,16 +118,37 @@ def validate_search_range(v_str):
 
 
 def parse_search_string(string, entity):
-    # string = " " + string
     string = re.sub(r'(?<=\w)@(?=\w)', '%40', string)
-    list_criteria = string.split("@")
-    list_criteria = [item.strip() for item in list_criteria if item.strip()]
-    list_criteria = [item.replace("%40", "@") for item in list_criteria if item.strip()]
+
+    tokens = []
+    current = ""
+    i = 0
+    while i < len(string):
+        if string[i:i + 2] == "-@":
+            if current:
+                tokens.append(current.strip())
+            tokens.append("-")
+            current = ""
+            i += 2
+        elif string[i] == "@":
+            if current:
+                tokens.append(current.strip())
+            current = ""
+            i += 1
+        else:
+            current += string[i]
+            i += 1
+    if current:
+        tokens.append(current.strip())
+
+    list_criteria = [item for item in tokens if item.strip()]
+
     result = {}
     flag_neg = False
     for s in list_criteria:
         if s == "-":
             flag_neg = True
+            continue
 
         if "[" in s and "]" in s:
             pattern = r"(\S+):(\S+ \S+)"
