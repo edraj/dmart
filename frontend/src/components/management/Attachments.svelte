@@ -40,13 +40,15 @@
     resource_type,
     space_name,
     subpath,
-    parent_shortname
+    parent_shortname,
+    refreshEntry,
   } :{
     attachments: Array<any>,
     resource_type: ResourceType,
     space_name: string,
     subpath: string,
-    parent_shortname: string
+    parent_shortname: string,
+    refreshEntry: any,
   } = $props();
 
   async function fetchDataAssetsForAttachments() {
@@ -172,7 +174,7 @@
         (e: { shortname: string }) => e.shortname !== item.shortname
       );
       openCreateAttachemntModal = false;
-      location.reload();
+      refreshEntry()
     } else {
       showToast(Level.warn);
     }
@@ -290,7 +292,7 @@
     if (response.status === "success") {
       showToast(Level.info);
       openCreateAttachemntModal = false;
-      location.reload();
+      refreshEntry()
     } else {
       showToast(Level.warn);
     }
@@ -325,7 +327,7 @@
     if (response.status === "success") {
       showToast(Level.info);
       openCreateAttachemntModal = false;
-      location.reload();
+      refreshEntry()
     } else {
       showToast(Level.warn);
     }
