@@ -538,6 +538,7 @@
           {subpath}
           parent_shortname={entry.shortname}
           attachments={Object.values(entry.attachments)}
+          refreshEntry={retrieve_request}
         />
       </div>
     </div>
