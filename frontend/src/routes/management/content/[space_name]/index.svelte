@@ -6,7 +6,6 @@
   let refresh = false;
 </script>
 
-{#key refresh}
 {#if $params.space_name}
   {#await retrieve_entry(ResourceType.space, $params.space_name, "__root__", $params.space_name, false, false)}
   <p>Loading...</p>
@@ -16,7 +15,6 @@
       resource_type={ResourceType.space}
       space_name={$params.space_name}
       subpath={'/'}
-      bind:refresh
     />
     <!--pre>{JSON.stringify(spaces.get($params.space_name), null, 2)}</pre-->
   {:catch error}
@@ -28,4 +26,3 @@
   <h4>For some reason ... params doesn't have the needed info</h4>
   <pre>{JSON.stringify($params, null, 2)}</pre>
 {/if}
-{/key}

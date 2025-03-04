@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Col, Row, Input, Button } from "sveltestrap";
-    import Chart from 'svelte-frappe-charts/src/components/base.svelte';
+    import Chart from 'svelte-frappe-charts';
     import QueryFormStats from "@/components/management/QueryFormStats.svelte";
 
     let rows = $state([]);
