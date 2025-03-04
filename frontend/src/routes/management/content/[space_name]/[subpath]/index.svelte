@@ -12,27 +12,24 @@
 
 </script>
 
-{#key refresh}
-  {#if $params.space_name && parent_subpath && shortname}
-    {#await retrieve_entry(ResourceType.folder, $params.space_name, parent_subpath, shortname, true, true)}
-      <!--h6 transition:fade >Loading ... @{$params.space_name}/{$params.subpath}</h6-->
-    {:then entry}
-      <!--Prism code={entry} /-->
-      <EntryRenderer
-        {entry}
-        resource_type={ResourceType.folder}
-        space_name={$params.space_name}
-        subpath={$params.subpath.replaceAll("-", "/")}
-        bind:refresh
-      />
-    {:catch error}
-      <div class="alert alert-danger text-center m-5">
-        <h4 class="alert-heading text-capitalize">{error}</h4>
-      </div>
-    {/await}
-  {:else}
-    <h4>For some reason ... params doesn't have the needed info</h4>
-    <pre>{JSON.stringify($params, null, 2)}</pre>
-    <pre>Parent subpath {parent_subpath} ... Entry shortname {shortname}</pre>
-  {/if}
-{/key}
+{#if $params.space_name && parent_subpath && shortname}
+  {#await retrieve_entry(ResourceType.folder, $params.space_name, parent_subpath, shortname, true, true)}
+    <!--h6 transition:fade >Loading ... @{$params.space_name}/{$params.subpath}</h6-->
+  {:then entry}
+    <!--Prism code={entry} /-->
+    <EntryRenderer
+      {entry}
+      resource_type={ResourceType.folder}
+      space_name={$params.space_name}
+      subpath={$params.subpath.replaceAll("-", "/")}
+    />
+  {:catch error}
+    <div class="alert alert-danger text-center m-5">
+      <h4 class="alert-heading text-capitalize">{error}</h4>
+    </div>
+  {/await}
+{:else}
+  <h4>For some reason ... params doesn't have the needed info</h4>
+  <pre>{JSON.stringify($params, null, 2)}</pre>
+  <pre>Parent subpath {parent_subpath} ... Entry shortname {shortname}</pre>
+{/if}

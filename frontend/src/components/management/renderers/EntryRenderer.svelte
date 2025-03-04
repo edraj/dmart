@@ -1,96 +1,88 @@
 <script lang="ts">
-    import {onDestroy, onMount} from "svelte";
-    import {
-        check_existing_user,
-        ContentType,
-        csv,
-        passwordRegExp,
-        passwordWrongExp,
-        query,
-        QueryType,
-        request,
-        RequestType,
-        ResourceType,
-        type ResponseEntry,
-        retrieve_entry,
-        space,
-        Status,
-        upload_records_csv,
-        upload_with_payload,
-    } from "@/dmart";
-    import {
-        Button,
-        ButtonGroup,
-        Form,
-        FormGroup,
-        Input,
-        Label,
-        Modal,
-        ModalBody,
-        ModalFooter,
-        ModalHeader,
-        Row,
-        TabContent,
-        TabPane,
-    } from "sveltestrap";
-    import Icon from "@/components/Icon.svelte";
-    import {_} from "@/i18n";
-    import ListView from "@/components/management/ListView.svelte";
-    import Prism from "@/components/Prism.svelte";
-    import {
-        createAjvValidator,
-        JSONEditor,
-        Mode,
-        type Validator,
-    } from "svelte-jsoneditor";
-    import {status_line} from "@/stores/management/status_line";
-    import {authToken} from "@/stores/management/auth";
-    import {timeAgo} from "@/utils/timeago";
-    import {Level, showToast} from "@/utils/toast";
-    import {faSave} from "@fortawesome/free-regular-svg-icons";
-    import refresh_spaces from "@/stores/management/refresh_spaces";
-    import {website} from "@/config";
-    import HtmlEditor from "../editors/HtmlEditor.svelte";
-    import MarkdownEditor from "../editors/MarkdownEditor.svelte";
-    import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
-    import {checkAccessv2} from "@/utils/checkAccess";
-    import {fade} from "svelte/transition";
-    import BreadCrumbLite from "../BreadCrumbLite.svelte";
-    import downloadFile from "@/utils/downloadFile";
-    import SchemaForm from "svelte-jsonschema-form";
-    import Table2Cols from "@/components/management/Table2Cols.svelte";
-    import Attachments from "@/components/management/Attachments.svelte";
-    import HistoryListView from "@/components/management/HistoryListView.svelte";
-    import {marked} from "marked";
-    import {
-        generateObjectFromSchema,
-        managementEntities,
-        resolveResourceType,
-    } from "@/utils/renderer/rendererUtils";
-    import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
-    import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
-    import {metadata} from "@/stores/management/metadata";
-    import metaUserSchema from "@/validations/meta.user.json";
-    import metaRoleSchema from "@/validations/meta.role.json";
-    import metaPermissionSchema from "@/validations/meta.permission.json";
-    import PlantUML from "@/components/management/PlantUML.svelte";
-    import ContentEditor from "@/components/management/ContentEditor.svelte";
-    import TicketEntryRenderer from "@/components/management/renderers/TicketEntryRenderer.svelte";
-    import WorkflowRenderer from "@/components/management/renderers/WorkflowRenderer.svelte";
-    import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
-    import PermissionForm from "./Forms/PermissionForm.svelte";
-    import RoleForm from "./Forms/RoleForm.svelte";
-    import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
-    import {bulkBucket} from "@/stores/management/bulk_bucket";
-    import RelationshipForm from "@/components/management/renderers/Forms/RelationshipForm.svelte";
-    import {mangle} from "marked-mangle";
-    import {gfmHeadingId} from "marked-gfm-heading-id";
-    import {user} from "@/stores/user";
-    import ACLForm from "@/components/management/renderers/Forms/ACLForm.svelte";
-    import MarkdownRenderer from "@/components/management/renderers/MarkdownRenderer.svelte";
-    import defaultFolderRendering from "@/stores/management/default_folder_rendering.json";
+  import {onDestroy, onMount} from "svelte";
+  import {
+    check_existing_user,
+    ContentType,
+    csv,
+    passwordRegExp,
+    passwordWrongExp,
+    query,
+    QueryType,
+    request,
+    RequestType,
+    ResourceType,
+    type ResponseEntry,
+    retrieve_entry,
+    space,
+    Status,
+    upload_records_csv,
+    upload_with_payload,
+  } from "@/dmart";
+  import {
+    Button,
+    ButtonGroup,
+    Form,
+    FormGroup,
+    Input,
+    Label,
+    Modal,
+    ModalBody,
+    ModalFooter,
+    Row,
+    TabContent,
+    TabPane,
+  } from "sveltestrap";
+  import Icon from "@/components/Icon.svelte";
+  import {_} from "@/i18n";
+  import ListView from "@/components/management/ListView.svelte";
+  import Prism from "@/components/Prism.svelte";
+  import {createAjvValidator, JSONEditor, Mode, type Validator,} from "svelte-jsoneditor";
+  import {status_line} from "@/stores/management/status_line";
+  import {authToken} from "@/stores/management/auth";
+  import {timeAgo} from "@/utils/timeago";
+  import {Level, showToast} from "@/utils/toast";
+  import {faSave} from "@fortawesome/free-regular-svg-icons";
+  import refresh_spaces from "@/stores/management/refresh_spaces";
+  import {website} from "@/config";
+  import HtmlEditor from "../editors/HtmlEditor.svelte";
+  import MarkdownEditor from "../editors/MarkdownEditor.svelte";
+  import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
+  import {checkAccessv2} from "@/utils/checkAccess";
+  import {fade} from "svelte/transition";
+  import BreadCrumbLite from "../BreadCrumbLite.svelte";
+  import downloadFile from "@/utils/downloadFile";
+  import SchemaForm from "svelte-jsonschema-form";
+  import Table2Cols from "@/components/management/Table2Cols.svelte";
+  import Attachments from "@/components/management/Attachments.svelte";
+  import HistoryListView from "@/components/management/HistoryListView.svelte";
+  import {marked} from "marked";
+  import {generateObjectFromSchema, managementEntities, resolveResourceType,} from "@/utils/renderer/rendererUtils";
+  import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
+  import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
+  import {metadata} from "@/stores/management/metadata";
+  import metaUserSchema from "@/validations/meta.user.json";
+  import metaRoleSchema from "@/validations/meta.role.json";
+  import metaPermissionSchema from "@/validations/meta.permission.json";
+  import PlantUML from "@/components/management/PlantUML.svelte";
+  import ContentEditor from "@/components/management/ContentEditor.svelte";
+  import TicketEntryRenderer from "@/components/management/renderers/TicketEntryRenderer.svelte";
+  import WorkflowRenderer from "@/components/management/renderers/WorkflowRenderer.svelte";
+  import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
+  import PermissionForm from "./Forms/PermissionForm.svelte";
+  import RoleForm from "./Forms/RoleForm.svelte";
+  import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
+  import {bulkBucket} from "@/stores/management/bulk_bucket";
+  import RelationshipForm from "@/components/management/renderers/Forms/RelationshipForm.svelte";
+  import {mangle} from "marked-mangle";
+  import {gfmHeadingId} from "marked-gfm-heading-id";
+  import {user} from "@/stores/user";
+  import ACLForm from "@/components/management/renderers/Forms/ACLForm.svelte";
+  import MarkdownRenderer from "@/components/management/renderers/MarkdownRenderer.svelte";
+  import defaultFolderRendering from "@/stores/management/default_folder_rendering.json";
+  import ERDownloadModal from "@/components/management/renderers/modals/ERDownloadModal.svelte";
+  import ERUploadByCSVModal from "@/components/management/renderers/modals/ERUploadByCSVModal.svelte";
 
-    marked.use(mangle());
+  marked.use(mangle());
     marked.use(gfmHeadingId({
         prefix: "my-prefix-",
     }));
@@ -102,14 +94,12 @@
         subpath,
         resource_type,
         schema_name = null,
-        refresh = $bindable({}),
     }: {
         entry: ResponseEntry,
         space_name: string,
         subpath: string,
         resource_type: ResourceType,
         schema_name?: string | null,
-        refresh?: any,
     } = $props();
 
     // auth
@@ -214,112 +204,131 @@
         });
     }
 
-    onMount(async () => {
-        if (entry) {
-            const cpy = structuredClone(entry);
-            if (entry?.payload) {
-                if (entry?.payload?.content_type === "json") {
-                    jseContentRef.set({
-                        text: JSON.stringify(cpy?.payload?.body ?? {}, null, 2),
-                    });
-                    jseContent = {json: cpy?.payload?.body};
-                } else {
-                    jseContent = cpy?.payload?.body;
-                }
-            }
+    async function processEntry(){
+      if (entry) {
+        const cpy = structuredClone(entry);
+        if (entry?.payload) {
+          if (entry?.payload?.content_type === "json") {
+            jseContentRef.set({
+              text: JSON.stringify(cpy?.payload?.body ?? {}, null, 2),
+            });
+            jseContent = {json: cpy?.payload?.body};
+          } else {
+            jseContent = cpy?.payload?.body;
+          }
+        }
 
-            delete cpy?.payload?.body;
-            delete cpy?.attachments;
+        delete cpy?.payload?.body;
+        delete cpy?.attachments;
 
-            // jseMeta.text = JSON.stringify(cpy,null,2)
-            if (jseMetaRef) {
-                jseMetaRef.set({text: JSON.stringify(cpy, null, 2)});
-                // oldJSEMeta = structuredClone(jseMeta);
-            }
+        // jseMeta.text = JSON.stringify(cpy,null,2)
+        if (jseMetaRef) {
+          jseMetaRef.set({text: JSON.stringify(cpy, null, 2)});
+          // oldJSEMeta = structuredClone(jseMeta);
+        }
 
 
-            try {
-                if (entry?.payload?.schema_shortname) {
-                    const entrySchema = entry?.payload?.schema_shortname;
-                    let _schema: any = null;
+        try {
+          if (entry?.payload?.schema_shortname) {
+            const entrySchema = entry?.payload?.schema_shortname;
+            let _schema: any = null;
 
-                    _schema = await retrieve_entry(
-                        ResourceType.schema,
-                        ["folder_rendering"].includes(entrySchema)
+            _schema = await retrieve_entry(
+                    ResourceType.schema,
+                    ["folder_rendering"].includes(entrySchema)
                             ? "management"
                             : space_name,
-                        "schema",
-                        entrySchema,
-                        true
-                    );
-
-                    if (_schema) {
-                        schema = _schema.payload?.body;
-                        validatorContent = createAjvValidator({schema});
-                    } else {
-                        showToast(
-                            Level.warn,
-                            `Can't load the schema ${entry?.payload?.schema_shortname} !`
-                        );
-                    }
-                }
-            } catch (e) {
-
-            }
-
-            allowedResourceTypes.push(
-                resolveResourceType(
-                    space_name,
-                    subpath,
-                    null
-                )
-            )
-
-            canCreateEntry = allowedResourceTypes.map(r => checkAccessv2("create", space_name, subpath, r)).some(item => item);
-
-            status_line.set(
-                `<small>Last updated: <strong>${timeAgo(
-                    new Date(entry.updated_at)
-                )}</strong><br/>Attachments: <strong>${
-                    Object.keys(entry.attachments).length
-                }</strong></small>`
+                    "schema",
+                    entrySchema,
+                    true
             );
 
-            if(!!entry?.payload?.body?.content_resource_types && entry?.payload?.body?.content_resource_types.length){
-              allowedResourceTypes = entry?.payload?.body?.content_resource_types;
+            if (_schema) {
+              schema = _schema.payload?.body;
+              validatorContent = createAjvValidator({schema});
+            } else {
+              showToast(
+                      Level.warn,
+                      `Can't load the schema ${entry?.payload?.schema_shortname} !`
+              );
             }
-            const isFolderWSStreamCheck = !!entry?.payload?.body?.stream && isWSClosed(ws)
-            if (isFolderWSStreamCheck) {
-                if (isWSOpen(ws)) {
-                    ws.send(JSON.stringify({type: "notification_unsubscribe"}));
-                }
-                if ("websocket" in website) {
-                    try {
-                        ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
-                    } catch (e) {
-                        console.error({e});
-                      }
-                }
+          }
+        } catch (e) {
 
-                ws.onopen = () => {
-                    ws.send(
-                        JSON.stringify({
-                            type: "notification_subscription",
-                            space_name: space_name,
-                            subpath: subpath,
-                        })
-                    );
-                };
-
-                ws.onmessage = (event) => {
-                    const data = JSON.parse(event?.data ?? "");
-                    if (data?.message?.title) {
-                        isNeedRefresh = true;
-                    }
-                };
-            }
         }
+
+        allowedResourceTypes.push(
+                resolveResourceType(
+                        space_name,
+                        subpath,
+                        null
+                )
+        )
+
+        canCreateEntry = allowedResourceTypes.map(r => checkAccessv2("create", space_name, subpath, r)).some(item => item);
+
+        status_line.set(
+                `<small>Last updated: <strong>${timeAgo(
+                        new Date(entry.updated_at)
+                )}</strong><br/>Attachments: <strong>${
+                        Object.keys(entry.attachments).length
+                }</strong></small>`
+        );
+
+        if(!!entry?.payload?.body?.content_resource_types && entry?.payload?.body?.content_resource_types.length){
+          allowedResourceTypes = entry?.payload?.body?.content_resource_types;
+        }
+        const isFolderWSStreamCheck = !!entry?.payload?.body?.stream && isWSClosed(ws)
+        if (isFolderWSStreamCheck) {
+          if (isWSOpen(ws)) {
+            ws.send(JSON.stringify({type: "notification_unsubscribe"}));
+          }
+          if ("websocket" in website) {
+            try {
+              ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+            } catch (e) {
+              console.error({e});
+            }
+          }
+
+          ws.onopen = () => {
+            ws.send(
+                    JSON.stringify({
+                      type: "notification_subscription",
+                      space_name: space_name,
+                      subpath: subpath,
+                    })
+            );
+          };
+
+          ws.onmessage = (event) => {
+            const data = JSON.parse(event?.data ?? "");
+            if (data?.message?.title) {
+              isNeedRefresh = true;
+            }
+          };
+        }
+      }
+    }
+
+    onMount(async () => {
+      await processEntry();
     });
+
+    async function refreshEntry(){
+      if(resource_type === ResourceType.folder){
+        const _subpath = subpath.split("/");
+        let parent_subpath: string = _subpath.slice(0, _subpath.length - 1).join("/") || "__root__";
+        let shortname: string =  $derived(_subpath[_subpath.length - 1]);
+
+        const result = await retrieve_entry(ResourceType.folder, space_name, parent_subpath, shortname, true, true);
+        entry = structuredClone(result);
+      } else {
+        const result = await retrieve_entry(resource_type, space_name, subpath, entry.shortname, true, true);
+        entry = structuredClone(result);
+      }
+      await processEntry();
+    }
 
     onDestroy(() => {
         status_line.set("");
@@ -893,7 +902,7 @@
             showToast(Level.info);
             contentShortname = "";
             isModalOpen = false;
-            refresh = !refresh;
+            await refreshEntry();
         } else {
             showToast(Level.warn);
             errorContent = response.error;
@@ -1264,110 +1273,25 @@
 
 <!--<svelte:window on:beforeunload={beforeUnload} />-->
 
-<Modal isOpen={openDownloadModal} toggle={() => (openDownloadModal = false)} size="lg">
-  <div class="modal-header">
-    <h5 class="modal-title">Download Data</h5>
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <button type="button" onclick={() => (openDownloadModal = false)} class="btn-close" aria-label="Close">
-    </button>
-  </div>
+<ERDownloadModal
+  bind:openDownloadModal={openDownloadModal} bind:startDateCSVDownload={startDateCSVDownload}
+  bind:endDateCSVDownload={endDateCSVDownload} bind:limitCSVDownload={limitCSVDownload}
+  bind:searchTextCSVDownload={searchTextCSVDownload} bind:errorContent={errorContent}
+  {handleDownload}
+/>
 
-  <ModalBody>
-    <FormGroup>
-      <Label for="startDate">Start Date</Label>
-      <Input type="date" id="startDate" bind:value={startDateCSVDownload} />
-    </FormGroup>
-    <FormGroup>
-      <Label for="endDate">End Date</Label>
-      <Input type="date" id="endDate" bind:value={endDateCSVDownload} />
-    </FormGroup>
-    <FormGroup>
-      <Label for="limit">Limit</Label>
-      <Input type="number" id="limit" bind:value={limitCSVDownload} min="0"/>
-    </FormGroup>
-    <FormGroup>
-      <Label for="searchText">Search Text</Label>
-      <Input type="text" id="searchText" bind:value={searchTextCSVDownload} />
-    </FormGroup>
-    {#if errorContent}
-      <h3 class="mt-3">Error:</h3>
-      <Prism bind:code={errorContent} />
-    {/if}
-  </ModalBody>
-  <ModalFooter>
-    <Button color="secondary" onclick={() => (openDownloadModal = false)}>Cancel</Button>
-    <Button color="primary" onclick={handleDownload}>Download</Button>
-  </ModalFooter>
-</Modal>
-
-
-<Modal
-    isOpen={openUploadByCSVModal}
-    toggle={()=>{openUploadByCSVModal=false}}
-    size={"lg"}
->
-  <ModalBody>
-    <Label for="resource_type" class="mt-3">Resource type</Label>
-    <Input
-      id="resource_type"
-      bind:value={new_resource_type}
-      type="select"
-    >
-      {#each allowedResourceTypes as type}
-        {#if type}
-          <option value={type}>{type}</option>
-        {/if}
-      {/each}
-    </Input>
-
-    <Label class="mt-3">Schema</Label>
-    <Input bind:value={selectedSchema} type="select">
-      <option value={null}>{"None"}</option>
-      {#await query({
-          space_name,
-          type: QueryType.search,
-          subpath: "/schema",
-          search: "",
-          retrieve_json_payload: true,
-          limit: 99
-      }) then schemas}
-        {#each setSchemaItems(schemas) as schema}
-          <option value={schema}>{schema}</option>
-        {/each}
-      {/await}
-    </Input>
-
-    <Label class="mt-3">CSV File</Label>
-    <Input bind:files={payloadFiles} type="file" accept=".csv" />
-
-    <hr/>
-    {#if errorContent}
-      <h3 class="mt-3">Error:</h3>
-      <Prism bind:code={errorContent}/>
-    {/if}
-  </ModalBody>
-
-  <ModalFooter>
-    <Button
-      type="button"
-      color="secondary"
-      onclick={() => (openUploadByCSVModal = false)}
-    >close</Button>
-    <Button type="button" color="primary" onclick={handleUpload}>Upload</Button>
-  </ModalFooter>
-</Modal>
+<ERUploadByCSVModal
+    bind:openUploadByCSVModal={openUploadByCSVModal} bind:allowedResourceTypes={allowedResourceTypes}
+    bind:space_name={space_name} bind:new_resource_type={new_resource_type}
+    bind:selectedSchema={selectedSchema} bind:payloadFiles={payloadFiles}
+    bind:errorContent={errorContent} {handleUpload} {setSchemaItems}
+/>
 
 <Modal
   isOpen={isModalOpen}
   toggle={modalToggle}
   size={new_resource_type === "schema" ? "xl" : "lg"}
 >
-<!--<ModalHeader toggle={modalToggle}>-->
-<!--  Creating a {new_resource_type} under-->
-<!--  <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>-->
-<!--</ModalHeader>-->
-
   <div class="modal-header">
     <h5 class="modal-title">
       Creating a {new_resource_type} under
@@ -1379,481 +1303,481 @@
     </button>
   </div>
 
-<Form on:submit={async (e) => await handleSubmit(e)}>
-  <ModalBody>
-    <FormGroup>
-      {#if entryType !== "folder"}
-        {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
-          <Label for="resource_type" class="mt-3">Resource type</Label>
-          <Input
-                  id="resource_type"
-                  bind:value={new_resource_type}
-                  type="select"
-          >
-            {#each allowedResourceTypes as type}
-              {#if type}
-                <option value={type}>{type}</option>
-              {/if}
-            {/each}
-          </Input>
-        {/if}
-        {#if new_resource_type !== "schema"}
-          {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m)) && new_resource_type !== "ticket"}
-            <Label for="content_type" class="mt-3">Content type</Label>
+  <Form on:submit={async (e) => await handleSubmit(e)}>
+    <ModalBody>
+      <FormGroup>
+        {#if entryType !== "folder"}
+          {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
+            <Label for="resource_type" class="mt-3">Resource type</Label>
             <Input
-                    id="content_type"
-                    bind:value={selectedContentType}
+                    id="resource_type"
+                    bind:value={new_resource_type}
                     type="select"
             >
-              <option value={null}>{"None"}</option>
-              {#each [ContentType.json, ContentType.text, ContentType.markdown, ContentType.html] as type}
-                <option value={type}>{type}</option>
+              {#each allowedResourceTypes as type}
+                {#if type}
+                  <option value={type}>{type}</option>
+                {/if}
               {/each}
             </Input>
           {/if}
-          {#if new_resource_type === "ticket"}
-            {#await query({
+          {#if new_resource_type !== "schema"}
+            {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m)) && new_resource_type !== "ticket"}
+              <Label for="content_type" class="mt-3">Content type</Label>
+              <Input
+                      id="content_type"
+                      bind:value={selectedContentType}
+                      type="select"
+              >
+                <option value={null}>{"None"}</option>
+                {#each [ContentType.json, ContentType.text, ContentType.markdown, ContentType.html] as type}
+                  <option value={type}>{type}</option>
+                {/each}
+              </Input>
+            {/if}
+            {#if new_resource_type === "ticket"}
+              {#await query({
                 space_name,
                 type: QueryType.search,
                 subpath: "/workflows",
                 search: "",
                 retrieve_json_payload: true,
                 limit: 99
-            }) then workflows}
-              <Label class="mt-3">Workflow</Label>
-              {#if setWorkflowItem(workflows).length === 0}
-                <Input bind:value={workflowShortname}/>
-              {:else}
-                <Input bind:value={workflowShortname} type="select">
-                  {#each setWorkflowItem(workflows) as workflow}
-                    <option value={workflow}>{workflow}</option>
-                  {/each}
-                </Input>
-              {/if}
-            {/await}
+              }) then workflows}
+                <Label class="mt-3">Workflow</Label>
+                {#if setWorkflowItem(workflows).length === 0}
+                  <Input bind:value={workflowShortname}/>
+                {:else}
+                  <Input bind:value={workflowShortname} type="select">
+                    {#each setWorkflowItem(workflows) as workflow}
+                      <option value={workflow}>{workflow}</option>
+                    {/each}
+                  </Input>
+                {/if}
+              {/await}
+            {/if}
           {/if}
         {/if}
-      {/if}
 
-      {#if !["workflows", "schema"].includes(subpath) && ![ResourceType.folder, ResourceType.role, ResourceType.permission].includes(new_resource_type)}
-        <Label class="mt-3">Schema</Label>
-        <Input bind:value={selectedSchema} type="select">
-          <option value={null}>{"None"}</option>
-          {#await query({
+        {#if !["workflows", "schema"].includes(subpath) && ![ResourceType.folder, ResourceType.role, ResourceType.permission].includes(new_resource_type)}
+          <Label class="mt-3">Schema</Label>
+          <Input bind:value={selectedSchema} type="select">
+            <option value={null}>{"None"}</option>
+            {#await query({
               space_name,
               type: QueryType.search,
               subpath: "/schema",
               search: "",
               retrieve_json_payload: true,
               limit: 99
-          }) then schemas}
-            {#each setSchemaItems(schemas) as schema}
-              <option value={schema}>{schema}</option>
-            {/each}
-          {/await}
-        </Input>
-      {/if}
-
-      <Label class="mt-3">Shortname</Label>
-      <Input
-              placeholder="Shortname..."
-              bind:value={contentShortname}
-              required
-      />
-      <hr/>
-      {#if new_resource_type === "schema"}
-        <TabContent
-                on:tab={(e) => (isSchemaEntryInForm = e.detail === "form")}
-        >
-          <TabPane tabId="form" tab="Forms" active>
-            <SchemaEditor bind:content={schemaContent}/>
-          </TabPane>
-          <TabPane tabId="editor" tab="Editor">
-            <JSONEditor
-                    bind:this={schemaContentRef}
-                    bind:content={schemaContent}
-                    onRenderMenu={handleRenderMenu}
-                    mode={Mode.text}
-            />
-          </TabPane>
-        </TabContent>
-        <Row></Row>
-      {:else if selectedContentType}
-        {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
-          <Label class="mt-3">Payload</Label>
-          <Input
-                  accept="image/png, image/jpeg"
-                  bind:files={payloadFiles}
-                  type="file"
-          />
+            }) then schemas}
+              {#each setSchemaItems(schemas) as schema}
+                <option value={schema}>{schema}</option>
+              {/each}
+            {/await}
+          </Input>
         {/if}
-        {#if selectedContentType === "json"}
-          <Label class="mt-3">
-            {new_resource_type === ResourceType.permission
-                ? "Permission definition"
-                : new_resource_type === ResourceType.role
-                    ? "Role definition"
-                    : "Payload"}
-          </Label>
-          <!--              <TabContent on:tab={(e) => (isModalContentEntryInForm = e.detail==="form")}>-->
-          <!--{#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}-->
-          <!--  <TabPane tabId="form" tab="Form" active>-->
-          <!--    <SchemaForm-->
-          <!--      bind:ref={schemaFormRefModal}-->
-          <!--      schema={selectedSchemaContent}-->
-          <!--      bind:data={selectedSchemaData.json}-->
-          <!--    />-->
-          <!--  </TabPane>-->
-          <!--{/if}-->
-          <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
 
-          {#if [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)}
-            <TabContent
-                    on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}
-            >
-              <TabPane tabId="form" tab="Form" active>
-                {#if new_resource_type === ResourceType.permission}
-                  <PermissionForm bind:content={formModalContent}/>
-                {:else if new_resource_type === ResourceType.role}
-                  <RoleForm bind:content={formModalContent}/>
-                {:else if new_resource_type === ResourceType.user}
-                  <UserForm bind:content={formModalContent} bind:payload={formModalContentPayload}/>
-                {/if}
-              </TabPane>
-              <TabPane tabId="editor" tab="Editor">
-                <JSONEditor
-                    bind:this={jseModalContentRef}
-                    bind:content={jseModalContent}
-                    bind:validator={validatorModalContent}
-                    onRenderMenu={handleRenderMenu}
-                    mode={Mode.text}
-                />
-              </TabPane>
-            </TabContent>
-          {:else}
-            <JSONEditor
-                bind:this={jseModalContentRef}
-                bind:content={jseModalContent}
-                bind:validator={validatorModalContent}
-                onRenderMenu={handleRenderMenu}
-                mode={Mode.text}
+        <Label class="mt-3">Shortname</Label>
+        <Input
+                placeholder="Shortname..."
+                bind:value={contentShortname}
+                required
+        />
+        <hr/>
+        {#if new_resource_type === "schema"}
+          <TabContent
+                  on:tab={(e) => (isSchemaEntryInForm = e.detail === "form")}
+          >
+            <TabPane tabId="form" tab="Forms" active>
+              <SchemaEditor bind:content={schemaContent}/>
+            </TabPane>
+            <TabPane tabId="editor" tab="Editor">
+              <JSONEditor
+                      bind:this={schemaContentRef}
+                      bind:content={schemaContent}
+                      onRenderMenu={handleRenderMenu}
+                      mode={Mode.text}
+              />
+            </TabPane>
+          </TabContent>
+          <Row></Row>
+        {:else if selectedContentType}
+          {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
+            <Label class="mt-3">Payload</Label>
+            <Input
+                    accept="image/png, image/jpeg"
+                    bind:files={payloadFiles}
+                    type="file"
             />
           {/if}
+          {#if selectedContentType === "json"}
+            <Label class="mt-3">
+              {new_resource_type === ResourceType.permission
+                      ? "Permission definition"
+                      : new_resource_type === ResourceType.role
+                              ? "Role definition"
+                              : "Payload"}
+            </Label>
+            <!--              <TabContent on:tab={(e) => (isModalContentEntryInForm = e.detail==="form")}>-->
+            <!--{#if selectedSchemaContent && Object.keys(selectedSchemaContent).length !== 0}-->
+            <!--  <TabPane tabId="form" tab="Form" active>-->
+            <!--    <SchemaForm-->
+            <!--      bind:ref={schemaFormRefModal}-->
+            <!--      schema={selectedSchemaContent}-->
+            <!--      bind:data={selectedSchemaData.json}-->
+            <!--    />-->
+            <!--  </TabPane>-->
+            <!--{/if}-->
+            <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
+
+            {#if [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)}
+              <TabContent
+                      on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}
+              >
+                <TabPane tabId="form" tab="Form" active>
+                  {#if new_resource_type === ResourceType.permission}
+                    <PermissionForm bind:content={formModalContent}/>
+                  {:else if new_resource_type === ResourceType.role}
+                    <RoleForm bind:content={formModalContent}/>
+                  {:else if new_resource_type === ResourceType.user}
+                    <UserForm bind:content={formModalContent} bind:payload={formModalContentPayload}/>
+                  {/if}
+                </TabPane>
+                <TabPane tabId="editor" tab="Editor">
+                  <JSONEditor
+                          bind:this={jseModalContentRef}
+                          bind:content={jseModalContent}
+                          bind:validator={validatorModalContent}
+                          onRenderMenu={handleRenderMenu}
+                          mode={Mode.text}
+                  />
+                </TabPane>
+              </TabContent>
+            {:else}
+              <JSONEditor
+                      bind:this={jseModalContentRef}
+                      bind:content={jseModalContent}
+                      bind:validator={validatorModalContent}
+                      onRenderMenu={handleRenderMenu}
+                      mode={Mode.text}
+              />
+            {/if}
+          {/if}
+          {#if selectedContentType === "text"}
+            <Label class="mt-3">Payload</Label>
+            <Input type="textarea" bind:value={jseModalContent}/>
+          {/if}
+          {#if selectedContentType === "html"}
+            <Label class="mt-3">Payload</Label>
+            <HtmlEditor bind:content={jseModalContent}/>
+          {/if}
+          {#if selectedContentType === "markdown"}
+            <Label class="mt-3">Payload</Label>
+            <MarkdownEditor bind:content={jseModalContent}/>
+          {/if}
         {/if}
-        {#if selectedContentType === "text"}
-          <Label class="mt-3">Payload</Label>
-          <Input type="textarea" bind:value={jseModalContent}/>
+        <hr/>
+        <Input
+                bind:checked={isNewEntryHasRelationship}
+                type="checkbox"
+                label="Add relationship ?"
+        />
+        {#if isNewEntryHasRelationship}
+          <RelationshipForm bind:content={relationshipModalContent}/>
         {/if}
-        {#if selectedContentType === "html"}
-          <Label class="mt-3">Payload</Label>
-          <HtmlEditor bind:content={jseModalContent}/>
+        <hr/>
+        {#if errorContent}
+          <h3 class="mt-3">Error:</h3>
+          <Prism bind:code={errorContent}/>
         {/if}
-        {#if selectedContentType === "markdown"}
-          <Label class="mt-3">Payload</Label>
-          <MarkdownEditor bind:content={jseModalContent}/>
-        {/if}
-      {/if}
-      <hr/>
-      <Input
-          bind:checked={isNewEntryHasRelationship}
-          type="checkbox"
-          label="Add relationship ?"
-      />
-      {#if isNewEntryHasRelationship}
-        <RelationshipForm bind:content={relationshipModalContent}/>
-      {/if}
-      <hr/>
-      {#if errorContent}
-        <h3 class="mt-3">Error:</h3>
-        <Prism bind:code={errorContent}/>
-      {/if}
-      <hr/>
-    </FormGroup>
-  </ModalBody>
-  <ModalFooter>
-    <Button
-            type="button"
-            color="secondary"
-            onclick={() => {
-        isModalOpen = false;
-        contentShortname = "";
-      }}
-    >cancel
-    </Button>
-    <Button type="submit" color="primary">Submit</Button>
-  </ModalFooter>
-</Form>
+        <hr/>
+      </FormGroup>
+    </ModalBody>
+    <ModalFooter>
+      <Button
+              type="button"
+              color="secondary"
+              onclick={() => {
+                isModalOpen = false;
+                contentShortname = "";
+            }}
+      >cancel
+      </Button>
+      <Button type="submit" color="primary">Submit</Button>
+    </ModalFooter>
+  </Form>
 </Modal>
 
 {#if entry}
-  <div
-    bind:clientHeight={header_height}
-    class="pt-3 pb-2 px-2"
-    transition:fade={{ delay: 25 }}
-  >
-    <div class="d-flex justify-content-end w-100">
-      <BreadCrumbLite
-              {space_name}
-              {subpath}
-              {resource_type}
-              {schema_name}
-              shortname={entry.shortname}
-      />
-      <ButtonGroup size="sm" class="ms-auto align-items-center">
-        <span class="ps-2 pe-1"> {$_("views")} </span>
-        {#if [ResourceType.folder, ResourceType.space].includes(resource_type)}
-          <Button
-                  outline
-                  color="success"
-                  size="sm"
-                  class="justify-content-center text-center py-0 px-1"
-                  active={"list" === tab_option}
-                  title={$_("list")}
-                  onclick={() => (tab_option = "list")}
-          >
-            <Icon name="card-list"/>
-          </Button>
-        {/if}
-        <Button
-                outline
-                color="success"
-                size="sm"
-                class="justify-content-center text-center py-0 px-1"
-                active={"view" === tab_option}
-                title={$_("view")}
-                onclick={() => (tab_option = "view")}
-        >
-          <Icon name="binoculars"/>
-        </Button>
-        {#if entry.owner_shortname === $user.shortname}
-          <Button
-                  outline
-                  color="success"
-                  size="sm"
-                  class="justify-content-center text-center py-0 px-1"
-                  active={"acl" === tab_option}
-                  title={'ACL'}
-                  onclick={() => (tab_option = "acl")}
-          >
-            <Icon name="key"/>
-          </Button>
-        {/if}
-        {#if canUpdate}
-          <Button
-                  outline
-                  color="success"
-                  size="sm"
-                  class="justify-content-center text-center py-0 px-1"
-                  active={"edit_meta" === tab_option}
-                  title={$_("edit") + " meta"}
-                  onclick={() => (tab_option = "edit_meta")}
-          >
-            <Icon name="code-slash"/>
-          </Button>
-          {#if entry.payload}
+  {#key entry}
+    <div
+      bind:clientHeight={header_height}
+      class="pt-3 pb-2 px-2"
+      transition:fade={{ delay: 25 }}
+    >
+      <div class="d-flex justify-content-end w-100">
+        <BreadCrumbLite
+          {space_name}
+          {subpath}
+          {resource_type}
+          {schema_name}
+          shortname={entry.shortname}
+        />
+        <ButtonGroup size="sm" class="ms-auto align-items-center">
+          <span class="ps-2 pe-1"> {$_("views")} </span>
+          {#if [ResourceType.folder, ResourceType.space].includes(resource_type)}
             <Button
                     outline
                     color="success"
                     size="sm"
                     class="justify-content-center text-center py-0 px-1"
-                    active={"edit_content" === tab_option}
-                    title={$_("edit") + " payload"}
-                    onclick={() => (tab_option = "edit_content")}
+                    active={"list" === tab_option}
+                    title={$_("list")}
+                    onclick={() => (tab_option = "list")}
             >
-              <Icon name="pencil"/>
+              <Icon name="card-list"/>
             </Button>
-            {#if schema && jseContent}
+          {/if}
+          <Button
+                  outline
+                  color="success"
+                  size="sm"
+                  class="justify-content-center text-center py-0 px-1"
+                  active={"view" === tab_option}
+                  title={$_("view")}
+                  onclick={() => (tab_option = "view")}
+          >
+            <Icon name="binoculars"/>
+          </Button>
+          {#if entry.owner_shortname === $user.shortname}
+            <Button
+                    outline
+                    color="success"
+                    size="sm"
+                    class="justify-content-center text-center py-0 px-1"
+                    active={"acl" === tab_option}
+                    title={'ACL'}
+                    onclick={() => (tab_option = "acl")}
+            >
+              <Icon name="key"/>
+            </Button>
+          {/if}
+          {#if canUpdate}
+            <Button
+                    outline
+                    color="success"
+                    size="sm"
+                    class="justify-content-center text-center py-0 px-1"
+                    active={"edit_meta" === tab_option}
+                    title={$_("edit") + " meta"}
+                    onclick={() => (tab_option = "edit_meta")}
+            >
+              <Icon name="code-slash"/>
+            </Button>
+            {#if entry.payload}
               <Button
                       outline
                       color="success"
                       size="sm"
                       class="justify-content-center text-center py-0 px-1"
-                      active={"edit_content_form" === tab_option}
+                      active={"edit_content" === tab_option}
                       title={$_("edit") + " payload"}
-                      onclick={() => (tab_option = "edit_content_form")}
+                      onclick={() => (tab_option = "edit_content")}
               >
-                <Icon name="pencil-square"/>
+                <Icon name="pencil"/>
               </Button>
+              {#if schema && jseContent}
+                <Button
+                        outline
+                        color="success"
+                        size="sm"
+                        class="justify-content-center text-center py-0 px-1"
+                        active={"edit_content_form" === tab_option}
+                        title={$_("edit") + " payload"}
+                        onclick={() => (tab_option = "edit_content_form")}
+                >
+                  <Icon name="pencil-square"/>
+                </Button>
+              {/if}
+              {#if selectedSchema === "workflow"}
+                <Button
+                        outline
+                        color="success"
+                        size="sm"
+                        class="justify-content-center text-center py-0 px-1"
+                        active={"workflow" === tab_option}
+                        title={$_("edit") + " payload"}
+                        onclick={() => (tab_option = "workflow")}
+                >
+                  <Icon name="diagram-3"/>
+                </Button>
+              {/if}
             {/if}
-            {#if selectedSchema === "workflow"}
+            {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
               <Button
                       outline
                       color="success"
                       size="sm"
                       class="justify-content-center text-center py-0 px-1"
-                      active={"workflow" === tab_option}
+                      active={"visualization" === tab_option}
                       title={$_("edit") + " payload"}
-                      onclick={() => (tab_option = "workflow")}
+                      onclick={() => (tab_option = "visualization")}
               >
                 <Icon name="diagram-3"/>
               </Button>
             {/if}
           {/if}
-          {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
+          {#if ![ResourceType.folder, ResourceType.space].includes(resource_type)}
             <Button
                     outline
                     color="success"
                     size="sm"
                     class="justify-content-center text-center py-0 px-1"
-                    active={"visualization" === tab_option}
-                    title={$_("edit") + " payload"}
-                    onclick={() => (tab_option = "visualization")}
+                    active={"relationships" === tab_option}
+                    title={$_("relationships")}
+                    onclick={() => (tab_option = "relationships")}
             >
-              <Icon name="diagram-3"/>
+              <Icon name="link"/>
             </Button>
           {/if}
-        {/if}
-        {#if ![ResourceType.folder, ResourceType.space].includes(resource_type)}
           <Button
                   outline
                   color="success"
                   size="sm"
                   class="justify-content-center text-center py-0 px-1"
-                  active={"relationships" === tab_option}
-                  title={$_("relationships")}
-                  onclick={() => (tab_option = "relationships")}
+                  active={"attachments" === tab_option}
+                  title={$_("attachments")}
+                  onclick={() => (tab_option = "attachments")}
           >
-            <Icon name="link"/>
+            <Icon name="paperclip"/>
           </Button>
-        {/if}
-        <Button
-                outline
-                color="success"
-                size="sm"
-                class="justify-content-center text-center py-0 px-1"
-                active={"attachments" === tab_option}
-                title={$_("attachments")}
-                onclick={() => (tab_option = "attachments")}
-        >
-          <Icon name="paperclip"/>
-        </Button>
-        <Button
-                outline
-                color="success"
-                size="sm"
-                class="justify-content-center text-center py-0 px-1"
-                active={"history" === tab_option}
-                title={$_("history")}
-                onclick={() => (tab_option = "history")}
-        >
-          <Icon name="clock-history"/>
-        </Button>
-      </ButtonGroup>
+          <Button
+                  outline
+                  color="success"
+                  size="sm"
+                  class="justify-content-center text-center py-0 px-1"
+                  active={"history" === tab_option}
+                  title={$_("history")}
+                  onclick={() => (tab_option = "history")}
+          >
+            <Icon name="clock-history"/>
+          </Button>
+        </ButtonGroup>
 
-      <ButtonGroup size="sm" class="align-items-center">
-        {#if canCreateEntry || canCreateFolder || canDelete || !!entry?.payload?.body?.allow_csv}
-          <span class="ps-2 pe-1"> {$_("actions")} </span>
-        {/if}
+        <ButtonGroup size="sm" class="align-items-center">
+          {#if canCreateEntry || canCreateFolder || canDelete || !!entry?.payload?.body?.allow_csv}
+            <span class="ps-2 pe-1"> {$_("actions")} </span>
+          {/if}
 
-        {#if subpath !== "health_check"}
-          {#if canCreateEntry}
+          {#if subpath !== "health_check"}
+            {#if canCreateEntry}
+              <Button
+                      outline
+                      color="success"
+                      size="sm"
+                      title={$_("create_entry")}
+                      class="justify-contnet-center text-center py-0 px-1"
+                      onclick={handleCreateEntryModal}
+              >
+                <Icon name="file-plus"/>
+              </Button>
+            {/if}
+            {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
+              <Button
+                    outline
+                    color="success"
+                    size="sm"
+                    title={$_("create_folder")}
+                    class="justify-contnet-center text-center py-0 px-1"
+                    onclick={() => {
+                      entryType = "folder";
+                      new_resource_type = ResourceType.folder;
+                      selectedSchema = "folder_rendering";
+                      isModalOpen = true;
+                    }}
+              >
+                <Icon name="folder-plus"/>
+              </Button>
+            {/if}
+          {/if}
+          <!--{#if !!entry?.payload?.body?.stream}-->
+            <Button
+                outline={!isNeedRefresh}
+                color={isNeedRefresh ? "danger" : "success"}
+                size="sm"
+                title={$_("refresh")}
+                class="justify-contnet-center text-center py-0 px-1"
+                onclick={async () => {
+                  await refreshEntry();
+              }}
+            >
+              <Icon name="arrow-clockwise"/>
+            </Button>
+          <!--{/if}-->
+
+          {#if canDelete && $bulkBucket.length === 0}
+            <Button
+              outline
+              color="success"
+              size="sm"
+              title={$_("delete")}
+              onclick={handleDelete}
+              class="justify-content-center text-center py-0 px-1">
+                <Icon name="trash"/>
+            </Button>
+          {/if}
+          {#if !!entry?.payload?.body?.allow_csv}
             <Button
                     outline
                     color="success"
                     size="sm"
-                    title={$_("create_entry")}
-                    class="justify-contnet-center text-center py-0 px-1"
-                    onclick={handleCreateEntryModal}
+                    title={$_("download")}
+                    onclick={openDownloadDialog}
+                    class="justify-content-center text-center py-0 px-1"
             >
-              <Icon name="file-plus"/>
+              <Icon name="cloud-download"/>
             </Button>
           {/if}
-          {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
+          {#if !!entry?.payload?.body?.allow_upload_csv}
             <Button
-                  outline
-                  color="success"
-                  size="sm"
-                  title={$_("create_folder")}
-                  class="justify-contnet-center text-center py-0 px-1"
-                  onclick={() => {
-                    entryType = "folder";
-                    new_resource_type = ResourceType.folder;
-                    selectedSchema = "folder_rendering";
-                    isModalOpen = true;
-                  }}
+                    outline
+                    color="success"
+                    size="sm"
+                    title={$_("upload")}
+                    onclick={()=>{
+                        new_resource_type = null;
+                        selectedSchema = null;
+                        openUploadByCSVModal = true;
+                    }}
+                    class="justify-content-center text-center py-0 px-1"
             >
-              <Icon name="folder-plus"/>
+              <Icon name="cloud-upload"/>
             </Button>
           {/if}
-        {/if}
-        <!--{#if !!entry?.payload?.body?.stream}-->
-          <Button
-              outline={!isNeedRefresh}
-              color={isNeedRefresh ? "danger" : "success"}
-              size="sm"
-              title={$_("refresh")}
-              class="justify-contnet-center text-center py-0 px-1"
-              onclick={() => {
-              refresh = !refresh;
-            }}
-          >
-            <Icon name="arrow-clockwise"/>
-          </Button>
-        <!--{/if}-->
 
-        {#if canDelete && $bulkBucket.length == 0}
-          <Button
-                  outline
-                  color="success"
-                  size="sm"
-                  title={$_("delete")}
-                  onclick={handleDelete}
-                  class="justify-content-center text-center py-0 px-1"
-          >
-            <Icon name="trash"/>
-          </Button>
-        {/if}
-        {#if !!entry?.payload?.body?.allow_csv}
-          <Button
-                  outline
-                  color="success"
-                  size="sm"
-                  title={$_("download")}
-                  onclick={openDownloadDialog}
-                  class="justify-content-center text-center py-0 px-1"
-          >
-            <Icon name="cloud-download"/>
-          </Button>
-        {/if}
-        {#if !!entry?.payload?.body?.allow_upload_csv}
-          <Button
-                  outline
-                  color="success"
-                  size="sm"
-                  title={$_("upload")}
-                  onclick={()=>{
-                      new_resource_type = null;
-                      selectedSchema = null;
-                      openUploadByCSVModal = true;
-                  }}
-                  class="justify-content-center text-center py-0 px-1"
-          >
-            <Icon name="cloud-upload"/>
-          </Button>
-        {/if}
+          {#if $bulkBucket.length}
+            <span class="ps-2 pe-1"> {$_("bulk_actions")} </span>
+            <Button
+                    outline
+                    color="success"
+                    size="sm"
+                    title={$_("delete_selected")}
+                    onclick={handleDeleteBulk}
+                    class="justify-content-center text-center py-0 px-1"
+            >
+              <Icon name="trash"/>
+            </Button>
+          {/if}
 
-        {#if $bulkBucket.length}
-          <span class="ps-2 pe-1"> {$_("bulk_actions")} </span>
-          <Button
-                  outline
-                  color="success"
-                  size="sm"
-                  title={$_("delete_selected")}
-                  onclick={handleDeleteBulk}
-                  class="justify-content-center text-center py-0 px-1"
-          >
-            <Icon name="trash"/>
-          </Button>
-        {/if}
-
-      </ButtonGroup>
+        </ButtonGroup>
+      </div>
     </div>
-  </div>
 
-  <div
-          class="px-1 tab-content"
-          style="height: calc(100% - {header_height}px); overflow: hidden auto;"
-          transition:fade={{ delay: 25 }}
+    <div
+    class="px-1 tab-content"
+    style="height: calc(100% - {header_height}px); overflow: hidden auto;"
+    transition:fade={{ delay: 25 }}
   >
     <div class="tab-pane" class:active={tab_option === "list"}>
       <ListView
@@ -1877,8 +1801,8 @@
     </div>
     <div class="tab-pane" class:active={tab_option === "view"}>
       <div
-              class="px-1 pb-1"
-              style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
+        class="px-1 pb-1"
+        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
       >
         <TabContent>
           {#if isContentPreviewable}
@@ -2097,14 +2021,16 @@
     </div>
     <div class="tab-pane" class:active={tab_option === "attachments"}>
       <Attachments
-              {resource_type}
-              {space_name}
-              {subpath}
-              parent_shortname={entry.shortname}
-              attachments={Object.values(entry.attachments)}
+        {resource_type}
+        {space_name}
+        {subpath}
+        parent_shortname={entry.shortname}
+        attachments={Object.values(entry.attachments)}
+        {refreshEntry}
       />
     </div>
   </div>
+  {/key}
 {:else}
   <div class="alert alert-danger text-center m-5">
     <h4 class="alert-heading text-capitalize">
