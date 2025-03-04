@@ -30,7 +30,6 @@
   import refresh_spaces from "@/stores/management/refresh_spaces";
   import {themesStore} from "@/stores/themes_store";
   import {locale} from "svelte-i18n";
-
   function findRoute(routers, paths, lang) {
       if (paths.length === 0) {
           return routers;
@@ -60,6 +59,7 @@
                   if (url.startsWith("/management")){
                       return url;
                   }
+                 // eslint-disable-next-line svelte/valid-compile
                   const lang = $locale;
                   const paths = url.split("/");
                   paths.shift();

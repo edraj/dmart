@@ -28,7 +28,7 @@ export function jsonTOplantUML(data) {
             if (state.resolutions) {
                 result += `note left of "${state.state}"\nResolutions:\n`;
                 state.resolutions.map((resolution) => {
-                    result += `* ${resolution}\n`;
+                    result += `* ${resolution.key}\n`;
                 });
                 result += "end note\n";
             }
