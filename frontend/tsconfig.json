@@ -7,7 +7,7 @@
         "checkJs": true,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
-        "verbatimModuleSyntax": false, // TODO
+        "verbatimModuleSyntax": true,
         "resolveJsonModule": true,
         "skipLibCheck": true,
         "sourceMap": true,
