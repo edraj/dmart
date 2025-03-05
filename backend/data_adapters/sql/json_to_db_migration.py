@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
+# from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -138,6 +138,7 @@ async def process_directory(root, dirs, space_name, subpath):
                 if file == 'history.jsonl':
                     lines = open(os.path.join(root, dir, file), 'r').readlines()
                     for line in lines:
+                        history = None
                         try:
                             history = json.loads(line.replace('\n', ''))
                             history['shortname'] = dir
@@ -363,85 +364,85 @@ async def main():
 
         await process_directory(root, dirs, space_name, subpath)
 
-    with ThreadPoolExecutor() as executor:
-        futures = []
-        for root, dirs in all_dirs:
-            tmp = root.replace(str(settings.spaces_folder), '')
-            if tmp == '':
-                continue
-            if tmp[0] == '/':
-                tmp = tmp[1:]
-            space_name = tmp.split('/')[0]
-            subpath = '/'.join(tmp.split('/')[1:])
-            if space_name == '..':
-                continue
+    # with ThreadPoolExecutor() as executor:
+        # futures = []
+    for root, dirs in all_dirs:
+        tmp = root.replace(str(settings.spaces_folder), '')
+        if tmp == '':
+            continue
+        if tmp[0] == '/':
+            tmp = tmp[1:]
+        space_name = tmp.split('/')[0]
+        subpath = '/'.join(tmp.split('/')[1:])
+        if space_name == '..':
+            continue
 
-            if space_name.startswith('.git'):
-                continue
+        if space_name.startswith('.git'):
+            continue
 
-            print(".", end='')
-            if subpath == '' or subpath == '/':
-                subpath = '/'
-                p = os.path.join(root, '.dm', 'meta.space.json')
-                entry = {}
-                if Path(p).is_file():
-                    try:
-                        entry = json.load(open(p))
-                        entry['space_name'] = space_name
-                        entry['shortname'] = space_name
-                        entry['query_policies'] = generate_query_policies(
-                            space_name=space_name,
-                            subpath=subpath,
-                            resource_type=ResourceType.space,
-                            is_active=True,
-                            owner_shortname=entry.get('owner_shortname', 'dmart'),
-                            owner_group_shortname=entry.get('owner_group_shortname', None),
-                        )
+        print(".", end='')
+        if subpath == '' or subpath == '/':
+            subpath = '/'
+            p = os.path.join(root, '.dm', 'meta.space.json')
+            entry = {}
+            if Path(p).is_file():
+                try:
+                    entry = json.load(open(p))
+                    entry['space_name'] = space_name
+                    entry['shortname'] = space_name
+                    entry['query_policies'] = generate_query_policies(
+                        space_name=space_name,
+                        subpath=subpath,
+                        resource_type=ResourceType.space,
+                        is_active=True,
+                        owner_shortname=entry.get('owner_shortname', 'dmart'),
+                        owner_group_shortname=entry.get('owner_group_shortname', None),
+                    )
 
-                        _payload = entry.get('payload', {})
-                        if _payload:
-                            if payload := _payload.get('body', None):
-                                if entry.get('payload', {}).get('content_type', None) == 'json':
-                                    body = json.load(open(
-                                        os.path.join(root, '.dm', '../..', str(payload))
-                                    ))
-                                else:
-                                    body = payload
-                                sha1 = hashlib.sha1()
-                                sha1.update(json.dumps(body).encode())
-                                checksum = sha1.hexdigest()
-                                entry['payload']['checksum'] = checksum
-                                entry['payload']['body'] = body
-                        else:
-                            entry['payload'] = None
-                        entry['subpath'] = '/'
-                        entry['resource_type'] = 'space'
-                        entry['tags'] = entry.get('tags', [])
-                        entry['acl'] = entry.get('acl', [])
-                        entry['hide_folders'] = entry.get('hide_folders', [])
-                        entry['relationships'] = entry.get('relationships', [])
-                        entry['hide_space'] = entry.get('hide_space', False)
+                    _payload = entry.get('payload', {})
+                    if _payload:
+                        if payload := _payload.get('body', None):
+                            if entry.get('payload', {}).get('content_type', None) == 'json':
+                                body = json.load(open(
+                                    os.path.join(root, '.dm', '../..', str(payload))
+                                ))
+                            else:
+                                body = payload
+                            sha1 = hashlib.sha1()
+                            sha1.update(json.dumps(body).encode())
+                            checksum = sha1.hexdigest()
+                            entry['payload']['checksum'] = checksum
+                            entry['payload']['body'] = body
+                    else:
+                        entry['payload'] = None
+                    entry['subpath'] = '/'
+                    entry['resource_type'] = 'space'
+                    entry['tags'] = entry.get('tags', [])
+                    entry['acl'] = entry.get('acl', [])
+                    entry['hide_folders'] = entry.get('hide_folders', [])
+                    entry['relationships'] = entry.get('relationships', [])
+                    entry['hide_space'] = entry.get('hide_space', False)
 
-                        async with SQLAdapter().get_session() as session:
-                            session.add(Spaces.model_validate(entry))
-                            await session.commit()
-                    except Exception as e:
-                        save_report('/', save_issue(ResourceType.space, entry, e))
-                continue
+                    async with SQLAdapter().get_session() as session:
+                        session.add(Spaces.model_validate(entry))
+                        await session.commit()
+                except Exception as e:
+                    save_report('/', save_issue(ResourceType.space, entry, e))
+            continue
 
-            subpath = subpath.replace('.dm', '')
-            if subpath != '/' and subpath.endswith('/'):
-                subpath = subpath[:-1]
+        subpath = subpath.replace('.dm', '')
+        if subpath != '/' and subpath.endswith('/'):
+            subpath = subpath[:-1]
 
-            if subpath == '':
-                subpath = '/'
+        if subpath == '':
+            subpath = '/'
 
-            await _process_directory(root, dirs, space_name, subpath)
-            # futures.append(executor.submit(_process_directory, root, dirs, space_name, subpath))
-            # as_completed(futures)
+        await _process_directory(root, dirs, space_name, subpath)
+        # futures.append(executor.submit(_process_directory, root, dirs, space_name, subpath))
+        # as_completed(futures)
 
-    for future in as_completed(futures):
-        future.result()
+    # for future in as_completed(futures):
+    #     future.result()
 
     if settings.active_data_db == 'file':
         print("[Warning] you are using active_data_db='file', please don't forget to set it to active_data_db='sql' in your config.env")
