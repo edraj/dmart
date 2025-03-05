@@ -1298,7 +1298,7 @@ class SQLAdapter(BaseDataAdapter):
             try:
                 statement = select(Sessions).where(col(Sessions.shortname) == user_shortname).order_by(
                     col(Sessions.timestamp).desc()
-                ).offset(settings.max_sessions_per_user)
+                ).offset(settings.max_sessions_per_user-1)
                 oldest_sessions = (await session.execute(statement)).all()
                 oldest_sessions = [oldest_session[0] for oldest_session in oldest_sessions]
                 for oldest_session in oldest_sessions:
