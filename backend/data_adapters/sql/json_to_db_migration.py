@@ -13,7 +13,8 @@ from typing import Any
 from uuid import uuid4
 from utils.query_policies_helper import generate_query_policies
 from models.enums import ResourceType, ContentType
-from data_adapters.sql.create_tables import Entries, Users, Attachments, Roles, Permissions, Spaces
+from data_adapters.sql.create_tables import Entries, Users, Attachments, Roles, Permissions, Spaces, generate_tables, \
+    Histories
 
 logging.basicConfig()
 logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
@@ -119,11 +120,12 @@ async def bulk_insert_in_batches(model, records, batch_size=2000):
             print("[!fatal_bulk_insert_in_batches]", e)
 
 
-def _process_directory(root, dirs, space_name, subpath):
-    asyncio.run(process_directory(root, dirs, space_name, subpath))
-
+async def _process_directory(root, dirs, space_name, subpath):
+    # asyncio.run()
+    await process_directory(root, dirs, space_name, subpath)
 
 async def process_directory(root, dirs, space_name, subpath):
+    histories = []
     attachments = []
     entries = []
     users = []
@@ -133,7 +135,21 @@ async def process_directory(root, dirs, space_name, subpath):
     for dir in dirs:
         for file in os.listdir(os.path.join(root, dir)):
             if not file.startswith('meta'):
-                continue
+                if file == 'history.jsonl':
+                    lines = open(os.path.join(root, dir, file), 'r').readlines()
+                    for line in lines:
+                        try:
+                            history = json.loads(line.replace('\n', ''))
+                            history['shortname'] = dir
+                            history['space_name'] = space_name
+                            history['subpath'] = subpath_checker(subpath)
+                            history['timestamp'] = datetime.strptime(history['timestamp'], '%Y-%m-%dT%H:%M:%S.%f')
+
+                            histories.append(history)
+
+                        except Exception as e:
+                            print(f"Error processing Histories {space_name}/{subpath}/{dir}/{history} ... ")
+                            print(e)
 
             p = os.path.join(root, dir, file)
             if Path(p).is_file():
@@ -181,7 +197,7 @@ async def process_directory(root, dirs, space_name, subpath):
                             print(f"Error processing Attachments {space_name}/{subpath}/{dir}/{file} ... ")
                             print("!!", e)
                             save_report('/', save_issue(_attachment['resource_type'], _attachment, e))
-                elif file.endswith('.json'):
+                elif file.startswith('meta.') and file.endswith('.json'):
                     entry = json.load(open(p))
                     entry['space_name'] = space_name
                     body = None
@@ -295,9 +311,12 @@ async def process_directory(root, dirs, space_name, subpath):
     await bulk_insert_in_batches(Permissions, permissions)
     await bulk_insert_in_batches(Entries, entries)
     await bulk_insert_in_batches(Attachments, attachments)
+    await bulk_insert_in_batches(Histories, histories)
 
 
 async def main():
+    generate_tables()
+
     target_path = settings.spaces_folder
 
     if len(sys.argv) == 2 and sys.argv[1] != 'json_to_db':
@@ -402,6 +421,7 @@ async def main():
                         entry['hide_folders'] = entry.get('hide_folders', [])
                         entry['relationships'] = entry.get('relationships', [])
                         entry['hide_space'] = entry.get('hide_space', False)
+
                         async with SQLAdapter().get_session() as session:
                             session.add(Spaces.model_validate(entry))
                             await session.commit()
@@ -416,7 +436,9 @@ async def main():
             if subpath == '':
                 subpath = '/'
 
-            futures.append(executor.submit(_process_directory, root, dirs, space_name, subpath))
+            await _process_directory(root, dirs, space_name, subpath)
+            # futures.append(executor.submit(_process_directory, root, dirs, space_name, subpath))
+            # as_completed(futures)
 
     for future in as_completed(futures):
         future.result()
