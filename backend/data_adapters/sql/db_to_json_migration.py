@@ -47,6 +47,8 @@ def clean_json(data: dict):
 
 def write_json_file(path, data):
     with open(path, "w") as f:
+        if data.get("query_policies", False):
+            del data["query_policies"]
         clean = clean_json(data)
         json.dump(clean, f, indent=2, default=str)
 
