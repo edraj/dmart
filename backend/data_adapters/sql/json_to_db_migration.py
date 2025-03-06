@@ -185,7 +185,7 @@ async def process_directory(root, dirs, space_name, subpath):
                                 _attachment_body = json.load(open(os.path.join(root, dir, _body)))
                                 _attachment['payload']['body'] = _attachment_body
                             elif _body:
-                                if _attachment.get('payload', {}).get('content_type', False):
+                                if not _attachment.get('payload', {}).get('content_type', False):
                                     _attachment['media'] = None
                                 else:
                                     _attachment['media'] = open(os.path.join(root, dir, _body), 'rb').read()

@@ -75,9 +75,6 @@ def process_attachments(session, space_folder):
                 write_json_file(f"{media_path}/{attachment.shortname}.json", attachment.payload.get("body", {}))
                 attachment.payload["body"] = f"{attachment.shortname}.json"
             else:
-                print(attachment.payload['content_type'])
-                print(attachment.payload['body'])
-                print(media_path)
                 if attachment.media is None:
                     print(f"Warning: empty media for @{attachment.space_name}:{attachment.subpath}/{attachment.shortname}")
                     continue
