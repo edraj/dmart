@@ -47,6 +47,8 @@ def clean_json(data: dict):
 
 def write_json_file(path, data):
     with open(path, "w") as f:
+        if data.get("query_policies", False):
+            del data["query_policies"]
         clean = clean_json(data)
         json.dump(clean, f, indent=2, default=str)
 
@@ -73,6 +75,9 @@ def process_attachments(session, space_folder):
                 write_json_file(f"{media_path}/{attachment.shortname}.json", attachment.payload.get("body", {}))
                 attachment.payload["body"] = f"{attachment.shortname}.json"
             else:
+                if attachment.media is None:
+                    print(f"Warning: empty media for @{attachment.space_name}:{attachment.subpath}/{attachment.shortname}")
+                    continue
                 write_binary_file(f"{media_path}/{attachment.payload['body']}", attachment.media)
         _attachment = attachment.model_dump()
 
