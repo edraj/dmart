@@ -65,7 +65,7 @@
         {#if typeof(input.value) === "boolean"}
           <Row class="my-2">
             <Col sm="11"><Label>{formatting(input.key)}</Label></Col>
-            <Col sm="1">{input.value}
+            <Col sm="1">
               <Input type="checkbox" bind:checked={input.value} />
             </Col>
           </Row>
