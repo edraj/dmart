@@ -319,9 +319,9 @@
       if(resource_type === ResourceType.folder){
         const _subpath = subpath.split("/");
         let parent_subpath: string = _subpath.slice(0, _subpath.length - 1).join("/") || "__root__";
-        let shortname: string =  $derived(_subpath[_subpath.length - 1]);
+        let _shortname: string =  _subpath[_subpath.length - 1];
 
-        const result = await retrieve_entry(ResourceType.folder, space_name, parent_subpath, shortname, true, true);
+        const result = await retrieve_entry(ResourceType.folder, space_name, parent_subpath, _shortname, true, true);
         entry = structuredClone(result);
       } else {
         const result = await retrieve_entry(resource_type, space_name, subpath, entry.shortname, true, true);
@@ -1947,15 +1947,15 @@
             <ConfigEditor bind:entries={jseContent.json.items}/>
           {:else if resource_type === ResourceType.content && schema_name === "translation"}
             <TranslationEditor
-                    bind:entries={jseContent.json.items}
-                    columns={Object.keys(schema.properties.items.items.properties)}
+              bind:entries={jseContent.json.items}
+              columns={Object.keys(schema.properties.items.items.properties)}
             />
           {:else}
             <div class="px-1 pb-1 h-100">
               <SchemaForm
-                      bind:ref={schemaFormRefContent}
-                      {schema}
-                      bind:data={jseContent.json}
+                bind:ref={schemaFormRefContent}
+                schema={$state.snapshot(schema)}
+                bind:data={jseContent.json}
               />
             </div>
           {/if}
