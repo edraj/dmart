@@ -26,7 +26,7 @@
   let search_value = "";
   function handleSearch(e) {
     e.preventDefault();
-    search.set(search_value.replaceAll("@", "."));
+    search.set(search_value);
   }
   function handleInput(e) {
     search_value = e.target.value;
