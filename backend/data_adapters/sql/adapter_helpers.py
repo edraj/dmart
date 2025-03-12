@@ -108,17 +108,26 @@ def validate_search_range(v_str):
     if isinstance(v_str, list):
         return False, v_str
 
-    pattern = r"^\[\d+\s(\d+)*\]$"
-
-    if re.match(pattern, v_str):
+    if re.match(r"^\[\d+\s(\d+)*\]$", v_str):
         v_list = list(map(int, v_str[1:-1].split()))
         return True, v_list
-    else:
-        return False, v_str
+
+    date_patterns = [
+        r"^\[\d{4}-\d{2}-\d{2}\s\d{4}-\d{2}-\d{2}\]$",
+        r"^\[\d{4}-\d{2}-\d{2}T:\d{2}:\d{2}:\d{2}\s\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]$",
+        r"^\[\d{4}-\d{2}-\d{2}T:\d{2}:\d{2}:\d{2}\.\d{6}\s\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}\]$"
+    ]
+
+    for pattern in date_patterns:
+        if re.match(pattern, v_str):
+            return True, v_str[1:-1].split()
+
+    return False, v_str
 
 
 def parse_search_string(string, entity):
-    string = re.sub(r'(?<=\w)@(?=\w)', '%40', string)
+    string = re.sub(r'(?<=\w)@(?=\w)', '%40', string) # prevent replacing @ in email
+    string = re.sub(r'(\d):', r'\1%41', string) # prevent replacing : in timestamp
 
     tokens = []
     current = ""
@@ -158,6 +167,8 @@ def parse_search_string(string, entity):
         matches = re.findall(pattern, s)
 
         for key, value in matches:
+            value = value.replace("%40", "@")
+            value = value.replace("%41", ":")
             try:
                 if "." in key:
                     if getattr(entity, key.split('.')[0]):
