@@ -251,7 +251,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 shortname = identifier["shortname"]
             else:
                 key, value = list(identifier.items())[0]
-                shortname = await get_shortname_from_identifier(access_control, key, value)
+                shortname = await get_shortname_from_identifier(key, value)
                 if shortname is None:
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
