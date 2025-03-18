@@ -72,6 +72,22 @@ async def test_login_with_the_new_user(client: AsyncClient):
     response = await client.post(
         "/user/login",
         json={
+            "msisdn": new_user_data["msisdn"],
+            "password": "Test1234",
+        },
+    )
+    assert_code_and_status_success(response)
+    response = await client.post(
+        "/user/login",
+        json={
+            "email": new_user_data["email"],
+            "password": "Test1234",
+        },
+    )
+    assert_code_and_status_success(response)
+    response = await client.post(
+        "/user/login",
+        json={
             "shortname": new_user_data["shortname"],
             "password": "Test1234",
         },

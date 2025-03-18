@@ -1880,4 +1880,16 @@ class SQLAdapter(BaseDataAdapter):
         return []
 
     async def is_user_verified(self, user_shortname: str | None, identifier: str | None) -> bool:
-        return True
+        async with self.get_session() as session:
+            statement = select(Users).where(Users.shortname == user_shortname)
+            result = (await session.execute(statement)).one_or_none()
+
+            if result is None:
+                return False
+            user = Users.model_validate(result[0])
+
+            if identifier == "msisdn":
+                return user.is_msisdn_verified
+            if identifier == "email":
+                return user.is_email_verified
+            return False
