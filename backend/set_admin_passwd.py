@@ -16,7 +16,7 @@ from sqlmodel import select
 users : dict[str, dict]= {"dmart":{}, "alibaba": {}}
 
 while True:
-    password = getpass.getpass("Enter the admin/testuser password then hit enter: ")
+    password = getpass.getpass("Type the new password for admin/testuser then hit enter: ")
     if re.match(regex.PASSWORD, password):
         break
     else:
