@@ -1,4 +1,4 @@
-localhost {
+http://localhost:8000, https://localhost:4443 {
 	handle /openapi.json {
 		reverse_proxy localhost:8282
 	}
