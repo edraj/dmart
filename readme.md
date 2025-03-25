@@ -161,7 +161,7 @@ You only need a command line console, git and podman (or docker).
 podman pull ghcr.io/edraj/dmart:latest
 
 # Inistantiate the container and map the https port to localhost
-podman run --name dmart -p 4443:443 -d -it dmart
+podman run --name dmart -p 4443:4443 -p 8000:8000 -d -it dmart
 
 # Set the admin password
 podman exec -it -w /home/dmart/backend dmart /home/venv/bin/python3 ./set_admin_passwd.py
