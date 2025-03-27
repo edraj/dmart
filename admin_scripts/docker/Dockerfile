@@ -13,7 +13,6 @@ RUN set -eux \
   && git clone --depth 1 https://github.com/edraj/dmart.git /home/dmart \
   && cp /home/dmart/admin_scripts/docker/dmart.sysv /etc/init.d/dmart \
   && cp /home/dmart/admin_scripts/docker/config.ts /home/dmart/frontend/src/ \
-  && cp /home/dmart/admin_scripts/docker/config.env /home/dmart/backend/ \
   && apk add --virtual buildpkgs nodejs yarn \
   && cp /home/dmart/admin_scripts/docker/Caddyfile /etc/caddy/ \
   && uv venv /home/venv \
