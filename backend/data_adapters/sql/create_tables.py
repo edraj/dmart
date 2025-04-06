@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import LargeBinary
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT
 from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
-from sqlmodel import SQLModelConfig # type: ignore
+from sqlmodel._compat import SQLModelConfig # type: ignore
 from utils.helpers import camel_case, remove_none_dict
 from uuid import uuid4
 from models import core
