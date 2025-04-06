@@ -6,6 +6,8 @@ from utils.settings import settings
 class Plugin(PluginBase):
 
     async def hook(self, data: Event):
+        if settings.active_data_db != "file":
+            return
         all_MKW = "__ALL__"
 
         state = data.attributes.get("state", all_MKW)
