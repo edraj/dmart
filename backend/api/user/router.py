@@ -132,7 +132,7 @@ async def create_user(record: core.Record) -> api.Response:
 
     user = core.User.from_record(
         record=record,
-        owner_shortname=record.shortname
+        owner_shortname="dmart"
     )
     await db.validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, "dmart")
 
