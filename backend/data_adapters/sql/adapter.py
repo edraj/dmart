@@ -738,32 +738,27 @@ class SQLAdapter(BaseDataAdapter):
                         entity["subpath"] = entity["subpath"][:-1]
                     entity["subpath"] = subpath_checker(entity["subpath"])
 
-                try:
-                    entity['resource_type'] = meta.__class__.__name__.lower()
-                    data = self.get_base_model(meta.__class__, entity)
 
-                    if not isinstance(data, Attachments) and not isinstance(data, Histories):
-                        data.query_policies = generate_query_policies(
-                            space_name=space_name,
-                            subpath=subpath,
-                            resource_type=entity['resource_type'],
-                            is_active=entity['is_active'],
-                            owner_shortname=entity.get('owner_shortname', 'dmart'),
-                            owner_group_shortname=entity.get('owner_group_shortname', None),
-                        )
-                    session.add(data)
+                entity['resource_type'] = meta.__class__.__name__.lower()
+                data = self.get_base_model(meta.__class__, entity)
+
+                if not isinstance(data, Attachments) and not isinstance(data, Histories):
+                    data.query_policies = generate_query_policies(
+                        space_name=space_name,
+                        subpath=subpath,
+                        resource_type=entity['resource_type'],
+                        is_active=entity['is_active'],
+                        owner_shortname=entity.get('owner_shortname', 'dmart'),
+                        owner_group_shortname=entity.get('owner_group_shortname', None),
+                    )
+                session.add(data)
+                try:
                     await session.commit()
                     await session.refresh(data)
-                    return data
                 except Exception as e:
-                    raise API_Exception(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        error=API_Error(
-                            type="create",
-                            code=InternalErrorCode.OBJECT_NOT_SAVED,
-                            message=e.__str__(),
-                        ),
-                    )
+                    await session.rollback()
+                    raise e
+                return data
 
         except Exception as e:
             print("[!save]", e)

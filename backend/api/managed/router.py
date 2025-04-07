@@ -346,7 +346,7 @@ async def serve_request(
                 type="request",
                 code=InternalErrorCode.SOMETHING_WRONG,
                 message="Something went wrong",
-                info=[{"successfull": records, "failed": failed_records}],
+                info=[{"successfully": records, "failed": failed_records}],
             ),
         )
 
