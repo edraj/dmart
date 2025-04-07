@@ -1,10 +1,13 @@
-http://localhost:8000 {
-	handle /openapi.json {
+http://localhost:8000, https://localhost:4443 {
+	handle /dmart/openapi.json {
 		reverse_proxy localhost:8282
 	}
 
 	handle /dmart/* {
 		uri strip_prefix /dmart
+		reverse_proxy localhost:8282
+	}
+	handle /dmart/docs* {
 		reverse_proxy localhost:8282
 	}
 	handle /ws {

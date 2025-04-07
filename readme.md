@@ -1,10 +1,10 @@
 # Data Mart (D-MART)
 
-<!--img src="https://img.shields.io/github/v/release/edraj/dmart.svg" --> 
+<!--img src="https://img.shields.io/github/v/release/edraj/dmart.svg" -->
 
 <a href="https://github.com/edraj/dmart/releases/latest">
-<img src="https://github.com/edraj/dmart/actions/workflows/backend-checks.yml/badge.svg" > 
-<img src="https://github.com/edraj/dmart/actions/workflows/frontend-checks.yml/badge.svg" > 
+<img src="https://github.com/edraj/dmart/actions/workflows/backend-checks.yml/badge.svg" >
+<img src="https://github.com/edraj/dmart/actions/workflows/frontend-checks.yml/badge.svg" >
 </a>
 
 <a href="https://github.com/edraj/dmart/releases/latest">
@@ -35,7 +35,7 @@ DMART is a data service layer that offers a streamlined / simplified way to deve
 
 DMART serves as general-purpose, structure-oriented information management system (aka Data-as-a-Service DaaS).
 
-It represents a low-code information inventory platform (aka content registry/repository/vault) that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and extend. Thus, valuable data assets can be maintained as the mastered version and act as the single source of truth. 
+It represents a low-code information inventory platform (aka content registry/repository/vault) that is able to assimilate various types of data (structured, unstructured and binary). It allows you to treat your valuable data assets as commodity; where you can cleanly author, share and extend. Thus, valuable data assets can be maintained as the mastered version and act as the single source of truth.
 
 ## The problem DMART attempts to solve
 
@@ -53,11 +53,11 @@ Valuable information (organizational and personal) is getting out of control!
 - **Data-as-a-Service** : Backbone data store where the data assets get declared and used across multiple applications and microservices. The data assets are declared in the logical and business representation rather than classical RDBMS (physical).
 - **Standardized API** : Publicly-accessible unified api layer allowing interaction with the different types of data; and simplifying the work of application developers.
 - **Data longevity** : Resilient and time-proof data storage, as data is stored in flat-files directly on the file system. This opens the door for easy access, inspection, validation, backup and change tracking. At any point in time, the redis index can be recreated from the flat-files.
-- **User management and access control** : "Batteries included" to elevate the burden from application development. 
+- **User management and access control** : "Batteries included" to elevate the burden from application development.
 - **Microservice friendly** : Leveraging JWT shared secret, additional microservices can automatically leverage the user's session with dmart. There is also a compatible FastApi skeleton git repository to facilitate the development of additional microservices.
 - **Extensible via plugins** : Specialized logic (plugins) can be added to react to certain types of activities and content.
-- **Entry-oriented** : As opposed to document-oriented NoSQL, entry-orientation revolves around consolidating the coherent information unit alongside its belongings (known as "attachments" that can involve textual and/or binary) as one entry. 
-- **Activities and workflows** : Configurable activity (ticket) and workflow management. 
+- **Entry-oriented** : As opposed to document-oriented NoSQL, entry-orientation revolves around consolidating the coherent information unit alongside its belongings (known as "attachments" that can involve textual and/or binary) as one entry.
+- **Activities and workflows** : Configurable activity (ticket) and workflow management.
 - **Messaging and notifications** : Ability to trigger different types of notifications and ability to store user messages.
 
 <img src="./frontend/src/routes/docs/assets/data-mart.jpg" width="500">
@@ -65,13 +65,13 @@ Valuable information (organizational and personal) is getting out of control!
 
 ## Core concepts
 
-- Each coherent information unit (data asset) is declared as **entry**. 
+- Each coherent information unit (data asset) is declared as **entry**.
   - An entry includes all related business information (meta, structured, textual and binary) that can be extended / augmented with attachments.
-  - Entries are organized within arbitrary category structure (folders) 
+  - Entries are organized within arbitrary category structure (folders)
   - Entries are indexed for fast search and retrieval.
   - Entries can be optionally linked by "weak" links (aka relations).
   - Changes on entries are recorded for audit and tracking.
-  - Structured content: Each structured json content (payload) is associated with a pre-defined json schema stored under the schema section in the space. 
+  - Structured content: Each structured json content (payload) is associated with a pre-defined json schema stored under the schema section in the space.
   - Arbitrary attachments: An entity could have attachments (binary or otherwise)
 - Entries are stord and organized arbitrary hierarchical folder structure (aka categories) on the file-system. Facilitating folder-based routes.
 
@@ -89,24 +89,24 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
 
 ## Architecture and technology stack
 
-<img src="./frontend/src/routes/docs/assets/backend.png" width="650"> 
+<img src="./frontend/src/routes/docs/assets/backend.png" width="650">
 
-  - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files. 
-  - Python 3.12 with emphasis on 
+  - flat-file data persistence on standard file-system. Using folders, clear and simple json format that is backed by json-schema, text and binary (media/documents) files.
+  - Python 3.12 with emphasis on
     - asyncio : maximizing scalability and leverage of server resources and enabling background jobs (post api service time).
     - type hinting and stringent linting (pyright).
-  - FastAPI as the api micro-framework (based on our _curated_ fastapi skeleton) and full leverage of Pydantic and OpenApi version 3. 
+  - FastAPI as the api micro-framework (based on our _curated_ fastapi skeleton) and full leverage of Pydantic and OpenApi version 3.
   - Hypercorn (runner server)
   - Redis as the operational data store. With specific leverage of RediSearch RedisJSON modules.
   - Intensive json-based logging for easier insights.
 
 <img src="./frontend/src/routes/docs/assets/datamart-one.png" width="50"> <img src="./frontend/src/routes/docs/assets/datamart-two.png" width="50"> <img src="./frontend/src/routes/docs/assets/datamart-three.png" width="50"> <img src="./frontend/src/routes/docs/assets/datamart-four.png" width="50">
 
-## Terminology 
+## Terminology
 
 | Term | Description |
 |----|----|
-| **space** | Top-level business category that facilitates grouping of relevant content. Permissions are defined within the space boundaries | 
+| **space** | Top-level business category that facilitates grouping of relevant content. Permissions are defined within the space boundaries |
 | **subpath** | The path within space that leads to an entry. e.g. `content/stuff/todo` |
 | **entry** | The basic unit of coherent information.|
 | **shortname** | The unique identifier that differentiates an entry among its siblings (i.e. within a subpath) |
@@ -122,13 +122,13 @@ Full OpenApi 3 compliant documentation can be found [here](https://api.dmart.cc/
 
 ## Entry composition
 
- - A meta-file (json) that holds *meta* information about the entry; such as name, description, tags, attributes ...etc. 
+ - A meta-file (json) that holds *meta* information about the entry; such as name, description, tags, attributes ...etc.
  - Within the meta file, each entry should have a globally unique UUID and a shortname that must be unique within the parent folder and across the sibling entries.
  - A payload as a separate file (json, text or binary)
  - Change history on that entry.
- - An entry has an arbitrary number of attachments, each attachment has a meta-file and payload. 
+ - An entry has an arbitrary number of attachments, each attachment has a meta-file and payload.
    - Alteration: Describing a change
-   - Comment 
+   - Comment
    - Relationship: A pointer to another entry
    - Media: Binary payload such as images, videos ...etc
 
@@ -151,9 +151,30 @@ With this scheme, only proper entry main payload files appear to the user. All m
 
 Using podman (or docker), dmart can be fully setup and configured in few minutes.
 
-You only need a command line console, git and podman (or docker). 
+You only need a command line console, git and podman (or docker).
 
-#### Steps
+#### Run the container directly from Github image registry
+
+
+```
+# Pull the latest docker image
+podman pull ghcr.io/edraj/dmart:latest
+
+# Inistantiate the container and map the https port to localhost
+podman run --name dmart -p 4443:4443 -p 8000:8000 -d -it dmart
+
+# Set the admin password
+podman exec -it -w /home/dmart/backend dmart /home/venv/bin/python3 ./set_admin_passwd.py
+
+# Run test to make sure all is good
+podman exec -it -w /home/dmart/backend dmart ./curl.sh
+
+# Open on the browser
+https://localhost:4443
+
+```
+# Build the container locally
+
 ```
 # Clone the git repo
 git clone https://github.com/edraj/dmart.git
@@ -163,21 +184,18 @@ cd dmart/admin_scripts/docker
 podman build -t dmart -f Dockerfile
 
 # Run the container
-podman run --name dmart -p 8000:8000 -d -it dmart
+podman run --name dmart -p 4443:443 -d -it dmart
 
 # Set the admin password
 podman exec -it -w /home/dmart/backend dmart /home/venv/bin/python3 ./set_admin_passwd.py
 
-# Load the sample spaces data
-podman exec -it -w /home/dmart/backend dmart bash -c 'source /home/venv/bin/activate && ./reload.sh'
-
-# Run the auto tests 
+# Run the auto tests
 podman exec -it -w /home/dmart/backend dmart ./curl.sh
 
-# Open the browser to login to the admin tool and click on login. 
+# Open the browser to login to the admin tool and click on login.
 # User name: dmart
 # Password: The password you entered in the set_admin_passwd step above.
-# Url : http://localhost:8000
+# Url : https://localhost:4443
 
 ```
 
@@ -186,26 +204,15 @@ podman exec -it -w /home/dmart/backend dmart ./curl.sh
 
 - git
 - jq
-- python >= 3.11
-- pip
-- redis >= 7.2
-- RedisJSON (rejson) >= 2.6
-- RediSearch >= 2.8
+- python >= 3.12
+- uv
+- postgresql
 - python venv
 
 
-### Steps 
+### Steps
 
 ```bash
-
-# Enable kefahi dnf from copr to download redis modules
-sudo dnf copr enable kefah/RediSearch
-
-# Download necessary system packages
-sudo dnf install jq redis rejson redisearch python3-pip python3
-echo 'loadmodule /usr/lib64/redis/modules/librejson.so
-loadmodule /usr/lib64/redis/modules/redisearch.so' | sudo tee -a /etc/redis/redis.conf
-sudo systemctl start redis
 
 
 # Make logs folder
@@ -213,7 +220,7 @@ mkdir logs
 
 git clone https://github.com/edraj/dmart.git
 
-cd dmart 
+cd dmart
 
 # Copy sample spaces structure
 cp -a sample/spaces ../
@@ -222,13 +229,13 @@ cp -a sample/spaces ../
 cd backend
 
 # Create the virtual env
-python -m venv ~/.env
+uv env ~/.uvenv
 
 # Activate virtual env
-source ~/.env/bin/activate
+source ~/.uvenv/bin/activate
 
 # Install python modules
-pip install --user -r requirements.txt
+uv pip install --user -r requirements.txt
 
 # Optionally, fine-tune your configuration
 cp config.env.sample config.env
@@ -246,18 +253,7 @@ cp config.env.sample config.env
 
 ### Data store option
 
-#### File based (default)
-
-- Set `ACTIVE_DATA_DB="file"` in the config.env file.
-- The data will be stored in the specified path that is set in `SPACES_FOLDER`. 
-- It is **mandatory** to set the required configuration for Redis:
-```
-REDIS_HOST="127.0.0.1"
-REDIS_PASSWORD=""
-REDIS_PORT=6379
-```
-
-#### SQL based
+#### SQL mode
 
 - Set `ACTIVE_DATA_DB="sql"` in the config.env file.
 - It is **mandatory** to set the required configuration for the SQL database in the config.env file.
@@ -276,7 +272,8 @@ DATABASE_NAME="dmart"
 #### Installing python dependencies
 
 ```bash
-pip install --user -r test-requirements.txt
+cd backend
+uv pip install --user -r requirements/core.txt  -r requirements/extra.txt  -r requirements/plugins.txt  -r requirements/test.txt
 ```
 
 #### Running
@@ -336,7 +333,7 @@ cd cli
 cp config.ini.sample config.ini
 
 # Install additional packages
-pip install --user  -r requirements.txt
+uv pip install --user  -r requirements.txt
 
 # Start the cli tool
 ./cli.py
@@ -375,9 +372,6 @@ cd backend
 ruff check .
 mypy --explicit-package-bases --warn-return-any .
 
-# Freeze pip modules versions
-pip freeze > pip.freeze
-
 ```
 
 ### Sample usecases
@@ -386,7 +380,7 @@ DMART is a low-level general-purpose data platform. Hence it could apply to a re
 
 The one usecase we are currently focused on building is a universal online presence platform. A tool that combines CMS, Messaging, and Collaboration in a federated fashion (borrowing from how email federates its messaging service)
 
-Simply put, this will help small teams, individuals and interest groups to quickly launch a website (that is their own) index-able by search engines, provision users and allow all to author and interact with content (both from the website and mobile app). With the leverage of DMART all information elements are structures as entries within the specific hierarchy desired by the admin user. 
+Simply put, this will help small teams, individuals and interest groups to quickly launch a website (that is their own) index-able by search engines, provision users and allow all to author and interact with content (both from the website and mobile app). With the leverage of DMART all information elements are structures as entries within the specific hierarchy desired by the admin user.
 
 [High-level description](docs/universal_presence_platform.md)
 
