@@ -4,6 +4,7 @@ pytest
 pytest-ordering
 pytest-asyncio
 pytest-mock
+pytest-httpx
 pyright
 ruff
 mypy
@@ -12,4 +13,3 @@ types-ldap3
 types-jsonschema
 types-psutil
 types-requests
-

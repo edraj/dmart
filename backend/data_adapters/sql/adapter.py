@@ -752,10 +752,13 @@ class SQLAdapter(BaseDataAdapter):
                         owner_group_shortname=entity.get('owner_group_shortname', None),
                     )
                 session.add(data)
-                await session.commit()
-                await session.refresh(data)
+                try:
+                    await session.commit()
+                    await session.refresh(data)
+                except Exception as e:
+                    await session.rollback()
+                    raise e
                 return data
-
 
         except Exception as e:
             print("[!save]", e)
