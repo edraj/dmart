@@ -67,7 +67,7 @@ async def test_create_text_content_resource(client: AsyncClient):
         ],
     }
 
-    assert_code_and_status_success(await client.post("/managed/request", json=request_data))
+    assert_code_and_status_success(await client.post("managed/request", json=request_data))
 
     await assert_resource_created(
         client,
@@ -84,7 +84,7 @@ async def test_create_text_content_resource(client: AsyncClient):
         res_attributes=attributes,
     )
 
-    check_repeated_shortname(await client.post("/managed/request", json=request_data))
+    check_repeated_shortname(await client.post("managed/request", json=request_data))
 
 
 @pytest.mark.run(order=2)
@@ -100,7 +100,7 @@ async def test_upload_schema_resource(client: AsyncClient) -> None:
 @pytest.mark.anyio
 async def test_create_json_content_resource(client: AsyncClient) -> None:
     global json_entry_uuid
-    endpoint = "/managed/request"
+    endpoint = "managed/request"
     attributes = {
         "slug": f"{json_entry_shortname}_slug",
         "payload": {
@@ -173,13 +173,13 @@ async def test_create_invalid_json_resource(client: AsyncClient):
         ],
     }
 
-    assert_bad_request(await client.post("/managed/request", json=request_data))
+    assert_bad_request(await client.post("managed/request", json=request_data))
 
 
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_update_json_content_resource_missing_payload_info(client: AsyncClient) -> None:
-    endpoint = "/managed/request"
+    endpoint = "managed/request"
     request_data = {
         "space_name": DEMO_SPACE,
         "request_type": RequestType.update,
@@ -203,7 +203,7 @@ async def test_update_json_content_resource_missing_payload_info(client: AsyncCl
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_update_json_content_resource(client: AsyncClient) -> None:
-    endpoint = "/managed/request"
+    endpoint = "managed/request"
     request_data = {
         "space_name": DEMO_SPACE,
         "request_type": RequestType.update,
@@ -229,7 +229,7 @@ async def test_update_json_content_resource(client: AsyncClient) -> None:
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_patch_json_content_resource(client: AsyncClient) -> None:
-    endpoint = "/managed/request"
+    endpoint = "managed/request"
     request_data = {
         "space_name": DEMO_SPACE,
         "request_type": RequestType.patch,
@@ -259,7 +259,7 @@ async def test_patch_json_content_resource(client: AsyncClient) -> None:
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_create_comment_attachment(client: AsyncClient) -> None:
-    endpoint = "/managed/request"
+    endpoint = "managed/request"
     request_data = {
         "space_name": DEMO_SPACE,
         "request_type": RequestType.create,
