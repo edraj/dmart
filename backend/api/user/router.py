@@ -129,7 +129,7 @@ async def create_user(record: core.Record) -> api.Response:
             user_shortname=record.shortname,
         )
     )
-
+    record.resource_type = ResourceType.user
     user = core.User.from_record(
         record=record,
         owner_shortname="dmart"
@@ -172,7 +172,17 @@ async def create_user(record: core.Record) -> api.Response:
         )
     )
 
-    return api.Response(status=api.Status.success)
+    return api.Response(
+        status=api.Status.success,
+        records=[
+            core.Record(
+                shortname=user.shortname,
+                subpath=USERS_SUBPATH,
+                resource_type=ResourceType.user,
+                attributes={}
+            )
+        ]
+    )
 
 
 @router.post(
