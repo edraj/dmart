@@ -6,6 +6,6 @@ export const website = {
   description: "dmart unified data platform",
   languages: { ar: "العربية", en: "English" },
   default_language: "ar",
-  backend: "http://localhost:8000/dmart/"
+  backend: "https://localhost:4443/dmart/",
   // websocket: "ws://0.0.0.0:8484/ws",
 };
