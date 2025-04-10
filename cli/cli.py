@@ -321,10 +321,14 @@ class DMart:
     def upload_csv(self, subpath, schema_shortname, payload_file):
         with open(payload_file, "rb") as media_file:
             endpoint = f"{settings.url}/managed/resources_from_csv/content/{dmart.current_space}/{subpath}/{schema_shortname}"
+            headers = {**self.headers}
+            del headers["Content-Type"]
             response = self.session.post(
                 endpoint,
-                files={"resources_file": media_file},
-                headers=self.headers,
+                files=[
+                    ('resources_file', ('file', media_file, 'text/csv'))
+                ],
+                headers=headers,
             )
             if response.status_code != 200:
                 print(endpoint, response.json())
