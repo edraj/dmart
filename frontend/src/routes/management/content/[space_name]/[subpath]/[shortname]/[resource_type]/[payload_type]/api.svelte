@@ -33,7 +33,7 @@
   import Prism from "@/components/Prism.svelte";
   import { _ } from "@/i18n";
   import Icon from "@/components/Icon.svelte";
-  import checkAccess from "@/utils/checkAccess";
+  import {checkAccessv2} from "@/utils/checkAccess";
   import { Level, showToast } from "@/utils/toast";
   import Attachments from "@/components/management/Attachments.svelte";
   import HistoryListView from "@/components/management/HistoryListView.svelte";
@@ -47,8 +47,8 @@
 
   let tab_option = "view";
 
-  const canUpdate = checkAccess("update", space_name, subpath, resource_type);
-  const canDelete = checkAccess("delete", space_name, subpath, resource_type);
+  const canUpdate = checkAccessv2("update", space_name, subpath, resource_type);
+  const canDelete = checkAccessv2("delete", space_name, subpath, resource_type);
 
   type Request = {
     verb: string;
