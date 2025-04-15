@@ -1542,43 +1542,49 @@ async def import_resources_from_csv_handler(
         if keys_list[0] in meta_class_attributes:
             match len(keys_list):
                 case 1:
-                    meta_object[keys_list[0].strip()] = value
+                    if str(meta_class_attributes[keys_list[0]].annotation).startswith('list'):
+                        meta_object[keys_list[0].strip()] = [
+                            e.strip().strip("'").strip('"') for e in value.strip("[]").split(",")
+                        ]
+                    else:
+                        meta_object[keys_list[0].strip()] = value
                 case 2:
                     if keys_list[0].strip() not in meta_object:
-                        meta_object[keys_list[0].strip()] = {}
+                        meta_object[keys_list[0].strip()] = {} # type: ignore
                     meta_object[keys_list[0].strip(
                     )][keys_list[1].strip()] = value
             continue
 
-        current_schema_property = schema_content
-        for item in keys_list:
-            if "oneOf" in current_schema_property:
-                for oneOf_item in current_schema_property["oneOf"]:
+        if schema_content is not None:
+            current_schema_property = schema_content
+            for item in keys_list:
+                if "oneOf" in current_schema_property:
+                    for oneOf_item in current_schema_property["oneOf"]:
+                        if (
+                            "properties" in oneOf_item
+                            and item.strip() in oneOf_item["properties"]
+                        ):
+                            current_schema_property = oneOf_item["properties"][
+                                item.strip()
+                            ]
+                            break
+                else:
                     if (
-                        "properties" in oneOf_item
-                        and item.strip() in oneOf_item["properties"]
+                        "properties" in current_schema_property
+                        and item.strip() in current_schema_property["properties"]
                     ):
-                        current_schema_property = oneOf_item["properties"][
+                        current_schema_property = current_schema_property["properties"][
                             item.strip()
                         ]
-                        break
-            else:
-                if (
-                    "properties" in current_schema_property
-                    and item.strip() in current_schema_property["properties"]
-                ):
-                    current_schema_property = current_schema_property["properties"][
-                        item.strip()
-                    ]
 
-        if current_schema_property["type"] in ["number", "integer"]:
-            value = value.replace(",", "")
+            if current_schema_property["type"] in ["number", "integer"]:
+                value = value.replace(",", "")
 
-        value = data_types_mapper[current_schema_property["type"]](value)
-        if current_schema_property["type"] == "array":
-            value = [
-                str(item) if type(item) in [int, float] else item for item in value
-            ]
+            value = data_types_mapper[current_schema_property["type"]](value)
+            if current_schema_property["type"] == "array":
+                value = [
+                    str(item) if type(item) in [int, float] else item for item in value
+                ]
 
         match len(keys_list):
             case 1:
