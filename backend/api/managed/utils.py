@@ -1543,12 +1543,14 @@ async def import_resources_from_csv_handler(
             match len(keys_list):
                 case 1:
                     if str(meta_class_attributes[keys_list[0]].annotation).startswith('list'):
-                        meta_object[keys_list[0].strip()] = [e.strip().strip("'").strip('"') for e in value.strip("[]").split(",")]
+                        meta_object[keys_list[0].strip()] = [
+                            e.strip().strip("'").strip('"') for e in value.strip("[]").split(",")
+                        ]
                     else:
                         meta_object[keys_list[0].strip()] = value
                 case 2:
                     if keys_list[0].strip() not in meta_object:
-                        meta_object[keys_list[0].strip()] = {}
+                        meta_object[keys_list[0].strip()] = {} # type: ignore
                     meta_object[keys_list[0].strip(
                     )][keys_list[1].strip()] = value
             continue
