@@ -500,8 +500,12 @@ def action(text: str):
                 "[blue]create folder <subpath>[/]", "Create folder for current space"
             )
             table.add_row(
-                "[blue]upload csv <shortname> <schema_shortname> <csv_file>[/]",
+                "[blue]upload csv <resource_type> <shortname> <csv_file>[/]",
                 "Upload data to the current space",
+            )
+            table.add_row(
+                "[blue]upload csv <resource_type> <shortname> <schema_shortname> <csv_file>[/]",
+                "Upload data to the current space with schema validation",
             )
             table.add_row(
                 "[blue]upload schema <shortname> <json_file>[/]",
