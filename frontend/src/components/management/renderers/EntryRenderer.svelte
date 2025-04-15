@@ -83,6 +83,7 @@
   import ERUploadByCSVModal from "@/components/management/renderers/modals/ERUploadByCSVModal.svelte";
 
   marked.use(mangle());
+
   marked.use(gfmHeadingId({
       prefix: "my-prefix-",
   }));
@@ -443,7 +444,9 @@
         const x = jseMeta.json
             ? structuredClone(jseMeta.json)
             : JSON.parse(jseMeta.text);
+
         x.relationships = _relationshipContent;
+
         let data: any = structuredClone(x);
         if (entry?.payload) {
             if (entry?.payload?.content_type === "json") {
@@ -535,7 +538,8 @@
                 }
             }
             window.location.reload();
-        } else {
+        }
+        else {
             errorContent = response;
             showToast(Level.warn);
         }
@@ -548,9 +552,7 @@
         items = items.filter(
             (item) => !["tree", "text", "table"].includes(item.text)
         );
-        const separator = {
-            separator: true,
-        };
+        const separator = {separator: true,};
 
         const itemsWithoutSpace = items.slice(0, items.length - 2);
         if (isModalOpen) {
@@ -619,7 +621,8 @@
                 ],
             };
             response = await request(request_body);
-        } else if (new_resource_type === ResourceType.user) {
+        }
+        else if (new_resource_type === ResourceType.user) {
 
             // if (!schemaFormRefModal.reportValidity()) {
             //     return;
@@ -702,11 +705,11 @@
                         showToast(Level.warn, "MSISDN already exists!");
                         return;
                     }
-                } else {
+                }
+                else {
                     showToast(Level.warn, "Please double check your MSISDN!");
                     return;
                 }
-
             } else {
                 delete body.msisdn;
             }
@@ -728,149 +731,147 @@
                 shortname: contentShortname,
                 resource_type: ResourceType.user,
                 subpath: "users",
-                attributes: body,
+                attributes: {
+                  ...body,
+                  displayname: formModalContent.displayname,
+                  description: formModalContent.description,
+                },
             };
             response = await request({
                 request_type: RequestType.create,
                 space_name: "management",
                 records: [request_body]
             });
-        } else if (entryType === "content") {
-            if (selectedContentType === "json") {
-                let body: any;
+        }
+        else if (entryType === "content") {
+          if (selectedContentType === "json") {
+              let body: any;
 
-                if (jseModalContentRef?.validate()?.validationErrors) {
-                    return;
-                }
-                // if (isModalContentEntryInForm){
-                //     if (
-                //         selectedSchemaContent != null &&
-                //         selectedSchemaData.json
-                //     ) {
-                //         // if (!schemaFormRefModal.reportValidity()) {
-                //         //     return;
-                //         // }
-                //         body = selectedSchemaData.json;
-                //     }
-                // }
-                // else {
-                body = jseModalContent.json
-                    ? structuredClone(jseModalContent.json)
-                    : JSON.parse(jseModalContent.text);
-                // }
+              if (jseModalContentRef?.validate()?.validationErrors) {
+                  return;
+              }
 
-                if (isModalContentEntryInForm) {
-                    if (new_resource_type === ResourceType.role) {
-                        body.permissions = formModalContent;
-                    }
-                    if (new_resource_type === ResourceType.permission) {
-                        body = {
-                            ...body,
-                            ...formModalContent,
-                        };
-                    }
-                }
+              body = jseModalContent.json
+                  ? structuredClone(jseModalContent.json)
+                  : JSON.parse(jseModalContent.text);
 
-                if (
-                    new_resource_type === ResourceType.role ||
-                    new_resource_type === ResourceType.permission
-                ) {
-                    request_body = {
-                        space_name,
-                        request_type: RequestType.create,
-                        records: [
-                            {
-                                resource_type: new_resource_type,
-                                shortname: contentShortname === "" ? "auto" : contentShortname,
-                                subpath,
-                                attributes: {
-                                    is_active: true,
-                                    ...body,
-                                    relationships: _relationshipModalContent,
-                                },
-                            },
-                        ],
-                    };
-                } else {
-                    if (workflowShortname) {
-                        request_body = {
-                            ...request_body,
-                            workflow_shortname: workflowShortname,
-                        };
-                    }
+              if (isModalContentEntryInForm) {
+                  if (new_resource_type === ResourceType.role) {
+                      body.permissions = formModalContent;
+                  }
+                  if (new_resource_type === ResourceType.permission) {
+                      body = {
+                          ...body,
+                          ...formModalContent,
+                      };
+                  }
+              }
 
-                    request_body = {
-                        space_name,
-                        request_type: RequestType.create,
-                        records: [
-                            {
-                                resource_type: new_resource_type,
-                                shortname: contentShortname === "" ? "auto" : contentShortname,
-                                subpath,
-                                attributes: {
-                                    is_active: true,
-                                    ...request_body,
-                                    relationships: _relationshipModalContent,
-                                },
-                            },
-                        ],
-                    };
-                }
-                if (new_resource_type === ResourceType.ticket) {
-                    request_body.records[0].attributes.workflow_shortname =
-                        workflowShortname;
-                    selectedContentType = ContentType.json;
-                }
-                if (
-                    selectedContentType !== null &&
-                    new_resource_type !== ResourceType.role &&
-                    new_resource_type !== ResourceType.permission
-                ) {
-                    request_body.records[0].attributes.payload = {
-                        content_type: "json",
-                        schema_shortname: selectedSchema,
-                        body: body,
-                    };
-                }
+              if (new_resource_type === ResourceType.role ||  new_resource_type === ResourceType.permission) {
+                  request_body = {
+                      space_name,
+                      request_type: RequestType.create,
+                      records: [
+                          {
+                            displayname: formModalContent.displayname,
+                            description: formModalContent.description,
+                              resource_type: new_resource_type,
+                              shortname: contentShortname === "" ? "auto" : contentShortname,
+                              subpath,
+                              attributes: {
+                                  is_active: true,
+                                  ...body,
+                                  relationships: _relationshipModalContent,
+                              },
+                          },
+                      ],
+                  };
+              } else {
+                  if (workflowShortname) {
+                      request_body = {
+                          ...request_body,
+                          workflow_shortname: workflowShortname,
+                      };
+                  }
 
-                request_body.records[0].attributes.relationships = _relationshipModalContent,
-                    response = await request(request_body);
-            } else if (["text", "html", "markdown"].includes(selectedContentType)) {
-                request_body = {
-                    space_name,
-                    request_type: RequestType.create,
-                    records: [
-                        {
-                            resource_type: new_resource_type,
-                            shortname: contentShortname === "" ? "auto" : contentShortname,
-                            subpath,
-                            attributes: {
-                                is_active: true,
-                                payload: {
-                                    content_type: selectedContentType,
-                                    body: jseModalContent,
-                                },
-                                relationships: _relationshipModalContent,
-                            },
-                        },
-                    ],
-                };
-                response = await request(request_body);
-            } else if (
-                ["image", "python", "pdf", "audio", "video"].includes(
-                    selectedContentType
-                )
-            ) {
-                response = await upload_with_payload(
-                    space_name,
-                    subpath,
-                    ResourceType[new_resource_type],
-                    null,
-                    contentShortname === "" ? "auto" : contentShortname,
-                    payloadFiles[0]
-                );
-            }
-        } else if (entryType === "folder") {
+                  request_body = {
+                      space_name,
+                      request_type: RequestType.create,
+                      records: [
+                          {
+                              resource_type: new_resource_type,
+                              shortname: contentShortname === "" ? "auto" : contentShortname,
+                              subpath,
+                              attributes: {
+                                  displayname: formModalContent.displayname,
+                                  description: formModalContent.description,
+                                  is_active: true,
+                                  ...request_body,
+                                  relationships: _relationshipModalContent,
+                              },
+                          },
+                      ],
+                  };
+              }
+              if (new_resource_type === ResourceType.ticket) {
+                  request_body.records[0].attributes.workflow_shortname =
+                      workflowShortname;
+                  selectedContentType = ContentType.json;
+              }
+              if (
+                  selectedContentType !== null &&
+                  new_resource_type !== ResourceType.role &&
+                  new_resource_type !== ResourceType.permission
+              ) {
+                  request_body.records[0].attributes.payload = {
+                      content_type: "json",
+                      schema_shortname: selectedSchema,
+                      body: body,
+                  };
+              }
+
+              request_body.records[0].attributes.relationships = _relationshipModalContent;
+              response = await request(request_body);
+          }
+          else if (["text", "html", "markdown"].includes(selectedContentType)) {
+              request_body = {
+                  space_name,
+                  request_type: RequestType.create,
+                  records: [
+                      {
+                          resource_type: new_resource_type,
+                          shortname: contentShortname === "" ? "auto" : contentShortname,
+                          subpath,
+                          attributes: {
+                              displayname: formModalContent.displayname,
+                              description: formModalContent.description,
+                              is_active: true,
+                              payload: {
+                                  content_type: selectedContentType,
+                                  body: jseModalContent,
+                              },
+                              relationships: _relationshipModalContent,
+                          },
+                      },
+                  ],
+              };
+              response = await request(request_body);
+          }
+          else if (["image", "python", "pdf", "audio", "video"].includes(
+                  selectedContentType
+          )) {
+              response = await upload_with_payload(
+                  space_name,
+                  subpath,
+                  ResourceType[new_resource_type],
+                  null,
+                  contentShortname === "" ? "auto" : contentShortname,
+                  payloadFiles[0]
+              );
+          }
+        }
+
+        else if (entryType === "folder") {
             let body: any = {};
             // if (isModalContentEntryInForm){
             //     body = selectedSchemaData.json
@@ -1468,7 +1469,6 @@
               />
             </TabPane>
           </TabContent>
-          <Row></Row>
         {:else if selectedContentType}
           {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
             <Label class="mt-3">Payload</Label>
