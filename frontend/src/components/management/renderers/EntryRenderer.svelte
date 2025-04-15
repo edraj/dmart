@@ -20,7 +20,7 @@
   } from "@/dmart";
   import {
     Button,
-    ButtonGroup,
+    ButtonGroup, Col,
     Form,
     FormGroup,
     Input,
@@ -36,7 +36,7 @@
   import {_} from "@/i18n";
   import ListView from "@/components/management/ListView.svelte";
   import Prism from "@/components/Prism.svelte";
-  import {createAjvValidator, JSONEditor, Mode, type Validator,} from "svelte-jsoneditor";
+  import {createAjvValidator, JSONEditor, Mode, type Validator} from "svelte-jsoneditor";
   import {status_line} from "@/stores/management/status_line";
   import {authToken} from "@/stores/management/auth";
   import {timeAgo} from "@/utils/timeago";
@@ -83,9 +83,10 @@
   import ERUploadByCSVModal from "@/components/management/renderers/modals/ERUploadByCSVModal.svelte";
 
   marked.use(mangle());
-    marked.use(gfmHeadingId({
-        prefix: "my-prefix-",
-    }));
+
+  marked.use(gfmHeadingId({
+      prefix: "my-prefix-",
+  }));
 
     // props
     let {
@@ -109,11 +110,11 @@
         subpath,
         ResourceType.folder
     );
+
     let canCreateEntry = $state(false);
     const canUpdate = checkAccessv2("update", space_name, subpath, resource_type);
-    const canDelete =
-        checkAccessv2("delete", space_name, subpath, resource_type) &&
-        !(space_name === "management" && subpath === "/");
+    const canDelete = checkAccessv2("delete", space_name, subpath, resource_type)
+            && !(space_name === "management" && subpath === "/");
 
     // misc
     let header_height: number = $state();
@@ -176,7 +177,19 @@
     let jseModalMeta: any = $state({text: "{}"});
     let jseModalContentRef: any = $state();
     let jseModalContent: any = $state({text: "{}"});
-    let formModalContent: any = $state({});
+    let formModalContent: any = $state({
+      tags: "",
+      displayname: {
+        en: "",
+        ar: "",
+        ku: "",
+      },
+      description: {
+          en: "",
+          ar: "",
+          ku: "",
+      },
+    });
     let formModalContentPayload: any = $state({json: {}, text: undefined});
     let isNewEntryHasRelationship = $state(false);
     let relationshipModalContent = $state(null);
@@ -257,13 +270,14 @@
 
         }
 
-        allowedResourceTypes.push(
-                resolveResourceType(
-                        space_name,
-                        subpath,
-                        null
-                )
+        const _resolveResourceType = resolveResourceType(
+                space_name,
+                subpath,
+                null
         )
+        if(!allowedResourceTypes.includes(_resolveResourceType) && _resolveResourceType) {
+          allowedResourceTypes.push(_resolveResourceType)
+        }
 
         canCreateEntry = allowedResourceTypes.map(r => checkAccessv2("create", space_name, subpath, r)).some(item => item);
 
@@ -431,7 +445,9 @@
         const x = jseMeta.json
             ? structuredClone(jseMeta.json)
             : JSON.parse(jseMeta.text);
+
         x.relationships = _relationshipContent;
+
         let data: any = structuredClone(x);
         if (entry?.payload) {
             if (entry?.payload?.content_type === "json") {
@@ -523,7 +539,8 @@
                 }
             }
             window.location.reload();
-        } else {
+        }
+        else {
             errorContent = response;
             showToast(Level.warn);
         }
@@ -536,9 +553,7 @@
         items = items.filter(
             (item) => !["tree", "text", "table"].includes(item.text)
         );
-        const separator = {
-            separator: true,
-        };
+        const separator = {separator: true,};
 
         const itemsWithoutSpace = items.slice(0, items.length - 2);
         if (isModalOpen) {
@@ -607,7 +622,8 @@
                 ],
             };
             response = await request(request_body);
-        } else if (new_resource_type === ResourceType.user) {
+        }
+        else if (new_resource_type === ResourceType.user) {
 
             // if (!schemaFormRefModal.reportValidity()) {
             //     return;
@@ -690,11 +706,11 @@
                         showToast(Level.warn, "MSISDN already exists!");
                         return;
                     }
-                } else {
+                }
+                else {
                     showToast(Level.warn, "Please double check your MSISDN!");
                     return;
                 }
-
             } else {
                 delete body.msisdn;
             }
@@ -716,149 +732,151 @@
                 shortname: contentShortname,
                 resource_type: ResourceType.user,
                 subpath: "users",
-                attributes: body,
+                attributes: {
+                  ...body,
+                  tags: formModalContent.tags.split(","),
+                  displayname: formModalContent.displayname,
+                  description: formModalContent.description,
+                },
             };
             response = await request({
                 request_type: RequestType.create,
                 space_name: "management",
                 records: [request_body]
             });
-        } else if (entryType === "content") {
-            if (selectedContentType === "json") {
-                let body: any;
+        }
+        else if (entryType === "content") {
+          if (selectedContentType === "json") {
+              let body: any;
 
-                if (jseModalContentRef?.validate()?.validationErrors) {
-                    return;
-                }
-                // if (isModalContentEntryInForm){
-                //     if (
-                //         selectedSchemaContent != null &&
-                //         selectedSchemaData.json
-                //     ) {
-                //         // if (!schemaFormRefModal.reportValidity()) {
-                //         //     return;
-                //         // }
-                //         body = selectedSchemaData.json;
-                //     }
-                // }
-                // else {
-                body = jseModalContent.json
-                    ? structuredClone(jseModalContent.json)
-                    : JSON.parse(jseModalContent.text);
-                // }
+              if (jseModalContentRef?.validate()?.validationErrors) {
+                  return;
+              }
 
-                if (isModalContentEntryInForm) {
-                    if (new_resource_type === ResourceType.role) {
-                        body.permissions = formModalContent;
-                    }
-                    if (new_resource_type === ResourceType.permission) {
-                        body = {
-                            ...body,
-                            ...formModalContent,
-                        };
-                    }
-                }
+              body = jseModalContent.json
+                  ? structuredClone(jseModalContent.json)
+                  : JSON.parse(jseModalContent.text);
 
-                if (
-                    new_resource_type === ResourceType.role ||
-                    new_resource_type === ResourceType.permission
-                ) {
-                    request_body = {
-                        space_name,
-                        request_type: RequestType.create,
-                        records: [
-                            {
-                                resource_type: new_resource_type,
-                                shortname: contentShortname === "" ? "auto" : contentShortname,
-                                subpath,
-                                attributes: {
-                                    is_active: true,
-                                    ...body,
-                                    relationships: _relationshipModalContent,
-                                },
-                            },
-                        ],
-                    };
-                } else {
-                    if (workflowShortname) {
-                        request_body = {
-                            ...request_body,
-                            workflow_shortname: workflowShortname,
-                        };
-                    }
+              if (isModalContentEntryInForm) {
+                  if (new_resource_type === ResourceType.role) {
+                      body.permissions = formModalContent;
+                  }
+                  if (new_resource_type === ResourceType.permission) {
+                      body = {
+                          ...body,
+                          ...formModalContent,
+                      };
+                  }
+              }
 
-                    request_body = {
-                        space_name,
-                        request_type: RequestType.create,
-                        records: [
-                            {
-                                resource_type: new_resource_type,
-                                shortname: contentShortname === "" ? "auto" : contentShortname,
-                                subpath,
-                                attributes: {
-                                    is_active: true,
-                                    ...request_body,
-                                    relationships: _relationshipModalContent,
-                                },
-                            },
-                        ],
-                    };
-                }
-                if (new_resource_type === ResourceType.ticket) {
-                    request_body.records[0].attributes.workflow_shortname =
-                        workflowShortname;
-                    selectedContentType = ContentType.json;
-                }
-                if (
-                    selectedContentType !== null &&
-                    new_resource_type !== ResourceType.role &&
-                    new_resource_type !== ResourceType.permission
-                ) {
-                    request_body.records[0].attributes.payload = {
-                        content_type: "json",
-                        schema_shortname: selectedSchema,
-                        body: body,
-                    };
-                }
+              if (new_resource_type === ResourceType.role ||  new_resource_type === ResourceType.permission) {
+                  request_body = {
+                      space_name,
+                      request_type: RequestType.create,
+                      records: [
+                          {
+                            tags: formModalContent.tags.split(","),
+                            displayname: formModalContent.displayname,
+                            description: formModalContent.description,
+                              resource_type: new_resource_type,
+                              shortname: contentShortname === "" ? "auto" : contentShortname,
+                              subpath,
+                              attributes: {
+                                  is_active: true,
+                                  ...body,
+                                  relationships: _relationshipModalContent,
+                              },
+                          },
+                      ],
+                  };
+              } else {
+                  if (workflowShortname) {
+                      request_body = {
+                          ...request_body,
+                          workflow_shortname: workflowShortname,
+                      };
+                  }
 
-                request_body.records[0].attributes.relationships = _relationshipModalContent,
-                    response = await request(request_body);
-            } else if (["text", "html", "markdown"].includes(selectedContentType)) {
-                request_body = {
-                    space_name,
-                    request_type: RequestType.create,
-                    records: [
-                        {
-                            resource_type: new_resource_type,
-                            shortname: contentShortname === "" ? "auto" : contentShortname,
-                            subpath,
-                            attributes: {
-                                is_active: true,
-                                payload: {
-                                    content_type: selectedContentType,
-                                    body: jseModalContent,
-                                },
-                                relationships: _relationshipModalContent,
-                            },
-                        },
-                    ],
-                };
-                response = await request(request_body);
-            } else if (
-                ["image", "python", "pdf", "audio", "video"].includes(
-                    selectedContentType
-                )
-            ) {
-                response = await upload_with_payload(
-                    space_name,
-                    subpath,
-                    ResourceType[new_resource_type],
-                    null,
-                    contentShortname === "" ? "auto" : contentShortname,
-                    payloadFiles[0]
-                );
-            }
-        } else if (entryType === "folder") {
+                  request_body = {
+                      space_name,
+                      request_type: RequestType.create,
+                      records: [
+                          {
+                              resource_type: new_resource_type,
+                              shortname: contentShortname === "" ? "auto" : contentShortname,
+                              subpath,
+                              attributes: {
+                                  tags: formModalContent.tags.split(","),
+                                  displayname: formModalContent.displayname,
+                                  description: formModalContent.description,
+                                  is_active: true,
+                                  ...request_body,
+                                  relationships: _relationshipModalContent,
+                              },
+                          },
+                      ],
+                  };
+              }
+              if (new_resource_type === ResourceType.ticket) {
+                  request_body.records[0].attributes.workflow_shortname =
+                      workflowShortname;
+                  selectedContentType = ContentType.json;
+              }
+              if (
+                  selectedContentType !== null &&
+                  new_resource_type !== ResourceType.role &&
+                  new_resource_type !== ResourceType.permission
+              ) {
+                  request_body.records[0].attributes.payload = {
+                      content_type: "json",
+                      schema_shortname: selectedSchema,
+                      body: body,
+                  };
+              }
+
+              request_body.records[0].attributes.relationships = _relationshipModalContent;
+              response = await request(request_body);
+          }
+          else if (["text", "html", "markdown"].includes(selectedContentType)) {
+              request_body = {
+                  space_name,
+                  request_type: RequestType.create,
+                  records: [
+                      {
+                          resource_type: new_resource_type,
+                          shortname: contentShortname === "" ? "auto" : contentShortname,
+                          subpath,
+                          attributes: {
+                              tags: formModalContent.tags.split(","),
+                              displayname: formModalContent.displayname,
+                              description: formModalContent.description,
+                              is_active: true,
+                              payload: {
+                                  content_type: selectedContentType,
+                                  body: jseModalContent,
+                              },
+                              relationships: _relationshipModalContent,
+                          },
+                      },
+                  ],
+              };
+              response = await request(request_body);
+          }
+          else if (["image", "python", "pdf", "audio", "video"].includes(
+                  selectedContentType
+          )) {
+              response = await upload_with_payload(
+                  space_name,
+                  subpath,
+                  ResourceType[new_resource_type],
+                  null,
+                  contentShortname === "" ? "auto" : contentShortname,
+                  payloadFiles[0]
+              );
+          }
+        }
+
+        else if (entryType === "folder") {
             let body: any = {};
             // if (isModalContentEntryInForm){
             //     body = selectedSchemaData.json
@@ -1310,9 +1328,9 @@
           {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
             <Label for="resource_type" class="mt-3">Resource type</Label>
             <Input
-                    id="resource_type"
-                    bind:value={new_resource_type}
-                    type="select"
+              id="resource_type"
+              bind:value={new_resource_type}
+              type="select"
             >
               {#each allowedResourceTypes as type}
                 {#if type}
@@ -1325,9 +1343,9 @@
             {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m)) && new_resource_type !== "ticket"}
               <Label for="content_type" class="mt-3">Content type</Label>
               <Input
-                      id="content_type"
-                      bind:value={selectedContentType}
-                      type="select"
+                id="content_type"
+                bind:value={selectedContentType}
+                type="select"
               >
                 <option value={null}>{"None"}</option>
                 {#each [ContentType.json, ContentType.text, ContentType.markdown, ContentType.html] as type}
@@ -1379,16 +1397,83 @@
         {/if}
 
         <Label class="mt-3">Shortname</Label>
-        <Input
-                placeholder="Shortname..."
-                bind:value={contentShortname}
-                required
-        />
+        <Input placeholder="Shortname..." bind:value={contentShortname} required/>
+
+        <hr/>
+
+        {#if new_resource_type !== ResourceType.user}
+          <Row class="my-2">
+            <Col sm="12"><Label>Displayname</Label></Col>
+            <Col sm="4">
+              <Input
+                      type="text"
+                      class="form-control"
+                      bind:value={formModalContent.displayname.en}
+                      placeholder={"english..."}
+              />
+            </Col>
+            <Col sm="4">
+              <Input
+                      type="text"
+                      class="form-control"
+                      bind:value={formModalContent.displayname.ar}
+                      placeholder={"arabic..."}
+              />
+            </Col>
+            <Col sm="4">
+              <Input
+                      type="text"
+                      class="form-control"
+                      bind:value={formModalContent.displayname.ku}
+                      placeholder={"kurdish..."}
+              />
+            </Col>
+          </Row>
+
+          <Row class="my-2">
+            <Col sm="12"><Label>Description</Label></Col>
+            <Col sm="4">
+              <Input
+                      type="text"
+                      class="form-control"
+                      bind:value={formModalContent.description.en}
+                      placeholder={"english..."}
+              />
+            </Col>
+            <Col sm="4">
+              <Input
+                      type="text"
+                      class="form-control"
+                      bind:value={formModalContent.description.ar}
+                      placeholder={"arabic..."}
+              />
+            </Col>
+            <Col sm="4">
+              <Input
+                      type="text"
+                      class="form-control"
+                      bind:value={formModalContent.description.ku}
+                      placeholder={"kurdish..."}
+              />
+            </Col>
+          </Row>
+        {/if}
+
+        <Row class="my-2">
+          <Col sm="12"><Label>Tags</Label></Col>
+          <Col sm="4">
+            <Input
+              type="text"
+              class="form-control"
+              bind:value={formModalContent.tags}
+              placeholder={"tag1,tag2..."}
+            />
+          </Col>
+        </Row>
+
         <hr/>
         {#if new_resource_type === "schema"}
-          <TabContent
-                  on:tab={(e) => (isSchemaEntryInForm = e.detail === "form")}
-          >
+          <TabContent on:tab={(e) => (isSchemaEntryInForm = e.detail === "form")}>
             <TabPane tabId="form" tab="Forms" active>
               <SchemaEditor bind:content={schemaContent}/>
             </TabPane>
@@ -1401,14 +1486,13 @@
               />
             </TabPane>
           </TabContent>
-          <Row></Row>
         {:else if selectedContentType}
           {#if ["image", "python", "pdf", "audio", "video"].includes(selectedContentType)}
             <Label class="mt-3">Payload</Label>
             <Input
-                    accept="image/png, image/jpeg"
-                    bind:files={payloadFiles}
-                    type="file"
+              accept="image/png, image/jpeg"
+              bind:files={payloadFiles}
+              type="file"
             />
           {/if}
           {#if selectedContentType === "json"}
@@ -1432,9 +1516,7 @@
             <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
 
             {#if [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)}
-              <TabContent
-                      on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}
-              >
+              <TabContent on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}>
                 <TabPane tabId="form" tab="Form" active>
                   {#if new_resource_type === ResourceType.permission}
                     <PermissionForm bind:content={formModalContent}/>
@@ -1456,14 +1538,15 @@
               </TabContent>
             {:else}
               <JSONEditor
-                      bind:this={jseModalContentRef}
-                      bind:content={jseModalContent}
-                      bind:validator={validatorModalContent}
-                      onRenderMenu={handleRenderMenu}
-                      mode={Mode.text}
+                bind:this={jseModalContentRef}
+                bind:content={jseModalContent}
+                bind:validator={validatorModalContent}
+                onRenderMenu={handleRenderMenu}
+                mode={Mode.text}
               />
             {/if}
           {/if}
+
           {#if selectedContentType === "text"}
             <Label class="mt-3">Payload</Label>
             <Input type="textarea" bind:value={jseModalContent}/>
@@ -1479,9 +1562,9 @@
         {/if}
         <hr/>
         <Input
-                bind:checked={isNewEntryHasRelationship}
-                type="checkbox"
-                label="Add relationship ?"
+          bind:checked={isNewEntryHasRelationship}
+          type="checkbox"
+          label="Add relationship ?"
         />
         {#if isNewEntryHasRelationship}
           <RelationshipForm bind:content={relationshipModalContent}/>
@@ -1495,9 +1578,7 @@
       </FormGroup>
     </ModalBody>
     <ModalFooter>
-      <Button
-              type="button"
-              color="secondary"
+      <Button type="button" color="secondary"
               onclick={() => {
                 isModalOpen = false;
                 contentShortname = "";

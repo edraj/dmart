@@ -318,9 +318,11 @@ class DMart:
                 os.remove("temp.json")
                 return response.json()
 
-    def upload_csv(self, subpath, schema_shortname, payload_file):
+    def upload_csv(self, resource_type, subpath, schema_shortname, payload_file):
         with open(payload_file, "rb") as media_file:
-            endpoint = f"{settings.url}/managed/resources_from_csv/content/{dmart.current_space}/{subpath}/{schema_shortname}"
+            endpoint = f"{settings.url}/managed/resources_from_csv/{resource_type}/{dmart.current_space}/{subpath}"
+            if schema_shortname:
+                endpoint += f"/{schema_shortname}"
             headers = {**self.headers}
             del headers["Content-Type"]
             response = self.session.post(
@@ -498,8 +500,12 @@ def action(text: str):
                 "[blue]create folder <subpath>[/]", "Create folder for current space"
             )
             table.add_row(
-                "[blue]upload csv <shortname> <schema_shortname> <csv_file>[/]",
+                "[blue]upload csv <resource_type> <shortname> <csv_file>[/]",
                 "Upload data to the current space",
+            )
+            table.add_row(
+                "[blue]upload csv <resource_type> <shortname> <schema_shortname> <csv_file>[/]",
+                "Upload data to the current space with schema validation",
             )
             table.add_row(
                 "[blue]upload schema <shortname> <json_file>[/]",
@@ -649,11 +655,7 @@ def action(text: str):
             action("cd ..")
             pass
         case ["upload", "csv", *args]:
-            subpath = None
-            schema_shortname = None
-            payload_file = None
-
-            if len(args) == 4:
+            if len(args) == 4 or len(args) == 5:
                 search = re.search(r"@\w+", args[3])
                 if not search:
                     print("[red]Malformated Command")
@@ -663,11 +665,11 @@ def action(text: str):
                 check_update_space(space)
                 dmart.current_subpath = args[3].replace(f"@{space}/", "")
                 dmart.list()
-            subpath = args[0]
-            schema_shortname = args[1]
-            payload_file = args[2]
 
-            print(dmart.upload_csv(subpath, schema_shortname, payload_file))
+            if len(args) == 5:
+                print(dmart.upload_csv(args[0], args[1], args[2], args[3]))
+            else :
+                print(dmart.upload_csv(args[0], args[1], None, args[2]))
             check_update_space(old_space)
             dmart.current_subpath = old_subpath
             dmart.list()
