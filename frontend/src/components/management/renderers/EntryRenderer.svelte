@@ -178,6 +178,7 @@
     let jseModalContentRef: any = $state();
     let jseModalContent: any = $state({text: "{}"});
     let formModalContent: any = $state({
+      tags: "",
       displayname: {
         en: "",
         ar: "",
@@ -733,6 +734,7 @@
                 subpath: "users",
                 attributes: {
                   ...body,
+                  tags: formModalContent.tags.split(","),
                   displayname: formModalContent.displayname,
                   description: formModalContent.description,
                 },
@@ -773,6 +775,7 @@
                       request_type: RequestType.create,
                       records: [
                           {
+                            tags: formModalContent.tags.split(","),
                             displayname: formModalContent.displayname,
                             description: formModalContent.description,
                               resource_type: new_resource_type,
@@ -803,6 +806,7 @@
                               shortname: contentShortname === "" ? "auto" : contentShortname,
                               subpath,
                               attributes: {
+                                  tags: formModalContent.tags.split(","),
                                   displayname: formModalContent.displayname,
                                   description: formModalContent.description,
                                   is_active: true,
@@ -843,6 +847,7 @@
                           shortname: contentShortname === "" ? "auto" : contentShortname,
                           subpath,
                           attributes: {
+                              tags: formModalContent.tags.split(","),
                               displayname: formModalContent.displayname,
                               description: formModalContent.description,
                               is_active: true,
@@ -1453,6 +1458,18 @@
             </Col>
           </Row>
         {/if}
+
+        <Row class="my-2">
+          <Col sm="12"><Label>Tags</Label></Col>
+          <Col sm="4">
+            <Input
+              type="text"
+              class="form-control"
+              bind:value={formModalContent.tags}
+              placeholder={"tag1,tag2..."}
+            />
+          </Col>
+        </Row>
 
         <hr/>
         {#if new_resource_type === "schema"}
