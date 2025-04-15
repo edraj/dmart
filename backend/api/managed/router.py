@@ -346,7 +346,7 @@ async def serve_request(
                 type="request",
                 code=InternalErrorCode.SOMETHING_WRONG,
                 message="Something went wrong",
-                info=[{"successfully": records, "failed": failed_records}],
+                info=[{"successfull": records, "failed": failed_records}],
             ),
         )
 
@@ -717,13 +717,17 @@ async def create_or_update_resource_with_payload(
     response_model=api.Response,
     response_model_exclude_none=True,
 )
+@router.post(
+    "/resources_from_csv/{resource_type}/{space_name}/{subpath:path}",
+    response_model=api.Response,
+    response_model_exclude_none=True,
+)
 async def import_resources_from_csv(
         resources_file: UploadFile,
         resource_type: ResourceType,
         space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
         subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
-        schema_shortname: str = Path(..., pattern=regex.SHORTNAME, examples=[
-            "model_schema"]),
+        schema_shortname = None,
         owner_shortname=Depends(JWTBearer()),
 ):
     contents = await resources_file.read()
@@ -731,7 +735,9 @@ async def import_resources_from_csv(
     buffer = StringIO(decoded)
     csv_reader = csv.DictReader(buffer)
 
-    schema_content = await db.get_schema(space_name, schema_shortname, owner_shortname)
+    schema_content = None
+    if schema_shortname:
+        schema_content = await db.get_schema(space_name, schema_shortname, owner_shortname)
 
     data_types_mapper: dict[str, Callable] = {
         "integer": int,
@@ -763,9 +769,12 @@ async def import_resources_from_csv(
 
             attributes["payload"] = {
                 "content_type": ContentType.json,
-                "schema_shortname": schema_shortname,
                 "body": payload_object,
             }
+
+            if schema_shortname:
+                attributes["payload"]["schema_shortname"] = schema_shortname
+
             record = core.Record(
                 resource_type=resource_type,
                 shortname=shortname,

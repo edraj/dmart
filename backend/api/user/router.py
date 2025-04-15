@@ -260,7 +260,18 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             if "shortname" in identifier:
                 shortname = identifier["shortname"]
             else:
-                key, value = list(identifier.items())[0]
+                _list = list(identifier.items())
+                if len(_list) != 1:
+                    raise api.Exception(
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        api.Error(
+                            type="request",
+                            code=InternalErrorCode.INVALID_IDENTIFIER,
+                            message="Only one valid identifier is allowed!",
+                        ),
+                    )
+
+                key, value = _list[0]
                 shortname = await get_shortname_from_identifier(key, value)
                 if shortname is None:
                     raise api.Exception(
