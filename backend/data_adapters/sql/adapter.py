@@ -175,23 +175,29 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 is_list = isinstance(v, list) or ("[" in v and "]" in v)
                 if is_list:
                     v = string_to_list(v)
-
+                if k == 'roles':
+                    is_list = True
                 if "->" in k:
                     if isinstance(v, str):
-                        stm = f"(({k}) {'!' if flag_neg else ''}= '{v}'"
+                        stm1 = f"(({k}) {'!' if flag_neg else ''}= '{v}'"
                         if "payload" in k:
-                            stm += f" OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"'"
-                        stm += ")"
-                        statement = statement.where(text(stm))
+                            stm1 += f" OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"'"
+                        stm1 += ")"
+                        statement = statement.where(text(stm1))
                 elif is_list and vv and v:
                     statement = statement.where(text(f"({k}) {'NOT' if flag_neg else ''} BETWEEN '{v[0]}' AND '{v[1]}'"))
                 elif is_list and v:
-                    in_1 = ', '.join([f"'{_v}'" for _v in v])
-                    stm = f"(({k}) {'NOT' if flag_neg else ''} IN ({in_1})"
-                    if "payload" in k:
-                        in_2 = ', '.join([f'"{_v}"' for _v in v])
-                        stm += f" OR ({k.replace('>>', '>')})::jsonb @> '[{in_2}]'"
-                    stm += ")"
+                    stm = ''
+                    if k in ["payload", "roles"]:
+                        if k == 'payload':
+                            in_2 = ', '.join([f'"{_v}"' for _v in v])
+                            stm += f"({k.replace('>>', '>')})::jsonb @> '[{in_2}]'"
+                        elif k == 'roles':
+                            in_2 = ', '.join([f'"{_v}"' for _v in v]) if isinstance(v, list) else f'"{v}"'
+                            stm += f"roles @> '[{in_2}]'"
+                    else:
+                        in_1 = ', '.join([f"'{_v}'" for _v in v])
+                        stm += f"(({k}) {'NOT' if flag_neg else ''} IN ({in_1}))"
                     statement = statement.where(text(stm))
                 elif isinstance(v, str):
                     statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= '{v}'"))
