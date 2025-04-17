@@ -510,9 +510,10 @@ class RedisServices(Redis):
             await self.create_custom_indices(for_space)
 
     def append_unique_index_fields(self, new_index: list[Field], base_index: list[Field]):
+        base_index_clone = base_index.copy()
         for field in new_index:
             registered_field = False
-            for base_field in base_index:
+            for base_field in base_index_clone:
                 if (
                     field.redis_args()[2]  # Compare field name
                     == base_field.redis_args()[2]  # Compare AS name
@@ -520,9 +521,9 @@ class RedisServices(Redis):
                     registered_field = True
                     break
             if not registered_field:
-                base_index.append(field)
+                base_index_clone.append(field)
 
-        return base_index
+        return base_index_clone
 
     def generate_doc_id(
         self,
