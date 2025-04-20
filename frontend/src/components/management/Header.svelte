@@ -65,7 +65,7 @@
   <Nav tabs class="align-items-center w-100" style="background-color: #f4f4f4;">
     {#each sections as section}
         <NavLink
-          href={$url("/management/" + section.name)}
+          href={"/management/" + section.name}
           title={$_(section.name)}
           onclick={() => {
             $active_section = section;
