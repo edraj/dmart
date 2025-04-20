@@ -1,92 +1,91 @@
 <script lang="ts">
-  import {onDestroy, onMount} from "svelte";
-  import {
-    check_existing_user,
-    ContentType,
-    csv,
-    passwordRegExp,
-    passwordWrongExp,
-    query,
-    QueryType,
-    request,
-    RequestType,
-    ResourceType,
-    type ResponseEntry,
-    retrieve_entry,
-    space,
-    Status,
-    upload_records_csv,
-    upload_with_payload,
-  } from "@/dmart";
-  import {
-    Button,
-    ButtonGroup, Col,
-    Form,
-    FormGroup,
-    Input,
-    Label,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    Row,
-    TabContent,
-    TabPane,
-  } from "sveltestrap";
-  import Icon from "@/components/Icon.svelte";
-  import {_} from "@/i18n";
-  import ListView from "@/components/management/ListView.svelte";
-  import Prism from "@/components/Prism.svelte";
-  import {createAjvValidator, JSONEditor, Mode, type Validator} from "svelte-jsoneditor";
-  import {status_line} from "@/stores/management/status_line";
-  import {authToken} from "@/stores/management/auth";
-  import {timeAgo} from "@/utils/timeago";
-  import {Level, showToast} from "@/utils/toast";
-  import {faSave} from "@fortawesome/free-regular-svg-icons";
-  import refresh_spaces from "@/stores/management/refresh_spaces";
-  import {website} from "@/config";
-  import HtmlEditor from "../editors/HtmlEditor.svelte";
-  import MarkdownEditor from "../editors/MarkdownEditor.svelte";
-  import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
-  import {checkAccessv2} from "@/utils/checkAccess";
-  import {fade} from "svelte/transition";
-  import BreadCrumbLite from "../BreadCrumbLite.svelte";
-  import downloadFile from "@/utils/downloadFile";
-  import SchemaForm from "svelte-jsonschema-form";
-  import Table2Cols from "@/components/management/Table2Cols.svelte";
-  import Attachments from "@/components/management/Attachments.svelte";
-  import HistoryListView from "@/components/management/HistoryListView.svelte";
-  import {marked} from "marked";
-  import {generateObjectFromSchema, managementEntities, resolveResourceType,} from "@/utils/renderer/rendererUtils";
-  import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
-  import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
-  import {metadata} from "@/stores/management/metadata";
-  import metaUserSchema from "@/validations/meta.user.json";
-  import metaRoleSchema from "@/validations/meta.role.json";
-  import metaPermissionSchema from "@/validations/meta.permission.json";
-  import PlantUML from "@/components/management/PlantUML.svelte";
-  import ContentEditor from "@/components/management/ContentEditor.svelte";
-  import TicketEntryRenderer from "@/components/management/renderers/TicketEntryRenderer.svelte";
-  import WorkflowRenderer from "@/components/management/renderers/WorkflowRenderer.svelte";
-  import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
-  import PermissionForm from "./Forms/PermissionForm.svelte";
-  import RoleForm from "./Forms/RoleForm.svelte";
-  import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
-  import {bulkBucket} from "@/stores/management/bulk_bucket";
-  import RelationshipForm from "@/components/management/renderers/Forms/RelationshipForm.svelte";
-  import {mangle} from "marked-mangle";
-  import {gfmHeadingId} from "marked-gfm-heading-id";
-  import {user} from "@/stores/user";
-  import ACLForm from "@/components/management/renderers/Forms/ACLForm.svelte";
-  import MarkdownRenderer from "@/components/management/renderers/MarkdownRenderer.svelte";
-  import defaultFolderRendering from "@/stores/management/default_folder_rendering.json";
-  import ERDownloadModal from "@/components/management/renderers/modals/ERDownloadModal.svelte";
-  import ERUploadByCSVModal from "@/components/management/renderers/modals/ERUploadByCSVModal.svelte";
+    import {onDestroy, onMount} from "svelte";
+    import {
+        check_existing_user,
+        ContentType,
+        csv,
+        passwordRegExp,
+        passwordWrongExp,
+        query,
+        QueryType,
+        request,
+        RequestType,
+        ResourceType,
+        type ResponseEntry,
+        retrieve_entry,
+        space,
+        Status,
+        upload_records_csv,
+        upload_with_payload,
+    } from "@/dmart";
+    import {
+        Button,
+        ButtonGroup, Col,
+        Form,
+        FormGroup,
+        Input,
+        Label,
+        Modal,
+        ModalBody,
+        ModalFooter,
+        Row,
+        TabContent,
+        TabPane,
+    } from "sveltestrap";
+    import Icon from "@/components/Icon.svelte";
+    import {_} from "@/i18n";
+    import ListView from "@/components/management/ListView.svelte";
+    import Prism from "@/components/Prism.svelte";
+    import {createAjvValidator, JSONEditor, Mode, type Validator,} from "svelte-jsoneditor";
+    import {status_line} from "@/stores/management/status_line";
+    import {authToken} from "@/stores/management/auth";
+    import {timeAgo} from "@/utils/timeago";
+    import {Level, showToast} from "@/utils/toast";
+    import {faSave} from "@fortawesome/free-regular-svg-icons";
+    import refresh_spaces from "@/stores/management/refresh_spaces";
+    import {website} from "@/config";
+    import HtmlEditor from "../editors/HtmlEditor.svelte";
+    import MarkdownEditor from "../editors/MarkdownEditor.svelte";
+    import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
+    import {checkAccessv2} from "@/utils/checkAccess";
+    import {fade} from "svelte/transition";
+    import BreadCrumbLite from "../BreadCrumbLite.svelte";
+    import downloadFile from "@/utils/downloadFile";
+    import SchemaForm from "svelte-jsonschema-form";
+    import Table2Cols from "@/components/management/Table2Cols.svelte";
+    import Attachments from "@/components/management/Attachments.svelte";
+    import HistoryListView from "@/components/management/HistoryListView.svelte";
+    import {marked} from "marked";
+    import {generateObjectFromSchema, managementEntities, resolveResourceType,} from "@/utils/renderer/rendererUtils";
+    import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
+    import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
+    import {metadata} from "@/stores/management/metadata";
+    import metaUserSchema from "@/validations/meta.user.json";
+    import metaRoleSchema from "@/validations/meta.role.json";
+    import metaPermissionSchema from "@/validations/meta.permission.json";
+    import PlantUML from "@/components/management/PlantUML.svelte";
+    import ContentEditor from "@/components/management/ContentEditor.svelte";
+    import TicketEntryRenderer from "@/components/management/renderers/TicketEntryRenderer.svelte";
+    import WorkflowRenderer from "@/components/management/renderers/WorkflowRenderer.svelte";
+    import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
+    import PermissionForm from "./Forms/PermissionForm.svelte";
+    import RoleForm from "./Forms/RoleForm.svelte";
+    import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
+    import {bulkBucket} from "@/stores/management/bulk_bucket";
+    import RelationshipForm from "@/components/management/renderers/Forms/RelationshipForm.svelte";
+    import {mangle} from "marked-mangle";
+    import {gfmHeadingId} from "marked-gfm-heading-id";
+    import {user} from "@/stores/user";
+    import ACLForm from "@/components/management/renderers/Forms/ACLForm.svelte";
+    import MarkdownRenderer from "@/components/management/renderers/MarkdownRenderer.svelte";
+    import defaultFolderRendering from "@/stores/management/default_folder_rendering.json";
+    import ERDownloadModal from "@/components/management/renderers/modals/ERDownloadModal.svelte";
+    import ERUploadByCSVModal from "@/components/management/renderers/modals/ERUploadByCSVModal.svelte";
 
-  marked.use(mangle());
-
-  marked.use(gfmHeadingId({
-      prefix: "my-prefix-",
-  }));
+    marked.use(mangle());
+    marked.use(gfmHeadingId({
+        prefix: "my-prefix-",
+    }));
 
     // props
     let {
@@ -114,7 +113,7 @@
     let canCreateEntry = $state(false);
     const canUpdate = checkAccessv2("update", space_name, subpath, resource_type);
     const canDelete = checkAccessv2("delete", space_name, subpath, resource_type)
-            && !(space_name === "management" && subpath === "/");
+        && !(space_name === "management" && subpath === "/");
 
     // misc
     let header_height: number = $state();
@@ -177,18 +176,19 @@
     let jseModalMeta: any = $state({text: "{}"});
     let jseModalContentRef: any = $state();
     let jseModalContent: any = $state({text: "{}"});
-    let formModalContent: any = $state({
-      tags: "",
-      displayname: {
-        en: "",
-        ar: "",
-        ku: "",
-      },
-      description: {
-          en: "",
-          ar: "",
-          ku: "",
-      },
+    let formModalContent: any = $state({});
+    let formModalMeta: any = $state({
+        tags: "",
+        displayname: {
+            en: "",
+            ar: "",
+            ku: "",
+        },
+        description: {
+            en: "",
+            ar: "",
+            ku: "",
+        },
     });
     let formModalContentPayload: any = $state({json: {}, text: undefined});
     let isNewEntryHasRelationship = $state(false);
@@ -217,131 +217,130 @@
         });
     }
 
-    async function processEntry(){
-      if (entry) {
-        const cpy = structuredClone(entry);
-        if (entry?.payload) {
-          if (entry?.payload?.content_type === "json") {
-            jseContentRef.set({
-              text: JSON.stringify(cpy?.payload?.body ?? {}, null, 2),
-            });
-            jseContent = {json: cpy?.payload?.body};
-          } else {
-            jseContent = cpy?.payload?.body;
-          }
-        }
+    async function processEntry() {
+        if (entry) {
+            const cpy = structuredClone(entry);
+            if (entry?.payload) {
+                if (entry?.payload?.content_type === "json") {
+                    jseContentRef.set({
+                        text: JSON.stringify(cpy?.payload?.body ?? {}, null, 2),
+                    });
+                    jseContent = {json: cpy?.payload?.body};
+                } else {
+                    jseContent = cpy?.payload?.body;
+                }
+            }
 
-        delete cpy?.payload?.body;
-        delete cpy?.attachments;
+            delete cpy?.payload?.body;
+            delete cpy?.attachments;
 
-        // jseMeta.text = JSON.stringify(cpy,null,2)
-        if (jseMetaRef) {
-          jseMetaRef.set({text: JSON.stringify(cpy, null, 2)});
-          // oldJSEMeta = structuredClone(jseMeta);
-        }
+            // jseMeta.text = JSON.stringify(cpy,null,2)
+            if (jseMetaRef) {
+                jseMetaRef.set({text: JSON.stringify(cpy, null, 2)});
+                // oldJSEMeta = structuredClone(jseMeta);
+            }
 
 
-        try {
-          if (entry?.payload?.schema_shortname) {
-            const entrySchema = entry?.payload?.schema_shortname;
-            let _schema: any = null;
+            try {
+                if (entry?.payload?.schema_shortname) {
+                    const entrySchema = entry?.payload?.schema_shortname;
+                    let _schema: any = null;
 
-            _schema = await retrieve_entry(
-                    ResourceType.schema,
-                    ["folder_rendering"].includes(entrySchema)
+                    _schema = await retrieve_entry(
+                        ResourceType.schema,
+                        ["folder_rendering"].includes(entrySchema)
                             ? "management"
                             : space_name,
-                    "schema",
-                    entrySchema,
-                    true
-            );
+                        "schema",
+                        entrySchema,
+                        true
+                    );
 
-            if (_schema) {
-              schema = _schema.payload?.body;
-              validatorContent = createAjvValidator({schema});
-            } else {
-              showToast(
-                      Level.warn,
-                      `Can't load the schema ${entry?.payload?.schema_shortname} !`
-              );
-            }
-          }
-        } catch (e) {
-
-        }
-
-        const _resolveResourceType = resolveResourceType(
-                space_name,
-                subpath,
-                null
-        )
-        if(!allowedResourceTypes.includes(_resolveResourceType) && _resolveResourceType) {
-          allowedResourceTypes.push(_resolveResourceType)
-        }
-
-        canCreateEntry = allowedResourceTypes.map(r => checkAccessv2("create", space_name, subpath, r)).some(item => item);
-
-        status_line.set(
-                `<small>Last updated: <strong>${timeAgo(
-                        new Date(entry.updated_at)
-                )}</strong><br/>Attachments: <strong>${
-                        Object.keys(entry.attachments).length
-                }</strong></small>`
-        );
-
-        if(!!entry?.payload?.body?.content_resource_types && entry?.payload?.body?.content_resource_types.length){
-          allowedResourceTypes = entry?.payload?.body?.content_resource_types;
-        }
-        const isFolderWSStreamCheck = !!entry?.payload?.body?.stream && isWSClosed(ws)
-        if (isFolderWSStreamCheck) {
-          if (isWSOpen(ws)) {
-            ws.send(JSON.stringify({type: "notification_unsubscribe"}));
-          }
-          if ("websocket" in website) {
-            try {
-              ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+                    if (_schema) {
+                        schema = _schema.payload?.body;
+                        validatorContent = createAjvValidator({schema});
+                    } else {
+                        showToast(
+                            Level.warn,
+                            `Can't load the schema ${entry?.payload?.schema_shortname} !`
+                        );
+                    }
+                }
             } catch (e) {
-              console.error({e});
-            }
-          }
 
-          ws.onopen = () => {
-            ws.send(
-                    JSON.stringify({
-                      type: "notification_subscription",
-                      space_name: space_name,
-                      subpath: subpath,
-                    })
+            }
+
+            allowedResourceTypes.push(
+                resolveResourceType(
+                    space_name,
+                    subpath,
+                    null
+                )
+            )
+
+            canCreateEntry = allowedResourceTypes.map(r => checkAccessv2("create", space_name, subpath, r)).some(item => item);
+
+            status_line.set(
+                `<small>Last updated: <strong>${timeAgo(
+                    new Date(entry.updated_at)
+                )}</strong><br/>Attachments: <strong>${
+                    Object.keys(entry.attachments).length
+                }</strong></small>`
             );
-          };
 
-          ws.onmessage = (event) => {
-            const data = JSON.parse(event?.data ?? "");
-            if (data?.message?.title) {
-              isNeedRefresh = true;
+            if (!!entry?.payload?.body?.content_resource_types && entry?.payload?.body?.content_resource_types.length) {
+                allowedResourceTypes = entry?.payload?.body?.content_resource_types;
             }
-          };
+            const isFolderWSStreamCheck = !!entry?.payload?.body?.stream && isWSClosed(ws)
+            if (isFolderWSStreamCheck) {
+                if (isWSOpen(ws)) {
+                    ws.send(JSON.stringify({type: "notification_unsubscribe"}));
+                }
+                if ("websocket" in website) {
+                    try {
+                        ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+                    } catch (e) {
+                        console.error({e});
+                    }
+                }
+
+                ws.onopen = () => {
+                    ws.send(
+                        JSON.stringify({
+                            type: "notification_subscription",
+                            space_name: space_name,
+                            subpath: subpath,
+                        })
+                    );
+                };
+
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event?.data ?? "");
+                    if (data?.message?.title) {
+                        isNeedRefresh = true;
+                    }
+                };
+            }
         }
-      }
     }
 
     onMount(async () => {
-      await processEntry();
+        await processEntry();
     });
 
-    async function refreshEntry(){
-      if(resource_type === ResourceType.folder){
-        const _subpath = subpath.split("/");
-        let parent_subpath: string = _subpath.slice(0, _subpath.length - 1).join("/") || "__root__";
-        let _shortname: string =  _subpath[_subpath.length - 1];
+    async function refreshEntry() {
+        if (resource_type === ResourceType.folder) {
+            const _subpath = subpath.split("/");
+            let parent_subpath: string = _subpath.slice(0, _subpath.length - 1).join("/") || "__root__";
+            let _shortname: string = _subpath[_subpath.length - 1];
 
-        const result = await retrieve_entry(ResourceType.folder, space_name, parent_subpath, _shortname, true, true);
-        entry = structuredClone(result);
-      } else {
-        const result = await retrieve_entry(resource_type, space_name, subpath, entry.shortname, true, true);
-        entry = structuredClone(result);
-      }
-      await processEntry();
+            const result = await retrieve_entry(ResourceType.folder, space_name, parent_subpath, _shortname, true, true);
+            entry = structuredClone(result);
+        } else {
+            const result = await retrieve_entry(resource_type, space_name, subpath, entry.shortname, true, true);
+            entry = structuredClone(result);
+        }
+        await processEntry();
     }
 
     onDestroy(() => {
@@ -352,6 +351,7 @@
     function isWSOpen(ws: any) {
         return ws != null && ws.readyState === ws.OPEN;
     }
+
     function isWSClosed(ws: any) {
         return ws == null || ws.readyState !== ws.OPEN;
     }
@@ -445,9 +445,7 @@
         const x = jseMeta.json
             ? structuredClone(jseMeta.json)
             : JSON.parse(jseMeta.text);
-
         x.relationships = _relationshipContent;
-
         let data: any = structuredClone(x);
         if (entry?.payload) {
             if (entry?.payload?.content_type === "json") {
@@ -539,8 +537,7 @@
                 }
             }
             window.location.reload();
-        }
-        else {
+        } else {
             errorContent = response;
             showToast(Level.warn);
         }
@@ -553,7 +550,9 @@
         items = items.filter(
             (item) => !["tree", "text", "table"].includes(item.text)
         );
-        const separator = {separator: true,};
+        const separator = {
+            separator: true,
+        };
 
         const itemsWithoutSpace = items.slice(0, items.length - 2);
         if (isModalOpen) {
@@ -610,6 +609,7 @@
                         shortname: contentShortname === "" ? "auto" : contentShortname,
                         subpath,
                         attributes: {
+                            ...formModalMeta,
                             is_active: true,
                             payload: {
                                 content_type: "json",
@@ -622,8 +622,7 @@
                 ],
             };
             response = await request(request_body);
-        }
-        else if (new_resource_type === ResourceType.user) {
+        } else if (new_resource_type === ResourceType.user) {
 
             // if (!schemaFormRefModal.reportValidity()) {
             //     return;
@@ -706,11 +705,11 @@
                         showToast(Level.warn, "MSISDN already exists!");
                         return;
                     }
-                }
-                else {
+                } else {
                     showToast(Level.warn, "Please double check your MSISDN!");
                     return;
                 }
+
             } else {
                 delete body.msisdn;
             }
@@ -732,151 +731,152 @@
                 shortname: contentShortname,
                 resource_type: ResourceType.user,
                 subpath: "users",
-                attributes: {
-                  ...body,
-                  tags: formModalContent.tags.split(","),
-                  displayname: formModalContent.displayname,
-                  description: formModalContent.description,
-                },
+                attributes: body,
             };
             response = await request({
                 request_type: RequestType.create,
                 space_name: "management",
                 records: [request_body]
             });
-        }
-        else if (entryType === "content") {
-          if (selectedContentType === "json") {
-              let body: any;
+        } else if (entryType === "content") {
+            if (selectedContentType === "json") {
+                let body: any;
 
-              if (jseModalContentRef?.validate()?.validationErrors) {
-                  return;
-              }
+                if (jseModalContentRef?.validate()?.validationErrors) {
+                    return;
+                }
+                // if (isModalContentEntryInForm){
+                //     if (
+                //         selectedSchemaContent != null &&
+                //         selectedSchemaData.json
+                //     ) {
+                //         // if (!schemaFormRefModal.reportValidity()) {
+                //         //     return;
+                //         // }
+                //         body = selectedSchemaData.json;
+                //     }
+                // }
+                // else {
+                body = jseModalContent.json
+                    ? structuredClone(jseModalContent.json)
+                    : JSON.parse(jseModalContent.text);
+                // }
 
-              body = jseModalContent.json
-                  ? structuredClone(jseModalContent.json)
-                  : JSON.parse(jseModalContent.text);
+                if (isModalContentEntryInForm) {
+                    if (new_resource_type === ResourceType.role) {
+                        body.permissions = formModalContent;
+                    }
+                    if (new_resource_type === ResourceType.permission) {
+                        body = {
+                            ...body,
+                            ...formModalContent,
+                        };
+                    }
+                }
 
-              if (isModalContentEntryInForm) {
-                  if (new_resource_type === ResourceType.role) {
-                      body.permissions = formModalContent;
-                  }
-                  if (new_resource_type === ResourceType.permission) {
-                      body = {
-                          ...body,
-                          ...formModalContent,
-                      };
-                  }
-              }
+                if (
+                    new_resource_type === ResourceType.role ||
+                    new_resource_type === ResourceType.permission
+                ) {
+                    request_body = {
+                        space_name,
+                        request_type: RequestType.create,
+                        records: [
+                            {
+                                resource_type: new_resource_type,
+                                shortname: contentShortname === "" ? "auto" : contentShortname,
+                                subpath,
+                                attributes: {
+                                    ...formModalMeta,
+                                    is_active: true,
+                                    ...body,
+                                    relationships: _relationshipModalContent,
+                                },
+                            },
+                        ],
+                    };
+                } else {
+                    if (workflowShortname) {
+                        request_body = {
+                            ...request_body,
+                            workflow_shortname: workflowShortname,
+                        };
+                    }
 
-              if (new_resource_type === ResourceType.role ||  new_resource_type === ResourceType.permission) {
-                  request_body = {
-                      space_name,
-                      request_type: RequestType.create,
-                      records: [
-                          {
-                            tags: formModalContent.tags.split(","),
-                            displayname: formModalContent.displayname,
-                            description: formModalContent.description,
-                              resource_type: new_resource_type,
-                              shortname: contentShortname === "" ? "auto" : contentShortname,
-                              subpath,
-                              attributes: {
-                                  is_active: true,
-                                  ...body,
-                                  relationships: _relationshipModalContent,
-                              },
-                          },
-                      ],
-                  };
-              } else {
-                  if (workflowShortname) {
-                      request_body = {
-                          ...request_body,
-                          workflow_shortname: workflowShortname,
-                      };
-                  }
+                    request_body = {
+                        space_name,
+                        request_type: RequestType.create,
+                        records: [
+                            {
+                                resource_type: new_resource_type,
+                                shortname: contentShortname === "" ? "auto" : contentShortname,
+                                subpath,
+                                attributes: {
+                                    ...formModalMeta,
+                                    is_active: true,
+                                    ...request_body,
+                                    relationships: _relationshipModalContent,
+                                },
+                            },
+                        ],
+                    };
+                }
+                if (new_resource_type === ResourceType.ticket) {
+                    request_body.records[0].attributes.workflow_shortname =
+                        workflowShortname;
+                    selectedContentType = ContentType.json;
+                }
+                if (
+                    selectedContentType !== null &&
+                    new_resource_type !== ResourceType.role &&
+                    new_resource_type !== ResourceType.permission
+                ) {
+                    request_body.records[0].attributes.payload = {
+                        content_type: "json",
+                        schema_shortname: selectedSchema,
+                        body: body,
+                    };
+                }
 
-                  request_body = {
-                      space_name,
-                      request_type: RequestType.create,
-                      records: [
-                          {
-                              resource_type: new_resource_type,
-                              shortname: contentShortname === "" ? "auto" : contentShortname,
-                              subpath,
-                              attributes: {
-                                  tags: formModalContent.tags.split(","),
-                                  displayname: formModalContent.displayname,
-                                  description: formModalContent.description,
-                                  is_active: true,
-                                  ...request_body,
-                                  relationships: _relationshipModalContent,
-                              },
-                          },
-                      ],
-                  };
-              }
-              if (new_resource_type === ResourceType.ticket) {
-                  request_body.records[0].attributes.workflow_shortname =
-                      workflowShortname;
-                  selectedContentType = ContentType.json;
-              }
-              if (
-                  selectedContentType !== null &&
-                  new_resource_type !== ResourceType.role &&
-                  new_resource_type !== ResourceType.permission
-              ) {
-                  request_body.records[0].attributes.payload = {
-                      content_type: "json",
-                      schema_shortname: selectedSchema,
-                      body: body,
-                  };
-              }
-
-              request_body.records[0].attributes.relationships = _relationshipModalContent;
-              response = await request(request_body);
-          }
-          else if (["text", "html", "markdown"].includes(selectedContentType)) {
-              request_body = {
-                  space_name,
-                  request_type: RequestType.create,
-                  records: [
-                      {
-                          resource_type: new_resource_type,
-                          shortname: contentShortname === "" ? "auto" : contentShortname,
-                          subpath,
-                          attributes: {
-                              tags: formModalContent.tags.split(","),
-                              displayname: formModalContent.displayname,
-                              description: formModalContent.description,
-                              is_active: true,
-                              payload: {
-                                  content_type: selectedContentType,
-                                  body: jseModalContent,
-                              },
-                              relationships: _relationshipModalContent,
-                          },
-                      },
-                  ],
-              };
-              response = await request(request_body);
-          }
-          else if (["image", "python", "pdf", "audio", "video"].includes(
-                  selectedContentType
-          )) {
-              response = await upload_with_payload(
-                  space_name,
-                  subpath,
-                  ResourceType[new_resource_type],
-                  null,
-                  contentShortname === "" ? "auto" : contentShortname,
-                  payloadFiles[0]
-              );
-          }
-        }
-
-        else if (entryType === "folder") {
+                request_body.records[0].attributes.relationships = _relationshipModalContent,
+                    response = await request(request_body);
+            } else if (["text", "html", "markdown"].includes(selectedContentType)) {
+                request_body = {
+                    space_name,
+                    request_type: RequestType.create,
+                    records: [
+                        {
+                            resource_type: new_resource_type,
+                            shortname: contentShortname === "" ? "auto" : contentShortname,
+                            subpath,
+                            attributes: {
+                                ...formModalMeta,
+                                is_active: true,
+                                payload: {
+                                    content_type: selectedContentType,
+                                    body: jseModalContent,
+                                },
+                                relationships: _relationshipModalContent,
+                            },
+                        },
+                    ],
+                };
+                response = await request(request_body);
+            } else if (
+                ["image", "python", "pdf", "audio", "video"].includes(
+                    selectedContentType
+                )
+            ) {
+                response = await upload_with_payload(
+                    space_name,
+                    subpath,
+                    ResourceType[new_resource_type],
+                    null,
+                    contentShortname === "" ? "auto" : contentShortname,
+                    payloadFiles[0]
+                );
+            }
+        } else if (entryType === "folder") {
             let body: any = {};
             // if (isModalContentEntryInForm){
             //     body = selectedSchemaData.json
@@ -902,6 +902,7 @@
                         shortname: contentShortname === "" ? "auto" : contentShortname,
                         subpath,
                         attributes: {
+                            ...formModalMeta,
                             is_active: true,
                             payload: {
                                 content_type: "json",
@@ -1037,32 +1038,33 @@
     let limitCSVDownload = $state(0);
 
     function openDownloadDialog() {
-      openDownloadModal = true;
+        openDownloadModal = true;
     }
 
     async function handleDownload() {
-      const body: any = {
-        space_name,
-        subpath,
-        type: "search",
-        search: searchTextCSVDownload,
-        retrieve_json_payload: true,
-        limit: limitCSVDownload,
-        filter_schema_names: [],
-      };
-      if(startDateCSVDownload){
-        body.from_date = startDateCSVDownload;
-      }
-      if(endDateCSVDownload){
-          body.to_date = endDateCSVDownload;
-      }
-      const data = await csv(body);
-      downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
-      openDownloadModal = false;
+        const body: any = {
+            space_name,
+            subpath,
+            type: "search",
+            search: searchTextCSVDownload,
+            retrieve_json_payload: true,
+            limit: limitCSVDownload,
+            filter_schema_names: [],
+        };
+        if (startDateCSVDownload) {
+            body.from_date = startDateCSVDownload;
+        }
+        if (endDateCSVDownload) {
+            body.to_date = endDateCSVDownload;
+        }
+        const data = await csv(body);
+        downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
+        openDownloadModal = false;
     }
 
     let openUploadByCSVModal = $state(false);
-    async function handleUpload(){
+
+    async function handleUpload() {
         let response = await upload_records_csv(
             space_name,
             subpath,
@@ -1130,31 +1132,31 @@
     async function setPrepModalContentPayloadFromFetchedSchema() {
         let schemaContent;
         try {
-          if (["folder_rendering"].includes(selectedSchema)) {
-            schemaContent = await retrieve_entry(
+            if (["folder_rendering"].includes(selectedSchema)) {
+                schemaContent = await retrieve_entry(
                     ResourceType.schema,
                     "management",
                     "schema",
                     selectedSchema,
                     true
-            );
-          } else {
-            schemaContent = await retrieve_entry(
+                );
+            } else {
+                schemaContent = await retrieve_entry(
                     ResourceType.schema,
                     space_name,
                     "schema",
                     selectedSchema,
                     true,
                     false
-            );
-          }
+                );
+            }
         } catch (e) {
             showToast(Level.warn, `Can't load the schema ${selectedSchema} !`);
-            if(selectedSchema==="folder_rendering"){
-              schemaContent = structuredClone(defaultFolderRendering);
-              showToast(Level.warn, `Default schema ${selectedSchema} has been set !`);
+            if (selectedSchema === "folder_rendering") {
+                schemaContent = structuredClone(defaultFolderRendering);
+                showToast(Level.warn, `Default schema ${selectedSchema} has been set !`);
             } else {
-              return;
+                return;
             }
         }
         if (schemaContent === null) {
@@ -1292,109 +1294,109 @@
 <!--<svelte:window on:beforeunload={beforeUnload} />-->
 
 <ERDownloadModal
-  bind:openDownloadModal={openDownloadModal} bind:startDateCSVDownload={startDateCSVDownload}
-  bind:endDateCSVDownload={endDateCSVDownload} bind:limitCSVDownload={limitCSVDownload}
-  bind:searchTextCSVDownload={searchTextCSVDownload} bind:errorContent={errorContent}
-  {handleDownload}
+        bind:openDownloadModal={openDownloadModal} bind:startDateCSVDownload={startDateCSVDownload}
+        bind:endDateCSVDownload={endDateCSVDownload} bind:limitCSVDownload={limitCSVDownload}
+        bind:searchTextCSVDownload={searchTextCSVDownload} bind:errorContent={errorContent}
+        {handleDownload}
 />
 
 <ERUploadByCSVModal
-    bind:openUploadByCSVModal={openUploadByCSVModal} bind:allowedResourceTypes={allowedResourceTypes}
-    bind:space_name={space_name} bind:new_resource_type={new_resource_type}
-    bind:selectedSchema={selectedSchema} bind:payloadFiles={payloadFiles}
-    bind:errorContent={errorContent} {handleUpload} {setSchemaItems}
+        bind:openUploadByCSVModal={openUploadByCSVModal} bind:allowedResourceTypes={allowedResourceTypes}
+        bind:space_name={space_name} bind:new_resource_type={new_resource_type}
+        bind:selectedSchema={selectedSchema} bind:payloadFiles={payloadFiles}
+        bind:errorContent={errorContent} {handleUpload} {setSchemaItems}
 />
 
 <Modal
-  isOpen={isModalOpen}
-  toggle={modalToggle}
-  size={new_resource_type === "schema" ? "xl" : "lg"}
+        isOpen={isModalOpen}
+        toggle={modalToggle}
+        size={new_resource_type === "schema" ? "xl" : "lg"}
 >
-  <div class="modal-header">
-    <h5 class="modal-title">
-      Creating a {new_resource_type} under
-      <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>
-    </h5>
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <button type="button" onclick={modalToggle} class="btn-close" aria-label="Close">
-    </button>
-  </div>
+    <div class="modal-header">
+        <h5 class="modal-title">
+            Creating a {new_resource_type} under
+            <span class="text-success">{space_name}</span>/<span class="text-primary">{subpath}</span>
+        </h5>
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <button type="button" onclick={modalToggle} class="btn-close" aria-label="Close">
+        </button>
+    </div>
 
-  <Form on:submit={async (e) => await handleSubmit(e)}>
-    <ModalBody>
-      <FormGroup>
-        {#if entryType !== "folder"}
-          {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
-            <Label for="resource_type" class="mt-3">Resource type</Label>
-            <Input
-              id="resource_type"
-              bind:value={new_resource_type}
-              type="select"
-            >
-              {#each allowedResourceTypes as type}
-                {#if type}
-                  <option value={type}>{type}</option>
+    <Form on:submit={async (e) => await handleSubmit(e)}>
+        <ModalBody>
+            <FormGroup>
+                {#if entryType !== "folder"}
+                    {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
+                        <Label for="resource_type" class="mt-3">Resource type</Label>
+                        <Input
+                                id="resource_type"
+                                bind:value={new_resource_type}
+                                type="select"
+                        >
+                            {#each allowedResourceTypes as type}
+                                {#if type}
+                                    <option value={type}>{type}</option>
+                                {/if}
+                            {/each}
+                        </Input>
+                    {/if}
+                    {#if new_resource_type !== "schema"}
+                        {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m)) && new_resource_type !== "ticket"}
+                            <Label for="content_type" class="mt-3">Content type</Label>
+                            <Input
+                                    id="content_type"
+                                    bind:value={selectedContentType}
+                                    type="select"
+                            >
+                                <option value={null}>{"None"}</option>
+                                {#each [ContentType.json, ContentType.text, ContentType.markdown, ContentType.html] as type}
+                                    <option value={type}>{type}</option>
+                                {/each}
+                            </Input>
+                        {/if}
+                        {#if new_resource_type === "ticket"}
+                            {#await query({
+                                space_name,
+                                type: QueryType.search,
+                                subpath: "/workflows",
+                                search: "",
+                                retrieve_json_payload: true,
+                                limit: 99
+                            }) then workflows}
+                                <Label class="mt-3">Workflow</Label>
+                                {#if setWorkflowItem(workflows).length === 0}
+                                    <Input bind:value={workflowShortname}/>
+                                {:else}
+                                    <Input bind:value={workflowShortname} type="select">
+                                        {#each setWorkflowItem(workflows) as workflow}
+                                            <option value={workflow}>{workflow}</option>
+                                        {/each}
+                                    </Input>
+                                {/if}
+                            {/await}
+                        {/if}
+                    {/if}
                 {/if}
-              {/each}
-            </Input>
-          {/if}
-          {#if new_resource_type !== "schema"}
-            {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m)) && new_resource_type !== "ticket"}
-              <Label for="content_type" class="mt-3">Content type</Label>
-              <Input
-                id="content_type"
-                bind:value={selectedContentType}
-                type="select"
-              >
-                <option value={null}>{"None"}</option>
-                {#each [ContentType.json, ContentType.text, ContentType.markdown, ContentType.html] as type}
-                  <option value={type}>{type}</option>
-                {/each}
-              </Input>
-            {/if}
-            {#if new_resource_type === "ticket"}
-              {#await query({
-                space_name,
-                type: QueryType.search,
-                subpath: "/workflows",
-                search: "",
-                retrieve_json_payload: true,
-                limit: 99
-              }) then workflows}
-                <Label class="mt-3">Workflow</Label>
-                {#if setWorkflowItem(workflows).length === 0}
-                  <Input bind:value={workflowShortname}/>
-                {:else}
-                  <Input bind:value={workflowShortname} type="select">
-                    {#each setWorkflowItem(workflows) as workflow}
-                      <option value={workflow}>{workflow}</option>
-                    {/each}
-                  </Input>
-                {/if}
-              {/await}
-            {/if}
-          {/if}
-        {/if}
 
-        {#if !["workflows", "schema"].includes(subpath) && ![ResourceType.folder, ResourceType.role, ResourceType.permission].includes(new_resource_type)}
-          <Label class="mt-3">Schema</Label>
-          <Input bind:value={selectedSchema} type="select">
-            <option value={null}>{"None"}</option>
-            {#await query({
-              space_name,
-              type: QueryType.search,
-              subpath: "/schema",
-              search: "",
-              retrieve_json_payload: true,
-              limit: 99
-            }) then schemas}
-              {#each setSchemaItems(schemas) as schema}
-                <option value={schema}>{schema}</option>
-              {/each}
-            {/await}
-          </Input>
-        {/if}
+                {#if !["workflows", "schema"].includes(subpath) && ![ResourceType.folder, ResourceType.role, ResourceType.permission].includes(new_resource_type)}
+                    <Label class="mt-3">Schema</Label>
+                    <Input bind:value={selectedSchema} type="select">
+                        <option value={null}>{"None"}</option>
+                        {#await query({
+                            space_name,
+                            type: QueryType.search,
+                            subpath: "/schema",
+                            search: "",
+                            retrieve_json_payload: true,
+                            limit: 99
+                        }) then schemas}
+                            {#each setSchemaItems(schemas) as schema}
+                                <option value={schema}>{schema}</option>
+                            {/each}
+                        {/await}
+                    </Input>
+                {/if}
 
         <Label class="mt-3">Shortname</Label>
         <Input placeholder="Shortname..." bind:value={contentShortname} required/>
@@ -1408,7 +1410,7 @@
               <Input
                       type="text"
                       class="form-control"
-                      bind:value={formModalContent.displayname.en}
+                      bind:value={formModalMeta.displayname.en}
                       placeholder={"english..."}
               />
             </Col>
@@ -1416,7 +1418,7 @@
               <Input
                       type="text"
                       class="form-control"
-                      bind:value={formModalContent.displayname.ar}
+                      bind:value={formModalMeta.displayname.ar}
                       placeholder={"arabic..."}
               />
             </Col>
@@ -1424,7 +1426,7 @@
               <Input
                       type="text"
                       class="form-control"
-                      bind:value={formModalContent.displayname.ku}
+                      bind:value={formModalMeta.displayname.ku}
                       placeholder={"kurdish..."}
               />
             </Col>
@@ -1436,7 +1438,7 @@
               <Input
                       type="text"
                       class="form-control"
-                      bind:value={formModalContent.description.en}
+                      bind:value={formModalMeta.description.en}
                       placeholder={"english..."}
               />
             </Col>
@@ -1444,7 +1446,7 @@
               <Input
                       type="text"
                       class="form-control"
-                      bind:value={formModalContent.description.ar}
+                      bind:value={formModalMeta.description.ar}
                       placeholder={"arabic..."}
               />
             </Col>
@@ -1452,7 +1454,7 @@
               <Input
                       type="text"
                       class="form-control"
-                      bind:value={formModalContent.description.ku}
+                      bind:value={formModalMeta.description.ku}
                       placeholder={"kurdish..."}
               />
             </Col>
@@ -1465,7 +1467,7 @@
             <Input
               type="text"
               class="form-control"
-              bind:value={formModalContent.tags}
+              bind:value={formModalMeta.tags}
               placeholder={"tag1,tag2..."}
             />
           </Col>
@@ -1515,609 +1517,613 @@
             <!--{/if}-->
             <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
 
-            {#if [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)}
-              <TabContent on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}>
-                <TabPane tabId="form" tab="Form" active>
-                  {#if new_resource_type === ResourceType.permission}
-                    <PermissionForm bind:content={formModalContent}/>
-                  {:else if new_resource_type === ResourceType.role}
-                    <RoleForm bind:content={formModalContent}/>
-                  {:else if new_resource_type === ResourceType.user}
-                    <UserForm bind:content={formModalContent} bind:payload={formModalContentPayload}/>
-                  {/if}
-                </TabPane>
-                <TabPane tabId="editor" tab="Editor">
-                  <JSONEditor
-                          bind:this={jseModalContentRef}
-                          bind:content={jseModalContent}
-                          bind:validator={validatorModalContent}
-                          onRenderMenu={handleRenderMenu}
-                          mode={Mode.text}
-                  />
-                </TabPane>
-              </TabContent>
-            {:else}
-              <JSONEditor
-                bind:this={jseModalContentRef}
-                bind:content={jseModalContent}
-                bind:validator={validatorModalContent}
-                onRenderMenu={handleRenderMenu}
-                mode={Mode.text}
-              />
-            {/if}
-          {/if}
-
-          {#if selectedContentType === "text"}
-            <Label class="mt-3">Payload</Label>
-            <Input type="textarea" bind:value={jseModalContent}/>
-          {/if}
-          {#if selectedContentType === "html"}
-            <Label class="mt-3">Payload</Label>
-            <HtmlEditor bind:content={jseModalContent}/>
-          {/if}
-          {#if selectedContentType === "markdown"}
-            <Label class="mt-3">Payload</Label>
-            <MarkdownEditor bind:content={jseModalContent}/>
-          {/if}
-        {/if}
-        <hr/>
-        <Input
-          bind:checked={isNewEntryHasRelationship}
-          type="checkbox"
-          label="Add relationship ?"
-        />
-        {#if isNewEntryHasRelationship}
-          <RelationshipForm bind:content={relationshipModalContent}/>
-        {/if}
-        <hr/>
-        {#if errorContent}
-          <h3 class="mt-3">Error:</h3>
-          <Prism bind:code={errorContent}/>
-        {/if}
-        <hr/>
-      </FormGroup>
-    </ModalBody>
-    <ModalFooter>
-      <Button type="button" color="secondary"
-              onclick={() => {
+                        {#if [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)}
+                            <TabContent
+                                    on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}
+                            >
+                                <TabPane tabId="form" tab="Form" active>
+                                    {#if new_resource_type === ResourceType.permission}
+                                        <PermissionForm bind:content={formModalContent}/>
+                                    {:else if new_resource_type === ResourceType.role}
+                                        <RoleForm bind:content={formModalContent}/>
+                                    {:else if new_resource_type === ResourceType.user}
+                                        <UserForm bind:content={formModalContent}
+                                                  bind:payload={formModalContentPayload}/>
+                                    {/if}
+                                </TabPane>
+                                <TabPane tabId="editor" tab="Editor">
+                                    <JSONEditor
+                                            bind:this={jseModalContentRef}
+                                            bind:content={jseModalContent}
+                                            bind:validator={validatorModalContent}
+                                            onRenderMenu={handleRenderMenu}
+                                            mode={Mode.text}
+                                    />
+                                </TabPane>
+                            </TabContent>
+                        {:else}
+                            <JSONEditor
+                                    bind:this={jseModalContentRef}
+                                    bind:content={jseModalContent}
+                                    bind:validator={validatorModalContent}
+                                    onRenderMenu={handleRenderMenu}
+                                    mode={Mode.text}
+                            />
+                        {/if}
+                    {/if}
+                    {#if selectedContentType === "text"}
+                        <Label class="mt-3">Payload</Label>
+                        <Input type="textarea" bind:value={jseModalContent}/>
+                    {/if}
+                    {#if selectedContentType === "html"}
+                        <Label class="mt-3">Payload</Label>
+                        <HtmlEditor bind:content={jseModalContent}/>
+                    {/if}
+                    {#if selectedContentType === "markdown"}
+                        <Label class="mt-3">Payload</Label>
+                        <MarkdownEditor bind:content={jseModalContent}/>
+                    {/if}
+                {/if}
+                <hr/>
+                <Input
+                        bind:checked={isNewEntryHasRelationship}
+                        type="checkbox"
+                        label="Add relationship ?"
+                />
+                {#if isNewEntryHasRelationship}
+                    <RelationshipForm bind:content={relationshipModalContent}/>
+                {/if}
+                <hr/>
+                {#if errorContent}
+                    <h3 class="mt-3">Error:</h3>
+                    <Prism bind:code={errorContent}/>
+                {/if}
+                <hr/>
+            </FormGroup>
+        </ModalBody>
+        <ModalFooter>
+            <Button
+                    type="button"
+                    color="secondary"
+                    onclick={() => {
                 isModalOpen = false;
                 contentShortname = "";
             }}
-      >cancel
-      </Button>
-      <Button type="submit" color="primary">Submit</Button>
-    </ModalFooter>
-  </Form>
+            >cancel
+            </Button>
+            <Button type="submit" color="primary">Submit</Button>
+        </ModalFooter>
+    </Form>
 </Modal>
 
 {#if entry}
-  {#key entry}
-    <div
-      bind:clientHeight={header_height}
-      class="pt-3 pb-2 px-2"
-      transition:fade={{ delay: 25 }}
-    >
-      <div class="d-flex justify-content-end w-100">
-        <BreadCrumbLite
-          {space_name}
-          {subpath}
-          {resource_type}
-          {schema_name}
-          shortname={entry.shortname}
-        />
-        <ButtonGroup size="sm" class="ms-auto align-items-center">
-          <span class="ps-2 pe-1"> {$_("views")} </span>
-          {#if [ResourceType.folder, ResourceType.space].includes(resource_type)}
-            <Button
-                    outline
-                    color="success"
-                    size="sm"
-                    class="justify-content-center text-center py-0 px-1"
-                    active={"list" === tab_option}
-                    title={$_("list")}
-                    onclick={() => (tab_option = "list")}
-            >
-              <Icon name="card-list"/>
-            </Button>
-          {/if}
-          <Button
-                  outline
-                  color="success"
-                  size="sm"
-                  class="justify-content-center text-center py-0 px-1"
-                  active={"view" === tab_option}
-                  title={$_("view")}
-                  onclick={() => (tab_option = "view")}
-          >
-            <Icon name="binoculars"/>
-          </Button>
-          {#if entry.owner_shortname === $user.shortname}
-            <Button
-                    outline
-                    color="success"
-                    size="sm"
-                    class="justify-content-center text-center py-0 px-1"
-                    active={"acl" === tab_option}
-                    title={'ACL'}
-                    onclick={() => (tab_option = "acl")}
-            >
-              <Icon name="key"/>
-            </Button>
-          {/if}
-          {#if canUpdate}
-            <Button
-                    outline
-                    color="success"
-                    size="sm"
-                    class="justify-content-center text-center py-0 px-1"
-                    active={"edit_meta" === tab_option}
-                    title={$_("edit") + " meta"}
-                    onclick={() => (tab_option = "edit_meta")}
-            >
-              <Icon name="code-slash"/>
-            </Button>
-            {#if entry.payload}
-              <Button
-                      outline
-                      color="success"
-                      size="sm"
-                      class="justify-content-center text-center py-0 px-1"
-                      active={"edit_content" === tab_option}
-                      title={$_("edit") + " payload"}
-                      onclick={() => (tab_option = "edit_content")}
-              >
-                <Icon name="pencil"/>
-              </Button>
-              {#if schema && jseContent}
-                <Button
-                        outline
-                        color="success"
-                        size="sm"
-                        class="justify-content-center text-center py-0 px-1"
-                        active={"edit_content_form" === tab_option}
-                        title={$_("edit") + " payload"}
-                        onclick={() => (tab_option = "edit_content_form")}
-                >
-                  <Icon name="pencil-square"/>
-                </Button>
-              {/if}
-              {#if selectedSchema === "workflow"}
-                <Button
-                        outline
-                        color="success"
-                        size="sm"
-                        class="justify-content-center text-center py-0 px-1"
-                        active={"workflow" === tab_option}
-                        title={$_("edit") + " payload"}
-                        onclick={() => (tab_option = "workflow")}
-                >
-                  <Icon name="diagram-3"/>
-                </Button>
-              {/if}
-            {/if}
-            {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
-              <Button
-                      outline
-                      color="success"
-                      size="sm"
-                      class="justify-content-center text-center py-0 px-1"
-                      active={"visualization" === tab_option}
-                      title={$_("edit") + " payload"}
-                      onclick={() => (tab_option = "visualization")}
-              >
-                <Icon name="diagram-3"/>
-              </Button>
-            {/if}
-          {/if}
-          {#if ![ResourceType.folder, ResourceType.space].includes(resource_type)}
-            <Button
-                    outline
-                    color="success"
-                    size="sm"
-                    class="justify-content-center text-center py-0 px-1"
-                    active={"relationships" === tab_option}
-                    title={$_("relationships")}
-                    onclick={() => (tab_option = "relationships")}
-            >
-              <Icon name="link"/>
-            </Button>
-          {/if}
-          <Button
-                  outline
-                  color="success"
-                  size="sm"
-                  class="justify-content-center text-center py-0 px-1"
-                  active={"attachments" === tab_option}
-                  title={$_("attachments")}
-                  onclick={() => (tab_option = "attachments")}
-          >
-            <Icon name="paperclip"/>
-          </Button>
-          <Button
-                  outline
-                  color="success"
-                  size="sm"
-                  class="justify-content-center text-center py-0 px-1"
-                  active={"history" === tab_option}
-                  title={$_("history")}
-                  onclick={() => (tab_option = "history")}
-          >
-            <Icon name="clock-history"/>
-          </Button>
-        </ButtonGroup>
+    {#key entry}
+        <div
+                bind:clientHeight={header_height}
+                class="pt-3 pb-2 px-2"
+                transition:fade={{ delay: 25 }}
+        >
+            <div class="d-flex justify-content-end w-100">
+                <BreadCrumbLite
+                        {space_name}
+                        {subpath}
+                        {resource_type}
+                        {schema_name}
+                        shortname={entry.shortname}
+                />
+                <ButtonGroup size="sm" class="ms-auto align-items-center">
+                    <span class="ps-2 pe-1"> {$_("views")} </span>
+                    {#if [ResourceType.folder, ResourceType.space].includes(resource_type)}
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                class="justify-content-center text-center py-0 px-1"
+                                active={"list" === tab_option}
+                                title={$_("list")}
+                                onclick={() => (tab_option = "list")}
+                        >
+                            <Icon name="card-list"/>
+                        </Button>
+                    {/if}
+                    <Button
+                            outline
+                            color="success"
+                            size="sm"
+                            class="justify-content-center text-center py-0 px-1"
+                            active={"view" === tab_option}
+                            title={$_("view")}
+                            onclick={() => (tab_option = "view")}
+                    >
+                        <Icon name="binoculars"/>
+                    </Button>
+                    {#if entry.owner_shortname === $user.shortname}
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                class="justify-content-center text-center py-0 px-1"
+                                active={"acl" === tab_option}
+                                title={'ACL'}
+                                onclick={() => (tab_option = "acl")}
+                        >
+                            <Icon name="key"/>
+                        </Button>
+                    {/if}
+                    {#if canUpdate}
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                class="justify-content-center text-center py-0 px-1"
+                                active={"edit_meta" === tab_option}
+                                title={$_("edit") + " meta"}
+                                onclick={() => (tab_option = "edit_meta")}
+                        >
+                            <Icon name="code-slash"/>
+                        </Button>
+                        {#if entry.payload}
+                            <Button
+                                    outline
+                                    color="success"
+                                    size="sm"
+                                    class="justify-content-center text-center py-0 px-1"
+                                    active={"edit_content" === tab_option}
+                                    title={$_("edit") + " payload"}
+                                    onclick={() => (tab_option = "edit_content")}
+                            >
+                                <Icon name="pencil"/>
+                            </Button>
+                            {#if schema && jseContent}
+                                <Button
+                                        outline
+                                        color="success"
+                                        size="sm"
+                                        class="justify-content-center text-center py-0 px-1"
+                                        active={"edit_content_form" === tab_option}
+                                        title={$_("edit") + " payload"}
+                                        onclick={() => (tab_option = "edit_content_form")}
+                                >
+                                    <Icon name="pencil-square"/>
+                                </Button>
+                            {/if}
+                            {#if selectedSchema === "workflow"}
+                                <Button
+                                        outline
+                                        color="success"
+                                        size="sm"
+                                        class="justify-content-center text-center py-0 px-1"
+                                        active={"workflow" === tab_option}
+                                        title={$_("edit") + " payload"}
+                                        onclick={() => (tab_option = "workflow")}
+                                >
+                                    <Icon name="diagram-3"/>
+                                </Button>
+                            {/if}
+                        {/if}
+                        {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
+                            <Button
+                                    outline
+                                    color="success"
+                                    size="sm"
+                                    class="justify-content-center text-center py-0 px-1"
+                                    active={"visualization" === tab_option}
+                                    title={$_("edit") + " payload"}
+                                    onclick={() => (tab_option = "visualization")}
+                            >
+                                <Icon name="diagram-3"/>
+                            </Button>
+                        {/if}
+                    {/if}
+                    {#if ![ResourceType.folder, ResourceType.space].includes(resource_type)}
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                class="justify-content-center text-center py-0 px-1"
+                                active={"relationships" === tab_option}
+                                title={$_("relationships")}
+                                onclick={() => (tab_option = "relationships")}
+                        >
+                            <Icon name="link"/>
+                        </Button>
+                    {/if}
+                    <Button
+                            outline
+                            color="success"
+                            size="sm"
+                            class="justify-content-center text-center py-0 px-1"
+                            active={"attachments" === tab_option}
+                            title={$_("attachments")}
+                            onclick={() => (tab_option = "attachments")}
+                    >
+                        <Icon name="paperclip"/>
+                    </Button>
+                    <Button
+                            outline
+                            color="success"
+                            size="sm"
+                            class="justify-content-center text-center py-0 px-1"
+                            active={"history" === tab_option}
+                            title={$_("history")}
+                            onclick={() => (tab_option = "history")}
+                    >
+                        <Icon name="clock-history"/>
+                    </Button>
+                </ButtonGroup>
 
-        <ButtonGroup size="sm" class="align-items-center">
-          {#if canCreateEntry || canCreateFolder || canDelete || !!entry?.payload?.body?.allow_csv}
-            <span class="ps-2 pe-1"> {$_("actions")} </span>
-          {/if}
+                <ButtonGroup size="sm" class="align-items-center">
+                    {#if canCreateEntry || canCreateFolder || canDelete || !!entry?.payload?.body?.allow_csv}
+                        <span class="ps-2 pe-1"> {$_("actions")} </span>
+                    {/if}
 
-          {#if subpath !== "health_check"}
-            {#if canCreateEntry}
-              <Button
-                      outline
-                      color="success"
-                      size="sm"
-                      title={$_("create_entry")}
-                      class="justify-contnet-center text-center py-0 px-1"
-                      onclick={handleCreateEntryModal}
-              >
-                <Icon name="file-plus"/>
-              </Button>
-            {/if}
-            {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
-              <Button
-                    outline
-                    color="success"
-                    size="sm"
-                    title={$_("create_folder")}
-                    class="justify-contnet-center text-center py-0 px-1"
-                    onclick={() => {
+                    {#if subpath !== "health_check"}
+                        {#if canCreateEntry}
+                            <Button
+                                    outline
+                                    color="success"
+                                    size="sm"
+                                    title={$_("create_entry")}
+                                    class="justify-contnet-center text-center py-0 px-1"
+                                    onclick={handleCreateEntryModal}
+                            >
+                                <Icon name="file-plus"/>
+                            </Button>
+                        {/if}
+                        {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
+                            <Button
+                                    outline
+                                    color="success"
+                                    size="sm"
+                                    title={$_("create_folder")}
+                                    class="justify-contnet-center text-center py-0 px-1"
+                                    onclick={() => {
                       entryType = "folder";
                       new_resource_type = ResourceType.folder;
                       selectedSchema = "folder_rendering";
                       isModalOpen = true;
                     }}
-              >
-                <Icon name="folder-plus"/>
-              </Button>
-            {/if}
-          {/if}
-          <!--{#if !!entry?.payload?.body?.stream}-->
-            <Button
-                outline={!isNeedRefresh}
-                color={isNeedRefresh ? "danger" : "success"}
-                size="sm"
-                title={$_("refresh")}
-                class="justify-contnet-center text-center py-0 px-1"
-                onclick={async () => {
+                            >
+                                <Icon name="folder-plus"/>
+                            </Button>
+                        {/if}
+                    {/if}
+                    <!--{#if !!entry?.payload?.body?.stream}-->
+                    <Button
+                            outline={!isNeedRefresh}
+                            color={isNeedRefresh ? "danger" : "success"}
+                            size="sm"
+                            title={$_("refresh")}
+                            class="justify-contnet-center text-center py-0 px-1"
+                            onclick={async () => {
                   await refreshEntry();
               }}
-            >
-              <Icon name="arrow-clockwise"/>
-            </Button>
-          <!--{/if}-->
+                    >
+                        <Icon name="arrow-clockwise"/>
+                    </Button>
+                    <!--{/if}-->
 
-          {#if canDelete && $bulkBucket.length === 0}
-            <Button
-              outline
-              color="success"
-              size="sm"
-              title={$_("delete")}
-              onclick={handleDelete}
-              class="justify-content-center text-center py-0 px-1">
-                <Icon name="trash"/>
-            </Button>
-          {/if}
-          {#if !!entry?.payload?.body?.allow_csv}
-            <Button
-                    outline
-                    color="success"
-                    size="sm"
-                    title={$_("download")}
-                    onclick={openDownloadDialog}
-                    class="justify-content-center text-center py-0 px-1"
-            >
-              <Icon name="cloud-download"/>
-            </Button>
-          {/if}
-          {#if !!entry?.payload?.body?.allow_upload_csv}
-            <Button
-                    outline
-                    color="success"
-                    size="sm"
-                    title={$_("upload")}
-                    onclick={()=>{
+                    {#if canDelete && $bulkBucket.length === 0}
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                title={$_("delete")}
+                                onclick={handleDelete}
+                                class="justify-content-center text-center py-0 px-1">
+                            <Icon name="trash"/>
+                        </Button>
+                    {/if}
+                    {#if !!entry?.payload?.body?.allow_csv}
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                title={$_("download")}
+                                onclick={openDownloadDialog}
+                                class="justify-content-center text-center py-0 px-1"
+                        >
+                            <Icon name="cloud-download"/>
+                        </Button>
+                    {/if}
+                    {#if !!entry?.payload?.body?.allow_upload_csv}
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                title={$_("upload")}
+                                onclick={()=>{
                         new_resource_type = null;
                         selectedSchema = null;
                         openUploadByCSVModal = true;
                     }}
-                    class="justify-content-center text-center py-0 px-1"
-            >
-              <Icon name="cloud-upload"/>
-            </Button>
-          {/if}
+                                class="justify-content-center text-center py-0 px-1"
+                        >
+                            <Icon name="cloud-upload"/>
+                        </Button>
+                    {/if}
 
-          {#if $bulkBucket.length}
-            <span class="ps-2 pe-1"> {$_("bulk_actions")} </span>
-            <Button
-                    outline
-                    color="success"
-                    size="sm"
-                    title={$_("delete_selected")}
-                    onclick={handleDeleteBulk}
-                    class="justify-content-center text-center py-0 px-1"
-            >
-              <Icon name="trash"/>
-            </Button>
-          {/if}
+                    {#if $bulkBucket.length}
+                        <span class="ps-2 pe-1"> {$_("bulk_actions")} </span>
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                title={$_("delete_selected")}
+                                onclick={handleDeleteBulk}
+                                class="justify-content-center text-center py-0 px-1"
+                        >
+                            <Icon name="trash"/>
+                        </Button>
+                    {/if}
 
-        </ButtonGroup>
-      </div>
-    </div>
+                </ButtonGroup>
+            </div>
+        </div>
 
-    <div
-    class="px-1 tab-content"
-    style="height: calc(100% - {header_height}px); overflow: hidden auto;"
-    transition:fade={{ delay: 25 }}
-  >
-    <div class="tab-pane" class:active={tab_option === "list"}>
-      <ListView
-        {space_name}
-        {subpath}
-        folderColumns={entry?.payload?.body?.index_attributes ?? null}
-        sort_by={entry?.payload?.body?.sort_by ?? null}
-        sort_order={entry?.payload?.body?.sort_type ?? null}
-        canDelete={canDelete}
-      />
-    </div>
-    <div class="tab-pane" class:active={tab_option === "source"}>
-      <div
-        class="px-1 pb-1"
-        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
-      >
+        <div
+                class="px-1 tab-content"
+                style="height: calc(100% - {header_height}px); overflow: hidden auto;"
+                transition:fade={{ delay: 25 }}
+        >
+            <div class="tab-pane" class:active={tab_option === "list"}>
+                <ListView
+                        {space_name}
+                        {subpath}
+                        folderColumns={entry?.payload?.body?.index_attributes ?? null}
+                        sort_by={entry?.payload?.body?.sort_by ?? null}
+                        sort_order={entry?.payload?.body?.sort_type ?? null}
+                        canDelete={canDelete}
+                />
+            </div>
+            <div class="tab-pane" class:active={tab_option === "source"}>
+                <div
+                        class="px-1 pb-1"
+                        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
+                >
         <pre>
         {JSON.stringify(entry, undefined, 1)}
       </pre>
-      </div>
-    </div>
-    <div class="tab-pane" class:active={tab_option === "view"}>
-      <div
-        class="px-1 pb-1"
-        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
-      >
-        <TabContent>
-          {#if isContentPreviewable}
-            <TabPane tabId="content" tab="Content" class="p-3" active>
-              {#if entry.payload.content_type === ContentType.html}
-                {@html entry.payload.body}
-              {:else if entry.payload.content_type === ContentType.text}
-                <textarea value={entry.payload.body.toString()} disabled></textarea>
-              {:else if entry.payload.content_type === ContentType.markdown}
-                <MarkdownRenderer doc={entry.payload.body.toString()}/>
-              {:else if entry.payload.content_type === ContentType.json}
-                <Prism code={entry.payload.body}/>
-              {/if}
-            </TabPane>
-          {/if}
-          <TabPane tabId="table" tab="Table" active={!isContentPreviewable}
-          >
-            <Table2Cols
-                    entry={{ "Resource type": resource_type, ...entry }}
-            />
-          </TabPane
-          >
-          <TabPane tabId="form" tab="Raw">
-            <Prism code={entry}/>
-          </TabPane>
-        </TabContent>
-      </div>
-    </div>
-    <div class="tab-pane" class:active={tab_option === "edit_meta"}>
-      <div
-        class="px-1 pb-1"
-        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
-      >
-        {#if resource_type === ResourceType.ticket}
-          <TicketEntryRenderer {space_name} {subpath} bind:entry/>
-        {:else if resource_type === ResourceType.user}
-          <UserEntryRenderer
-            {space_name}
-            {subpath}
-            bind:entry
-            bind:errorContent
-          />
-        {/if}
-        <JSONEditor
-                bind:this={jseMetaRef}
-                bind:content={jseMeta}
-                bind:validator={validatorMeta}
-                onRenderMenu={handleRenderMenu}
-                mode={Mode.text}
-        />
-        {#if errorContent}
-          <h3 class="mt-3">Error:</h3>
-          <Prism bind:code={errorContent}/>
-        {/if}
-      </div>
-    </div>
-    {#if entry.payload}
-      <div class="tab-pane" class:active={tab_option === "edit_content"}>
-        <div
-                class="px-1 pb-1"
-                style="text-align: left; direction: ltr; overflow: hidden auto;"
-        >
-          {#if entry.payload.content_type === "image"}
-            {#if entry?.payload?.body.endsWith(".wsq")}
-              <a
-                      target="_blank"
-                      download={entry?.payload?.body}
-                      href={`${website.backend}/managed/payload/media/${space_name}/${subpath}/${entry?.payload?.body}`}
-              >{entry?.payload?.body}</a
-              >
-            {:else}
-              <img
-                      src={`${website.backend}/managed/payload/media/${space_name}/${subpath}/${entry?.payload?.body}`}
-                      alt=""
-                      class="mw-100 border"
-              />
-            {/if}
-          {/if}
-          {#if entry.payload.content_type === "audio"}
-            <audio
-                    controls
-                    src={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
-            >
-              <track kind="captions"/>
-            </audio>
-          {/if}
-          {#if entry.payload.content_type === "video"}
-            <video
-                    controls
-                    src={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
-            >
-              <track kind="captions"/>
-            </video>
-          {/if}
-          {#if entry.payload.content_type === "pdf"}
-            <object
-                    title=""
-                    class="h-100 w-100 embed-responsive-item"
-                    type="application/pdf"
-                    style="height: 100vh;"
-                    data={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
-            >
-              <p>For some reason PDF is not rendered here properly.</p>
-            </object>
-          {/if}
-          {#if entry.payload.content_type === "json" && typeof jseContent === "object" && jseContent !== null}
-            <div class="d-flex justify-content-end my-1">
-              <Button onclick={handleSave}>Save</Button>
+                </div>
             </div>
-            <JSONEditor
-                    bind:this={jseContentRef}
-                    bind:content={jseContent}
-                    bind:validator={validatorContent}
-                    onRenderMenu={handleRenderMenu}
-                    mode={Mode.text}
-            />
-          {:else}
-            <ContentEditor
-                    {space_name}
-                    {subpath}
-                    {handleSave}
-                    content_type={entry.payload.content_type}
-                    body={entry.payload.body}
-                    bind:jseContent
-            />
-          {/if}
-          {#if errorContent}
-            <h3 class="mt-3">Error:</h3>
-            <Prism bind:code={errorContent}/>
-          {/if}
-        </div>
-      </div>
+            <div class="tab-pane" class:active={tab_option === "view"}>
+                <div
+                        class="px-1 pb-1"
+                        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
+                >
+                    <TabContent>
+                        {#if isContentPreviewable}
+                            <TabPane tabId="content" tab="Content" class="p-3" active>
+                                {#if entry.payload.content_type === ContentType.html}
+                                    {@html entry.payload.body}
+                                {:else if entry.payload.content_type === ContentType.text}
+                                    <textarea value={entry.payload.body.toString()} disabled></textarea>
+                                {:else if entry.payload.content_type === ContentType.markdown}
+                                    <MarkdownRenderer doc={entry.payload.body.toString()}/>
+                                {:else if entry.payload.content_type === ContentType.json}
+                                    <Prism code={entry.payload.body}/>
+                                {/if}
+                            </TabPane>
+                        {/if}
+                        <TabPane tabId="table" tab="Table" active={!isContentPreviewable}
+                        >
+                            <Table2Cols
+                                    entry={{ "Resource type": resource_type, ...entry }}
+                            />
+                        </TabPane
+                        >
+                        <TabPane tabId="form" tab="Raw">
+                            <Prism code={entry}/>
+                        </TabPane>
+                    </TabContent>
+                </div>
+            </div>
+            <div class="tab-pane" class:active={tab_option === "edit_meta"}>
+                <div
+                        class="px-1 pb-1"
+                        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
+                >
+                    {#if resource_type === ResourceType.ticket}
+                        <TicketEntryRenderer {space_name} {subpath} bind:entry/>
+                    {:else if resource_type === ResourceType.user}
+                        <UserEntryRenderer
+                                {space_name}
+                                {subpath}
+                                bind:entry
+                                bind:errorContent
+                        />
+                    {/if}
+                    <JSONEditor
+                            bind:this={jseMetaRef}
+                            bind:content={jseMeta}
+                            bind:validator={validatorMeta}
+                            onRenderMenu={handleRenderMenu}
+                            mode={Mode.text}
+                    />
+                    {#if errorContent}
+                        <h3 class="mt-3">Error:</h3>
+                        <Prism bind:code={errorContent}/>
+                    {/if}
+                </div>
+            </div>
+            {#if entry.payload}
+                <div class="tab-pane" class:active={tab_option === "edit_content"}>
+                    <div
+                            class="px-1 pb-1"
+                            style="text-align: left; direction: ltr; overflow: hidden auto;"
+                    >
+                        {#if entry.payload.content_type === "image"}
+                            {#if entry?.payload?.body.endsWith(".wsq")}
+                                <a
+                                        target="_blank"
+                                        download={entry?.payload?.body}
+                                        href={`${website.backend}/managed/payload/media/${space_name}/${subpath}/${entry?.payload?.body}`}
+                                >{entry?.payload?.body}</a
+                                >
+                            {:else}
+                                <img
+                                        src={`${website.backend}/managed/payload/media/${space_name}/${subpath}/${entry?.payload?.body}`}
+                                        alt=""
+                                        class="mw-100 border"
+                                />
+                            {/if}
+                        {/if}
+                        {#if entry.payload.content_type === "audio"}
+                            <audio
+                                    controls
+                                    src={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
+                            >
+                                <track kind="captions"/>
+                            </audio>
+                        {/if}
+                        {#if entry.payload.content_type === "video"}
+                            <video
+                                    controls
+                                    src={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
+                            >
+                                <track kind="captions"/>
+                            </video>
+                        {/if}
+                        {#if entry.payload.content_type === "pdf"}
+                            <object
+                                    title=""
+                                    class="h-100 w-100 embed-responsive-item"
+                                    type="application/pdf"
+                                    style="height: 100vh;"
+                                    data={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
+                            >
+                                <p>For some reason PDF is not rendered here properly.</p>
+                            </object>
+                        {/if}
+                        {#if entry.payload.content_type === "json" && typeof jseContent === "object" && jseContent !== null}
+                            <div class="d-flex justify-content-end my-1">
+                                <Button onclick={handleSave}>Save</Button>
+                            </div>
+                            <JSONEditor
+                                    bind:this={jseContentRef}
+                                    bind:content={jseContent}
+                                    bind:validator={validatorContent}
+                                    onRenderMenu={handleRenderMenu}
+                                    mode={Mode.text}
+                            />
+                        {:else}
+                            <ContentEditor
+                                    {space_name}
+                                    {subpath}
+                                    {handleSave}
+                                    content_type={entry.payload.content_type}
+                                    body={entry.payload.body}
+                                    bind:jseContent
+                            />
+                        {/if}
+                        {#if errorContent}
+                            <h3 class="mt-3">Error:</h3>
+                            <Prism bind:code={errorContent}/>
+                        {/if}
+                    </div>
+                </div>
 
-      {#if schema && jseContent}
-        <div class="d-flex justify-content-end my-1 mx-3">
-          <Button onclick={handleSave}>Save</Button>
-        </div>
-        <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
-          {#if resource_type === ResourceType.schema}
-            <SchemaEditor bind:content={jseContent}/>
-          {:else if resource_type === ResourceType.content && schema_name === "configuration"}
-            <ConfigEditor bind:entries={jseContent.json.items}/>
-          {:else if resource_type === ResourceType.content && schema_name === "translation"}
-            <TranslationEditor
-              bind:entries={jseContent.json.items}
-              columns={Object.keys(schema.properties.items.items.properties)}
-            />
-          {:else}
-            <div class="px-1 pb-1 h-100">
-              <SchemaForm
-                bind:ref={schemaFormRefContent}
-                schema={$state.snapshot(schema)}
-                bind:data={jseContent.json}
-              />
+                {#if schema && jseContent}
+                    <div class="d-flex justify-content-end my-1 mx-3">
+                        <Button onclick={handleSave}>Save</Button>
+                    </div>
+                    <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
+                        {#if resource_type === ResourceType.schema}
+                            <SchemaEditor bind:content={jseContent}/>
+                        {:else if resource_type === ResourceType.content && schema_name === "configuration"}
+                            <ConfigEditor bind:entries={jseContent.json.items}/>
+                        {:else if resource_type === ResourceType.content && schema_name === "translation"}
+                            <TranslationEditor
+                                    bind:entries={jseContent.json.items}
+                                    columns={Object.keys(schema.properties.items.items.properties)}
+                            />
+                        {:else}
+                            <div class="px-1 pb-1 h-100">
+                                <SchemaForm
+                                        bind:ref={schemaFormRefContent}
+                                        schema={$state.snapshot(schema)}
+                                        bind:data={jseContent.json}
+                                />
+                            </div>
+                        {/if}
+                    </div>
+                {/if}
+            {/if}
+            {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
+                <div class="tab-pane" class:active={tab_option === "visualization"}>
+                    <div
+                            class="px-1 pb-1 h-100"
+                            style="text-align: left; direction: ltr; overflow: hidden auto;"
+                    >
+                        <div class="preview">
+                            <PlantUML
+                                    shortname={entry.shortname}
+                                    properties={entry.payload.body.properties}
+                            />
+                        </div>
+                    </div>
+                </div>
+            {/if}
+            {#if selectedSchema === "workflow"}
+                <div class="tab-pane" class:active={tab_option === "workflow"}>
+                    <WorkflowRenderer
+                            shortname={entry.shortname}
+                            workflowContent={entry?.payload?.body}
+                    />
+                </div>
+            {/if}
+            <div class="tab-pane" class:active={tab_option === "history"}>
+                {#key tab_option}
+                    {#if tab_option === "history"}
+                        <HistoryListView
+                                {space_name}
+                                {subpath}
+                                type={QueryType.history}
+                                shortname={entry.shortname}
+                        />
+                    {/if}
+                {/key}
             </div>
-          {/if}
+            {#if entry.owner_shortname === $user.shortname}
+                <div class="tab-pane" class:active={tab_option === "acl"}>
+                    <div class="d-flex justify-content-end my-2 mx-5 flex-row">
+                        <div>
+                            <Button onclick={handleSaveACL}>Save</Button>
+                        </div>
+                    </div>
+                    <div class="px-5">
+                        <ACLForm bind:content={aclContent}/>
+                    </div>
+                </div>
+            {/if}
+            <div class="tab-pane" class:active={tab_option === "relationships"}>
+                <div class="d-flex justify-content-end my-2 mx-5 flex-row">
+                    <div>
+                        <Button onclick={(e)=>handleSave(e, "relationships")}>Save</Button>
+                    </div>
+                </div>
+                <div class="px-5">
+                    <RelationshipForm bind:content={relationshipContent}/>
+                </div>
+            </div>
+            <div class="tab-pane" class:active={tab_option === "attachments"}>
+                <Attachments
+                        {resource_type}
+                        {space_name}
+                        {subpath}
+                        parent_shortname={entry.shortname}
+                        attachments={Object.values(entry.attachments)}
+                        {refreshEntry}
+                />
+            </div>
         </div>
-      {/if}
-    {/if}
-    {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
-      <div class="tab-pane" class:active={tab_option === "visualization"}>
-        <div
-                class="px-1 pb-1 h-100"
-                style="text-align: left; direction: ltr; overflow: hidden auto;"
-        >
-          <div class="preview">
-            <PlantUML
-                    shortname={entry.shortname}
-                    properties={entry.payload.body.properties}
-            />
-          </div>
-        </div>
-      </div>
-    {/if}
-    {#if selectedSchema === "workflow"}
-      <div class="tab-pane" class:active={tab_option === "workflow"}>
-        <WorkflowRenderer
-                shortname={entry.shortname}
-                workflowContent={entry?.payload?.body}
-        />
-      </div>
-    {/if}
-    <div class="tab-pane" class:active={tab_option === "history"}>
-      {#key tab_option}
-        {#if tab_option === "history"}
-          <HistoryListView
-                  {space_name}
-                  {subpath}
-                  type={QueryType.history}
-                  shortname={entry.shortname}
-          />
-        {/if}
-      {/key}
-    </div>
-    {#if entry.owner_shortname === $user.shortname}
-      <div class="tab-pane" class:active={tab_option === "acl"}>
-        <div class="d-flex justify-content-end my-2 mx-5 flex-row">
-          <div>
-            <Button onclick={handleSaveACL}>Save</Button>
-          </div>
-        </div>
-        <div class="px-5">
-          <ACLForm bind:content={aclContent}/>
-        </div>
-      </div>
-    {/if}
-    <div class="tab-pane" class:active={tab_option === "relationships"}>
-      <div class="d-flex justify-content-end my-2 mx-5 flex-row">
-        <div>
-          <Button onclick={(e)=>handleSave(e, "relationships")}>Save</Button>
-        </div>
-      </div>
-      <div class="px-5">
-        <RelationshipForm bind:content={relationshipContent}/>
-      </div>
-    </div>
-    <div class="tab-pane" class:active={tab_option === "attachments"}>
-      <Attachments
-        {resource_type}
-        {space_name}
-        {subpath}
-        parent_shortname={entry.shortname}
-        attachments={Object.values(entry.attachments)}
-        {refreshEntry}
-      />
-    </div>
-  </div>
-  {/key}
+    {/key}
 {:else}
-  <div class="alert alert-danger text-center m-5">
-    <h4 class="alert-heading text-capitalize">
-      Failed to load the entry, please check its existence or try again.
-    </h4>
-  </div>
+    <div class="alert alert-danger text-center m-5">
+        <h4 class="alert-heading text-capitalize">
+            Failed to load the entry, please check its existence or try again.
+        </h4>
+    </div>
 {/if}
 
 <style>
