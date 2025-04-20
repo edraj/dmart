@@ -655,20 +655,10 @@ def action(text: str):
             action("cd ..")
             pass
         case ["upload", "csv", *args]:
-            if len(args) == 4 or len(args) == 5:
-                search = re.search(r"@\w+", args[3])
-                if not search:
-                    print("[red]Malformated Command")
-                    return
-                space = search.group()
-                space = space.replace("@", "")
-                check_update_space(space)
-                dmart.current_subpath = args[3].replace(f"@{space}/", "")
-                dmart.list()
-
-            if len(args) == 5:
+            print(args)
+            if len(args) == 4:
                 print(dmart.upload_csv(args[0], args[1], args[2], args[3]))
-            else :
+            elif len(args) == 3:
                 print(dmart.upload_csv(args[0], args[1], None, args[2]))
             check_update_space(old_space)
             dmart.current_subpath = old_subpath
