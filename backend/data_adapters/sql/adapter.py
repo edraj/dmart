@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import sys
@@ -304,8 +305,6 @@ class SQLAdapter(BaseDataAdapter):
             self.async_session = sessionmaker(
                 self.engine, class_=AsyncSession, expire_on_commit=False
             ) # type: ignore
-            # with Session(self.engine) as session:
-            #     session.exec(text("SELECT 1")).one_or_none()
         except Exception as e:
             print("[!FATAL]", e)
             sys.exit(127)
@@ -1755,7 +1754,16 @@ class SQLAdapter(BaseDataAdapter):
         pass
 
     async def initialize_spaces(self) -> None:
-        pass
+        async with self.get_session() as session:
+            try:
+                (await session.execute(select(Spaces).limit(1))).one_or_none()
+            except Exception as e:
+                print(f"Error: {e}")
+                try:
+                    loop = asyncio.get_event_loop()
+                    loop.stop()
+                except RuntimeError as e:
+                    print(f"Error: {e}")
 
     async def create_user_premission_index(self) -> None:
         pass
