@@ -468,5 +468,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())  # type: ignore
+    try:
+        asyncio.run(main()) # type: ignore
+    except Exception as e:
+        print("[!1server]", e)
 
