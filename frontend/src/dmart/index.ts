@@ -595,7 +595,11 @@ export async function upload_records_csv(
     payload: File,
 ){
     try {
-        const csvUrl = `/managed/resources_from_csv/${resourceType}/${space_name}/${subpath}/${schema}`;
+        let csvUrl = `/managed/resources_from_csv/${resourceType}/${space_name}/${subpath}`;
+
+        if(schema){
+            csvUrl += `/${schema}`;
+        }
 
         let formdata = new FormData();
         formdata.append("resources_file", payload);
