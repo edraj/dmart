@@ -254,8 +254,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if query.offset:
             statement = statement.offset(query.offset)
 
-        if query.limit:
-            statement = statement.limit(query.limit)
+        statement = statement.limit(query.limit)
 
     return statement
 
