@@ -717,11 +717,6 @@ async def create_or_update_resource_with_payload(
     response_model=api.Response,
     response_model_exclude_none=True,
 )
-@router.post(
-    "/resources_from_csv/{resource_type}/{space_name}/{subpath:path}",
-    response_model=api.Response,
-    response_model_exclude_none=True,
-)
 async def import_resources_from_csv(
         resources_file: UploadFile,
         resource_type: ResourceType,
@@ -792,6 +787,11 @@ async def import_resources_from_csv(
                     is_internal=True,
                 )
                 success_count += 1
+            except api.Exception as e:
+                err = {shortname: e.__str__()}
+                if hasattr(e, "error"):
+                    err["error"] = e.error # type: ignore
+                failed_shortnames.append(err)
             except Exception as e:
                 failed_shortnames.append({shortname: e.__str__()})
 
