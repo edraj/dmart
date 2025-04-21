@@ -792,7 +792,7 @@ async def import_resources_from_csv(
                 if hasattr(e, "error"):
                     err["error"] = e.error # type: ignore
                 failed_shortnames.append(err)
-            except api.Exception as e:
+            except Exception as e:
                 failed_shortnames.append({shortname: e.__str__()})
 
     return api.Response(
