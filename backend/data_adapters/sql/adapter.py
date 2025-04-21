@@ -589,7 +589,7 @@ class SQLAdapter(BaseDataAdapter):
                         func.sum(statement_total.c["count"]).label('total_count')
                     )
 
-                if table not in [Attachments, Histories] and user_query_policies:
+                if table not in [Attachments, Histories] and user_query_policies and hasattr(table, 'query_policies'):
                     statement = statement.where(
                         text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
                     ).params(
