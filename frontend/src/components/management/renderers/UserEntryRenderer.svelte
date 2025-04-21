@@ -310,38 +310,38 @@
     <FormGroup class="col-4">
       <Label>Kurdish Displayname</Label>
       <Input
-              style="width: 100% !important"
-              bind:value={user.displayname.kd}
-              class="w-25"
-              type="text"
-              name="displayname_kd"
-              placeholder="Kurdish Displayname..."
+        style="width: 100% !important"
+        bind:value={user.displayname.kd}
+        class="w-25"
+        type="text"
+        name="displayname_kd"
+        placeholder="Kurdish Displayname..."
       />
     </FormGroup>
   </div>
   <div class="row">
     <FormGroup class="col-4">
       <Input
-              name="is_email_verified"
-              bind:checked={user.is_email_verified}
-              type="checkbox"
-              label="Is Email Verified"
+        name="is_email_verified"
+        bind:checked={user.is_email_verified}
+        type="checkbox"
+        label="Is Email Verified"
       />
     </FormGroup>
     <FormGroup class="col-4">
       <Input
-              name="is_msisdn_verified"
-              bind:checked={user.is_msisdn_verified}
-              type="checkbox"
-              label="Is MSISDN Verified"
+        name="is_msisdn_verified"
+        bind:checked={user.is_msisdn_verified}
+        type="checkbox"
+        label="Is MSISDN Verified"
       />
     </FormGroup>
     <FormGroup class="col-4">
       <Input
-              name="force_password_change"
-              bind:checked={user.force_password_change}
-              type="checkbox"
-              label="Force Password Change"
+          name="force_password_change"
+          bind:checked={user.force_password_change}
+          type="checkbox"
+          label="Force Password Change"
       />
     </FormGroup>
   </div>
