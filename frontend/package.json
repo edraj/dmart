@@ -29,6 +29,7 @@
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
     "cl-editor": "edraj/cl-editor",
+    "dotenv-extended": "^2.9.0",
     "eslint": "^9.9.1",
     "intl-messageformat": "^10.5.14",
     "js-yaml": "^4.1.0",
