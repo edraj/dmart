@@ -787,12 +787,13 @@ async def import_resources_from_csv(
                     is_internal=True,
                 )
                 success_count += 1
-            except Exception as e:
-                print(e.error)
+            except api.Exception as e:
                 err = {shortname: e.__str__()}
                 if hasattr(e, "error"):
-                    err["error"] = e.error
+                    err["error"] = e.error # type: ignore
                 failed_shortnames.append(err)
+            except api.Exception as e:
+                failed_shortnames.append({shortname: e.__str__()})
 
     return api.Response(
         status=api.Status.success,
