@@ -62,7 +62,7 @@ class ChannelMiddleware:
         if not channel_key:
             for channel in settings.channels:
                 for pattern in channel["allowed_api_patterns"]:
-                    if not pattern.search(request.scope['path']):
+                    if pattern.search(request.scope['path']):
                         raise api.Exception(
                             status_code=status.HTTP_403_FORBIDDEN,
                             error=api.Error(
