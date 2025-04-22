@@ -157,7 +157,7 @@
                       ]}
                     </li>
                     <li>
-                      <b>Created At: </b><br>{row["attributes"]["created_at"]}
+                      <b>Timestamp: </b><br>{row["attributes"]["timestamp"]}
                     </li>
                   </ul>
                 </td>

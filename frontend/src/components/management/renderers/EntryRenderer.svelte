@@ -89,7 +89,7 @@
 
     // props
     let {
-        entry,
+        entry = $bindable(),
         space_name,
         subpath,
         resource_type,
@@ -135,11 +135,10 @@
 
     // editors
     //// meta
-    let jseMeta: any = $state({text: "{}"});
+    let jseMeta: any = $state({json: {}});
     let validatorMeta: Validator = $state(setMetaValidator());
-    // let oldJSEMeta = structuredClone(jseMeta);
     /// content (payload)
-    let jseContent: any = $state({json: {}, text: undefined});
+    let jseContent: any = $state({json: {}});
     let validatorModalContent: Validator = $state(createAjvValidator({schema: {}}));
     let validatorContent: Validator = $state(createAjvValidator({schema: {}}));
     let oldJSEContent = {json: {}, text: undefined};
@@ -149,9 +148,7 @@
     /// handler
     let errorContent = $state(null);
     /// ref
-    let jseMetaRef: any = $state();
     let schemaContentRef = $state();
-    let jseContentRef: any = $state();
     // let schemaFormRefModal;
     let schemaFormRefContent: any = $state();
     let relationshipContent = $state(structuredClone(entry)?.relationships ?? null);
@@ -163,7 +160,7 @@
     let isSchemaEntryInForm = true;
     let isModalContentEntryInForm = true;
     /// content
-    let schemaContent = $state({json: {}, text: undefined});
+    let schemaContent = {json: {}, text: undefined};
     let contentShortname = $state("");
     let workflowShortname = $state("");
     let selectedSchema = $state(subpath === "workflows" ? "workflow" : null);
@@ -173,11 +170,11 @@
     let payloadFiles: FileList = $state();
     // editors
     let jseModalMetaRef;
-    let jseModalMeta: any = {text: "{}"};
+    let jseModalMeta: any = {json: {}};
     let jseModalContentRef: any = $state();
     let jseModalContent: any = {json: {}};
-    let formModalContent: any = $state({});
-    let formModalMeta: any = $state({
+    let formModalContent: any = {json: {}};
+    let formModalMeta: any = {
         tags: "",
         displayname: {
             en: "",
@@ -189,8 +186,8 @@
             ar: "",
             ku: "",
         },
-    });
-    let formModalContentPayload: any = $state({json: {}, text: undefined});
+    };
+    let formModalContentPayload: any = {json: {}, text: undefined};
     let isNewEntryHasRelationship = $state(false);
     let relationshipModalContent = $state(null);
 
@@ -219,12 +216,10 @@
 
     async function processEntry() {
         if (entry) {
-            const cpy = structuredClone(entry);
+            const cpy = structuredClone($state.snapshot(entry));
+
             if (entry?.payload) {
                 if (entry?.payload?.content_type === "json") {
-                    jseContentRef.set({
-                        text: JSON.stringify(entry?.payload?.body ?? {}, null, 2),
-                    });
                     jseContent = {json: entry?.payload?.body};
                 } else {
                     jseContent = entry?.payload?.body;
@@ -232,11 +227,7 @@
             }
             delete cpy?.payload?.body;
             delete cpy?.attachments;
-
-            if (jseMetaRef) {
-                jseMetaRef.set({text: JSON.stringify(cpy, null, 2)});
-            }
-
+            jseMeta = {json: structuredClone(cpy)};
 
             try {
                 if (entry?.payload?.schema_shortname) {
@@ -263,7 +254,8 @@
                         );
                     }
                 }
-            } catch (e) {
+            }
+            catch (e) {
 
             }
 
@@ -321,9 +313,7 @@
         }
     }
 
-    onMount(async () => {
-        await processEntry();
-    });
+    processEntry();
 
     async function refreshEntry() {
         if (resource_type === ResourceType.folder) {
@@ -380,7 +370,6 @@
 
         if (response.status == Status.success) {
             showToast(Level.info);
-            // oldJSEMeta = structuredClone(jseMeta);
 
             window.location.reload();
         } else {
@@ -391,13 +380,10 @@
 
     async function handleSave(e: Event, form: string = null) {
         e.preventDefault();
-        // if (!isSchemaValidated) {
-        //   alert("The content does is not validated agains the schema");
-        //   return;
-        // }
 
         errorContent = null;
-        let _relationshipContent: any = relationshipContent.filter(r => r.space_name)
+        let _relationshipContent: any = relationshipContent
+            .filter(r => r.space_name)
             .map(r => {
                 return {
                     related_to: {
@@ -440,10 +426,11 @@
         }
 
         const x = jseMeta.json
-            ? structuredClone(jseMeta.json)
-            : JSON.parse(jseMeta.text);
+            ? structuredClone($state.snapshot(jseMeta).json)
+            : JSON.parse($state.snapshot(jseMeta).text);
         x.relationships = _relationshipContent;
-        let data: any = structuredClone(x);
+
+        let attributes: any = structuredClone(x);
         if (entry?.payload) {
             if (entry?.payload?.content_type === "json") {
                 if (tab_option === "edit_content_form") {
@@ -451,26 +438,26 @@
                         return;
                     }
                 }
-                const y = jseContent.json
-                    ? structuredClone(jseContent.json)
-                    : JSON.parse(jseContent.text);
-
+                const snap = $state.snapshot(jseContent)
+                const y = snap.json && Object.keys(snap.json).length
+                    ? structuredClone(snap.json)
+                    : JSON.parse(snap.text);
                 if (new_resource_type === "schema") {
                     if (isSchemaEntryInForm) {
                         delete y.name;
                     }
                 }
 
-                if (data.payload) {
-                    data.payload.body = y;
+                if (attributes.payload) {
+                    attributes.payload.body = y;
                 }
             } else {
-                data.payload.body = jseContent;
+                attributes.payload.body = $state.snapshot(jseContent);
             }
         }
 
-        if (resource_type === ResourceType.user && btoa(data.password.slice(0, 6)) === 'JDJiJDEy') {
-            delete data.password;
+        if (resource_type === ResourceType.user && btoa(attributes.password.slice(0, 6)) === 'JDJiJDEy') {
+            delete attributes.password;
         }
 
         if (resource_type === ResourceType.folder) {
@@ -488,7 +475,7 @@
                     resource_type,
                     shortname: entry.shortname,
                     subpath,
-                    attributes: data,
+                    attributes: attributes,
                 },
             ],
         };
@@ -498,20 +485,20 @@
             request_data.request_type = RequestType.update;
             request_data.records[0].resource_type = ResourceType.space;
             response = await space(request_data);
-        } else {
+        }
+        else {
             response = await request(request_data);
         }
 
         if (response.status == Status.success) {
             showToast(Level.info);
-            // oldJSEMeta = structuredClone(jseMeta);
 
-            if (data.shortname !== entry.shortname) {
+            if (attributes.shortname !== entry.shortname) {
                 const moveAttrb = {
                     src_subpath: subpath,
                     src_shortname: entry.shortname,
                     dest_subpath: subpath,
-                    dest_shortname: data.shortname,
+                    dest_shortname: attributes.shortname,
                 };
                 const response = await request({
                     space_name: space_name,
@@ -534,7 +521,8 @@
                 }
             }
             window.location.reload();
-        } else {
+        }
+        else {
             errorContent = response;
             showToast(Level.warn);
         }
@@ -621,21 +609,7 @@
             };
             response = await request(request_body);
         } else if (new_resource_type === ResourceType.user) {
-
-            // if (!schemaFormRefModal.reportValidity()) {
-            //     return;
-            // }
-
             let body: any;
-            // if (isModalContentEntryInForm){
-            //     body = selectedSchemaData.json
-            //         ? structuredClone(selectedSchemaData.json)
-            //         : JSON.parse(selectedSchemaData.text);
-            //     body = {
-            //         attributes: body
-            //     }
-            // } else {
-
             if (isModalContentEntryInForm) {
                 body = {}
                 formModalContent.forEach(item => {
@@ -665,7 +639,7 @@
                     ? structuredClone(jseModalContent.json)
                     : JSON.parse(jseModalContent.text);
             }
-            // }
+
             body.relationships = _relationshipModalContent;
             if (!body?.password) {
                 showToast(Level.warn, "Password must be provided!");
@@ -743,22 +717,10 @@
                 if (jseModalContentRef?.validate()?.validationErrors) {
                     return;
                 }
-                // if (isModalContentEntryInForm){
-                //     if (
-                //         selectedSchemaContent != null &&
-                //         selectedSchemaData.json
-                //     ) {
-                //         // if (!schemaFormRefModal.reportValidity()) {
-                //         //     return;
-                //         // }
-                //         body = selectedSchemaData.json;
-                //     }
-                // }
-                // else {
+
                 body = jseModalContent.json
                     ? structuredClone(jseModalContent.json)
                     : JSON.parse(jseModalContent.text);
-                // }
 
                 if (isModalContentEntryInForm) {
                     if (new_resource_type === ResourceType.role) {
@@ -876,15 +838,11 @@
             }
         } else if (entryType === "folder") {
             let body: any = {};
-            // if (isModalContentEntryInForm){
-            //     body = selectedSchemaData.json
-            //         ? structuredClone(selectedSchemaData.json)
-            //         : JSON.parse(selectedSchemaData.text);
-            // } else {
+
             body = jseModalContent.json
                 ? structuredClone(jseModalContent.json)
                 : JSON.parse(jseModalContent.text);
-            // }
+
             if (body.query && !!body.query.type === false) {
                 body.query.type = "search";
             }
@@ -1017,17 +975,6 @@
         }
     }
 
-    // function beforeUnload(event) {
-    //     if (!isDeepEqual(removeEmpty(jseMeta), removeEmpty(oldJSEMeta))) {
-    //         event.preventDefault();
-    //         if (
-    //             confirm("You have unsaved changes, do you want to leave ?") === false
-    //         ) {
-    //             return false;
-    //         }
-    //     }
-    // }
-
 
     let openDownloadModal = $state(false);
     let startDateCSVDownload = $state("");
@@ -1094,11 +1041,10 @@
             delete meta.properties.created_at;
             delete meta.properties.updated_at;
             delete meta.properties.payload;
-            // selectedSchemaContent = meta
+
             jseModalContent = {
-                text: JSON.stringify(generateObjectFromSchema(meta), null, 2),
+                json: generateObjectFromSchema(meta)
             };
-            // jseContentRef.set({text: generateObjectFromSchema(meta)})
             validatorModalContent = createAjvValidator({schema: meta});
         } else if (new_resource_type === ResourceType.permission) {
             meta = structuredClone(metaPermissionSchema);
@@ -1107,7 +1053,7 @@
             delete meta.properties.created_at;
             delete meta.properties.updated_at;
             jseModalContent = {
-                text: JSON.stringify(generateObjectFromSchema(meta), null, 2),
+                json: generateObjectFromSchema(meta),
             };
             validatorModalContent = createAjvValidator({schema: meta});
         } else if (new_resource_type === ResourceType.role) {
@@ -1118,7 +1064,7 @@
             delete meta.properties.updated_at;
             delete meta.properties.updated_at;
             jseModalContent = {
-                text: JSON.stringify(generateObjectFromSchema(meta), null, 2),
+                json: generateObjectFromSchema(meta),
             };
             validatorModalContent = createAjvValidator({schema: meta});
         }
@@ -1172,17 +1118,14 @@
 
             validatorModalContent = createAjvValidator({schema: _schema});
             const body: any = generateObjectFromSchema(structuredClone(_schema));
+
             formModalContentPayload = {
-                text: JSON.stringify(
-                    generateObjectFromSchema(structuredClone(_metaUserSchema.properties.payload.properties.body)),
-                    null,
-                    2
-                )
+                json: generateObjectFromSchema(structuredClone(_metaUserSchema.properties.payload.properties.body))
             };
 
             body.payload.content_type = "json";
             body.payload.schema_shortname = selectedSchema;
-            jseModalContent = {text: JSON.stringify(body, null, 2)};
+            jseModalContent = {json: body};
         } else if (new_resource_type === ResourceType.folder) {
             validatorModalContent = createAjvValidator({schema: _schema});
             const body: any = generateObjectFromSchema(structuredClone(_schema));
@@ -1194,11 +1137,11 @@
                     "name": "Shortname"
                 }
             ];
-            jseModalContent = {text: JSON.stringify(body, null, 2)};
+            jseModalContent = {json: body};
         } else {
             validatorModalContent = createAjvValidator({schema: _schema});
             const body: any = generateObjectFromSchema(structuredClone(_schema));
-            jseModalContent = {text: JSON.stringify(body, null, 2)};
+            jseModalContent = {json: body};
         }
 
         oldSelectedSchema = selectedSchema;
@@ -1236,7 +1179,7 @@
     $effect(() => {
         if (oldSelectedContentType !== selectedContentType) {
             if (selectedContentType === "json") {
-                jseModalContent = {text: "{}"};
+                jseModalContent = {json: {}};
             } else {
                 jseModalContent = "";
             }
@@ -1256,7 +1199,7 @@
     $effect(() => {
         if (selectedSchema === null) {
             validatorModalContent = createAjvValidator({schema: {}});
-            jseModalContent = {text: JSON.stringify({}, null, 2)};
+            jseModalContent = {json: {}};
             oldSelectedSchema = null;
         } else if (selectedSchema !== oldSelectedSchema) {
             setPrepModalContentPayloadFromFetchedSchema();
@@ -1403,26 +1346,26 @@
             <Col sm="12"><Label>Displayname</Label></Col>
             <Col sm="4">
               <Input
-                      type="text"
-                      class="form-control"
-                      bind:value={formModalMeta.displayname.en}
-                      placeholder={"english..."}
+                  type="text"
+                  class="form-control"
+                  bind:value={formModalMeta.displayname.en}
+                  placeholder={"english..."}
               />
             </Col>
             <Col sm="4">
               <Input
-                      type="text"
-                      class="form-control"
-                      bind:value={formModalMeta.displayname.ar}
-                      placeholder={"arabic..."}
+                  type="text"
+                  class="form-control"
+                  bind:value={formModalMeta.displayname.ar}
+                  placeholder={"arabic..."}
               />
             </Col>
             <Col sm="4">
               <Input
-                      type="text"
-                      class="form-control"
-                      bind:value={formModalMeta.displayname.ku}
-                      placeholder={"kurdish..."}
+                  type="text"
+                  class="form-control"
+                  bind:value={formModalMeta.displayname.ku}
+                  placeholder={"kurdish..."}
               />
             </Col>
           </Row>
@@ -1431,26 +1374,26 @@
             <Col sm="12"><Label>Description</Label></Col>
             <Col sm="4">
               <Input
-                      type="text"
-                      class="form-control"
-                      bind:value={formModalMeta.description.en}
-                      placeholder={"english..."}
+                  type="text"
+                  class="form-control"
+                  bind:value={formModalMeta.description.en}
+                  placeholder={"english..."}
               />
             </Col>
             <Col sm="4">
               <Input
-                      type="text"
-                      class="form-control"
-                      bind:value={formModalMeta.description.ar}
-                      placeholder={"arabic..."}
+                  type="text"
+                  class="form-control"
+                  bind:value={formModalMeta.description.ar}
+                  placeholder={"arabic..."}
               />
             </Col>
             <Col sm="4">
               <Input
-                      type="text"
-                      class="form-control"
-                      bind:value={formModalMeta.description.ku}
-                      placeholder={"kurdish..."}
+                  type="text"
+                  class="form-control"
+                  bind:value={formModalMeta.description.ku}
+                  placeholder={"kurdish..."}
               />
             </Col>
           </Row>
@@ -1476,10 +1419,10 @@
             </TabPane>
             <TabPane tabId="editor" tab="Editor">
               <JSONEditor
-                      bind:this={schemaContentRef}
-                      bind:content={schemaContent}
-                      onRenderMenu={handleRenderMenu}
-                      mode={Mode.text}
+                  bind:this={schemaContentRef}
+                  bind:content={schemaContent}
+                  onRenderMenu={handleRenderMenu}
+                  mode={Mode.text}
               />
             </TabPane>
           </TabContent>
@@ -1513,9 +1456,7 @@
             <!--                <TabPane tabId="editor" tab="Editor" active={selectedSchemaContent && Object.keys(selectedSchemaContent).length === 0}>-->
 
                         {#if [ResourceType.user, ResourceType.permission, ResourceType.role].includes(new_resource_type)}
-                            <TabContent
-                                    on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}
-                            >
+                            <TabContent on:tab={(e) => (isModalContentEntryInForm = e.detail === "form")}>
                                 <TabPane tabId="form" tab="Form" active>
                                     {#if new_resource_type === ResourceType.permission}
                                         <PermissionForm bind:content={formModalContent}/>
@@ -1528,21 +1469,21 @@
                                 </TabPane>
                                 <TabPane tabId="editor" tab="Editor">
                                     <JSONEditor
-                                            bind:this={jseModalContentRef}
-                                            bind:content={jseModalContent}
-                                            bind:validator={validatorModalContent}
-                                            onRenderMenu={handleRenderMenu}
-                                            mode={Mode.text}
+                                        bind:this={jseModalContentRef}
+                                        bind:content={jseModalContent}
+                                        bind:validator={validatorModalContent}
+                                        onRenderMenu={handleRenderMenu}
+                                        mode={Mode.text}
                                     />
                                 </TabPane>
                             </TabContent>
                         {:else}
                             <JSONEditor
-                                    bind:this={jseModalContentRef}
-                                    bind:content={jseModalContent}
-                                    bind:validator={validatorModalContent}
-                                    onRenderMenu={handleRenderMenu}
-                                    mode={Mode.text}
+                                bind:this={jseModalContentRef}
+                                bind:content={jseModalContent}
+                                bind:validator={validatorModalContent}
+                                onRenderMenu={handleRenderMenu}
+                                mode={Mode.text}
                             />
                         {/if}
                     {/if}
@@ -1578,12 +1519,12 @@
         </ModalBody>
         <ModalFooter>
             <Button
-                    type="button"
-                    color="secondary"
-                    onclick={() => {
-                isModalOpen = false;
-                contentShortname = "";
-            }}
+                type="button"
+                color="secondary"
+                onclick={() => {
+                    isModalOpen = false;
+                    contentShortname = "";
+                }}
             >cancel
             </Button>
             <Button type="submit" color="primary">Submit</Button>
@@ -1840,12 +1781,12 @@
                 {#if $bulkBucket.length}
                     <span class="ps-2 pe-1"> {$_("bulk_actions")} </span>
                     <Button
-                            outline
-                            color="success"
-                            size="sm"
-                            title={$_("delete_selected")}
-                            onclick={handleDeleteBulk}
-                            class="justify-content-center text-center py-0 px-1"
+                        outline
+                        color="success"
+                        size="sm"
+                        title={$_("delete_selected")}
+                        onclick={handleDeleteBulk}
+                        class="justify-content-center text-center py-0 px-1"
                     >
                         <Icon name="trash"/>
                     </Button>
@@ -1862,12 +1803,12 @@
     >
         <div class="tab-pane" class:active={tab_option === "list"}>
             <ListView
-                    {space_name}
-                    {subpath}
-                    folderColumns={entry?.payload?.body?.index_attributes ?? null}
-                    sort_by={entry?.payload?.body?.sort_by ?? null}
-                    sort_order={entry?.payload?.body?.sort_type ?? null}
-                    canDelete={canDelete}
+                {space_name}
+                {subpath}
+                folderColumns={entry?.payload?.body?.index_attributes ?? null}
+                sort_by={entry?.payload?.body?.sort_by ?? null}
+                sort_order={entry?.payload?.body?.sort_type ?? null}
+                canDelete={canDelete}
             />
         </div>
         <div class="tab-pane" class:active={tab_option === "source"}>
@@ -1913,10 +1854,8 @@
             </div>
         </div>
         <div class="tab-pane" class:active={tab_option === "edit_meta"}>
-            <div
-                class="px-1 pb-1"
-                style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
-            >
+            <div class="px-1 pb-1"
+                style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;">
                 {#if resource_type === ResourceType.ticket}
                     <TicketEntryRenderer {space_name} {subpath} bind:entry/>
                 {:else if resource_type === ResourceType.user}
@@ -1927,8 +1866,8 @@
                         bind:errorContent
                     />
                 {/if}
+
                 <JSONEditor
-                    bind:this={jseMetaRef}
                     bind:content={jseMeta}
                     bind:validator={validatorMeta}
                     onRenderMenu={handleRenderMenu}
@@ -1940,6 +1879,7 @@
                 {/if}
             </div>
         </div>
+
         {#if entry.payload}
             <div class="tab-pane" class:active={tab_option === "edit_content"}>
                 <div
@@ -1972,29 +1912,25 @@
                     {/if}
                     {#if entry.payload.content_type === "video"}
                         <video
-                                controls
-                                src={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
+                            controls
+                            src={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
                         >
                             <track kind="captions"/>
                         </video>
                     {/if}
                     {#if entry.payload.content_type === "pdf"}
                         <object
-                                title=""
-                                class="h-100 w-100 embed-responsive-item"
-                                type="application/pdf"
-                                style="height: 100vh;"
-                                data={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
+                            title=""
+                            class="h-100 w-100 embed-responsive-item"
+                            type="application/pdf"
+                            style="height: 100vh;"
+                            data={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
                         >
                             <p>For some reason PDF is not rendered here properly.</p>
                         </object>
                     {/if}
                     {#if entry.payload.content_type === "json" && typeof jseContent === "object" && jseContent !== null}
-                        <div class="d-flex justify-content-end my-1">
-                            <Button onclick={handleSave}>Save</Button>
-                        </div>
                         <JSONEditor
-                            bind:this={jseContentRef}
                             bind:content={jseContent}
                             bind:validator={validatorContent}
                             onRenderMenu={handleRenderMenu}
@@ -2002,12 +1938,12 @@
                         />
                     {:else}
                         <ContentEditor
-                                {space_name}
-                                {subpath}
-                                {handleSave}
-                                content_type={entry.payload.content_type}
-                                body={entry.payload.body}
-                                bind:jseContent
+                            {space_name}
+                            {subpath}
+                            {handleSave}
+                            content_type={entry.payload.content_type}
+                            body={entry.payload.body}
+                            bind:jseContent
                         />
                     {/if}
                     {#if errorContent}
@@ -2046,13 +1982,13 @@
         {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
             <div class="tab-pane" class:active={tab_option === "visualization"}>
                 <div
-                        class="px-1 pb-1 h-100"
-                        style="text-align: left; direction: ltr; overflow: hidden auto;"
+                    class="px-1 pb-1 h-100"
+                    style="text-align: left; direction: ltr; overflow: hidden auto;"
                 >
                     <div class="preview">
                         <PlantUML
-                                shortname={entry.shortname}
-                                properties={entry.payload.body.properties}
+                            shortname={entry.shortname}
+                            properties={entry.payload.body.properties}
                         />
                     </div>
                 </div>
@@ -2061,19 +1997,20 @@
         {#if selectedSchema === "workflow"}
             <div class="tab-pane" class:active={tab_option === "workflow"}>
                 <WorkflowRenderer
-                        shortname={entry.shortname}
-                        workflowContent={entry?.payload?.body}
+                    shortname={entry.shortname}
+                    workflowContent={entry?.payload?.body}
                 />
             </div>
         {/if}
+
         <div class="tab-pane" class:active={tab_option === "history"}>
             {#key tab_option}
                 {#if tab_option === "history"}
                     <HistoryListView
-                            {space_name}
-                            {subpath}
-                            type={QueryType.history}
-                            shortname={entry.shortname}
+                        {space_name}
+                        {subpath}
+                        type={QueryType.history}
+                        shortname={entry.shortname}
                     />
                 {/if}
             {/key}
@@ -2102,15 +2039,16 @@
         </div>
         <div class="tab-pane" class:active={tab_option === "attachments"}>
             <Attachments
-                    {resource_type}
-                    {space_name}
-                    {subpath}
-                    parent_shortname={entry.shortname}
-                    attachments={Object.values(entry.attachments)}
-                    {refreshEntry}
+                {resource_type}
+                {space_name}
+                {subpath}
+                parent_shortname={entry.shortname}
+                attachments={Object.values(entry.attachments)}
+                {refreshEntry}
             />
         </div>
     </div>
+
 {:else}
     <div class="alert alert-danger text-center m-5">
         <h4 class="alert-heading text-capitalize">

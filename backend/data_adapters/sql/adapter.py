@@ -254,8 +254,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if query.offset:
             statement = statement.offset(query.offset)
 
-        if query.limit:
-            statement = statement.limit(query.limit)
+        statement = statement.limit(query.limit)
 
     return statement
 
@@ -549,7 +548,10 @@ class SQLAdapter(BaseDataAdapter):
         total : int
         results : list
         async with self.get_session() as session:
-            user_query_policies = []
+            user_query_policies = await get_user_query_policies(
+                self, user_shortname if user_shortname else "anonymous", query.space_name, query.subpath
+            )
+
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -561,6 +563,19 @@ class SQLAdapter(BaseDataAdapter):
                 statement = select(table)
 
             statement_total = select(func.count(col(table.uuid)))
+
+            if table not in [Attachments, Histories] and user_query_policies and hasattr(table, 'query_policies'):
+                statement = statement.where(
+                    text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
+                ).params(
+                    query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
+                )
+
+                statement_total = statement_total.where(
+                    text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
+                ).params(
+                    query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
+                )
 
             if query and query.type == QueryType.events:
                 try:
@@ -577,9 +592,6 @@ class SQLAdapter(BaseDataAdapter):
                 statement = select(Spaces) # type: ignore
                 statement_total = select(func.count(col(Spaces.uuid)))
             else:
-                user_query_policies = await get_user_query_policies(
-                    self, user_shortname if user_shortname else "anonymous", query.space_name, query.subpath
-                )
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
@@ -588,6 +600,7 @@ class SQLAdapter(BaseDataAdapter):
                     statement_total = select(
                         func.sum(statement_total.c["count"]).label('total_count')
                     )
+
 
                 _total = (await session.execute(statement_total)).one()
 
@@ -600,12 +613,6 @@ class SQLAdapter(BaseDataAdapter):
                 #     cols = list(table.model_fields.keys())
                 #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
                 #     statement = statement.options(load_only(*cols))
-                if table not in [Attachments, Histories] and user_query_policies:
-                    statement = statement.where(
-                        text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-                    ).params(
-                        query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
-                    )
 
                 results = list((await session.execute(statement)).all())
                 if query.type == QueryType.attachments_aggregation:
