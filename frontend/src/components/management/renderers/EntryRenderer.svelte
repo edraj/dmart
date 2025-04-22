@@ -707,7 +707,7 @@
             };
             response = await request({
                 request_type: RequestType.create,
-                space_name: "management",
+                space_name: space_name,
                 records: [request_body]
             });
         } else if (entryType === "content") {
