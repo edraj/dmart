@@ -428,9 +428,10 @@
         const x = jseMeta.json
             ? structuredClone($state.snapshot(jseMeta).json)
             : JSON.parse($state.snapshot(jseMeta).text);
+
         x.relationships = _relationshipContent;
 
-        let attributes: any = structuredClone(x);
+        let attributes: any = x;
         if (entry?.payload) {
             if (entry?.payload?.content_type === "json") {
                 if (tab_option === "edit_content_form") {
