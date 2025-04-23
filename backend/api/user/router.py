@@ -758,6 +758,11 @@ async def otp_request(
     return api.Response(status=api.Status.success)
 
 
+@router.post(
+    "/otp-request-login",
+    response_model=api.Response,
+    response_model_exclude_none=True,
+)
 async def otp_request_login(
     user_request: SendOTPRequest,
     skel_accept_language=Header(default=None),
