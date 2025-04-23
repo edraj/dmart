@@ -548,10 +548,12 @@ async def retrieve_entry_or_attachment_payload(
         user_shortname=logged_in_user,
         schema_shortname=schema_shortname,
     )
+
     if(
-        meta.payload is None
+        resource_type is not ResourceType.json
+        and (meta.payload is None
         or meta.payload.body is None
-        or meta.payload.body != f"{shortname}.{ext}"
+        or meta.payload.body != f"{shortname}.{ext}")
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
