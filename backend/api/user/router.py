@@ -256,15 +256,17 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
         elif request.otp:
             # get the code that user sent
             otp_code = request.otp
-
-            # try to get the stored OTP for the user (either by email or phone)
-            if request.email:
-                stored_otp = otp_store.get(request.email)
-            elif request.msisdn:
-                stored_otp = otp_store.get(request.msisdn)
+            if bool(request.email) ^ bool(request.msisdn):
+                key = request.email if request.email is not None else request.msisdn
+                if key is not None:
+                    stored_otp = otp_store.get(key)
+                else:
+                    stored_otp = None
             else:
                 stored_otp = None
 
+
+                
             # check if the OTP exists in the dictionary
             if stored_otp is not None:
             # Check if the OTP is expired
