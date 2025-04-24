@@ -1,5 +1,9 @@
 <script lang="ts">
+    // Svelte core imports
     import {onDestroy, onMount} from "svelte";
+    import {fade} from "svelte/transition";
+
+    // API and data types
     import {
         check_existing_user,
         ContentType,
@@ -18,9 +22,12 @@
         upload_records_csv,
         upload_with_payload,
     } from "@/dmart";
+
+    // UI Components - Sveltestrap
     import {
         Button,
-        ButtonGroup, Col,
+        ButtonGroup,
+        Col,
         Form,
         FormGroup,
         Input,
@@ -32,62 +39,86 @@
         TabContent,
         TabPane,
     } from "sveltestrap";
+
+    // UI Components - Custom
     import Icon from "@/components/Icon.svelte";
-    import {_} from "@/i18n";
     import ListView from "@/components/management/ListView.svelte";
     import Prism from "@/components/Prism.svelte";
-    import {createAjvValidator, JSONEditor, Mode, type Validator,} from "svelte-jsoneditor";
-    import {status_line} from "@/stores/management/status_line";
-    import {authToken} from "@/stores/management/auth";
-    import {timeAgo} from "@/utils/timeago";
-    import {Level, showToast} from "@/utils/toast";
-    import {faSave} from "@fortawesome/free-regular-svg-icons";
-    import refresh_spaces from "@/stores/management/refresh_spaces";
-    import {website} from "@/config";
-    import HtmlEditor from "../editors/HtmlEditor.svelte";
-    import MarkdownEditor from "../editors/MarkdownEditor.svelte";
-    import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
-    import {checkAccessv2} from "@/utils/checkAccess";
-    import {fade} from "svelte/transition";
     import BreadCrumbLite from "../BreadCrumbLite.svelte";
-    import downloadFile from "@/utils/downloadFile";
-    import SchemaForm from "svelte-jsonschema-form";
     import Table2Cols from "@/components/management/Table2Cols.svelte";
     import Attachments from "@/components/management/Attachments.svelte";
     import HistoryListView from "@/components/management/HistoryListView.svelte";
-    import {marked} from "marked";
-    import {generateObjectFromSchema, managementEntities, resolveResourceType,} from "@/utils/renderer/rendererUtils";
+    import PlantUML from "@/components/management/PlantUML.svelte";
+
+    // Editors
+    import {createAjvValidator, JSONEditor, Mode, type Validator,} from "svelte-jsoneditor";
+    import HtmlEditor from "../editors/HtmlEditor.svelte";
+    import MarkdownEditor from "../editors/MarkdownEditor.svelte";
+    import SchemaEditor from "@/components/management/editors/SchemaEditor.svelte";
     import TranslationEditor from "@/components/management/editors/TranslationEditor.svelte";
     import ConfigEditor from "@/components/management/editors/ConfigEditor.svelte";
-    import {metadata} from "@/stores/management/metadata";
-    import metaUserSchema from "@/validations/meta.user.json";
-    import metaRoleSchema from "@/validations/meta.role.json";
-    import metaPermissionSchema from "@/validations/meta.permission.json";
-    import PlantUML from "@/components/management/PlantUML.svelte";
     import ContentEditor from "@/components/management/ContentEditor.svelte";
+    import SchemaForm from "svelte-jsonschema-form";
+
+    // Renderers
     import TicketEntryRenderer from "@/components/management/renderers/TicketEntryRenderer.svelte";
     import WorkflowRenderer from "@/components/management/renderers/WorkflowRenderer.svelte";
     import UserEntryRenderer from "@/components/management/renderers/UserEntryRenderer.svelte";
+    import MarkdownRenderer from "@/components/management/renderers/MarkdownRenderer.svelte";
+
+    // Forms
     import PermissionForm from "./Forms/PermissionForm.svelte";
     import RoleForm from "./Forms/RoleForm.svelte";
     import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
-    import {bulkBucket} from "@/stores/management/bulk_bucket";
     import RelationshipForm from "@/components/management/renderers/Forms/RelationshipForm.svelte";
-    import {mangle} from "marked-mangle";
-    import {gfmHeadingId} from "marked-gfm-heading-id";
-    import {user} from "@/stores/user";
     import ACLForm from "@/components/management/renderers/Forms/ACLForm.svelte";
-    import MarkdownRenderer from "@/components/management/renderers/MarkdownRenderer.svelte";
-    import defaultFolderRendering from "@/stores/management/default_folder_rendering.json";
+
+    // Modals
     import ERDownloadModal from "@/components/management/renderers/modals/ERDownloadModal.svelte";
     import ERUploadByCSVModal from "@/components/management/renderers/modals/ERUploadByCSVModal.svelte";
 
+    // Stores
+    import {status_line} from "@/stores/management/status_line";
+    import {authToken} from "@/stores/management/auth";
+    import {metadata} from "@/stores/management/metadata";
+    import {bulkBucket} from "@/stores/management/bulk_bucket";
+    import {user} from "@/stores/user";
+    import refresh_spaces from "@/stores/management/refresh_spaces";
+
+    // Utilities
+    import {_} from "@/i18n";
+    import {timeAgo} from "@/utils/timeago";
+    import {Level, showToast} from "@/utils/toast";
+    import {checkAccessv2} from "@/utils/checkAccess";
+    import downloadFile from "@/utils/downloadFile";
+    import {generateObjectFromSchema, managementEntities, resolveResourceType,} from "@/utils/renderer/rendererUtils";
+
+    // Icons
+    import {faSave} from "@fortawesome/free-regular-svg-icons";
+
+    // Configuration
+    import {website} from "@/config";
+    import defaultFolderRendering from "@/stores/management/default_folder_rendering.json";
+
+    // Validation schemas
+    import metaUserSchema from "@/validations/meta.user.json";
+    import metaRoleSchema from "@/validations/meta.role.json";
+    import metaPermissionSchema from "@/validations/meta.permission.json";
+
+    // Markdown processing
+    import {marked} from "marked";
+    import {mangle} from "marked-mangle";
+    import {gfmHeadingId} from "marked-gfm-heading-id";
+
+    // Configure markdown
     marked.use(mangle());
     marked.use(gfmHeadingId({
         prefix: "my-prefix-",
     }));
 
-    // props
+    // =========================================================================
+    // Component Props
+    // =========================================================================
     let {
         entry = $bindable(),
         space_name,
@@ -102,26 +133,28 @@
         schema_name?: string | null,
     } = $props();
 
-    // auth
+    // =========================================================================
+    // Permission Management
+    // =========================================================================
     const canCreateFolder = checkAccessv2(
         "create",
         space_name,
         subpath,
         ResourceType.folder
     );
-
     let canCreateEntry = $state(false);
     const canUpdate = checkAccessv2("update", space_name, subpath, resource_type);
     const canDelete = checkAccessv2("delete", space_name, subpath, resource_type)
         && !(space_name === "management" && subpath === "/");
+    let allowedResourceTypes = $state([ResourceType.content]);
 
-    // misc
+    // =========================================================================
+    // UI State
+    // =========================================================================
     let header_height: number = $state();
-    let ws = $state(null);
-    let schema = $state(null);
     let isNeedRefresh = $state(false);
 
-    // view
+    // Tab and view options
     let tab_option = $state(
         resource_type === ResourceType.folder ||
         resource_type === ResourceType.space
@@ -133,46 +166,62 @@
         !!entry?.payload?.content_type &&
         !!entry?.payload?.body;
 
-    // editors
-    //// meta
+    // Error handling
+    let errorContent = $state(null);
+
+    // =========================================================================
+    // WebSocket Connection
+    // =========================================================================
+    let ws = $state(null);
+
+    // =========================================================================
+    // Schema and Content Management
+    // =========================================================================
+    let schema = $state(null);
+
+    // JSON Schema Editor - Meta
     let jseMeta: any = $state({json: {}});
     let validatorMeta: Validator = $state(setMetaValidator());
-    /// content (payload)
+
+    // JSON Schema Editor - Content
     let jseContent: any = $state({json: {}});
-    let validatorModalContent: Validator = $state(createAjvValidator({schema: {}}));
     let validatorContent: Validator = $state(createAjvValidator({schema: {}}));
     let oldJSEContent = {json: {}, text: undefined};
-    /// schema
-    // let selectedSchemaContent: any = {};
-    // let selectedSchemaData: any = {json:{}, text: undefined};
-    /// handler
-    let errorContent = $state(null);
-    /// ref
+
+    // Form References
     let schemaContentRef = $state();
-    // let schemaFormRefModal;
     let schemaFormRefContent: any = $state();
+
+    // Relationships
     let relationshipContent = $state(structuredClone(entry)?.relationships ?? null);
 
-    // modal
-    /// flags
+    // =========================================================================
+    // Modal State and Content Creation
+    // =========================================================================
+    // Modal state
     let isModalOpen = $state(false);
+    let validatorModalContent: Validator = $state(createAjvValidator({schema: {}}));
+
+    // New entry configuration
     let entryType = $state("folder");
     let isSchemaEntryInForm = true;
     let isModalContentEntryInForm = true;
-    /// content
-    let schemaContent = {json: {}, text: undefined};
+    let new_resource_type: ResourceType = $state();
     let contentShortname = $state("");
     let workflowShortname = $state("");
     let selectedSchema = $state(subpath === "workflows" ? "workflow" : null);
     let selectedContentType: any = $state(ContentType.json);
-    let new_resource_type: ResourceType = $state();
 
+    // File uploads
     let payloadFiles: FileList = $state();
-    // editors
+
+    // Modal editors
     let jseModalMetaRef;
     let jseModalMeta: any = {json: {}};
     let jseModalContentRef: any = $state();
     let jseModalContent: any = {json: {}};
+
+    // Form data for modal
     let formModalContent: any = {json: {}};
     let formModalMeta: any = {
         tags: "",
@@ -188,11 +237,20 @@
         },
     };
     let formModalContentPayload: any = {json: {}, text: undefined};
+
+    // Relationship management in modal
     let isNewEntryHasRelationship = $state(false);
     let relationshipModalContent = $state(null);
 
-    let allowedResourceTypes = $state([ResourceType.content]);
+    // Schema content for new entries
+    let schemaContent = {json: {}, text: undefined};
 
+    // =========================================================================
+    // Validator Functions
+    // =========================================================================
+    /**
+     * Sets the validator for metadata based on resource type
+     */
     function setMetaValidator(): Validator {
         let schema = {};
         switch (resource_type) {
@@ -214,10 +272,34 @@
         });
     }
 
+    // =========================================================================
+    // WebSocket Utility Functions
+    // =========================================================================
+    /**
+     * Check if WebSocket connection is open
+     */
+    function isWSOpen(ws: any) {
+        return ws != null && ws.readyState === ws.OPEN;
+    }
+
+    /**
+     * Check if WebSocket connection is closed
+     */
+    function isWSClosed(ws: any) {
+        return ws == null || ws.readyState !== ws.OPEN;
+    }
+
+    // =========================================================================
+    // Entry Processing Functions
+    // =========================================================================
+    /**
+     * Process the entry data and set up the component state
+     */
     async function processEntry() {
         if (entry) {
             const cpy = structuredClone($state.snapshot(entry));
 
+            // Set up content editor
             if (entry?.payload) {
                 if (entry?.payload?.content_type === "json") {
                     jseContent = {json: entry?.payload?.body};
@@ -225,10 +307,13 @@
                     jseContent = entry?.payload?.body;
                 }
             }
+
+            // Set up metadata editor
             delete cpy?.payload?.body;
             delete cpy?.attachments;
             jseMeta = {json: structuredClone(cpy)};
 
+            // Load schema if available
             try {
                 if (entry?.payload?.schema_shortname) {
                     const entrySchema = entry?.payload?.schema_shortname;
@@ -256,9 +341,10 @@
                 }
             }
             catch (e) {
-
+                // Schema loading error handled by toast above
             }
 
+            // Set up permissions
             allowedResourceTypes.push(
                 resolveResourceType(
                     space_name,
@@ -267,8 +353,11 @@
                 )
             )
 
-            canCreateEntry = allowedResourceTypes.map(r => checkAccessv2("create", space_name, subpath, r)).some(item => item);
+            canCreateEntry = allowedResourceTypes.map(r =>
+                checkAccessv2("create", space_name, subpath, r)
+            ).some(item => item);
 
+            // Update status line with entry information
             status_line.set(
                 `<small>Last updated: <strong>${timeAgo(
                     new Date(entry.updated_at)
@@ -277,14 +366,19 @@
                 }</strong></small>`
             );
 
-            if (!!entry?.payload?.body?.content_resource_types && entry?.payload?.body?.content_resource_types.length) {
+            // Set allowed resource types from entry if available
+            if (!!entry?.payload?.body?.content_resource_types &&
+                entry?.payload?.body?.content_resource_types.length) {
                 allowedResourceTypes = entry?.payload?.body?.content_resource_types;
             }
+
+            // Set up WebSocket for real-time updates if needed
             const isFolderWSStreamCheck = !!entry?.payload?.body?.stream && isWSClosed(ws)
             if (isFolderWSStreamCheck) {
                 if (isWSOpen(ws)) {
                     ws.send(JSON.stringify({type: "notification_unsubscribe"}));
                 }
+
                 if ("websocket" in website) {
                     try {
                         ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
@@ -313,6 +407,7 @@
         }
     }
 
+    // Initialize the component
     processEntry();
 
     async function refreshEntry() {
@@ -330,29 +425,34 @@
         await processEntry();
     }
 
+    // =========================================================================
+    // Lifecycle Hooks
+    // =========================================================================
     onDestroy(() => {
         status_line.set("");
         if (ws != null) ws.close();
     });
 
-    function isWSOpen(ws: any) {
-        return ws != null && ws.readyState === ws.OPEN;
-    }
-
-    function isWSClosed(ws: any) {
-        return ws == null || ws.readyState !== ws.OPEN;
-    }
-
+    // =========================================================================
+    // ACL Management
+    // =========================================================================
     let aclContent = $state(entry.acl ?? []);
 
+    /**
+     * Save Access Control List changes
+     */
     async function handleSaveACL(e: Event) {
         e.preventDefault();
+
+        // Format ACL content for API
         const _aclContent = aclContent.map((acl: any) => {
             return {
                 user_shortname: acl.user_shortname,
                 allowed_actions: acl.allowed_actions,
             }
         });
+
+        // Send update request
         const response = await request({
             space_name: space_name,
             request_type: RequestType.updateACL,
@@ -368,9 +468,9 @@
             ],
         });
 
+        // Handle response
         if (response.status == Status.success) {
             showToast(Level.info);
-
             window.location.reload();
         } else {
             errorContent = response;
@@ -378,10 +478,17 @@
         }
     }
 
+    // =========================================================================
+    // Entry Save Functions
+    // =========================================================================
+    /**
+     * Save entry changes
+     */
     async function handleSave(e: Event, form: string = null) {
         e.preventDefault();
-
         errorContent = null;
+
+        // Process relationships
         let _relationshipContent: any = relationshipContent
             .filter(r => r.space_name)
             .map(r => {
@@ -396,8 +503,11 @@
                 };
             });
 
+        // Validate relationships if needed
         if (form === 'relationships') {
             let flagRelationshipError = false;
+
+            // Check if all related entries exist
             await Promise.all(
                 _relationshipContent.map(async (r, idx) => {
                     relationshipContent[idx].error = null;
@@ -417,7 +527,10 @@
                     }
                 })
             )
+
             relationshipContent = structuredClone(relationshipContent);
+
+            // Confirm proceeding with errors if any
             if (flagRelationshipError) {
                 if (confirm("There are some errors in the relationships, do you want to continue ?") === false) {
                     return;
@@ -425,49 +538,63 @@
             }
         }
 
+        // Prepare metadata with relationships
         const x = jseMeta.json
             ? structuredClone($state.snapshot(jseMeta).json)
             : JSON.parse($state.snapshot(jseMeta).text);
 
         x.relationships = _relationshipContent;
-
         let attributes: any = x;
+
+        // Process payload content if exists
         if (entry?.payload) {
             if (entry?.payload?.content_type === "json") {
+                // Validate form content if using schema form
                 if (tab_option === "edit_content_form") {
                     if (schemaFormRefContent && !schemaFormRefContent.reportValidity()) {
                         return;
                     }
                 }
+
+                // Get content from JSON editor
                 const snap = $state.snapshot(jseContent)
                 const y = snap.json && Object.keys(snap.json).length
                     ? structuredClone(snap.json)
                     : JSON.parse(snap.text);
+
+                // Special handling for schema entries
                 if (new_resource_type === "schema") {
                     if (isSchemaEntryInForm) {
                         delete y.name;
                     }
                 }
 
+                // Set payload body
                 if (attributes.payload) {
                     attributes.payload.body = y;
                 }
             } else {
+                // For non-JSON content types
                 attributes.payload.body = $state.snapshot(jseContent);
             }
         }
 
-        if (resource_type === ResourceType.user && btoa(attributes.password.slice(0, 6)) === 'JDJiJDEy') {
+        // Special handling for user passwords (don't update if it's a bcrypt hash)
+        if (resource_type === ResourceType.user && btoa(attributes.password?.slice(0, 6) || '') === 'JDJiJDEy') {
             delete attributes.password;
         }
 
+        // Special handling for folder paths
         if (resource_type === ResourceType.folder) {
             const arr = subpath.split("/");
             arr[arr.length - 1] = "";
             subpath = arr.join("/");
         }
+
+        // Normalize subpath
         subpath = subpath === "__root__" || subpath === "" ? "/" : subpath;
 
+        // Prepare request data
         const request_data = {
             space_name: space_name,
             request_type: RequestType.replace,
@@ -481,8 +608,10 @@
             ],
         };
 
+        // Send request based on resource type
         let response;
         if (resource_type === ResourceType.space) {
+            // Spaces use a different request type
             request_data.request_type = RequestType.update;
             request_data.records[0].resource_type = ResourceType.space;
             response = await space(request_data);
@@ -491,16 +620,20 @@
             response = await request(request_data);
         }
 
+        // Handle response
         if (response.status == Status.success) {
             showToast(Level.info);
 
+            // Handle shortname change if needed
             if (attributes.shortname !== entry.shortname) {
+                // Need to move the entry to the new shortname
                 const moveAttrb = {
                     src_subpath: subpath,
                     src_shortname: entry.shortname,
                     dest_subpath: subpath,
                     dest_shortname: attributes.shortname,
                 };
+
                 const response = await request({
                     space_name: space_name,
                     request_type: RequestType.move,
@@ -513,6 +646,7 @@
                         },
                     ],
                 });
+
                 if (response.status == Status.success) {
                     showToast(Level.info);
                     window.location.reload();
@@ -529,18 +663,28 @@
         }
     }
 
+    // =========================================================================
+    // UI Menu Functions
+    // =========================================================================
+    /**
+     * Customize the JSON editor menu
+     */
     function handleRenderMenu(
         items: any,
         context: { mode: "tree" | "text" | "table"; modal: boolean }
     ) {
+        // Remove mode selection items
         items = items.filter(
             (item) => !["tree", "text", "table"].includes(item.text)
         );
+
         const separator = {
             separator: true,
         };
 
         const itemsWithoutSpace = items.slice(0, items.length - 2);
+
+        // Different menu for modal vs main editor
         if (isModalOpen) {
             return itemsWithoutSpace.concat([
                 separator,
@@ -549,6 +693,7 @@
                 },
             ]);
         } else {
+            // Add save button to main editor
             return itemsWithoutSpace.concat([
                 separator,
                 {
@@ -563,15 +708,24 @@
         }
     }
 
+    // =========================================================================
+    // Modal Form Submission
+    // =========================================================================
+    /**
+     * Handle submission of the modal form for creating new entries
+     */
     async function handleSubmit(event: Event) {
+        // Format tags from comma-separated string to array
         formModalMeta.tags = formModalMeta.tags.split(',').map((tag: string) => tag.trim());
         event.preventDefault();
 
+        // Process relationships if enabled
         let _relationshipModalContent = []
         if (isNewEntryHasRelationship) {
             _relationshipModalContent = relationshipModalContent.filter(r => r.space_name).map(r => {
                 return {
-                    related_to: r, attributes: {}
+                    related_to: r,
+                    attributes: {}
                 };
             });
         }
@@ -1043,9 +1197,11 @@
             delete meta.properties.updated_at;
             delete meta.properties.payload;
 
-            jseModalContent = {
+            // Create a new object to ensure reactivity
+            const newContent = {
                 json: generateObjectFromSchema(meta)
             };
+            jseModalContent = newContent;
             validatorModalContent = createAjvValidator({schema: meta});
         } else if (new_resource_type === ResourceType.permission) {
             meta = structuredClone(metaPermissionSchema);
@@ -1053,9 +1209,11 @@
             delete meta.properties.shortname;
             delete meta.properties.created_at;
             delete meta.properties.updated_at;
-            jseModalContent = {
-                json: generateObjectFromSchema(meta),
+            // Create a new object to ensure reactivity
+            const newContent = {
+                json: generateObjectFromSchema(meta)
             };
+            jseModalContent = newContent;
             validatorModalContent = createAjvValidator({schema: meta});
         } else if (new_resource_type === ResourceType.role) {
             meta = structuredClone(metaRoleSchema);
@@ -1064,9 +1222,11 @@
             delete meta.properties.created_at;
             delete meta.properties.updated_at;
             delete meta.properties.updated_at;
-            jseModalContent = {
-                json: generateObjectFromSchema(meta),
+            // Create a new object to ensure reactivity
+            const newContent = {
+                json: generateObjectFromSchema(meta)
             };
+            jseModalContent = newContent;
             validatorModalContent = createAjvValidator({schema: meta});
         }
     }
@@ -1101,6 +1261,7 @@
                 return;
             }
         }
+        console.log({schemaContent})
         if (schemaContent === null) {
             showToast(Level.warn, `Can't load the schema ${selectedSchema} !`);
             return;
@@ -1126,8 +1287,11 @@
 
             body.payload.content_type = "json";
             body.payload.schema_shortname = selectedSchema;
-            jseModalContent = {json: body};
-        } else if (new_resource_type === ResourceType.folder) {
+            // Create a new object to ensure reactivity
+            const newContent = {json: structuredClone(body)};
+            jseModalContent = newContent;
+        }
+        else if (new_resource_type === ResourceType.folder) {
             validatorModalContent = createAjvValidator({schema: _schema});
             const body: any = generateObjectFromSchema(structuredClone(_schema));
             body.query.type = "search"
@@ -1138,11 +1302,19 @@
                     "name": "Shortname"
                 }
             ];
-            jseModalContent = {json: body};
-        } else {
+            // Create a new object to ensure reactivity
+            const newContent = {json: structuredClone(body)};
+            jseModalContent = newContent;
+        }
+        else {
+            console.log({_schema})
             validatorModalContent = createAjvValidator({schema: _schema});
             const body: any = generateObjectFromSchema(structuredClone(_schema));
-            jseModalContent = {json: body};
+            console.log({body})
+            // Create a new object to ensure reactivity
+            const newContent = {json: structuredClone(body)};
+            jseModalContent = newContent;
+            console.log({jseModalContent})
         }
 
         oldSelectedSchema = selectedSchema;
@@ -1181,6 +1353,7 @@
         if (oldSelectedContentType !== selectedContentType) {
             if (selectedContentType === "json") {
                 jseModalContent = {json: {}};
+                console.log({jseModalContent})
             } else {
                 jseModalContent = "";
             }
@@ -1200,7 +1373,10 @@
     $effect(() => {
         if (selectedSchema === null) {
             validatorModalContent = createAjvValidator({schema: {}});
-            jseModalContent = {json: {}};
+            // Create a new object to ensure reactivity
+            const newContent = {json: {}};
+            jseModalContent = newContent;
+            console.log({jseModalContent})
             oldSelectedSchema = null;
         } else if (selectedSchema !== oldSelectedSchema) {
             setPrepModalContentPayloadFromFetchedSchema();
@@ -1233,23 +1409,23 @@
 <!--<svelte:window on:beforeunload={beforeUnload} />-->
 
 <ERDownloadModal
-        bind:openDownloadModal={openDownloadModal} bind:startDateCSVDownload={startDateCSVDownload}
-        bind:endDateCSVDownload={endDateCSVDownload} bind:limitCSVDownload={limitCSVDownload}
-        bind:searchTextCSVDownload={searchTextCSVDownload} bind:errorContent={errorContent}
-        {handleDownload}
+    bind:openDownloadModal={openDownloadModal} bind:startDateCSVDownload={startDateCSVDownload}
+    bind:endDateCSVDownload={endDateCSVDownload} bind:limitCSVDownload={limitCSVDownload}
+    bind:searchTextCSVDownload={searchTextCSVDownload} bind:errorContent={errorContent}
+    {handleDownload}
 />
 
 <ERUploadByCSVModal
-        bind:openUploadByCSVModal={openUploadByCSVModal} bind:allowedResourceTypes={allowedResourceTypes}
-        bind:space_name={space_name} bind:new_resource_type={new_resource_type}
-        bind:selectedSchema={selectedSchema} bind:payloadFiles={payloadFiles}
-        bind:errorContent={errorContent} {handleUpload} {setSchemaItems}
+    bind:openUploadByCSVModal={openUploadByCSVModal} bind:allowedResourceTypes={allowedResourceTypes}
+    bind:space_name={space_name} bind:new_resource_type={new_resource_type}
+    bind:selectedSchema={selectedSchema} bind:payloadFiles={payloadFiles}
+    bind:errorContent={errorContent} {handleUpload} {setSchemaItems}
 />
 
 <Modal
-        isOpen={isModalOpen}
-        toggle={modalToggle}
-        size={new_resource_type === "schema" ? "xl" : "lg"}
+    isOpen={isModalOpen}
+    toggle={modalToggle}
+    size={new_resource_type === "schema" ? "xl" : "lg"}
 >
     <div class="modal-header">
         <h5 class="modal-title">
@@ -1269,9 +1445,9 @@
                     {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
                         <Label for="resource_type" class="mt-3">Resource type</Label>
                         <Input
-                                id="resource_type"
-                                bind:value={new_resource_type}
-                                type="select"
+                            id="resource_type"
+                            bind:value={new_resource_type}
+                            type="select"
                         >
                             {#each allowedResourceTypes as type}
                                 {#if type}
@@ -1284,9 +1460,9 @@
                         {#if !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m)) && new_resource_type !== "ticket"}
                             <Label for="content_type" class="mt-3">Content type</Label>
                             <Input
-                                    id="content_type"
-                                    bind:value={selectedContentType}
-                                    type="select"
+                                id="content_type"
+                                bind:value={selectedContentType}
+                                type="select"
                             >
                                 <option value={null}>{"None"}</option>
                                 {#each [ContentType.json, ContentType.text, ContentType.markdown, ContentType.html] as type}
