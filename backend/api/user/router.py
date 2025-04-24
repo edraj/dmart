@@ -260,14 +260,19 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             # try to get the stored OTP for the user (either by email or phone)
             if request.email:
                 stored_otp = otp_store.get(request.email)
-            else:
+            elif request.msisdn:
                 stored_otp = otp_store.get(request.msisdn)
+            else:
+                stored_otp = None
 
             # check if the OTP exists in the dictionary
-            if stored_otp:
-                #check if it's expired
+            if stored_otp is not None:
+            # Check if the OTP is expired
                 current_time = time.time()
-                if stored_otp["expires_at"] < current_time:
+                expires_at = stored_otp.get("expires_at", 0)
+                
+                # Ensure expires_at is a float
+                if isinstance(expires_at, (int, float)) and expires_at < current_time:
                     raise api.Exception(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
@@ -277,17 +282,16 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         )
                     )
 
+
                 # check if the code the user sent matches the stored one
                 if stored_otp.get('code') == otp_code:
                     try:
-                        # check if we have a shortname, if not try to get it
+                        # Check if we have a shortname
                         if not shortname:
-                            if "shortname" in identifier:
-                                shortname = identifier["shortname"]
-                            else:
-                                key, value = list(identifier.items())[0]
-                                shortname = await get_shortname_from_identifier(key, value)
-                                if shortname is None:
+                            if identifier:
+                                shortname = identifier.get("shortname") or await get_shortname_from_identifier(*list(identifier.items())[0])
+                                
+                                if not shortname:
                                     raise api.Exception(
                                         status.HTTP_401_UNAUTHORIZED,
                                         api.Error(
@@ -296,6 +300,17 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                                             message="Invalid identifier for OTP login."
                                         )
                                     )
+                            else:
+                                raise api.Exception(
+                                    status.HTTP_400_BAD_REQUEST,
+                                    api.Error(
+                                        type="auth",
+                                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                                        message="Identifier is missing for OTP login."
+                                    )
+                                )
+
+
 
                         # load user from database
                         user = await db.load(
@@ -310,7 +325,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         record = await process_user_login(user, response, {}, request.firebase_token)
                         return api.Response(status=api.Status.success, records=[record])
 
-                    except Exception as e:
+                    except Exception:
                         raise
                 else:
                     raise api.Exception(

@@ -132,13 +132,15 @@ async def send_otp(msisdn: str, language: str):
     return json.get("data")
 
 
-async def email_send_otp_login(email: str, language: str) -> str:
+async def email_send_otp_login(email: str, language: str) -> dict:
     if settings.mock_smtp_api:
         return await mock_sending_otp_login(email)
     code = gen_numeric()
     set_otp(email, code) 
     message = f"<p>Your OTP code is <b>{code}</b></p>"
-    return await send_email(settings.email_sender, email, message, "OTP", settings.send_email_otp_api)
+    success = await send_email(settings.email_sender, email, message, "OTP", settings.send_email_otp_api)
+    return {"success": success}
+
 
 
 async def email_send_otp(email: str, language: str):
