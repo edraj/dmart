@@ -1,6 +1,6 @@
 <script lang="ts">
     // Svelte core imports
-    import {onDestroy, onMount} from "svelte";
+    import {onDestroy, onMount, untrack} from "svelte";
     import {fade} from "svelte/transition";
 
     // API and data types
@@ -219,10 +219,10 @@
     let jseModalMetaRef;
     let jseModalMeta: any = {json: {}};
     let jseModalContentRef: any = $state();
-    let jseModalContent: any = {json: {}};
+    let jseModalContent: any = $state({json: {}});
 
     // Form data for modal
-    let formModalContent: any = {json: {}};
+    let formModalContent: any = $state({json: {}});
     let formModalMeta: any = {
         tags: "",
         displayname: {
@@ -382,27 +382,27 @@
                 if ("websocket" in website) {
                     try {
                         ws = new WebSocket(`${website.websocket}?token=${$authToken}`);
+
+                        ws.onopen = () => {
+                            ws.send(
+                                JSON.stringify({
+                                    type: "notification_subscription",
+                                    space_name: space_name,
+                                    subpath: subpath,
+                                })
+                            );
+                        };
+
+                        ws.onmessage = (event) => {
+                            const data = JSON.parse(event?.data ?? "");
+                            if (data?.message?.title) {
+                                isNeedRefresh = true;
+                            }
+                        };
                     } catch (e) {
                         console.error({e});
                     }
                 }
-
-                ws.onopen = () => {
-                    ws.send(
-                        JSON.stringify({
-                            type: "notification_subscription",
-                            space_name: space_name,
-                            subpath: subpath,
-                        })
-                    );
-                };
-
-                ws.onmessage = (event) => {
-                    const data = JSON.parse(event?.data ?? "");
-                    if (data?.message?.title) {
-                        isNeedRefresh = true;
-                    }
-                };
             }
         }
     }
@@ -417,10 +417,10 @@
             let _shortname: string = _subpath[_subpath.length - 1];
 
             const result = await retrieve_entry(ResourceType.folder, space_name, parent_subpath, _shortname, true, true);
-            entry = structuredClone(result);
+            entry = result;
         } else {
             const result = await retrieve_entry(resource_type, space_name, subpath, entry.shortname, true, true);
-            entry = structuredClone(result);
+            entry = result;
         }
         await processEntry();
     }
@@ -874,8 +874,8 @@
                 }
 
                 body = jseModalContent.json
-                    ? structuredClone(jseModalContent.json)
-                    : JSON.parse(jseModalContent.text);
+                    ? structuredClone($state.snapshot(jseModalContent).json)
+                    : JSON.parse($state.snapshot(jseModalContent).text);
 
                 if (isModalContentEntryInForm) {
                     if (new_resource_type === ResourceType.role) {
@@ -1352,10 +1352,15 @@
     $effect(() => {
         if (oldSelectedContentType !== selectedContentType) {
             if (selectedContentType === "json") {
-                jseModalContent = {json: {}};
-                console.log({jseModalContent})
+                untrack(() => {
+                    jseModalContent = {json: {}};
+                    console.log({jseModalContent})
+                });
+
             } else {
-                jseModalContent = "";
+                untrack(() => {
+                    jseModalContent = "";
+                });
             }
             oldSelectedContentType = structuredClone($state.snapshot(selectedContentType));
         }
@@ -1372,12 +1377,12 @@
     let oldSelectedSchema = null;
     $effect(() => {
         if (selectedSchema === null) {
-            validatorModalContent = createAjvValidator({schema: {}});
-            // Create a new object to ensure reactivity
-            const newContent = {json: {}};
-            jseModalContent = newContent;
-            console.log({jseModalContent})
-            oldSelectedSchema = null;
+            untrack(() => {
+                validatorModalContent = createAjvValidator({schema: {}});
+                jseModalContent = {json: {}};
+                console.log({jseModalContent})
+                oldSelectedSchema = null;
+            });
         } else if (selectedSchema !== oldSelectedSchema) {
             setPrepModalContentPayloadFromFetchedSchema();
         }
@@ -1646,9 +1651,9 @@
                                 </TabPane>
                                 <TabPane tabId="editor" tab="Editor">
                                     <JSONEditor
-                                        bind:this={jseModalContentRef}
                                         bind:content={jseModalContent}
                                         bind:validator={validatorModalContent}
+                                        bind:this={jseModalContentRef}
                                         onRenderMenu={handleRenderMenu}
                                         mode={Mode.text}
                                     />
@@ -1656,9 +1661,9 @@
                             </TabContent>
                         {:else}
                             <JSONEditor
-                                bind:this={jseModalContentRef}
                                 bind:content={jseModalContent}
                                 bind:validator={validatorModalContent}
+                                bind:this={jseModalContentRef}
                                 onRenderMenu={handleRenderMenu}
                                 mode={Mode.text}
                             />
@@ -1679,9 +1684,9 @@
                 {/if}
                 <hr/>
                 <Input
-                        bind:checked={isNewEntryHasRelationship}
-                        type="checkbox"
-                        label="Add relationship ?"
+                    bind:checked={isNewEntryHasRelationship}
+                    type="checkbox"
+                    label="Add relationship ?"
                 />
                 {#if isNewEntryHasRelationship}
                     <RelationshipForm bind:content={relationshipModalContent}/>
@@ -1710,419 +1715,347 @@
 </Modal>
 
 {#if entry}
-    <div
-        bind:clientHeight={header_height}
-        class="pt-3 pb-2 px-2"
-        transition:fade={{ delay: 25 }}
-    >
-        <div class="d-flex justify-content-end w-100">
-            <BreadCrumbLite
-                    {space_name}
-                    {subpath}
-                    {resource_type}
-                    {schema_name}
-                    shortname={entry.shortname}
-            />
-            <ButtonGroup size="sm" class="ms-auto align-items-center">
-                <span class="ps-2 pe-1"> {$_("views")} </span>
-                {#if [ResourceType.folder, ResourceType.space].includes(resource_type)}
-                    <Button
-                            outline
-                            color="success"
-                            size="sm"
-                            class="justify-content-center text-center py-0 px-1"
-                            active={"list" === tab_option}
-                            title={$_("list")}
-                            onclick={() => (tab_option = "list")}
-                    >
-                        <Icon name="card-list"/>
-                    </Button>
-                {/if}
-                <Button
-                        outline
-                        color="success"
-                        size="sm"
-                        class="justify-content-center text-center py-0 px-1"
-                        active={"view" === tab_option}
-                        title={$_("view")}
-                        onclick={() => (tab_option = "view")}
-                >
-                    <Icon name="binoculars"/>
-                </Button>
-                {#if entry.owner_shortname === $user.shortname}
-                    <Button
-                            outline
-                            color="success"
-                            size="sm"
-                            class="justify-content-center text-center py-0 px-1"
-                            active={"acl" === tab_option}
-                            title={'ACL'}
-                            onclick={() => (tab_option = "acl")}
-                    >
-                        <Icon name="key"/>
-                    </Button>
-                {/if}
-                {#if canUpdate}
-                    <Button
-                            outline
-                            color="success"
-                            size="sm"
-                            class="justify-content-center text-center py-0 px-1"
-                            active={"edit_meta" === tab_option}
-                            title={$_("edit") + " meta"}
-                            onclick={() => (tab_option = "edit_meta")}
-                    >
-                        <Icon name="code-slash"/>
-                    </Button>
-                    {#if entry.payload}
+    {#key entry}
+        <div
+                bind:clientHeight={header_height}
+                class="pt-3 pb-2 px-2"
+                transition:fade={{ delay: 25 }}
+        >
+            <div class="d-flex justify-content-end w-100">
+                <BreadCrumbLite
+                        {space_name}
+                        {subpath}
+                        {resource_type}
+                        {schema_name}
+                        shortname={entry.shortname}
+                />
+                <ButtonGroup size="sm" class="ms-auto align-items-center">
+                    <span class="ps-2 pe-1"> {$_("views")} </span>
+                    {#if [ResourceType.folder, ResourceType.space].includes(resource_type)}
                         <Button
                                 outline
                                 color="success"
                                 size="sm"
                                 class="justify-content-center text-center py-0 px-1"
-                                active={"edit_content" === tab_option}
-                                title={$_("edit") + " payload"}
-                                onclick={() => (tab_option = "edit_content")}
+                                active={"list" === tab_option}
+                                title={$_("list")}
+                                onclick={() => (tab_option = "list")}
                         >
-                            <Icon name="pencil"/>
+                            <Icon name="card-list"/>
                         </Button>
-                        {#if schema && jseContent}
-                            <Button
+                    {/if}
+                    <Button
+                            outline
+                            color="success"
+                            size="sm"
+                            class="justify-content-center text-center py-0 px-1"
+                            active={"view" === tab_option}
+                            title={$_("view")}
+                            onclick={() => (tab_option = "view")}
+                    >
+                        <Icon name="binoculars"/>
+                    </Button>
+                    {#if entry.owner_shortname === $user.shortname}
+                        <Button
                                 outline
                                 color="success"
                                 size="sm"
                                 class="justify-content-center text-center py-0 px-1"
-                                active={"edit_content_form" === tab_option}
-                                title={$_("edit") + " payload"}
-                                onclick={() => (tab_option = "edit_content_form")}
-                            >
-                                <Icon name="pencil-square"/>
-                            </Button>
-                        {/if}
-                        {#if selectedSchema === "workflow"}
+                                active={"acl" === tab_option}
+                                title={'ACL'}
+                                onclick={() => (tab_option = "acl")}
+                        >
+                            <Icon name="key"/>
+                        </Button>
+                    {/if}
+                    {#if canUpdate}
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                class="justify-content-center text-center py-0 px-1"
+                                active={"edit_meta" === tab_option}
+                                title={$_("edit") + " meta"}
+                                onclick={() => (tab_option = "edit_meta")}
+                        >
+                            <Icon name="code-slash"/>
+                        </Button>
+                        {#if entry.payload}
                             <Button
                                     outline
                                     color="success"
                                     size="sm"
                                     class="justify-content-center text-center py-0 px-1"
-                                    active={"workflow" === tab_option}
+                                    active={"edit_content" === tab_option}
                                     title={$_("edit") + " payload"}
-                                    onclick={() => (tab_option = "workflow")}
+                                    onclick={() => (tab_option = "edit_content")}
+                            >
+                                <Icon name="pencil"/>
+                            </Button>
+                            {#if schema && jseContent}
+                                <Button
+                                        outline
+                                        color="success"
+                                        size="sm"
+                                        class="justify-content-center text-center py-0 px-1"
+                                        active={"edit_content_form" === tab_option}
+                                        title={$_("edit") + " payload"}
+                                        onclick={() => (tab_option = "edit_content_form")}
+                                >
+                                    <Icon name="pencil-square"/>
+                                </Button>
+                            {/if}
+                            {#if selectedSchema === "workflow"}
+                                <Button
+                                        outline
+                                        color="success"
+                                        size="sm"
+                                        class="justify-content-center text-center py-0 px-1"
+                                        active={"workflow" === tab_option}
+                                        title={$_("edit") + " payload"}
+                                        onclick={() => (tab_option = "workflow")}
+                                >
+                                    <Icon name="diagram-3"/>
+                                </Button>
+                            {/if}
+                        {/if}
+                        {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
+                            <Button
+                                    outline
+                                    color="success"
+                                    size="sm"
+                                    class="justify-content-center text-center py-0 px-1"
+                                    active={"visualization" === tab_option}
+                                    title={$_("edit") + " payload"}
+                                    onclick={() => (tab_option = "visualization")}
                             >
                                 <Icon name="diagram-3"/>
                             </Button>
                         {/if}
                     {/if}
-                    {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
+                    {#if ![ResourceType.folder, ResourceType.space].includes(resource_type)}
                         <Button
                                 outline
                                 color="success"
                                 size="sm"
                                 class="justify-content-center text-center py-0 px-1"
-                                active={"visualization" === tab_option}
-                                title={$_("edit") + " payload"}
-                                onclick={() => (tab_option = "visualization")}
+                                active={"relationships" === tab_option}
+                                title={$_("relationships")}
+                                onclick={() => (tab_option = "relationships")}
                         >
-                            <Icon name="diagram-3"/>
+                            <Icon name="link"/>
                         </Button>
                     {/if}
-                {/if}
-                {#if ![ResourceType.folder, ResourceType.space].includes(resource_type)}
                     <Button
                             outline
                             color="success"
                             size="sm"
                             class="justify-content-center text-center py-0 px-1"
-                            active={"relationships" === tab_option}
-                            title={$_("relationships")}
-                            onclick={() => (tab_option = "relationships")}
+                            active={"attachments" === tab_option}
+                            title={$_("attachments")}
+                            onclick={() => (tab_option = "attachments")}
                     >
-                        <Icon name="link"/>
+                        <Icon name="paperclip"/>
                     </Button>
-                {/if}
-                <Button
-                        outline
-                        color="success"
-                        size="sm"
-                        class="justify-content-center text-center py-0 px-1"
-                        active={"attachments" === tab_option}
-                        title={$_("attachments")}
-                        onclick={() => (tab_option = "attachments")}
-                >
-                    <Icon name="paperclip"/>
-                </Button>
-                <Button
-                        outline
-                        color="success"
-                        size="sm"
-                        class="justify-content-center text-center py-0 px-1"
-                        active={"history" === tab_option}
-                        title={$_("history")}
-                        onclick={() => (tab_option = "history")}
-                >
-                    <Icon name="clock-history"/>
-                </Button>
-            </ButtonGroup>
+                    <Button
+                            outline
+                            color="success"
+                            size="sm"
+                            class="justify-content-center text-center py-0 px-1"
+                            active={"history" === tab_option}
+                            title={$_("history")}
+                            onclick={() => (tab_option = "history")}
+                    >
+                        <Icon name="clock-history"/>
+                    </Button>
+                </ButtonGroup>
 
-            <ButtonGroup size="sm" class="align-items-center">
-                {#if canCreateEntry || canCreateFolder || canDelete || !!entry?.payload?.body?.allow_csv}
-                    <span class="ps-2 pe-1"> {$_("actions")} </span>
-                {/if}
-
-                {#if subpath !== "health_check"}
-                    {#if canCreateEntry}
-                        <Button
-                                outline
-                                color="success"
-                                size="sm"
-                                title={$_("create_entry")}
-                                class="justify-contnet-center text-center py-0 px-1"
-                                onclick={handleCreateEntryModal}
-                        >
-                            <Icon name="file-plus"/>
-                        </Button>
+                <ButtonGroup size="sm" class="align-items-center">
+                    {#if canCreateEntry || canCreateFolder || canDelete || !!entry?.payload?.body?.allow_csv}
+                        <span class="ps-2 pe-1"> {$_("actions")} </span>
                     {/if}
-                    {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
-                        <Button
-                                outline
-                                color="success"
-                                size="sm"
-                                title={$_("create_folder")}
-                                class="justify-contnet-center text-center py-0 px-1"
-                                onclick={() => {
+
+                    {#if subpath !== "health_check"}
+                        {#if canCreateEntry}
+                            <Button
+                                    outline
+                                    color="success"
+                                    size="sm"
+                                    title={$_("create_entry")}
+                                    class="justify-contnet-center text-center py-0 px-1"
+                                    onclick={handleCreateEntryModal}
+                            >
+                                <Icon name="file-plus"/>
+                            </Button>
+                        {/if}
+                        {#if canCreateFolder && [ResourceType.space, ResourceType.folder].includes(resource_type) && !managementEntities.some((m) => `${space_name}/${subpath}`.endsWith(m))}
+                            <Button
+                                    outline
+                                    color="success"
+                                    size="sm"
+                                    title={$_("create_folder")}
+                                    class="justify-contnet-center text-center py-0 px-1"
+                                    onclick={() => {
                   entryType = "folder";
                   new_resource_type = ResourceType.folder;
                   selectedSchema = "folder_rendering";
                   isModalOpen = true;
                 }}
-                        >
-                            <Icon name="folder-plus"/>
+                            >
+                                <Icon name="folder-plus"/>
+                            </Button>
+                        {/if}
+                    {/if}
+                    <!--{#if !!entry?.payload?.body?.stream}-->
+                    <Button
+                            outline={!isNeedRefresh}
+                            color={isNeedRefresh ? "danger" : "success"}
+                            size="sm"
+                            title={$_("refresh")}
+                            class="justify-contnet-center text-center py-0 px-1"
+                            onclick={async () => {
+                              await refreshEntry();
+                          }}
+                    >
+                        <Icon name="arrow-clockwise"/>
+                    </Button>
+                    <!--{/if}-->
+
+                    {#if canDelete && $bulkBucket.length === 0}
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                title={$_("delete")}
+                                onclick={handleDelete}
+                                class="justify-content-center text-center py-0 px-1">
+                            <Icon name="trash"/>
                         </Button>
                     {/if}
-                {/if}
-                <!--{#if !!entry?.payload?.body?.stream}-->
-                <Button
-                        outline={!isNeedRefresh}
-                        color={isNeedRefresh ? "danger" : "success"}
-                        size="sm"
-                        title={$_("refresh")}
-                        class="justify-contnet-center text-center py-0 px-1"
-                        onclick={async () => {
-              await refreshEntry();
-          }}
-                >
-                    <Icon name="arrow-clockwise"/>
-                </Button>
-                <!--{/if}-->
-
-                {#if canDelete && $bulkBucket.length === 0}
-                    <Button
-                            outline
-                            color="success"
-                            size="sm"
-                            title={$_("delete")}
-                            onclick={handleDelete}
-                            class="justify-content-center text-center py-0 px-1">
-                        <Icon name="trash"/>
-                    </Button>
-                {/if}
-                {#if !!entry?.payload?.body?.allow_csv}
-                    <Button
-                            outline
-                            color="success"
-                            size="sm"
-                            title={$_("download")}
-                            onclick={openDownloadDialog}
-                            class="justify-content-center text-center py-0 px-1"
-                    >
-                        <Icon name="cloud-download"/>
-                    </Button>
-                {/if}
-                {#if !!entry?.payload?.body?.allow_upload_csv}
-                    <Button
-                            outline
-                            color="success"
-                            size="sm"
-                            title={$_("upload")}
-                            onclick={()=>{
+                    {#if !!entry?.payload?.body?.allow_csv}
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                title={$_("download")}
+                                onclick={openDownloadDialog}
+                                class="justify-content-center text-center py-0 px-1"
+                        >
+                            <Icon name="cloud-download"/>
+                        </Button>
+                    {/if}
+                    {#if !!entry?.payload?.body?.allow_upload_csv}
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                title={$_("upload")}
+                                onclick={()=>{
                     new_resource_type = null;
                     selectedSchema = null;
                     openUploadByCSVModal = true;
                 }}
-                            class="justify-content-center text-center py-0 px-1"
-                    >
-                        <Icon name="cloud-upload"/>
-                    </Button>
-                {/if}
+                                class="justify-content-center text-center py-0 px-1"
+                        >
+                            <Icon name="cloud-upload"/>
+                        </Button>
+                    {/if}
 
-                {#if $bulkBucket.length}
-                    <span class="ps-2 pe-1"> {$_("bulk_actions")} </span>
-                    <Button
-                        outline
-                        color="success"
-                        size="sm"
-                        title={$_("delete_selected")}
-                        onclick={handleDeleteBulk}
-                        class="justify-content-center text-center py-0 px-1"
-                    >
-                        <Icon name="trash"/>
-                    </Button>
-                {/if}
+                    {#if $bulkBucket.length}
+                        <span class="ps-2 pe-1"> {$_("bulk_actions")} </span>
+                        <Button
+                                outline
+                                color="success"
+                                size="sm"
+                                title={$_("delete_selected")}
+                                onclick={handleDeleteBulk}
+                                class="justify-content-center text-center py-0 px-1"
+                        >
+                            <Icon name="trash"/>
+                        </Button>
+                    {/if}
 
-            </ButtonGroup>
+                </ButtonGroup>
+            </div>
         </div>
-    </div>
 
-    <div
-        class="px-1 tab-content"
-        style="height: calc(100% - {header_height}px); overflow: hidden auto;"
-        transition:fade={{ delay: 25 }}
-    >
-        <div class="tab-pane" class:active={tab_option === "list"}>
-            <ListView
-                {space_name}
-                {subpath}
-                folderColumns={entry?.payload?.body?.index_attributes ?? null}
-                sort_by={entry?.payload?.body?.sort_by ?? null}
-                sort_order={entry?.payload?.body?.sort_type ?? null}
-                canDelete={canDelete}
-            />
-        </div>
-        <div class="tab-pane" class:active={tab_option === "source"}>
-            <div
-                class="px-1 pb-1"
-                style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
-            >
+        <div
+                class="px-1 tab-content"
+                style="height: calc(100% - {header_height}px); overflow: hidden auto;"
+                transition:fade={{ delay: 25 }}
+        >
+            <div class="tab-pane" class:active={tab_option === "list"}>
+                <ListView
+                        {space_name}
+                        {subpath}
+                        folderColumns={entry?.payload?.body?.index_attributes ?? null}
+                        sort_by={entry?.payload?.body?.sort_by ?? null}
+                        sort_order={entry?.payload?.body?.sort_type ?? null}
+                        canDelete={canDelete}
+                />
+            </div>
+            <div class="tab-pane" class:active={tab_option === "source"}>
+                <div
+                        class="px-1 pb-1"
+                        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
+                >
                 <pre>
                     {JSON.stringify(entry, undefined, 1)}
                 </pre>
+                </div>
             </div>
-        </div>
-        <div class="tab-pane" class:active={tab_option === "view"}>
-            <div
-                class="px-1 pb-1"
-                style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
-            >
-                <TabContent>
-                    {#if isContentPreviewable}
-                        <TabPane tabId="content" tab="Content" class="p-3" active>
-                            {#if entry.payload.content_type === ContentType.html}
-                                {@html entry.payload.body}
-                            {:else if entry.payload.content_type === ContentType.text}
-                                <textarea value={entry.payload.body.toString()} disabled></textarea>
-                            {:else if entry.payload.content_type === ContentType.markdown}
-                                <MarkdownRenderer doc={entry.payload.body.toString()}/>
-                            {:else if entry.payload.content_type === ContentType.json}
-                                <Prism code={entry.payload.body}/>
-                            {/if}
-                        </TabPane>
-                    {/if}
-                    <TabPane tabId="table" tab="Table" active={!isContentPreviewable}
-                    >
-                        <Table2Cols
-                            entry={{ "Resource type": resource_type, ...entry }}
-                        />
-                    </TabPane
-                    >
-                    <TabPane tabId="form" tab="Raw">
-                        <Prism code={entry}/>
-                    </TabPane>
-                </TabContent>
-            </div>
-        </div>
-        <div class="tab-pane" class:active={tab_option === "edit_meta"}>
-            <div class="px-1 pb-1"
-                style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;">
-                {#if resource_type === ResourceType.ticket}
-                    <TicketEntryRenderer {space_name} {subpath} bind:entry/>
-                {:else if resource_type === ResourceType.user}
-                    <UserEntryRenderer
-                        {space_name}
-                        {subpath}
-                        bind:entry
-                        bind:errorContent
-                    />
-                {/if}
-
-                <JSONEditor
-                    bind:content={jseMeta}
-                    bind:validator={validatorMeta}
-                    onRenderMenu={handleRenderMenu}
-                    mode={Mode.text}
-                />
-                {#if errorContent}
-                    <h3 class="mt-3">Error:</h3>
-                    <Prism bind:code={errorContent}/>
-                {/if}
-            </div>
-        </div>
-
-        {#if entry.payload}
-            <div class="tab-pane" class:active={tab_option === "edit_content"}>
+            <div class="tab-pane" class:active={tab_option === "view"}>
                 <div
-                    class="px-1 pb-1"
-                    style="text-align: left; direction: ltr; overflow: hidden auto;"
+                        class="px-1 pb-1"
+                        style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;"
                 >
-                    {#if entry.payload.content_type === "image"}
-                        {#if entry?.payload?.body.endsWith(".wsq")}
-                            <a
-                                target="_blank"
-                                download={entry?.payload?.body}
-                                href={`${website.backend}/managed/payload/media/${space_name}/${subpath}/${entry?.payload?.body}`}
-                            >{entry?.payload?.body}</a
-                            >
-                        {:else}
-                            <img
-                                src={`${website.backend}/managed/payload/media/${space_name}/${subpath}/${entry?.payload?.body}`}
-                                alt=""
-                                class="mw-100 border"
-                            />
+                    <TabContent>
+                        {#if isContentPreviewable}
+                            <TabPane tabId="content" tab="Content" class="p-3" active>
+                                {#if entry.payload.content_type === ContentType.html}
+                                    {@html entry.payload.body}
+                                {:else if entry.payload.content_type === ContentType.text}
+                                    <textarea value={entry.payload.body.toString()} disabled></textarea>
+                                {:else if entry.payload.content_type === ContentType.markdown}
+                                    <MarkdownRenderer doc={entry.payload.body.toString()}/>
+                                {:else if entry.payload.content_type === ContentType.json}
+                                    <Prism code={entry.payload.body}/>
+                                {/if}
+                            </TabPane>
                         {/if}
-                    {/if}
-                    {#if entry.payload.content_type === "audio"}
-                        <audio
-                            controls
-                            src={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
+                        <TabPane tabId="table" tab="Table" active={!isContentPreviewable}
                         >
-                            <track kind="captions"/>
-                        </audio>
-                    {/if}
-                    {#if entry.payload.content_type === "video"}
-                        <video
-                            controls
-                            src={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
+                            <Table2Cols
+                                    entry={{ "Resource type": resource_type, ...entry }}
+                            />
+                        </TabPane
                         >
-                            <track kind="captions"/>
-                        </video>
+                        <TabPane tabId="form" tab="Raw">
+                            <Prism code={entry}/>
+                        </TabPane>
+                    </TabContent>
+                </div>
+            </div>
+            <div class="tab-pane" class:active={tab_option === "edit_meta"}>
+                <div class="px-1 pb-1"
+                     style="text-align: left; direction: ltr; overflow: hidden auto;height: 80vh;">
+                    {#if resource_type === ResourceType.ticket}
+                        <TicketEntryRenderer {space_name} {subpath} bind:entry/>
+                    {:else if resource_type === ResourceType.user}
+                        <UserEntryRenderer
+                                {space_name}
+                                {subpath}
+                                bind:entry
+                                bind:errorContent
+                        />
                     {/if}
-                    {#if entry.payload.content_type === "pdf"}
-                        <object
-                            title=""
-                            class="h-100 w-100 embed-responsive-item"
-                            type="application/pdf"
-                            style="height: 100vh;"
-                            data={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
-                        >
-                            <p>For some reason PDF is not rendered here properly.</p>
-                        </object>
-                    {/if}
-                    {#if entry.payload.content_type === "json" && typeof jseContent === "object" && jseContent !== null}
-                        <JSONEditor
-                            bind:content={jseContent}
-                            bind:validator={validatorContent}
+
+                    <JSONEditor
+                            bind:content={jseMeta}
+                            bind:validator={validatorMeta}
                             onRenderMenu={handleRenderMenu}
                             mode={Mode.text}
-                        />
-                    {:else}
-                        <ContentEditor
-                            {space_name}
-                            {subpath}
-                            {handleSave}
-                            content_type={entry.payload.content_type}
-                            body={entry.payload.body}
-                            bind:jseContent
-                        />
-                    {/if}
+                    />
                     {#if errorContent}
                         <h3 class="mt-3">Error:</h3>
                         <Prism bind:code={errorContent}/>
@@ -2130,102 +2063,175 @@
                 </div>
             </div>
 
-            {#if schema && jseContent}
-<!--                <div class="d-flex justify-content-end my-1 mx-3">-->
-<!--                    <Button onclick={handleSave}>Save</Button>-->
-<!--                </div>-->
-                <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
-                    {#if resource_type === ResourceType.schema}
-                        <SchemaEditor bind:content={jseContent}/>
-                    {:else if resource_type === ResourceType.content && schema_name === "configuration"}
-                        <ConfigEditor bind:entries={jseContent.json.items}/>
-                    {:else if resource_type === ResourceType.content && schema_name === "translation"}
-                        <TranslationEditor
-                            bind:entries={jseContent.json.items}
-                            columns={Object.keys(schema.properties.items.items.properties)}
-                        />
-                    {:else}
-                        <div class="px-1 pb-1 h-100">
-                            <SchemaForm
-                                bind:ref={schemaFormRefContent}
-                                schema={$state.snapshot(schema)}
-                                bind:data={jseContent.json}
+            {#if entry.payload}
+                <div class="tab-pane" class:active={tab_option === "edit_content"}>
+                    <div
+                            class="px-1 pb-1"
+                            style="text-align: left; direction: ltr; overflow: hidden auto;"
+                    >
+                        {#if entry.payload.content_type === "image"}
+                            {#if entry?.payload?.body.endsWith(".wsq")}
+                                <a
+                                        target="_blank"
+                                        download={entry?.payload?.body}
+                                        href={`${website.backend}/managed/payload/media/${space_name}/${subpath}/${entry?.payload?.body}`}
+                                >{entry?.payload?.body}</a
+                                >
+                            {:else}
+                                <img
+                                        src={`${website.backend}/managed/payload/media/${space_name}/${subpath}/${entry?.payload?.body}`}
+                                        alt=""
+                                        class="mw-100 border"
+                                />
+                            {/if}
+                        {/if}
+                        {#if entry.payload.content_type === "audio"}
+                            <audio
+                                    controls
+                                    src={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
+                            >
+                                <track kind="captions"/>
+                            </audio>
+                        {/if}
+                        {#if entry.payload.content_type === "video"}
+                            <video
+                                    controls
+                                    src={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
+                            >
+                                <track kind="captions"/>
+                            </video>
+                        {/if}
+                        {#if entry.payload.content_type === "pdf"}
+                            <object
+                                    title=""
+                                    class="h-100 w-100 embed-responsive-item"
+                                    type="application/pdf"
+                                    style="height: 100vh;"
+                                    data={`${website.backend}/managed/payload/content/${space_name}/${subpath}/${entry?.payload?.body}`}
+                            >
+                                <p>For some reason PDF is not rendered here properly.</p>
+                            </object>
+                        {/if}
+                        {#if entry.payload.content_type === "json" && typeof jseContent === "object" && jseContent !== null}
+                            <JSONEditor
+                                    bind:content={jseContent}
+                                    bind:validator={validatorContent}
+                                    onRenderMenu={handleRenderMenu}
+                                    mode={Mode.text}
                             />
-                        </div>
-                    {/if}
-                </div>
-            {/if}
-        {/if}
-        {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
-            <div class="tab-pane" class:active={tab_option === "visualization"}>
-                <div
-                    class="px-1 pb-1 h-100"
-                    style="text-align: left; direction: ltr; overflow: hidden auto;"
-                >
-                    <div class="preview">
-                        <PlantUML
-                            shortname={entry.shortname}
-                            properties={entry.payload.body.properties}
-                        />
+                        {:else}
+                            <ContentEditor
+                                    {space_name}
+                                    {subpath}
+                                    {handleSave}
+                                    content_type={entry.payload.content_type}
+                                    body={entry.payload.body}
+                                    bind:jseContent
+                            />
+                        {/if}
+                        {#if errorContent}
+                            <h3 class="mt-3">Error:</h3>
+                            <Prism bind:code={errorContent}/>
+                        {/if}
                     </div>
                 </div>
-            </div>
-        {/if}
-        {#if selectedSchema === "workflow"}
-            <div class="tab-pane" class:active={tab_option === "workflow"}>
-                <WorkflowRenderer
-                    shortname={entry.shortname}
-                    workflowContent={entry?.payload?.body}
-                />
-            </div>
-        {/if}
 
-        <div class="tab-pane" class:active={tab_option === "history"}>
-            {#key tab_option}
-                {#if tab_option === "history"}
-                    <HistoryListView
-                        {space_name}
-                        {subpath}
-                        type={QueryType.history}
-                        shortname={entry.shortname}
-                    />
+                {#if schema && jseContent}
+                    <!--                <div class="d-flex justify-content-end my-1 mx-3">-->
+                    <!--                    <Button onclick={handleSave}>Save</Button>-->
+                    <!--                </div>-->
+                    <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
+                        {#if resource_type === ResourceType.schema}
+                            <SchemaEditor bind:content={jseContent}/>
+                        {:else if resource_type === ResourceType.content && schema_name === "configuration"}
+                            <ConfigEditor bind:entries={jseContent.json.items}/>
+                        {:else if resource_type === ResourceType.content && schema_name === "translation"}
+                            <TranslationEditor
+                                    bind:entries={jseContent.json.items}
+                                    columns={Object.keys(schema.properties.items.items.properties)}
+                            />
+                        {:else}
+                            <div class="px-1 pb-1 h-100">
+                                <SchemaForm
+                                        bind:ref={schemaFormRefContent}
+                                        schema={$state.snapshot(schema)}
+                                        bind:data={jseContent.json}
+                                />
+                            </div>
+                        {/if}
+                    </div>
                 {/if}
-            {/key}
-        </div>
-        {#if entry.owner_shortname === $user.shortname}
-            <div class="tab-pane" class:active={tab_option === "acl"}>
+            {/if}
+            {#if resource_type === ResourceType.schema && !["meta_schema"].includes(entry.shortname)}
+                <div class="tab-pane" class:active={tab_option === "visualization"}>
+                    <div
+                            class="px-1 pb-1 h-100"
+                            style="text-align: left; direction: ltr; overflow: hidden auto;"
+                    >
+                        <div class="preview">
+                            <PlantUML
+                                    shortname={entry.shortname}
+                                    properties={entry.payload.body.properties}
+                            />
+                        </div>
+                    </div>
+                </div>
+            {/if}
+            {#if selectedSchema === "workflow"}
+                <div class="tab-pane" class:active={tab_option === "workflow"}>
+                    <WorkflowRenderer
+                            shortname={entry.shortname}
+                            workflowContent={entry?.payload?.body}
+                    />
+                </div>
+            {/if}
+
+            <div class="tab-pane" class:active={tab_option === "history"}>
+                {#key tab_option}
+                    {#if tab_option === "history"}
+                        <HistoryListView
+                                {space_name}
+                                {subpath}
+                                type={QueryType.history}
+                                shortname={entry.shortname}
+                        />
+                    {/if}
+                {/key}
+            </div>
+            {#if entry.owner_shortname === $user.shortname}
+                <div class="tab-pane" class:active={tab_option === "acl"}>
+                    <div class="d-flex justify-content-end my-2 mx-5 flex-row">
+                        <div>
+                            <Button onclick={handleSaveACL}>Save</Button>
+                        </div>
+                    </div>
+                    <div class="px-5">
+                        <ACLForm bind:content={aclContent}/>
+                    </div>
+                </div>
+            {/if}
+            <div class="tab-pane" class:active={tab_option === "relationships"}>
                 <div class="d-flex justify-content-end my-2 mx-5 flex-row">
                     <div>
-                        <Button onclick={handleSaveACL}>Save</Button>
+                        <Button onclick={(e)=>handleSave(e, "relationships")}>Save</Button>
                     </div>
                 </div>
                 <div class="px-5">
-                    <ACLForm bind:content={aclContent}/>
+                    <RelationshipForm bind:content={relationshipContent}/>
                 </div>
             </div>
-        {/if}
-        <div class="tab-pane" class:active={tab_option === "relationships"}>
-            <div class="d-flex justify-content-end my-2 mx-5 flex-row">
-                <div>
-                    <Button onclick={(e)=>handleSave(e, "relationships")}>Save</Button>
-                </div>
-            </div>
-            <div class="px-5">
-                <RelationshipForm bind:content={relationshipContent}/>
+            <div class="tab-pane" class:active={tab_option === "attachments"}>
+                <Attachments
+                        {resource_type}
+                        {space_name}
+                        {subpath}
+                        parent_shortname={entry.shortname}
+                        attachments={Object.values(entry.attachments)}
+                        {refreshEntry}
+                />
             </div>
         </div>
-        <div class="tab-pane" class:active={tab_option === "attachments"}>
-            <Attachments
-                {resource_type}
-                {space_name}
-                {subpath}
-                parent_shortname={entry.shortname}
-                attachments={Object.values(entry.attachments)}
-                {refreshEntry}
-            />
-        </div>
-    </div>
-
+    {/key}
 {:else}
     <div class="alert alert-danger text-center m-5">
         <h4 class="alert-heading text-capitalize">
