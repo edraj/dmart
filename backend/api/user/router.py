@@ -16,7 +16,7 @@ from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, sign_jwt, decode_jwt
-from typing import Any
+from typing import Any, Dict
 from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
@@ -90,26 +90,33 @@ async def create_user(record: core.Record) -> api.Response:
                             message="Register API is disabled"),
         )
 
-    if "invitation" not in record.attributes:
-        # TBD validate invitation (simply it is a jwt signed token )
-        # jwt-signed shortname, email and expiration time
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="create", code=50, message="bad or missign invitation token"
-            ),
-        )
+    # TBD validate invitation (simply it is a jwt signed token )
+    # jwt-signed shortname, email and expiration time
+    # if "invitation" not in record.attributes:
+    #     raise api.Exception(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         error=api.Error(
+    #             type="create", code=50, message="bad or missign invitation token"
+    #         ),
+    #     )
 
-    # TBD : Raise error if user already eists.
+    # TBD : Raise error if user already exists.
 
-    if "password" not in record.attributes:
+    # if "password" not in record.attributes:
+    #     raise api.Exception(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         error=api.Error(type="create", code=50,
+    #                         message="empty password"),
+    #     )
+
+    if "email" not in record.attributes and "msisdn" not in record.attributes:
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(type="create", code=50,
-                            message="empty password"),
+                            message="Email or MSISDN is required"),
         )
         
-    if not re.match(rgx.PASSWORD, record.attributes["password"]):
+    if record.attributes.get("password") and not re.match(rgx.PASSWORD, record.attributes["password"]):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
@@ -129,20 +136,23 @@ async def create_user(record: core.Record) -> api.Response:
             user_shortname=record.shortname,
         )
     )
+    
     record.resource_type = ResourceType.user
     user = core.User.from_record(
         record=record,
         owner_shortname="dmart"
     )
+    user.is_email_verified = False
+    user.is_msisdn_verified = False
     await db.validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, "dmart")
 
     separate_payload_data: str | dict[str, Any] = {}
-    if "payload" in record.attributes and "body" in record.attributes["payload"]:
+    if record.attributes.get("payload", {}).get("body"):
         schema_shortname = getattr(user.payload, "schema_shortname", None)
         user.payload = core.Payload(
             content_type=ContentType.json,
             schema_shortname=schema_shortname,
-            body=record.attributes["payload"]["body"] if record.attributes["payload"].get("body", False) else "",
+            body=record.attributes["payload"].get("body", ""),
         )
         if user.payload:
             separate_payload_data = user.payload.body # type: ignore
@@ -158,9 +168,15 @@ async def create_user(record: core.Record) -> api.Response:
                         space_name=MANAGEMENT_SPACE,
                         schema_shortname=user.payload.schema_shortname,
                     )
-
+                
     await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
-
+    if separate_payload_data is not None and isinstance(
+            separate_payload_data, dict
+    ):
+        await db.update_payload(
+            MANAGEMENT_SPACE, USERS_SUBPATH, user, separate_payload_data, user.owner_shortname
+        )
+    
     await plugin_manager.after_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
@@ -195,7 +211,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     shortname: str | None = None
     user = None
     user_updates: dict[str, Any] = {}
-    identifier = request.check_fields()
+    identifier: Dict[str, str] | None = request.check_fields()
     try:
         if request.invitation:
             invitation_token = await db.get_invitation(request.invitation)
@@ -290,6 +306,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 user_shortname=shortname,
             )
         #! TODO: Implement check agains is_email_verified && is_msisdn_verified
+        
         is_password_valid = password_hashing.verify_password(
             request.password or "", user.password or ""
         )
@@ -299,6 +316,10 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             and (
                 request.invitation
                 or is_password_valid
+            )
+            and (
+                (identifier and identifier.get("email") and user.is_email_verified) or
+                (identifier and identifier.get("msisdn") and user.is_msisdn_verified) 
             )
         ):
             await db.clear_failed_password_attempts(shortname)
