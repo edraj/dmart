@@ -1177,10 +1177,10 @@ class SQLAdapter(BaseDataAdapter):
                 result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
                 await session.delete(result)
                 if meta.__class__ == core.Space:
-                    statement = delete(Entries).where(col(Entries.space_name) == space_name)
-                    await session.execute(statement)
                     statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name)
                     await session.execute(statement2)
+                    statement = delete(Entries).where(col(Entries.space_name) == space_name)
+                    await session.execute(statement)
                 await session.commit()
             except Exception as e:
                 print("[!delete]", e)
