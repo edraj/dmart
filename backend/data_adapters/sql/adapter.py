@@ -548,8 +548,9 @@ class SQLAdapter(BaseDataAdapter):
         total : int
         results : list
         async with self.get_session() as session:
+            user_shortname = user_shortname if user_shortname else "anonymous"
             user_query_policies = await get_user_query_policies(
-                self, user_shortname if user_shortname else "anonymous", query.space_name, query.subpath
+                self, user_shortname, query.space_name, query.subpath
             )
             user_permissions = await self.get_user_permissions(user_shortname)
             upt = f"{query.space_name}:{query.subpath}"
