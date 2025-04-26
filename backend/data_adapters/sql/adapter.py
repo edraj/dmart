@@ -296,7 +296,7 @@ class SQLAdapter(BaseDataAdapter):
             connection_string = f"{self.database_connection_string}/{settings.database_name}"
             self.engine = create_async_engine(
                 connection_string,
-                echo=False,
+                echo=True,
                 max_overflow=settings.database_max_overflow,
                 pool_size=settings.database_pool_size,
                 pool_pre_ping=True,
@@ -551,7 +551,26 @@ class SQLAdapter(BaseDataAdapter):
             user_query_policies = await get_user_query_policies(
                 self, user_shortname if user_shortname else "anonymous", query.space_name, query.subpath
             )
+            user_permissions = await self.get_user_permissions(user_shortname)
+            upt = f"{query.space_name}:{query.subpath}"
+            user_permissions_target = [
+                key for key in user_permissions
+                if key.startswith(upt)
+            ]
 
+            query_allowed_fields_values = []
+            for t in user_permissions_target:
+                target_resource_type = t.split(":")[-1]
+                for k, v in user_permissions[t]['allowed_fields_values'].items():
+                    qq = f"(resource_type != '{target_resource_type}'"
+                    if isinstance(v, list):
+                        for vv in v:
+                            if isinstance(vv, str):
+                                qq += f" OR {k} @> '{vv}'"
+                            elif isinstance(vv, list):
+                                qq += f" OR {k} @> '{str(vv).replace('\'', '\"')}'"
+                        qq += ")"
+                        query_allowed_fields_values.append(qq)
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -594,6 +613,11 @@ class SQLAdapter(BaseDataAdapter):
             else:
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
+
+                if query_allowed_fields_values:
+                    for query_allowed_fields_value in query_allowed_fields_values:
+                        statement = statement.where(text(query_allowed_fields_value))
+                        statement_total = statement_total.where(text(query_allowed_fields_value))
 
             try:
                 if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
