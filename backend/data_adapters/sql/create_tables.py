@@ -4,8 +4,8 @@ import sys
 from datetime import datetime
 from typing import Any
 from uuid import UUID
-from sqlalchemy import LargeBinary
-from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT
+from sqlalchemy import LargeBinary, text
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT, HSTORE
 from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
 from sqlmodel._compat import SQLModelConfig # type: ignore
 from utils.helpers import camel_case, remove_none_dict
@@ -374,9 +374,21 @@ class URLShorts(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
+class OTP(SQLModel, table=True):
+    key: str = Field(primary_key=True)
+    value: dict = Field(sa_type=HSTORE)
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
 def generate_tables():
     postgresql_url = f"{settings.database_driver.replace('+asyncpg', '+psycopg') }://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
     engine = create_engine(postgresql_url, echo=False)
+
+    # Enable hstore extension if it's not already enabled
+    with engine.connect() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS hstore"))
+        conn.commit()
+
     SQLModel.metadata.create_all(engine)
 
 # ALERMBIC
