@@ -34,6 +34,7 @@ from data_adapters.sql.create_tables import (
     Sessions,
     Invitations,
     URLShorts,
+    OTP,
 )
 from utils.helpers import (
     arr_remove_common,
@@ -292,6 +293,40 @@ class SQLAdapter(BaseDataAdapter):
             shortname: str,
     ) -> str:
         return ""
+
+    async def save_otp(
+            self,
+            key: str,
+            otp: str,
+    ):
+        async with self.get_session() as session:
+            # Create a new OTP entry with the key and value
+            otp_entry = OTP(
+                key=key,
+                value={"otp": otp},
+                timestamp=datetime.now()
+            )
+            session.add(otp_entry)
+            await session.commit()
+
+    async def get_otp(
+        self,
+        key: str,
+    ):
+        async with self.get_session() as session:
+            # Query the OTP table for the given key
+            result = await session.execute(select(OTP).where(OTP.key == key))
+            otp_entry = result.scalar_one_or_none()
+
+            if otp_entry:
+                # Check if the OTP has expired
+                if (datetime.now() - otp_entry.timestamp).total_seconds() > settings.otp_token_ttl:
+                    # Remove expired OTP
+                    await session.delete(otp_entry)
+                    await session.commit()
+                    return None
+                return otp_entry.value.get("otp")
+            return None
 
     def metapath(self,
                  space_name: str,

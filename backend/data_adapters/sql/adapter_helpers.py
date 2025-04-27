@@ -105,7 +105,6 @@ def transform_keys_to_sql(path):
 
 
 def validate_search_range(v_str):
-    print(f'--------------------------{v_str}')
     if isinstance(v_str, list):
         return False, v_str
 

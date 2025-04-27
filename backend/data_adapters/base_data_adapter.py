@@ -27,6 +27,21 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
+    async def save_otp(
+        self,
+        key: str,
+        otp: str,
+    ) -> bool:
+        pass
+
+    @abstractmethod
+    async def get_otp(
+        self,
+        key: str,
+    ):
+        pass
+
+    @abstractmethod
     def metapath(
             self,
             space_name: str,
