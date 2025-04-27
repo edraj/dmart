@@ -51,11 +51,13 @@ from data_adapters.sql.adapter_helpers import (
     subpath_checker, parse_search_string, validate_search_range,
     sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
+    parse_search_array
 )
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+import re
 
 
 def query_attachment_aggregation(subpath):
@@ -169,10 +171,18 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             ))
         else:
             for k, v in parse_search_string(query.search, table).items():
+                if v['is_array']:
+                    print(f"[!is_array] {k} = {v}")
+                    matchy = re.search(r"\$([a-zA-Z0-9_]+)", k)
+                    if matchy:
+                        statement = statement.where(text(
+                            parse_search_array(k, matchy.group(1), v['value'])
+                        ))
+                        continue
                 flag_neg = False
                 if "!" in v:
                     flag_neg = True
-                vv, v = validate_search_range(v)
+                vv, v = validate_search_range(v['value'])
                 if isinstance(v, str):
                     v = v.replace("!", "")
 
