@@ -253,6 +253,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             user_updates["force_password_change"] = True
 
             user_updates = check_user_validation(user, data, user_updates, invitation_token)
+
+
         elif request.otp:
             # get the code that user sent
             otp_code = request.otp
@@ -266,7 +268,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 stored_otp = None
 
 
-                
+
             # check if the OTP exists in the dictionary
             if stored_otp is not None:
             # Check if the OTP is expired
@@ -805,9 +807,13 @@ async def otp_request_login(
         else:
             await email_send_otp_login(result["email"], skel_accept_language or "")
 
-        return api.Response(status=api.Status.success)
+        return api.Response(status=api.Status.success)  
     else:
-        return api.Response(status=api.Status.error, message="Exactly one of msisdn or email must be provided")
+        return api.Response(
+            status=api.Status.error,
+            content={"message": "Exactly one of msisdn or email must be provided"}
+        )
+
 
 
 @router.post(
