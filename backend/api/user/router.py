@@ -799,12 +799,15 @@ async def otp_request_login(
             ),
         )
 
-    if "msisdn" in result:
-        await send_otp_login(result["msisdn"], skel_accept_language or "")
-    else:
-        await email_send_otp_login(result["email"], skel_accept_language or "")
+    if bool(result.get("msisdn")) ^ bool(result.get("email")):
+        if result.get("msisdn"):
+            await send_otp_login(result["msisdn"], skel_accept_language or "")
+        else:
+            await email_send_otp_login(result["email"], skel_accept_language or "")
 
-    return api.Response(status=api.Status.success)
+        return api.Response(status=api.Status.success)
+    else:
+        return api.Response(status=api.Status.error, message="Exactly one of msisdn or email must be provided")
 
 
 @router.post(
