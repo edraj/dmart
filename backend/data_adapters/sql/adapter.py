@@ -299,7 +299,7 @@ class SQLAdapter(BaseDataAdapter):
             connection_string = f"{self.database_connection_string}/{settings.database_name}"
             self.engine = create_async_engine(
                 connection_string,
-                echo=True,
+                echo=False,
                 max_overflow=settings.database_max_overflow,
                 pool_size=settings.database_pool_size,
                 pool_pre_ping=True,
