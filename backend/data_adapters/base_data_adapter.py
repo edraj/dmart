@@ -31,7 +31,7 @@ class BaseDataAdapter(ABC):
         self,
         key: str,
         otp: str,
-    ) -> bool:
+    ):
         pass
 
     @abstractmethod

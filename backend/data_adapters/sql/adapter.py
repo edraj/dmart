@@ -295,9 +295,9 @@ class SQLAdapter(BaseDataAdapter):
         return ""
 
     async def save_otp(
-            self,
-            key: str,
-            otp: str,
+        self,
+        key: str,
+        otp: str,
     ):
         async with self.get_session() as session:
             # Create a new OTP entry with the key and value

@@ -190,9 +190,9 @@ class FileAdapter(BaseDataAdapter):
         return f"{settings.spaces_folder}/{space_name}/{subpath}/{shortname}"
 
     async def save_otp(
-            self,
-            key: str,
-            otp: str,
+        self,
+        key: str,
+        otp: str,
     ):
         async with RedisServices() as redis_services:
             await redis_services.set(key, otp, settings.otp_token_ttl)
