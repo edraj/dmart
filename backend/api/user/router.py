@@ -16,8 +16,7 @@ from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, sign_jwt, decode_jwt
-from typing import Any
-import time
+from typing import Any, Optional
 from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
@@ -35,10 +34,6 @@ from .service import (
     set_user_profile,
     update_user_payload, 
     get_otp_confirmation_email_or_msisdn,
-    otp_store,
-    query_user_by_email_or_msisdn,
-    send_otp_login,
-    email_send_otp_login,
 )
 from .model.requests import (
     ConfirmOTPRequest,
@@ -255,67 +250,46 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
 
         elif request.otp:
-            # get the code that user sent
             otp_code = request.otp
             if bool(request.email) ^ bool(request.msisdn):
-                key = request.email if request.email is not None else request.msisdn
-                if key is not None:
-                    stored_otp = otp_store.get(key)
-                else:
-                    stored_otp = None
-            else:
-                stored_otp = None
+
+                key: Optional[str] = None 
+
+                if request.msisdn:
+                    if request.msisdn:
+                        key = f"users:otp:otps/{request.msisdn}"
+                    else:
+                        key = f"middleware:otp:otps/{request.msisdn}"
+                elif request.email:
+                    if settings.mock_smtp_api:
+                        key = f"users:otp:otps/{request.email}"
+                    else:
+                        key = f"middleware:otp:otps/{request.email}"
+                # get the stored otp
+                stored_otp = await db.get_otp(key) if key else None
 
 
-
-            # check if the OTP exists in the dictionary
-            if stored_otp is not None:
-            # Check if the OTP is expired
-                current_time = time.time()
-                expires_at = stored_otp.get("expires_at", 0)
-                
-                # Ensure expires_at is a float
-                if isinstance(expires_at, (int, float)) and expires_at < current_time:
-                    raise api.Exception(
-                        status.HTTP_400_BAD_REQUEST,
-                        api.Error(
-                            type="auth",
-                            code=InternalErrorCode.OTP_ISSUE,
-                            message="OTP code has expired."
-                        )
-                    )
-
-
-                # check if the code the user sent matches the stored one
-                if stored_otp.get('code') == otp_code:
+                if stored_otp == otp_code:
                     try:
-                        # Check if we have a shortname
-                        if not shortname:
-                            if identifier:
-                                shortname = identifier.get("shortname") or await get_shortname_from_identifier(*list(identifier.items())[0])
+                        # get shortname if it's not already set
+                        if not shortname and identifier:
+                            if isinstance(identifier, dict):
+                                key, value = list(identifier.items())[0]
                                 
-                                if not shortname:
-                                    raise api.Exception(
-                                        status.HTTP_401_UNAUTHORIZED,
-                                        api.Error(
-                                            type="auth",
-                                            code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                                            message="Invalid identifier for OTP login."
-                                        )
-                                    )
+                                shortname = identifier.get("shortname") or await get_shortname_from_identifier(value=value, key=key)
                             else:
-                                raise api.Exception(
-                                    status.HTTP_400_BAD_REQUEST,
-                                    api.Error(
-                                        type="auth",
-                                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                                        message="Identifier is missing for OTP login."
-                                    )
+                                shortname = await get_shortname_from_identifier(value=identifier, key=key)
+
+                        if not shortname:
+                            raise api.Exception(
+                                status.HTTP_401_UNAUTHORIZED,
+                                api.Error(
+                                    type="auth",
+                                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                                    message="Invalid identifier for OTP login."
                                 )
+                            )
 
-
-
-                        # load user from database
                         user = await db.load(
                             space_name=MANAGEMENT_SPACE,
                             subpath=USERS_SUBPATH,
@@ -324,10 +298,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                             user_shortname=shortname,
                         )
 
-                        # login the user and return a response
                         record = await process_user_login(user, response, {}, request.firebase_token)
                         return api.Response(status=api.Status.success, records=[record])
-
                     except Exception:
                         raise
                 else:
@@ -348,9 +320,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         message="OTP not found."
                     )
                 )
-
-
-
+            
         else:
             if identifier is None:
                 raise api.Exception(
@@ -788,7 +758,11 @@ async def otp_request_login(
     """Request new OTP"""
     result = user_request.check_fields()
 
-    user = await query_user_by_email_or_msisdn(result)
+    value = result.get("msisdn") or result.get("email") or ""
+    user = await db.get_user_by_criteria(
+        "msisdn" if "msisdn" in result else "email",
+        value,
+    )
 
     if not user:
         raise api.Exception(
@@ -802,17 +776,22 @@ async def otp_request_login(
 
     if bool(result.get("msisdn")) ^ bool(result.get("email")):
         if result.get("msisdn"):
-            await send_otp_login(result["msisdn"], skel_accept_language or "")
+            await send_otp(result["msisdn"], skel_accept_language or "")
         else:
-            await email_send_otp_login(result["email"], skel_accept_language or "")
+            await email_send_otp(result["email"], skel_accept_language or "")
 
-        return api.Response(status=api.Status.success)  
+        return api.Response(status=api.Status.success)
+
+
     else:
-        return api.Response(
-            status=api.Status.error,
-            content={"message": "Exactly one of msisdn or email must be provided"}
-        )
-
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="auth",
+                code=InternalErrorCode.OTP_ISSUE,
+                message="one of msisdn or email must be provided"
+            )
+)
 
 
 @router.post(

@@ -38,61 +38,6 @@ async def mock_sending_otp(msisdn) -> dict:
     json = {"status": "success", "data": {"status": "success"}}
     return json
 
-
-otp_store = {}  
-
-def set_otp(identifier: str, code: str):
-    otp_store[identifier] = {
-        "code": code,
-        "expires_at": time.time() + 1000  
-    }
-
-async def mock_sending_otp_login(identifier: str) -> dict:
-    code = gen_numeric()
-    otp_store[identifier] = {
-        "code": code,
-        "expires_at": time.time() + 1000
-    }
-    print(f"OTP for {identifier}: {code}")
-    return {"status": "success", "data": {"status": " mock otp sent"}}
-
-
-
-async def send_otp_login(msisdn: str, language: str):
-    json = {}
-    status: int
-    if settings.mock_smpp_api:
-        return await mock_sending_otp_login(msisdn)
-    else:
-        # Creating SMS message body
-        code = gen_numeric()
-        set_otp(msisdn, code)
-        message = ""
-        match language:
-            case "ckb":
-                message = f"کۆدی دڵنیابوونی تایبەت بەخۆت {code}"
-            case "en":
-                message = f"Your otp code is {code}"
-            case _:
-                message = f"رمز التحقق الخاص بك {code}"
-
-        async with AsyncRequest() as client:
-            response = await client.post(
-                settings.send_sms_otp_api,
-                headers={**headers, "skel-accept-language": language},
-                json={"msisdn": msisdn, "text": message},
-            )
-            json = await response.json()
-            status = response.status
-
-            if status != 200:
-                raise Exception(
-                    status, 
-                    Error(type="otp", code=InternalErrorCode.OTP_ISSUE, message="OTP issue", info=[json])
-                )
-            
-        return json.get("data")
-
 async def send_otp(msisdn: str, language: str):
     json = {}
     status: int
@@ -111,7 +56,7 @@ async def send_otp(msisdn: str, language: str):
                 message = f"رمز التحقق الخاص بك {code}"
 
         await db.save_otp(f"middleware:otp:otps/{msisdn}", code)
-        
+
         async with AsyncRequest() as client:
             response = await client.post(
                 settings.send_sms_otp_api,
@@ -127,16 +72,6 @@ async def send_otp(msisdn: str, language: str):
         )
 
     return json.get("data")
-
-
-async def email_send_otp_login(email: str, language: str) -> dict:
-    if settings.mock_smtp_api:
-        return await mock_sending_otp_login(email)
-    code = gen_numeric()
-    set_otp(email, code) 
-    message = f"<p>Your OTP code is <b>{code}</b></p>"
-    success = await send_email(settings.email_sender, email, message, "OTP", settings.send_email_otp_api)
-    return {"success": success}
 
 
 
@@ -155,7 +90,7 @@ async def send_sms(msisdn: str, message: str) -> bool:
     status: int
     if settings.mock_smpp_api:
         return True
-        
+
     async with AsyncRequest() as client:
         response = await client.post(
             settings.send_sms_api,
@@ -231,17 +166,6 @@ async def send_email(from_address: str, to_address: str, message: str, subject: 
         return False
 
     return True
-
-
-
-async def query_user_by_email_or_msisdn(result: dict):
-    """Queries user from DB by either msisdn or email."""
-    if "msisdn" in result:
-        return await db.get_user_by_criteria("msisdn", result["msisdn"])
-    elif "email" in result:
-        return await db.get_user_by_criteria("email", result["email"])
-    return None
-
 
 async def get_shortname_from_identifier(key, value):
     if isinstance(value, str) and isinstance(key, str):
