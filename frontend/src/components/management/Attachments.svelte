@@ -34,6 +34,7 @@
   import { AxiosError } from "axios";
   import MarkdownEditor from "@/components/management/editors/MarkdownEditor.svelte";
   import HtmlEditor from "@/components/management/editors/HtmlEditor.svelte";
+  import {untrack} from "svelte";
 
   let {
     attachments = [],
@@ -336,13 +337,19 @@
   $effect(() => {
     switch (resourceType) {
       case ResourceAttachmentType.media:
-        contentType = ContentType.image;
+        untrack(() => {
+          contentType = ContentType.image;
+        });
         break;
       case ResourceAttachmentType.comment:
-        contentType = ContentType.text;
+        untrack(() => {
+          contentType = ContentType.text;
+        });
         break;
       case ResourceAttachmentType.json:
-        contentType = ContentType.json;
+        untrack(() => {
+          contentType = ContentType.json;
+        });
         break;
     }
   });

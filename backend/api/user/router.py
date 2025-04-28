@@ -21,7 +21,6 @@ from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
-from data_adapters.file.redis_services import RedisServices
 from models.api import Error, Exception, Status
 from utils.social_sso import get_facebook_sso, get_google_sso
 from .service import (
@@ -827,60 +826,60 @@ async def confirm_otp(
         else:
             key = f"middleware:otp:otps/{result['email']}"
 
-    async with RedisServices() as redis_services:
-        code = await redis_services.get_key(key)
-        if not code:
-            raise Exception(
-                status.HTTP_400_BAD_REQUEST,
-                Error(
-                    type="OTP",
-                    code=InternalErrorCode.OTP_EXPIRED,
-                    message="Expired OTP",
-                ),
-            )
 
-        if code != user_request.code:
-            raise Exception(
-                status.HTTP_400_BAD_REQUEST,
-                Error(
-                    type="OTP",
-                    code=InternalErrorCode.OTP_INVALID,
-                    message="Invalid OTP",
-                ),
-            )
-
-        confirmation = gen_alphanumeric()
-        data: core.Record = core.Record(
-            resource_type=ResourceType.user,
-            subpath="users",
-            attributes={"confirmation": confirmation},
-            shortname=user,
+    code = await db.get_otp(key)
+    if not code:
+        raise Exception(
+            status.HTTP_400_BAD_REQUEST,
+            Error(
+                type="OTP",
+                code=InternalErrorCode.OTP_EXPIRED,
+                message="Expired OTP",
+            ),
         )
 
-        if "msisdn" in result:
-            key = f"users:otp:confirmation/msisdn/{user_request.msisdn}"
-            data.attributes["msisdn"] = user_request.msisdn
-        else:
-            key = f"users:otp:confirmation/email/{user_request.email}"
-            data.attributes["email"] = user_request.email
+    if code != user_request.code:
+        raise Exception(
+            status.HTTP_400_BAD_REQUEST,
+            Error(
+                type="OTP",
+                code=InternalErrorCode.OTP_INVALID,
+                message="Invalid OTP",
+            ),
+        )
 
-        await redis_services.set_key(key, confirmation)
+    confirmation = gen_alphanumeric()
+    data: core.Record = core.Record(
+        resource_type=ResourceType.user,
+        subpath="users",
+        attributes={"confirmation": confirmation},
+        shortname=user,
+    )
 
-        response = await update_profile(data, shortname=user)
+    if "msisdn" in result:
+        key = f"users:otp:confirmation/msisdn/{user_request.msisdn}"
+        data.attributes["msisdn"] = user_request.msisdn
+    else:
+        key = f"users:otp:confirmation/email/{user_request.email}"
+        data.attributes["email"] = user_request.email
 
-        if response.status == Status.success:
-            return api.Response(status=api.Status.success, records=[])
-        else:
-            raise Exception(
-                status.HTTP_400_BAD_REQUEST,
-                Error(
-                    type="OTP",
-                    code=InternalErrorCode.OTP_FAILED,
-                    message=response.error.message
-                    if response.error
-                    else "Internal error",
-                ),
-            )
+    await db.save_otp(key, confirmation)
+
+    response = await update_profile(data, shortname=user)
+
+    if response.status == Status.success:
+        return api.Response(status=api.Status.success, records=[])
+    else:
+        raise Exception(
+            status.HTTP_400_BAD_REQUEST,
+            Error(
+                type="OTP",
+                code=InternalErrorCode.OTP_FAILED,
+                message=response.error.message
+                if response.error
+                else "Internal error",
+            ),
+        )
 
 
 @router.post("/reset", response_model=api.Response, response_model_exclude_none=True)
@@ -1141,7 +1140,7 @@ if settings.social_login_allowed:
             content = await response.json()
             provider_user = await sso.openid_from_response(content)
 
-
+        from data_adapters.file.redis_services import RedisServices
         async with RedisServices() as redis_man:
             redis_search_res = await redis_man.search(
                 space_name=MANAGEMENT_SPACE,
