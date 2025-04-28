@@ -1580,6 +1580,8 @@ async def import_resources_from_csv_handler(
             if current_schema_property["type"] in ["number", "integer"]:
                 value = value.replace(",", "")
 
+            print("CURRENT", current_schema_property)
+            print("VALUE", value)
             value = data_types_mapper[current_schema_property["type"]](value)
             if current_schema_property["type"] == "array":
                 value = [

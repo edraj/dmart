@@ -63,7 +63,7 @@ async def check_existing_user_fields(
     shortname: str | None = Query(
         default=None, pattern=rgx.SHORTNAME, examples=["john_doo"]),
     msisdn: str | None = Query(
-        default=None, pattern=rgx.EXTENDED_MSISDN, examples=["7777778110"]),
+        default=None, pattern=rgx.MSISDN, examples=["7777778110"]),
     email: str | None = Query(default=None, pattern=rgx.EMAIL, examples=[
                               "john_doo@mail.com"]),
 ):
