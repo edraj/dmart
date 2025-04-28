@@ -311,7 +311,7 @@ class SQLAdapter(BaseDataAdapter):
             except Exception as e:
                 if "UniqueViolationError" in str(e) or "unique constraint" in str(e).lower():
                     await session.rollback()
-                    statement = delete(OTP).where(OTP.key == key)
+                    statement = delete(OTP).where(col(OTP.key) == key)
                     await session.execute(statement)
                     await session.commit()
 
