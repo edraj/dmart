@@ -295,33 +295,47 @@ class SQLAdapter(BaseDataAdapter):
         return ""
 
     async def save_otp(
-        self,
-        key: str,
-        otp: str,
+            self,
+            key: str,
+            otp: str,
     ):
         async with self.get_session() as session:
-            # Create a new OTP entry with the key and value
-            otp_entry = OTP(
-                key=key,
-                value={"otp": otp},
-                timestamp=datetime.now()
-            )
-            session.add(otp_entry)
-            await session.commit()
+            try:
+                otp_entry = OTP(
+                    key=key,
+                    value={"otp": otp},
+                    timestamp=datetime.now()
+                )
+                session.add(otp_entry)
+                await session.commit()
+            except Exception as e:
+                if "UniqueViolationError" in str(e) or "unique constraint" in str(e).lower():
+                    await session.rollback()
+                    statement = delete(OTP).where(OTP.key == key)
+                    await session.execute(statement)
+                    await session.commit()
+
+                    otp_entry = OTP(
+                        key=key,
+                        value={"otp": otp},
+                        timestamp=datetime.now()
+                    )
+                    session.add(otp_entry)
+                    await session.commit()
+                else:
+                    await session.rollback()
+                    raise e
 
     async def get_otp(
         self,
         key: str,
     ):
         async with self.get_session() as session:
-            # Query the OTP table for the given key
             result = await session.execute(select(OTP).where(OTP.key == key))
             otp_entry = result.scalar_one_or_none()
 
             if otp_entry:
-                # Check if the OTP has expired
                 if (datetime.now() - otp_entry.timestamp).total_seconds() > settings.otp_token_ttl:
-                    # Remove expired OTP
                     await session.delete(otp_entry)
                     await session.commit()
                     return None
