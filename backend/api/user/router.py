@@ -181,9 +181,7 @@ async def create_user(record: core.Record) -> api.Response:
                     )
                 
     await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
-    if separate_payload_data is not None and isinstance(
-            separate_payload_data, dict
-    ):
+    if isinstance(separate_payload_data, dict) and separate_payload_data:
         await db.update_payload(
             MANAGEMENT_SPACE, USERS_SUBPATH, user, separate_payload_data, user.owner_shortname
         )
@@ -729,10 +727,10 @@ async def otp_request(
     
     if (last_otp_since and last_otp_since < settings.allow_otp_resend_after):
         raise api.Exception(
-        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
         api.Error(
             type="request",
-            code=InternalErrorCode.OTP_ISSUE,
+            code=InternalErrorCode.OTP_RESEND_BLOCKED,
             message=f"Resend OTP is allowed after {int(settings.allow_otp_resend_after - last_otp_since)} seconds",
         ),
     )

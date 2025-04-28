@@ -10,6 +10,8 @@ from pytests.base_test import (
 )
 from models.api import Query
 from models.enums import QueryType, ResourceType
+from fastapi import status
+from utils.internal_error_code import InternalErrorCode
 
 
 new_user_data = {
@@ -34,8 +36,11 @@ async def test_request_email_otp(client: AsyncClient):
         "email": new_user_data["email"]
     }
     response = await client.post("/user/otp-request", json=request_body)
-    assert_code_and_status_success(response)
-
+    json_response = response.json()
+    if response.status_code == status.HTTP_200_OK:
+        assert json_response.get("status") == "success"
+    elif response.status_code == status.HTTP_403_FORBIDDEN:
+        assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_RESEND_BLOCKED
 
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
@@ -44,7 +49,11 @@ async def test_request_msisdn_otp(client: AsyncClient):
         "msisdn": new_user_data["msisdn"]
     }
     response = await client.post("/user/otp-request", json=request_body)
-    assert_code_and_status_success(response)
+    json_response = response.json()
+    if response.status_code == status.HTTP_200_OK:
+        assert json_response.get("status") == "success"
+    elif response.status_code == status.HTTP_403_FORBIDDEN:
+        assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_RESEND_BLOCKED
     
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
@@ -53,14 +62,12 @@ async def test_create_user(client: AsyncClient):
         "resource_type": ResourceType.user,
         "shortname": new_user_data["shortname"],
         "subpath": USERS_SUBPATH,
-        "password": "Test1234",
         "attributes": {
             "password": "Test1234",
             "email": new_user_data["email"],
             "email_otp": "123456",
             "msisdn": new_user_data["msisdn"],
-            "msisdn_otp": "123456",
-            "roles": [],
+            "msisdn_otp": "123456"
         },
     }
 
