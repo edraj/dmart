@@ -308,6 +308,16 @@ class SQLAdapter(BaseDataAdapter):
             )
             session.add(otp_entry)
             await session.commit()
+    
+    async def otp_created_since(self, key: str) -> int | None:
+        async with self.get_session() as session:
+            result = await session.execute(select(OTP).where(OTP.key == key))
+            otp_entry = result.scalar_one_or_none()
+            
+            if otp_entry:
+                return (datetime.now() - otp_entry.timestamp).total_seconds()
+            
+            return None
 
     async def get_otp(
         self,
@@ -616,8 +626,9 @@ class SQLAdapter(BaseDataAdapter):
                         for vv in v:
                             if isinstance(vv, str):
                                 qq += f" OR {k} @> '{vv}'"
-                            elif isinstance(vv, list):
-                                qq += f" OR {k} @> '{str(vv).replace('\'', '\"')}'"
+                            # TODO: Fix error f-string expression part cannot include a backslash
+                            # elif isinstance(vv, list):
+                            #     qq += f" OR {k} @> '{str(vv).replace('\'', '\"')}'"
                         qq += ")"
                         query_allowed_fields_values.append(qq)
             if not query.subpath.startswith("/"):

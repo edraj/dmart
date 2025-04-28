@@ -25,7 +25,6 @@ from models.api import Error, Exception, Status
 from utils.social_sso import get_facebook_sso, get_google_sso
 from .service import (
     gen_alphanumeric,
-    get_active_otp_created_since,
     get_otp_key,
     send_email,
     send_sms,
@@ -203,7 +202,16 @@ async def create_user(record: core.Record) -> api.Response:
             )
         ]
     )
+  
+async def verify_user(user_request: ConfirmOTPRequest):
+    user_identifier = user_request.check_fields()
+    key = get_otp_key(user_identifier)
+    code = await db.get_otp(key)
+    if not code or code != user_request.code:
+        return False
     
+    return True  
+   
 
 @router.post(
     "/login",
@@ -657,39 +665,28 @@ async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
 )
 async def otp_request(
     user_request: SendOTPRequest,
-    skel_accept_language=Header(default=None),
-    shortname=Depends(JWTBearer()),
+    skel_accept_language=Header(default=None)
 ) -> api.Response:
     """Request new OTP"""
-
-    result = user_request.check_fields()
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-    )
-    exception = api.Exception(
+    
+    user_identifier = user_request.check_fields()
+    otp_key = get_otp_key(user_identifier)
+    last_otp_since = await db.otp_created_since(otp_key)
+    
+    if (last_otp_since and last_otp_since < settings.allow_otp_resend_after):
+        raise api.Exception(
         status.HTTP_401_UNAUTHORIZED,
         api.Error(
             type="request",
-            code=InternalErrorCode.UNMATCHED_DATA,
-            message="mismatch with the information provided",
+            code=InternalErrorCode.OTP_ISSUE,
+            message=f"Resend OTP is allowed after {int(settings.allow_otp_resend_after - last_otp_since)} seconds",
         ),
     )
 
-    # FIXME instead of matching user with user_request we should simply get the data from user?
-
-    if "msisdn" in result:
-        if user.msisdn != result["msisdn"]:
-            raise exception
-        else:
-            await send_otp(result["msisdn"], skel_accept_language or "")
-    else:
-        if user.email != result["email"]:
-            raise exception
-        await email_send_otp(result["email"], skel_accept_language or "")
+    if "msisdn" in user_identifier:
+        await send_otp(user_identifier["msisdn"], skel_accept_language or "")
+    elif "email" in user_identifier:
+        await email_send_otp(user_identifier["email"], skel_accept_language or "")
 
     return api.Response(status=api.Status.success)
 
@@ -814,36 +811,15 @@ async def confirm_otp(
     """Confirm OTP"""
 
     result = user_request.check_fields()
-    key = ""
-    if "msisdn" in result:
-        if settings.mock_smpp_api:
-            key = f"users:otp:otps/{result['msisdn']}"
-        else:
-            key = f"middleware:otp:otps/{result['msisdn']}"
-    elif "email" in result:
-        if settings.mock_smtp_api:
-            key = f"users:otp:otps/{result['msisdn']}"
-        else:
-            key = f"middleware:otp:otps/{result['email']}"
-
+    key = get_otp_key(result)
 
     code = await db.get_otp(key)
-    if not code:
+    if not code or code != user_request.code:
         raise Exception(
             status.HTTP_400_BAD_REQUEST,
             Error(
                 type="OTP",
                 code=InternalErrorCode.OTP_EXPIRED,
-                message="Expired OTP",
-            ),
-        )
-
-    if code != user_request.code:
-        raise Exception(
-            status.HTTP_400_BAD_REQUEST,
-            Error(
-                type="OTP",
-                code=InternalErrorCode.OTP_INVALID,
                 message="Invalid OTP",
             ),
         )

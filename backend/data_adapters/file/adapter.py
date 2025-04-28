@@ -189,6 +189,14 @@ class FileAdapter(BaseDataAdapter):
     ):
         return f"{settings.spaces_folder}/{space_name}/{subpath}/{shortname}"
 
+    async def otp_created_since(self, key: str) -> int | None:
+        async with RedisServices() as redis_services:
+            ttl = await redis_services.ttl(key)
+            print(ttl)
+            if not isinstance(ttl, int):
+                return None
+            return settings.otp_token_ttl - ttl
+        
     async def save_otp(
         self,
         key: str,

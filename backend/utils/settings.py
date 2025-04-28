@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     email_sender: str = "dmart@dmart.com"
 
     otp_token_ttl: int = 60 * 5
+    allow_otp_resend_after: int = 60
     comms_api: str = ""
     send_sms_otp_api: str = ""
     send_email_otp_api: str = ""

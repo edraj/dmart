@@ -33,6 +33,10 @@ class BaseDataAdapter(ABC):
         otp: str,
     ):
         pass
+    
+    @abstractmethod
+    async def otp_created_since(self, key: str) -> int | None:
+        pass
 
     @abstractmethod
     async def get_otp(
