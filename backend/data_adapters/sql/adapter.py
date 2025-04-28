@@ -640,9 +640,8 @@ class SQLAdapter(BaseDataAdapter):
                         for vv in v:
                             if isinstance(vv, str):
                                 qq += f" OR {k} @> '{vv}'"
-                            # TODO: Fix error f-string expression part cannot include a backslash
-                            # elif isinstance(vv, list):
-                            #     qq += f" OR {k} @> '{str(vv).replace('\'', '\"')}'"
+                            elif isinstance(vv, list):
+                                qq += f" OR {k} @> '{str(vv).replace('\'', '\"')}'"
                         qq += ")"
                         query_allowed_fields_values.append(qq)
             if not query.subpath.startswith("/"):
