@@ -124,6 +124,9 @@ class ConfirmOTPRequest(SendOTPRequest, BaseModel):
         }
     }
 
+class PasswordlessLoginRequest(ConfirmOTPRequest, BaseModel):
+    firebase_token: str | None = None
+
 class UserLoginRequest(BaseModel):
     shortname: str | None = Field(None, pattern=rgx.SHORTNAME)
     email: str | None = Field(None, pattern=rgx.EMAIL)

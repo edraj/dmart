@@ -39,6 +39,7 @@ from .service import (
 from .model.requests import (
     ConfirmOTPRequest,
     PasswordResetRequest,
+    PasswordlessLoginRequest,
     SendOTPRequest,
     UserLoginRequest,
 )
@@ -212,6 +213,52 @@ async def verify_user(user_request: ConfirmOTPRequest):
     
     return True  
    
+
+@router.post(
+    "/passwordless-login",
+    response_model=api.Response,
+    response_model_exclude_none=True,
+)
+async def passwordless_login(response: Response, request: PasswordlessLoginRequest) -> api.Response:
+    """Login and generate refresh token"""
+
+    user_identifier = request.check_fields()
+    key = get_otp_key(user_identifier)
+    code = await db.get_otp(key)
+    if not code or code != request.code:
+        raise api.Exception(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.OTP_INVALID,
+                message="Invalid OTP",
+            ),
+        )
+    
+    _list = list(user_identifier.items())
+    key, value = _list[0]
+    shortname = await get_shortname_from_identifier(key, value)
+    if shortname is None:
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="auth",
+                code=InternalErrorCode.INVALID_DATA,
+                message="Invalid data",
+            ),
+        )
+    user = await db.load(
+        space_name=MANAGEMENT_SPACE,
+        subpath=USERS_SUBPATH,
+        shortname=shortname,
+        class_type=core.User,
+        user_shortname=shortname,
+    )
+        
+    record = await process_user_login(user, response, {}, request.firebase_token)
+
+    return api.Response(status=api.Status.success, records=[record])
+
 
 @router.post(
     "/login",
