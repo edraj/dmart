@@ -315,7 +315,7 @@ class SQLAdapter(BaseDataAdapter):
             otp_entry = result.scalar_one_or_none()
             
             if otp_entry:
-                return (datetime.now() - otp_entry.timestamp).total_seconds()
+                return int((datetime.now() - otp_entry.timestamp).total_seconds())
             
             return None
 
