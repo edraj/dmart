@@ -46,7 +46,7 @@ def get_otp_key(user_identifier: dict[str, str]) -> str:
             return f"middleware:otp:otps/{user_identifier['msisdn']}"
     elif "email" in user_identifier:
         if settings.mock_smtp_api:
-            return f"users:otp:otps/{user_identifier['msisdn']}"
+            return f"users:otp:otps/{user_identifier['email']}"
         else:
             return f"middleware:otp:otps/{user_identifier['email']}"
             

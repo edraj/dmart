@@ -27,7 +27,25 @@ async def test_user_does_not_exist(client: AsyncClient):
     assert_code_and_status_success(response)
     assert response.json()["attributes"]["unique"] is True
 
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_request_email_otp(client: AsyncClient):
+    request_body = {
+        "email": new_user_data["email"]
+    }
+    response = await client.post("/user/otp-request", json=request_body)
+    assert_code_and_status_success(response)
 
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_request_msisdn_otp(client: AsyncClient):
+    request_body = {
+        "msisdn": new_user_data["msisdn"]
+    }
+    response = await client.post("/user/otp-request", json=request_body)
+    assert_code_and_status_success(response)
+    
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_create_user(client: AsyncClient):
@@ -35,14 +53,13 @@ async def test_create_user(client: AsyncClient):
         "resource_type": ResourceType.user,
         "shortname": new_user_data["shortname"],
         "subpath": USERS_SUBPATH,
+        "password": "Test1234",
         "attributes": {
-            "invitation": "",
-            "is_active": True,
-            "is_email_verified": True,
-            "is_msisdn_verified": True,
             "password": "Test1234",
             "email": new_user_data["email"],
+            "email_otp": "123456",
             "msisdn": new_user_data["msisdn"],
+            "msisdn_otp": "123456",
             "roles": [],
         },
     }
@@ -65,7 +82,7 @@ async def test_create_user(client: AsyncClient):
         res_subpath=USERS_SUBPATH,
         res_attributes={},
     )
-
+    
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_login_with_the_new_user(client: AsyncClient):

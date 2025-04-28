@@ -345,7 +345,7 @@ async def test_get_unauthorized_entry_from_public_api(client: AsyncClient):
     response = await client.get(
         f"public/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}"
     )
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.run(order=2)

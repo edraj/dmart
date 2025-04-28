@@ -94,9 +94,6 @@ async def create_user(record: core.Record) -> api.Response:
     validation_message: str | None = None
     if "email" not in record.attributes and "msisdn" not in record.attributes:
         validation_message = "Email or MSISDN is required"
-
-    if "email" in record.attributes and "msisdn" in record.attributes:
-        validation_message = "Use Email or MSISDN not both"
         
     if record.attributes.get("email") and not record.attributes.get("email_otp"):
         validation_message = "Email OTP is required"
@@ -130,22 +127,32 @@ async def create_user(record: core.Record) -> api.Response:
         record=record,
         owner_shortname="dmart"
     )
-    is_valid_otp = await verify_user(ConfirmOTPRequest(
-        msisdn=record.attributes.get("msisdn"),
-        email=record.attributes.get("email"),
-        code=record.attributes.get("msisdn_otp") or record.attributes.get("email_otp", "")
-    ))
-    if not is_valid_otp:
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50,
-                            message="Invalid OTP"),
-        )
-        
     if user.msisdn:
-        user.is_email_verified = True
-    elif user.email:
+        is_valid_otp = await verify_user(ConfirmOTPRequest(
+            msisdn=record.attributes.get("msisdn"),
+            email=None,
+            code=record.attributes.get("msisdn_otp", "")
+        ))
+        if not is_valid_otp:
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(type="create", code=50,
+                                message="Invalid MSISDN OTP"),
+            )
         user.is_msisdn_verified = True
+    if user.email:
+        is_valid_otp = await verify_user(ConfirmOTPRequest(
+            email=record.attributes.get("email"),
+            msisdn=None,
+            code=record.attributes.get("email_otp", "")
+        ))
+        if not is_valid_otp:
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(type="create", code=50,
+                                message="Invalid Email OTP"),
+            )
+        user.is_email_verified = True
         
     user.is_active = True
     await db.validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, "dmart")
