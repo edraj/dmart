@@ -125,9 +125,21 @@ def validate_search_range(v_str):
     return False, v_str
 
 
+def parse_search_array(input_string: str, key: str, value: str) -> str:
+    parts = input_string.split("->")
+    dict_key = parts[3].strip().replace("'", "").replace(">", "")
+    if dict_key.startswith(' '):
+        dict_key = dict_key[1:]
+    output_sql = (
+        f"payload::jsonb -> 'body' -> '{key}' "
+        f"@> '[{{\"{dict_key}\": \"{value}\"}}]'"
+    )
+    return output_sql
+
+
 def parse_search_string(string, entity):
-    string = re.sub(r'(?<=\w)@(?=\w)', '%40', string) # prevent replacing @ in email
-    string = re.sub(r'(\d):', r'\1%41', string) # prevent replacing : in timestamp
+    string = re.sub(r'(?<=\w)@(?=\w)', '%40', string)  # prevent replacing @ in email
+    string = re.sub(r'(\d):', r'\1%41', string)  # prevent replacing : in timestamp
 
     tokens = []
     current = ""
@@ -167,23 +179,37 @@ def parse_search_string(string, entity):
         matches = re.findall(pattern, s)
 
         for key, value in matches:
+            is_array = False
+            key_parts = key.split('.')
+            new_key_parts = []
+            for part in key_parts:
+                if part.startswith("$"):
+                    is_array = True
+                new_key_parts.append(part)
+            key_clean = '.'.join(new_key_parts)
+
             value = value.replace("%40", "@")
             value = value.replace("%41", ":")
             try:
-                if "." in key:
-                    if getattr(entity, key.split('.')[0]):
-                        key = transform_keys_to_sql(key)
+                if "." in key_clean:
+                    if getattr(entity, key_clean.split('.')[0]):
+                        key_sql = transform_keys_to_sql(key_clean)
                         if "|" in value:
                             value = value.split("|")
-                        result[key] = value
-                elif getattr(entity, key):
+                        result[key_sql] = {
+                            "value": value,
+                            "neg": flag_neg,
+                            "is_array": is_array
+                        }
+                elif getattr(entity, key_clean):
                     if "|" in value:
                         value = value.split("|")
-                    result[key] = value
-
-                if flag_neg:
-                    result[key] = f"!{result[key]}"
-                    flag_neg = False
+                    result[key_clean] = {
+                        "value": value,
+                        "neg": flag_neg,
+                        "is_array": is_array
+                    }
+                flag_neg = False
             except Exception as e:
                 print(f"Failed to parse search string: {s} cuz of {e}:{e.args}:{e.__dict__}")
                 continue

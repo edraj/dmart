@@ -9,7 +9,6 @@ from models.enums import ContentType
 from utils import password_hashing
 from utils.async_request import AsyncRequest
 from utils.internal_error_code import InternalErrorCode
-from data_adapters.file.redis_services import RedisServices
 from utils.settings import settings
 from fastapi.logger import logger
 from fastapi import status
@@ -35,8 +34,7 @@ def gen_numeric(length=6):
 
 async def mock_sending_otp(msisdn) -> dict:
     key = f"users:otp:otps/{msisdn}"
-    async with RedisServices() as redis_services:
-        await redis_services.set_key(key, "123456", settings.otp_token_ttl)
+    await db.save_otp(key, "123456")
     json = {"status": "success", "data": {"status": "success"}}
     return json
 
@@ -112,8 +110,7 @@ async def send_otp(msisdn: str, language: str):
             case _:
                 message = f"رمز التحقق الخاص بك {code}"
 
-        async with RedisServices() as redis_services:
-            await redis_services.set(f"middleware:otp:otps/{msisdn}", code, settings.otp_token_ttl)
+        await db.save_otp(f"middleware:otp:otps/{msisdn}", code)
         
         async with AsyncRequest() as client:
             response = await client.post(
@@ -148,8 +145,7 @@ async def email_send_otp(email: str, language: str):
         return await mock_sending_otp(email)
     else:
         code = "".join(random.choice("0123456789") for _ in range(6))
-        async with RedisServices() as redis_services:
-            await redis_services.set_key(f"middleware:otp:otps/{email}", code, settings.otp_token_ttl)
+        await db.save_otp(f"middleware:otp:otps/{email}", code)
         message = f"<p>Your OTP code is <b>{code}</b></p>"
         return await send_email(settings.email_sender, email, message, "OTP", settings.send_email_otp_api)
 
@@ -286,8 +282,7 @@ async def set_user_profile(profile, profile_user, user):
         user.password = password_hashing.hash_password(profile_user.password)
         user.force_password_change = False
         # Clear the failed password attempts
-        async with RedisServices() as redis_services:
-            await redis_services.del_keys([f"users:failed_login_attempts/{profile.shortname}"])
+        await db.clear_failed_password_attempts(profile.shortname)
     if "displayname" in profile.attributes:
         user.displayname = profile_user.displayname.model_dump()
     if "description" in profile.attributes:
@@ -299,15 +294,12 @@ async def set_user_profile(profile, profile_user, user):
 
 
 async def get_otp_confirmation_email_or_msisdn(profile_user):
-    async with RedisServices() as redis_services:
-        if profile_user.email:
-            return await redis_services.get_content_by_id(
-                f"users:otp:confirmation/email/{profile_user.email}"
-            )
-        elif profile_user.msisdn:
-            return await redis_services.get_content_by_id(
-                f"users:otp:confirmation/msisdn/{profile_user.msisdn}"
-            )
+    if profile_user.email:
+       return await db.get_otp(f"users:otp:confirmation/email/{profile_user.email}")
+    elif profile_user.msisdn:
+        return await db.get_otp(f"users:otp:confirmation/msisdn/{profile_user.msisdn}")
+    return None
+
 
 async def update_user_payload(profile, profile_user, user, shortname):
     separate_payload_data = {}

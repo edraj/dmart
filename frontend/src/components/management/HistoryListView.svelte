@@ -112,8 +112,8 @@
     sort_type: "ascending",
   };
 
-  //! TBD: FIX THIS WORK AROUND AFTER VACATION
-  function returnASmallStupidValueCuzSvelteCantCastInMarkup(
+  // Helper function to format values for display in the UI
+  function formatValueForDisplay(
     v: any,
     key: string
   ) {
@@ -175,7 +175,7 @@
                       <li>
                         <b
                           >Old:
-                        </b><br>{returnASmallStupidValueCuzSvelteCantCastInMarkup(
+                        </b><br>{formatValueForDisplay(
                           v,
                           "old"
                       )}
@@ -183,7 +183,7 @@
                       <li>
                         <b
                           >New:
-                        </b><br>{returnASmallStupidValueCuzSvelteCantCastInMarkup(
+                        </b><br>{formatValueForDisplay(
                           v,
                           "new"
                       )}

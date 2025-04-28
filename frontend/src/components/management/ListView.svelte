@@ -334,8 +334,8 @@
   });
 
 
-  const toggelModal = () => {
-      open != open;
+  const toggleModal = () => {
+      open = !open;
   }
 
   function handleBulk(e) {
@@ -380,10 +380,10 @@
 {#key open}
   <Modal
     isOpen={open}
-    toggle={toggelModal}
+    toggle={toggleModal}
     size={"lg"}
   >
-<!--    <ModalHeader toggle={toggelModal}>{}</ModalHeader>-->
+<!--    <ModalHeader toggle={toggleModal}>{}</ModalHeader>-->
 
     <div class="modal-header">
       <h5 class="modal-title">
@@ -391,7 +391,7 @@
       </h5>
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <button type="button" onclick={toggelModal} class="btn-close" aria-label="Close">
+      <button type="button" on:click={toggleModal} class="btn-close" aria-label="Close">
       </button>
     </div>
 
@@ -399,10 +399,10 @@
       <Prism code={modalData} />
     </ModalBody>
     <ModalFooter>
-      <Button color="secondary" onclick={() => (open = false)}>Close</Button>
+      <Button color="secondary" on:click={() => (open = false)}>Close</Button>
       <Button
         color="primary"
-        onclick={() => {
+        on:click={() => {
           open = false;
           redirectToEntry(modalData);
         }}>Entry</Button
@@ -449,7 +449,7 @@
                   <!-- svelte-ignore a11y_click_events_have_key_events -->
                   <td
                     style="cursor: pointer;"
-                    onclick={() => onListClick(row)}
+                    on:click={() => onListClick(row)}
                   >
                     {value(
                       columns[col].path.split("."),

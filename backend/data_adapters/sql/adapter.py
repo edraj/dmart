@@ -34,6 +34,7 @@ from data_adapters.sql.create_tables import (
     Sessions,
     Invitations,
     URLShorts,
+    OTP,
 )
 from utils.helpers import (
     arr_remove_common,
@@ -51,11 +52,13 @@ from data_adapters.sql.adapter_helpers import (
     subpath_checker, parse_search_string, validate_search_range,
     sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
+    parse_search_array
 )
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+import re
 
 
 def query_attachment_aggregation(subpath):
@@ -158,7 +161,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
     if query.space_name:
         statement = statement.where(table.space_name == query.space_name)
     if query.subpath and table in [Entries, Attachments]:
-        statement = statement.where(table.subpath == query.subpath)
+        if query.exact_subpath:
+            statement = statement.where(table.subpath == query.subpath)
+        else:
+            statement = statement.where(text(f"subpath ILIKE '{query.subpath}%'"))
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
             statement = statement.where(text(
@@ -166,10 +172,18 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             ))
         else:
             for k, v in parse_search_string(query.search, table).items():
+                if v['is_array']:
+                    print(f"[!is_array] {k} = {v}")
+                    matchy = re.search(r"\$([a-zA-Z0-9_]+)", k)
+                    if matchy:
+                        statement = statement.where(text(
+                            parse_search_array(k, matchy.group(1), v['value'])
+                        ))
+                        continue
                 flag_neg = False
                 if "!" in v:
                     flag_neg = True
-                vv, v = validate_search_range(v)
+                vv, v = validate_search_range(v['value'])
                 if isinstance(v, str):
                     v = v.replace("!", "")
 
@@ -279,6 +293,40 @@ class SQLAdapter(BaseDataAdapter):
             shortname: str,
     ) -> str:
         return ""
+
+    async def save_otp(
+        self,
+        key: str,
+        otp: str,
+    ):
+        async with self.get_session() as session:
+            # Create a new OTP entry with the key and value
+            otp_entry = OTP(
+                key=key,
+                value={"otp": otp},
+                timestamp=datetime.now()
+            )
+            session.add(otp_entry)
+            await session.commit()
+
+    async def get_otp(
+        self,
+        key: str,
+    ):
+        async with self.get_session() as session:
+            # Query the OTP table for the given key
+            result = await session.execute(select(OTP).where(OTP.key == key))
+            otp_entry = result.scalar_one_or_none()
+
+            if otp_entry:
+                # Check if the OTP has expired
+                if (datetime.now() - otp_entry.timestamp).total_seconds() > settings.otp_token_ttl:
+                    # Remove expired OTP
+                    await session.delete(otp_entry)
+                    await session.commit()
+                    return None
+                return otp_entry.value.get("otp")
+            return None
 
     def metapath(self,
                  space_name: str,
@@ -548,10 +596,30 @@ class SQLAdapter(BaseDataAdapter):
         total : int
         results : list
         async with self.get_session() as session:
+            user_shortname = user_shortname if user_shortname else "anonymous"
             user_query_policies = await get_user_query_policies(
-                self, user_shortname if user_shortname else "anonymous", query.space_name, query.subpath
+                self, user_shortname, query.space_name, query.subpath
             )
+            user_permissions = await self.get_user_permissions(user_shortname)
+            upt = f"{query.space_name}:{query.subpath}"
+            user_permissions_target = [
+                key for key in user_permissions
+                if key.startswith(upt)
+            ]
 
+            query_allowed_fields_values = []
+            for t in user_permissions_target:
+                target_resource_type = t.split(":")[-1]
+                for k, v in user_permissions[t]['allowed_fields_values'].items():
+                    qq = f"(resource_type != '{target_resource_type}'"
+                    if isinstance(v, list):
+                        for vv in v:
+                            if isinstance(vv, str):
+                                qq += f" OR {k} @> '{vv}'"
+                            elif isinstance(vv, list):
+                                qq += f" OR {k} @> '{str(vv).replace('\'', '\"')}'"
+                        qq += ")"
+                        query_allowed_fields_values.append(qq)
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -594,6 +662,11 @@ class SQLAdapter(BaseDataAdapter):
             else:
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
+
+                if query_allowed_fields_values:
+                    for query_allowed_fields_value in query_allowed_fields_values:
+                        statement = statement.where(text(query_allowed_fields_value))
+                        statement_total = statement_total.where(text(query_allowed_fields_value))
 
             try:
                 if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
@@ -1177,10 +1250,10 @@ class SQLAdapter(BaseDataAdapter):
                 result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
                 await session.delete(result)
                 if meta.__class__ == core.Space:
-                    statement = delete(Entries).where(col(Entries.space_name) == space_name)
-                    await session.execute(statement)
                     statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name)
                     await session.execute(statement2)
+                    statement = delete(Entries).where(col(Entries.space_name) == space_name)
+                    await session.execute(statement)
                 await session.commit()
             except Exception as e:
                 print("[!delete]", e)
