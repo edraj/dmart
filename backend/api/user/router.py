@@ -26,6 +26,8 @@ from models.api import Error, Exception, Status
 from utils.social_sso import get_facebook_sso, get_google_sso
 from .service import (
     gen_alphanumeric,
+    get_active_otp_created_since,
+    get_otp_key,
     send_email,
     send_sms,
     send_otp,
@@ -90,40 +92,27 @@ async def create_user(record: core.Record) -> api.Response:
                             message="Register API is disabled"),
         )
 
-    # TBD validate invitation (simply it is a jwt signed token )
-    # jwt-signed shortname, email and expiration time
-    # if "invitation" not in record.attributes:
-    #     raise api.Exception(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         error=api.Error(
-    #             type="create", code=50, message="bad or missign invitation token"
-    #         ),
-    #     )
-
-    # TBD : Raise error if user already exists.
-
-    # if "password" not in record.attributes:
-    #     raise api.Exception(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         error=api.Error(type="create", code=50,
-    #                         message="empty password"),
-    #     )
-
+    validation_message: str | None = None
     if "email" not in record.attributes and "msisdn" not in record.attributes:
+        validation_message = "Email or MSISDN is required"
+
+    if "email" in record.attributes and "msisdn" in record.attributes:
+        validation_message = "Use Email or MSISDN not both"
+        
+    if record.attributes.get("email") and not record.attributes.get("email_otp"):
+        validation_message = "Email OTP is required"
+
+    if record.attributes.get("msisdn") and not record.attributes.get("msisdn_otp"):
+        validation_message = "MSISDN OTP is required"
+
+    if record.attributes.get("password") and not re.match(rgx.PASSWORD, record.attributes["password"]):
+        validation_message = "password dose not match required rules"
+    
+    if validation_message:
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(type="create", code=50,
-                            message="Email or MSISDN is required"),
-        )
-        
-    if record.attributes.get("password") and not re.match(rgx.PASSWORD, record.attributes["password"]):
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="jwtauth",
-                code=14,
-                message="password dose not match required rules",
-            ),
+                            message=validation_message),
         )
 
     await plugin_manager.before_action(
@@ -142,8 +131,24 @@ async def create_user(record: core.Record) -> api.Response:
         record=record,
         owner_shortname="dmart"
     )
-    user.is_email_verified = False
-    user.is_msisdn_verified = False
+    is_valid_otp = await verify_user(ConfirmOTPRequest(
+        msisdn=record.attributes.get("msisdn"),
+        email=record.attributes.get("email"),
+        code=record.attributes.get("msisdn_otp") or record.attributes.get("email_otp", "")
+    ))
+    if not is_valid_otp:
+        raise api.Exception(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=api.Error(type="create", code=50,
+                            message="Invalid OTP"),
+        )
+        
+    if user.msisdn:
+        user.is_email_verified = True
+    elif user.email:
+        user.is_msisdn_verified = True
+        
+    user.is_active = True
     await db.validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, "dmart")
 
     separate_payload_data: str | dict[str, Any] = {}
@@ -199,7 +204,7 @@ async def create_user(record: core.Record) -> api.Response:
             )
         ]
     )
-
+    
 
 @router.post(
     "/login",
@@ -305,7 +310,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 class_type=core.User,
                 user_shortname=shortname,
             )
-        #! TODO: Implement check agains is_email_verified && is_msisdn_verified
         
         is_password_valid = password_hashing.verify_password(
             request.password or "", user.password or ""
@@ -316,10 +320,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             and (
                 request.invitation
                 or is_password_valid
-            )
-            and (
-                (identifier and identifier.get("email") and user.is_email_verified) or
-                (identifier and identifier.get("msisdn") and user.is_msisdn_verified) 
             )
         ):
             await db.clear_failed_password_attempts(shortname)
@@ -493,7 +493,7 @@ async def update_profile(
         user_shortname=shortname,
     )
 
-    old_version_flattend = flatten_dict(user.model_dump())
+    old_version_flattened = flatten_dict(user.model_dump())
 
     if profile_user.password and "old_password" in profile.attributes:
         if not password_hashing.verify_password(
@@ -545,7 +545,7 @@ async def update_profile(
         MANAGEMENT_SPACE,
         USERS_SUBPATH,
         user,
-        old_version_flattend,
+        old_version_flattened,
         flatten_dict(user.model_dump()),
         list(profile.attributes.keys()),
         shortname,
