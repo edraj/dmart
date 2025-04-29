@@ -127,6 +127,29 @@ async def create_user(response: Response, record: core.Record) -> api.Response:
         record=record,
         owner_shortname="dmart"
     )
+    separate_payload_data: str | dict[str, Any] = {}
+    if record.attributes.get("payload", {}).get("body"):
+        schema_shortname = getattr(user.payload, "schema_shortname", None)
+        user.payload = core.Payload(
+            content_type=ContentType.json,
+            schema_shortname=schema_shortname,
+            body=record.attributes["payload"].get("body", ""),
+        )
+        if user.payload:
+            separate_payload_data = user.payload.body # type: ignore
+            user.payload.body = record.shortname + ".json"
+
+        if user.payload and separate_payload_data:
+            if not isinstance(separate_payload_data, str) and not isinstance(
+                separate_payload_data, Path
+            ):
+                if user.payload.schema_shortname:
+                    await db.validate_payload_with_schema(
+                        payload_data=separate_payload_data,
+                        space_name=MANAGEMENT_SPACE,
+                        schema_shortname=user.payload.schema_shortname,
+                    )
+                    
     if user.msisdn:
         is_valid_otp = await verify_user(ConfirmOTPRequest(
             msisdn=record.attributes.get("msisdn"),
@@ -155,29 +178,6 @@ async def create_user(response: Response, record: core.Record) -> api.Response:
         user.is_email_verified = True
         
     user.is_active = True
-
-    separate_payload_data: str | dict[str, Any] = {}
-    if record.attributes.get("payload", {}).get("body"):
-        schema_shortname = getattr(user.payload, "schema_shortname", None)
-        user.payload = core.Payload(
-            content_type=ContentType.json,
-            schema_shortname=schema_shortname,
-            body=record.attributes["payload"].get("body", ""),
-        )
-        if user.payload:
-            separate_payload_data = user.payload.body # type: ignore
-            user.payload.body = record.shortname + ".json"
-
-        if user.payload and separate_payload_data:
-            if not isinstance(separate_payload_data, str) and not isinstance(
-                separate_payload_data, Path
-            ):
-                if user.payload.schema_shortname:
-                    await db.validate_payload_with_schema(
-                        payload_data=separate_payload_data,
-                        space_name=MANAGEMENT_SPACE,
-                        schema_shortname=user.payload.schema_shortname,
-                    )
                 
     await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
     if isinstance(separate_payload_data, dict) and separate_payload_data:
@@ -477,6 +477,14 @@ async def update_profile(
     profile_user = core.Meta.check_record(
         record=profile, owner_shortname=profile.shortname
     )
+    
+    if profile.attributes.get("email") and not profile.attributes.get("email_otp"):
+        raise api.Exception(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=api.Error(type="create", code=50,
+                            message="Email OTP is required to update your email"),
+        )
+        
     if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -540,8 +548,19 @@ async def update_profile(
     else:
         await db.validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update, shortname)
         if "email" in profile.attributes and user.email != profile_user.email:
+            is_valid_otp = await verify_user(ConfirmOTPRequest(
+                email=profile.attributes.get("email"),
+                msisdn=None,
+                code=profile.attributes.get("email_otp", "")
+            ))
+            if not is_valid_otp:
+                raise api.Exception(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    error=api.Error(type="create", code=50,
+                                    message="Invalid Email OTP"),
+                )
             user.email = profile_user.email
-            user.is_email_verified = False
+            user.is_email_verified = True
 
         if profile_user.msisdn and user.msisdn != profile_user.msisdn:
             user.msisdn = profile_user.msisdn
