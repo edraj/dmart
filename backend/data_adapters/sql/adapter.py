@@ -189,8 +189,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                     value = value.replace("!", "")
 
                 is_list = isinstance(value, list) or ("[" in value and "]" in value)
+
                 if is_list:
                     value = string_to_list(value)
+
                 if key == 'roles':
                     is_list = True
                 if "->" in key:
@@ -200,6 +202,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             condition_statement += f" OR ({key.replace('>>', '>')})::jsonb @> '\"{value}\"'"
                         condition_statement += ")"
                         statement = statement.where(text(condition_statement))
+                    else:
+                        condition_statement = f"(({key}) {'!' if flag_neg else ''} IN ({', '.join([f'\"{item}\"' for item in value])}))"
+                        if "payload" in key:
+                            condition_statement = f" {key.replace('payload', 'payload::jsonb')} IN ({', '.join([f"'{item}'" for item in value])})"
+                        statement = statement.where(text(condition_statement))
+
                 elif is_list and range_values and value:
                     statement = statement.where(text(f"({key}) {'NOT' if flag_neg else ''} BETWEEN '{value[0]}' AND '{value[1]}'"))
                 elif is_list and value:
