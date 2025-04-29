@@ -202,7 +202,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             condition_statement += f" OR ({key.replace('>>', '>')})::jsonb @> '\"{value}\"'"
                         condition_statement += ")"
                         statement = statement.where(text(condition_statement))
-                    else:
+                    if isinstance(value, list):
                         condition_statement = f"(({key}) {'!' if flag_neg else ''} IN ({', '.join([f'\"{item}\"' for item in value])}))"
                         if "payload" in key:
                             condition_statement = f" {key.replace('payload', 'payload::jsonb')} IN ({', '.join([f"'{item}'" for item in value])})"
