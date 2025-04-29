@@ -70,7 +70,6 @@
     import PermissionForm from "./Forms/PermissionForm.svelte";
     import RoleForm from "./Forms/RoleForm.svelte";
     import UserForm from "@/components/management/renderers/Forms/UserForm.svelte";
-    import RelationshipForm from "@/components/management/renderers/Forms/RelationshipForm.svelte";
     import ACLForm from "@/components/management/renderers/Forms/ACLForm.svelte";
 
     // Modals
@@ -193,7 +192,7 @@
     let schemaFormRefContent: any = $state();
 
     // Relationships
-    let relationshipContent = $state(structuredClone(entry)?.relationships ?? null);
+    // let relationshipContent = $state(structuredClone(entry)?.relationships ?? null);
 
     // =========================================================================
     // Modal State and Content Creation
@@ -239,8 +238,8 @@
     let formModalContentPayload: any = {json: {}, text: undefined};
 
     // Relationship management in modal
-    let isNewEntryHasRelationship = $state(false);
-    let relationshipModalContent = $state(null);
+    // let isNewEntryHasRelationship = $state(false);
+    // let relationshipModalContent = $state(null);
 
     // Schema content for new entries
     let schemaContent = {json: {}, text: undefined};
@@ -489,61 +488,61 @@
         errorContent = null;
 
         // Process relationships
-        let _relationshipContent: any = relationshipContent
-            .filter(r => r.space_name)
-            .map(r => {
-                return {
-                    related_to: {
-                        type: r.type,
-                        space_name: r.space_name,
-                        subpath: r.subpath,
-                        shortname: r.shortname,
-                    },
-                    attributes: r.attributes.json ? r.attributes.json : JSON.parse(r.attributes.text)
-                };
-            });
+        // let _relationshipContent: any = relationshipContent
+        //     .filter(r => r.space_name)
+        //     .map(r => {
+        //         return {
+        //             related_to: {
+        //                 type: r.type,
+        //                 space_name: r.space_name,
+        //                 subpath: r.subpath,
+        //                 shortname: r.shortname,
+        //             },
+        //             attributes: r.attributes.json ? r.attributes.json : JSON.parse(r.attributes.text)
+        //         };
+        //     });
 
         // Validate relationships if needed
-        if (form === 'relationships') {
-            let flagRelationshipError = false;
+        // if (form === 'relationships') {
+        //     let flagRelationshipError = false;
 
             // Check if all related entries exist
-            await Promise.all(
-                _relationshipContent.map(async (r, idx) => {
-                    relationshipContent[idx].error = null;
-                    try {
-                        await retrieve_entry(
-                            r.related_to.type,
-                            r.related_to.space_name,
-                            r.related_to.subpath,
-                            r.related_to.shortname,
-                            false, false, false
-                        );
-                    } catch (e) {
-                        flagRelationshipError = true;
-                        relationshipContent[idx] = {
-                            ...relationshipContent[idx], error: e.message
-                        }
-                    }
-                })
-            )
-
-            relationshipContent = structuredClone(relationshipContent);
+            // await Promise.all(
+            //     _relationshipContent.map(async (r, idx) => {
+            //         relationshipContent[idx].error = null;
+            //         try {
+            //             await retrieve_entry(
+            //                 r.related_to.type,
+            //                 r.related_to.space_name,
+            //                 r.related_to.subpath,
+            //                 r.related_to.shortname,
+            //                 false, false, false
+            //             );
+            //         } catch (e) {
+            //             flagRelationshipError = true;
+            //             relationshipContent[idx] = {
+            //                 ...relationshipContent[idx], error: e.message
+            //             }
+            //         }
+            //     })
+            // )
+            //
+            // relationshipContent = structuredClone(relationshipContent);
 
             // Confirm proceeding with errors if any
-            if (flagRelationshipError) {
-                if (confirm("There are some errors in the relationships, do you want to continue ?") === false) {
-                    return;
-                }
-            }
-        }
+        //     if (flagRelationshipError) {
+        //         if (confirm("There are some errors in the relationships, do you want to continue ?") === false) {
+        //             return;
+        //         }
+        //     }
+        // }
 
         // Prepare metadata with relationships
         const x = jseMeta.json
             ? structuredClone($state.snapshot(jseMeta).json)
             : JSON.parse($state.snapshot(jseMeta).text);
 
-        x.relationships = _relationshipContent;
+        // x.relationships = _relationshipContent;
         let attributes: any = x;
 
         // Process payload content if exists
@@ -720,15 +719,16 @@
         event.preventDefault();
 
         // Process relationships if enabled
-        let _relationshipModalContent = []
-        if (isNewEntryHasRelationship) {
-            _relationshipModalContent = relationshipModalContent.filter(r => r.space_name).map(r => {
-                return {
-                    related_to: r,
-                    attributes: {}
-                };
-            });
-        }
+        // let _relationshipModalContent = []
+        // if (isNewEntryHasRelationship) {
+        //     console.log({isNewEntryHasRelationship})
+        //     _relationshipModalContent = $state.snapshot(relationshipModalContent).filter(r => r.space_name).map(r => {
+        //         return {
+        //             related_to: r,
+        //             attributes: {}
+        //         };
+        //     });
+        // }
 
         let response: any;
         let request_body: any = {};
@@ -757,13 +757,14 @@
                                 schema_shortname: "meta_schema",
                                 body: body,
                             },
-                            relationships: _relationshipModalContent,
+                            // relationships: _relationshipModalContent,
                         },
                     },
                 ],
             };
             response = await request(request_body);
-        } else if (new_resource_type === ResourceType.user) {
+        }
+        else if (new_resource_type === ResourceType.user) {
             let body: any;
             if (isModalContentEntryInForm) {
                 body = {}
@@ -789,13 +790,14 @@
                         body: formModalContentPayloadJson
                     }
                 }
-            } else {
+            }
+            else {
                 body = jseModalContent.json
                     ? structuredClone(jseModalContent.json)
                     : JSON.parse(jseModalContent.text);
             }
 
-            body.relationships = _relationshipModalContent;
+            // body.relationships = _relationshipModalContent;
             if (!body?.password) {
                 showToast(Level.warn, "Password must be provided!");
                 return;
@@ -865,7 +867,8 @@
                 space_name: space_name,
                 records: [request_body]
             });
-        } else if (entryType === "content") {
+        }
+        else if (entryType === "content") {
             if (selectedContentType === "json") {
                 let body: any;
 
@@ -905,12 +908,13 @@
                                     ...formModalMeta,
                                     is_active: true,
                                     ...body,
-                                    relationships: _relationshipModalContent,
+                                    // relationships: _relationshipModalContent,
                                 },
                             },
                         ],
                     };
-                } else {
+                }
+                else {
                     if (workflowShortname) {
                         request_body = {
                             ...request_body,
@@ -930,7 +934,7 @@
                                     ...formModalMeta,
                                     is_active: true,
                                     ...request_body,
-                                    relationships: _relationshipModalContent,
+                                    // relationships: _relationshipModalContent,
                                 },
                             },
                         ],
@@ -953,9 +957,10 @@
                     };
                 }
 
-                request_body.records[0].attributes.relationships = _relationshipModalContent,
-                    response = await request(request_body);
-            } else if (["text", "html", "markdown"].includes(selectedContentType)) {
+                // request_body.records[0].attributes.relationships = _relationshipModalContent
+                response = await request(request_body);
+            }
+            else if (["text", "html", "markdown"].includes(selectedContentType)) {
                 request_body = {
                     space_name,
                     request_type: RequestType.create,
@@ -971,13 +976,14 @@
                                     content_type: selectedContentType,
                                     body: jseModalContent,
                                 },
-                                relationships: _relationshipModalContent,
+                                // relationships: _relationshipModalContent,
                             },
                         },
                     ],
                 };
                 response = await request(request_body);
-            } else if (
+            }
+            else if (
                 ["image", "python", "pdf", "audio", "video"].includes(
                     selectedContentType
                 )
@@ -991,12 +997,14 @@
                     payloadFiles[0]
                 );
             }
-        } else if (entryType === "folder") {
+        }
+        else if (entryType === "folder") {
             let body: any = {};
-
-            body = jseModalContent.json
-                ? structuredClone(jseModalContent.json)
-                : JSON.parse(jseModalContent.text);
+            console.log({jseModalContent})
+            const _jseModalContent = $state.snapshot(jseModalContent);
+            body = _jseModalContent.json
+                ? structuredClone(_jseModalContent.json)
+                : JSON.parse(_jseModalContent.text);
 
             if (body.query && !!body.query.type === false) {
                 body.query.type = "search";
@@ -1020,7 +1028,7 @@
                                 schema_shortname: "folder_rendering",
                                 body: body ?? {},
                             },
-                            relationships: _relationshipModalContent,
+                            // relationships: _relationshipModalContent,
                         },
                     },
                 ],
@@ -1031,9 +1039,24 @@
         if (response.status === "success") {
             showToast(Level.info);
             contentShortname = "";
+            formModalMeta = {
+                tags: "",
+                displayname: {
+                    en: "",
+                    ar: "",
+                    ku: "",
+                },
+                description: {
+                    en: "",
+                    ar: "",
+                    ku: "",
+                },
+            }
+            formModalContent = {json: {}};
             isModalOpen = false;
             await refreshEntry();
-        } else {
+        }
+        else {
             showToast(Level.warn);
             errorContent = response.error;
         }
@@ -1261,7 +1284,7 @@
                 return;
             }
         }
-        console.log({schemaContent})
+
         if (schemaContent === null) {
             showToast(Level.warn, `Can't load the schema ${selectedSchema} !`);
             return;
@@ -1307,14 +1330,11 @@
             jseModalContent = newContent;
         }
         else {
-            console.log({_schema})
             validatorModalContent = createAjvValidator({schema: _schema});
             const body: any = generateObjectFromSchema(structuredClone(_schema));
-            console.log({body})
-            // Create a new object to ensure reactivity
+
             const newContent = {json: structuredClone(body)};
             jseModalContent = newContent;
-            console.log({jseModalContent})
         }
 
         oldSelectedSchema = selectedSchema;
@@ -1354,7 +1374,6 @@
             if (selectedContentType === "json") {
                 untrack(() => {
                     jseModalContent = {json: {}};
-                    console.log({jseModalContent})
                 });
 
             } else {
@@ -1380,7 +1399,6 @@
             untrack(() => {
                 validatorModalContent = createAjvValidator({schema: {}});
                 jseModalContent = {json: {}};
-                console.log({jseModalContent})
                 oldSelectedSchema = null;
             });
         } else if (selectedSchema !== oldSelectedSchema) {
@@ -1682,15 +1700,15 @@
                         <MarkdownEditor bind:content={jseModalContent}/>
                     {/if}
                 {/if}
-                <hr/>
-                <Input
-                    bind:checked={isNewEntryHasRelationship}
-                    type="checkbox"
-                    label="Add relationship ?"
-                />
-                {#if isNewEntryHasRelationship}
-                    <RelationshipForm bind:content={relationshipModalContent}/>
-                {/if}
+<!--                <hr/>-->
+<!--                <Input-->
+<!--                    bind:checked={isNewEntryHasRelationship}-->
+<!--                    type="checkbox"-->
+<!--                    label="Add relationship ?"-->
+<!--                />-->
+                <!--{#if isNewEntryHasRelationship}-->
+                <!--    <RelationshipForm bind:content={relationshipModalContent}/>-->
+                <!--{/if}-->
                 <hr/>
                 {#if errorContent}
                     <h3 class="mt-3">Error:</h3>
@@ -1834,17 +1852,17 @@
                         {/if}
                     {/if}
                     {#if ![ResourceType.folder, ResourceType.space].includes(resource_type)}
-                        <Button
-                                outline
-                                color="success"
-                                size="sm"
-                                class="justify-content-center text-center py-0 px-1"
-                                active={"relationships" === tab_option}
-                                title={$_("relationships")}
-                                onclick={() => (tab_option = "relationships")}
-                        >
-                            <Icon name="link"/>
-                        </Button>
+<!--                        <Button-->
+<!--                            outline-->
+<!--                            color="success"-->
+<!--                            size="sm"-->
+<!--                            class="justify-content-center text-center py-0 px-1"-->
+<!--                            active={"relationships" === tab_option}-->
+<!--                            title={$_("relationships")}-->
+<!--                            onclick={() => (tab_option = "relationships")}-->
+<!--                        >-->
+<!--                            <Icon name="link"/>-->
+<!--                        </Button>-->
                     {/if}
                     <Button
                             outline
@@ -2210,16 +2228,16 @@
                     </div>
                 </div>
             {/if}
-            <div class="tab-pane" class:active={tab_option === "relationships"}>
-                <div class="d-flex justify-content-end my-2 mx-5 flex-row">
-                    <div>
-                        <Button onclick={(e)=>handleSave(e, "relationships")}>Save</Button>
-                    </div>
-                </div>
-                <div class="px-5">
-                    <RelationshipForm bind:content={relationshipContent}/>
-                </div>
-            </div>
+<!--            <div class="tab-pane" class:active={tab_option === "relationships"}>-->
+<!--                <div class="d-flex justify-content-end my-2 mx-5 flex-row">-->
+<!--                    <div>-->
+<!--                        <Button onclick={(e)=>handleSave(e, "relationships")}>Save</Button>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <div class="px-5">-->
+<!--                    <RelationshipForm bind:content={relationshipContent}/>-->
+<!--                </div>-->
+<!--            </div>-->
             <div class="tab-pane" class:active={tab_option === "attachments"}>
                 <Attachments
                         {resource_type}
