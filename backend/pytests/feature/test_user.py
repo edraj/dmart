@@ -145,3 +145,26 @@ async def test_get_superman_profile(client: AsyncClient) -> None:
     response = await client.get("/user/profile")
     assert_code_and_status_success(response)
     assert response.json()['records'][0]['shortname'] == superman['shortname']
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_otp_request_login_success(client: AsyncClient):
+    payload = {
+        "email": new_user_data["email"]
+    }
+    response = await client.post("/user/otp-request-login", json=payload)
+    assert_code_and_status_success(response)
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_otp_validation_success(client: AsyncClient):
+    otp = "123456"
+    email = new_user_data["email"]
+
+    payload = {
+        "email": email,
+        "otp": otp
+    }
+    response = await client.post("/user/login", json=payload)
+    assert_code_and_status_success(response)

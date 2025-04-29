@@ -16,7 +16,7 @@ from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, sign_jwt, decode_jwt
-from typing import Any
+from typing import Any, Optional
 from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
@@ -266,7 +266,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 else:
                     key = f"middleware:otp:otps/{request.msisdn}"
             elif request.email:
-                if settings.mock_smtp_api:
+                if request.email:
                     key = f"users:otp:otps/{request.email}"
                 else:
                     key = f"middleware:otp:otps/{request.email}"
@@ -760,7 +760,15 @@ async def otp_request_login(
 
     if bool(msisdn) ^ bool(email):
         value = msisdn or email
-        assert value is not None  # ensure it's a str and not None (pyright fix)
+        if value is None:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_IDENTIFIER,
+                    message="Expected msisdn or email to be present."
+                )
+            )
     else:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -789,7 +797,15 @@ async def otp_request_login(
     if msisdn:
         await send_otp(msisdn, skel_accept_language or "")
     else:
-        assert email is not None  # ensure it's a str (also pyright fix)
+        if email is None:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_IDENTIFIER,
+                    message="Email must be provided if msisdn is not."
+                )
+            )
         await email_send_otp(email, skel_accept_language or "")
 
     return api.Response(status=api.Status.success)
