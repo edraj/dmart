@@ -171,53 +171,62 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 f"(shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload) ILIKE '%' || '{query.search}' || '%'"
             ))
         else:
-            for k, v in parse_search_string(query.search, table).items():
-                if v['is_array']:
-                    print(f"[!is_array] {k} = {v}")
-                    matchy = re.search(r"\$([a-zA-Z0-9_]+)", k)
-                    if matchy:
+            for key, value in parse_search_string(query.search, table).items():
+                if value['is_array']:
+                    print(f"[!is_array] {key} = {value}")
+                    match_result = re.search(r"\$([a-zA-Z0-9_]+)", key)
+                    if match_result:
                         statement = statement.where(text(
-                            parse_search_array(k, matchy.group(1), v['value'])
+                            parse_search_array(key, match_result.group(1), value['value'])
                         ))
                         continue
                 flag_neg = False
-                if "!" in v:
+                if "!" in value:
                     flag_neg = True
-                vv, v = validate_search_range(v['value'])
-                if isinstance(v, str):
-                    v = v.replace("!", "")
+                range_values, value = validate_search_range(value['value'])
 
-                is_list = isinstance(v, list) or ("[" in v and "]" in v)
+                if isinstance(value, str):
+                    value = value.replace("!", "")
+
+                is_list = isinstance(value, list) or ("[" in value and "]" in value)
+
                 if is_list:
-                    v = string_to_list(v)
-                if k == 'roles':
+                    value = string_to_list(value)
+
+                if key == 'roles':
                     is_list = True
-                if "->" in k:
-                    if isinstance(v, str):
-                        stm1 = f"(({k}) {'!' if flag_neg else ''}= '{v}'"
-                        if "payload" in k:
-                            stm1 += f" OR ({k.replace('>>', '>')})::jsonb @> '\"{v}\"'"
-                        stm1 += ")"
-                        statement = statement.where(text(stm1))
-                elif is_list and vv and v:
-                    statement = statement.where(text(f"({k}) {'NOT' if flag_neg else ''} BETWEEN '{v[0]}' AND '{v[1]}'"))
-                elif is_list and v:
-                    stm = ''
-                    if k in ["payload", "roles"]:
-                        if k == 'payload':
-                            in_2 = ', '.join([f'"{_v}"' for _v in v])
-                            stm += f"({k.replace('>>', '>')})::jsonb @> '[{in_2}]'"
-                        elif k == 'roles':
-                            in_2 = ', '.join([f'"{_v}"' for _v in v]) if isinstance(v, list) else f'"{v}"'
-                            stm += f"roles @> '[{in_2}]'"
+                if "->" in key:
+                    if isinstance(value, str):
+                        condition_statement = f"(({key}) {'!' if flag_neg else ''}= '{value}'"
+                        if "payload" in key:
+                            condition_statement += f" OR ({key.replace('>>', '>')})::jsonb @> '\"{value}\"'"
+                        condition_statement += ")"
+                        statement = statement.where(text(condition_statement))
+                    if isinstance(value, list):
+                        condition_statement = f"(({key}) {'!' if flag_neg else ''} IN ({', '.join([f'\"{item}\"' for item in value])}))"
+                        if "payload" in key:
+                            condition_statement = f" {key.replace('payload', 'payload::jsonb')} IN ({', '.join([f"'{item}'" for item in value])})"
+                        statement = statement.where(text(condition_statement))
+
+                elif is_list and range_values and value:
+                    statement = statement.where(text(f"({key}) {'NOT' if flag_neg else ''} BETWEEN '{value[0]}' AND '{value[1]}'"))
+                elif is_list and value:
+                    filter_statement = ''
+                    if key in ["payload", "roles"]:
+                        if key == 'payload':
+                            json_values_list = ', '.join([f'"{item_value}"' for item_value in value])
+                            filter_statement += f"({key.replace('>>', '>')})::jsonb @> '[{json_values_list}]'"
+                        elif key == 'roles':
+                            json_values_list = ', '.join([f'"{item_value}"' for item_value in value]) if isinstance(value, list) else f'"{value}"'
+                            filter_statement += f"roles @> '[{json_values_list}]'"
                     else:
-                        in_1 = ', '.join([f"'{_v}'" for _v in v])
-                        stm += f"(({k}) {'NOT' if flag_neg else ''} IN ({in_1}))"
-                    statement = statement.where(text(stm))
-                elif isinstance(v, str):
-                    statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= '{v}'"))
+                        sql_values_list = ', '.join([f"'{item_value}'" for item_value in value])
+                        filter_statement += f"(({key}) {'NOT' if flag_neg else ''} IN ({sql_values_list}))"
+                    statement = statement.where(text(filter_statement))
+                elif isinstance(value, str):
+                    statement = statement.where(text(f"{key} {'!' if flag_neg else ''}= '{value}'"))
                 else:
-                    statement = statement.where(text(f"{k} {'!' if flag_neg else ''}= {v}"))
+                    statement = statement.where(text(f"{key} {'!' if flag_neg else ''}= {value}"))
 
     if query.filter_schema_names:
         if 'meta' in query.filter_schema_names:
@@ -251,10 +260,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 if query.sort_by.startswith('attributes.'):
                     query.sort_by = query.sort_by[11:]
                 if "." in query.sort_by:
-                    t = transform_keys_to_sql(query.sort_by)
+                    sort_expression = transform_keys_to_sql(query.sort_by)
                     sort_type = " DESC" if query.sort_type == SortType.descending else ""
-                    t = f"CASE WHEN ({t}) ~ '^[0-9]+$' THEN ({t})::float END {sort_type}, ({t}) {sort_type}"
-                    statement = statement.order_by(text(t))
+                    sort_expression = f"CASE WHEN ({sort_expression}) ~ '^[0-9]+$' THEN ({sort_expression})::float END {sort_type}, ({sort_expression}) {sort_type}"
+                    statement = statement.order_by(text(sort_expression))
                 else:
                     if query.sort_type == SortType.ascending:
                         statement = statement.order_by(getattr(table, query.sort_by))
