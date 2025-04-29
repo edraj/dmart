@@ -313,7 +313,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
                 record = await process_user_login(user, response, {}, request.firebase_token)
                 return api.Response(status=api.Status.success, records=[record])
-            except Exception:
+            except Exception as e:
                 raise e
 
                 
