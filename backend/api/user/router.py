@@ -753,11 +753,26 @@ async def otp_request_login(
     skel_accept_language=Header(default=None),
 ) -> api.Response:
     """Request new OTP"""
-    result = user_request.check_fields()
 
-    value = result.get("msisdn") or result.get("email") or ""
+    result = user_request.check_fields()
+    msisdn = result.get("msisdn")
+    email = result.get("email")
+
+    if bool(msisdn) ^ bool(email):
+        value = msisdn or email
+        assert value is not None  # ensure it's a str and not None (pyright fix)
+    else:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="auth",
+                code=InternalErrorCode.OTP_ISSUE,
+                message="one of msisdn or email must be provided"
+            )
+        )
+
     user = await db.get_user_by_criteria(
-        "msisdn" if "msisdn" in result else "email",
+        "msisdn" if msisdn else "email",
         value,
     )
 
@@ -771,24 +786,13 @@ async def otp_request_login(
             ),
         )
 
-    if bool(result.get("msisdn")) ^ bool(result.get("email")):
-        if result.get("msisdn"):
-            await send_otp(result["msisdn"], skel_accept_language or "")
-        else:
-            await email_send_otp(result["email"], skel_accept_language or "")
-
-        return api.Response(status=api.Status.success)
-
-
+    if msisdn:
+        await send_otp(msisdn, skel_accept_language or "")
     else:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            api.Error(
-                type="auth",
-                code=InternalErrorCode.OTP_ISSUE,
-                message="one of msisdn or email must be provided"
-            )
-)
+        assert email is not None  # ensure it's a str (also pyright fix)
+        await email_send_otp(email, skel_accept_language or "")
+
+    return api.Response(status=api.Status.success)
 
 
 @router.post(
