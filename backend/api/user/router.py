@@ -248,67 +248,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             user_updates = check_user_validation(user, data, user_updates, invitation_token)
         elif request.otp:
             otp_code = request.otp
-            if bool(request.email) ^ bool(request.msisdn):
-
-                key: Optional[str] = None 
-
-                if request.msisdn:
-                    if request.msisdn:
-                        key = f"users:otp:otps/{request.msisdn}"
-                    else:
-                        key = f"middleware:otp:otps/{request.msisdn}"
-                elif request.email:
-                    if settings.mock_smtp_api:
-                        key = f"users:otp:otps/{request.email}"
-                    else:
-                        key = f"middleware:otp:otps/{request.email}"
-                # get the stored otp
-                stored_otp = await db.get_otp(key) if key else None
-
-
-                if stored_otp == otp_code:
-                    try:
-                        # get shortname if it's not already set
-                        if not shortname and identifier:
-                            if isinstance(identifier, dict):
-                                key, value = list(identifier.items())[0]
-                                
-                                shortname = identifier.get("shortname") or await get_shortname_from_identifier(value=value, key=key)
-                            else:
-                                shortname = await get_shortname_from_identifier(value=identifier, key=key)
-
-                        if not shortname:
-                            raise api.Exception(
-                                status.HTTP_401_UNAUTHORIZED,
-                                api.Error(
-                                    type="auth",
-                                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                                    message="Invalid identifier for OTP login."
-                                )
-                            )
-
-                        user = await db.load(
-                            space_name=MANAGEMENT_SPACE,
-                            subpath=USERS_SUBPATH,
-                            shortname=shortname,
-                            class_type=core.User,
-                            user_shortname=shortname,
-                        )
-
-                        record = await process_user_login(user, response, {}, request.firebase_token)
-                        return api.Response(status=api.Status.success, records=[record])
-                    except Exception:
-                        raise
-                else:
-                    raise api.Exception(
-                        status.HTTP_400_BAD_REQUEST,
-                        api.Error(
-                            type="auth",
-                            code=InternalErrorCode.OTP_ISSUE,
-                            message="Invalid OTP code."
-                        )
-                    )
-            else:
+            if not (bool(request.email) ^ bool(request.msisdn)):
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
@@ -317,6 +257,65 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         message="OTP not found."
                     )
                 )
+
+            key: Optional[str] = None
+
+            if request.msisdn:
+                if request.msisdn:
+                    key = f"users:otp:otps/{request.msisdn}"
+                else:
+                    key = f"middleware:otp:otps/{request.msisdn}"
+            elif request.email:
+                if settings.mock_smtp_api:
+                    key = f"users:otp:otps/{request.email}"
+                else:
+                    key = f"middleware:otp:otps/{request.email}"
+
+            # get the stored otp
+            stored_otp = await db.get_otp(key) if key else None
+
+            if stored_otp != otp_code:
+                raise api.Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    api.Error(
+                        type="auth",
+                        code=InternalErrorCode.OTP_ISSUE,
+                        message="Invalid OTP code."
+                    )
+                )
+
+            try:
+                # get shortname if it's not already set
+                if not shortname and identifier:
+                    if isinstance(identifier, dict):
+                        key, value = list(identifier.items())[0]
+                        shortname = identifier.get("shortname") or await get_shortname_from_identifier(value=value, key=key)
+                    else:
+                        shortname = await get_shortname_from_identifier(value=identifier, key=key)
+
+                if not shortname:
+                    raise api.Exception(
+                        status.HTTP_401_UNAUTHORIZED,
+                        api.Error(
+                            type="auth",
+                            code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                            message="Invalid identifier for OTP login."
+                        )
+                    )
+
+                user = await db.load(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    class_type=core.User,
+                    user_shortname=shortname,
+                )
+
+                record = await process_user_login(user, response, {}, request.firebase_token)
+                return api.Response(status=api.Status.success, records=[record])
+            except Exception:
+                raise e
+
                 
         else:
             if identifier is None:
