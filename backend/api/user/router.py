@@ -81,7 +81,7 @@ async def check_existing_user_fields(
 
 
 @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
-async def create_user(record: core.Record) -> api.Response:
+async def create_user(response: Response, record: core.Record) -> api.Response:
     """Register a new user by invitation"""
     if not settings.is_registrable:
         raise api.Exception(
@@ -109,6 +109,7 @@ async def create_user(record: core.Record) -> api.Response:
             error=api.Error(type="create", code=50,
                             message=validation_message),
         )
+    await db.validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, "dmart")
 
     await plugin_manager.before_action(
         core.Event(
@@ -154,7 +155,6 @@ async def create_user(record: core.Record) -> api.Response:
         user.is_email_verified = True
         
     user.is_active = True
-    await db.validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, "dmart")
 
     separate_payload_data: str | dict[str, Any] = {}
     if record.attributes.get("payload", {}).get("body"):
@@ -184,6 +184,8 @@ async def create_user(record: core.Record) -> api.Response:
         await db.update_payload(
             MANAGEMENT_SPACE, USERS_SUBPATH, user, separate_payload_data, user.owner_shortname
         )
+        
+    response_record = await process_user_login(user, response, {})
     
     await plugin_manager.after_action(
         core.Event(
@@ -203,7 +205,7 @@ async def create_user(record: core.Record) -> api.Response:
                 shortname=user.shortname,
                 subpath=USERS_SUBPATH,
                 resource_type=ResourceType.user,
-                attributes={}
+                attributes=response_record.attributes
             )
         ]
     )
