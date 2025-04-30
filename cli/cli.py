@@ -996,7 +996,7 @@ if __name__ == "__main__":
             print(sys.argv)
             action(" ".join(sys.argv))
         elif mode == CLI_MODE.SCRIPT:
-            with open(sys.argv[1], "r") as commands:
+            with open(sys.argv[0], "r") as commands:
                 is_comment_block = False
                 for command in commands:
                     if (
