@@ -633,7 +633,7 @@ class SQLAdapter(BaseDataAdapter):
             query_allowed_fields_values = []
             for t in user_permissions_target:
                 for k, v in user_permissions[t]['allowed_fields_values'].items():
-                    qq = f"("
+                    qq = "("
                     if isinstance(v, list):
                         for vv in v:
                             if not qq.endswith('('):
