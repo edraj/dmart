@@ -1,5 +1,7 @@
 import pytest
 from httpx import AsyncClient
+from fastapi import status
+from utils.internal_error_code import InternalErrorCode
 from pytests.base_test import (
     assert_code_and_status_success,
     assert_resource_created,
@@ -111,6 +113,46 @@ async def test_user_already_exist(client: AsyncClient):
     assert_code_and_status_success(response)
     assert response.json()["attributes"]["unique"] is False
 
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_otp_request_login_success(client: AsyncClient):
+    payload = {
+        "email": new_user_data["email"]
+    }
+
+    response = await client.post("/user/otp-request-login", json=payload)
+    assert_code_and_status_success(response)
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_otp_validation_success(client: AsyncClient):
+    request_body = {
+        "email": new_user_data["email"],
+        "otp": "123456",  
+    }
+
+    response = await client.post("/user/login", json=request_body)
+    assert_code_and_status_success(response)
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_otp_login_invalid_otp(client: AsyncClient):
+    payload = {
+        "email": new_user_data["email"],
+        "otp": "000000"  
+    }
+
+    response = await client.post("/user/login", json=payload)
+    json_response = response.json()
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert json_response.get("status") == "failed"
+    assert json_response.get("error", {}).get("type") == "auth"
+    assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_ISSUE
+    assert json_response.get("error", {}).get("message") == "Invalid OTP code."
+
+
 
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
@@ -146,25 +188,3 @@ async def test_get_superman_profile(client: AsyncClient) -> None:
     assert_code_and_status_success(response)
     assert response.json()['records'][0]['shortname'] == superman['shortname']
 
-@pytest.mark.run(order=1)
-@pytest.mark.anyio
-async def test_otp_request_login_success(client: AsyncClient):
-    payload = {
-        "email": new_user_data["email"]
-    }
-    response = await client.post("/user/otp-request-login", json=payload)
-    assert_code_and_status_success(response)
-
-
-@pytest.mark.run(order=1)
-@pytest.mark.anyio
-async def test_otp_validation_success(client: AsyncClient):
-    otp = "123456"
-    email = new_user_data["email"]
-
-    payload = {
-        "email": email,
-        "otp": otp
-    }
-    response = await client.post("/user/login", json=payload)
-    assert_code_and_status_success(response)

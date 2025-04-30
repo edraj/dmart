@@ -246,32 +246,26 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             user_updates["force_password_change"] = True
 
             user_updates = check_user_validation(user, data, user_updates, invitation_token)
+
         elif request.otp:
             otp_code = request.otp
+            
             if not (bool(request.email) ^ bool(request.msisdn)):
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="auth",
                         code=InternalErrorCode.OTP_ISSUE,
-                        message="OTP not found."
+                        message="Only one of email or msisdn must be provided."
                     )
                 )
 
             key: Optional[str] = None
-
             if request.msisdn:
-                if request.msisdn:
-                    key = f"users:otp:otps/{request.msisdn}"
-                else:
-                    key = f"middleware:otp:otps/{request.msisdn}"
+                key = f"users:otp:otps/{request.msisdn}"
             elif request.email:
-                if request.email:
-                    key = f"users:otp:otps/{request.email}"
-                else:
-                    key = f"middleware:otp:otps/{request.email}"
+                key = f"users:otp:otps/{request.email}"
 
-            # get the stored otp
             stored_otp = await db.get_otp(key) if key else None
 
             if stored_otp != otp_code:
@@ -285,7 +279,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 )
 
             try:
-                # get shortname if it's not already set
                 if not shortname and identifier:
                     if isinstance(identifier, dict):
                         key, value = list(identifier.items())[0]
@@ -313,8 +306,10 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
                 record = await process_user_login(user, response, {}, request.firebase_token)
                 return api.Response(status=api.Status.success, records=[record])
+
             except Exception as e:
                 raise e
+
 
                 
         else:
