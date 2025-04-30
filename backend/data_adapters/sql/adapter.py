@@ -141,7 +141,7 @@ def string_to_list(input_str):
 
 async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
-        if  query.type == QueryType.attachments_aggregation and not is_for_count:
+        if query.type == QueryType.attachments_aggregation and not is_for_count:
             return query_attachment_aggregation(query.subpath)
 
         if query.type == QueryType.aggregation and not is_for_count:
@@ -632,15 +632,22 @@ class SQLAdapter(BaseDataAdapter):
 
             query_allowed_fields_values = []
             for t in user_permissions_target:
-                target_resource_type = t.split(":")[-1]
                 for k, v in user_permissions[t]['allowed_fields_values'].items():
-                    qq = f"(resource_type != '{target_resource_type}'"
+                    qq = f"("
                     if isinstance(v, list):
                         for vv in v:
+                            if not qq.endswith('('):
+                                qq +=  ' OR'
                             if isinstance(vv, str):
-                                qq += f" OR {k} @> '{vv}'"
+                                if k.startswith("payload"):
+                                    qq += f" {transform_keys_to_sql(k)} = '{vv}'"
+                                else:
+                                    qq += f" {k} = '{vv}'"
                             elif isinstance(vv, list):
-                                qq += f" OR {k} @> '{str(vv).replace('\'', '\"')}'"
+                                if k.startswith("payload"):
+                                    qq += f" {transform_keys_to_sql(k)} = '{str(vv).replace('\'', '\"')}'"
+                                else:
+                                    qq += f" {k} = '{str(vv).replace('\'', '\"')}'"
                         qq += ")"
                         query_allowed_fields_values.append(qq)
             if not query.subpath.startswith("/"):
