@@ -247,26 +247,59 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
             user_updates = check_user_validation(user, data, user_updates, invitation_token)
 
-        elif request.otp:
+        elif request.otp is not None:
             otp_code = request.otp
-            
-            if not (bool(request.email) ^ bool(request.msisdn)):
+
+            if bool(request.email) and bool(request.msisdn):
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="auth",
                         code=InternalErrorCode.OTP_ISSUE,
-                        message="Only one of email or msisdn must be provided."
+                        message="Provide either msisdn or email, not both."
+                    )
+                )
+
+            if not request.email and not request.msisdn:
+                raise api.Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    api.Error(
+                        type="auth",
+                        code=InternalErrorCode.OTP_ISSUE,
+                        message="Either msisdn or email must be provided."
                     )
                 )
 
             key: Optional[str] = None
-            if request.msisdn:
-                key = f"users:otp:otps/{request.msisdn}"
-            elif request.email:
-                key = f"users:otp:otps/{request.email}"
+            if not shortname and identifier:
+                if isinstance(identifier, dict):
+                    key, value = list(identifier.items())[0]
+                    shortname = identifier.get("shortname") or await get_shortname_from_identifier(value=value, key=key)
+                else:
+                    shortname = await get_shortname_from_identifier(value=identifier, key=key)
 
-            stored_otp = await db.get_otp(key) if key else None
+            if not shortname:
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                        message="Invalid identifier for OTP login."
+                    )
+                )
+
+            key = f"users:otp:otps/{request.msisdn or request.email}"
+            stored_otp = await db.get_otp(key)
+
+            if stored_otp is None:
+                raise api.Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    api.Error(
+                        type="auth",
+                        code=InternalErrorCode.OTP_ISSUE,
+                        message="OTP not found or expired."
+                    )
+                )
 
             if stored_otp != otp_code:
                 raise api.Exception(
@@ -278,37 +311,17 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     )
                 )
 
-            try:
-                if not shortname and identifier:
-                    if isinstance(identifier, dict):
-                        key, value = list(identifier.items())[0]
-                        shortname = identifier.get("shortname") or await get_shortname_from_identifier(value=value, key=key)
-                    else:
-                        shortname = await get_shortname_from_identifier(value=identifier, key=key)
+            user = await db.load(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                class_type=core.User,
+                user_shortname=shortname,
+            )
 
-                if not shortname:
-                    raise api.Exception(
-                        status.HTTP_401_UNAUTHORIZED,
-                        api.Error(
-                            type="auth",
-                            code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                            message="Invalid identifier for OTP login."
-                        )
-                    )
+            record = await process_user_login(user, response, {}, request.firebase_token)
+            return api.Response(status=api.Status.success, records=[record])
 
-                user = await db.load(
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    shortname=shortname,
-                    class_type=core.User,
-                    user_shortname=shortname,
-                )
-
-                record = await process_user_login(user, response, {}, request.firebase_token)
-                return api.Response(status=api.Status.success, records=[record])
-
-            except Exception as e:
-                raise e
 
 
                 
