@@ -1,4 +1,4 @@
-#!/usr/bin/env -S BACKEND_ENV=config.ini python
+#!/usr/bin/env python
 
 import os
 from prompt_toolkit import PromptSession
@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     default_space: str = "management"
     pagination: int = 5
 
-    model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", "config.ini"), env_file_encoding = "utf-8")
+    model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", os.path.dirname(os.path.realpath(__file__)) + "config.ini"), env_file_encoding = "utf-8")
 
 
 settings = Settings()
