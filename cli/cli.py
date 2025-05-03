@@ -125,7 +125,7 @@ class DMart:
 
         if response.status_code != 200:
             print(endpoint, response.json())
-        return response.json()
+        return response.json().get('status', None)
 
     def delete(self, spacename, subpath, shortname, resource_type):
         endpoint = "/managed/request"
@@ -495,7 +495,7 @@ def action(text: str):
                 "Delete the shortname (entry or attachment)",
             )
             table.add_row(
-                "[blue]create folder <subpath>[/]", "Create folder for current space"
+                "[blue]create [space|folder] <shortname>[/]", "Create space/folder for current space"
             )
             table.add_row(
                 "[blue]upload csv <resource_type> <shortname> <schema_shortname> <csv_file>[/]",
@@ -519,8 +519,10 @@ def action(text: str):
             table.add_row("[blue]exit|Ctrl+d[/]", "Exit the app")
             table.add_row("[blue]help|h|?[/]", "Show this help")
             print(table)
+            return None
         case ["mkdir", dir_shortname]:
             print(dmart.create_folder(dir_shortname))
+            return None
         case ["attach", *args]:
             shortname = None
             entry_shortname = None
@@ -543,6 +545,7 @@ def action(text: str):
                     payload_file,
                 )
             )
+            return None
         case ["upload", "schema", *args]:
             shortname = None
             payload_file = None
@@ -551,7 +554,7 @@ def action(text: str):
                 search = re.search(r"@\w+", args[2])
                 if not search:
                     print("[red]Malformated Command")
-                    return
+                    return None
                 space = search.group()
                 space = space.replace("@", "")
                 check_update_space(space)
@@ -564,6 +567,7 @@ def action(text: str):
             check_update_space(old_space)
             dmart.current_subpath = old_subpath
             dmart.list()
+            return None
         case ["create", *args]:
             shortname = None
             resource_type = None
@@ -571,7 +575,7 @@ def action(text: str):
                 search = re.search(r"@\w+", args[2])
                 if not search:
                     print("[red]Malformated Command")
-                    return
+                    return None
                 space = search.group()
                 space = space.replace("@", "")
                 check_update_space(space)
@@ -588,6 +592,7 @@ def action(text: str):
             check_update_space(old_space)
             dmart.current_subpath = old_subpath
             dmart.list()
+            return None
         case ["move", type, source, destination]:
             if not source.startswith("/"):
                 source += f"{dmart.current_subpath}/{source}"
@@ -606,6 +611,7 @@ def action(text: str):
                     destination_shortname,
                 )
             )
+            return None
 
         case ["progress", ticket_subpath, ticket_shortname, new_state]:
             endpoint = f"{settings.url}/managed/progress-ticket/{dmart.current_space}/{ticket_subpath}/{ticket_shortname}/{new_state}"
@@ -615,49 +621,36 @@ def action(text: str):
                 headers=dmart.headers,
             )
             print(response.json())
+            return None
         case ["request", *args]:
-            folder_schema_path = None
+            if len(args) != 1:
+                print("[red]Malformated Command")
+                return None
 
-            is_content = args[0] == "content"
-
-            if (len(args) == 3 and is_content) or (len(args) == 2 and not is_content):
-                search = re.search(r"@\w+", args[1])
-                if not search:
-                    print("[red]Malformated Command")
-                    return
-                space = search.group()
-                space = space.replace("@", "")
-                check_update_space(space)
-                dmart.current_subpath = args[1].replace(f"@{space}/", "")
-                dmart.list()
-
-            if is_content:
-                with open(args[1]) as f:
-                    return print(
-                        dmart.create_content("/managed/request", json.load(f)), end="\r"
-                    )
-            else:
-                folder_schema_path = args[0]
-                print(dmart.upload_folder(folder_schema_path), end="\r")
+            with open(args[0]) as f:
+                return print(
+                dmart.create_content("/managed/request", json.load(f)), end="\r"
+                )
 
             check_update_space(old_space)
             dmart.current_subpath = old_subpath
             dmart.list()
+            return None
         case ["query", shortname]:
             action(f"query {shortname}")
             action("ls")
             action("cd ..")
-            pass
+            return None
         case ["upload", "csv", *args]:
-            print(args)
             if len(args) == 4:
                 print(dmart.upload_csv(args[0], args[1], args[2], args[3]))
             elif len(args) == 3:
                 print("[red]Malformated Command")
-                return
+                return None
             check_update_space(old_space)
             dmart.current_subpath = old_subpath
             dmart.list()
+            return None
         case ["rm", "*"]:
             dmart.list()
             for one in dmart.current_subpath_entries:
@@ -673,6 +666,7 @@ def action(text: str):
                             resource_type,
                         ),
                     )
+            return None
         case ["rm", *content]:
             if content[0] == "space":
                 print(dmart.manage_space(content[1], SpaceManagmentType.DELETE))
@@ -683,7 +677,7 @@ def action(text: str):
                     search = re.search(r"@\w+", content)
                     if not search:
                         print("[red]Malformated Command")
-                        return
+                        return None
                     space = search.group()
                     space = space.replace("@", "")
                     check_update_space(space)
@@ -711,10 +705,12 @@ def action(text: str):
                 dmart.list()
         case ["pwd"]:
             print(f"{dmart.current_space}:{dmart.current_subpath}")
+            return None
         case ["cd"]:
             dmart.current_subpath = "/"
             dmart.list()
             print(f"[yellow]Switched subpath to:[/] [green]{dmart.current_subpath}[/]")
+            return None
         case ["cd", ".."]:
             if dmart.current_subpath != "/":
                 dmart.current_subpath = "/".join(dmart.current_subpath.split("/")[:-1])
@@ -722,6 +718,7 @@ def action(text: str):
                 dmart.current_subpath = "/"
             dmart.list()
             print(f"[yellow]Switched subpath to:[/] [green]{dmart.current_subpath}[/]")
+            return None
         case ["p" | "print", content]:
             shortname = ""
             resource_type = ""
@@ -746,7 +743,7 @@ def action(text: str):
                 search = re.search(r"@\w+", directory)
                 if not search:
                     print("[red]Malformated Command")
-                    return
+                    return None
                 space = search.group()
                 space = space.replace("@", "")
                 check_update_space(space)
@@ -773,6 +770,8 @@ def action(text: str):
                         f"[yellow]Switched subpath to:[/] [green]{dmart.current_subpath}[/]"
                     )
                     break
+                    return None
+            return None
         case ["c" | "cat", *extra_shortname]:
             old_path = dmart.current_subpath
             if "/" in extra_shortname[0]:
@@ -797,7 +796,7 @@ def action(text: str):
         case ["ls", *_extra_subpath]:
             if len(_extra_subpath) >= 2:
                 print("Too many args passed !")
-                return
+                return None
 
             extra_subpath = ""
             if len(_extra_subpath) == 1 and not _extra_subpath[0].isnumeric():
@@ -810,7 +809,7 @@ def action(text: str):
                     search = re.search(r"@\w+", _extra_subpath[0])
                     if not search:
                         print("[red]Malformated Command")
-                        return
+                        return None
                     space = search.group()
                     space = space.replace("@", "")
                     check_update_space(space)
@@ -897,14 +896,16 @@ def action(text: str):
                             idx += 1
                     finally:
                         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                        return None
                 # c = input("q: quite, b: previous, n: next = ")
             # print(tree)
             dmart.current_space, dmart.current_subpath = old_space, old_subpath
             dmart.list()
+            return None
         case ["s" | "switch", *space]:
             if len(space) == 0:
                 dmart.print_spaces()
-                return
+                return None
             match = False
             for one in dmart.space_names:
                 if space and one.startswith(space[0]):
@@ -918,8 +919,11 @@ def action(text: str):
                     break
             if not match:
                 print(f"Requested space {space} not found")
+                return None
+            return None
         case _:
             print(f"[red]Command[/] [yello]{text}[/] [red]unknown[/]")
+            return None
 
 
 var : dict = {}
@@ -992,7 +996,7 @@ if __name__ == "__main__":
             print(sys.argv)
             action(" ".join(sys.argv))
         elif mode == CLI_MODE.SCRIPT:
-            with open(sys.argv[1], "r") as commands:
+            with open(sys.argv[0], "r") as commands:
                 is_comment_block = False
                 for command in commands:
                     if (
