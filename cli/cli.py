@@ -1,4 +1,4 @@
-#!/usr/bin/env -S BACKEND_ENV=config.ini python
+#!/usr/bin/env python
 
 import os
 from prompt_toolkit import PromptSession
@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     default_space: str = "management"
     pagination: int = 5
 
-    model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", "config.ini"), env_file_encoding = "utf-8")
+    model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", os.path.dirname(os.path.realpath(__file__)) + "config.ini"), env_file_encoding = "utf-8")
 
 
 settings = Settings()
@@ -166,8 +166,8 @@ class DMart:
     def profile(self):
         self.__dmart_api("/user/profile")
 
-    def spaces(self):
-        if not self.dmart_spaces:
+    def spaces(self, force: bool = False):
+        if force or not self.dmart_spaces:
             json = {
                 "type": "spaces",
                 "space_name": "management",
@@ -266,7 +266,9 @@ class DMart:
                 }
             ],
         }
-        return self.__dmart_api(endpoint, json)
+        result = self.__dmart_api(endpoint, json)
+        self.spaces(force=True)
+        return result
 
     def create_entry(self, shortname, resource_type):
         endpoint = "/managed/request"
