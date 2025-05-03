@@ -166,8 +166,8 @@ class DMart:
     def profile(self):
         self.__dmart_api("/user/profile")
 
-    def spaces(self):
-        if not self.dmart_spaces:
+    def spaces(self, force: bool = False):
+        if force or not self.dmart_spaces:
             json = {
                 "type": "spaces",
                 "space_name": "management",
@@ -266,7 +266,9 @@ class DMart:
                 }
             ],
         }
-        return self.__dmart_api(endpoint, json)
+        result = self.__dmart_api(endpoint, json)
+        self.spaces(force=True)
+        return result
 
     def create_entry(self, shortname, resource_type):
         endpoint = "/managed/request"
