@@ -302,6 +302,16 @@ class SQLAdapter(BaseDataAdapter):
             shortname: str,
     ) -> str:
         return ""
+    
+    async def otp_created_since(self, key: str) -> int | None:
+        async with self.get_session() as session:
+            result = await session.execute(select(OTP).where(OTP.key == key))
+            otp_entry = result.scalar_one_or_none()
+            
+            if otp_entry:
+                return int((datetime.now() - otp_entry.timestamp).total_seconds())
+            
+            return None
 
     async def save_otp(
             self,

@@ -329,7 +329,7 @@ class User(Actor):
     msisdn: str | None = Field(default=None, pattern=regex.MSISDN)
     is_email_verified: bool = False
     is_msisdn_verified: bool = False
-    force_password_change: bool = True
+    force_password_change: bool = False
     type: UserType = UserType.web
     roles: list[str] = []
     groups: list[str] = []

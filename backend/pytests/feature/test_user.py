@@ -12,6 +12,8 @@ from pytests.base_test import (
 )
 from models.api import Query
 from models.enums import QueryType, ResourceType
+from fastapi import status
+from utils.internal_error_code import InternalErrorCode
 
 
 new_user_data = {
@@ -29,7 +31,32 @@ async def test_user_does_not_exist(client: AsyncClient):
     assert_code_and_status_success(response)
     assert response.json()["attributes"]["unique"] is True
 
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_request_email_otp(client: AsyncClient):
+    request_body = {
+        "email": new_user_data["email"]
+    }
+    response = await client.post("/user/otp-request", json=request_body)
+    json_response = response.json()
+    if response.status_code == status.HTTP_200_OK:
+        assert json_response.get("status") == "success"
+    elif response.status_code == status.HTTP_403_FORBIDDEN:
+        assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_RESEND_BLOCKED
 
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_request_msisdn_otp(client: AsyncClient):
+    request_body = {
+        "msisdn": new_user_data["msisdn"]
+    }
+    response = await client.post("/user/otp-request", json=request_body)
+    json_response = response.json()
+    if response.status_code == status.HTTP_200_OK:
+        assert json_response.get("status") == "success"
+    elif response.status_code == status.HTTP_403_FORBIDDEN:
+        assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_RESEND_BLOCKED
+    
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_create_user(client: AsyncClient):
@@ -38,14 +65,11 @@ async def test_create_user(client: AsyncClient):
         "shortname": new_user_data["shortname"],
         "subpath": USERS_SUBPATH,
         "attributes": {
-            "invitation": "",
-            "is_active": True,
-            "is_email_verified": True,
-            "is_msisdn_verified": True,
             "password": "Test1234",
             "email": new_user_data["email"],
+            "email_otp": "123456",
             "msisdn": new_user_data["msisdn"],
-            "roles": [],
+            "msisdn_otp": "123456"
         },
     }
 
@@ -67,7 +91,7 @@ async def test_create_user(client: AsyncClient):
         res_subpath=USERS_SUBPATH,
         res_attributes={},
     )
-
+    
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_login_with_the_new_user(client: AsyncClient):

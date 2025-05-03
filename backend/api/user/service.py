@@ -38,34 +38,47 @@ async def mock_sending_otp(msisdn) -> dict:
     json = {"status": "success", "data": {"status": "success"}}
     return json
 
+def get_otp_key(user_identifier: dict[str, str]) -> str:
+    if "msisdn" in user_identifier:
+        if settings.mock_smpp_api:
+            return f"users:otp:otps/{user_identifier['msisdn']}"
+        else:
+            return f"middleware:otp:otps/{user_identifier['msisdn']}"
+    elif "email" in user_identifier:
+        if settings.mock_smtp_api:
+            return f"users:otp:otps/{user_identifier['email']}"
+        else:
+            return f"middleware:otp:otps/{user_identifier['email']}"
+            
+    return ""
 
 async def send_otp(msisdn: str, language: str):
     json = {}
     status: int
     if settings.mock_smpp_api:
         return await mock_sending_otp(msisdn)
-    else:
-        # Creating SMS message body
-        code = gen_numeric()
-        message = ""
-        match language:
-            case "ckb":
-                message = f"کۆدی دڵنیابوونی تایبەت بەخۆت {code}"
-            case "en":
-                message = f"Your otp code is {code}"
-            case _:
-                message = f"رمز التحقق الخاص بك {code}"
-
-        await db.save_otp(f"middleware:otp:otps/{msisdn}", code)
         
-        async with AsyncRequest() as client:
-            response = await client.post(
-                settings.send_sms_otp_api,
-                headers={**headers, "skel-accept-language": language},
-                json={"msisdn": msisdn, "text": message},
-            )
-            json = await response.json()
-            status = response.status
+    # Creating SMS message body
+    code = gen_numeric()
+    message = ""
+    match language:
+        case "ckb":
+            message = f"کۆدی دڵنیابوونی تایبەت بەخۆت {code}"
+        case "en":
+            message = f"Your otp code is {code}"
+        case _:
+            message = f"رمز التحقق الخاص بك {code}"
+
+    await db.save_otp(f"middleware:otp:otps/{msisdn}", code)
+    
+    async with AsyncRequest() as client:
+        response = await client.post(
+            settings.send_sms_otp_api,
+            headers={**headers, "skel-accept-language": language},
+            json={"msisdn": msisdn, "text": message},
+        )
+        json = await response.json()
+        status = response.status
 
     if status != 200:
         raise Exception(
@@ -78,11 +91,11 @@ async def send_otp(msisdn: str, language: str):
 async def email_send_otp(email: str, language: str):
     if settings.mock_smtp_api:
         return await mock_sending_otp(email)
-    else:
-        code = "".join(random.choice("0123456789") for _ in range(6))
-        await db.save_otp(f"middleware:otp:otps/{email}", code)
-        message = f"<p>Your OTP code is <b>{code}</b></p>"
-        return await send_email(settings.email_sender, email, message, "OTP", settings.send_email_otp_api)
+
+    code = "".join(random.choice("0123456789") for _ in range(6))
+    await db.save_otp(f"middleware:otp:otps/{email}", code)
+    message = f"<p>Your OTP code is <b>{code}</b></p>"
+    return await send_email(settings.email_sender, email, message, "OTP", settings.send_email_otp_api)
 
 
 async def send_sms(msisdn: str, message: str) -> bool:

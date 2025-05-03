@@ -16,7 +16,7 @@ from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, sign_jwt, decode_jwt
-from typing import Any, Optional
+from typing import Any
 from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
@@ -25,6 +25,7 @@ from models.api import Error, Exception, Status
 from utils.social_sso import get_facebook_sso, get_google_sso
 from .service import (
     gen_alphanumeric,
+    get_otp_key,
     send_email,
     send_sms,
     send_otp,
@@ -80,7 +81,7 @@ async def check_existing_user_fields(
 
 
 @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
-async def create_user(record: core.Record) -> api.Response:
+async def create_user(response: Response, record: core.Record) -> api.Response:
     """Register a new user by invitation"""
     if not settings.is_registrable:
         raise api.Exception(
@@ -89,34 +90,26 @@ async def create_user(record: core.Record) -> api.Response:
                             message="Register API is disabled"),
         )
 
-    if "invitation" not in record.attributes:
-        # TBD validate invitation (simply it is a jwt signed token )
-        # jwt-signed shortname, email and expiration time
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="create", code=50, message="bad or missign invitation token"
-            ),
-        )
+    validation_message: str | None = None
+    if "email" not in record.attributes and "msisdn" not in record.attributes:
+        validation_message = "Email or MSISDN is required"
+        
+    if record.attributes.get("email") and not record.attributes.get("email_otp"):
+        validation_message = "Email OTP is required"
 
-    # TBD : Raise error if user already eists.
+    if record.attributes.get("msisdn") and not record.attributes.get("msisdn_otp"):
+        validation_message = "MSISDN OTP is required"
 
-    if "password" not in record.attributes:
+    if record.attributes.get("password") and not re.match(rgx.PASSWORD, record.attributes["password"]):
+        validation_message = "password dose not match required rules"
+    
+    if validation_message:
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(type="create", code=50,
-                            message="empty password"),
+                            message=validation_message),
         )
-        
-    if not re.match(rgx.PASSWORD, record.attributes["password"]):
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="jwtauth",
-                code=14,
-                message="password dose not match required rules",
-            ),
-        )
+    await db.validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, "dmart")
 
     await plugin_manager.before_action(
         core.Event(
@@ -128,20 +121,19 @@ async def create_user(record: core.Record) -> api.Response:
             user_shortname=record.shortname,
         )
     )
+    
     record.resource_type = ResourceType.user
     user = core.User.from_record(
         record=record,
         owner_shortname="dmart"
     )
-    await db.validate_uniqueness(MANAGEMENT_SPACE, record, RequestType.create, "dmart")
-
     separate_payload_data: str | dict[str, Any] = {}
-    if "payload" in record.attributes and "body" in record.attributes["payload"]:
+    if record.attributes.get("payload", {}).get("body"):
         schema_shortname = getattr(user.payload, "schema_shortname", None)
         user.payload = core.Payload(
             content_type=ContentType.json,
             schema_shortname=schema_shortname,
-            body=record.attributes["payload"]["body"] if record.attributes["payload"].get("body", False) else "",
+            body=record.attributes["payload"].get("body", ""),
         )
         if user.payload:
             separate_payload_data = user.payload.body # type: ignore
@@ -157,9 +149,44 @@ async def create_user(record: core.Record) -> api.Response:
                         space_name=MANAGEMENT_SPACE,
                         schema_shortname=user.payload.schema_shortname,
                     )
-
+                    
+    if user.msisdn:
+        is_valid_otp = await verify_user(ConfirmOTPRequest(
+            msisdn=record.attributes.get("msisdn"),
+            email=None,
+            code=record.attributes.get("msisdn_otp", "")
+        ))
+        if not is_valid_otp:
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(type="create", code=50,
+                                message="Invalid MSISDN OTP"),
+            )
+        user.is_msisdn_verified = True
+    if user.email:
+        is_valid_otp = await verify_user(ConfirmOTPRequest(
+            email=record.attributes.get("email"),
+            msisdn=None,
+            code=record.attributes.get("email_otp", "")
+        ))
+        if not is_valid_otp:
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(type="create", code=50,
+                                message="Invalid Email OTP"),
+            )
+        user.is_email_verified = True
+        
+    user.is_active = True
+                
     await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
-
+    if isinstance(separate_payload_data, dict) and separate_payload_data:
+        await db.update_payload(
+            MANAGEMENT_SPACE, USERS_SUBPATH, user, separate_payload_data, user.owner_shortname
+        )
+        
+    response_record = await process_user_login(user, response, {})
+    
     await plugin_manager.after_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,
@@ -178,12 +205,20 @@ async def create_user(record: core.Record) -> api.Response:
                 shortname=user.shortname,
                 subpath=USERS_SUBPATH,
                 resource_type=ResourceType.user,
-                attributes={}
+                attributes=response_record.attributes
             )
         ]
     )
-
-
+  
+async def verify_user(user_request: ConfirmOTPRequest):
+    user_identifier = user_request.check_fields()
+    key = get_otp_key(user_identifier)
+    code = await db.get_otp(key)
+    if not code or code != user_request.code:
+        return False
+    
+    return True  
+   
 @router.post(
     "/login",
     response_model=api.Response,
@@ -194,7 +229,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     shortname: str | None = None
     user = None
     user_updates: dict[str, Any] = {}
-    identifier = request.check_fields()
+    identifier: dict[str, str] | None = request.check_fields()
     try:
         if request.invitation:
             invitation_token = await db.get_invitation(request.invitation)
@@ -270,7 +305,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     )
                 )
 
-            key: Optional[str] = None
+            key: str | None = None
             if not shortname and identifier:
                 if isinstance(identifier, dict):
                     key, value = list(identifier.items())[0]
@@ -366,7 +401,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 class_type=core.User,
                 user_shortname=shortname,
             )
-        #! TODO: Implement check agains is_email_verified && is_msisdn_verified
+        
         is_password_valid = password_hashing.verify_password(
             request.password or "", user.password or ""
         )
@@ -521,6 +556,14 @@ async def update_profile(
     profile_user = core.Meta.check_record(
         record=profile, owner_shortname=profile.shortname
     )
+    
+    if profile.attributes.get("email") and not profile.attributes.get("email_otp"):
+        raise api.Exception(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=api.Error(type="create", code=50,
+                            message="Email OTP is required to update your email"),
+        )
+        
     if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -550,7 +593,7 @@ async def update_profile(
         user_shortname=shortname,
     )
 
-    old_version_flattend = flatten_dict(user.model_dump())
+    old_version_flattened = flatten_dict(user.model_dump())
 
     if profile_user.password and "old_password" in profile.attributes:
         if not password_hashing.verify_password(
@@ -584,8 +627,19 @@ async def update_profile(
     else:
         await db.validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update, shortname)
         if "email" in profile.attributes and user.email != profile_user.email:
+            is_valid_otp = await verify_user(ConfirmOTPRequest(
+                email=profile.attributes.get("email"),
+                msisdn=None,
+                code=profile.attributes.get("email_otp", "")
+            ))
+            if not is_valid_otp:
+                raise api.Exception(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    error=api.Error(type="create", code=50,
+                                    message="Invalid Email OTP"),
+                )
             user.email = profile_user.email
-            user.is_email_verified = False
+            user.is_email_verified = True
 
         if profile_user.msisdn and user.msisdn != profile_user.msisdn:
             user.msisdn = profile_user.msisdn
@@ -602,7 +656,7 @@ async def update_profile(
         MANAGEMENT_SPACE,
         USERS_SUBPATH,
         user,
-        old_version_flattend,
+        old_version_flattened,
         flatten_dict(user.model_dump()),
         list(profile.attributes.keys()),
         shortname,
@@ -715,39 +769,28 @@ async def delete_account(shortname=Depends(JWTBearer())) -> api.Response:
 )
 async def otp_request(
     user_request: SendOTPRequest,
-    skel_accept_language=Header(default=None),
-    shortname=Depends(JWTBearer()),
+    skel_accept_language=Header(default=None)
 ) -> api.Response:
     """Request new OTP"""
-
-    result = user_request.check_fields()
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-    )
-    exception = api.Exception(
-        status.HTTP_401_UNAUTHORIZED,
+    
+    user_identifier = user_request.check_fields()
+    otp_key = get_otp_key(user_identifier)
+    last_otp_since = await db.otp_created_since(otp_key)
+    
+    if (last_otp_since and last_otp_since < settings.allow_otp_resend_after):
+        raise api.Exception(
+        status.HTTP_403_FORBIDDEN,
         api.Error(
             type="request",
-            code=InternalErrorCode.UNMATCHED_DATA,
-            message="mismatch with the information provided",
+            code=InternalErrorCode.OTP_RESEND_BLOCKED,
+            message=f"Resend OTP is allowed after {int(settings.allow_otp_resend_after - last_otp_since)} seconds",
         ),
     )
 
-    # FIXME instead of matching user with user_request we should simply get the data from user?
-
-    if "msisdn" in result:
-        if user.msisdn != result["msisdn"]:
-            raise exception
-        else:
-            await send_otp(result["msisdn"], skel_accept_language or "")
-    else:
-        if user.email != result["email"]:
-            raise exception
-        await email_send_otp(result["email"], skel_accept_language or "")
+    if "msisdn" in user_identifier:
+        await send_otp(user_identifier["msisdn"], skel_accept_language or "")
+    elif "email" in user_identifier:
+        await email_send_otp(user_identifier["email"], skel_accept_language or "")
 
     return api.Response(status=api.Status.success)
 
@@ -939,36 +982,15 @@ async def confirm_otp(
     """Confirm OTP"""
 
     result = user_request.check_fields()
-    key = ""
-    if "msisdn" in result:
-        if settings.mock_smpp_api:
-            key = f"users:otp:otps/{result['msisdn']}"
-        else:
-            key = f"middleware:otp:otps/{result['msisdn']}"
-    elif "email" in result:
-        if settings.mock_smtp_api:
-            key = f"users:otp:otps/{result['msisdn']}"
-        else:
-            key = f"middleware:otp:otps/{result['email']}"
-
+    key = get_otp_key(result)
 
     code = await db.get_otp(key)
-    if not code:
+    if not code or code != user_request.code:
         raise Exception(
             status.HTTP_400_BAD_REQUEST,
             Error(
                 type="OTP",
                 code=InternalErrorCode.OTP_EXPIRED,
-                message="Expired OTP",
-            ),
-        )
-
-    if code != user_request.code:
-        raise Exception(
-            status.HTTP_400_BAD_REQUEST,
-            Error(
-                type="OTP",
-                code=InternalErrorCode.OTP_INVALID,
                 message="Invalid OTP",
             ),
         )
