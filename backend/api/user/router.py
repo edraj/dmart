@@ -16,7 +16,7 @@ from utils.access_control import access_control
 from utils.helpers import flatten_dict
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import JWTBearer, sign_jwt, decode_jwt
-from typing import Any, Dict
+from typing import Any
 from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
@@ -229,7 +229,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     shortname: str | None = None
     user = None
     user_updates: dict[str, Any] = {}
-    identifier: Dict[str, str] | None = request.check_fields()
+    identifier: dict[str, str] | None = request.check_fields()
     try:
         if request.invitation:
             invitation_token = await db.get_invitation(request.invitation)
@@ -305,7 +305,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     )
                 )
 
-            key: Optional[str] = None
+            key: str | None = None
             if not shortname and identifier:
                 if isinstance(identifier, dict):
                     key, value = list(identifier.items())[0]
