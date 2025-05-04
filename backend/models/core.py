@@ -326,7 +326,7 @@ class Actor(Meta):
 class User(Actor):
     password: str | None = None
     email: str | None = None
-    msisdn: str | None = Field(default=None, pattern=regex.EXTENDED_MSISDN)
+    msisdn: str | None = Field(default=None, pattern=regex.MSISDN)
     is_email_verified: bool = False
     is_msisdn_verified: bool = False
     force_password_change: bool = False
