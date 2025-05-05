@@ -8,6 +8,8 @@ from pytests.feature.test_resource_and_attachment import json_entry_shortname
 from fastapi import status
 from models.enums import RequestType,QueryType
 from utils.settings import settings
+from conftest import insert_mock_data
+
 
 
 @pytest.mark.run(order=3)
@@ -162,3 +164,76 @@ async def test_query_events(client: AsyncClient) -> None:
         json_response["records"][0]["attributes"]["request"]
         in RequestType._value2member_map_
     )
+
+@pytest.mark.run(order=3)
+@pytest.mark.anyio
+async def test_query_by_payload(client: AsyncClient, insert_mock_data) -> None:
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": DEMO_SPACE,
+            "subpath": DEMO_SUBPATH,
+            "search": "@payload",
+        },
+    )
+    json_response = response.json()
+    assert response.status_code == status.HTTP_200_OK
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] > 0
+
+
+@pytest.mark.run(order=3)
+@pytest.mark.anyio
+async def test_query_by_shortname(client: AsyncClient, insert_mock_data) -> None:
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": DEMO_SPACE,
+            "subpath": DEMO_SUBPATH,
+            "filter_shortnames": [json_entry_shortname],
+        },
+    )
+    json_response = response.json()
+    assert response.status_code == status.HTTP_200_OK
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] > 0
+
+
+@pytest.mark.run(order=3)
+@pytest.mark.anyio
+async def test_query_by_email(client: AsyncClient, insert_mock_data) -> None:
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": DEMO_SPACE,
+            "subpath": DEMO_SUBPATH,
+            "search": "@john@example.com",
+        },
+    )
+    json_response = response.json()
+    assert response.status_code == status.HTTP_200_OK
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] > 0
+
+
+@pytest.mark.run(order=3)
+@pytest.mark.anyio
+async def test_query_nested_object(client: AsyncClient, insert_mock_data) -> None:
+  
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": DEMO_SPACE,
+            "subpath": DEMO_SUBPATH,
+            "search": "@Engineering",
+        },
+    )
+    json_response = response.json()
+    assert response.status_code == status.HTTP_200_OK
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] > 0
+
