@@ -2,7 +2,6 @@
 import json
 import re
 from pathlib import Path
-from uuid import uuid4
 import aiofiles
 from utils.async_request import AsyncRequest
 from utils.generate_email import generate_subject
@@ -48,7 +47,6 @@ from fastapi_sso.sso.google import GoogleSSO
 from fastapi_sso.sso.facebook import FacebookSSO
 from fastapi_sso.sso.base import OpenID, SSOBase
 from fastapi.logger import logger
-from data_adapters.file.adapter_helpers import get_record_from_redis_doc
 
 router = APIRouter()
 
@@ -1327,3 +1325,4 @@ if settings.social_login_allowed:
                 data = await res.json()
                 phone_number = data["phoneNumbers"][0].get("value") if len(data.get("phoneNumbers", [])) > 0 else None
                 return str(phone_number).replace(" ", "")
+        return None
