@@ -20,7 +20,7 @@ from data_adapters.file.archive import archive
 from data_adapters.file.create_index import main as create_index
 from data_adapters.file.health_check import main as health_check
 from main import main as server
-from utils.exporter import main as exporter, exit_with_error, OUTPUT_FOLDER_NAME, validate_config, extract
+from data_adapters.file.exporter import main as exporter, exit_with_error, OUTPUT_FOLDER_NAME, validate_config, extract
 from utils.settings import settings
 
 freeze_support()
