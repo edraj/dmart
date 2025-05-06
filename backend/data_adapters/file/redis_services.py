@@ -9,7 +9,7 @@ import models.core as core
 from models.enums import ActionType, RedisReducerName, ResourceType, LockAction
 from redis.commands.json.path import Path
 from redis.commands.search.field import TextField, NumericField, TagField, Field
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.index_definition import IndexDefinition, IndexType
 from datetime import datetime
 
 from redis.commands.search import Search, aggregation
