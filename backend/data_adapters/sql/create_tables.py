@@ -6,6 +6,11 @@ from typing import Any
 from uuid import UUID
 from sqlalchemy import LargeBinary, text
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT, HSTORE
+
+import sqlalchemy
+from sqlalchemy import LargeBinary, event
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
 from sqlmodel._compat import SQLModelConfig # type: ignore
 from utils.helpers import camel_case, remove_none_dict
@@ -54,7 +59,7 @@ class Metas(Unique, table=False):
     tags: list[str] = Field(default_factory=dict, sa_type=JSONB)
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
-    owner_shortname: str = Field(foreign_key="users.shortname")
+    owner_shortname: str = Field(foreign_key="users.shortname", ondelete="SET DEFAULT", default="unknown")
     acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
     relationships: list[dict[str, Any]] | None = Field(default=[], sa_type=JSONB)
@@ -157,6 +162,14 @@ class Metas(Unique, table=False):
             }
         )
 
+@event.listens_for(Metas, "before_insert")
+def before_insert_listener(mapper, connection, target):
+    try:
+        connection.execute(
+            sqlalchemy.insert(Metas).values(**target.__dict__)
+        )
+    except IntegrityError:
+        target.owner_shortname = "unknown"
 
 
 class Users(Metas, table=True):
