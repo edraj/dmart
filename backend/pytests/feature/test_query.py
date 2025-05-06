@@ -222,7 +222,7 @@ async def test_query_by_email(client: AsyncClient, insert_mock_data) -> None:
 @pytest.mark.run(order=3)
 @pytest.mark.anyio
 async def test_query_nested_object(client: AsyncClient, insert_mock_data) -> None:
-  
+    
     response = await client.post(
         "/managed/query",
         json={
@@ -237,3 +237,35 @@ async def test_query_nested_object(client: AsyncClient, insert_mock_data) -> Non
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] > 0
 
+
+@pytest.mark.run(order=3)
+@pytest.mark.anyio
+async def test_access_nested_json_body_fields(client: AsyncClient):
+    request_data = {
+        "space_name": DEMO_SPACE,
+        "records": [
+            {
+                "subpath": DEMO_SUBPATH,
+                "shortname": "test_nested",
+                "attributes": {
+                    "payload": {
+                        "body": {
+                            "department": "Engineering",
+                            "projects": [
+                                {"name": "Project X", "status": "active"},
+                                {"name": "Project Y", "status": "completed"}
+                            ],
+                            "skills": ["Python", "Django", "PostgreSQL"]
+                        },
+                    }
+                },
+            }
+        ],
+    }
+
+    body = request_data["records"][0]["attributes"]["payload"]["body"]
+
+    assert body["department"] == "Engineering"
+    assert body["projects"][0]["name"] == "Project X"
+    assert body["projects"][1]["status"] == "completed"
+    assert "Django" in body["skills"]
