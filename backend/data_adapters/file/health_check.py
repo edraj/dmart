@@ -418,10 +418,10 @@ async def save_duplicated_entries() -> None:
             space_data = json.loads(space_data)
             try:
                 ft_index = redis.ft(f"{space_name}:meta")
-                index_info = await ft_index.info()
+                index_info = await ft_index.info() # type: ignore
             except Exception:
                 continue
-            for i in range(0, int(index_info["num_docs"]), 10000):
+            for i in range(0, int(index_info["num_docs"]), 10000):  # type: ignore
                 search_query = Query(query_string="*")
                 search_query.paging(i, 10000)
                 x = await ft_index.search(query=search_query) # type: ignore
