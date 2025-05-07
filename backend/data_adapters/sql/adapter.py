@@ -639,10 +639,21 @@ class SQLAdapter(BaseDataAdapter):
                 key for key in user_permissions
                 if key.startswith(upt)
             ]
-
+            print('#################################################')
+            print(user_permissions)
+            print('#################################################')
             query_allowed_fields_values = []
             for t in user_permissions_target:
+                if 'query' not in user_permissions[t]['allowed_actions']:
+                    continue
                 for k, v in user_permissions[t]['allowed_fields_values'].items():
+                    print("==============================================")
+                    print(user_permissions[t]['allowed_actions'])
+                    print('query' not in user_permissions[t]['allowed_actions'])
+                    print(user_permissions[t])
+                    print(k)
+                    print(v)
+                    print("==============================================")
                     qq = "("
                     if isinstance(v, list):
                         for vv in v:
@@ -1813,6 +1824,7 @@ class SQLAdapter(BaseDataAdapter):
                 role_permissions.append(permission_world_record)
 
             for permission in role_permissions:
+                print('******************',permission)
                 for space_name, permission_subpaths in permission.subpaths.items():
                     for permission_subpath in permission_subpaths:
                         permission_subpath = trans_magic_words(permission_subpath, user_shortname)
@@ -1843,6 +1855,11 @@ class SQLAdapter(BaseDataAdapter):
                                 "restricted_fields": permission.restricted_fields,
                                 "allowed_fields_values": permission.allowed_fields_values
                             }
+                            if space_name == 'management' and permission_subpath == 'users':
+                                print('-----------------------------------')
+                                print(f"{space_name}:{permission_subpath}:{permission_resource_types}")
+                                print(user_permissions[f"{space_name}:{permission_subpath}:{permission_resource_types}"] )
+                                print('-----------------------------------')
         return user_permissions
 
     async def get_user_permissions(self, user_shortname: str) -> dict:
