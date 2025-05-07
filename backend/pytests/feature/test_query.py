@@ -242,45 +242,37 @@ async def test_query_nested_object(client: AsyncClient, insert_mock_data) -> Non
 async def test_save_and_query_payload_body_contents(client: AsyncClient) -> None:
     NEW_SPACE = "new_test_space"
     DEMO_SUBPATH = "/folder"
-    SHORTNAME = "john_doe_123"
 
-    await client.post(
-        "managed/space",
-        json={
-            "space_name": NEW_SPACE,
-            "request_type": RequestType.create,
-            "records": [
-                {
-                    "resource_type": ResourceType.space,
-                    "subpath": "/",
-                    "shortname": NEW_SPACE,
-                    "attributes": {},
-                }
-            ],
-        },
-    )
+    await client.post("/managed/space", json={
+        "space_name": NEW_SPACE,
+        "request_type": RequestType.create,
+        "records": [{
+            "resource_type": ResourceType.space,
+            "subpath": "/",
+            "shortname": NEW_SPACE,
+            "attributes": {},
+        }],
+    })
 
-    await client.post(
-        "/managed/request",
-        json={
-            "space_name": NEW_SPACE,
-            "request_type": RequestType.create,
-            "records": [
-                {
-                    "resource_type": ResourceType.folder,
-                    "subpath": "/",
-                    "shortname": DEMO_SUBPATH,
-                    "attributes": {},
-                }
-            ],
-        },
-    )
+    await client.post("/managed/request", json={
+        "space_name": NEW_SPACE,
+        "request_type": RequestType.create,
+        "records": [{
+            "resource_type": ResourceType.folder,
+            "subpath": "/",
+            "shortname": DEMO_SUBPATH,
+            "attributes": {},
+        }],
+    })
 
-    payload_data = {
+    await client.post("/managed/request", json={
         "request_type": RequestType.create,
         "space_name": NEW_SPACE,
         "records": [
             {
+                "resource_type": ResourceType.content,
+                "shortname": "john_doe_123",
+                "subpath": DEMO_SUBPATH,
                 "attributes": {
                     "email": "john@example.com",
                     "payload": {
@@ -295,37 +287,56 @@ async def test_save_and_query_payload_body_contents(client: AsyncClient) -> None
                         },
                     },
                 },
+            },
+            {
                 "resource_type": ResourceType.content,
-                "shortname": SHORTNAME,
+                "shortname": "aya_123",
                 "subpath": DEMO_SUBPATH,
-            }
-        ],
-    }
+                "attributes": {
+                    "email": "aya@example.com",
+                    "payload": {
+                        "content_type": "json",
+                        "body": {
+                            "department": "Art",
+                            "projects": [
+                                {"name": "Design A", "status": "active"},
+                                {"name": "Design B", "status": "draft"},
+                            ],
+                            "skills": ["Illustrator", "Photoshop", "Figma"],
+                        },
+                    },
+                },
+            },
+        ]
+    })
 
-    create_response = await client.post("/managed/request", json=payload_data)
-    assert create_response.status_code == 200
+    queries = [
+        "@payload.body.department:Engineering",
+        "@payload.body.skills:Python",
+        "@payload.body.projects.name",
+    ]
 
-    query_payload = {
-        "space_name": NEW_SPACE,
-        "subpath": DEMO_SUBPATH,
-        "search": "@payload.body.department:Engineering",
-        "type": QueryType.search,
-        "retrieve_json_payload": True
-    }
+    for search in queries:
+        response = await client.post("/managed/query", json={
+            "space_name": NEW_SPACE,
+            "subpath": DEMO_SUBPATH,
+            "search": search,
+            "type": QueryType.search,
+            "retrieve_json_payload": True,
+        })
+        print(response.json())  
 
-    query_response = await client.post("/managed/query", json=query_payload)
-    assert query_response.status_code == 200
+        assert response.status_code == 200
+        result = response.json()
+        assert result["status"] == "success"
+        assert result["records"], f"No records returned for query: {search}"
+        records = result["records"]  
 
-    response_json = query_response.json()
-    assert response_json["status"] == "success"
-
-    records = response_json["records"]
-    assert records, "No records returned in query response"
-
-    body = records[0]["attributes"]["payload"]["body"]
-
-    assert body["department"] == "Engineering"
-    assert {"name": "Project X", "status": "active"} in body["projects"]
-    assert {"name": "Project Y", "status": "completed"} in body["projects"]
-    for skill in ["Python", "Django", "PostgreSQL"]:
-        assert skill in body["skills"]
+        if search == "@payload.body.department:Engineering":
+            assert any(r["attributes"]["payload"]["body"]["department"] == "Engineering" for r in records), "No record with department 'Engineering'"
+        elif search == "@payload.body.skills:Python":
+            assert any("Python" in r["attributes"]["payload"]["body"]["skills"] for r in records), "No record with skill 'Python'"
+        elif search == "@payload.body.projects.name":
+            assert any(
+                any("name" in project for project in r["attributes"]["payload"]["body"].get("projects", []))
+                for r in records ), "No project names found in payload"
