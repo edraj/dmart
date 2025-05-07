@@ -633,44 +633,45 @@ class SQLAdapter(BaseDataAdapter):
             user_query_policies = await get_user_query_policies(
                 self, user_shortname, query.space_name, query.subpath
             )
-            user_permissions = await self.get_user_permissions(user_shortname)
-            upt = f"{query.space_name}:{query.subpath}"
-            user_permissions_target = [
-                key for key in user_permissions
-                if key.startswith(upt)
-            ]
-            print('#################################################')
-            print(user_permissions)
-            print('#################################################')
-            query_allowed_fields_values = []
-            for t in user_permissions_target:
-                if 'query' not in user_permissions[t]['allowed_actions']:
-                    continue
-                for k, v in user_permissions[t]['allowed_fields_values'].items():
-                    print("==============================================")
-                    print(user_permissions[t]['allowed_actions'])
-                    print('query' not in user_permissions[t]['allowed_actions'])
-                    print(user_permissions[t])
-                    print(k)
-                    print(v)
-                    print("==============================================")
-                    qq = "("
-                    if isinstance(v, list):
-                        for vv in v:
-                            if not qq.endswith('('):
-                                qq +=  ' OR'
-                            if isinstance(vv, str):
-                                if k.startswith("payload"):
-                                    qq += f" {transform_keys_to_sql(k)} = '{vv}'"
-                                else:
-                                    qq += f" {k} = '{vv}'"
-                            elif isinstance(vv, list):
-                                if k.startswith("payload"):
-                                    qq += f" {transform_keys_to_sql(k)} = '{str(vv).replace('\'', '\"')}'"
-                                else:
-                                    qq += f" {k} = '{str(vv).replace('\'', '\"')}'"
-                        qq += ")"
-                        query_allowed_fields_values.append(qq)
+            # user_permissions = await self.get_user_permissions(user_shortname)
+            # upt = f"{query.space_name}:{query.subpath}"
+            # user_permissions_target = [
+            #     key for key in user_permissions
+            #     if key.startswith(upt)
+            # ]
+            # print('#################################################')
+            # print(user_permissions)
+            # print('#################################################')
+            # query_allowed_fields_values = []
+            # for t in user_permissions_target:
+            #     if 'query' not in user_permissions[t]['allowed_actions']:
+            #         continue
+            #     for k, v in user_permissions[t]['allowed_fields_values'].items():
+            #         print("==============================================")
+            #         print(user_permissions[t]['allowed_actions'])
+            #         print('query' not in user_permissions[t]['allowed_actions'])
+            #         print(user_permissions[t])
+            #         print(k)
+            #         print(v)
+            #         print("==============================================")
+            #         qq = "("
+            #         if isinstance(v, list):
+            #             for vv in v:
+            #                 if not qq.endswith('('):
+            #                     qq +=  ' OR'
+            #                 if isinstance(vv, str):
+            #                     if k.startswith("payload"):
+            #                         qq += f" {transform_keys_to_sql(k)} = '{vv}'"
+            #                     else:
+            #                         qq += f" {k} = '{vv}'"
+            #                 elif isinstance(vv, list):
+            #                     if k.startswith("payload"):
+            #                         qq += f" {transform_keys_to_sql(k)} = '{str(vv).replace('\'', '\"')}'"
+            #                     else:
+            #                         qq += f" {k} = '{str(vv).replace('\'', '\"')}'"
+            #             qq += ")"
+            #             query_allowed_fields_values.append(qq)
+
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -714,10 +715,10 @@ class SQLAdapter(BaseDataAdapter):
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
-                if query_allowed_fields_values:
-                    for query_allowed_fields_value in query_allowed_fields_values:
-                        statement = statement.where(text(query_allowed_fields_value))
-                        statement_total = statement_total.where(text(query_allowed_fields_value))
+                # if query_allowed_fields_values:
+                #     for query_allowed_fields_value in query_allowed_fields_values:
+                #         statement = statement.where(text(query_allowed_fields_value))
+                #         statement_total = statement_total.where(text(query_allowed_fields_value))
 
             try:
                 if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
