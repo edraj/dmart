@@ -1,3 +1,4 @@
+import asyncio
 import pytest
 from httpx import AsyncClient
 from pytests.base_test import (
@@ -6,10 +7,9 @@ from pytests.base_test import (
 )
 from pytests.feature.test_resource_and_attachment import json_entry_shortname
 from fastapi import status
-from models.enums import RequestType,QueryType
+from models.enums import RequestType,QueryType, ResourceType
 from utils.settings import settings
 from conftest import insert_mock_data
-
 
 
 @pytest.mark.run(order=3)
@@ -166,7 +166,7 @@ async def test_query_events(client: AsyncClient) -> None:
     )
 
 @pytest.mark.run(order=3)
-@pytest.mark.anyio
+@pytest.mark.anyio 
 async def test_query_by_payload(client: AsyncClient, insert_mock_data) -> None:
     response = await client.post(
         "/managed/query",
@@ -222,7 +222,6 @@ async def test_query_by_email(client: AsyncClient, insert_mock_data) -> None:
 @pytest.mark.run(order=3)
 @pytest.mark.anyio
 async def test_query_nested_object(client: AsyncClient, insert_mock_data) -> None:
-    
     response = await client.post(
         "/managed/query",
         json={
@@ -240,32 +239,93 @@ async def test_query_nested_object(client: AsyncClient, insert_mock_data) -> Non
 
 @pytest.mark.run(order=3)
 @pytest.mark.anyio
-async def test_access_nested_json_body_fields(client: AsyncClient):
-    request_data = {
-        "space_name": DEMO_SPACE,
+async def test_save_and_query_payload_body_contents(client: AsyncClient) -> None:
+    NEW_SPACE = "new_test_space"
+    DEMO_SUBPATH = "/folder"
+    SHORTNAME = "john_doe_123"
+
+    await client.post(
+        "managed/space",
+        json={
+            "space_name": NEW_SPACE,
+            "request_type": RequestType.create,
+            "records": [
+                {
+                    "resource_type": ResourceType.space,
+                    "subpath": "/",
+                    "shortname": NEW_SPACE,
+                    "attributes": {},
+                }
+            ],
+        },
+    )
+
+    await client.post(
+        "/managed/request",
+        json={
+            "space_name": NEW_SPACE,
+            "request_type": RequestType.create,
+            "records": [
+                {
+                    "resource_type": ResourceType.folder,
+                    "subpath": "/",
+                    "shortname": DEMO_SUBPATH,
+                    "attributes": {},
+                }
+            ],
+        },
+    )
+
+    payload_data = {
+        "request_type": RequestType.create,
+        "space_name": NEW_SPACE,
         "records": [
             {
-                "subpath": DEMO_SUBPATH,
-                "shortname": "test_nested",
                 "attributes": {
+                    "email": "john@example.com",
                     "payload": {
+                        "content_type": "json",
                         "body": {
                             "department": "Engineering",
                             "projects": [
                                 {"name": "Project X", "status": "active"},
-                                {"name": "Project Y", "status": "completed"}
+                                {"name": "Project Y", "status": "completed"},
                             ],
-                            "skills": ["Python", "Django", "PostgreSQL"]
+                            "skills": ["Python", "Django", "PostgreSQL"],
                         },
-                    }
+                    },
                 },
+                "resource_type": ResourceType.content,
+                "shortname": SHORTNAME,
+                "subpath": DEMO_SUBPATH,
             }
         ],
     }
 
-    body = request_data["records"][0]["attributes"]["payload"]["body"]
+    create_response = await client.post("/managed/request", json=payload_data)
+    assert create_response.status_code == 200
+
+    query_payload = {
+        "space_name": NEW_SPACE,
+        "subpath": DEMO_SUBPATH,
+        "search": "@payload.body.department:Engineering",
+        "type": QueryType.search,
+        "retrieve_json_payload": True
+    }
+
+    query_response = await client.post("/managed/query", json=query_payload)
+    assert query_response.status_code == 200
+
+    response_json = query_response.json()
+    assert response_json["status"] == "success"
+
+    records = response_json["records"]
+    assert records, "No records returned in query response"
+
+    body = records[0]["attributes"]["payload"]["body"]
 
     assert body["department"] == "Engineering"
-    assert body["projects"][0]["name"] == "Project X"
-    assert body["projects"][1]["status"] == "completed"
-    assert "Django" in body["skills"]
+    assert {"name": "Project X", "status": "active"} in body["projects"]
+    assert {"name": "Project Y", "status": "completed"} in body["projects"]
+    for skill in ["Python", "Django", "PostgreSQL"]:
+        assert skill in body["skills"]
