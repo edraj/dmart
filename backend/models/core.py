@@ -114,9 +114,9 @@ class Record(BaseModel):
                 and self.subpath == other.subpath
         )
 
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
+    model_config = ConfigDict(
+        extra= "forbid",
+        json_schema_extra= { "examples": [
                 {
                     "resource_type": "content",
                     "shortname": "auto",
@@ -150,8 +150,7 @@ class Record(BaseModel):
                 }
             ]
         }
-    }
-
+    )
 
 class Translation(Resource):
     en: str | None = None
@@ -198,7 +197,7 @@ class Meta(Resource):
     relationships: list[Relationship] | list[dict[str, Any]] | None = None
     acl: list[ACL] | None = None
 
-    model_config = ConfigDict(validate_assignment=True)
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
     @staticmethod
     def from_record(record: Record, owner_shortname: str):
