@@ -775,7 +775,7 @@ class RedisServices(Redis):
 
         try:
             info = await ft_index.info()
-            return info["num_docs"]
+            return info["num_docs"]  # type: ignore
         except Exception as e:
             logger.error(f"Error at redis_services.get_count: {e}")
             return 0
@@ -895,8 +895,8 @@ class RedisServices(Redis):
 
         try:
             aggr_res = await ft_index.aggregate(aggr_request)  # type: ignore
-            if aggr_res.get("results") and isinstance(aggr_res["results"], list):
-                return aggr_res["results"]
+            if aggr_res.get("results") and isinstance(aggr_res["results"], list):  # type: ignore
+                return aggr_res["results"]  # type: ignore
         except Exception:
             pass
         return []
@@ -1093,7 +1093,7 @@ class RedisServices(Redis):
         
         # Fetch all document IDs
         ft_index = self.ft(index)
-        total_docs = int((await ft_index.info())['num_docs'])
+        total_docs = int((await ft_index.info())['num_docs'])  # type: ignore
         
         batch_size = 10000  # You can adjust the batch size based on your needs
         
@@ -1103,7 +1103,7 @@ class RedisServices(Redis):
             if results and isinstance(results, Awaitable):
                 results = await results
             
-            if 'results' not in results or not isinstance(results['results'], list):
+            if 'results' not in results or not isinstance(results['results'], list):  # type: ignore
                 break
             document_ids.extend([doc['id'] for doc in results['results']]) #type: ignore
         
