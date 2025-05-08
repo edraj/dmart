@@ -197,7 +197,7 @@ class Meta(Resource):
     relationships: list[Relationship] | list[dict[str, Any]] | None = None
     acl: list[ACL] | None = None
 
-    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+    model_config = ConfigDict(validate_assignment=True)
 
     @staticmethod
     def from_record(record: Record, owner_shortname: str):
