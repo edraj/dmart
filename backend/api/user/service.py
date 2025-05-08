@@ -40,16 +40,9 @@ async def mock_sending_otp(msisdn) -> dict:
 
 def get_otp_key(user_identifier: dict[str, str]) -> str:
     if "msisdn" in user_identifier:
-        if settings.mock_smpp_api:
-            return f"users:otp:otps/{user_identifier['msisdn']}"
-        else:
-            return f"middleware:otp:otps/{user_identifier['msisdn']}"
+        return f"users:otp:otps/{user_identifier['msisdn']}"
     elif "email" in user_identifier:
-        if settings.mock_smtp_api:
-            return f"users:otp:otps/{user_identifier['email']}"
-        else:
-            return f"middleware:otp:otps/{user_identifier['email']}"
-            
+        return f"users:otp:otps/{user_identifier['email']}"
     return ""
 
 async def send_otp(msisdn: str, language: str):
@@ -69,7 +62,7 @@ async def send_otp(msisdn: str, language: str):
         case _:
             message = f"رمز التحقق الخاص بك {code}"
 
-    await db.save_otp(f"middleware:otp:otps/{msisdn}", code)
+    await db.save_otp(f"users:otp:otps/{msisdn}", code)
     
     async with AsyncRequest() as client:
         response = await client.post(
@@ -93,7 +86,7 @@ async def email_send_otp(email: str, language: str):
         return await mock_sending_otp(email)
 
     code = "".join(random.choice("0123456789") for _ in range(6))
-    await db.save_otp(f"middleware:otp:otps/{email}", code)
+    await db.save_otp(f"users:otp:otps/{email}", code)
     message = f"<p>Your OTP code is <b>{code}</b></p>"
     return await send_email(settings.email_sender, email, message, "OTP", settings.send_email_otp_api)
 
