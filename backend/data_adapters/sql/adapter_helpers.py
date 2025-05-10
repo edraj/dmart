@@ -109,31 +109,40 @@ def validate_search_range(v_str):
     if isinstance(v_str, list):
         return False, v_str
 
-    if re.match(r"^\[\d+\s(\d+)*\]$", v_str):
-        v_list = list(map(int, v_str[1:-1].split()))
-        return True, v_list
-
     date_patterns = [
-        # Year only: [2025 2024]
-        r"^\[\d{4}\s\d{4}\]$",
-        # Year-month: [2025-04 2025-01]
-        r"^\[\d{4}-\d{2}\s\d{4}-\d{2}\]$",
-        # Full date: [2025-04-28 2025-01-15]
-        r"^\[\d{4}-\d{2}-\d{2}\s\d{4}-\d{2}-\d{2}\]$",
-        # Date with hours: [2025-04-28T12 2025-01-15T09]
-        r"^\[\d{4}-\d{2}-\d{2}T\d{2}\s\d{4}-\d{2}-\d{2}T\d{2}\]$",
-        # Date with hours and minutes: [2025-04-28T12:30 2025-01-15T09:45]
-        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\s\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\]$",
-        # Date with hours, minutes, and seconds: [2025-04-28T12:30:45 2025-01-15T09:45:30]
-        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\s\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]$",
-        # Full ISO format with microseconds: [2025-04-28T12:30:45.123456 2025-01-15T09:45:30.654321]
-        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\s\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\]$"
+        # Year only: [2025 2024] or [2025,2024]
+        r"^\[\d{4}[\s,]\d{4}\]$",
+        # Year-month: [2025-04 2025-01] or [2025-04,2025-01]
+        r"^\[\d{4}-\d{2}[\s,]\d{4}-\d{2}\]$",
+        # Full date: [2025-04-28 2025-01-15] or [2025-04-28,2025-01-15]
+        r"^\[\d{4}-\d{2}-\d{2}[\s,]\d{4}-\d{2}-\d{2}\]$",
+        # Date with hours: [2025-04-28T12 2025-01-15T09] or [2025-04-28T12,2025-01-15T09]
+        r"^\[\d{4}-\d{2}-\d{2}T\d{2}[\s,]\d{4}-\d{2}-\d{2}T\d{2}\]$",
+        # Date with hours and minutes: [2025-04-28T12:30 2025-01-15T09:45] or [2025-04-28T12:30,2025-01-15T09:45]
+        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\]$",
+        # Date with hours, minutes, and seconds: [2025-04-28T12:30:45 2025-01-15T09:45:30] or [2025-04-28T12:30:45,2025-01-15T09:45:30]
+        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]$",
+        # Full ISO format with microseconds: [2025-04-28T12:30:45.123456 2025-01-15T09:45:30.654321] or [2025-04-28T12:30:45.123456,2025-01-15T09:45:30.654321]
+        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\]$"
     ]
 
     for pattern in date_patterns:
         if re.match(pattern, v_str):
-            range_values = v_str[1:-1].split()
+            # Split on either space or comma
+            if ',' in v_str[1:-1]:
+                range_values = v_str[1:-1].split(',')
+            else:
+                range_values = v_str[1:-1].split()
             return True, range_values
+
+    # Check for general numeric range pattern after checking date patterns
+    if re.match(r"^\[\d+[\s,]\d+\]$", v_str):
+        # Split on either space or comma
+        if ',' in v_str[1:-1]:
+            v_list = v_str[1:-1].split(',')
+        else:
+            v_list = v_str[1:-1].split()
+        return True, v_list
 
     return False, v_str
 
@@ -192,6 +201,14 @@ def get_next_date_value(value, format_string):
     return value
 
 
+def is_numeric_value(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+
 def is_date_time_value(value):
     patterns = [
         # Full ISO format with microseconds: 2025-04-28T12:28:00.660475
@@ -219,7 +236,6 @@ def is_date_time_value(value):
 
 def parse_search_string(string, entity):
     result = {}
-
     terms = string.split()
 
     for term in terms:
@@ -240,23 +256,30 @@ def parse_search_string(string, entity):
         if is_range:
             value_type = 'string'
             format_strings = {}
+            all_numeric = True
 
             for val in range_values:
                 is_datetime, format_string = is_date_time_value(val)
                 if is_datetime:
                     value_type = 'datetime'
                     format_strings[val] = format_string
+                    all_numeric = False
+                elif not is_numeric_value(val):
+                    all_numeric = False
+
+            if all_numeric and value_type == 'string':
+                value_type = 'numeric'
 
             field_data = {
                 'values': range_values,
                 'operation': 'RANGE',
                 'negative': negative,
                 'is_range': True,
-                'range_values': range_values
+                'range_values': range_values,
+                'value_type': value_type
             }
 
             if value_type == 'datetime':
-                field_data['value_type'] = value_type
                 field_data['format_strings'] = format_strings
 
             result[field] = field_data
