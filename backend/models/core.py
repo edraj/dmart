@@ -1,7 +1,7 @@
 import copy
 import json
 from abc import ABC, abstractmethod
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 from typing import Any
 from pydantic.types import UUID4 as UUID
 from uuid import uuid4
@@ -197,8 +197,29 @@ class Meta(Resource):
     relationships: list[Relationship] | list[dict[str, Any]] | None = None
     acl: list[ACL] | None = None
 
-    model_config = ConfigDict(validate_assignment=True)
+    model_config = ConfigDict(
+        validate_assignment=True,
+        json_schema_extra={
+            "extra_fields_allowed": ["subpath", "resource_type", "attempt_count", "query_policies", "space_name"]
+        }
+    )
 
+    @model_validator(mode='before')
+    @classmethod
+    def allow_specific_extra_fields(cls, data):
+        if not isinstance(data, dict):
+            return data
+            
+        model_fields = cls.model_fields.keys()
+        
+        allowed_extra = cls.model_config.get("json_schema_extra", {}).get("extra_fields_allowed", [])
+        
+        for field in list(data.keys()):
+            if field not in model_fields and field not in allowed_extra:
+                raise ValueError(f"Extra field '{field}' not allowed")
+                
+        return data
+    
     @staticmethod
     def from_record(record: Record, owner_shortname: str):
         if record.shortname == settings.auto_uuid_rule:
