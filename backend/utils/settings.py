@@ -77,6 +77,8 @@ class Settings(BaseSettings):
 
     google_client_id: str = ""
     google_client_secret: str = ""
+    apple_client_id: str = ""
+    apple_client_secret: str = ""
 
     facebook_client_id: str = ""
     facebook_client_secret: str = ""

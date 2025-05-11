@@ -2,12 +2,11 @@
 import json
 import re
 from pathlib import Path
-from uuid import uuid4
 import aiofiles
 from utils.async_request import AsyncRequest
 from utils.generate_email import generate_subject
 from utils.generate_email import generate_email_from_template
-from fastapi import APIRouter, Body, Query, status, Depends, Response, Header
+from fastapi import APIRouter, Body, Query, Request, status, Depends, Response, Header
 import models.api as api
 import models.core as core
 from models.enums import ActionType, RequestType, ResourceType, ContentType
@@ -22,7 +21,7 @@ import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
 from models.api import Error, Exception, Status
-from utils.social_sso import get_facebook_sso, get_google_sso
+from utils.social_sso import get_apple_sso, get_facebook_sso, get_google_sso
 from .service import (
     gen_alphanumeric,
     get_otp_key,
@@ -46,9 +45,8 @@ import utils.regex as rgx
 from languages.loader import languages
 from fastapi_sso.sso.google import GoogleSSO
 from fastapi_sso.sso.facebook import FacebookSSO
-from fastapi_sso.sso.base import SSOBase
+from fastapi_sso.sso.base import OpenID, SSOBase
 from fastapi.logger import logger
-from data_adapters.file.adapter_helpers import get_record_from_redis_doc
 
 router = APIRouter()
 
@@ -60,7 +58,6 @@ USERS_SUBPATH: str = "users"
     "/check-existing", response_model=api.Response, response_model_exclude_none=True
 )
 async def check_existing_user_fields(
-    _=Depends(JWTBearer()),
     shortname: str | None = Query(
         default=None, pattern=rgx.SHORTNAME, examples=["john_doo"]),
     msisdn: str | None = Query(
@@ -563,6 +560,12 @@ async def update_profile(
             error=api.Error(type="create", code=50,
                             message="Email OTP is required to update your email"),
         )
+    if profile.attributes.get("msisdn") and not profile.attributes.get("msisdn_otp"):
+        raise api.Exception(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=api.Error(type="create", code=50,
+                            message="msisdn OTP is required to update your msisdn"),
+        )
         
     if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
         raise api.Exception(
@@ -641,9 +644,20 @@ async def update_profile(
             user.email = profile_user.email
             user.is_email_verified = True
 
-        if profile_user.msisdn and user.msisdn != profile_user.msisdn:
+        if "msisdn" in profile.attributes and user.msisdn != profile_user.msisdn:
+            is_valid_otp = await verify_user(ConfirmOTPRequest(
+                msisdn=profile.attributes.get("msisdn"),
+                email=None,
+                code=profile.attributes.get("msisdn_otp", "")
+            ))
+            if not is_valid_otp:
+                raise api.Exception(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    error=api.Error(type="create", code=50,
+                                    message="Invalid MSISDN OTP"),
+                )
             user.msisdn = profile_user.msisdn
-            user.is_msisdn_verified = False
+            user.is_msisdn_verified = True
 
         if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
             await update_user_payload(profile, profile_user, user, shortname)
@@ -1232,97 +1246,99 @@ async def handle_failed_login_attempt(user: core.User):
 
 if settings.social_login_allowed:
 
-    @router.post("/google/login")
+    @router.get("/google/callback")
     async def google_profile(
+        request: Request,
         response: Response,
-        access_token: str = Body(default=...),
-        firebase_token: str = Body(default=None),
         google_sso: GoogleSSO = Depends(get_google_sso),
     ):
-        user_model = await social_login(access_token, google_sso, "google")
+        async with google_sso:
+            user_model = await social_login(request, google_sso, "google")
 
-        record = await process_user_login(
-            user=user_model,
-            response=response,
-            firebase_token=firebase_token
-        )
-
-        return api.Response(status=api.Status.success, records=[record])
-
-    @router.post("/facebook/login")
+            record = await process_user_login(
+                user=user_model,
+                response=response
+            )
+            return api.Response(status=api.Status.success, records=[record])
+    
+    @router.get("/facebook/callback")
     async def facebook_login(
+        request: Request,
         response: Response,
-        access_token: str = Body(default=...),
-        firebase_token: str = Body(default=None),
         facebook_sso: FacebookSSO = Depends(get_facebook_sso),
-        retrieve_lock_status: bool = Body(default=False),
     ):
-        user_model = await social_login(access_token, facebook_sso, "facebook", retrieve_lock_status)
+        async with facebook_sso:
+            user_model = await social_login(request, facebook_sso, "facebook")
 
-        record = await process_user_login(
-            user=user_model,
-            response=response,
-            firebase_token=firebase_token
+            record = await process_user_login(
+                user=user_model,
+                response=response
+            )
+            return api.Response(status=api.Status.success, records=[record])
+        
+    @router.get("/apple/callback")
+    async def apple_login(
+        request: Request,
+        response: Response,
+        apple_sso: SSOBase = Depends(get_apple_sso),
+    ):
+        async with apple_sso:
+            user_model = await social_login(request, apple_sso, "apple")
+
+            record = await process_user_login(
+                user=user_model,
+                response=response
+            )
+            return api.Response(status=api.Status.success, records=[record])
+
+    async def social_login(request: Request, sso: SSOBase, provider: str) -> core.User:
+        provider_user: OpenID | None = await sso.verify_and_process(request)
+        if not provider_user or not provider_user.id:
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(type="auth", code=InternalErrorCode.INVALID_DATA, message="Misconfigured provider"),
+            )
+            
+        user: core.User | None = await db.load_or_none(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            shortname=f"{provider}_{provider_user.id}",
+            class_type=core.User
         )
-
-        return api.Response(status=api.Status.success, records=[record])
-
-
-    async def social_login(access_token: str, sso: SSOBase, provider: str, retrieve_lock_status: bool = False) -> core.User:
-        async with AsyncRequest() as session:
-            user_profile_endpoint = await sso.userinfo_endpoint
-            if not user_profile_endpoint:
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(type="auth", code=InternalErrorCode.INVALID_DATA, message="Misconfigured provider"),
-                )
-            response = await session.get(
-                user_profile_endpoint, headers={"Authorization": f"Bearer {access_token}"}
-            )
-            if response.status != 200:
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(type="auth", code=InternalErrorCode.INVALID_DATA, message="Invalid access token"),
-                )
-            content = await response.json()
-            provider_user = await sso.openid_from_response(content)
-
-        from data_adapters.file.redis_services import RedisServices
-        async with RedisServices() as redis_man:
-            redis_search_res = await redis_man.search(
-                space_name=MANAGEMENT_SPACE,
-                search=f"@{provider}_id:{provider_user.id}",
-                limit=1,
-                offset=0,
-                filters={},
-            )
-
-        if not redis_search_res or redis_search_res["total"] == 0:
-            uuid = uuid4()
-            shortname = str(uuid)[:8]
-            user_model = core.User(
-                shortname=shortname,
-                owner_shortname=shortname,
+        
+        if not user:
+            msisdn = await get_provider_phone_number(sso, provider)
+            user = core.User(
+                shortname=f"{provider}_{provider_user.id}",
+                owner_shortname="dmart",
                 displayname=core.Translation(
-                    en=f"{provider_user.first_name} provider_user.last_name"
+                    en=f"{provider_user.first_name} {provider_user.last_name}"
                 ),
                 email=provider_user.email,
+                is_active=True,
                 is_email_verified=True,
                 social_avatar_url=provider_user.picture,
             )
-            setattr(user_model, f"{provider}_id", provider_user.id)
+            if msisdn and re.match(rgx.MSISDN, msisdn):
+                user.msisdn = msisdn
+                user.is_msisdn_verified = True
+            setattr(user, f"{provider}_id", provider_user.id)
 
-            await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user_model)
-
-        else:
-            redis_doc_dict = json.loads(redis_search_res["data"][0])
-            user_record = await get_record_from_redis_doc(
-                db,
-                space_name=MANAGEMENT_SPACE,
-                doc=redis_doc_dict,
-                retrieve_json_payload=True,
-                retrieve_lock_status=retrieve_lock_status,
-            )
-            user_model = core.User.from_record(user_record, owner_shortname=redis_doc_dict.get("owner_shortname"))
+            await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
             
-        return user_model
+        return user
+    
+    async def get_provider_phone_number(sso: SSOBase, provider: str,) -> None | str:
+        if provider == "google":
+            async with AsyncRequest() as session:
+                res = await session.get(
+                    url="https://people.googleapis.com/v1/people/me", 
+                    headers={"Authorization": f"Bearer {sso.access_token}"}, 
+                    params={"personFields": "phoneNumbers"}
+                )
+                if res.status != 200:
+                    return None
+                data = await res.json()
+                phone_number = data["phoneNumbers"][0].get("value") if len(data.get("phoneNumbers", [])) > 0 else None
+                return str(phone_number).replace(" ", "")
+        return None
