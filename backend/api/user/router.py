@@ -21,7 +21,7 @@ import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
 from models.api import Error, Exception, Status
-from utils.social_sso import get_facebook_sso, get_google_sso
+from utils.social_sso import get_apple_sso, get_facebook_sso, get_google_sso
 from .service import (
     gen_alphanumeric,
     get_otp_key,
@@ -1260,6 +1260,7 @@ if settings.social_login_allowed:
                 response=response
             )
             return api.Response(status=api.Status.success, records=[record])
+    
     @router.get("/facebook/callback")
     async def facebook_login(
         request: Request,
@@ -1268,6 +1269,21 @@ if settings.social_login_allowed:
     ):
         async with facebook_sso:
             user_model = await social_login(request, facebook_sso, "facebook")
+
+            record = await process_user_login(
+                user=user_model,
+                response=response
+            )
+            return api.Response(status=api.Status.success, records=[record])
+        
+    @router.get("/apple/callback")
+    async def apple_login(
+        request: Request,
+        response: Response,
+        apple_sso: SSOBase = Depends(get_apple_sso),
+    ):
+        async with apple_sso:
+            user_model = await social_login(request, apple_sso, "apple")
 
             record = await process_user_login(
                 user=user_model,
