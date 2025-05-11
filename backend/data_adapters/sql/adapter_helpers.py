@@ -109,19 +109,40 @@ def validate_search_range(v_str):
     if isinstance(v_str, list):
         return False, v_str
 
-    if re.match(r"^\[\d+\s(\d+)*\]$", v_str):
-        v_list = list(map(int, v_str[1:-1].split()))
-        return True, v_list
-
     date_patterns = [
-        r"^\[\d{4}-\d{2}-\d{2}\s\d{4}-\d{2}-\d{2}\]$",
-        r"^\[\d{4}-\d{2}-\d{2}T:\d{2}:\d{2}:\d{2}\s\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]$",
-        r"^\[\d{4}-\d{2}-\d{2}T:\d{2}:\d{2}:\d{2}\.\d{6}\s\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}\]$"
+        # Year only: [2025 2024] or [2025,2024]
+        r"^\[\d{4}[\s,]\d{4}\]$",
+        # Year-month: [2025-04 2025-01] or [2025-04,2025-01]
+        r"^\[\d{4}-\d{2}[\s,]\d{4}-\d{2}\]$",
+        # Full date: [2025-04-28 2025-01-15] or [2025-04-28,2025-01-15]
+        r"^\[\d{4}-\d{2}-\d{2}[\s,]\d{4}-\d{2}-\d{2}\]$",
+        # Date with hours: [2025-04-28T12 2025-01-15T09] or [2025-04-28T12,2025-01-15T09]
+        r"^\[\d{4}-\d{2}-\d{2}T\d{2}[\s,]\d{4}-\d{2}-\d{2}T\d{2}\]$",
+        # Date with hours and minutes: [2025-04-28T12:30 2025-01-15T09:45] or [2025-04-28T12:30,2025-01-15T09:45]
+        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}\]$",
+        # Date with hours, minutes, and seconds: [2025-04-28T12:30:45 2025-01-15T09:45:30] or [2025-04-28T12:30:45,2025-01-15T09:45:30]
+        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]$",
+        # Full ISO format with microseconds: [2025-04-28T12:30:45.123456 2025-01-15T09:45:30.654321] or [2025-04-28T12:30:45.123456,2025-01-15T09:45:30.654321]
+        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\]$"
     ]
 
     for pattern in date_patterns:
         if re.match(pattern, v_str):
-            return True, v_str[1:-1].split()
+            # Split on either space or comma
+            if ',' in v_str[1:-1]:
+                range_values = v_str[1:-1].split(',')
+            else:
+                range_values = v_str[1:-1].split()
+            return True, range_values
+
+    # Check for general numeric range pattern after checking date patterns
+    if re.match(r"^\[\d+[\s,]\d+\]$", v_str):
+        # Split on either space or comma
+        if ',' in v_str[1:-1]:
+            v_list = v_str[1:-1].split(',')
+        else:
+            v_list = v_str[1:-1].split()
+        return True, v_list
 
     return False, v_str
 
@@ -138,82 +159,179 @@ def parse_search_array(input_string: str, key: str, value: str) -> str:
     return output_sql
 
 
-def parse_search_string(string, entity):
-    string = re.sub(r'(?<=\w)@(?=\w)', '%40', string)  # prevent replacing @ in email
-    string = re.sub(r'(\d):', r'\1%41', string)  # prevent replacing : in timestamp
-
-    tokens = []
-    current = ""
-    i = 0
-    while i < len(string):
-        if string[i:i + 2] == "-@":
-            if current:
-                tokens.append(current.strip())
-            tokens.append("-")
-            current = ""
-            i += 2
-        elif string[i] == "@":
-            if current:
-                tokens.append(current.strip())
-            current = ""
-            i += 1
+def get_next_date_value(value, format_string):
+    from datetime import datetime, timedelta
+    if format_string == 'YYYY':
+        year = int(value)
+        return str(year + 1)
+    elif format_string == 'YYYY-MM':
+        year, month = map(int, value.split('-'))
+        if month == 12:
+            return f"{year + 1}-01"
         else:
-            current += string[i]
-            i += 1
-    if current:
-        tokens.append(current.strip())
+            return f"{year}-{month + 1:02d}"
+    elif format_string == 'YYYY-MM-DD':
 
-    list_criteria = [item for item in tokens if item.strip()]
+        dt = datetime.strptime(value, '%Y-%m-%d')
+        next_dt = dt + timedelta(days=1)
+        return next_dt.strftime('%Y-%m-%d')
+    elif format_string == 'YYYY-MM-DD"T"HH24':
+        from datetime import datetime, timedelta
+        dt = datetime.strptime(value, '%Y-%m-%dT%H')
+        next_dt = dt + timedelta(hours=1)
+        return next_dt.strftime('%Y-%m-%dT%H')
+    elif format_string == 'YYYY-MM-DD"T"HH24:MI':
+        from datetime import datetime, timedelta
+        dt = datetime.strptime(value, '%Y-%m-%dT%H:%M')
+        next_dt = dt + timedelta(minutes=1)
+        return next_dt.strftime('%Y-%m-%dT%H:%M')
+    elif format_string == 'YYYY-MM-DD"T"HH24:MI:SS':
+        from datetime import datetime, timedelta
+        dt = datetime.strptime(value, '%Y-%m-%dT%H:%M:%S')
+        next_dt = dt + timedelta(seconds=1)
+        return next_dt.strftime('%Y-%m-%dT%H:%M:%S')
+    elif format_string == 'YYYY-MM-DD"T"HH24:MI:SS.US':
+        from datetime import datetime, timedelta
+        dt = datetime.strptime(value.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+        microseconds = int(value.split('.')[1])
+        dt = dt.replace(microsecond=microseconds)
+        next_dt = dt + timedelta(microseconds=1)
+        return next_dt.strftime('%Y-%m-%dT%H:%M:%S.%f')
 
+    return value
+
+
+def is_numeric_value(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+
+def is_date_time_value(value):
+    patterns = [
+        # Full ISO format with microseconds: 2025-04-28T12:28:00.660475
+        (r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+$', 'YYYY-MM-DD"T"HH24:MI:SS.US'),
+        # ISO format without microseconds: 2025-04-28T12:28:00
+        (r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$', 'YYYY-MM-DD"T"HH24:MI:SS'),
+        # ISO format with minutes precision: 2025-04-28T12:28
+        (r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$', 'YYYY-MM-DD"T"HH24:MI'),
+        # ISO format with hours precision: 2025-04-28T12
+        (r'^\d{4}-\d{2}-\d{2}T\d{2}$', 'YYYY-MM-DD"T"HH24'),
+        # Date only: 2025-04-28
+        (r'^\d{4}-\d{2}-\d{2}$', 'YYYY-MM-DD'),
+        # Year and month only: 2025-04
+        (r'^\d{4}-\d{2}$', 'YYYY-MM'),
+        # Year only: 2025
+        (r'^\d{4}$', 'YYYY')
+    ]
+
+    for pattern, format_string in patterns:
+        if re.match(pattern, value):
+            return True, format_string
+
+    return False, None
+
+
+def parse_search_string(string, entity):
     result = {}
-    flag_neg = False
-    for s in list_criteria:
-        if s == "-":
-            flag_neg = True
+    terms = string.split()
+
+    for term in terms:
+        negative = term.startswith('-@')
+
+        if not (term.startswith('@') or term.startswith('-@')):
             continue
 
-        if "[" in s and "]" in s:
-            pattern = r"(\S+):(\S+ \S+)"
+        parts = term.split(':', 1)
+        if len(parts) != 2:
+            continue
+
+        field, value = parts
+        field = field[2:] if negative else field[1:]
+
+        is_range, range_values = validate_search_range(value)
+
+        if is_range:
+            value_type = 'string'
+            format_strings = {}
+            all_numeric = True
+
+            for val in range_values:
+                is_datetime, format_string = is_date_time_value(val)
+                if is_datetime:
+                    value_type = 'datetime'
+                    format_strings[val] = format_string
+                    all_numeric = False
+                elif not is_numeric_value(val):
+                    all_numeric = False
+
+            if all_numeric and value_type == 'string':
+                value_type = 'numeric'
+
+            field_data = {
+                'values': range_values,
+                'operation': 'RANGE',
+                'negative': negative,
+                'is_range': True,
+                'range_values': range_values,
+                'value_type': value_type
+            }
+
+            if value_type == 'datetime':
+                field_data['format_strings'] = format_strings
+
+            result[field] = field_data
+            continue
+
+        values = value.split('|')
+        operation = 'AND' if len(values) > 1 else 'OR'
+
+        value_type = 'string'  # Default type
+        format_strings = {}
+        for i, val in enumerate(values):
+            is_datetime, format_string = is_date_time_value(val)
+            if is_datetime:
+                value_type = 'datetime'
+                format_strings[val] = format_string
+
+        if field not in result:
+            field_data = {
+                'values': values,
+                'operation': operation,
+                'negative': negative
+            }
+
+            if value_type == 'datetime':
+                field_data['value_type'] = value_type
+                field_data['format_strings'] = format_strings
+
+            result[field] = field_data
         else:
-            pattern = r"(\S+):(\S+)"
+            if result[field]['negative'] != negative:
+                field_data = {
+                    'values': values,
+                    'operation': operation,
+                    'negative': negative
+                }
 
-        matches = re.findall(pattern, s)
+                if value_type == 'datetime':
+                    field_data['value_type'] = value_type
+                    field_data['format_strings'] = format_strings
 
-        for key, value in matches:
-            is_array = False
-            key_parts = key.split('.')
-            new_key_parts = []
-            for part in key_parts:
-                if part.startswith("$"):
-                    is_array = True
-                new_key_parts.append(part)
-            key_clean = '.'.join(new_key_parts)
+                result[field] = field_data
+            else:
+                result[field]['values'].extend(values)
+                if operation == 'OR':
+                    result[field]['operation'] = 'OR'
 
-            value = value.replace("%40", "@")
-            value = value.replace("%41", ":")
-            try:
-                if "." in key_clean:
-                    if getattr(entity, key_clean.split('.')[0]):
-                        key_sql = transform_keys_to_sql(key_clean)
-                        if "|" in value:
-                            value = value.split("|")
-                        result[key_sql] = {
-                            "value": value,
-                            "neg": flag_neg,
-                            "is_array": is_array
-                        }
-                elif getattr(entity, key_clean):
-                    if "|" in value:
-                        value = value.split("|")
-                    result[key_clean] = {
-                        "value": value,
-                        "neg": flag_neg,
-                        "is_array": is_array
-                    }
-                flag_neg = False
-            except Exception as e:
-                print(f"Failed to parse search string: {s} cuz of {e}:{e.args}:{e.__dict__}")
-                continue
+                if value_type == 'datetime':
+                    result[field]['value_type'] = value_type
+                    if 'format_strings' not in result[field]:
+                        result[field]['format_strings'] = {}
+                    result[field]['format_strings'].update(format_strings)
+
     return result
 
 
