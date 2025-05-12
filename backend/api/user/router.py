@@ -426,6 +426,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             )
             return api.Response(status=api.Status.success, records=[record])
         # Check if user entered a wrong password
+        print('============',is_password_valid)
         if not is_password_valid:
             await handle_failed_login_attempt(user)
         raise api.Exception(

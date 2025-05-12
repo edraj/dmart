@@ -206,7 +206,8 @@ async def test_login_with_otp_unresolvable_identifier(client: AsyncClient):
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
 
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED  
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    print(json_response["error"])
     assert json_response["error"]["code"] == InternalErrorCode.USER_ISNT_VERIFIED
     print(response.json())
 
