@@ -290,21 +290,28 @@ def parse_search_string(string, entity):
 
         value_type = 'string'  # Default type
         format_strings = {}
+        all_boolean = True
         for i, val in enumerate(values):
             is_datetime, format_string = is_date_time_value(val)
             if is_datetime:
                 value_type = 'datetime'
                 format_strings[val] = format_string
+                all_boolean = False
+            elif not val.lower() in ['true', 'false']:
+                all_boolean = False
+
+        if all_boolean and value_type == 'string':
+            value_type = 'boolean'
 
         if field not in result:
             field_data = {
                 'values': values,
                 'operation': operation,
-                'negative': negative
+                'negative': negative,
+                'value_type': value_type,
             }
 
             if value_type == 'datetime':
-                field_data['value_type'] = value_type
                 field_data['format_strings'] = format_strings
 
             result[field] = field_data
