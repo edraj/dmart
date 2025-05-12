@@ -8,7 +8,7 @@ import sys
 from sys import modules as sys_modules
 from fastapi.logger import logger
 from redis.commands.search.field import TextField
-from redis.commands.search.index_definition import IndexDefinition, IndexType
+from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 from datetime import datetime
 import aiofiles
