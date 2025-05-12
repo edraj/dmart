@@ -297,7 +297,7 @@ def parse_search_string(string, entity):
                 value_type = 'datetime'
                 format_strings[val] = format_string
                 all_boolean = False
-            elif not val.lower() in ['true', 'false']:
+            elif val.lower() not in ['true', 'false']:
                 all_boolean = False
 
         if all_boolean and value_type == 'string':
