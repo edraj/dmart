@@ -1505,6 +1505,14 @@ class FileAdapter(BaseDataAdapter):
             return user_permissions
         except Exception as e:
             logger.error(f"Error generating user permissions: {e}")
+            raise api.Exception(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                error=api.Error(
+                    type="system",
+                    code=InternalErrorCode.UNPROCESSABLE_ENTITY,
+                    message=str(e),
+                ),
+            )
 
     async def get_user_permissions(self, user_shortname: str) -> dict:
         async with RedisServices() as redis_services:

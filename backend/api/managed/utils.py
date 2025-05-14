@@ -707,8 +707,8 @@ async def serve_request_patch(request, owner_shortname: str):
                 record.attributes.get("is_active") is False
             ):
                 await db.remove_user_session(record.shortname)
-
-            resource_obj.payload.body = new_resource_payload_data
+            if resource_obj.payload and new_resource_payload_data:
+                resource_obj.payload.body = new_resource_payload_data
             records.append(
                 resource_obj.to_record(
                     record.subpath, resource_obj.shortname, []
