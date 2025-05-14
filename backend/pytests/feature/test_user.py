@@ -193,7 +193,6 @@ async def test_login_with_otp_both_email_and_msisdn_error(client: AsyncClient):
     assert json_response["error"]["type"] == "general"
     assert json_response["error"]["code"] == 99
     assert "Too many input has been passed" in json_response["error"]["message"]
-    print(response.json())
 
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
@@ -207,9 +206,7 @@ async def test_login_with_otp_unresolvable_identifier(client: AsyncClient):
     json_response = response.json()
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    print(json_response["error"])
     assert json_response["error"]["code"] == InternalErrorCode.USER_ISNT_VERIFIED
-    print(response.json())
 
 
 
@@ -227,23 +224,17 @@ async def test_login_with_empty_otp_field(client: AsyncClient):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert json_response["error"]["code"] == InternalErrorCode.OTP_ISSUE
     assert json_response["error"]["message"] == "Invalid OTP code."
-    print(response.json())
 
 
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_login_with_otp_but_missing_identifier(client: AsyncClient):
-    payload = {
-        "otp": "123456"
-    }
-
-    response = await client.post("/user/login", json=payload)
+    response = await client.post("/user/login", json={"otp": "123456"})
     json_response = response.json()
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert json_response["error"]["code"] == InternalErrorCode.OTP_ISSUE
     assert json_response["error"]["message"] == "Either msisdn or email must be provided."
-    print(response.json())
 
 
 @pytest.mark.run(order=1)

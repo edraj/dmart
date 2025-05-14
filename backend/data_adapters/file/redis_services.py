@@ -955,7 +955,6 @@ class RedisServices(Redis):
             x = self.json().get(name=doc_id)
             if x and isinstance(x, Awaitable):
                 value = await x
-                print(f'!!! {doc_id=}, {value=}')
                 if isinstance(value, dict):
                     return value
                 if isinstance(value, str):

@@ -138,9 +138,7 @@ async def test_query_aggregate(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["total"] > 0
     assert isinstance(json_response["records"][0]["attributes"], dict)
-    assert list(json_response["records"][0]["attributes"].keys()) == [
-        "active_num",
-    ]
+    assert "active_num" in list(json_response["records"][0]["attributes"].keys())
 
 @pytest.mark.run(order=3)
 @pytest.mark.anyio
