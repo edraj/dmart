@@ -312,7 +312,6 @@ async def serve_request(
                 message="Request records cannot be empty",
             ),
         )
-
     records = []
     failed_records = []
     match request.request_type:

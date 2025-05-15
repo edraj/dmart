@@ -309,7 +309,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     shortname = identifier.get("shortname") or await get_shortname_from_identifier(value=value, key=key)
                 else:
                     shortname = await get_shortname_from_identifier(value=identifier, key=key)
-
             if not shortname:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -353,10 +352,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
             record = await process_user_login(user, response, {}, request.firebase_token)
             return api.Response(status=api.Status.success, records=[record])
-
-
-
-                
         else:
             if identifier is None:
                 raise api.Exception(
@@ -431,7 +426,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                      message="Invalid username or password [2]"),
+                      message="Invalid username or password [3]"),
         )
     except api.Exception as e:
         if e.error.type == "db":
@@ -440,7 +435,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 api.Error(
                     type="auth",
                     code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                    message="Invalid username or password [3]",
+                    message="Invalid username or password [4]",
                     info=[{"details": str(e)}],
                 ),
             )
@@ -557,14 +552,12 @@ async def update_profile(
     if profile.attributes.get("email") and not profile.attributes.get("email_otp"):
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50,
-                            message="Email OTP is required to update your email"),
+            error=api.Error(type="create", code=50, message="Email OTP is required to update your email"),
         )
     if profile.attributes.get("msisdn") and not profile.attributes.get("msisdn_otp"):
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50,
-                            message="msisdn OTP is required to update your msisdn"),
+            error=api.Error(type="create", code=50, message="msisdn OTP is required to update your msisdn"),
         )
         
     if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):

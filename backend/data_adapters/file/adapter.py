@@ -387,7 +387,7 @@ class FileAdapter(BaseDataAdapter):
             )
 
     async def save(self, space_name: str, subpath: str, meta: core.Meta) -> Any:
-        """Save Meta Json to respectiv file"""
+        """Save Meta Json to respective file"""
         try:
             path, filename = self.metapath(
                 space_name,
@@ -1387,8 +1387,10 @@ class FileAdapter(BaseDataAdapter):
         role_permissions: list[core.Permission] = []
 
         for permission_doc in permissions_search["data"]:
-            permission = core.Permission.model_validate(json.loads(permission_doc))
-            role_permissions.append(permission)
+            permission_doc = json.loads(permission_doc)
+            if permission_doc['resource_type'] == 'permission':
+                permission = core.Permission.model_validate(permission_doc)
+                role_permissions.append(permission)
 
         return role_permissions
 
@@ -1450,54 +1452,67 @@ class FileAdapter(BaseDataAdapter):
             return user
 
     async def generate_user_permissions(self, user_shortname: str) -> dict:
-        user_permissions: dict = {}
+        try:
+            user_permissions: dict = {}
 
-        user_roles = await self.get_user_roles(user_shortname)
+            user_roles = await self.get_user_roles(user_shortname)
+            for _, role in user_roles.items():
+                role_permissions = await self.get_role_permissions(role)
+                permission_world_record = await self.load_or_none(
+                    settings.management_space,
+                    'permissions',
+                    "world",
+                    core.Permission
+                )
+                if permission_world_record:
+                    role_permissions.append(permission_world_record)
 
-        for _, role in user_roles.items():
-            role_permissions = await self.get_role_permissions(role)
-            permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
-                                                              core.Permission)
-            if permission_world_record:
-                role_permissions.append(permission_world_record)
+                for permission in role_permissions:
+                    for space_name, permission_subpaths in permission.subpaths.items():
+                        for permission_subpath in permission_subpaths:
+                            permission_subpath = trans_magic_words(permission_subpath, user_shortname)
+                            for permission_resource_types in permission.resource_types:
+                                actions = set(permission.actions)
+                                conditions = set(permission.conditions)
+                                if (
+                                        f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                                        in user_permissions
+                                ):
+                                    old_perm = user_permissions[
+                                        f"{space_name}:{permission_subpath}:{permission_resource_types}"
+                                    ]
 
-            for permission in role_permissions:
-                for space_name, permission_subpaths in permission.subpaths.items():
-                    for permission_subpath in permission_subpaths:
-                        permission_subpath = trans_magic_words(permission_subpath, user_shortname)
-                        for permission_resource_types in permission.resource_types:
-                            actions = set(permission.actions)
-                            conditions = set(permission.conditions)
-                            if (
+                                    if isinstance(actions, list):
+                                        actions = set(actions)
+                                    actions |= set(old_perm["allowed_actions"])
+
+                                    if isinstance(conditions, list):
+                                        conditions = set(conditions)
+                                    conditions |= set(old_perm["conditions"])
+
+                                user_permissions[
                                     f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                                    in user_permissions
-                            ):
-                                old_perm = user_permissions[
-                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                                ]
-
-                                if isinstance(actions, list):
-                                    actions = set(actions)
-                                actions |= set(old_perm["allowed_actions"])
-
-                                if isinstance(conditions, list):
-                                    conditions = set(conditions)
-                                conditions |= set(old_perm["conditions"])
-
-                            user_permissions[
-                                f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                            ] = {
-                                "allowed_actions": list(actions),
-                                "conditions": list(conditions),
-                                "restricted_fields": permission.restricted_fields,
-                                "allowed_fields_values": permission.allowed_fields_values
-                            }
-
-        async with RedisServices() as redis_services:
-            await redis_services.save_doc(
-                f"users_permissions_{user_shortname}", user_permissions
+                                ] = {
+                                    "allowed_actions": list(actions),
+                                    "conditions": list(conditions),
+                                    "restricted_fields": permission.restricted_fields,
+                                    "allowed_fields_values": permission.allowed_fields_values
+                                }
+            async with RedisServices() as redis_services:
+                await redis_services.save_doc(
+                    f"users_permissions_{user_shortname}", user_permissions
+                )
+            return user_permissions
+        except Exception as e:
+            logger.error(f"Error generating user permissions: {e}")
+            raise api.Exception(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                error=api.Error(
+                    type="system",
+                    code=InternalErrorCode.UNPROCESSABLE_ENTITY,
+                    message=str(e),
+                ),
             )
-        return user_permissions
 
     async def get_user_permissions(self, user_shortname: str) -> dict:
         async with RedisServices() as redis_services:
@@ -1871,9 +1886,10 @@ class FileAdapter(BaseDataAdapter):
 
     async def is_user_verified(self, user_shortname: str | None, identifier: str | None) -> bool:
         async with RedisServices() as redis_services:
-            user: dict = await redis_services.get_doc_by_id(f"management:master:meta:users/{user_shortname}")
-            if identifier == "msisdn":
-                return bool(user.get("is_msisdn_verified", True))
-            if identifier == "email":
-                return bool(user.get("is_email_verified", True))
+            user: dict = await redis_services.get_doc_by_id(f"management:meta:users/{user_shortname}")
+            if user:
+                if identifier == "msisdn":
+                    return bool(user.get("is_msisdn_verified", True))
+                if identifier == "email":
+                    return bool(user.get("is_email_verified", True))
             return False

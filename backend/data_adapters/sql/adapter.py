@@ -891,8 +891,8 @@ class SQLAdapter(BaseDataAdapter):
                     for k, v in criteria.items():
                         if isinstance(v, str):
                             statement = statement.where(
-                                text(f"{k}::text=:{k}")
-                            ).params({k: f"{v}"})
+                                text(f"{k}::text LIKE :{k}")
+                            ).params({k: f"{v}%"})
                         else:
                             statement = statement.where(text(f"{k}=:{k}")).params({k: v})
                         _results = (await session.execute(statement)).all()
@@ -2126,11 +2126,6 @@ class SQLAdapter(BaseDataAdapter):
                                 "restricted_fields": permission.restricted_fields,
                                 "allowed_fields_values": permission.allowed_fields_values
                             }
-                            if space_name == 'management' and permission_subpath == 'users':
-                                print('-----------------------------------')
-                                print(f"{space_name}:{permission_subpath}:{permission_resource_types}")
-                                print(user_permissions[f"{space_name}:{permission_subpath}:{permission_resource_types}"] )
-                                print('-----------------------------------')
         return user_permissions
 
     async def get_user_permissions(self, user_shortname: str) -> dict:

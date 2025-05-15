@@ -668,19 +668,6 @@ async def serve_request_patch(request, owner_shortname: str):
                 updated_attributes_flattend = list(
                     flatten_dict(record.attributes).keys()
                 )
-                if request.request_type == RequestType.r_replace:
-                    updated_attributes_flattend = (
-                            list(old_version_flattend.keys()) +
-                            list(new_version_flattend.keys())
-                    )
-
-                if (settings.active_data_db == 'sql'
-                        and resource_obj.payload
-                        and resource_obj.payload.content_type == ContentType.json):
-                    resource_obj.payload.body = {
-                        **resource_obj.payload.body,
-                        **new_resource_payload_data
-                    }  # type: ignore
 
                 # VALIDATE SEPARATE PAYLOAD BODY
                 if (
@@ -690,7 +677,7 @@ async def serve_request_patch(request, owner_shortname: str):
                     and new_resource_payload_data is not None
                 ):
                     await db.validate_payload_with_schema(
-                        payload_data=resource_obj.payload.body,
+                        payload_data=new_resource_payload_data,
                         space_name=request.space_name,
                         schema_shortname=resource_obj.payload.schema_shortname,
                     )
@@ -720,7 +707,8 @@ async def serve_request_patch(request, owner_shortname: str):
                 record.attributes.get("is_active") is False
             ):
                 await db.remove_user_session(record.shortname)
-
+            if resource_obj.payload and new_resource_payload_data:
+                resource_obj.payload.body = new_resource_payload_data
             records.append(
                 resource_obj.to_record(
                     record.subpath, resource_obj.shortname, []
@@ -1580,8 +1568,6 @@ async def import_resources_from_csv_handler(
             if current_schema_property["type"] in ["number", "integer"]:
                 value = value.replace(",", "")
 
-            print("CURRENT", current_schema_property)
-            print("VALUE", value)
             value = data_types_mapper[current_schema_property["type"]](value)
             if current_schema_property["type"] == "array":
                 value = [

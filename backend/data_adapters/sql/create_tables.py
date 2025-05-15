@@ -341,8 +341,6 @@ class Aggregated(SQLModel, table=False):
             **attributes,
             **(extra if extra is not None else {})
         }
-        print("!record_fields", record_fields)
-        print("!!record_fields", AggregatedRecord(**record_fields))
         return AggregatedRecord(**record_fields)
 
 
