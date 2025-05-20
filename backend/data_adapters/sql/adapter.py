@@ -56,6 +56,7 @@ from data_adapters.sql.adapter_helpers import (
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
+from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 
@@ -681,16 +682,21 @@ class SQLAdapter(BaseDataAdapter):
 
 
     def __init__(self):
+        self.engine = create_async_engine(
+            URL.create(
+                drivername=settings.database_driver,
+                host=settings.database_host,
+                port=settings.database_port,
+                username=settings.database_username,
+                password=settings.database_password,
+                database=settings.database_name,
+            ),
+            echo=False,
+            max_overflow=settings.database_max_overflow,
+            pool_size=settings.database_pool_size,
+            pool_pre_ping=True,
+        )
         try:
-            self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
-            connection_string = f"{self.database_connection_string}/{settings.database_name}"
-            self.engine = create_async_engine(
-                connection_string,
-                echo=False,
-                max_overflow=settings.database_max_overflow,
-                pool_size=settings.database_pool_size,
-                pool_pre_ping=True,
-            )
             self.async_session = sessionmaker(
                 self.engine, class_=AsyncSession, expire_on_commit=False
             ) # type: ignore
