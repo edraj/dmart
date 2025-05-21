@@ -331,7 +331,8 @@ async def create_entry(
     body_dict: dict[str, Any] = Body(...),
 ):
     allowed_models = {
-        "applications": ["log", "feedback", "cancellation_survey"]
+        "applications": ["log", "feedback", "cancellation_survey"],
+        "referrals": ["candidate"]
     }
     if (
         space_name not in allowed_models
