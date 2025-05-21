@@ -284,7 +284,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             join_operator = " OR " if operation == 'AND' else " AND "
                         else:
                             join_operator = " AND " if operation == 'AND' else " OR "
-                        statement = statement.where(text(join_operator.join(conditions)))
+                        statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                 elif field.startswith('payload.'):
                     payload_field = field.replace('payload.', '')
 
@@ -378,7 +378,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             join_operator = " OR " if operation == 'AND' else " AND "
                         else:
                             join_operator = " AND " if operation == 'AND' else " OR "
-                        statement = statement.where(text(join_operator.join(conditions)))
+                        statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                 elif field == 'roles':
                     conditions = []
                     for value in values:
@@ -392,7 +392,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             join_operator = " OR " if operation == 'AND' else " AND "
                         else:
                             join_operator = " AND " if operation == 'AND' else " OR "
-                        statement = statement.where(text(join_operator.join(conditions)))
+                        statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                 elif field == 'owner_shortname':
                     if negative:
                         if operation == 'AND' and len(values) > 1:
@@ -469,7 +469,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         join_operator = " OR " if operation == 'AND' else " AND "
                                     else:
                                         join_operator = " AND " if operation == 'AND' else " OR "
-                                    statement = statement.where(text(join_operator.join(conditions)))
+                                    statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                             elif value_type == 'numeric':
                                 conditions = []
 
@@ -494,6 +494,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         join_operator = " OR " if operation == 'AND' else " AND "
                                     else:
                                         join_operator = " AND " if operation == 'AND' else " OR "
+
+                                    statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+
                                     statement = statement.where(text(join_operator.join(conditions)))
                             elif value_type == 'boolean':
                                 conditions = []
@@ -510,6 +513,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     else:
                                         join_operator = " AND " if operation == 'AND' else " OR "
                                     statement = statement.where(text(join_operator.join(conditions)))
+
                             else:
                                 field_obj = getattr(table, field)
                                 is_timestamp = hasattr(field_obj, 'type') and str(field_obj.type).lower().startswith('timestamp')
@@ -523,14 +527,14 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                             conditions.append(f"{field}::text = '{value}'")
 
                                     join_operator = " AND " if operation == 'AND' else " OR "
-                                    statement = statement.where(text(join_operator.join(conditions)))
+                                    statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                                 else:
                                     if negative:
                                         if operation == 'AND' and len(values) > 1:
                                             conditions = []
                                             for value in values:
                                                 conditions.append(f"{field} != '{value}'")
-                                            statement = statement.where(text(" OR ".join(conditions)))
+                                            statement = statement.where(text(f'( {" OR ".join(conditions)} )'))
                                         else:
                                             if len(values) == 1:
                                                 statement = statement.where(getattr(table, field) != values[0])
@@ -625,7 +629,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     join_operator = " OR " if operation == 'AND' else " AND "
                                 else:
                                     join_operator = " AND " if operation == 'AND' else " OR "
-                                statement = statement.where(text(join_operator.join(conditions)))
+                                statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                     except Exception as e:
                         print(f"Error handling field {field}: {e}")
 
@@ -782,7 +786,7 @@ class SQLAdapter(BaseDataAdapter):
                 password=settings.database_password,
                 database=settings.database_name,
             ),
-            echo=False,
+            echo=True,
             max_overflow=settings.database_max_overflow,
             pool_size=settings.database_pool_size,
             pool_pre_ping=True,
