@@ -274,7 +274,100 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         else:
                             join_operator = " AND " if operation == 'AND' else " OR "
                         statement = statement.where(text(join_operator.join(conditions)))
+                elif field.startswith('payload.'):
+                    payload_field = field.replace('payload.', '')
 
+                    conditions = []
+                    for value in values:
+                        if value_type == 'datetime':
+                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                range_values = field_data['range_values']
+                                val1, val2 = range_values
+                                if is_date_time_value(val1)[0] and is_date_time_value(val2)[0]:
+                                    fmt1 = format_strings.get(val1)
+                                    fmt2 = format_strings.get(val2)
+                                    if fmt1 and fmt2:
+                                        if fmt1 == fmt2:
+                                            if val1 > val2:
+                                                val1, val2 = val2, val1
+                                        else:
+                                            try:
+                                                from datetime import datetime
+                                                dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                if dt1 > dt2:
+                                                    val1, val2 = val2, val1
+                                            except Exception:
+                                                if val1 > val2:
+                                                    val1, val2 = val2, val1
+                                else:
+                                    if val1 > val2:
+                                        val1, val2 = val2, val1
+
+                                start_value, end_value = val1, val2
+                                start_format = format_strings.get(start_value)
+                                end_format = format_strings.get(end_value)
+
+                                if start_format and end_format:
+                                    if negative:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{start_format}') NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND (payload::jsonb->>'{payload_field}')::text NOT BETWEEN '{start_value}' AND '{end_value}')"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                                    else:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{start_format}') BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND (payload::jsonb->>'{payload_field}')::text BETWEEN '{start_value}' AND '{end_value}')"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                            else:
+                                format_string = format_strings.get(value)
+                                if format_string:
+                                    next_value = get_next_date_value(value, format_string)
+
+                                    if negative:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND (TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{format_string}') < TO_TIMESTAMP('{value}', '{format_string}') OR TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{format_string}') >= TO_TIMESTAMP('{next_value}', '{format_string}')))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND ((payload::jsonb->>'{payload_field}')::text < '{value}' OR (payload::jsonb->>'{payload_field}')::text >= '{next_value}'))"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                                    else:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND (payload::jsonb->>'{payload_field}')::text >= '{value}' AND (payload::jsonb->>'{payload_field}')::text < '{next_value}')"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                        elif value_type == 'numeric':
+                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                range_values = field_data['range_values']
+                                val1, val2 = range_values
+                                try:
+                                    num1 = float(val1)
+                                    num2 = float(val2)
+                                    if num1 > num2:
+                                        val1, val2 = val2, val1
+                                except ValueError:
+                                    pass
+
+                                if negative:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'number' AND (payload::jsonb->>'{payload_field}')::float NOT BETWEEN {val1} AND {val2})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND ((payload::jsonb->>'{payload_field}')::float NOT BETWEEN {val1} AND {val2}))"
+                                    conditions.append(f"({number_condition} OR {string_condition})")
+                                else:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'number' AND (payload::jsonb->>'{payload_field}')::float BETWEEN {val1} AND {val2})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND ((payload::jsonb->>'{payload_field}')::float BETWEEN {val1} AND {val2}))"
+                                    conditions.append(f"({number_condition} OR {string_condition})")
+                        else:
+                            if negative:
+                                array_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'array' AND NOT (payload::jsonb->'{payload_field}' @> '[\"{value}\"]'::jsonb))"
+                                string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND payload::jsonb->>'{payload_field}' != '{value}')"
+                                direct_condition = f"(payload::jsonb->'{payload_field}' != '\"{value}\"'::jsonb)"
+                            else:
+                                array_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'array' AND payload::jsonb->'{payload_field}' @> '[\"{value}\"]'::jsonb)"
+                                string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND payload::jsonb->>'{payload_field}' = '{value}')"
+                                direct_condition = f"(payload::jsonb->'{payload_field}' = '\"{value}\"'::jsonb)"
+
+                            conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+
+                    if conditions:
+                        if negative:
+                            join_operator = " OR " if operation == 'AND' else " AND "
+                        else:
+                            join_operator = " AND " if operation == 'AND' else " OR "
+                        statement = statement.where(text(join_operator.join(conditions)))
                 elif field == 'roles':
                     conditions = []
                     for value in values:
@@ -289,7 +382,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         else:
                             join_operator = " AND " if operation == 'AND' else " OR "
                         statement = statement.where(text(join_operator.join(conditions)))
-
                 elif field == 'owner_shortname':
                     if negative:
                         if operation == 'AND' and len(values) > 1:
@@ -311,7 +403,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 statement = statement.where(table.owner_shortname == values[0])
                             else:
                                 statement = statement.where(col(table.owner_shortname).in_(values))
-
                 else:
                     try:
                         if hasattr(table, field):
