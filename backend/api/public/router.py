@@ -1,7 +1,7 @@
+import hashlib
 from re import sub as res_sub
 from uuid import uuid4
-from fastapi import APIRouter, Body, Query, Path, status, Depends
-
+from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
 from models.enums import AttachmentType, ContentType, ResourceType, TaskType
 from data_adapters.adapter import data_adapter as db
 import models.api as api
@@ -9,14 +9,16 @@ from utils.helpers import camel_case
 from utils.internal_error_code import InternalErrorCode
 import utils.regex as regex
 import models.core as core
-from api.managed.utils import get_mime_type
+from api.managed.utils import get_mime_type, get_resource_content_type_from_payload_content_type, \
+    create_or_update_resource_with_payload_handler
 from typing import Any
 import sys
 from utils.access_control import access_control
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
+from utils.router_helper import is_space_exist
 from utils.settings import settings
-from starlette.responses import StreamingResponse, FileResponse
+from starlette.responses import FileResponse, StreamingResponse
 
 router = APIRouter()
 
@@ -320,6 +322,102 @@ async def query_via_urlparams(
         status=api.Status.success,
         records=records,
         attributes={"total": total, "returned": len(records)},
+    )
+
+
+@router.post(
+    "/resource_with_payload",
+    response_model=api.Response,
+    response_model_exclude_none=True,
+)
+async def create_or_update_resource_with_payload(
+        payload_file: UploadFile,
+        request_record: UploadFile,
+        space_name: str = Form(..., examples=["data"]),
+        sha: str | None = Form(None, examples=["data"]),
+):
+    # NOTE We currently make no distinction between create and update.
+    # in such case update should contain all the data every time.
+    await is_space_exist(space_name)
+
+    record = core.Record.model_validate_json(request_record.file.read())
+
+    payload_filename = payload_file.filename or ""
+    resource_content_type = get_resource_content_type_from_payload_content_type(
+        payload_file, payload_filename, record
+    )
+
+    await plugin_manager.before_action(
+        core.Event(
+            space_name=space_name,
+            subpath=record.subpath,
+            shortname=record.shortname,
+            action_type=core.ActionType.create,
+            schema_shortname=record.attributes.get("payload", {}).get(
+                "schema_shortname", None
+            ),
+            resource_type=record.resource_type,
+            user_shortname="anonymous",
+        )
+    )
+
+    if not await access_control.check_access(
+            user_shortname="anonymous",
+            space_name=space_name,
+            subpath=record.subpath,
+            resource_type=record.resource_type,
+            action_type=core.ActionType.create,
+            record_attributes=record.attributes,
+            entry_shortname=record.shortname,
+    ):
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="You don't have permission to this action [10]",
+            ),
+        )
+
+    sha1 = hashlib.sha1()
+    sha1.update(payload_file.file.read())
+    checksum = sha1.hexdigest()
+    if isinstance(sha, str) and sha != checksum:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.INVALID_DATA,
+                message="The provided file doesn't match the sha",
+            ),
+        )
+    await payload_file.seek(0)
+    resource_obj, record = await create_or_update_resource_with_payload_handler(
+            record, "anonymous", space_name, payload_file, payload_filename, checksum, sha, resource_content_type
+    )
+
+    await db.save(space_name, record.subpath, resource_obj)
+    await db.save_payload(
+        space_name, record.subpath, resource_obj, payload_file
+    )
+
+    await plugin_manager.after_action(
+        core.Event(
+            space_name=space_name,
+            subpath=record.subpath,
+            shortname=record.shortname,
+            action_type=core.ActionType.create,
+            schema_shortname=record.attributes.get("payload", {}).get(
+                "schema_shortname", None
+            ),
+            resource_type=record.resource_type,
+            user_shortname="anonymous",
+        )
+    )
+
+    return api.Response(
+        status=api.Status.success,
+        records=[record],
     )
 
 
