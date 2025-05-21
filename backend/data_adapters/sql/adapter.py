@@ -256,6 +256,17 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     number_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'number' AND (payload::jsonb->'body'->>'{payload_field}')::float BETWEEN {val1} AND {val2})"
                                     string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND ((payload::jsonb->'body'->>'{payload_field}')::float BETWEEN {val1} AND {val2}))"
                                     conditions.append(f"({number_condition} OR {string_condition})")
+                        elif value_type == 'boolean':
+                            for value in values:
+                                bool_value = value.lower()
+                                if negative:
+                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'boolean' AND (payload::jsonb->'body'->>'{payload_field}')::boolean != {bool_value})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND (payload::jsonb->'body'->>'{payload_field}')::boolean != {bool_value})"
+                                    conditions.append(f"({bool_condition} OR {string_condition})")
+                                else:
+                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'boolean' AND (payload::jsonb->'body'->>'{payload_field}')::boolean = {bool_value})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND (payload::jsonb->'body'->>'{payload_field}')::boolean = {bool_value})"
+                                    conditions.append(f"({bool_condition} OR {string_condition})")
                         else:
                             if negative:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'array' AND NOT (payload::jsonb->'body'->'{payload_field}' @> '[\"{value}\"]'::jsonb))"
@@ -483,7 +494,26 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         join_operator = " OR " if operation == 'AND' else " AND "
                                     else:
                                         join_operator = " AND " if operation == 'AND' else " OR "
+
                                     statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+
+                                    statement = statement.where(text(join_operator.join(conditions)))
+                            elif value_type == 'boolean':
+                                conditions = []
+                                for value in values:
+                                    bool_value = value.lower()
+                                    if negative:
+                                        conditions.append(f"(CAST({field} AS BOOLEAN) != {bool_value})")
+                                    else:
+                                        conditions.append(f"(CAST({field} AS BOOLEAN) = {bool_value})")
+
+                                if conditions:
+                                    if negative:
+                                        join_operator = " OR " if operation == 'AND' else " AND "
+                                    else:
+                                        join_operator = " AND " if operation == 'AND' else " OR "
+                                    statement = statement.where(text(join_operator.join(conditions)))
+
                             else:
                                 field_obj = getattr(table, field)
                                 is_timestamp = hasattr(field_obj, 'type') and str(field_obj.type).lower().startswith('timestamp')
@@ -582,6 +612,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                             conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'number' AND (payload::jsonb->'{field}')::float NOT BETWEEN {val1} AND {val2})")
                                         else:
                                             conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'number' AND (payload::jsonb->'{field}')::float BETWEEN {val1} AND {val2})")
+                                elif value_type == 'boolean':
+                                    bool_value = value.lower()
+                                    if negative:
+                                        conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'boolean' AND (payload::jsonb->'{field}')::boolean != {bool_value})")
+                                    else:
+                                        conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'boolean' AND (payload::jsonb->'{field}')::boolean = {bool_value})")
                                 else:
                                     if negative:
                                         conditions.append(f"payload::jsonb->'{field}' != '\"{value}\"'::jsonb")

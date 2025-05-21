@@ -21,6 +21,7 @@ class Request(BaseModel):
     records: list[core.Record]
 
     model_config = {
+        "extra": "forbid",
         "json_schema_extra": {
             "examples": [
                 {
