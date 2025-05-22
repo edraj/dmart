@@ -286,7 +286,7 @@ def parse_search_string(string, entity):
             continue
 
         values = value.split('|')
-        operation = 'AND' if len(values) > 1 else 'OR'
+        operation = 'OR' if len(values) > 1 else 'AND'
 
         value_type = 'string'  # Default type
         format_strings = {}
