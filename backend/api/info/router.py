@@ -59,7 +59,7 @@ async def get_settings(shortname=Depends(JWTBearer())) -> api.Response:
             error=api.Error(
                 type="access",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action"
+                message="You don't have permission to this action [21]"
             )
         )
     return api.Response(status=api.Status.success, attributes=settings.model_dump())

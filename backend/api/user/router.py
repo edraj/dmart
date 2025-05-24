@@ -1066,7 +1066,7 @@ async def user_reset(
             api.Error(
                 type="request",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action",
+                message="You don't have permission to this action [20]",
             ),
         )
 

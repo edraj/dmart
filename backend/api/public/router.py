@@ -375,7 +375,7 @@ async def create_or_update_resource_with_payload(
             api.Error(
                 type="request",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [10]",
+                message="You don't have permission to this action [50]",
             ),
         )
 
@@ -527,7 +527,7 @@ async def create_attachment(
             api.Error(
                 type="request",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [14]",
+                message="You don't have permission to this action [54]",
             ),
         )
 
@@ -544,7 +544,7 @@ async def create_attachment(
             api.Error(
                 type="request",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [15]",
+                message="You don't have permission to this action [55]",
             ),
         )
 

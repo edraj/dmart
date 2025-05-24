@@ -613,7 +613,7 @@ async def serve_request_patch(request, owner_shortname: str):
                     api.Error(
                         type="request",
                         code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [5]",
+                        message="You don't have permission to this action [8]",
                     ),
                 )
 
@@ -812,7 +812,7 @@ async def serve_request_assign(request, owner_shortname: str):
                     api.Error(
                         type="request",
                         code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [05]",
+                        message="You don't have permission to this action [25]",
                     ),
                 )
 
@@ -930,7 +930,7 @@ async def serve_request_update_acl(request, owner_shortname: str):
                     api.Error(
                         type="request",
                         code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [06]",
+                        message="You don't have permission to this action [26]",
                     ),
                 )
 

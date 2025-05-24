@@ -416,7 +416,7 @@ async def update_state(
             api.Error(
                 type="request",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [8]",
+                message="You don't have permission to this action [38]",
             ),
         )
     if ticket_obj.payload.content_type == ContentType.json:
@@ -577,7 +577,7 @@ async def retrieve_entry_or_attachment_payload(
             api.Error(
                 type="request",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [9]",
+                message="You don't have permission to this action [39]",
             ),
         )
 
@@ -871,7 +871,7 @@ async def retrieve_entry_meta(
             api.Error(
                 type="request",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [11]",
+                message="You don't have permission to this action [41]",
             )
         )
 
@@ -978,7 +978,7 @@ async def get_space_report(
             error=api.Error(
                 type="access",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action"
+                message="You don't have permission to this action [23]"
             ),
         )
 
