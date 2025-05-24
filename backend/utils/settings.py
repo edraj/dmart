@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     allow_otp_resend_after: int = 60
     comms_api: str = ""
     send_sms_otp_api: str = ""
+    smpp_auth_key: str = ""
     send_email_otp_api: str = ""
     send_sms_api: str = ""
     send_email_api: str = ""

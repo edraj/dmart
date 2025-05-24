@@ -19,7 +19,7 @@ USERS_SUBPATH: str = "users"
 
 path = f"{os.path.dirname(__file__)}/mocks/"
 
-headers = {"Content-Type": "application/json"}
+headers = {"Content-Type": "application/json", "auth-key": settings.smpp_auth_key}
 
 
 def gen_alphanumeric(length=16):
