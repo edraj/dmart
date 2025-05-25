@@ -34,7 +34,7 @@ async def serve_query(
                     __input["uuid"] = str(__input["uuid"])
                 if "attributes" in __input and "created_at" in __input["attributes"]:
                     __input["attributes"]["created_at"] = str (__input["attributes"]["created_at"])
-                if "attributes" in __input and "upated_at" in __input["attributes"]:
+                if "attributes" in __input and "updated_at" in __input["attributes"]:
                     __input["attributes"]["updated_at"] = str (__input["attributes"]["updated_at"])
 
             records = (
