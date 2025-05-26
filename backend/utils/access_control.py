@@ -200,6 +200,10 @@ class AccessControl:
         if f"{space_name}:{search_subpath}:{resource_type}" in user_permissions:
             permission_key = f"{space_name}:{search_subpath}:{resource_type}"
 
+        # check if has access to all subpaths
+        if f"{settings.all_spaces_mw}:{settings.all_subpaths_mw}:{resource_type}" in user_permissions:
+            permission_key = f"{settings.all_spaces_mw}:{search_subpath}:{resource_type}"
+
         # check if has access to current subpath
         if f"{settings.all_spaces_mw}:{original_subpath}:{resource_type}" in user_permissions:
             permission_key = f"{settings.all_spaces_mw}:{original_subpath}:{resource_type}"
