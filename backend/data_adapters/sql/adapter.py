@@ -162,7 +162,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if query.exact_subpath:
             statement = statement.where(table.subpath == query.subpath)
         else:
-            statement = statement.where(text(f"subpath ILIKE '{query.subpath}%'"))
+            statement = statement.where(text(f"subpath ILIKE '{query.subpath}/%'"))
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
             statement = statement.where(text(
