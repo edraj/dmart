@@ -512,7 +512,7 @@ export async function query(query: QueryRequest, scope = "managed"): Promise<Api
         const {data} = await axios.post<ApiQueryResponse>(
             website.backend + `/${scope}/query`,
             query,
-            {headers, timeout: 3000}
+            {headers, timeout: 30000}
         );
         return data;
     } catch (e) {
