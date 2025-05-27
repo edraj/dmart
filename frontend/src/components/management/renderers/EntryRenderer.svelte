@@ -557,7 +557,7 @@
 
                 // Get content from JSON editor
                 const snap = $state.snapshot(jseContent)
-                const y = snap.json && Object.keys(snap.json).length
+                const y = typeof(snap.json) === 'object' && snap.json !== null
                     ? structuredClone(snap.json)
                     : JSON.parse(snap.text);
 
