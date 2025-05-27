@@ -200,9 +200,6 @@ class AccessControl:
         if f"{space_name}:{search_subpath}:{resource_type}" in user_permissions:
             permission_key = f"{space_name}:{search_subpath}:{resource_type}"
 
-        # check if has access to all subpaths
-        if f"{settings.all_spaces_mw}:{settings.all_subpaths_mw}:{resource_type}" in user_permissions:
-            permission_key = f"{settings.all_spaces_mw}:{search_subpath}:{resource_type}"
 
         # check if has access to current subpath
         if f"{settings.all_spaces_mw}:{original_subpath}:{resource_type}" in user_permissions:
@@ -268,7 +265,7 @@ class AccessControl:
             if (
                     isinstance(flattened_attributes[field_name], list) and
                     isinstance(field_values[0], list) and
-                    not all(i in field_values[0] for i in flattened_attributes[field_name])
+                    not any(all(i in allowed_values for i in flattened_attributes[field_name]) for allowed_values in field_values)
             ):
                 return False
             elif (
