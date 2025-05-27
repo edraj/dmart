@@ -355,6 +355,7 @@
   });
 
   function handleMetaEditModal(attachment) {
+    attachment = $state.snapshot(attachment);
     const _attachment = structuredClone(attachment);
     trueResourceType = ResourceAttachmentType[_attachment.resource_type];
     trueContentType = ContentType[_attachment?.payload?.content_type];
@@ -368,6 +369,7 @@
   }
 
   function handleContentEditModal(attachment) {
+    attachment = $state.snapshot(attachment);
     const _attachment = structuredClone(attachment);
     shortname = _attachment.shortname;
 
