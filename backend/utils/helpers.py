@@ -4,6 +4,8 @@ from datetime import datetime
 import json
 from pathlib import Path
 from re import sub as re_sub
+from uuid import UUID
+
 import aiofiles
 from jsonschema.validators import _RefResolver as RefResolver  # type: ignore
 
@@ -335,3 +337,16 @@ def read_jsonl_file(file_path):
         for line in file:
             data.append(json.loads(line))
     return data
+
+
+def jq_dict_parser(data):
+    if isinstance(data, dict):
+        return {k: jq_dict_parser(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [jq_dict_parser(item) for item in data]
+    elif isinstance(data, UUID):
+        return str(data)
+    elif isinstance(data, datetime):
+        return str(data)
+    else:
+        return data
