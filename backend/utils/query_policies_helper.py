@@ -72,7 +72,7 @@ async def get_user_query_policies(
     user_groups = (await db.load_user_meta(user_shortname)).groups or []
     user_groups.append(user_shortname)
 
-    redis_query_policies = []
+    sql_query_policies = []
     for perm_key, permission in user_permissions.items():
         if (
                 not perm_key.startswith(space_name) and
@@ -87,19 +87,19 @@ async def get_user_query_policies(
                 and ConditionType.own in permission["conditions"]
         ):
             for user_group in user_groups:
-                redis_query_policies.append(f"{perm_key}:true:{user_group}")
+                sql_query_policies.append(f"{perm_key}:true:{user_group}")
         elif ConditionType.is_active in permission["conditions"]:
-            redis_query_policies.append(f"{perm_key}:true:*")
+            sql_query_policies.append(f"{perm_key}:true:*")
         elif ConditionType.own in permission["conditions"]:
             for user_group in user_groups:
                 if settings.active_data_db == 'file':
-                    redis_query_policies.append(
+                    sql_query_policies.append(
                         f"{perm_key}:true:{user_shortname}|{perm_key}:false:{user_group}"
                     )
                 else:
-                    redis_query_policies.append(f"{perm_key}:true:{user_shortname}")
-                    redis_query_policies.append(f"{perm_key}:false:{user_shortname}")
+                    sql_query_policies.append(f"{perm_key}:true:{user_shortname}")
+                    sql_query_policies.append(f"{perm_key}:false:{user_shortname}")
 
         else:
-            redis_query_policies.append(f"{perm_key}:*")
-    return redis_query_policies
+            sql_query_policies.append(f"{perm_key}:*")
+    return sql_query_policies

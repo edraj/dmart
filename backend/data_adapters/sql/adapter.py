@@ -12,7 +12,7 @@ from uuid import uuid4
 import ast
 from fastapi import status
 from fastapi.logger import logger
-from sqlalchemy import literal_column
+from sqlalchemy import literal_column, or_
 from sqlalchemy.orm import sessionmaker, defer
 from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean, func, text
 import io
@@ -162,7 +162,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if query.exact_subpath:
             statement = statement.where(table.subpath == query.subpath)
         else:
-            statement = statement.where(text(f"subpath ILIKE '{query.subpath}%'"))
+            statement = statement.where(
+                or_(
+                    table.subpath == query.subpath,
+                    text(f"subpath ILIKE '{query.subpath}/%'")
+                )
+            )
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
             statement = statement.where(text(
@@ -1043,7 +1048,11 @@ class SQLAdapter(BaseDataAdapter):
             user_query_policies = await get_user_query_policies(
                 self, user_shortname, query.space_name, query.subpath
             )
-
+            if not query.exact_subpath:
+                r = await get_user_query_policies(
+                    self, user_shortname, query.space_name, f'{query.subpath}/%'
+                )
+                user_query_policies.extend(r)
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
