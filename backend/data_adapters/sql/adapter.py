@@ -188,9 +188,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 if field.startswith('payload.body.'):
                     payload_field = field.replace('payload.body.', '')
                     payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
-                    print('@@@@@@@@@@@@@@@@@@@@')
-                    print(payload_path, value_type)
-                    print('@@@@@@@@@@@@@@@@@@@@')
                     conditions = []
                     for value in values:
                         if value_type == 'datetime':
