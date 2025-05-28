@@ -308,7 +308,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                 elif field.startswith('payload.'):
                     payload_field = field.replace('payload.', '')
-                    # Handle nested properties by converting dots to JSON path
                     payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
 
                     conditions = []
@@ -385,10 +384,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2}))"
                                     conditions.append(f"({number_condition} OR {string_condition})")
                         else:
-                            # Try to check if value is a number
                             is_numeric = False
                             try:
-                                float_value = float(value)
                                 is_numeric = True
                             except ValueError:
                                 pass
