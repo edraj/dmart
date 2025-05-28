@@ -275,7 +275,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         else:
                             is_numeric = False
                             try:
-                                float_value = float(value)
                                 is_numeric = True
                             except ValueError:
                                 pass
