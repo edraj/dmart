@@ -187,7 +187,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                 if field.startswith('payload.body.'):
                     payload_field = field.replace('payload.body.', '')
-
+                    payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
                     conditions = []
                     for value in values:
                         if value_type == 'datetime':
@@ -221,12 +221,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                                 if start_format and end_format:
                                     if negative:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->>'{payload_field}', '{start_format}') NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND (payload::jsonb->'body'->>'{payload_field}')::text NOT BETWEEN '{start_value}' AND '{end_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->{payload_path}, '{start_format}') NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->{payload_path})::text NOT BETWEEN '{start_value}' AND '{end_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                                     else:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->>'{payload_field}', '{start_format}') BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND (payload::jsonb->'body'->>'{payload_field}')::text BETWEEN '{start_value}' AND '{end_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->{payload_path}, '{start_format}') BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->{payload_path})::text BETWEEN '{start_value}' AND '{end_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                             else:
                                 format_string = format_strings.get(value)
@@ -234,12 +234,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     next_value = get_next_date_value(value, format_string)
 
                                     if negative:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND (TO_TIMESTAMP(payload::jsonb->'body'->>'{payload_field}', '{format_string}') < TO_TIMESTAMP('{value}', '{format_string}') OR TO_TIMESTAMP(payload::jsonb->'body'->>'{payload_field}', '{format_string}') >= TO_TIMESTAMP('{next_value}', '{format_string}')))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND ((payload::jsonb->'body'->>'{payload_field}')::text < '{value}' OR (payload::jsonb->'body'->>'{payload_field}')::text >= '{next_value}'))"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (TO_TIMESTAMP(payload::jsonb->'body'->{payload_path}, '{format_string}') < TO_TIMESTAMP('{value}', '{format_string}') OR TO_TIMESTAMP(payload::jsonb->'body'->{payload_path}, '{format_string}') >= TO_TIMESTAMP('{next_value}', '{format_string}')))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->{payload_path})::text < '{value}' OR (payload::jsonb->'body'->{payload_path})::text >= '{next_value}'))"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                                     else:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->>'{payload_field}', '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->'body'->>'{payload_field}', '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND (payload::jsonb->'body'->>'{payload_field}')::text >= '{value}' AND (payload::jsonb->'body'->>'{payload_field}')::text < '{next_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->{payload_path}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->'body'->{payload_path}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->{payload_path})::text >= '{value}' AND (payload::jsonb->'body'->{payload_path})::text < '{next_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                         elif value_type == 'numeric':
                             if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
@@ -254,35 +254,51 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     pass
 
                                 if negative:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'number' AND (payload::jsonb->'body'->>'{payload_field}')::float NOT BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND ((payload::jsonb->'body'->>'{payload_field}')::float NOT BETWEEN {val1} AND {val2}))"
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->{payload_path})::float NOT BETWEEN {val1} AND {val2})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->{payload_path})::float NOT BETWEEN {val1} AND {val2}))"
                                     conditions.append(f"({number_condition} OR {string_condition})")
                                 else:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'number' AND (payload::jsonb->'body'->>'{payload_field}')::float BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND ((payload::jsonb->'body'->>'{payload_field}')::float BETWEEN {val1} AND {val2}))"
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->{payload_path})::float BETWEEN {val1} AND {val2})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->{payload_path})::float BETWEEN {val1} AND {val2}))"
                                     conditions.append(f"({number_condition} OR {string_condition})")
                         elif value_type == 'boolean':
                             for value in values:
                                 bool_value = value.lower()
                                 if negative:
-                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'boolean' AND (payload::jsonb->'body'->>'{payload_field}')::boolean != {bool_value})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND (payload::jsonb->'body'->>'{payload_field}')::boolean != {bool_value})"
+                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND (payload::jsonb->'body'->{payload_path})::boolean != {bool_value})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->{payload_path})::boolean != {bool_value})"
                                     conditions.append(f"({bool_condition} OR {string_condition})")
                                 else:
-                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'boolean' AND (payload::jsonb->'body'->>'{payload_field}')::boolean = {bool_value})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND (payload::jsonb->'body'->>'{payload_field}')::boolean = {bool_value})"
+                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND (payload::jsonb->'body'->{payload_path})::boolean = {bool_value})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->{payload_path})::boolean = {bool_value})"
                                     conditions.append(f"({bool_condition} OR {string_condition})")
                         else:
-                            if negative:
-                                array_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'array' AND NOT (payload::jsonb->'body'->'{payload_field}' @> '[\"{value}\"]'::jsonb))"
-                                string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND payload::jsonb->'body'->>'{payload_field}' != '{value}')"
-                                direct_condition = f"(payload::jsonb->'body'->'{payload_field}' != '\"{value}\"'::jsonb)"
-                            else:
-                                array_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'array' AND payload::jsonb->'body'->'{payload_field}' @> '[\"{value}\"]'::jsonb)"
-                                string_condition = f"(jsonb_typeof(payload::jsonb->'body'->'{payload_field}') = 'string' AND payload::jsonb->'body'->>'{payload_field}' = '{value}')"
-                                direct_condition = f"(payload::jsonb->'body'->'{payload_field}' = '\"{value}\"'::jsonb)"
+                            is_numeric = False
+                            try:
+                                is_numeric = True
+                            except ValueError:
+                                pass
 
-                            conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+                            if negative:
+                                array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND NOT (payload::jsonb->'body'->{payload_path} @> '[\"{value}\"]'::jsonb))"
+                                string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->{payload_path} != '{value}')"
+                                direct_condition = f"(payload::jsonb->'body'->{payload_path} != '\"{value}\"'::jsonb)"
+
+                                if is_numeric:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->{payload_path})::float != {value})"
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                else:
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+                            else:
+                                array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND payload::jsonb->'body'->{payload_path} @> '[\"{value}\"]'::jsonb)"
+                                string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->{payload_path} = '{value}')"
+                                direct_condition = f"(payload::jsonb->'body'->{payload_path} = '\"{value}\"'::jsonb)"
+
+                                if is_numeric:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->{payload_path})::float = {value})"
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                else:
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
 
                     if conditions:
                         if negative:
@@ -292,6 +308,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                 elif field.startswith('payload.'):
                     payload_field = field.replace('payload.', '')
+                    payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
 
                     conditions = []
                     for value in values:
@@ -326,12 +343,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                                 if start_format and end_format:
                                     if negative:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{start_format}') NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND (payload::jsonb->>'{payload_field}')::text NOT BETWEEN '{start_value}' AND '{end_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{start_format}') NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (payload::jsonb->>{payload_path})::text NOT BETWEEN '{start_value}' AND '{end_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                                     else:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{start_format}') BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND (payload::jsonb->>'{payload_field}')::text BETWEEN '{start_value}' AND '{end_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{start_format}') BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (payload::jsonb->>{payload_path})::text BETWEEN '{start_value}' AND '{end_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                             else:
                                 format_string = format_strings.get(value)
@@ -339,12 +356,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     next_value = get_next_date_value(value, format_string)
 
                                     if negative:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND (TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{format_string}') < TO_TIMESTAMP('{value}', '{format_string}') OR TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{format_string}') >= TO_TIMESTAMP('{next_value}', '{format_string}')))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND ((payload::jsonb->>'{payload_field}')::text < '{value}' OR (payload::jsonb->>'{payload_field}')::text >= '{next_value}'))"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{value}', '{format_string}') OR TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{next_value}', '{format_string}')))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::text < '{value}' OR (payload::jsonb->>{payload_path})::text >= '{next_value}'))"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                                     else:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->>'{payload_field}', '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND (payload::jsonb->>'{payload_field}')::text >= '{value}' AND (payload::jsonb->>'{payload_field}')::text < '{next_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (payload::jsonb->>{payload_path})::text >= '{value}' AND (payload::jsonb->>{payload_path})::text < '{next_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                         elif value_type == 'numeric':
                             if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
@@ -359,24 +376,40 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     pass
 
                                 if negative:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'number' AND (payload::jsonb->>'{payload_field}')::float NOT BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND ((payload::jsonb->>'{payload_field}')::float NOT BETWEEN {val1} AND {val2}))"
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2}))"
                                     conditions.append(f"({number_condition} OR {string_condition})")
                                 else:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'number' AND (payload::jsonb->>'{payload_field}')::float BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND ((payload::jsonb->>'{payload_field}')::float BETWEEN {val1} AND {val2}))"
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2}))"
                                     conditions.append(f"({number_condition} OR {string_condition})")
                         else:
-                            if negative:
-                                array_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'array' AND NOT (payload::jsonb->'{payload_field}' @> '[\"{value}\"]'::jsonb))"
-                                string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND payload::jsonb->>'{payload_field}' != '{value}')"
-                                direct_condition = f"(payload::jsonb->'{payload_field}' != '\"{value}\"'::jsonb)"
-                            else:
-                                array_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'array' AND payload::jsonb->'{payload_field}' @> '[\"{value}\"]'::jsonb)"
-                                string_condition = f"(jsonb_typeof(payload::jsonb->'{payload_field}') = 'string' AND payload::jsonb->>'{payload_field}' = '{value}')"
-                                direct_condition = f"(payload::jsonb->'{payload_field}' = '\"{value}\"'::jsonb)"
+                            is_numeric = False
+                            try:
+                                is_numeric = True
+                            except ValueError:
+                                pass
 
-                            conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+                            if negative:
+                                array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND NOT (payload::jsonb->{payload_path} @> '[\"{value}\"]'::jsonb))"
+                                string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} != '{value}')"
+                                direct_condition = f"(payload::jsonb->{payload_path} != '\"{value}\"'::jsonb)"
+
+                                if is_numeric:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float != {value})"
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                else:
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+                            else:
+                                array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND payload::jsonb->{payload_path} @> '[\"{value}\"]'::jsonb)"
+                                string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} = '{value}')"
+                                direct_condition = f"(payload::jsonb->{payload_path} = '\"{value}\"'::jsonb)"
+
+                                if is_numeric:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float = {value})"
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                else:
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
 
                     if conditions:
                         if negative:
