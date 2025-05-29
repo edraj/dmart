@@ -39,10 +39,10 @@ class RedisServices(Redis):
         ), # type: ignore
         TextField("$.displayname.en", sortable=True, as_name="displayname_en"), # type: ignore
         TextField("$.displayname.ar", sortable=True, as_name="displayname_ar"), # type: ignore
-        TextField("$.displayname.kd", sortable=True, as_name="displayname_kd"), # type: ignore
+        TextField("$.displayname.ku", sortable=True, as_name="displayname_kd"), # type: ignore
         TextField("$.description.en", sortable=True, as_name="description_en"), # type: ignore
         TextField("$.description.ar", sortable=True, as_name="description_ar"), # type: ignore
-        TextField("$.description.kd", sortable=True, as_name="description_kd"), # type: ignore
+        TextField("$.description.ku", sortable=True, as_name="description_kd"), # type: ignore
         TagField("$.is_active", as_name="is_active"), # type: ignore
         TextField(
             "$.payload.content_type",
