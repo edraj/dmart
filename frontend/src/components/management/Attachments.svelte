@@ -182,16 +182,16 @@
   }
 
   let payloadFiles: FileList = $state();
-  let displayname: Translation = $state({
+  let displayname: Translation = {
     'en': "",
     'ar': "",
     'ku': "",
-  });
-  let description: Translation = $state({
+  };
+  let description: Translation = {
     'en': "",
     'ar': "",
     'ku': "",
-  });
+  };
 
   let payloadContent: any = $state({ json: {}, text: undefined });
   let payloadData: string = $state();
