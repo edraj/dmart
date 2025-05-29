@@ -68,7 +68,7 @@
                       fileName = "index";
                   }
 
-                  if (![".en", ".ar", ".kd"].includes(fileName)) {
+                  if (![".en", ".ar", ".ku"].includes(fileName)) {
                       paths[paths.length - 1] = `${fileName}.${lang}`;
                       let result = findRoute(routes, paths, lang);
                       // if the REQUIRED+LANG file is NOT found

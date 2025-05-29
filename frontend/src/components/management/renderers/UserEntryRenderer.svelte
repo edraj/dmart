@@ -50,7 +50,7 @@
     onDestroy(() => status_line.set(""));
 
 
-    let user: any = $state({displayname: {ar: "", en: "", kd: ""}});
+    let user: any = $state({displayname: {ar: "", en: "", ku: ""}});
 
     onMount(async () => {
         user = {
@@ -305,7 +305,7 @@
     <FormGroup class="col-4">
       <Label>Kurdish Displayname</Label>
       <Input
-        bind:value={user.displayname.kd}
+        bind:value={user.displayname.ku}
         class="w-100"
         type="text"
         name="displayname_kd"
