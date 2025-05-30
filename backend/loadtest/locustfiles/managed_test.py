@@ -83,12 +83,12 @@ class WebsiteUser(HttpUser):
                                 "title": {
                                     "en": "Mock Offer 2",
                                     "ar": "\u0639\u0631\u0636 \u062a\u062c\u0631\u064a\u0628\u064a 2",
-                                    "kd": "\u0639\u0631\u0636 \u062a\u062c\u0631\u064a\u0628\u064a 2"
+                                    "ku": "\u0639\u0631\u0636 \u062a\u062c\u0631\u064a\u0628\u064a 2"
                                 },
                                 "desc": {
                                     "en": "Mock Offer 2",
                                     "ar": "\u0639\u0631\u0636 \u062a\u062c\u0631\u064a\u0628\u064a 2",
-                                    "kd": "\u0639\u0631\u0636 \u062a\u062c\u0631\u064a\u0628\u064a 2"
+                                    "ku": "\u0639\u0631\u0636 \u062a\u062c\u0631\u064a\u0628\u064a 2"
                                 },
                                 "specs": {
                                     "price": 2000001,
@@ -115,7 +115,7 @@ class WebsiteUser(HttpUser):
                                 "offer_type_localization": {
                                     "en": "Mock Offer 2",
                                     "ar": "\u0639\u0631\u0636 \u062a\u062c\u0631\u064a\u0628\u064a 2",
-                                    "kd": "\u0639\u0631\u0636 \u062a\u062c\u0631\u064a\u0628\u064a 2"
+                                    "ku": "\u0639\u0631\u0636 \u062a\u062c\u0631\u064a\u0628\u064a 2"
                                 }
                             }
                         }

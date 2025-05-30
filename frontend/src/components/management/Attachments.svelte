@@ -12,20 +12,20 @@
     request,
     RequestType,
     ResourceAttachmentType,
-    ResourceType,
+    ResourceType, type Translation,
     upload_with_payload,
   } from "@/dmart";
   import { Level, showToast } from "@/utils/toast";
   import Media from "./Media.svelte";
   import {
-      Button,
-      Col,
-      Input,
-      Label,
-      Modal,
-      ModalBody,
-      ModalFooter,
-      ModalHeader,
+    Button,
+    Col,
+    Input,
+    Label,
+    Modal,
+    ModalBody,
+    ModalFooter,
+    ModalHeader, Row,
   } from "sveltestrap";
   import { JSONEditor, Mode } from "svelte-jsoneditor";
   import { jsonToFile } from "@/utils/jsonToFile";
@@ -182,6 +182,16 @@
   }
 
   let payloadFiles: FileList = $state();
+  let displayname: Translation = {
+    'en': "",
+    'ar': "",
+    'ku': "",
+  };
+  let description: Translation = {
+    'en': "",
+    'ar': "",
+    'ku': "",
+  };
 
   let payloadContent: any = $state({ json: {}, text: undefined });
   let payloadData: string = $state();
@@ -203,6 +213,8 @@
             shortname: shortname,
             subpath: `${subpath}/${parent_shortname}`.replaceAll("//", "/"),
             attributes: {
+              displayname: displayname,
+              description: description,
               is_active: true,
               state: "commented",
               body: payloadData,
@@ -228,7 +240,9 @@
         ResourceType[resourceType] === ResourceType.json
           ? jsonToFile(payloadContent)
           : payloadFiles[0],
-        resourceType === ResourceAttachmentType.csv ? selectedSchema : null
+        resourceType === ResourceAttachmentType.csv ? selectedSchema : null,
+        displayname,
+        description
       );
     } else if (
       [
@@ -244,9 +258,10 @@
         ResourceType[resourceType],
         contentType,
         shortname,
-        ResourceType[resourceType] === ResourceType.json
-          ? jsonToFile(payloadContent)
-          : payloadFiles[0]
+        ResourceType[resourceType] === ResourceType.json ? jsonToFile(payloadContent) : payloadFiles[0],
+        null,
+        displayname,
+        description
       );
     } else if (
       [
@@ -271,6 +286,8 @@
             shortname: shortname,
             subpath: `${subpath}/${parent_shortname}`,
             attributes: {
+              displayname: displayname,
+              description: description,
               is_active: true,
               payload: {
                 content_type: contentType,
@@ -468,6 +485,63 @@
         bind:value={shortname}
         disabled={isModalInUpdateMode}
       />
+
+      <Row class="my-2">
+        <Col sm="12"><Label>Displayname</Label></Col>
+        <Col sm="4">
+          <Input
+                  type="text"
+                  class="form-control"
+                  bind:value={displayname.en}
+                  placeholder={"english..."}
+          />
+        </Col>
+        <Col sm="4">
+          <Input
+                  type="text"
+                  class="form-control"
+                  bind:value={displayname.ar}
+                  placeholder={"arabic..."}
+          />
+        </Col>
+        <Col sm="4">
+          <Input
+                  type="text"
+                  class="form-control"
+                  bind:value={displayname.ku}
+                  placeholder={"kurdish..."}
+          />
+        </Col>
+      </Row>
+
+      <Row class="my-2">
+        <Col sm="12"><Label>Description</Label></Col>
+        <Col sm="4">
+          <Input
+                  type="text"
+                  class="form-control"
+                  bind:value={description.en}
+                  placeholder={"english..."}
+          />
+        </Col>
+        <Col sm="4">
+          <Input
+                  type="text"
+                  class="form-control"
+                  bind:value={description.ar}
+                  placeholder={"arabic..."}
+          />
+        </Col>
+        <Col sm="4">
+          <Input
+                  type="text"
+                  class="form-control"
+                  bind:value={description.ku}
+                  placeholder={"kurdish..."}
+          />
+        </Col>
+      </Row>
+
       <Label>Attachment Type</Label>
       <Input
         type="select"

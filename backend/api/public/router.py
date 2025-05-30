@@ -495,7 +495,7 @@ async def create_entry(
             schema_shortname=content_obj.payload.schema_shortname,
         )
 
-    await db.save(space_name, subpath, content_obj)
+    response_data = await db.save(space_name, subpath, content_obj)
     await db.save_payload_from_json(
         space_name, subpath, content_obj, body_dict
     )
@@ -513,7 +513,10 @@ async def create_entry(
         )
     )
 
-    return api.Response(status=api.Status.success)
+    return api.Response(
+        status=api.Status.success,
+        records=[response_data],
+    )
 
 
 @router.post("/attach/{space_name}")
