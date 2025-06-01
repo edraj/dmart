@@ -130,12 +130,12 @@ class Settings(BaseSettings):
             except Exception as e:
                 logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")
 
-    raw_allowed_submit_models: str = Field(alias="allowed_submit_models")
+    raw_allowed_submit_models: str = Field(default="",alias="allowed_submit_models")
 
     @property # type: ignore
     def allowed_submit_models(self) -> dict[str, list[str]]:
         allowed_models_str = self.raw_allowed_submit_models
-        result = {}
+        result: dict = {}
         if allowed_models_str:
             entries = allowed_models_str.split(",")
             for entry in entries:
