@@ -544,7 +544,9 @@
 
         // x.relationships = _relationshipContent;
         let attributes: any = x;
-
+        if(attributes.payload === null) {
+            delete attributes.payload;
+        }
         // Process payload content if exists
         if (entry?.payload) {
             if (entry?.payload?.content_type === "json") {
