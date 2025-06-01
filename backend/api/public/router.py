@@ -428,10 +428,7 @@ async def create_entry(
     subpath: str = Path(..., pattern=regex.SUBPATH),
     body_dict: dict[str, Any] = Body(...),
 ):
-    allowed_models = {
-        "applications": ["log", "feedback", "cancellation_survey"],
-        "referrals": ["candidate"]
-    }
+    allowed_models = settings.allowed_submit_models
     if (
         space_name not in allowed_models
         or schema_shortname not in allowed_models[space_name]
@@ -561,6 +558,7 @@ async def create_attachment(
         )
     )
 
+    record.shortname = 'auto'
     attachment_obj = core.Meta.from_record(
         record=record, owner_shortname="anonymous"
     )
