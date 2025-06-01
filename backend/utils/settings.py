@@ -7,6 +7,8 @@ import string
 import random
 import sys
 from venv import logger
+
+from pydantic import computed_field, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
@@ -126,8 +128,24 @@ class Settings(BaseSettings):
                     self.channels[idx]["allowed_api_patterns"] = compiled_patterns
                     
             except Exception as e:
-                logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")    
+                logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")
 
+    raw_allowed_submit_models: str = Field(alias="allowed_submit_models")
+    @computed_field
+    @property
+    def allowed_submit_models(self) -> dict[str, list[str]]:
+        allowed_models_str = self.raw_allowed_submit_models
+        result = {}
+        if allowed_models_str:
+            entries = allowed_models_str.split(",")
+            for entry in entries:
+                entry = entry.strip()
+                if "." in entry:
+                    space, schema = entry.split(".", 1)
+                    if space not in result:
+                        result[space] = []
+                    result[space].append(schema)
+        return result
 
 try:
     Settings.model_validate(
