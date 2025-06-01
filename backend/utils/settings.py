@@ -8,7 +8,7 @@ import random
 import sys
 from venv import logger
 
-from pydantic import computed_field, Field
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
@@ -131,8 +131,8 @@ class Settings(BaseSettings):
                 logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")
 
     raw_allowed_submit_models: str = Field(alias="allowed_submit_models")
-    @computed_field
-    @property
+
+    @property # type: ignore
     def allowed_submit_models(self) -> dict[str, list[str]]:
         allowed_models_str = self.raw_allowed_submit_models
         result = {}
