@@ -291,9 +291,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND payload::jsonb->'body'->{payload_path} @> '[\"{value}\"]'::jsonb)"
                                 payload_path_splited = payload_path.split('->')
                                 if len(payload_path_splited) > 1:
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->{'->'.join(payload_path_splited[:-1]) + '->>' + payload_path_splited[-1]} = '{value}')"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->{'->'.join(payload_path_splited[:-1]) + '->>' + payload_path_splited[-1]} = '\"{value}\"')"
                                 else:
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->{payload_path} = '{value}')"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->{payload_path} = '\"{value}\"')"
                                 direct_condition = f"(payload::jsonb->'body'->{payload_path} = '\"{value}\"'::jsonb)"
 
                                 if is_numeric:
