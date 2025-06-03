@@ -11,7 +11,7 @@ import utils.regex as regex
 import models.core as core
 from api.managed.utils import get_mime_type, get_resource_content_type_from_payload_content_type, \
     create_or_update_resource_with_payload_handler
-from typing import Any
+from typing import Any, Union, Optional
 import sys
 from utils.access_control import access_control
 import utils.repository as repository
@@ -435,7 +435,7 @@ async def create_entry(
     body_dict: dict[str, Any] = Body(...),
 ):
     allowed_models = settings.allowed_submit_models
-    resource_type = ResourceType(resource_type.name) if resource_type else ResourceType.content
+    entry_resource_type: ResourceType = ResourceType(resource_type.name) if resource_type else ResourceType.content
     if (
         space_name not in allowed_models
         or schema_shortname not in allowed_models[space_name]
@@ -453,7 +453,7 @@ async def create_entry(
         user_shortname="anonymous",
         space_name=space_name,
         subpath=subpath,
-        resource_type=resource_type,
+        resource_type=entry_resource_type,
         action_type=core.ActionType.create,
         record_attributes=body_dict,
     ):
@@ -475,13 +475,22 @@ async def create_entry(
             shortname=shortname,
             action_type=core.ActionType.create,
             schema_shortname=schema_shortname,
-            resource_type=resource_type,
+            resource_type=entry_resource_type,
             user_shortname="anonymous",
         )
     )
 
-    content_obj = None
+    content_obj: Optional[Union[core.Content, core.Ticket]] = None
     if resource_type == ResourceType.ticket:
+        if workflow_shortname is None:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_DATA,
+                    message="Workflow shortname is required for ticket creation",
+                ),
+            )
         content_obj = core.Ticket(
             uuid=uuid,
             shortname=shortname,
@@ -495,7 +504,7 @@ async def create_entry(
             state=await get_init_state_from_workflow(space_name, workflow_shortname),
             workflow_shortname=workflow_shortname,
         )
-    else:
+    elif resource_type == ResourceType.content:
         content_obj = core.Content(
             uuid=uuid,
             shortname=shortname,
@@ -505,6 +514,16 @@ async def create_entry(
                 content_type=ContentType.json,
                 schema_shortname=schema_shortname,
                 body=f"{shortname}.json",
+            ),
+        )
+
+    if content_obj is None:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.INVALID_DATA,
+                message="Invalid resource type for entry creation",
             ),
         )
 
@@ -527,7 +546,7 @@ async def create_entry(
             shortname=shortname,
             action_type=core.ActionType.create,
             schema_shortname=schema_shortname,
-            resource_type=resource_type,
+            resource_type=entry_resource_type,
             user_shortname="anonymous",
             attributes={}
         )
