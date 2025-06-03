@@ -2,7 +2,7 @@ import hashlib
 from re import sub as res_sub
 from uuid import uuid4
 from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
-from models.enums import AttachmentType, ContentType, ResourceType, TaskType
+from models.enums import AttachmentType, ContentType, ResourceType, TaskType, PublicSubmitResourceType
 from data_adapters.adapter import data_adapter as db
 import models.api as api
 from utils.helpers import camel_case
@@ -11,7 +11,7 @@ import utils.regex as regex
 import models.core as core
 from api.managed.utils import get_mime_type, get_resource_content_type_from_payload_content_type, \
     create_or_update_resource_with_payload_handler
-from typing import Any
+from typing import Any, Union, Optional
 import sys
 from utils.access_control import access_control
 import utils.repository as repository
@@ -19,6 +19,8 @@ from utils.plugin_manager import plugin_manager
 from utils.router_helper import is_space_exist
 from utils.settings import settings
 from starlette.responses import FileResponse, StreamingResponse
+
+from utils.ticket_sys_utils import get_init_state_from_workflow
 
 router = APIRouter()
 
@@ -422,13 +424,18 @@ async def create_or_update_resource_with_payload(
 
 
 @router.post("/submit/{space_name}/{schema_shortname}/{subpath:path}")
+@router.post("/submit/{space_name}/{resource_type}/{schema_shortname}/{subpath:path}")
+@router.post("/submit/{space_name}/{resource_type}/{workflow_shortname}/{schema_shortname}/{subpath:path}")
 async def create_entry(
     space_name: str = Path(...),
     schema_shortname: str = Path(...),
     subpath: str = Path(..., pattern=regex.SUBPATH),
+    resource_type: PublicSubmitResourceType | None = None,
+    workflow_shortname: str | None = None,
     body_dict: dict[str, Any] = Body(...),
 ):
     allowed_models = settings.allowed_submit_models
+    entry_resource_type: ResourceType = ResourceType(resource_type.name) if resource_type else ResourceType.content
     if (
         space_name not in allowed_models
         or schema_shortname not in allowed_models[space_name]
@@ -446,7 +453,7 @@ async def create_entry(
         user_shortname="anonymous",
         space_name=space_name,
         subpath=subpath,
-        resource_type=ResourceType.content,
+        resource_type=entry_resource_type,
         action_type=core.ActionType.create,
         record_attributes=body_dict,
     ):
@@ -468,22 +475,57 @@ async def create_entry(
             shortname=shortname,
             action_type=core.ActionType.create,
             schema_shortname=schema_shortname,
-            resource_type=ResourceType.content,
+            resource_type=entry_resource_type,
             user_shortname="anonymous",
         )
     )
 
-    content_obj = core.Content(
-        uuid=uuid,
-        shortname=shortname,
-        is_active=True,
-        owner_shortname="anonymous",
-        payload=core.Payload(
-            content_type=ContentType.json,
-            schema_shortname=schema_shortname,
-            body=f"{shortname}.json",
-        ),
-    )
+    content_obj: Optional[Union[core.Content, core.Ticket]] = None
+    if resource_type == ResourceType.ticket:
+        if workflow_shortname is None:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_DATA,
+                    message="Workflow shortname is required for ticket creation",
+                ),
+            )
+        content_obj = core.Ticket(
+            uuid=uuid,
+            shortname=shortname,
+            is_active=True,
+            owner_shortname="anonymous",
+            payload=core.Payload(
+                content_type=ContentType.json,
+                schema_shortname=schema_shortname,
+                body=f"{shortname}.json",
+            ),
+            state=await get_init_state_from_workflow(space_name, workflow_shortname),
+            workflow_shortname=workflow_shortname,
+        )
+    elif resource_type == ResourceType.content:
+        content_obj = core.Content(
+            uuid=uuid,
+            shortname=shortname,
+            is_active=True,
+            owner_shortname="anonymous",
+            payload=core.Payload(
+                content_type=ContentType.json,
+                schema_shortname=schema_shortname,
+                body=f"{shortname}.json",
+            ),
+        )
+
+    if content_obj is None:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.INVALID_DATA,
+                message="Invalid resource type for entry creation",
+            ),
+        )
 
     if content_obj.payload and content_obj.payload.schema_shortname:
         await db.validate_payload_with_schema(
@@ -504,7 +546,7 @@ async def create_entry(
             shortname=shortname,
             action_type=core.ActionType.create,
             schema_shortname=schema_shortname,
-            resource_type=ResourceType.content,
+            resource_type=entry_resource_type,
             user_shortname="anonymous",
             attributes={}
         )
