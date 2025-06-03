@@ -548,17 +548,6 @@ async def update_profile(
     profile_user = core.Meta.check_record(
         record=profile, owner_shortname=profile.shortname
     )
-    
-    if profile.attributes.get("email") and not profile.attributes.get("email_otp"):
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50, message="Email OTP is required to update your email"),
-        )
-    if profile.attributes.get("msisdn") and not profile.attributes.get("msisdn_otp"):
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50, message="msisdn OTP is required to update your msisdn"),
-        )
         
     if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
         raise api.Exception(
@@ -605,6 +594,18 @@ async def update_profile(
     #     user.force_password_change = profile.attributes["force_password_change"]
 
     user = await set_user_profile(profile, profile_user, user)
+
+    if user.email != profile.attributes.get("email") and not profile.attributes.get("email_otp"):
+        raise api.Exception(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=api.Error(type="create", code=50, message="Email OTP is required to update your email"),
+        )
+
+    if user.msisdn != profile.attributes.get("msisdn") and not profile.attributes.get("msisdn_otp"):
+        raise api.Exception(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=api.Error(type="create", code=50, message="msisdn OTP is required to update your msisdn"),
+        )
 
     if "confirmation" in profile.attributes:
         result = await get_otp_confirmation_email_or_msisdn(profile_user)
