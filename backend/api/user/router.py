@@ -549,25 +549,6 @@ async def update_profile(
         record=profile, owner_shortname=profile.shortname
     )
 
-    if profile.attributes.get("email") and not profile.attributes.get("email_otp"):
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50, message="Email OTP is required to update your email"),
-        )
-    if profile.attributes.get("msisdn") and not profile.attributes.get("msisdn_otp"):
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50, message="msisdn OTP is required to update your msisdn"),
-        )
-
-
-    if profile.attributes.get("msisdn") and not profile.attributes.get("msisdn_otp"):
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=51,
-                            message="MSISDN OTP is required to update your phone number"),
-        )
-
     if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
