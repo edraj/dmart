@@ -563,7 +563,15 @@ async def update_profile(
             error=api.Error(type="create", code=50,
                             message="Email OTP is required to update your email"),
         )
-        
+
+
+    if profile.attributes.get("msisdn") and not profile.attributes.get("msisdn_otp"):
+        raise api.Exception(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=api.Error(type="create", code=51,
+                            message="MSISDN OTP is required to update your phone number"),
+        )
+
     if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -614,7 +622,7 @@ async def update_profile(
         result = await get_otp_confirmation_email_or_msisdn(profile_user)
 
         if result is None or result != profile.attributes["confirmation"]:
-            raise Exception(
+            raise api.Exception(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION,
                             message="Invalid confirmation code [1]"),
@@ -641,9 +649,20 @@ async def update_profile(
             user.email = profile_user.email
             user.is_email_verified = True
 
-        if profile_user.msisdn and user.msisdn != profile_user.msisdn:
+        if "msisdn" in profile.attributes and user.msisdn != profile_user.msisdn:
+            is_valid_otp = await verify_user(ConfirmOTPRequest(
+                email=None,
+                msisdn=profile.attributes.get("msisdn"),
+                code=profile.attributes.get("msisdn_otp", "")
+            ))
+            if not is_valid_otp:
+                raise api.Exception(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    error=api.Error(type="create", code=51,
+                                    message="Invalid MSISDN OTP"),
+                )
             user.msisdn = profile_user.msisdn
-            user.is_msisdn_verified = False
+            user.is_msisdn_verified = True
 
         if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
             await update_user_payload(profile, profile_user, user, shortname)
