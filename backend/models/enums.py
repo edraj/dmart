@@ -32,6 +32,11 @@ class Language(StrEnum):
         return codes[lang_str]
 
 
+class PublicSubmitResourceType(StrEnum):
+    content = "content"
+    ticket = "ticket"
+
+
 class ResourceType(StrEnum):
     user = "user"
     group = "group"

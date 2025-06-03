@@ -2,7 +2,7 @@ import hashlib
 from re import sub as res_sub
 from uuid import uuid4
 from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
-from models.enums import AttachmentType, ContentType, ResourceType, TaskType
+from models.enums import AttachmentType, ContentType, ResourceType, TaskType, PublicSubmitResourceType
 from data_adapters.adapter import data_adapter as db
 import models.api as api
 from utils.helpers import camel_case
@@ -19,6 +19,8 @@ from utils.plugin_manager import plugin_manager
 from utils.router_helper import is_space_exist
 from utils.settings import settings
 from starlette.responses import FileResponse, StreamingResponse
+
+from utils.ticket_sys_utils import get_init_state_from_workflow
 
 router = APIRouter()
 
@@ -422,13 +424,18 @@ async def create_or_update_resource_with_payload(
 
 
 @router.post("/submit/{space_name}/{schema_shortname}/{subpath:path}")
+@router.post("/submit/{space_name}/{resource_type}/{schema_shortname}/{subpath:path}")
+@router.post("/submit/{space_name}/{resource_type}/{workflow_shortname}/{schema_shortname}/{subpath:path}")
 async def create_entry(
     space_name: str = Path(...),
     schema_shortname: str = Path(...),
     subpath: str = Path(..., pattern=regex.SUBPATH),
+    resource_type: PublicSubmitResourceType | None = None,
+    workflow_shortname: str | None = None,
     body_dict: dict[str, Any] = Body(...),
 ):
     allowed_models = settings.allowed_submit_models
+    resource_type = ResourceType(resource_type.name) if resource_type else ResourceType.content
     if (
         space_name not in allowed_models
         or schema_shortname not in allowed_models[space_name]
@@ -446,7 +453,7 @@ async def create_entry(
         user_shortname="anonymous",
         space_name=space_name,
         subpath=subpath,
-        resource_type=ResourceType.content,
+        resource_type=resource_type,
         action_type=core.ActionType.create,
         record_attributes=body_dict,
     ):
@@ -468,22 +475,38 @@ async def create_entry(
             shortname=shortname,
             action_type=core.ActionType.create,
             schema_shortname=schema_shortname,
-            resource_type=ResourceType.content,
+            resource_type=resource_type,
             user_shortname="anonymous",
         )
     )
 
-    content_obj = core.Content(
-        uuid=uuid,
-        shortname=shortname,
-        is_active=True,
-        owner_shortname="anonymous",
-        payload=core.Payload(
-            content_type=ContentType.json,
-            schema_shortname=schema_shortname,
-            body=f"{shortname}.json",
-        ),
-    )
+    content_obj = None
+    if resource_type == ResourceType.ticket:
+        content_obj = core.Ticket(
+            uuid=uuid,
+            shortname=shortname,
+            is_active=True,
+            owner_shortname="anonymous",
+            payload=core.Payload(
+                content_type=ContentType.json,
+                schema_shortname=schema_shortname,
+                body=f"{shortname}.json",
+            ),
+            state=await get_init_state_from_workflow(space_name, workflow_shortname),
+            workflow_shortname=workflow_shortname,
+        )
+    else:
+        content_obj = core.Content(
+            uuid=uuid,
+            shortname=shortname,
+            is_active=True,
+            owner_shortname="anonymous",
+            payload=core.Payload(
+                content_type=ContentType.json,
+                schema_shortname=schema_shortname,
+                body=f"{shortname}.json",
+            ),
+        )
 
     if content_obj.payload and content_obj.payload.schema_shortname:
         await db.validate_payload_with_schema(
@@ -504,7 +527,7 @@ async def create_entry(
             shortname=shortname,
             action_type=core.ActionType.create,
             schema_shortname=schema_shortname,
-            resource_type=ResourceType.content,
+            resource_type=resource_type,
             user_shortname="anonymous",
             attributes={}
         )
