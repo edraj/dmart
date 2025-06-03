@@ -651,14 +651,14 @@ async def update_profile(
 
         if "msisdn" in profile.attributes and user.msisdn != profile_user.msisdn:
             is_valid_otp = await verify_user(ConfirmOTPRequest(
-                email=None,
                 msisdn=profile.attributes.get("msisdn"),
+                email=None,
                 code=profile.attributes.get("msisdn_otp", "")
             ))
             if not is_valid_otp:
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(type="create", code=51,
+                    error=api.Error(type="create", code=50,
                                     message="Invalid MSISDN OTP"),
                 )
             user.msisdn = profile_user.msisdn
