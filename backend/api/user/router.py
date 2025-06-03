@@ -595,13 +595,13 @@ async def update_profile(
 
     user = await set_user_profile(profile, profile_user, user)
 
-    if user.email != profile.attributes.get("email") and not profile.attributes.get("email_otp"):
+    if profile.attributes.get("email") and user.email != profile.attributes.get("email") and not profile.attributes.get("email_otp"):
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(type="create", code=50, message="Email OTP is required to update your email"),
         )
 
-    if user.msisdn != profile.attributes.get("msisdn") and not profile.attributes.get("msisdn_otp"):
+    if profile.attributes.get("msisdn") and user.msisdn != profile.attributes.get("msisdn") and not profile.attributes.get("msisdn_otp"):
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=api.Error(type="create", code=50, message="msisdn OTP is required to update your msisdn"),
