@@ -369,14 +369,15 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
             if record.subpath[0] != "/":
                 record.subpath = f"/{record.subpath}"
 
+            record_schema_shortname = record.attributes.get("payload", {}).get(
+                        "schema_shortname", None
+                    ) if record.attributes.get("payload", {}) != None else None
             await plugin_manager.before_action(
                 core.Event(
                     space_name=request.space_name,
                     subpath=record.subpath,
                     shortname=record.shortname,
-                    schema_shortname=record.attributes.get("payload", {}).get(
-                        "schema_shortname", None
-                    ),
+                    schema_shortname=record_schema_shortname,
                     action_type=core.ActionType.update,
                     resource_type=record.resource_type,
                     user_shortname=owner_shortname,
@@ -388,16 +389,13 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                     record.resource_type
                 )
             )
-            schema_shortname = record.attributes.get("payload", {}).get(
-                "schema_shortname"
-            )
             old_resource_obj = await db.load(
                 space_name=request.space_name,
                 subpath=record.subpath,
                 shortname=record.shortname,
                 class_type=resource_cls,
                 user_shortname=owner_shortname,
-                schema_shortname=schema_shortname,
+                schema_shortname=record_schema_shortname,
             )
 
             # CHECK PERMISSION
@@ -424,7 +422,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
 
             # GET PAYLOAD DATA
             old_version_flattend, old_resource_payload_body = await serve_request_update_r_replace_fetch_payload(
-                old_resource_obj, record, request, resource_cls, schema_shortname
+                old_resource_obj, record, request, resource_cls, record_schema_shortname
             )
 
             # GENERATE NEW RESOURCE OBJECT
@@ -434,17 +432,22 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
             new_version_flattend = {}
 
             if record.resource_type == ResourceType.log:
-                new_resource_payload_data = record.attributes.get("payload", {}).get(
-                    "body", {}
-                )
+                if payload := record.attributes.get("payload", {}):
+                    new_resource_payload_data = payload.get("body", {})
+                else:
+                    new_resource_payload_data = None
             else:
-                new_resource_payload_data = (
-                    resource_obj.update_from_record(
-                        record=record,
-                        old_body=old_resource_payload_body,
-                        replace=request.request_type == api.RequestType.r_replace,
+                if record.attributes.get("payload", {}):
+                    new_resource_payload_data = (
+                        resource_obj.update_from_record(
+                            record=record,
+                            old_body=old_resource_payload_body,
+                            replace=request.request_type == api.RequestType.r_replace,
+                        )
                     )
-                )
+                else:
+                    new_resource_payload_data = None
+
                 new_version_flattend = resource_obj.model_dump()
                 if new_resource_payload_data:
                     new_version_flattend["payload"] = {
@@ -478,7 +481,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                     new_version_flattend={},
                     updated_attributes_flattend=[],
                     user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
+                    schema_shortname=record_schema_shortname,
                     retrieve_lock_status=record.retrieve_lock_status,
                 )
             else:
@@ -505,7 +508,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                     new_version_flattend=new_version_flattend,
                     updated_attributes_flattend=updated_attributes_flattend,
                     user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
+                    schema_shortname=record_schema_shortname,
                     retrieve_lock_status=record.retrieve_lock_status,
                 )
 
@@ -535,9 +538,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                     space_name=request.space_name,
                     subpath=record.subpath,
                     shortname=record.shortname,
-                    schema_shortname=record.attributes.get("payload", {}).get(
-                        "schema_shortname", None
-                    ),
+                    schema_shortname=record_schema_shortname,
                     action_type=core.ActionType.update,
                     resource_type=record.resource_type,
                     user_shortname=owner_shortname,
