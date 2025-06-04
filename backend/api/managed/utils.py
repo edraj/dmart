@@ -371,7 +371,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
 
             record_schema_shortname = record.attributes.get("payload", {}).get(
                         "schema_shortname", None
-                    ) if record.attributes.get("payload", {}) != None else None
+                    ) if record.attributes.get("payload", {}) is not None else None
             await plugin_manager.before_action(
                 core.Event(
                     space_name=request.space_name,
