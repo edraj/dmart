@@ -2157,9 +2157,9 @@
                 </div>
 
                 {#if schema && jseContent}
-                    <!--                <div class="d-flex justify-content-end my-1 mx-3">-->
-                    <!--                    <Button onclick={handleSave}>Save</Button>-->
-                    <!--                </div>-->
+                    <div class="d-flex justify-content-end my-1 mx-3">
+                        <Button onclick={handleSave}>Save</Button>
+                    </div>
                     <div class="tab-pane" class:active={tab_option === "edit_content_form"}>
                         {#if resource_type === ResourceType.schema}
                             <SchemaEditor bind:content={jseContent}/>
@@ -2167,15 +2167,15 @@
                             <ConfigEditor bind:entries={jseContent.json.items}/>
                         {:else if resource_type === ResourceType.content && schema_name === "translation"}
                             <TranslationEditor
-                                    bind:entries={jseContent.json.items}
-                                    columns={Object.keys(schema.properties.items.items.properties)}
+                                bind:entries={jseContent.json.items}
+                                columns={Object.keys(schema.properties.items.items.properties)}
                             />
                         {:else}
                             <div class="px-1 pb-1 h-100">
                                 <SchemaForm
-                                        bind:ref={schemaFormRefContent}
-                                        schema={$state.snapshot(schema)}
-                                        bind:data={jseContent.json}
+                                    bind:ref={schemaFormRefContent}
+                                    schema={$state.snapshot(schema)}
+                                    bind:data={jseContent.json}
                                 />
                             </div>
                         {/if}
