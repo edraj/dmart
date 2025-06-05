@@ -107,6 +107,11 @@
   $effect(() => {
     ticket_action = ticketStates?.filter((e) => e.state === ticket_status)[0]?.action ?? null;
   });
+  $effect(() => {
+    if ((ticketStates??[]).length){
+      ticketResolutions = ticketPayload.states.filter((e) => e.state === ticket_status)[0]?.resolutions ?? [];
+    }
+  });
 </script>
 
 <Form class="d-flex flex-column justify-content-between p-5" on:submit={handleTicketSubmit}>
@@ -135,11 +140,11 @@
           <FormGroup>
             <Label>Resolution</Label>
             <Input
-                    class=""
-                    type="select"
-                    name="resolution"
-                    placeholder="Resolution..."
-                    bind:value={resolution}
+              class=""
+              type="select"
+              name="resolution"
+              placeholder="Resolution..."
+              bind:value={resolution}
             >
               <option value={null}>Select resolution</option>
               {#each ticketResolutions as resolution}
