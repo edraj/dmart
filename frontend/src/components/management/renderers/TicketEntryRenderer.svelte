@@ -148,7 +148,11 @@
             >
               <option value={null}>Select resolution</option>
               {#each ticketResolutions as resolution}
-                <option value={resolution}>{resolution}</option>
+                {#if typeof(resolution) === "string"}
+                  <option value={resolution}>{resolution}</option>
+                {:else}
+                  <option value={resolution.key}>{resolution?.en}</option>
+                {/if}
               {/each}
             </Input>
           </FormGroup>
