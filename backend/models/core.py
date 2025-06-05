@@ -257,6 +257,7 @@ class Meta(Resource):
         if (
             not self.payload
             and "payload" in record.attributes
+            and record.attributes["payload"] is not None
             and "content_type" in record.attributes["payload"]
         ):
             self.payload = Payload(

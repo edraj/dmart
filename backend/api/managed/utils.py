@@ -437,16 +437,11 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 else:
                     new_resource_payload_data = None
             else:
-                if record.attributes.get("payload", {}):
-                    new_resource_payload_data = (
-                        resource_obj.update_from_record(
-                            record=record,
-                            old_body=old_resource_payload_body,
-                            replace=request.request_type == api.RequestType.r_replace,
-                        )
-                    )
-                else:
-                    new_resource_payload_data = None
+                new_resource_payload_data = resource_obj.update_from_record(
+                    record=record,
+                    old_body=old_resource_payload_body,
+                    replace=request.request_type == api.RequestType.r_replace,
+                )
 
                 new_version_flattend = resource_obj.model_dump()
                 if new_resource_payload_data:
