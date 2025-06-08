@@ -46,12 +46,12 @@ else:
 server = socket.gethostname()
 
 
-@router.get("/me", include_in_schema=False, response_model=api.Response, response_model_exclude_none=True)
+@router.get("/me", response_model=api.Response, response_model_exclude_none=True)
 async def get_me(shortname=Depends(JWTBearer())) -> api.Response:
     return api.Response(status=api.Status.success, attributes={"shortname": shortname})
 
 
-@router.get("/settings", include_in_schema=False, response_model=api.Response, response_model_exclude_none=True)
+@router.get("/settings", response_model=api.Response, response_model_exclude_none=True)
 async def get_settings(shortname=Depends(JWTBearer())) -> api.Response:
     if shortname != 'dmart':
         raise api.Exception(
@@ -65,7 +65,7 @@ async def get_settings(shortname=Depends(JWTBearer())) -> api.Response:
     return api.Response(status=api.Status.success, attributes=settings.model_dump())
 
 
-@router.get("/manifest", include_in_schema=False, response_model=api.Response, response_model_exclude_none=True)
+@router.get("/manifest", response_model=api.Response, response_model_exclude_none=True)
 async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
     now = datetime.now()
     manifest = {
@@ -81,11 +81,10 @@ async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
         },
         "git": git_info,
     }
-    return api.Response(status=api.Status.success,
-                        attributes=manifest)
+    return api.Response(status=api.Status.success, attributes=manifest)
 
 
-@router.get("/in-loop-tasks", include_in_schema=False)
+@router.get("/in-loop-tasks")
 async def get_in_loop_tasks(_=Depends(JWTBearer())) -> api.Response:
     tasks = asyncio.all_tasks()
 
