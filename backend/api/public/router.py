@@ -2,7 +2,7 @@ import hashlib
 from re import sub as res_sub
 from uuid import uuid4
 from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
-from models.enums import AttachmentType, ContentType, ResourceType, TaskType, PublicSubmitResourceType
+from models.enums import AttachmentType, ContentType, ResourceType, TaskType, PublicSubmitResourceType, RequestType
 from data_adapters.adapter import data_adapter as db
 import models.api as api
 from utils.helpers import camel_case
@@ -20,7 +20,7 @@ from utils.router_helper import is_space_exist
 from utils.settings import settings
 from starlette.responses import FileResponse, StreamingResponse
 
-from utils.ticket_sys_utils import get_init_state_from_workflow
+from utils.ticket_sys_utils import set_init_state_from_request
 
 router = APIRouter()
 
@@ -491,6 +491,34 @@ async def create_entry(
                     message="Workflow shortname is required for ticket creation",
                 ),
             )
+        
+        record = await set_init_state_from_request(
+            api.Request(
+                space_name=space_name,
+                request_type=RequestType.create,
+                records=[
+                    core.Record(
+                        subpath=subpath,
+                        shortname=shortname,
+                        resource_type=entry_resource_type,
+                        attributes={
+                            "workflow_shortname": workflow_shortname,
+                            **body_dict
+                        }
+                    )
+                ]
+            ),
+            "anonymous"
+        )
+        if not record or not record.attributes.get("state"):
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_DATA,
+                    message="Failed to set initial state",
+                ),
+            )
         content_obj = core.Ticket(
             uuid=uuid,
             shortname=shortname,
@@ -501,8 +529,9 @@ async def create_entry(
                 schema_shortname=schema_shortname,
                 body=f"{shortname}.json",
             ),
-            state=await get_init_state_from_workflow(space_name, workflow_shortname),
+            state=record.attributes["state"],
             workflow_shortname=workflow_shortname,
+            is_open=record.attributes["is_open"]
         )
     elif resource_type == ResourceType.content:
         content_obj = core.Content(
