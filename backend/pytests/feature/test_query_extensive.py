@@ -12,9 +12,10 @@ TEST_DATA = [
     {
         "shortname": "user1",
         "attributes": {
+            "tags": ["test_user"],
             "is_active": False,
             "language": "kurdish",
-            "roles": ["manager","moderator"],
+            "roles": ["manager","moderator","editor"],
             "email": "user1@example.com",
             "msisdn": "1123456789",
             "type": "bot",
@@ -32,9 +33,10 @@ TEST_DATA = [
     {
         "shortname": "user2",
         "attributes": {
+            "tags": ["test_user"],
             "is_active": False,
             "language": "english",
-            "roles": ["member","subscriber"],
+            "roles": ["member","subscriber","editor"],
             "email": "user2@example.com",
             "msisdn": "9876543210",
             "type": "mobile",
@@ -260,9 +262,23 @@ async def test_date_field_queries(client: AsyncClient) -> None:
     assert json_response["attributes"]["returned"] == 2    
     
     
-    
-    
-    
+@pytest.mark.anyio
+async def test_combined_search_queries(client: AsyncClient) -> None:
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@payload.body.account_type:business @payload.body.allowed_categories:analytics"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+
 @pytest.mark.anyio
 async def test_boolean_field_queries(client: AsyncClient) -> None:
     response = await client.post(
@@ -271,7 +287,7 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@is_active:false"
+            "search": "@is_active:false @roles:editor"
         }
     )
     assert_code_and_status_success(response)
@@ -285,7 +301,7 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.is_subscribed:true"
+            "search": "@payload.body.is_subscribed:true @roles:editor"
         }
     )
     assert_code_and_status_success(response)
@@ -299,11 +315,10 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@payload.body.is_subscribed:true"
+            "search": "@payload.body.is_subscribed:true @roles:editor"
         }
     )
     assert_code_and_status_success(response)
     json_response = response.json()
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 1
-
