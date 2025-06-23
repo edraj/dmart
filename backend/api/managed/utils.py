@@ -1267,9 +1267,6 @@ async def handle_update_state(space_name, logged_in_user, ticket_obj, action, us
         )
 
     old_version_flattend = flatten_dict(ticket_obj.model_dump())
-    old_version_flattend.pop("payload.body", None)
-    old_version_flattend.update(
-        flatten_dict({"payload.body": ticket_obj}))
 
     ticket_obj.state = response["message"]
     ticket_obj.is_open = check_open_state(
