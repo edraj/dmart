@@ -382,22 +382,13 @@ async def update_state(
             user_shortname=logged_in_user,
         )
     )
-    ticket_raw = await db.load(
+    ticket_obj: core.Ticket = await db.load(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
         class_type=core.Ticket,
         user_shortname=logged_in_user,
     )
-    ticket_obj: core.Ticket = ticket_raw
-
-    if ticket_obj.payload is None or ticket_obj.payload.body is None:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
-            ),
-        )
 
     if not await access_control.check_access(
             user_shortname=logged_in_user,
@@ -419,85 +410,85 @@ async def update_state(
                 message="You don't have permission to this action [38]",
             ),
         )
-    if ticket_obj.payload.content_type == ContentType.json:
-        workflows_data = await db.load(
-            space_name=space_name,
-            subpath="workflows",
-            shortname=ticket_obj.workflow_shortname,
-            class_type=core.Content,
-            user_shortname=logged_in_user,
+
+    workflows_data = await db.load(
+        space_name=space_name,
+        subpath="workflows",
+        shortname=ticket_obj.workflow_shortname,
+        class_type=core.Content,
+        user_shortname=logged_in_user,
+    )
+
+    if (
+        workflows_data.payload is not None
+        and workflows_data.payload.body is not None
+    ):
+        ticket_obj, workflows_payload, response, old_version_flattend = await handle_update_state(
+            space_name, logged_in_user, ticket_obj, action, user_roles
         )
+        if resolution:
+            ticket_obj = await update_state_handle_resolution(ticket_obj, workflows_payload, response, resolution)
 
-        if (
-                workflows_data.payload is not None
-                and workflows_data.payload.body is not None
-        ):
-            ticket_obj, workflows_payload, response, old_version_flattend = await handle_update_state(
-                space_name, logged_in_user, ticket_obj, action, user_roles
-            )
-            if resolution:
-                ticket_obj = await update_state_handle_resolution(ticket_obj, workflows_payload, response, resolution)
+        new_version_flattend = flatten_dict(ticket_obj.model_dump())
+        new_version_flattend.pop("payload.body", None)
+        new_version_flattend.update(
+            flatten_dict({"payload.body": ticket_obj}))
 
-            new_version_flattend = flatten_dict(ticket_obj.model_dump())
-            new_version_flattend.pop("payload.body", None)
-            new_version_flattend.update(
-                flatten_dict({"payload.body": ticket_obj}))
-
-            if comment:
-                time = datetime.now().strftime("%Y%m%d%H%M%S")
-                new_version_flattend["comment"] = comment
-                payload = {
-                    "content_type": ContentType.comment,
-                    "body": comment,
-                    "state": ticket_obj.state,
+        if comment:
+            time = datetime.now().strftime("%Y%m%d%H%M%S")
+            new_version_flattend["comment"] = comment
+            payload = {
+                "content_type": ContentType.comment,
+                "body": comment,
+                "state": ticket_obj.state,
+            }
+            record_file = json.dumps(
+                {
+                    "shortname": f"c_{time}",
+                    "resource_type": ResourceType.comment,
+                    "subpath": f"{subpath}/{shortname}",
+                    "attributes": {"is_active": True, **payload},
                 }
-                record_file = json.dumps(
-                    {
-                        "shortname": f"c_{time}",
-                        "resource_type": ResourceType.comment,
-                        "subpath": f"{subpath}/{shortname}",
-                        "attributes": {"is_active": True, **payload},
-                    }
-                ).encode()
-                payload_file = json.dumps(payload).encode()
-                await create_or_update_resource_with_payload(
-                    UploadFile(
-                        filename=f"{time}.json",
-                        file=BytesIO(payload_file),
-                    ),
-                    UploadFile(
-                        filename="record.json",
-                        file=BytesIO(record_file),
-                    ),
-                    space_name,
-                    owner_shortname=logged_in_user,
-                )
-
-            history_diff = await db.update(
+            ).encode()
+            payload_file = json.dumps(payload).encode()
+            await create_or_update_resource_with_payload(
+                UploadFile(
+                    filename=f"{time}.json",
+                    file=BytesIO(payload_file),
+                ),
+                UploadFile(
+                    filename="record.json",
+                    file=BytesIO(record_file),
+                ),
                 space_name,
-                f"/{subpath}",
-                ticket_obj,
-                old_version_flattend,
-                new_version_flattend,
-                ["state", "resolution_reason", "comment"],
-                logged_in_user,
-                retrieve_lock_status=retrieve_lock_status,
+                owner_shortname=logged_in_user,
             )
-            await plugin_manager.after_action(
-                core.Event(
-                    space_name=space_name,
-                    subpath=subpath,
-                    shortname=shortname,
-                    action_type=core.ActionType.progress_ticket,
-                    resource_type=ResourceType.ticket,
-                    user_shortname=logged_in_user,
-                    attributes={
-                        "history_diff": history_diff,
-                        "state": ticket_obj.state,
-                    },
-                )
+
+        history_diff = await db.update(
+            space_name,
+            f"/{subpath}",
+            ticket_obj,
+            old_version_flattend,
+            new_version_flattend,
+            ["state", "resolution_reason", "comment"],
+            logged_in_user,
+            retrieve_lock_status=retrieve_lock_status,
+        )
+        await plugin_manager.after_action(
+            core.Event(
+                space_name=space_name,
+                subpath=subpath,
+                shortname=shortname,
+                action_type=core.ActionType.progress_ticket,
+                resource_type=ResourceType.ticket,
+                user_shortname=logged_in_user,
+                attributes={
+                    "history_diff": history_diff,
+                    "state": ticket_obj.state,
+                },
             )
-            return api.Response(status=api.Status.success)
+        )
+        return api.Response(status=api.Status.success)
 
     raise api.Exception(
         status.HTTP_400_BAD_REQUEST,
