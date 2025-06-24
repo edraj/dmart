@@ -1233,6 +1233,12 @@ async def handle_failed_login_attempt(user: core.User):
                     user_shortname=user.shortname,
                 )
             )
+
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(type="auth", code=InternalErrorCode.USER_ACCOUNT_LOCKED,
+                      message="Account has been locked due to too many failed login attempts."),
+        )
     else:
         # Count until the failed attempts reach the limit
         await db.set_failed_password_attempt_count(user.shortname, failed_login_attempts_count)
