@@ -1830,14 +1830,16 @@ class SQLAdapter(BaseDataAdapter):
                 return 0, None
 
             for r in results:
+                if settings.session_inactivity_ttl + r.timestamp.timestamp() < time.time():
+                    await session.execute(delete(Sessions).where(col(Sessions.uuid) == r.uuid))
+                    continue
                 if verify_password(token, r.token):
-                    if settings.session_inactivity_ttl + r.timestamp.timestamp() < time.time():
-                        await self.remove_user_session(user_shortname)
-                        return 0, None
                     r.timestamp = datetime.now()
                     session.add(r)
                     await session.commit()
                     return len(results), token
+                else:
+                    await session.execute(delete(Sessions).where(col(Sessions.uuid) == r.uuid))
         return len(results), None
 
 
