@@ -423,6 +423,13 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
         # Check if user entered a wrong password
         if not is_password_valid:
             await handle_failed_login_attempt(user)
+        elif not user.is_active:
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(type="auth", code=InternalErrorCode.USER_ACCOUNT_LOCKED,
+                        message="Account has been locked."),
+            )
+
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
