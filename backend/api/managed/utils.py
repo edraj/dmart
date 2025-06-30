@@ -68,30 +68,20 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
             -  rows += list_new_rows
             """
             if isinstance(attribute_val, list) and len(attribute_val) > 0:
-                list_new_rows = []
-                # Duplicate old rows
-                for row in rows:
-                    # New row for each item
-                    for item in attribute_val[1:]:
-                        new_row = copy(row)
-                        # New cell for each item's attribute
+                if isinstance(attribute_val[0], dict):
+                    joined_values = []
+                    for item in attribute_val:
                         if isinstance(item, dict):
-                            for k, v in item.items():
-                                new_row[f"{column_title}.{k}"] = v
-                                new_keys.add(f"{column_title}.{k}")
+                            item_values = [str(v) for v in item.values()]
+                            joined_values.extend(item_values)
                         else:
-                            new_row[column_title] = item
-
-                        list_new_rows.append(new_row)
-                    # Add first items's attribute to the existing rows
-                    if isinstance(attribute_val[0], dict):
-                        deprecated_keys.add(column_title)
-                        for k, v in attribute_val[0].items():
-                            row[f"{column_title}.{k}"] = v
-                            new_keys.add(f"{column_title}.{k}")
-                    else:
-                        row[column_title] = attribute_val[0]
-                rows += list_new_rows
+                            joined_values.append(str(item))
+                    new_col = "|".join(joined_values)
+                else:
+                    new_col = "|".join(str(item) for item in attribute_val)
+                
+                for row in rows:
+                    row[column_title] = new_col
 
             elif attribute_val and not isinstance(attribute_val, list):
                 new_col = attribute_val if column_key not in timestamp_fields else \
