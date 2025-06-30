@@ -1,4 +1,3 @@
-from copy import copy
 from datetime import datetime
 from typing import Any
 
@@ -43,8 +42,8 @@ from data_adapters.adapter import data_adapter as db
 def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
     json_data = []
     timestamp_fields = ["created_at", "updated_at"]
-    new_keys = set()
-    deprecated_keys = set()
+    new_keys: set[str] = set()
+    deprecated_keys: set[str] = set()
 
     for redis_document in docs_dicts:
         rows: list[dict] = [{}]
