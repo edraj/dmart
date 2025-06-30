@@ -67,6 +67,9 @@ class Payload(Resource):
             self, payload: dict, old_body: dict | None = None, replace: bool = False
     ) -> dict | None:
 
+        if payload.get("body", None) is None:
+            return None
+
         if isinstance(payload["body"], dict):
             if old_body and not replace:
                 separate_payload_body = dict(
