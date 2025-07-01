@@ -1429,7 +1429,12 @@ class SQLAdapter(BaseDataAdapter):
                             message="metadata is missing",
                         ),
                     )
+
+                if isinstance(result, Users) and not result.is_active and meta.is_active:
+                    await self.set_failed_password_attempt_count(result.shortname, 0)
+
                 result.sqlmodel_update(meta.model_dump())
+
                 if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
                     result.subpath = f"/{result.subpath}"
 
