@@ -143,6 +143,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
     )
 
+    query.retrieve_attachments=True
     folder = await db.load(
         query.space_name,
         '/',

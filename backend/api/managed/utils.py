@@ -28,6 +28,7 @@ import utils.repository as repository
 from utils.helpers import (
     camel_case,
     flatten_dict,
+    flatten_all
 )
 from utils.settings import settings
 from utils.plugin_manager import plugin_manager
@@ -47,7 +48,7 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
 
     for redis_document in docs_dicts:
         rows: list[dict] = [{}]
-        flattened_doc = flatten_dict(redis_document)
+        flattened_doc = flatten_all(redis_document)
         for folder_view in folder_views:
             column_key = folder_view.get("key")
             column_title = folder_view.get("name")
