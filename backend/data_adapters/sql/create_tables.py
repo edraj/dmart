@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from typing import Any
 from uuid import UUID
-from sqlalchemy import LargeBinary, text
+from sqlalchemy import LargeBinary, text, URL
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT, HSTORE
 from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
 from sqlmodel._compat import SQLModelConfig # type: ignore
@@ -379,7 +379,14 @@ class OTP(SQLModel, table=True):
 
 
 def generate_tables():
-    postgresql_url = f"{settings.database_driver.replace('+asyncpg', '+psycopg') }://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
+    postgresql_url = URL.create(
+        drivername=settings.database_driver.replace('+asyncpg', '+psycopg'),
+        host=settings.database_host,
+        port=settings.database_port,
+        username=settings.database_username,
+        password=settings.database_password,
+        database=settings.database_name,
+    )
     engine = create_engine(postgresql_url, echo=False)
 
     # Enable hstore extension if it's not already enabled
