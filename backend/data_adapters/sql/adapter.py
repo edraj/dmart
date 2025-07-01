@@ -826,7 +826,7 @@ class SQLAdapter(BaseDataAdapter):
                 password=settings.database_password,
                 database=settings.database_name,
             ),
-            echo=False,
+            echo=True,
             max_overflow=settings.database_max_overflow,
             pool_size=settings.database_pool_size,
             pool_pre_ping=True,
@@ -1429,7 +1429,12 @@ class SQLAdapter(BaseDataAdapter):
                             message="metadata is missing",
                         ),
                     )
+
+                if isinstance(result, Users) and result.is_active == False and meta.is_active == True:
+                    await self.set_failed_password_attempt_count(result.shortname, 0)
+
                 result.sqlmodel_update(meta.model_dump())
+
                 if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
                     result.subpath = f"/{result.subpath}"
 
