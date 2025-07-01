@@ -4,7 +4,7 @@ import json
 import os
 import sys
 from datetime import datetime
-from io import BytesIO, StringIO
+from io import StringIO
 from pathlib import Path as FilePath
 from re import sub as res_sub
 from time import time
