@@ -826,7 +826,7 @@ class SQLAdapter(BaseDataAdapter):
                 password=settings.database_password,
                 database=settings.database_name,
             ),
-            echo=True,
+            echo=False,
             max_overflow=settings.database_max_overflow,
             pool_size=settings.database_pool_size,
             pool_pre_ping=True,
