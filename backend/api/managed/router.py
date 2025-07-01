@@ -437,30 +437,28 @@ async def update_state(
         if comment:
             time = datetime.now().strftime("%Y%m%d%H%M%S")
             new_version_flattend["comment"] = comment
-            payload = {
-                "content_type": ContentType.comment,
-                "body": comment,
-                "state": ticket_obj.state,
-            }
-            record_file = json.dumps(
-                {
-                    "shortname": f"c_{time}",
-                    "resource_type": ResourceType.comment,
-                    "subpath": f"{subpath}/{shortname}",
-                    "attributes": {"is_active": True, **payload},
-                }
-            ).encode()
-            payload_file = json.dumps(payload).encode()
-            await create_or_update_resource_with_payload(
-                UploadFile(
-                    filename=f"{time}.json",
-                    file=BytesIO(payload_file),
+            await serve_request(
+                api.Request(
+                    space_name=space_name,
+                    request_type=RequestType.create,
+                    records=[
+                        core.Record(
+                            shortname=f"c_{time}",
+                            subpath=f"{subpath}/{shortname}",
+                            resource_type=ResourceType.comment,
+                            attributes={
+                                "is_active": True,
+                                "payload": {
+                                    "content_type": ContentType.comment,
+                                    "body": {
+                                        "body": comment,
+                                        "state": ticket_obj.state,
+                                    }
+                                },
+                            },
+                        )
+                    ],
                 ),
-                UploadFile(
-                    filename="record.json",
-                    file=BytesIO(record_file),
-                ),
-                space_name,
                 owner_shortname=logged_in_user,
             )
 
