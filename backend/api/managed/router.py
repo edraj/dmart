@@ -6,7 +6,6 @@ import sys
 import tempfile
 import traceback
 import zipfile
-import shutil
 from datetime import datetime
 from io import StringIO, BytesIO
 from pathlib import Path as FilePath
@@ -64,7 +63,6 @@ from utils.plugin_manager import plugin_manager
 from utils.router_helper import is_space_exist
 from utils.settings import settings
 from data_adapters.sql.json_to_db_migration import main as json_to_db_main
-from data_adapters.sql.db_to_json_migration import main as db_to_json_main
 
 router = APIRouter()
 

@@ -13,6 +13,7 @@ from data_adapters.sql.create_tables import (
     Histories,
     Spaces,
 )
+from models.core import Payload
 from utils.settings import settings
 from models import core
 
@@ -228,7 +229,7 @@ async def export_data_with_query(query, user_shortname):
     print(query)
     print(f"LEN RECORDS: {len(records)}/{total}")
 
-    with Session(engine) as session:
+    with (Session(engine) as session):
         space = session.exec(select(Spaces).where(col(Spaces.space_name) == query.space_name)).first()
         if space:
             dir_path = f"{space_folder}/{space.space_name}/.dm/"
@@ -265,9 +266,9 @@ async def export_data_with_query(query, user_shortname):
 
                     _folder = folder.model_dump()
                     body = None
-                    if _folder.get("payload", None) is not None:
-                        if _folder.get("payload", None).get("body", None) is not None:
-                            body = _folder.get("payload", None)["body"]
+                    if _folder and _folder.get("payload", None) is not None:
+                        if _folder and _folder.get("payload", {}).get("body", None) is not None:
+                            body = _folder.get("payload", {}).get("body", None)
                         _folder["payload"]["body"] = f"{folder.shortname}.json"
 
                     del _folder["space_name"]
@@ -289,8 +290,8 @@ async def export_data_with_query(query, user_shortname):
                 _entry = entry.model_dump()
                 body = None
                 if _entry.get("payload", None) is not None:
-                    if _entry.get("payload", None).get("body", None) is not None:
-                        body = _entry.get("payload", None)["body"]
+                    if _entry.get("payload", {}).get("body", None) is not None:
+                        body = _entry.get("payload",{}).get("body", None)
                     _entry["payload"]["body"] = f"{entry.shortname}.json"
 
                 del _entry["subpath"]
@@ -309,7 +310,7 @@ async def export_data_with_query(query, user_shortname):
             del _entry["resource_type"]
 
             if entry.attributes.get("payload"):
-                if entry.attributes.get("payload")["content_type"] == core.ContentType.json:
+                if entry.attributes.get("payload", {}).get("content_type") == core.ContentType.json:
                     if _entry.get("attributes",{}).get("payload",{}).get("body", None) is not None:
                         if isinstance( _entry.get("attributes",{}).get("payload").get("body", None), dict):
                             write_json_file(f"{dir_path}/{entry.shortname}.json",  _entry.get("attributes",{}).get("payload").get("body", None))
@@ -360,7 +361,9 @@ async def export_data_with_query(query, user_shortname):
                 (Attachments.subpath == f"/{entry.subpath}/{entry.shortname}")
             )).all()
             print(f"Attachments: {len(attachments)}", f"{entry.subpath}/{entry.shortname}")
+            __attachment = None
             for attachment in attachments:
+                __attachment = attachment
                 subpath = subpath_checker(attachment.subpath)
 
                 parts = subpath.split('/')
@@ -372,18 +375,27 @@ async def export_data_with_query(query, user_shortname):
 
                 media_path = f"{dir_path}/attachments.{attachment.resource_type}"
                 ensure_directory_exists(media_path)
-                if attachment.payload.get("body", None) is not None:
-                    # For other attachment types, handle based on content_type
-                    if attachment.payload.get("content_type") == 'json':
-                        if isinstance(attachment.payload.get("body", None), dict):
-                            write_json_file(f"{media_path}/{attachment.shortname}.json", attachment.payload.get("body", {}))
-                            attachment.payload["body"] = f"{attachment.shortname}.json"
-                        else:
-                            attachment.payload["body"] = attachment.payload.get("body", "")
+
+                attachment_body = None
+                if attachment.payload is not None:
+                    if isinstance(attachment.payload, Payload):
+                        attachment_body = attachment.payload.body
+                    else:
+                        attachment_body = attachment.payload["body"]
+
+                if attachment_body is not None:
+                    if (isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == 'json') \
+                        or (isinstance(attachment.payload, Payload) and attachment.payload.content_type == 'json'):
+                        if isinstance(attachment_body, dict):
+                            write_json_file(f"{media_path}/{attachment.shortname}.json", attachment_body)
+                            if isinstance(attachment.payload, Payload):
+                                attachment.payload.body = f"{attachment.shortname}.json"
+                            elif isinstance(attachment.payload, dict):
+                                attachment.payload["body"] = f"{attachment.shortname}.json"
                     else:
                         if attachment.media is None:
                             continue
-                        write_binary_file(f"{media_path}/{attachment.payload['body']}", attachment.media)
+                        write_binary_file(f"{media_path}/{attachment_body}", attachment.media)
                     _attachment = attachment.model_dump()
 
                     del _attachment["media"]
@@ -392,9 +404,9 @@ async def export_data_with_query(query, user_shortname):
             else:
                 with open(f"{dir_meta_path}/meta.{entry.resource_type}.json", "r") as f:
                     entry_data = json.load(f)
-                    if "payload" in entry_data:
+                    if __attachment is not None:
                         if "payload" in entry_data:
-                            entry_data["payload"] = attachment.payload
+                            entry_data["payload"] = __attachment.payload
 
     return space_folder
 
