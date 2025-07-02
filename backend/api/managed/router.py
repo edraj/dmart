@@ -3,8 +3,11 @@ import hashlib
 import json
 import os
 import sys
+import tempfile
+import traceback
+import zipfile
 from datetime import datetime
-from io import StringIO
+from io import StringIO, BytesIO
 from pathlib import Path as FilePath
 from re import sub as res_sub
 from time import time
@@ -59,8 +62,89 @@ from utils.jwt import GetJWTToken, JWTBearer
 from utils.plugin_manager import plugin_manager
 from utils.router_helper import is_space_exist
 from utils.settings import settings
+from data_adapters.sql.json_to_db_migration import main as json_to_db_main
 
 router = APIRouter()
+
+@router.post(
+    "/import",
+    response_model=api.Response,
+    response_model_exclude_none=True
+)
+async def import_data(
+    zip_file: UploadFile,
+    extra: str|None=None,
+    owner_shortname=Depends(JWTBearer()),
+):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            content = await zip_file.read()
+
+            zip_bytes = BytesIO(content)
+
+            with zipfile.ZipFile(zip_bytes, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+
+            original_spaces_folder = settings.spaces_folder
+            settings.spaces_folder = FilePath(temp_dir)
+
+            try:
+                await json_to_db_main()
+
+                return api.Response(
+                    status=api.Status.success,
+                    attributes={"message": "Data imported successfully"}
+                )
+            finally:
+                settings.spaces_folder = original_spaces_folder
+
+        except Exception as e:
+            return api.Response(
+                status=api.Status.failed,
+                attributes={"message": f"Failed to import data: {str(e)}"}
+            )
+
+@router.post("/export", response_class=StreamingResponse)
+async def export_data(query: api.Query, user_shortname=Depends(JWTBearer())):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            original_spaces_folder = settings.spaces_folder
+            temp_spaces_folder = FilePath(temp_dir)
+
+            zip_buffer = BytesIO()
+
+            try:
+                settings.spaces_folder = temp_spaces_folder
+
+                from data_adapters.sql.db_to_json_migration import export_data_with_query
+                await export_data_with_query(query, user_shortname)
+
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    for root, _, files in os.walk(temp_dir):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            arcname = os.path.relpath(file_path, temp_dir)
+                            zip_file.write(file_path, arcname)
+
+                zip_buffer.seek(0)
+
+                response = StreamingResponse(
+                    iter([zip_buffer.getvalue()]),
+                    media_type="application/zip"
+                )
+                response.headers["Content-Disposition"] = "attachment; filename=export.zip"
+
+                return response
+            finally:
+                settings.spaces_folder = original_spaces_folder
+
+        except Exception as e:
+            traceback.print_exc()
+            print(f"Export error: {e}")
+            return api.Response(
+                status=api.Status.failed,
+                attributes={"message": f"Failed to export data: {str(e)}"}
+            )
 
 
 @router.post(

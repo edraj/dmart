@@ -3,7 +3,7 @@
 import os
 import json
 from datetime import datetime
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, create_engine, select, col
 from data_adapters.sql.create_tables import (
     Entries,
     Users,
@@ -13,6 +13,7 @@ from data_adapters.sql.create_tables import (
     Histories,
     Spaces,
 )
+from models.core import Payload
 from utils.settings import settings
 from models import core
 
@@ -217,6 +218,197 @@ def process_spaces(session, space_folder):
         del _space["resource_type"]
 
         write_json_file(f"{dir_path}/meta.space.json", _space)
+
+async def export_data_with_query(query, user_shortname):
+    from utils.repository import serve_query
+
+    space_folder = os.path.relpath(str(settings.spaces_folder))
+
+    total, records = await serve_query(query, user_shortname)
+
+    print(query)
+    print(f"LEN RECORDS: {len(records)}/{total}")
+
+    with (Session(engine) as session):
+        space = session.exec(select(Spaces).where(col(Spaces.space_name) == query.space_name)).first()
+        if space:
+            dir_path = f"{space_folder}/{space.space_name}/.dm/"
+            ensure_directory_exists(dir_path)
+
+            _space = space.model_dump()
+            del _space["space_name"]
+            del _space["resource_type"]
+
+            write_json_file(f"{dir_path}/meta.space.json", _space)
+        if query.subpath and query.subpath != "/":
+            path_parts = query.subpath.strip("/").split("/")
+            current_path = ""
+
+            for part in path_parts:
+                current_path += f"/{part}"
+
+                # Find folder entry for this path
+                print(current_path.rsplit("/", 1)[0] or "/")
+                folder = session.exec(select(Entries).where(
+                    (Entries.space_name == query.space_name) &
+                    (Entries.subpath == str(current_path.rsplit("/", 1)[0] or "/")) &
+                    (Entries.shortname == part) &
+                    (Entries.resource_type == "folder")
+                )).first()
+
+                if folder:
+                    folder_subpath = subpath_checker(folder.subpath)
+                    folder_dir_path = f"{space_folder}/{folder.space_name}{folder_subpath}".replace("//", "/")
+                    ensure_directory_exists(folder_dir_path)
+
+                    dir_meta_path = f"{folder_dir_path}/{folder.shortname}/.dm/".replace("//", "/")
+                    ensure_directory_exists(dir_meta_path)
+
+                    _folder = folder.model_dump()
+                    body = None
+                    if _folder and _folder.get("payload", None) is not None:
+                        if _folder and _folder.get("payload", {}).get("body", None) is not None:
+                            body = _folder.get("payload", {}).get("body", None)
+                        _folder["payload"]["body"] = f"{folder.shortname}.json"
+
+                    del _folder["space_name"]
+                    del _folder["subpath"]
+                    del _folder["resource_type"]
+
+                    write_json_file(f"{dir_meta_path}/meta.folder.json", _folder)
+                    if body is not None:
+                        write_json_file(f"{folder_dir_path}/{folder.shortname}.json", body)
+
+        for entry in records:
+            subpath = subpath_checker(entry.subpath)
+            dir_path = f"{space_folder}/{query.space_name}{subpath}".replace("//", "/")  # Ensure absolute path
+            ensure_directory_exists(dir_path)
+
+            if entry.resource_type == "folder":
+                dir_meta_path = f"{dir_path}/{entry.shortname}/.dm/".replace("//", "/")
+                ensure_directory_exists(dir_meta_path)
+                _entry = entry.model_dump()
+                body = None
+                if _entry.get("payload", None) is not None:
+                    if _entry.get("payload", {}).get("body", None) is not None:
+                        body = _entry.get("payload",{}).get("body", None)
+                    _entry["payload"]["body"] = f"{entry.shortname}.json"
+
+                del _entry["subpath"]
+                del _entry["resource_type"]
+
+                write_json_file(f"{dir_meta_path}/meta.folder.json", _entry)
+                if body is not None:
+                    write_json_file(f"{dir_path}/{entry.shortname}.json", body)
+                continue
+
+            dir_meta_path = f"{dir_path}/.dm/{entry.shortname}".replace("//", "/")
+            ensure_directory_exists(dir_meta_path)
+
+            _entry = entry.model_dump()
+            del _entry["subpath"]
+            del _entry["resource_type"]
+
+            if entry.attributes.get("payload"):
+                if entry.attributes.get("payload", {}).get("content_type") == core.ContentType.json:
+                    if _entry.get("attributes",{}).get("payload",{}).get("body", None) is not None:
+                        if isinstance( _entry.get("attributes",{}).get("payload").get("body", None), dict):
+                            write_json_file(f"{dir_path}/{entry.shortname}.json",  _entry.get("attributes",{}).get("payload").get("body", None))
+                        _entry.get("attributes",{}).get("payload")["body"] = f"{entry.shortname}.json"
+
+
+            # if entry.resource_type != "ticket":
+            #     del _entry["state"]
+            #     del _entry["is_open"]
+            #     del _entry["reporter"]
+            #     del _entry["workflow_shortname"]
+            #     del _entry["collaborators"]
+            #     del _entry["resolution_reason"]
+            _entry = {
+                **_entry,
+                **_entry.get("attributes",{})
+            }
+            if "attributes" in _entry:
+                del _entry["attributes"]
+            if "attachments" in _entry:
+                del _entry["attachments"]
+
+            write_json_file(f"{dir_meta_path}/meta.{entry.resource_type}.json", _entry)
+
+            histories = session.exec(select(Histories).where(
+                (Histories.space_name == query.space_name) &
+                (Histories.subpath == entry.subpath) &
+                (Histories.shortname == entry.shortname)
+            )).all()
+
+            for history in histories:
+                file_path = f"{dir_path}/.dm/{entry.shortname}"
+                ensure_directory_exists(file_path)
+
+                _history_one: str = history.model_dump_json()
+                _history: dict = json.loads(_history_one)
+                _history["shortname"] = "history"
+
+                del _history["space_name"]
+                del _history["subpath"]
+                if _history.get("resource_type", None):
+                    del _history["resource_type"]
+                with open(f"{file_path}/history.jsonl", "a+") as f:
+                    f.write(json.dumps(_history) + "\n")
+
+            attachments = session.exec(select(Attachments).where(
+                (Attachments.space_name == query.space_name) &
+                (Attachments.subpath == f"/{entry.subpath}/{entry.shortname}")
+            )).all()
+            print(f"Attachments: {len(attachments)}", f"{entry.subpath}/{entry.shortname}")
+            __attachment = None
+            for attachment in attachments:
+                __attachment = attachment
+                subpath = subpath_checker(attachment.subpath)
+
+                parts = subpath.split('/')
+                parts.insert(-1, '.dm')
+                new_path = '/'.join(parts)
+
+                dir_path = f"{space_folder}/{query.space_name}{new_path}"
+                ensure_directory_exists(dir_path)
+
+                media_path = f"{dir_path}/attachments.{attachment.resource_type}"
+                ensure_directory_exists(media_path)
+
+                attachment_body = None
+                if attachment.payload is not None:
+                    if isinstance(attachment.payload, Payload):
+                        attachment_body = attachment.payload.body
+                    else:
+                        attachment_body = attachment.payload["body"]
+
+                if attachment_body is not None:
+                    if (isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == 'json') \
+                        or (isinstance(attachment.payload, Payload) and attachment.payload.content_type == 'json'):
+                        if isinstance(attachment_body, dict):
+                            write_json_file(f"{media_path}/{attachment.shortname}.json", attachment_body)
+                            if isinstance(attachment.payload, Payload):
+                                attachment.payload.body = f"{attachment.shortname}.json"
+                            elif isinstance(attachment.payload, dict):
+                                attachment.payload["body"] = f"{attachment.shortname}.json"
+                    else:
+                        if attachment.media is None:
+                            continue
+                        write_binary_file(f"{media_path}/{attachment_body}", attachment.media)
+                    _attachment = attachment.model_dump()
+
+                    del _attachment["media"]
+                    del _attachment["resource_type"]
+                    write_json_file(f"{media_path}/meta.{attachment.shortname}.json", _attachment)
+            else:
+                with open(f"{dir_meta_path}/meta.{entry.resource_type}.json", "r") as f:
+                    entry_data = json.load(f)
+                    if __attachment is not None:
+                        if "payload" in entry_data:
+                            entry_data["payload"] = __attachment.payload
+
+    return space_folder
 
 def main():
     space_folder = os.path.relpath(str(settings.spaces_folder))
