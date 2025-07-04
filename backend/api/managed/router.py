@@ -2,6 +2,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 import sys
 import tempfile
 import traceback
@@ -708,6 +709,15 @@ async def create_or_update_resource_with_payload(
     record = core.Record.model_validate_json(request_record.file.read())
 
     payload_filename = payload_file.filename or ""
+    if payload_filename and not re.search(regex.EXT, os.path.splitext(payload_filename)[1][1:]):
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.INVALID_DATA,
+                message=f"Invalid payload file extention, it should end with {regex.EXT}",
+            ),
+        )
     resource_content_type = get_resource_content_type_from_payload_content_type(
         payload_file, payload_filename, record
     )
