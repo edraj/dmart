@@ -28,7 +28,6 @@ import utils.repository as repository
 from utils.helpers import (
     camel_case,
     flatten_dict,
-    flatten_all
 )
 from utils.settings import settings
 from utils.plugin_manager import plugin_manager
@@ -48,11 +47,34 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
 
     for redis_document in docs_dicts:
         rows: list[dict] = [{}]
-        flattened_doc = flatten_all(redis_document)
+        flattened_doc = flatten_dict(redis_document)
         for folder_view in folder_views:
             column_key = folder_view.get("key")
             column_title = folder_view.get("name")
             attribute_val = flattened_doc.get(column_key)
+
+            if column_key.startswith('attachments.') and attribute_val is None:
+                parts = column_key.split('.')
+                if len(parts) >= 3:
+                    attachment_type = parts[1]
+                    property_name = '.'.join(parts[2:])
+
+                    attachment_key = f"attachments.{attachment_type}"
+                    attachments_array = flattened_doc.get(attachment_key)
+
+                    if isinstance(attachments_array, list):
+                        flattened_attachments = [
+                            flatten_dict(attachment) if isinstance(attachment, dict) else attachment
+                            for attachment in attachments_array
+                        ]
+                        attribute_val = [
+                            flattened_attachment.get(property_name)
+                            for flattened_attachment in flattened_attachments
+                            if isinstance(flattened_attachment, dict) and flattened_attachment.get(
+                                property_name) is not None
+                        ]
+                        attribute_val = [val for val in attribute_val if val is not None]
+
             if attribute_val:
                 keys_existence[column_title] = True
             """
