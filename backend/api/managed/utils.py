@@ -37,6 +37,7 @@ from api.user.service import (
 )
 from languages.loader import languages
 from data_adapters.adapter import data_adapter as db
+from pathlib import Path as FilePath
 
 
 def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
@@ -1615,6 +1616,11 @@ async def create_or_update_resource_with_payload_handler(
         record = await set_init_state_from_record(
             record, owner_shortname, space_name
         )
+    
+    file_extension = FilePath(payload_filename).suffix
+    if file_extension.startswith('.'):
+        file_extension = file_extension[1:]  
+    
     resource_obj.payload = core.Payload(
         content_type=resource_content_type,
         checksum=checksum,
@@ -1622,7 +1628,7 @@ async def create_or_update_resource_with_payload_handler(
         schema_shortname="meta_schema"
         if record.resource_type == ResourceType.schema
         else record.attributes.get("payload", {}).get("schema_shortname", None),
-        body=f"{record.shortname}." + payload_filename.split(".")[1],
+        body=f"{record.shortname}.{file_extension}",
     )
     if (
             not isinstance(resource_obj, core.Attachment)
@@ -1639,8 +1645,7 @@ async def create_or_update_resource_with_payload_handler(
             ),
         )
     if settings.active_data_db == "file":
-        resource_obj.payload.body = f"{resource_obj.shortname}." + \
-                                    payload_filename.split(".")[1]
+        resource_obj.payload.body = f"{resource_obj.shortname}.{file_extension}"
     elif not isinstance(resource_obj, core.Attachment):
         resource_obj.payload.body = json.load(payload_file.file)
         payload_file.file.seek(0)

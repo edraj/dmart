@@ -730,8 +730,10 @@ class FileAdapter(BaseDataAdapter):
                     self.payload_path(space_name, src_subpath, meta.__class__)
                     / meta.payload.body
             )
-            meta.payload.body = meta.shortname + \
-                                "." + meta.payload.body.split(".")[-1]
+            file_extension = Path(meta.payload.body).suffix
+            if file_extension.startswith('.'):
+                file_extension = file_extension[1:]
+            meta.payload.body = meta.shortname + "." + file_extension
             dist_payload_file_path = (
                     self.payload_path(
                         space_name, dest_subpath or src_subpath, meta.__class__
