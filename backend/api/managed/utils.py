@@ -28,7 +28,6 @@ import utils.repository as repository
 from utils.helpers import (
     camel_case,
     flatten_dict,
-    flatten_all
 )
 from utils.settings import settings
 from utils.plugin_manager import plugin_manager
