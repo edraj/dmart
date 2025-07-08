@@ -1603,8 +1603,17 @@ class SQLAdapter(BaseDataAdapter):
                 if hasattr(origin, 'subpath') and dest_subpath:
                     origin.subpath = dest_subpath
 
-                if hasattr(origin, 'space_name') and dest_subpath:
+                if hasattr(origin, 'space_name') and dest_space_name:
                     origin.space_name = dest_space_name
+
+                origin.query_policies = generate_query_policies(
+                    space_name=dest_space_name,
+                    subpath=dest_subpath,
+                    resource_type=origin.resource_type,
+                    is_active=origin.is_active,
+                    owner_shortname=origin.owner_shortname,
+                    owner_group_shortname=None,
+                )
 
                 session.add(origin)
                 await session.commit()
@@ -1966,17 +1975,18 @@ class SQLAdapter(BaseDataAdapter):
         if query.type == QueryType.attachments:
             for idx, item in enumerate(results):
                 results[idx] = item.to_record(
-                    query.subpath, item.shortname
+                    results[idx].subpath, item.shortname
                 )
         else:
             for idx, item in enumerate(results):
+                print(item)
                 if is_aggregation:
                     results = set_results_from_aggregation(
                         query, item, results, idx
                     )
                 else:
                     results[idx] = item.to_record(
-                        query.subpath, item.shortname
+                        item.subpath, item.shortname
                     )
 
                 if not_history_event:
@@ -1991,7 +2001,7 @@ class SQLAdapter(BaseDataAdapter):
 
                     if query.retrieve_attachments:
                         results[idx].attachments = await self.get_entry_attachments(
-                            query.subpath,
+                            results[idx].subpath,
                             Path(f"{query.space_name}/{results[idx].shortname}"),
                             retrieve_json_payload=True,
                         )
