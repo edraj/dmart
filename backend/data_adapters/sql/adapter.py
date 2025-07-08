@@ -1545,11 +1545,12 @@ class SQLAdapter(BaseDataAdapter):
 
     async def move(
             self,
-            space_name: str,
+            src_space_name: str,
             src_subpath: str,
             src_shortname: str,
-            dest_subpath: str | None,
-            dest_shortname: str | None,
+            dest_space_name: str,
+            dest_subpath: str,
+            dest_shortname: str,
             meta: core.Meta,
     ):
         """Move the file that match the criteria given, remove source folder if empty"""
@@ -1558,14 +1559,23 @@ class SQLAdapter(BaseDataAdapter):
         if dest_subpath and not dest_subpath.startswith("/"):
             dest_subpath = f"/{dest_subpath}"
 
-        origin = await self.db_load_or_none(space_name, src_subpath, src_shortname, meta.__class__)
+        origin = await self.db_load_or_none(src_space_name, src_subpath, src_shortname, meta.__class__)
+        if isinstance(origin,  Locks):
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="move",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="Locks cannot be moved",
+                ),
+            )
         if origin is None:
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 error=api.Error(
-                    type="create",
+                    type="move",
                     code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
-                    message="already exists",
+                    message="Entry does not exist",
                 ),
             )
 
@@ -1577,7 +1587,7 @@ class SQLAdapter(BaseDataAdapter):
                 if hasattr(origin, 'subpath'):
                     old_subpath = origin.subpath
                 table = self.get_table(meta.__class__)
-                statement = select(table).where(table.space_name == space_name)
+                statement = select(table).where(table.space_name == dest_space_name)
 
                 if table in [Roles, Permissions, Users, Spaces]:
                     statement = statement.where(table.shortname == dest_shortname)
@@ -1591,7 +1601,7 @@ class SQLAdapter(BaseDataAdapter):
                     raise api.Exception(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         error=api.Error(
-                            type="create",
+                            type="move",
                             code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
                             message="already exists",
                         ),
@@ -1602,21 +1612,33 @@ class SQLAdapter(BaseDataAdapter):
                 if hasattr(origin, 'subpath') and dest_subpath:
                     origin.subpath = dest_subpath
 
+                if hasattr(origin, 'space_name') and dest_space_name:
+                    origin.space_name = dest_space_name
+
+                origin.query_policies = generate_query_policies(
+                    space_name=dest_space_name,
+                    subpath=dest_subpath,
+                    resource_type=origin.resource_type if hasattr(origin, 'resource_type') else origin.__class__.__name__.lower()[:-1],
+                    is_active=origin.is_active if hasattr(origin, 'is_active') else True,
+                    owner_shortname=origin.owner_shortname,
+                    owner_group_shortname=None,
+                )
+
                 session.add(origin)
                 await session.commit()
                 try:
                     if table is Spaces:
                         session.add(
                             update(Spaces)
-                            .where(col(Spaces.space_name) == space_name)
+                            .where(col(Spaces.space_name) == dest_space_name)
                             .values(space_name=dest_shortname))
                         session.add(
                             update(Entries)
-                            .where(col(Entries.space_name) == space_name)
+                            .where(col(Entries.space_name) == dest_space_name)
                             .values(space_name=dest_shortname))
                         session.add(
                             update(Attachments)
-                            .where(col(Attachments.space_name) == space_name)
+                            .where(col(Attachments.space_name) == dest_space_name)
                             .values(space_name=dest_shortname))
                         await session.commit()
                 except Exception as e:
@@ -1962,17 +1984,18 @@ class SQLAdapter(BaseDataAdapter):
         if query.type == QueryType.attachments:
             for idx, item in enumerate(results):
                 results[idx] = item.to_record(
-                    query.subpath, item.shortname
+                    results[idx].subpath, item.shortname
                 )
         else:
             for idx, item in enumerate(results):
+                print(item)
                 if is_aggregation:
                     results = set_results_from_aggregation(
                         query, item, results, idx
                     )
                 else:
                     results[idx] = item.to_record(
-                        query.subpath, item.shortname
+                        item.subpath, item.shortname
                     )
 
                 if not_history_event:
@@ -1987,7 +2010,7 @@ class SQLAdapter(BaseDataAdapter):
 
                     if query.retrieve_attachments:
                         results[idx].attachments = await self.get_entry_attachments(
-                            query.subpath,
+                            results[idx].subpath,
                             Path(f"{query.space_name}/{results[idx].shortname}"),
                             retrieve_json_payload=True,
                         )

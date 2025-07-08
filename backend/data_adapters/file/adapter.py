@@ -666,21 +666,22 @@ class FileAdapter(BaseDataAdapter):
 
     async def move(
             self,
-            space_name: str,
+            src_space_name: str,
             src_subpath: str,
             src_shortname: str,
-            dest_subpath: str | None,
-            dest_shortname: str | None,
+            dest_space_name: str,
+            dest_subpath: str,
+            dest_shortname: str,
             meta: core.Meta,
     ):
         src_path, src_filename = self.metapath(
-            space_name,
+            src_space_name,
             src_subpath,
             src_shortname,
             meta.__class__,
         )
         dest_path, dest_filename = self.metapath(
-            space_name,
+            dest_space_name,
             dest_subpath or src_subpath,
             dest_shortname or src_shortname,
             meta.__class__,
@@ -727,7 +728,7 @@ class FileAdapter(BaseDataAdapter):
                 and isinstance(meta.payload.body, str)
         ):
             src_payload_file_path = (
-                    self.payload_path(space_name, src_subpath, meta.__class__)
+                    self.payload_path(src_space_name, src_subpath, meta.__class__)
                     / meta.payload.body
             )
             file_extension = Path(meta.payload.body).suffix
@@ -736,7 +737,7 @@ class FileAdapter(BaseDataAdapter):
             meta.payload.body = meta.shortname + "." + file_extension
             dist_payload_file_path = (
                     self.payload_path(
-                        space_name, dest_subpath or src_subpath, meta.__class__
+                        dest_space_name, dest_subpath or src_subpath, meta.__class__
                     )
                     / meta.payload.body
             )

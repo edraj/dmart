@@ -1087,8 +1087,10 @@ async def serve_request_move(request, owner_shortname: str):
             record.subpath = f"/{record.subpath}"
 
         if (
-                not record.attributes.get("src_subpath")
+                not record.attributes.get("src_space_name")
+                or not record.attributes.get("src_subpath")
                 or not record.attributes.get("src_shortname")
+                or not record.attributes.get("dest_space_name")
                 or not record.attributes.get("dest_subpath")
                 or not record.attributes.get("dest_shortname")
         ):
@@ -1110,7 +1112,9 @@ async def serve_request_move(request, owner_shortname: str):
                 resource_type=record.resource_type,
                 user_shortname=owner_shortname,
                 attributes={
-                    "dest_subpath": record.attributes["dest_subpath"]},
+                    "dest_space_name": record.attributes["dest_space_name"],
+                    "dest_subpath": record.attributes["dest_subpath"]
+                },
             )
         )
 
@@ -1155,9 +1159,10 @@ async def serve_request_move(request, owner_shortname: str):
 
         try:
             await db.move(
-                request.space_name,
+                record.attributes["src_space_name"],
                 record.attributes["src_subpath"],
                 record.attributes["src_shortname"],
+                record.attributes["dest_space_name"],
                 record.attributes["dest_subpath"],
                 record.attributes["dest_shortname"],
                 resource_obj,

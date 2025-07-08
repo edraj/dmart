@@ -186,11 +186,12 @@ class BaseDataAdapter(ABC):
     @abstractmethod
     async def move(
             self,
-            space_name: str,
+            src_space_name: str,
             src_subpath: str,
             src_shortname: str,
-            dest_subpath: str | None,
-            dest_shortname: str | None,
+            dest_space_name: str,
+            dest_subpath: str,
+            dest_shortname: str,
             meta: core.Meta,
     ):
         """Move the file that match the criteria given, remove source folder if empty"""
