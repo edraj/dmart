@@ -666,21 +666,22 @@ class FileAdapter(BaseDataAdapter):
 
     async def move(
             self,
-            space_name: str,
+            src_space_name: str,
             src_subpath: str,
             src_shortname: str,
-            dest_subpath: str | None,
-            dest_shortname: str | None,
+            dest_space_name: str,
+            dest_subpath: str,
+            dest_shortname: str,
             meta: core.Meta,
     ):
         src_path, src_filename = self.metapath(
-            space_name,
+            src_space_name,
             src_subpath,
             src_shortname,
             meta.__class__,
         )
         dest_path, dest_filename = self.metapath(
-            space_name,
+            dest_space_name,
             dest_subpath or src_subpath,
             dest_shortname or src_shortname,
             meta.__class__,
