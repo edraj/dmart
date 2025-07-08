@@ -728,14 +728,14 @@ class FileAdapter(BaseDataAdapter):
                 and isinstance(meta.payload.body, str)
         ):
             src_payload_file_path = (
-                    self.payload_path(space_name, src_subpath, meta.__class__)
+                    self.payload_path(src_space_name, src_subpath, meta.__class__)
                     / meta.payload.body
             )
             meta.payload.body = meta.shortname + \
                                 "." + meta.payload.body.split(".")[-1]
             dist_payload_file_path = (
                     self.payload_path(
-                        space_name, dest_subpath or src_subpath, meta.__class__
+                        dest_space_name, dest_subpath or src_subpath, meta.__class__
                     )
                     / meta.payload.body
             )

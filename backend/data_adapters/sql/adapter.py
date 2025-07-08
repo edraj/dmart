@@ -1560,6 +1560,15 @@ class SQLAdapter(BaseDataAdapter):
             dest_subpath = f"/{dest_subpath}"
 
         origin = await self.db_load_or_none(src_space_name, src_subpath, src_shortname, meta.__class__)
+        if isinstance(origin,  Locks):
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="move",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="Locks cannot be moved",
+                ),
+            )
         if origin is None:
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -1609,8 +1618,8 @@ class SQLAdapter(BaseDataAdapter):
                 origin.query_policies = generate_query_policies(
                     space_name=dest_space_name,
                     subpath=dest_subpath,
-                    resource_type=origin.resource_type,
-                    is_active=origin.is_active,
+                    resource_type=origin.resource_type if hasattr(origin, 'resource_type') else origin.__class__.__name__.lower()[:-1],
+                    is_active=origin.is_active if hasattr(origin, 'is_active') else True,
                     owner_shortname=origin.owner_shortname,
                     owner_group_shortname=None,
                 )
