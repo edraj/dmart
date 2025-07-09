@@ -28,7 +28,7 @@ from enum import Enum
 import termios
 import tty
 from dataclasses import field
-
+from pathlib import Path
 
 install(show_locals=False)
 
@@ -411,6 +411,38 @@ class DMart:
         }
         return self.__dmart_api(endpoint, data)
 
+    def import_zip(self, zip_file_path):
+        endpoint = f"{settings.url}/managed/import"
+        with open(zip_file_path, "rb") as zip_file:
+            headers = {**self.headers}
+            del headers["Content-Type"]
+            response = self.session.post(
+                endpoint,
+                files={"zip_file": zip_file},
+                headers=headers,
+            )
+            if response.status_code != 200:
+                print(endpoint, response.json())
+            return response.json()
+
+    def export_json(self, query_json_file):
+        output_file_name = "/export.zip"
+        os_downloads_path = str(Path.home()/"Downloads")
+        output_file_path = os_downloads_path + output_file_name
+        with open(query_json_file, "r") as f:
+            data = json.load(f)
+        endpoint = f"{settings.url}/managed/export"
+        response = self.session.post(endpoint, headers=self.headers, json=data, stream=True)
+        if response.status_code != 200:
+            print(endpoint, response.json())
+            return response.json()
+        with open(output_file_path, "wb") as out_file:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    out_file.write(chunk)
+        print(f"Exported to {os_downloads_path}")
+        return {"status": "success", "file": output_file_path}
+
 
 dmart = DMart()
 
@@ -518,6 +550,8 @@ def action(text: str):
             table.add_row(
                 "[blue]move <resource_type> <source> <destination>[/]", "Move resource"
             )
+            table.add_row("[blue]import <zip_file>[/]", "Import a ZIP file")
+            table.add_row("[blue]export <json_file> [/]", "Export a ZIP file")
             table.add_row("[blue]exit|Ctrl+d[/]", "Exit the app")
             table.add_row("[blue]help|h|?[/]", "Show this help")
             print(table)
@@ -922,6 +956,12 @@ def action(text: str):
             if not match:
                 print(f"Requested space {space} not found")
                 return None
+            return None
+        case ["import", zip_file]:
+            print(dmart.import_zip(zip_file))
+            return None
+        case ["export", query_json_file]:
+            print(dmart.export_json(query_json_file))
             return None
         case _:
             print(f"[red]Command[/] [yello]{text}[/] [red]unknown[/]")
