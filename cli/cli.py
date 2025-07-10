@@ -551,7 +551,7 @@ def action(text: str):
                 "[blue]move <resource_type> <source> <destination>[/]", "Move resource"
             )
             table.add_row("[blue]import <zip_file>[/]", "Import a ZIP file")
-            table.add_row("[blue]export <json_file> [/]", "Export a ZIP file")
+            table.add_row("[blue]export <query_json> [/]", "Export a ZIP file")
             table.add_row("[blue]exit|Ctrl+d[/]", "Exit the app")
             table.add_row("[blue]help|h|?[/]", "Show this help")
             print(table)
