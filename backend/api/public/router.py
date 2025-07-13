@@ -488,7 +488,7 @@ async def create_entry(
     )
 
     content_obj: Optional[Union[core.Content, core.Ticket]] = None
-    if resource_type == ResourceType.ticket:
+    if entry_resource_type == ResourceType.ticket:
         if workflow_shortname is None:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
@@ -540,7 +540,7 @@ async def create_entry(
             workflow_shortname=workflow_shortname,
             is_open=record.attributes["is_open"]
         )
-    elif resource_type == ResourceType.content:
+    elif entry_resource_type == ResourceType.content:
         content_obj = core.Content(
             uuid=uuid,
             shortname=shortname,
@@ -587,7 +587,8 @@ async def create_entry(
             attributes={}
         )
     )
-
+    response_data = response_data.model_dump(exclude_none=True, by_alias=True)
+    del response_data["query_policies"]
     return api.Response(
         status=api.Status.success,
         records=[response_data],
