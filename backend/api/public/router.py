@@ -26,7 +26,6 @@ from utils.ticket_sys_utils import set_init_state_from_request
 
 router = APIRouter()
 
-
 # Retrieve publically-available content
 
 
@@ -68,13 +67,13 @@ async def query_entries(query: api.Query) -> api.Response:
     response_model_exclude_none=True,
 )
 async def retrieve_entry_meta(
-        resource_type: ResourceType,
-        space_name: str = Path(..., pattern=regex.SPACENAME),
-        subpath: str = Path(..., pattern=regex.SUBPATH),
-        shortname: str = Path(..., pattern=regex.SHORTNAME),
-        retrieve_json_payload: bool = False,
-        retrieve_attachments: bool = False,
-        filter_attachments_types: list = Query(default=[], examples=["media", "comment", "json"]),
+    resource_type: ResourceType,
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    shortname: str = Path(..., pattern=regex.SHORTNAME),
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
+    filter_attachments_types: list = Query(default=[], examples=["media", "comment", "json"]),
 ) -> dict[str, Any]:
     if subpath == settings.root_subpath_mw:
         subpath = "/"
@@ -191,11 +190,11 @@ async def retrieve_entry_meta(
     response_model=None
 )
 async def retrieve_entry_or_attachment_payload(
-        resource_type: ResourceType,
-        space_name: str = Path(..., pattern=regex.SPACENAME),
-        subpath: str = Path(..., pattern=regex.SUBPATH),
-        shortname: str = Path(..., pattern=regex.SHORTNAME),
-        ext: str = Path(..., pattern=regex.EXT),
+    resource_type: ResourceType,
+    space_name: str = Path(..., pattern=regex.SPACENAME),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    shortname: str = Path(..., pattern=regex.SHORTNAME),
+    ext: str = Path(..., pattern=regex.EXT),
 ) -> FileResponse | api.Response | StreamingResponse:
     await plugin_manager.before_action(
         core.Event(
@@ -331,10 +330,10 @@ async def query_via_urlparams(
     response_model_exclude_none=True,
 )
 async def create_or_update_resource_with_payload(
-        payload_file: UploadFile,
-        request_record: UploadFile,
-        space_name: str = Form(..., examples=["data"]),
-        sha: str | None = Form(None, examples=["data"]),
+    payload_file: UploadFile,
+    request_record: UploadFile,
+    space_name: str = Form(..., examples=["data"]),
+    sha: str | None = Form(None, examples=["data"]),
 ):
     # NOTE We currently make no distinction between create and update.
     # in such case update should contain all the data every time.
@@ -371,13 +370,13 @@ async def create_or_update_resource_with_payload(
     )
 
     if not await access_control.check_access(
-            user_shortname="anonymous",
-            space_name=space_name,
-            subpath=record.subpath,
-            resource_type=record.resource_type,
-            action_type=core.ActionType.create,
-            record_attributes=record.attributes,
-            entry_shortname=record.shortname,
+        user_shortname="anonymous",
+        space_name=space_name,
+        subpath=record.subpath,
+        resource_type=record.resource_type,
+        action_type=core.ActionType.create,
+        record_attributes=record.attributes,
+        entry_shortname=record.shortname,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -434,12 +433,12 @@ async def create_or_update_resource_with_payload(
 @router.post("/submit/{space_name}/{resource_type}/{schema_shortname}/{subpath:path}")
 @router.post("/submit/{space_name}/{resource_type}/{workflow_shortname}/{schema_shortname}/{subpath:path}")
 async def create_entry(
-        space_name: str = Path(...),
-        schema_shortname: str = Path(...),
-        subpath: str = Path(..., pattern=regex.SUBPATH),
-        resource_type: PublicSubmitResourceType | None = None,
-        workflow_shortname: str | None = None,
-        body_dict: dict[str, Any] = Body(...),
+    space_name: str = Path(...),
+    schema_shortname: str = Path(...),
+    subpath: str = Path(..., pattern=regex.SUBPATH),
+    resource_type: PublicSubmitResourceType | None = None,
+    workflow_shortname: str | None = None,
+    body_dict: dict[str, Any] = Body(...),
 ):
     allowed_models = settings.allowed_submit_models
     entry_resource_type: ResourceType = ResourceType(resource_type.name) if resource_type else ResourceType.content
@@ -457,12 +456,12 @@ async def create_entry(
         )
 
     if not await access_control.check_access(
-            user_shortname="anonymous",
-            space_name=space_name,
-            subpath=subpath,
-            resource_type=entry_resource_type,
-            action_type=core.ActionType.create,
-            record_attributes=body_dict,
+        user_shortname="anonymous",
+        space_name=space_name,
+        subpath=subpath,
+        resource_type=entry_resource_type,
+        action_type=core.ActionType.create,
+        record_attributes=body_dict,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -571,6 +570,15 @@ async def create_entry(
         )
 
     response_data = await db.save(space_name, subpath, content_obj)
+    if response_data is None:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.SOMETHING_WRONG,
+                message="Something went wrong while saving the entry",
+            ),
+        )
     await db.save_payload_from_json(
         space_name, subpath, content_obj, body_dict
     )
@@ -597,8 +605,8 @@ async def create_entry(
 
 @router.post("/attach/{space_name}")
 async def create_attachment(
-        space_name: str,
-        record: core.Record
+    space_name: str,
+    record: core.Record
 ):
     if record.resource_type not in AttachmentType.__members__:
         raise api.Exception(
@@ -611,12 +619,12 @@ async def create_attachment(
         )
 
     if not await access_control.check_access(
-            user_shortname="anonymous",
-            space_name=space_name,
-            subpath=record.subpath,
-            resource_type=record.resource_type,
-            action_type=core.ActionType.create,
-            record_attributes=record.attributes,
+        user_shortname="anonymous",
+        space_name=space_name,
+        subpath=record.subpath,
+        resource_type=record.resource_type,
+        action_type=core.ActionType.create,
+        record_attributes=record.attributes,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -671,9 +679,9 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
     )
 
     if (
-            meta.payload is None
-            or not isinstance(meta.payload.body, str)
-            or not str(meta.payload.body).endswith(".json")
+        meta.payload is None
+        or not isinstance(meta.payload.body, str)
+        or not str(meta.payload.body).endswith(".json")
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -725,10 +733,10 @@ async def excute(space_name: str, task_type: TaskType, record: core.Record):
 
 @router.get("/byuuid/{uuid}", response_model_exclude_none=True)
 async def get_entry_by_uuid(
-        uuid: str,
-        retrieve_json_payload: bool = False,
-        retrieve_attachments: bool = False,
-        retrieve_lock_status: bool = False
+    uuid: str,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
+    retrieve_lock_status: bool = False
 ):
     return await db.get_entry_by_var(
         "uuid",
@@ -742,10 +750,10 @@ async def get_entry_by_uuid(
 
 @router.get("/byslug/{slug}", response_model_exclude_none=True)
 async def get_entry_by_slug(
-        slug: str,
-        retrieve_json_payload: bool = False,
-        retrieve_attachments: bool = False,
-        retrieve_lock_status: bool = False,
+    slug: str,
+    retrieve_json_payload: bool = False,
+    retrieve_attachments: bool = False,
+    retrieve_lock_status: bool = False,
 ):
     return await db.get_entry_by_var(
         "slug",
