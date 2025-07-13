@@ -148,7 +148,7 @@ async def create_user(response: Response, record: core.Record) -> api.Response:
                     )
                     
     if user.msisdn:
-        is_valid_otp = True if settings.is_otp_for_create_required == False else await verify_user(ConfirmOTPRequest(
+        is_valid_otp = True if not settings.is_otp_for_create_required else await verify_user(ConfirmOTPRequest(
             msisdn=record.attributes.get("msisdn"),
             email=None,
             code=record.attributes.get("msisdn_otp", "")
@@ -161,7 +161,7 @@ async def create_user(response: Response, record: core.Record) -> api.Response:
             )
         user.is_msisdn_verified = True
     if user.email:
-        is_valid_otp = True if settings.is_otp_for_create_required == False else await verify_user(ConfirmOTPRequest(
+        is_valid_otp = True if not settings.is_otp_for_create_required else await verify_user(ConfirmOTPRequest(
             email=record.attributes.get("email"),
             msisdn=None,
             code=record.attributes.get("email_otp", "")
