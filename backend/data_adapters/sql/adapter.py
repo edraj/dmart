@@ -165,7 +165,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             statement = statement.where(
                 or_(
                     table.subpath == query.subpath,
-                    text(f"subpath ILIKE '{query.subpath}/%'")
+                    text(f"subpath ILIKE '{query.subpath}/%'".replace('//', '/'))
                 )
             )
     if query.search:
@@ -930,7 +930,7 @@ class SQLAdapter(BaseDataAdapter):
             statement = (
                 select(Attachments)
                 .where(Attachments.space_name == space_name)
-                .where(Attachments.subpath == f"{subpath}/{shortname}")
+                .where(Attachments.subpath == f"{subpath}/{shortname}".replace('//', '/'))
             )
             results = list((await session.execute(statement)).all())
 
