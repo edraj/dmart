@@ -165,7 +165,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             statement = statement.where(
                 or_(
                     table.subpath == query.subpath,
-                    text(f"subpath ILIKE '{query.subpath}/%'")
+                    text(f"subpath ILIKE '{query.subpath}/%'".replace('//', '/'))
                 )
             )
     if query.search:
