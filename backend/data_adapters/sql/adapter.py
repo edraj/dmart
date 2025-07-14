@@ -930,7 +930,7 @@ class SQLAdapter(BaseDataAdapter):
             statement = (
                 select(Attachments)
                 .where(Attachments.space_name == space_name)
-                .where(Attachments.subpath == f"{subpath}/{shortname}")
+                .where(Attachments.subpath == f"{subpath}/{shortname}".replace('//', '/'))
             )
             results = list((await session.execute(statement)).all())
 
