@@ -1,12 +1,12 @@
 import re
 
-SUBPATH = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669_/]{1,128}$"
-SHORTNAME = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669_]{1,64}$"
-FILENAME = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669_]{1,32}\\.(gif|png|jpeg|jpg|pdf|wsq|mp3|mp4|csv|jsonl|parquet|sqlite|sqlite3|sqlite|db|duckdb|svg)$"
-SPACENAME = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669_]{1,32}$"
+SUBPATH = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669\u064B-\u065F_/]{1,128}$"
+SHORTNAME = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669\u064B-\u065F_]{1,64}$"
+FILENAME = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669\u064B-\u065F_]{1,32}\\.(gif|png|jpeg|jpg|pdf|wsq|mp3|mp4|csv|jsonl|parquet|sqlite|sqlite3|sqlite|db|duckdb|svg)$"
+SPACENAME = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669\u064B-\u065F_]{1,32}$"
 EXT = "^(gif|png|jpeg|jpg|json|md|pdf|wsq|mp3|mp4|csv|jsonl|parquet|sqlite|sqlite3|db|db3|s3db|sl3|duckdb|svg)$"
 IMG_EXT = "^(gif|png|jpeg|jpg|wsq|svg)$"
-USERNAME = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669_]{3,10}$"
+USERNAME = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669\u064B-\u065F_]{3,10}$"
 PASSWORD = "^(?=.*[0-9\u0660-\u0669])(?=.*[A-Z\u0621-\u064A])[a-zA-Z\u0621-\u064A0-9\u0660-\u0669_#@%*!?$^-]{8,24}$"
 EMAIL = (
     "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669_\\.-]+@([a-zA-Z\u0621-\u064A0-9\u0660-\u0669_-]+\\.)+"
@@ -36,8 +36,8 @@ ATTACHMENT_PATTERN = re.compile(
     "/meta\\.([a-zA-Z\u0621-\u064A0-9\u0660-\u0669_]*)\\.json$"
 )
 FOLDER_PATTERN = re.compile(
-    "/([a-zA-Z\u0621-\u064A0-9\u0660-\u0669_]*)/\\.dm/meta\\.folder\\.json$"
+    "/([a-zA-Z\u0621-\u064A0-9\u0660-\u0669\u064B-\u065F_]*)/\\.dm/meta\\.folder\\.json$"
 )
 SPACES_PATTERN = re.compile(
-    "/([a-zA-Z\u0621-\u064A0-9\u0660-\u0669_]*)/\\.dm/meta\\.space\\.json$"
+    "/([a-zA-Z\u0621-\u064A0-9\u0660-\u0669\u064B-\u065F_]*)/\\.dm/meta\\.space\\.json$"
 )
