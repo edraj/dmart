@@ -16,6 +16,7 @@ from data_adapters.sql.create_tables import (
 from models.core import Payload
 from utils.settings import settings
 from models import core
+import base64
 
 postgresql_url = f"{settings.database_driver.replace('+asyncpg','+psycopg')}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
 engine = create_engine(postgresql_url, echo=False)
@@ -129,6 +130,51 @@ def process_entries(session, space_folder):
                         write_json_file(f"{dir_path}/{entry.shortname}.json", _entry["payload"].get("body", None))
 
                     _entry["payload"]["body"] = f"{entry.shortname}.json"
+                    
+            elif entry.payload["content_type"] == core.ContentType.html:
+                if _entry["payload"].get("body", None) is not None:
+                    with open(f"{dir_path}/{entry.shortname}.html", "w", encoding="utf-8") as f:
+                        f.write(_entry["payload"]["body"])
+                    _entry["payload"]["body"] = f"{entry.shortname}.html"
+                    
+            elif entry.payload["content_type"] == core.ContentType.image:
+                if _entry["payload"].get("body", None) is not None:
+                    body_data = _entry["payload"]["body"]
+                    
+                    if isinstance(body_data, str):
+                        if "." in body_data and any(body_data.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp']):
+                            _entry["payload"]["body"] = body_data
+                            print(f"Image reference: @{entry.space_name}:{entry.subpath}/{entry.shortname} -> {body_data}")
+                        else:
+                            try:
+                                if len(body_data) % 4 == 0:
+                                    decoded_data = base64.b64decode(body_data, validate=True)
+                                    
+                                    extension = "png"
+                                    if "content_sub_type" in entry.payload:
+                                        extension = entry.payload["content_sub_type"].lower()
+                                    
+                                    filename = f"{entry.shortname}.{extension}"
+                                    with open(f"{dir_path}/{filename}", "wb") as f:
+                                        f.write(decoded_data)
+                                    _entry["payload"]["body"] = filename
+                                else:
+                                    print(f"Warning: Invalid image data for @{entry.space_name}:{entry.subpath}/{entry.shortname}")
+                                    _entry["payload"]["body"] = body_data
+                            except Exception as e:
+                                print(f"Error processing image @{entry.space_name}:{entry.subpath}/{entry.shortname}: {e}")
+                                _entry["payload"]["body"] = body_data
+                    else:
+                        extension = "png" 
+                        if "content_sub_type" in entry.payload:
+                            extension = entry.payload["content_sub_type"].lower()
+                        
+                        filename = f"{entry.shortname}.{extension}"
+                        with open(f"{dir_path}/{filename}", "wb") as f:
+                            f.write(body_data)
+                        _entry["payload"]["body"] = filename
+
+
             else:
                 print(f"Unprocessed content type({entry.payload['content_type']}): @{entry.space_name}:{entry.subpath}/{entry.shortname}")
 
