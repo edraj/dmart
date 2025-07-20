@@ -15,6 +15,7 @@ from data_adapters.sql.create_tables import (
 )
 from utils.settings import settings
 from models import core
+import base64
 
 postgresql_url = f"{settings.database_driver.replace('+asyncpg','+psycopg')}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
 engine = create_engine(postgresql_url, echo=False)
