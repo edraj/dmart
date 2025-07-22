@@ -16,9 +16,9 @@ from models.enums import ResourceType, ContentType
 from data_adapters.sql.create_tables import Entries, Users, Attachments, Roles, Permissions, Spaces, generate_tables, \
     Histories
 
-logging.basicConfig()
-logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
-logging.disable(logging.ERROR)
+# logging.basicConfig()
+# logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
+# logging.disable(logging.ERROR)
 
 async def save_health_check_entry():
     health_check_entry = {
@@ -188,7 +188,11 @@ async def process_directory(root, dirs, space_name, subpath):
                                 if not _attachment.get('payload', {}).get('content_type', False):
                                     _attachment['media'] = None
                                 else:
-                                    _attachment['media'] = open(os.path.join(root, dir, _body), 'rb').read()
+                                    try:
+                                        _attachment['media'] = open(os.path.join(root, dir, _body), 'rb').read()
+                                    except Exception as e:
+                                        print(f"Error reading media file {os.path.join(root, dir, _body)}: {e}")
+                                        _attachment['media'] = None
                             if _attachment.get('payload', None) is None:
                                 _attachment['payload'] = {}
                         try:
