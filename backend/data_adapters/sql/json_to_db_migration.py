@@ -16,10 +16,6 @@ from models.enums import ResourceType, ContentType
 from data_adapters.sql.create_tables import Entries, Users, Attachments, Roles, Permissions, Spaces, generate_tables, \
     Histories
 
-logging.basicConfig()
-logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
-logging.disable(logging.ERROR)
-
 async def save_health_check_entry():
     health_check_entry = {
         "space_name": "management",
