@@ -4,7 +4,7 @@ import logging.config
 import os
 
 from utils.settings import settings
-
+import socket
 
 class CustomFormatter(logging.Formatter):
     def __init__(self):
@@ -18,19 +18,27 @@ class CustomFormatter(logging.Formatter):
         if correlation_id == "ROOT" and getattr(record, "props", None):
             correlation_id = getattr(record, "props", {})\
                 .get("response", {}).get("headers", {}).get("x-correlation-id", "")
+
+        props = getattr(record, "props", {})
+
+        # Extract hostname and user_shortname
+        hostname = socket.gethostname()
+        user = props.get("user_shortname", "guest")
+
         data = {
+            "hostname": hostname,
             "correlation_id": correlation_id,
             "time": self.formatTime(record),
             "level": record.levelname,
             "message": record.getMessage(),
-            "props": getattr(record, "props", ""),
+            "props": props,
             "thread": record.threadName,
             "process": record.process,
             # "pathname": record.pathname,
             # "lineno": record.lineno,
             # "funcName": record.funcName,
         }
-        return json.dumps(data)
+        return f"[{hostname}] [{user}] {json.dumps(data)}"
 
 
 logging_schema : dict = {
