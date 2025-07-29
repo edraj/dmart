@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     auto_uuid_rule: str = "auto"  # Used to generate a shortname from UUID
     google_application_credentials: str = ""
     is_registrable: bool = True
+    is_otp_for_create_required: bool = True
     social_login_allowed: bool = True
     all_spaces_mw: str = (
         "__all_spaces__"  # magic word used in access control refers to any space

@@ -7,6 +7,7 @@ import sys
 import tempfile
 import traceback
 import zipfile
+import codecs
 from datetime import datetime
 from io import StringIO, BytesIO
 from pathlib import Path as FilePath
@@ -283,6 +284,8 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     keys = [key for key in keys if keys_existence[key]]
     v_path = StringIO()
+    v_path.write(codecs.BOM_UTF8.decode('utf-8'))
+    v_path.write(codecs.BOM_UTF8.decode('utf-8'))
 
     list_deprecated_keys = list(deprecated_keys)
     keys = list(filter(lambda item: item not in list_deprecated_keys, keys))
