@@ -4,10 +4,8 @@ from utils.settings import settings
 import asyncio
 import hashlib
 import json
-import logging
 import os
 import sys
-# from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
