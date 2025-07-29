@@ -4,10 +4,8 @@ from utils.settings import settings
 import asyncio
 import hashlib
 import json
-import logging
 import os
 import sys
-# from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -184,7 +182,11 @@ async def process_directory(root, dirs, space_name, subpath):
                                 if not _attachment.get('payload', {}).get('content_type', False):
                                     _attachment['media'] = None
                                 else:
-                                    _attachment['media'] = open(os.path.join(root, dir, _body), 'rb').read()
+                                    try:
+                                        _attachment['media'] = open(os.path.join(root, dir, _body), 'rb').read()
+                                    except Exception as e:
+                                        print(f"Error reading media file {os.path.join(root, dir, _body)}: {e}")
+                                        _attachment['media'] = None
                             if _attachment.get('payload', None) is None:
                                 _attachment['payload'] = {}
                         try:
