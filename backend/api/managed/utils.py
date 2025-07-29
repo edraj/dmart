@@ -1536,8 +1536,6 @@ async def import_resources_from_csv_handler(
 
         if key == "shortname":
             shortname = value
-            if value == settings.auto_uuid_rule:
-                shortname = str(uuid.uuid4())[:8]
             continue
 
         keys_list = [i.strip() for i in key.split(".")]
@@ -1618,7 +1616,7 @@ async def import_resources_from_csv_handler(
             case _:
                 continue
     if shortname == "":
-        shortname = str(uuid.uuid4())[:8]
+        shortname = settings.auto_uuid_rule
     return payload_object, meta_object, shortname
 
 
