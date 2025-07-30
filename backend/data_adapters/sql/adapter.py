@@ -1988,7 +1988,6 @@ class SQLAdapter(BaseDataAdapter):
                 )
         else:
             for idx, item in enumerate(results):
-                print(item)
                 if is_aggregation:
                     results = set_results_from_aggregation(
                         query, item, results, idx

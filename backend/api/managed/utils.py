@@ -1578,12 +1578,22 @@ async def import_resources_from_csv_handler(
 
             if current_schema_property["type"] in ["number", "integer"]:
                 value = value.replace(",", "")
-
-            value = data_types_mapper[current_schema_property["type"]](value)
-            if current_schema_property["type"] == "array":
-                value = [
-                    str(item) if type(item) in [int, float] else item for item in value
-                ]
+            try:
+                value = data_types_mapper[current_schema_property["type"]](value)
+                if current_schema_property["type"] == "array":
+                    value = [
+                        str(item) if type(item) in [int, float] else item for item in value
+                    ]
+            except ValueError as e:
+                raise api.Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    api.Error(
+                        type="request",
+                        code=InternalErrorCode.INVALID_DATA,
+                        message=f"Invalid value for {key}: {value}",
+                        info=[{"message": str(e)}],
+                    ),
+                )
 
         match len(keys_list):
             case 1:
@@ -1604,7 +1614,8 @@ async def import_resources_from_csv_handler(
                 ] = value
             case _:
                 continue
-
+    if shortname == "":
+        shortname = settings.auto_uuid_rule
     return payload_object, meta_object, shortname
 
 
