@@ -737,7 +737,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             statement = statement.offset(query.offset)
 
         statement = statement.limit(query.limit)
-#    print(f"this is the value type {value_type}")
+
     return statement
 
 class SQLAdapter(BaseDataAdapter):
