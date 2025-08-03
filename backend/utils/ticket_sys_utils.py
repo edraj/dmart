@@ -7,6 +7,26 @@ from utils.settings import settings
 from typing import Any
 
 
+async def get_init_state_from_workflow(space_name: str, workflow_shortname: str):
+    payload = await db.load_resource_payload(
+        space_name=space_name,
+        subpath="workflows",
+        filename=workflow_shortname,
+        class_type=core.Content,
+    )
+
+    if payload is None:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
+                message="Workflow not found",
+            ),
+        )
+
+    return payload['initial_state'][0]['name']
+
 async def set_init_state_from_request(ticket: api.Request, logged_in_user):
     workflow_attr = ticket.records[0].attributes
     workflow_shortname = workflow_attr["workflow_shortname"]
@@ -141,13 +161,23 @@ def post_transite(states, next_state: str, resolution: str):
         if state["state"] == next_state:
             if "resolutions" in state:
                 available_resolutions = [one for one in state["resolutions"]]
-                if resolution in available_resolutions:
-                    return {"status": True, "message": resolution}
-                else:
+                if len(available_resolutions) == 0:
                     return {
                         "status": False,
-                        "message": f"The resolution {resolution} provided is not acceptable in state {next_state}",
+                        "message": f"The state {next_state} does not have any resolutions defined",
                     }
+                else:
+                    if isinstance(available_resolutions[0], str):
+                        if resolution in available_resolutions:
+                            return {"status": True, "message": resolution}
+                    else:
+                        if resolution in [item['key'] for item in available_resolutions]:
+                            return {"status": True, "message": resolution}
+
+                return {
+                    "status": False,
+                    "message": f"The resolution {resolution} provided is not acceptable in state {next_state}",
+                }
     return {
         "status": False,
         "message": f"Cannot fetch the next state {next_state} with resolution {resolution}",

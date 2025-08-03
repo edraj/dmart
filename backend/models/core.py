@@ -67,6 +67,9 @@ class Payload(Resource):
             self, payload: dict, old_body: dict | None = None, replace: bool = False
     ) -> dict | None:
 
+        if payload.get("body", None) is None:
+            return None
+
         if isinstance(payload["body"], dict):
             if old_body and not replace:
                 separate_payload_body = dict(
@@ -114,9 +117,9 @@ class Record(BaseModel):
                 and self.subpath == other.subpath
         )
 
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
+    model_config = ConfigDict(
+        extra= "forbid",
+        json_schema_extra= { "examples": [
                 {
                     "resource_type": "content",
                     "shortname": "auto",
@@ -150,8 +153,7 @@ class Record(BaseModel):
                 }
             ]
         }
-    }
-
+    )
 
 class Translation(Resource):
     en: str | None = None
@@ -258,6 +260,7 @@ class Meta(Resource):
         if (
             not self.payload
             and "payload" in record.attributes
+            and record.attributes["payload"] is not None
             and "content_type" in record.attributes["payload"]
         ):
             self.payload = Payload(

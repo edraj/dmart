@@ -36,7 +36,6 @@ class Plugin(PluginBase):
                 f"{data.space_name}:{subpath}:{all_MKW}:{all_MKW}:{all_MKW}",
             ])
             subpath += "/"
-
         if not settings.websocket_url:
             return
 

@@ -307,7 +307,7 @@ async def test_get_entry_from_managed(client: AsyncClient):
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_get_entry_by_uuid(client: AsyncClient):
-    response = await client.get(f"managed/byuuid/{json_entry_uuid}")
+    response = await client.get(f"managed/byuuid/{json_entry_uuid.split('-')[0]}")
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["uuid"] == json_entry_uuid
 

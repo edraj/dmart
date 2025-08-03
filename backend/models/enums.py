@@ -18,7 +18,7 @@ class Language(StrEnum):
     en = "english"
     ku = "kurdish"
     fr = "french"
-    tr = "trukish"
+    tr = "turkish"
 
     @staticmethod
     def code(lang_str):
@@ -27,9 +27,14 @@ class Language(StrEnum):
             "english": "en",
             "kurdish": "ku",
             "french": "fr",
-            "trukish": "tr",
+            "turkish": "tr",
         }
         return codes[lang_str]
+
+
+class PublicSubmitResourceType(StrEnum):
+    content = "content"
+    ticket = "ticket"
 
 
 class ResourceType(StrEnum):

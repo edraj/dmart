@@ -2,9 +2,14 @@ import csv
 import hashlib
 import json
 import os
+import re
 import sys
+import tempfile
+import traceback
+import zipfile
+import codecs
 from datetime import datetime
-from io import BytesIO, StringIO
+from io import StringIO, BytesIO
 from pathlib import Path as FilePath
 from re import sub as res_sub
 from time import time
@@ -59,8 +64,89 @@ from utils.jwt import GetJWTToken, JWTBearer
 from utils.plugin_manager import plugin_manager
 from utils.router_helper import is_space_exist
 from utils.settings import settings
+from data_adapters.sql.json_to_db_migration import main as json_to_db_main
 
 router = APIRouter()
+
+@router.post(
+    "/import",
+    response_model=api.Response,
+    response_model_exclude_none=True
+)
+async def import_data(
+    zip_file: UploadFile,
+    extra: str|None=None,
+    owner_shortname=Depends(JWTBearer()),
+):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            content = await zip_file.read()
+
+            zip_bytes = BytesIO(content)
+
+            with zipfile.ZipFile(zip_bytes, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+
+            original_spaces_folder = settings.spaces_folder
+            settings.spaces_folder = FilePath(temp_dir)
+
+            try:
+                await json_to_db_main()
+
+                return api.Response(
+                    status=api.Status.success,
+                    attributes={"message": "Data imported successfully"}
+                )
+            finally:
+                settings.spaces_folder = original_spaces_folder
+
+        except Exception as e:
+            return api.Response(
+                status=api.Status.failed,
+                attributes={"message": f"Failed to import data: {str(e)}"}
+            )
+
+@router.post("/export", response_class=StreamingResponse)
+async def export_data(query: api.Query, user_shortname=Depends(JWTBearer())):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            original_spaces_folder = settings.spaces_folder
+            temp_spaces_folder = FilePath(temp_dir)
+
+            zip_buffer = BytesIO()
+
+            try:
+                settings.spaces_folder = temp_spaces_folder
+
+                from data_adapters.sql.db_to_json_migration import export_data_with_query
+                await export_data_with_query(query, user_shortname)
+
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    for root, _, files in os.walk(temp_dir):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            arcname = os.path.relpath(file_path, temp_dir)
+                            zip_file.write(file_path, arcname)
+
+                zip_buffer.seek(0)
+
+                response = StreamingResponse(
+                    iter([zip_buffer.getvalue()]),
+                    media_type="application/zip"
+                )
+                response.headers["Content-Disposition"] = "attachment; filename=export.zip"
+
+                return response
+            finally:
+                settings.spaces_folder = original_spaces_folder
+
+        except Exception as e:
+            traceback.print_exc()
+            print(f"Export error: {e}")
+            return api.Response(
+                status=api.Status.failed,
+                attributes={"message": f"Failed to export data: {str(e)}"}
+            )
 
 
 @router.post(
@@ -143,6 +229,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
     )
 
+    query.retrieve_attachments=True
     folder = await db.load(
         query.space_name,
         '/',
@@ -197,6 +284,8 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     keys = [key for key in keys if keys_existence[key]]
     v_path = StringIO()
+    v_path.write(codecs.BOM_UTF8.decode('utf-8'))
+    v_path.write(codecs.BOM_UTF8.decode('utf-8'))
 
     list_deprecated_keys = list(deprecated_keys)
     keys = list(filter(lambda item: item not in list_deprecated_keys, keys))
@@ -312,7 +401,6 @@ async def serve_request(
                 message="Request records cannot be empty",
             ),
         )
-
     records = []
     failed_records = []
     match request.request_type:
@@ -383,22 +471,13 @@ async def update_state(
             user_shortname=logged_in_user,
         )
     )
-    ticket_raw = await db.load(
+    ticket_obj: core.Ticket = await db.load(
         space_name=space_name,
         subpath=subpath,
         shortname=shortname,
         class_type=core.Ticket,
         user_shortname=logged_in_user,
     )
-    ticket_obj: core.Ticket = ticket_raw
-
-    if ticket_obj.payload is None or ticket_obj.payload.body is None:
-        raise api.Exception(
-            status.HTTP_400_BAD_REQUEST,
-            error=api.Error(
-                type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
-            ),
-        )
 
     if not await access_control.check_access(
             user_shortname=logged_in_user,
@@ -417,88 +496,86 @@ async def update_state(
             api.Error(
                 type="request",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [8]",
+                message="You don't have permission to this action [38]",
             ),
         )
-    if ticket_obj.payload.content_type == ContentType.json:
-        workflows_data = await db.load(
-            space_name=space_name,
-            subpath="workflows",
-            shortname=ticket_obj.workflow_shortname,
-            class_type=core.Content,
-            user_shortname=logged_in_user,
+
+    workflows_data = await db.load(
+        space_name=space_name,
+        subpath="workflows",
+        shortname=ticket_obj.workflow_shortname,
+        class_type=core.Content,
+        user_shortname=logged_in_user,
+    )
+
+    if (
+        workflows_data.payload is not None
+        and workflows_data.payload.body is not None
+    ):
+        ticket_obj, workflows_payload, response, old_version_flattend = await handle_update_state(
+            space_name, logged_in_user, ticket_obj, action, user_roles
         )
+        if resolution:
+            ticket_obj = await update_state_handle_resolution(ticket_obj, workflows_payload, response, resolution)
 
-        if (
-                workflows_data.payload is not None
-                and workflows_data.payload.body is not None
-        ):
-            ticket_obj, workflows_payload, response, old_version_flattend = await handle_update_state(
-                space_name, logged_in_user, ticket_obj, action, user_roles
-            )
-            if resolution:
-                ticket_obj = await update_state_handle_resolution(ticket_obj, workflows_payload, response, resolution)
+        new_version_flattend = flatten_dict(ticket_obj.model_dump())
+        new_version_flattend.pop("payload.body", None)
+        new_version_flattend.update(
+            flatten_dict({"payload.body": ticket_obj}))
 
-            new_version_flattend = flatten_dict(ticket_obj.model_dump())
-            new_version_flattend.pop("payload.body", None)
-            new_version_flattend.update(
-                flatten_dict({"payload.body": ticket_obj}))
-
-            if comment:
-                time = datetime.now().strftime("%Y%m%d%H%M%S")
-                new_version_flattend["comment"] = comment
-                payload = {
-                    "content_type": ContentType.comment,
-                    "body": comment,
-                    "state": ticket_obj.state,
-                }
-                record_file = json.dumps(
-                    {
-                        "shortname": f"c_{time}",
-                        "resource_type": ResourceType.comment,
-                        "subpath": f"{subpath}/{shortname}",
-                        "attributes": {"is_active": True, **payload},
-                    }
-                ).encode()
-                payload_file = json.dumps(payload).encode()
-                await create_or_update_resource_with_payload(
-                    UploadFile(
-                        filename=f"{time}.json",
-                        file=BytesIO(payload_file),
-                    ),
-                    UploadFile(
-                        filename="record.json",
-                        file=BytesIO(record_file),
-                    ),
-                    space_name,
-                    owner_shortname=logged_in_user,
-                )
-
-            history_diff = await db.update(
-                space_name,
-                f"/{subpath}",
-                ticket_obj,
-                old_version_flattend,
-                new_version_flattend,
-                ["state", "resolution_reason", "comment"],
-                logged_in_user,
-                retrieve_lock_status=retrieve_lock_status,
-            )
-            await plugin_manager.after_action(
-                core.Event(
+        if comment:
+            time = datetime.now().strftime("%Y%m%d%H%M%S")
+            new_version_flattend["comment"] = comment
+            await serve_request(
+                api.Request(
                     space_name=space_name,
-                    subpath=subpath,
-                    shortname=shortname,
-                    action_type=core.ActionType.progress_ticket,
-                    resource_type=ResourceType.ticket,
-                    user_shortname=logged_in_user,
-                    attributes={
-                        "history_diff": history_diff,
-                        "state": ticket_obj.state,
-                    },
-                )
+                    request_type=RequestType.create,
+                    records=[
+                        core.Record(
+                            shortname=f"c_{time}",
+                            subpath=f"{subpath}/{shortname}",
+                            resource_type=ResourceType.comment,
+                            attributes={
+                                "is_active": True,
+                                "payload": {
+                                    "content_type": ContentType.comment,
+                                    "body": {
+                                        "body": comment,
+                                        "state": ticket_obj.state,
+                                    }
+                                },
+                            },
+                        )
+                    ],
+                ),
+                owner_shortname=logged_in_user,
             )
-            return api.Response(status=api.Status.success)
+
+        history_diff = await db.update(
+            space_name,
+            f"/{subpath}",
+            ticket_obj,
+            old_version_flattend,
+            new_version_flattend,
+            ["state", "resolution_reason", "comment"],
+            logged_in_user,
+            retrieve_lock_status=retrieve_lock_status,
+        )
+        await plugin_manager.after_action(
+            core.Event(
+                space_name=space_name,
+                subpath=subpath,
+                shortname=shortname,
+                action_type=core.ActionType.progress_ticket,
+                resource_type=ResourceType.ticket,
+                user_shortname=logged_in_user,
+                attributes={
+                    "history_diff": history_diff,
+                    "state": ticket_obj.state,
+                },
+            )
+        )
+        return api.Response(status=api.Status.success)
 
     raise api.Exception(
         status.HTTP_400_BAD_REQUEST,
@@ -578,7 +655,7 @@ async def retrieve_entry_or_attachment_payload(
             api.Error(
                 type="request",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [9]",
+                message="You don't have permission to this action [39]",
             ),
         )
 
@@ -636,6 +713,15 @@ async def create_or_update_resource_with_payload(
     record = core.Record.model_validate_json(request_record.file.read())
 
     payload_filename = payload_file.filename or ""
+    if payload_filename and not re.search(regex.EXT, os.path.splitext(payload_filename)[1][1:]):
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.INVALID_DATA,
+                message=f"Invalid payload file extention, it should end with {regex.EXT}",
+            ),
+        )
     resource_content_type = get_resource_content_type_from_payload_content_type(
         payload_file, payload_filename, record
     )
@@ -759,43 +845,43 @@ async def import_resources_from_csv(
             data_types_mapper,
         )
 
-        if shortname:
-            if "is_active" not in meta_object:
-                meta_object["is_active"] = True
-            attributes = meta_object
+        if "is_active" not in meta_object:
+            meta_object["is_active"] = True
 
-            attributes["payload"] = {
-                "content_type": ContentType.json,
-                "body": payload_object,
-            }
+        attributes = meta_object
 
-            if schema_shortname:
-                attributes["payload"]["schema_shortname"] = schema_shortname
+        attributes["payload"] = {
+            "content_type": ContentType.json,
+            "body": payload_object,
+        }
 
-            record = core.Record(
-                resource_type=resource_type,
-                shortname=shortname,
-                subpath=subpath,
-                attributes=attributes,
+        if schema_shortname:
+            attributes["payload"]["schema_shortname"] = schema_shortname
+
+        record = core.Record(
+            resource_type=resource_type,
+            shortname=shortname,
+            subpath=subpath,
+            attributes=attributes,
+        )
+        try:
+            await serve_request(
+                request=api.Request(
+                    space_name=space_name,
+                    request_type=RequestType.create,
+                    records=[record],
+                ),
+                owner_shortname=owner_shortname,
+                is_internal=True,
             )
-            try:
-                await serve_request(
-                    request=api.Request(
-                        space_name=space_name,
-                        request_type=RequestType.create,
-                        records=[record],
-                    ),
-                    owner_shortname=owner_shortname,
-                    is_internal=True,
-                )
-                success_count += 1
-            except api.Exception as e:
-                err = {shortname: e.__str__()}
-                if hasattr(e, "error"):
-                    err["error"] = e.error # type: ignore
-                failed_shortnames.append(err)
-            except Exception as e:
-                failed_shortnames.append({shortname: e.__str__()})
+            success_count += 1
+        except api.Exception as e:
+            err = {shortname: e.__str__()}
+            if hasattr(e, "error"):
+                err["error"] = e.error # type: ignore
+            failed_shortnames.append(err)
+        except Exception as e:
+            failed_shortnames.append({shortname: e.__str__()})
 
     return api.Response(
         status=api.Status.success,
@@ -872,7 +958,7 @@ async def retrieve_entry_meta(
             api.Error(
                 type="request",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [11]",
+                message="You don't have permission to this action [41]",
             )
         )
 
@@ -979,7 +1065,7 @@ async def get_space_report(
             error=api.Error(
                 type="access",
                 code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action"
+                message="You don't have permission to this action [23]"
             ),
         )
 

@@ -12,10 +12,9 @@ from uuid import uuid4
 import ast
 from fastapi import status
 from fastapi.logger import logger
-from sqlalchemy import literal_column
+from sqlalchemy import literal_column, or_
 from sqlalchemy.orm import sessionmaker, defer
-from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean,\
-    func, text
+from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean, func, text
 import io
 from sys import modules as sys_modules
 import models.api as api
@@ -49,20 +48,19 @@ from utils.settings import settings
 from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
 from data_adapters.sql.adapter_helpers import (
     set_results_from_aggregation, set_table_for_query, events_query,
-    subpath_checker, parse_search_string, validate_search_range,
+    subpath_checker, parse_search_string,
     sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
-    parse_search_array
+    get_next_date_value, is_date_time_value
 )
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
+from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-import re
 
 
 def query_attachment_aggregation(subpath):
-    # "payload->'content_type'"
     return select(
         literal_column("resource_type").label("resource_type"),
         func.count(text("*")).label("count")
@@ -164,69 +162,516 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if query.exact_subpath:
             statement = statement.where(table.subpath == query.subpath)
         else:
-            statement = statement.where(text(f"subpath ILIKE '{query.subpath}%'"))
+            statement = statement.where(
+                or_(
+                    table.subpath == query.subpath,
+                    text(f"subpath ILIKE '{query.subpath}/%'".replace('//', '/'))
+                )
+            )
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
             statement = statement.where(text(
                 f"(shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload) ILIKE '%' || '{query.search}' || '%'"
             ))
         else:
-            for key, value in parse_search_string(query.search, table).items():
-                if value['is_array']:
-                    print(f"[!is_array] {key} = {value}")
-                    match_result = re.search(r"\$([a-zA-Z0-9_]+)", key)
-                    if match_result:
-                        statement = statement.where(text(
-                            parse_search_array(key, match_result.group(1), value['value'])
-                        ))
-                        continue
-                flag_neg = False
-                if "!" in value:
-                    flag_neg = True
-                range_values, value = validate_search_range(value['value'])
+            search_tokens = parse_search_string(query.search, table)
+            for field, field_data in search_tokens.items():
+                values = field_data['values']
+                operation = field_data['operation']
+                negative = field_data.get('negative', False)
+                value_type = field_data.get('value_type', 'string')
+                format_strings = field_data.get('format_strings', {})
 
-                if isinstance(value, str):
-                    value = value.replace("!", "")
+                if not values:
+                    continue
 
-                is_list = isinstance(value, list) or ("[" in value and "]" in value)
+                if field.startswith('payload.body.'):
+                    payload_field = field.replace('payload.body.', '')
+                    payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
+                    conditions = []
+                    for value in values:
+                        if value_type == 'datetime':
+                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                range_values = field_data['range_values']
+                                val1, val2 = range_values
+                                if is_date_time_value(val1)[0] and is_date_time_value(val2)[0]:
+                                    fmt1 = format_strings.get(val1)
+                                    fmt2 = format_strings.get(val2)
+                                    if fmt1 and fmt2:
+                                        if fmt1 == fmt2:
+                                            if val1 > val2:
+                                                val1, val2 = val2, val1
+                                        else:
+                                            try:
+                                                from datetime import datetime
+                                                dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                if dt1 > dt2:
+                                                    val1, val2 = val2, val1
+                                            except Exception:
+                                                if val1 > val2:
+                                                    val1, val2 = val2, val1
+                                else:
+                                    if val1 > val2:
+                                        val1, val2 = val2, val1
 
-                if is_list:
-                    value = string_to_list(value)
+                                start_value, end_value = val1, val2
+                                start_format = format_strings.get(start_value)
+                                end_format = format_strings.get(end_value)
 
-                if key == 'roles':
-                    is_list = True
-                if "->" in key:
-                    if isinstance(value, str):
-                        condition_statement = f"(({key}) {'!' if flag_neg else ''}= '{value}'"
-                        if "payload" in key:
-                            condition_statement += f" OR ({key.replace('>>', '>')})::jsonb @> '\"{value}\"'"
-                        condition_statement += ")"
-                        statement = statement.where(text(condition_statement))
-                    if isinstance(value, list):
-                        condition_statement = f"(({key}) {'!' if flag_neg else ''} IN ({', '.join([f'\"{item}\"' for item in value])}))"
-                        if "payload" in key:
-                            condition_statement = f" {key.replace('payload', 'payload::jsonb')} IN ({', '.join([f"'{item}'" for item in value])})"
-                        statement = statement.where(text(condition_statement))
+                                if start_format and end_format:
+                                    if negative:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{start_format}') NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::text NOT BETWEEN '{start_value}' AND '{end_value}')"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                                    else:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{start_format}') BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::text BETWEEN '{start_value}' AND '{end_value}')"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                            else:
+                                format_string = format_strings.get(value)
+                                if format_string:
+                                    next_value = get_next_date_value(value, format_string)
 
-                elif is_list and range_values and value:
-                    statement = statement.where(text(f"({key}) {'NOT' if flag_neg else ''} BETWEEN '{value[0]}' AND '{value[1]}'"))
-                elif is_list and value:
-                    filter_statement = ''
-                    if key in ["payload", "roles"]:
-                        if key == 'payload':
-                            json_values_list = ', '.join([f'"{item_value}"' for item_value in value])
-                            filter_statement += f"({key.replace('>>', '>')})::jsonb @> '[{json_values_list}]'"
-                        elif key == 'roles':
-                            json_values_list = ', '.join([f'"{item_value}"' for item_value in value]) if isinstance(value, list) else f'"{value}"'
-                            filter_statement += f"roles @> '[{json_values_list}]'"
+                                    if negative:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{value}', '{format_string}') OR TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{next_value}', '{format_string}')))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->>{payload_path})::text < '{value}' OR (payload::jsonb->'body'->>{payload_path})::text >= '{next_value}'))"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                                    else:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::text >= '{value}' AND (payload::jsonb->'body'->>{payload_path})::text < '{next_value}')"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                        elif value_type == 'numeric':
+                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                range_values = field_data['range_values']
+                                val1, val2 = range_values
+                                try:
+                                    num1 = float(val1)
+                                    num2 = float(val2)
+                                    if num1 > num2:
+                                        val1, val2 = val2, val1
+                                except ValueError:
+                                    pass
+
+                                if negative:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN {val1} AND {val2})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN {val1} AND {val2}))"
+                                    conditions.append(f"({number_condition} OR {string_condition})")
+                                else:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2}))"
+                                    conditions.append(f"({number_condition} OR {string_condition})")
+                        elif value_type == 'boolean':
+                            for value in values:
+                                bool_value = value.lower()
+                                if negative:
+                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND (payload::jsonb->'body'->>{payload_path})::boolean != {bool_value})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::boolean != {bool_value})"
+                                    conditions.append(f"({bool_condition} OR {string_condition})")
+                                else:
+                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND (payload::jsonb->'body'->>{payload_path})::boolean = {bool_value})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::boolean = {bool_value})"
+                                    conditions.append(f"({bool_condition} OR {string_condition})")
+                        else:
+                            is_numeric = False
+                            if value.isnumeric():
+                                is_numeric = True
+
+                            if negative:
+                                array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND NOT (payload::jsonb->'body'->{payload_path} @> '[\"{value}\"]'::jsonb))"
+                                string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->>{payload_path} != '{value}')"
+                                direct_condition = f"(payload::jsonb->'body'->{payload_path} != '\"{value}\"'::jsonb)"
+
+                                if is_numeric:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float != {value})"
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                else:
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+                            else:
+                                array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND payload::jsonb->'body'->{payload_path} @> '[\"{value}\"]'::jsonb)"
+                                payload_path_splited = payload_path.split('->')
+                                if len(payload_path_splited) > 1:
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->>{'->'.join(payload_path_splited[:-1]) + '->>' + payload_path_splited[-1]} = '\"{value}\"')"
+                                else:
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->>{payload_path} = '{value}')"
+                                direct_condition = f"(payload::jsonb->'body'->{payload_path} = '\"{value}\"'::jsonb)"
+
+                                if is_numeric:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float = {value})"
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                else:
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+
+                    if conditions:
+                        if negative:
+                            join_operator = " OR " if operation == 'AND' else " AND "
+                        else:
+                            join_operator = " AND " if operation == 'AND' else " OR "
+                        statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                elif field.startswith('payload.'):
+                    payload_field = field.replace('payload.', '')
+                    payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
+
+                    conditions = []
+                    for value in values:
+                        if value_type == 'datetime':
+                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                range_values = field_data['range_values']
+                                val1, val2 = range_values
+                                if is_date_time_value(val1)[0] and is_date_time_value(val2)[0]:
+                                    fmt1 = format_strings.get(val1)
+                                    fmt2 = format_strings.get(val2)
+                                    if fmt1 and fmt2:
+                                        if fmt1 == fmt2:
+                                            if val1 > val2:
+                                                val1, val2 = val2, val1
+                                        else:
+                                            try:
+                                                from datetime import datetime
+                                                dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                if dt1 > dt2:
+                                                    val1, val2 = val2, val1
+                                            except Exception:
+                                                if val1 > val2:
+                                                    val1, val2 = val2, val1
+                                else:
+                                    if val1 > val2:
+                                        val1, val2 = val2, val1
+
+                                start_value, end_value = val1, val2
+                                start_format = format_strings.get(start_value)
+                                end_format = format_strings.get(end_value)
+
+                                if start_format and end_format:
+                                    if negative:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{start_format}') NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (payload::jsonb->>{payload_path})::text NOT BETWEEN '{start_value}' AND '{end_value}')"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                                    else:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{start_format}') BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (payload::jsonb->>{payload_path})::text BETWEEN '{start_value}' AND '{end_value}')"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                            else:
+                                format_string = format_strings.get(value)
+                                if format_string:
+                                    next_value = get_next_date_value(value, format_string)
+
+                                    if negative:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{value}', '{format_string}') OR TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{next_value}', '{format_string}')))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::text < '{value}' OR (payload::jsonb->>{payload_path})::text >= '{next_value}'))"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                                    else:
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (payload::jsonb->>{payload_path})::text >= '{value}' AND (payload::jsonb->>{payload_path})::text < '{next_value}')"
+                                        conditions.append(f"({string_condition} OR {fallback_condition})")
+                        elif value_type == 'numeric':
+                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                range_values = field_data['range_values']
+                                val1, val2 = range_values
+                                try:
+                                    num1 = float(val1)
+                                    num2 = float(val2)
+                                    if num1 > num2:
+                                        val1, val2 = val2, val1
+                                except ValueError:
+                                    pass
+
+                                if negative:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2}))"
+                                    conditions.append(f"({number_condition} OR {string_condition})")
+                                else:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2}))"
+                                    conditions.append(f"({number_condition} OR {string_condition})")
+                        else:
+                            is_numeric = False
+                            try:
+                                is_numeric = True
+                            except ValueError:
+                                pass
+
+                            if negative:
+                                array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND NOT (payload::jsonb->{payload_path} @> '[\"{value}\"]'::jsonb))"
+                                string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} != '{value}')"
+                                direct_condition = f"(payload::jsonb->{payload_path} != '\"{value}\"'::jsonb)"
+
+                                if is_numeric:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float != {value})"
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                else:
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+                            else:
+                                array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND payload::jsonb->{payload_path} @> '[\"{value}\"]'::jsonb)"
+                                string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} = '{value}')"
+                                direct_condition = f"(payload::jsonb->{payload_path} = '\"{value}\"'::jsonb)"
+
+                                if is_numeric:
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float = {value})"
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                else:
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+
+                    if conditions:
+                        if negative:
+                            join_operator = " OR " if operation == 'AND' else " AND "
+                        else:
+                            join_operator = " AND " if operation == 'AND' else " OR "
+                        statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                elif field == 'roles':
+                    conditions = []
+                    for value in values:
+                        if negative:
+                            conditions.append(f"NOT (roles @> '[\"{value}\"]'::jsonb)")
+                        else:
+                            conditions.append(f"roles @> '[\"{value}\"]'::jsonb")
+
+                    if conditions:
+                        if negative:
+                            join_operator = " OR " if operation == 'AND' else " AND "
+                        else:
+                            join_operator = " AND " if operation == 'AND' else " OR "
+                        statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                elif field == 'owner_shortname':
+                    if negative:
+                        if operation == 'AND' and len(values) > 1:
+                            conditions = []
+                            for value in values:
+                                conditions.append(f"owner_shortname != '{value}'")
+                            statement = statement.where(text(" OR ".join(conditions)))
+                        else:
+                            if len(values) == 1:
+                                statement = statement.where(table.owner_shortname != values[0])
+                            else:
+                                statement = statement.where(~col(table.owner_shortname).in_(values))
                     else:
-                        sql_values_list = ', '.join([f"'{item_value}'" for item_value in value])
-                        filter_statement += f"(({key}) {'NOT' if flag_neg else ''} IN ({sql_values_list}))"
-                    statement = statement.where(text(filter_statement))
-                elif isinstance(value, str):
-                    statement = statement.where(text(f"{key} {'!' if flag_neg else ''}= '{value}'"))
+                        if operation == 'AND' and len(values) > 1:
+                            for value in values:
+                                statement = statement.where(table.owner_shortname == value)
+                        else:
+                            if len(values) == 1:
+                                statement = statement.where(table.owner_shortname == values[0])
+                            else:
+                                statement = statement.where(col(table.owner_shortname).in_(values))
                 else:
-                    statement = statement.where(text(f"{key} {'!' if flag_neg else ''}= {value}"))
+                    try:
+                        if hasattr(table, field):
+                            if value_type == 'datetime':
+                                conditions = []
+
+                                if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                    range_values = field_data['range_values']
+                                    val1, val2 = range_values
+                                    if is_date_time_value(val1)[0] and is_date_time_value(val2)[0]:
+                                        fmt1 = format_strings.get(val1)
+                                        fmt2 = format_strings.get(val2)
+                                        if fmt1 and fmt2:
+                                            if fmt1 == fmt2:
+                                                if val1 > val2:
+                                                    val1, val2 = val2, val1
+                                            else:
+                                                try:
+                                                    from datetime import datetime
+                                                    dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                    dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                    if dt1 > dt2:
+                                                        val1, val2 = val2, val1
+                                                except Exception:
+                                                    if val1 > val2:
+                                                        val1, val2 = val2, val1
+                                    else:
+                                        if val1 > val2:
+                                            val1, val2 = val2, val1
+
+                                    start_value, end_value = val1, val2
+                                    start_format = format_strings.get(start_value)
+                                    end_format = format_strings.get(end_value)
+
+                                    if start_format and end_format:
+                                        if negative:
+                                            conditions.append(f"({field}::timestamp NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
+                                        else:
+                                            conditions.append(f"({field}::timestamp BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
+                                else:
+                                    for value in values:
+                                        format_string = format_strings.get(value)
+                                        if format_string:
+                                            next_value = get_next_date_value(value, format_string)
+
+                                            if negative:
+                                                conditions.append(f"({field}::timestamp < TO_TIMESTAMP('{value}', '{format_string}')::timestamp OR {field}::timestamp >= TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
+                                            else:
+                                                conditions.append(f"({field}::timestamp >= TO_TIMESTAMP('{value}', '{format_string}')::timestamp AND {field}::timestamp < TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
+
+                                if conditions:
+                                    if negative:
+                                        join_operator = " OR " if operation == 'AND' else " AND "
+                                    else:
+                                        join_operator = " AND " if operation == 'AND' else " OR "
+                                    statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                            elif value_type == 'numeric':
+                                conditions = []
+
+                                if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                    range_values = field_data['range_values']
+                                    val1, val2 = range_values
+                                    try:
+                                        num1 = float(val1)
+                                        num2 = float(val2)
+                                        if num1 > num2:
+                                            val1, val2 = val2, val1
+                                    except ValueError:
+                                        pass
+
+                                    if negative:
+                                        conditions.append(f"(CAST({field} AS FLOAT) NOT BETWEEN {val1} AND {val2})")
+                                    else:
+                                        conditions.append(f"(CAST({field} AS FLOAT) BETWEEN {val1} AND {val2})")
+
+                                if conditions:
+                                    if negative:
+                                        join_operator = " OR " if operation == 'AND' else " AND "
+                                    else:
+                                        join_operator = " AND " if operation == 'AND' else " OR "
+
+                                    statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+
+                                    statement = statement.where(text(join_operator.join(conditions)))
+                            elif value_type == 'boolean':
+                                conditions = []
+                                for value in values:
+                                    bool_value = value.lower()
+                                    if negative:
+                                        conditions.append(f"(CAST({field} AS BOOLEAN) != {bool_value})")
+                                    else:
+                                        conditions.append(f"(CAST({field} AS BOOLEAN) = {bool_value})")
+
+                                if conditions:
+                                    if negative:
+                                        join_operator = " OR " if operation == 'AND' else " AND "
+                                    else:
+                                        join_operator = " AND " if operation == 'AND' else " OR "
+                                    statement = statement.where(text(join_operator.join(conditions)))
+
+                            else:
+                                field_obj = getattr(table, field)
+                                is_timestamp = hasattr(field_obj, 'type') and str(field_obj.type).lower().startswith('timestamp')
+
+                                if is_timestamp:
+                                    conditions = []
+                                    for value in values:
+                                        if negative:
+                                            conditions.append(f"{field}::text != '{value}'")
+                                        else:
+                                            conditions.append(f"{field}::text = '{value}'")
+
+                                    join_operator = " AND " if operation == 'AND' else " OR "
+                                    statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                                else:
+                                    if negative:
+                                        if operation == 'AND' and len(values) > 1:
+                                            conditions = []
+                                            for value in values:
+                                                conditions.append(f"{field} != '{value}'")
+                                            statement = statement.where(text(f'( {" OR ".join(conditions)} )'))
+                                        else:
+                                            if len(values) == 1:
+                                                statement = statement.where(getattr(table, field) != values[0])
+                                            else:
+                                                statement = statement.where(~col(getattr(table, field)).in_(values))
+                                    else:
+                                        if operation == 'AND' and len(values) > 1:
+                                            for value in values:
+                                                statement = statement.where(getattr(table, field) == value)
+                                        else:
+                                            if len(values) == 1:
+                                                statement = statement.where(getattr(table, field) == values[0])
+                                            else:
+                                                statement = statement.where(col(getattr(table, field)).in_(values))
+                        else:
+                            conditions = []
+                            for value in values:
+                                if value_type == 'datetime':
+
+                                    if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                        range_values = field_data['range_values']
+                                        val1, val2 = range_values
+                                        if is_date_time_value(val1)[0] and is_date_time_value(val2)[0]:
+                                            fmt1 = format_strings.get(val1)
+                                            fmt2 = format_strings.get(val2)
+                                            if fmt1 and fmt2:
+                                                if fmt1 == fmt2:
+                                                    if val1 > val2:
+                                                        val1, val2 = val2, val1
+                                                else:
+                                                    try:
+                                                        from datetime import datetime
+                                                        dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                        dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                        if dt1 > dt2:
+                                                            val1, val2 = val2, val1
+                                                    except Exception:
+                                                        if val1 > val2:
+                                                            val1, val2 = val2, val1
+                                        else:
+                                            if val1 > val2:
+                                                val1, val2 = val2, val1
+
+                                        start_value, end_value = val1, val2
+                                        start_format = format_strings.get(start_value)
+                                        end_format = format_strings.get(end_value)
+
+                                        if start_format and end_format:
+                                            if negative:
+                                                conditions.append(f"(payload::jsonb->'{field}'::timestamp NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
+                                            else:
+                                                conditions.append(f"(payload::jsonb->'{field}'::timestamp BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
+                                    else:
+                                        format_string = format_strings.get(value)
+                                        if format_string:
+                                            next_value = get_next_date_value(value, format_string)
+
+                                            if negative:
+                                                conditions.append(f"(payload::jsonb->'{field}'::timestamp < TO_TIMESTAMP('{value}', '{format_string}')::timestamp OR payload::jsonb->'{field}'::timestamp >= TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
+                                            else:
+                                                conditions.append(f"(payload::jsonb->'{field}'::timestamp >= TO_TIMESTAMP('{value}', '{format_string}')::timestamp AND payload::jsonb->'{field}'::timestamp < TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
+                                elif value_type == 'numeric':
+                                    if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                        range_values = field_data['range_values']
+                                        val1, val2 = range_values
+                                        try:
+                                            num1 = float(val1)
+                                            num2 = float(val2)
+                                            if num1 > num2:
+                                                val1, val2 = val2, val1
+                                        except ValueError:
+                                            pass
+
+                                        if negative:
+                                            conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'number' AND (payload::jsonb->'{field}')::float NOT BETWEEN {val1} AND {val2})")
+                                        else:
+                                            conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'number' AND (payload::jsonb->'{field}')::float BETWEEN {val1} AND {val2})")
+                                elif value_type == 'boolean':
+                                    bool_value = value.lower()
+                                    if negative:
+                                        conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'boolean' AND (payload::jsonb->'{field}')::boolean != {bool_value})")
+                                    else:
+                                        conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'boolean' AND (payload::jsonb->'{field}')::boolean = {bool_value})")
+                                else:
+                                    if negative:
+                                        conditions.append(f"payload::jsonb->'{field}' != '\"{value}\"'::jsonb")
+                                    else:
+                                        conditions.append(f"payload::jsonb->'{field}' = '\"{value}\"'::jsonb")
+
+                            if conditions:
+                                if negative:
+                                    join_operator = " OR " if operation == 'AND' else " AND "
+                                else:
+                                    join_operator = " AND " if operation == 'AND' else " OR "
+                                statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                    except Exception as e:
+                        print(f"Error handling field {field}: {e}")
 
     if query.filter_schema_names:
         if 'meta' in query.filter_schema_names:
@@ -302,15 +747,15 @@ class SQLAdapter(BaseDataAdapter):
             shortname: str,
     ) -> str:
         return ""
-    
+
     async def otp_created_since(self, key: str) -> int | None:
         async with self.get_session() as session:
             result = await session.execute(select(OTP).where(OTP.key == key))
             otp_entry = result.scalar_one_or_none()
-            
+
             if otp_entry:
                 return int((datetime.now() - otp_entry.timestamp).total_seconds())
-            
+
             return None
 
     async def save_otp(
@@ -372,16 +817,21 @@ class SQLAdapter(BaseDataAdapter):
 
 
     def __init__(self):
+        self.engine = create_async_engine(
+            URL.create(
+                drivername=settings.database_driver,
+                host=settings.database_host,
+                port=settings.database_port,
+                username=settings.database_username,
+                password=settings.database_password,
+                database=settings.database_name,
+            ),
+            echo=False,
+            max_overflow=settings.database_max_overflow,
+            pool_size=settings.database_pool_size,
+            pool_pre_ping=True,
+        )
         try:
-            self.database_connection_string = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
-            connection_string = f"{self.database_connection_string}/{settings.database_name}"
-            self.engine = create_async_engine(
-                connection_string,
-                echo=False,
-                max_overflow=settings.database_max_overflow,
-                pool_size=settings.database_pool_size,
-                pool_pre_ping=True,
-            )
             self.async_session = sessionmaker(
                 self.engine, class_=AsyncSession, expire_on_commit=False
             ) # type: ignore
@@ -480,7 +930,7 @@ class SQLAdapter(BaseDataAdapter):
             statement = (
                 select(Attachments)
                 .where(Attachments.space_name == space_name)
-                .where(Attachments.subpath == f"{subpath}/{shortname}")
+                .where(Attachments.subpath == f"{subpath}/{shortname}".replace('//', '/'))
             )
             results = list((await session.execute(statement)).all())
 
@@ -582,8 +1032,8 @@ class SQLAdapter(BaseDataAdapter):
                     for k, v in criteria.items():
                         if isinstance(v, str):
                             statement = statement.where(
-                                text(f"{k}::text=:{k}")
-                            ).params({k: f"{v}"})
+                                text(f"{k}::text LIKE :{k}")
+                            ).params({k: f"{v}%"})
                         else:
                             statement = statement.where(text(f"{k}=:{k}")).params({k: v})
                         _results = (await session.execute(statement)).all()
@@ -633,33 +1083,11 @@ class SQLAdapter(BaseDataAdapter):
             user_query_policies = await get_user_query_policies(
                 self, user_shortname, query.space_name, query.subpath
             )
-            user_permissions = await self.get_user_permissions(user_shortname)
-            upt = f"{query.space_name}:{query.subpath}"
-            user_permissions_target = [
-                key for key in user_permissions
-                if key.startswith(upt)
-            ]
-
-            query_allowed_fields_values = []
-            for t in user_permissions_target:
-                for k, v in user_permissions[t]['allowed_fields_values'].items():
-                    qq = "("
-                    if isinstance(v, list):
-                        for vv in v:
-                            if not qq.endswith('('):
-                                qq +=  ' OR'
-                            if isinstance(vv, str):
-                                if k.startswith("payload"):
-                                    qq += f" {transform_keys_to_sql(k)} = '{vv}'"
-                                else:
-                                    qq += f" {k} = '{vv}'"
-                            elif isinstance(vv, list):
-                                if k.startswith("payload"):
-                                    qq += f" {transform_keys_to_sql(k)} = '{str(vv).replace('\'', '\"')}'"
-                                else:
-                                    qq += f" {k} = '{str(vv).replace('\'', '\"')}'"
-                        qq += ")"
-                        query_allowed_fields_values.append(qq)
+            if not query.exact_subpath:
+                r = await get_user_query_policies(
+                    self, user_shortname, query.space_name, f'{query.subpath}/%'
+                )
+                user_query_policies.extend(r)
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -703,10 +1131,10 @@ class SQLAdapter(BaseDataAdapter):
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
-                if query_allowed_fields_values:
-                    for query_allowed_fields_value in query_allowed_fields_values:
-                        statement = statement.where(text(query_allowed_fields_value))
-                        statement_total = statement_total.where(text(query_allowed_fields_value))
+                # if query_allowed_fields_values:
+                #     for query_allowed_fields_value in query_allowed_fields_values:
+                #         statement = statement.where(text(query_allowed_fields_value))
+                #         statement_total = statement_total.where(text(query_allowed_fields_value))
 
             try:
                 if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
@@ -1001,7 +1429,12 @@ class SQLAdapter(BaseDataAdapter):
                             message="metadata is missing",
                         ),
                     )
+
+                if isinstance(result, Users) and not result.is_active and meta.is_active:
+                    await self.set_failed_password_attempt_count(result.shortname, 0)
+
                 result.sqlmodel_update(meta.model_dump())
+
                 if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
                     result.subpath = f"/{result.subpath}"
 
@@ -1112,11 +1545,12 @@ class SQLAdapter(BaseDataAdapter):
 
     async def move(
             self,
-            space_name: str,
+            src_space_name: str,
             src_subpath: str,
             src_shortname: str,
-            dest_subpath: str | None,
-            dest_shortname: str | None,
+            dest_space_name: str,
+            dest_subpath: str,
+            dest_shortname: str,
             meta: core.Meta,
     ):
         """Move the file that match the criteria given, remove source folder if empty"""
@@ -1125,14 +1559,23 @@ class SQLAdapter(BaseDataAdapter):
         if dest_subpath and not dest_subpath.startswith("/"):
             dest_subpath = f"/{dest_subpath}"
 
-        origin = await self.db_load_or_none(space_name, src_subpath, src_shortname, meta.__class__)
+        origin = await self.db_load_or_none(src_space_name, src_subpath, src_shortname, meta.__class__)
+        if isinstance(origin,  Locks):
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="move",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="Locks cannot be moved",
+                ),
+            )
         if origin is None:
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 error=api.Error(
-                    type="create",
+                    type="move",
                     code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
-                    message="already exists",
+                    message="Entry does not exist",
                 ),
             )
 
@@ -1144,7 +1587,7 @@ class SQLAdapter(BaseDataAdapter):
                 if hasattr(origin, 'subpath'):
                     old_subpath = origin.subpath
                 table = self.get_table(meta.__class__)
-                statement = select(table).where(table.space_name == space_name)
+                statement = select(table).where(table.space_name == dest_space_name)
 
                 if table in [Roles, Permissions, Users, Spaces]:
                     statement = statement.where(table.shortname == dest_shortname)
@@ -1158,7 +1601,7 @@ class SQLAdapter(BaseDataAdapter):
                     raise api.Exception(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         error=api.Error(
-                            type="create",
+                            type="move",
                             code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
                             message="already exists",
                         ),
@@ -1169,21 +1612,33 @@ class SQLAdapter(BaseDataAdapter):
                 if hasattr(origin, 'subpath') and dest_subpath:
                     origin.subpath = dest_subpath
 
+                if hasattr(origin, 'space_name') and dest_space_name:
+                    origin.space_name = dest_space_name
+
+                origin.query_policies = generate_query_policies(
+                    space_name=dest_space_name,
+                    subpath=dest_subpath,
+                    resource_type=origin.resource_type if hasattr(origin, 'resource_type') else origin.__class__.__name__.lower()[:-1],
+                    is_active=origin.is_active if hasattr(origin, 'is_active') else True,
+                    owner_shortname=origin.owner_shortname,
+                    owner_group_shortname=None,
+                )
+
                 session.add(origin)
                 await session.commit()
                 try:
                     if table is Spaces:
                         session.add(
                             update(Spaces)
-                            .where(col(Spaces.space_name) == space_name)
+                            .where(col(Spaces.space_name) == dest_space_name)
                             .values(space_name=dest_shortname))
                         session.add(
                             update(Entries)
-                            .where(col(Entries.space_name) == space_name)
+                            .where(col(Entries.space_name) == dest_space_name)
                             .values(space_name=dest_shortname))
                         session.add(
                             update(Attachments)
-                            .where(col(Attachments.space_name) == space_name)
+                            .where(col(Attachments.space_name) == dest_space_name)
                             .values(space_name=dest_shortname))
                         await session.commit()
                 except Exception as e:
@@ -1402,14 +1857,16 @@ class SQLAdapter(BaseDataAdapter):
                 return 0, None
 
             for r in results:
+                if settings.session_inactivity_ttl + r.timestamp.timestamp() < time.time():
+                    await session.execute(delete(Sessions).where(col(Sessions.uuid) == r.uuid))
+                    continue
                 if verify_password(token, r.token):
-                    if settings.session_inactivity_ttl + r.timestamp.timestamp() < time.time():
-                        await self.remove_user_session(user_shortname)
-                        return 0, None
                     r.timestamp = datetime.now()
                     session.add(r)
                     await session.commit()
                     return len(results), token
+                else:
+                    await session.execute(delete(Sessions).where(col(Sessions.uuid) == r.uuid))
         return len(results), None
 
 
@@ -1527,7 +1984,7 @@ class SQLAdapter(BaseDataAdapter):
         if query.type == QueryType.attachments:
             for idx, item in enumerate(results):
                 results[idx] = item.to_record(
-                    query.subpath, item.shortname
+                    results[idx].subpath, item.shortname
                 )
         else:
             for idx, item in enumerate(results):
@@ -1537,7 +1994,7 @@ class SQLAdapter(BaseDataAdapter):
                     )
                 else:
                     results[idx] = item.to_record(
-                        query.subpath, item.shortname
+                        item.subpath, item.shortname
                     )
 
                 if not_history_event:
@@ -1552,7 +2009,7 @@ class SQLAdapter(BaseDataAdapter):
 
                     if query.retrieve_attachments:
                         results[idx].attachments = await self.get_entry_attachments(
-                            query.subpath,
+                            results[idx].subpath,
                             Path(f"{query.space_name}/{results[idx].shortname}"),
                             retrieve_json_payload=True,
                         )

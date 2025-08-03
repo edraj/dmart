@@ -9,7 +9,7 @@ import models.core as core
 from models.enums import ActionType, RedisReducerName, ResourceType, LockAction
 from redis.commands.json.path import Path
 from redis.commands.search.field import TextField, NumericField, TagField, Field
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.index_definition import IndexDefinition, IndexType
 from datetime import datetime
 
 from redis.commands.search import Search, aggregation
@@ -39,10 +39,10 @@ class RedisServices(Redis):
         ), # type: ignore
         TextField("$.displayname.en", sortable=True, as_name="displayname_en"), # type: ignore
         TextField("$.displayname.ar", sortable=True, as_name="displayname_ar"), # type: ignore
-        TextField("$.displayname.kd", sortable=True, as_name="displayname_kd"), # type: ignore
+        TextField("$.displayname.ku", sortable=True, as_name="displayname_kd"), # type: ignore
         TextField("$.description.en", sortable=True, as_name="description_en"), # type: ignore
         TextField("$.description.ar", sortable=True, as_name="description_ar"), # type: ignore
-        TextField("$.description.kd", sortable=True, as_name="description_kd"), # type: ignore
+        TextField("$.description.ku", sortable=True, as_name="description_kd"), # type: ignore
         TagField("$.is_active", as_name="is_active"), # type: ignore
         TextField(
             "$.payload.content_type",
@@ -775,7 +775,7 @@ class RedisServices(Redis):
 
         try:
             info = await ft_index.info()
-            return info["num_docs"]
+            return info["num_docs"]  # type: ignore
         except Exception as e:
             logger.error(f"Error at redis_services.get_count: {e}")
             return 0
@@ -895,8 +895,8 @@ class RedisServices(Redis):
 
         try:
             aggr_res = await ft_index.aggregate(aggr_request)  # type: ignore
-            if aggr_res.get("results") and isinstance(aggr_res["results"], list):
-                return aggr_res["results"]
+            if aggr_res.get("results") and isinstance(aggr_res["results"], list):  # type: ignore
+                return aggr_res["results"]  # type: ignore
         except Exception:
             pass
         return []
@@ -1093,7 +1093,7 @@ class RedisServices(Redis):
         
         # Fetch all document IDs
         ft_index = self.ft(index)
-        total_docs = int((await ft_index.info())['num_docs'])
+        total_docs = int((await ft_index.info())['num_docs'])  # type: ignore
         
         batch_size = 10000  # You can adjust the batch size based on your needs
         
@@ -1103,7 +1103,7 @@ class RedisServices(Redis):
             if results and isinstance(results, Awaitable):
                 results = await results
             
-            if 'results' not in results or not isinstance(results['results'], list):
+            if 'results' not in results or not isinstance(results['results'], list):  # type: ignore
                 break
             document_ids.extend([doc['id'] for doc in results['results']]) #type: ignore
         

@@ -12,6 +12,7 @@ from models.enums import ContentType, Language
 from data_adapters.adapter import data_adapter as db
 from utils.helpers import (
     camel_case,
+    jq_dict_parser,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import generate_jwt
@@ -28,16 +29,12 @@ async def serve_query(
     if query.jq_filter:
         try:
             jq = __import__("jq")
-            _input = [record.to_dict() for record in records]
-            for __input in _input:
-                if "uuid" in __input:
-                    __input["uuid"] = str(__input["uuid"])
 
-            records = (
-                jq.compile(query.jq_filter)
-                .input(_input)
-                .all()
-            )
+            _input = [record.model_dump() for record in records]
+            _input = jq_dict_parser(_input)
+
+            records = jq.compile(query.jq_filter).input(_input).all()
+
         except ModuleNotFoundError:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,

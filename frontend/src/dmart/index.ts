@@ -121,10 +121,10 @@ export type ApiResponse = {
     records: Array<ApiResponseRecord>;
 };
 
-type Translation = {
+export type Translation = {
     ar: string;
     en: string;
-    kd: string;
+    ku: string;
 };
 
 enum UserType {
@@ -512,7 +512,7 @@ export async function query(query: QueryRequest, scope = "managed"): Promise<Api
         const {data} = await axios.post<ApiQueryResponse>(
             website.backend + `/${scope}/query`,
             query,
-            {headers, timeout: 3000}
+            {headers, timeout: 30000}
         );
         return data;
     } catch (e) {
@@ -625,13 +625,20 @@ export async function upload_with_payload(
     content_type: ContentType = null,
     shortname: string,
     payload_file: File,
-    schema_shortname?: string
+    schema_shortname?: string,
+    displayname: Translation  = {ar: "", en: "", ku: ""},
+    description: Translation = {ar: "", en: "", ku: ""}
 ): Promise<ApiResponse> {
     const request_record_body: any = {
         resource_type,
         subpath,
         shortname,
-        attributes: {is_active: true, payload: {body: {}}},
+        attributes: {
+            displayname,
+            description,
+            is_active: true,
+            payload: {body: {}}
+        },
     };
     if (content_type) {
         request_record_body.attributes.payload.content_type = content_type;

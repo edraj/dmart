@@ -7,6 +7,8 @@ import string
 import random
 import sys
 from venv import logger
+
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
@@ -41,6 +43,7 @@ class Settings(BaseSettings):
     auto_uuid_rule: str = "auto"  # Used to generate a shortname from UUID
     google_application_credentials: str = ""
     is_registrable: bool = True
+    is_otp_for_create_required: bool = True
     social_login_allowed: bool = True
     all_spaces_mw: str = (
         "__all_spaces__"  # magic word used in access control refers to any space
@@ -58,6 +61,7 @@ class Settings(BaseSettings):
     allow_otp_resend_after: int = 60
     comms_api: str = ""
     send_sms_otp_api: str = ""
+    smpp_auth_key: str = ""
     send_email_otp_api: str = ""
     send_sms_api: str = ""
     send_email_api: str = ""
@@ -125,8 +129,24 @@ class Settings(BaseSettings):
                     self.channels[idx]["allowed_api_patterns"] = compiled_patterns
                     
             except Exception as e:
-                logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")    
+                logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")
 
+    raw_allowed_submit_models: str = Field(default="",alias="allowed_submit_models")
+
+    @property # type: ignore
+    def allowed_submit_models(self) -> dict[str, list[str]]:
+        allowed_models_str = self.raw_allowed_submit_models
+        result: dict = {}
+        if allowed_models_str:
+            entries = allowed_models_str.split(",")
+            for entry in entries:
+                entry = entry.strip()
+                if "." in entry:
+                    space, schema = entry.split(".", 1)
+                    if space not in result:
+                        result[space] = []
+                    result[space].append(schema)
+        return result
 
 try:
     Settings.model_validate(

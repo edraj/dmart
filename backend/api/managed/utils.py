@@ -1,4 +1,3 @@
-from copy import copy
 from datetime import datetime
 from typing import Any
 
@@ -38,13 +37,14 @@ from api.user.service import (
 )
 from languages.loader import languages
 from data_adapters.adapter import data_adapter as db
+from pathlib import Path as FilePath
 
 
 def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
     json_data = []
     timestamp_fields = ["created_at", "updated_at"]
-    new_keys = set()
-    deprecated_keys = set()
+    new_keys: set[str] = set()
+    deprecated_keys: set[str] = set()
 
     for redis_document in docs_dicts:
         rows: list[dict] = [{}]
@@ -53,6 +53,29 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
             column_key = folder_view.get("key")
             column_title = folder_view.get("name")
             attribute_val = flattened_doc.get(column_key)
+
+            if column_key.startswith('attachments.') and attribute_val is None:
+                parts = column_key.split('.')
+                if len(parts) >= 3:
+                    attachment_type = parts[1]
+                    property_name = '.'.join(parts[2:])
+
+                    attachment_key = f"attachments.{attachment_type}"
+                    attachments_array = flattened_doc.get(attachment_key)
+
+                    if isinstance(attachments_array, list):
+                        flattened_attachments = [
+                            flatten_dict(attachment) if isinstance(attachment, dict) else attachment
+                            for attachment in attachments_array
+                        ]
+                        attribute_val = [
+                            flattened_attachment.get(property_name)
+                            for flattened_attachment in flattened_attachments
+                            if isinstance(flattened_attachment, dict) and flattened_attachment.get(
+                                property_name) is not None
+                        ]
+                        attribute_val = [val for val in attribute_val if val is not None]
+
             if attribute_val:
                 keys_existence[column_title] = True
             """
@@ -68,30 +91,20 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
             -  rows += list_new_rows
             """
             if isinstance(attribute_val, list) and len(attribute_val) > 0:
-                list_new_rows = []
-                # Duplicate old rows
-                for row in rows:
-                    # New row for each item
-                    for item in attribute_val[1:]:
-                        new_row = copy(row)
-                        # New cell for each item's attribute
+                if isinstance(attribute_val[0], dict):
+                    joined_values = []
+                    for item in attribute_val:
                         if isinstance(item, dict):
-                            for k, v in item.items():
-                                new_row[f"{column_title}.{k}"] = v
-                                new_keys.add(f"{column_title}.{k}")
+                            item_values = [str(v) for v in item.values()]
+                            joined_values.extend(item_values)
                         else:
-                            new_row[column_title] = item
-
-                        list_new_rows.append(new_row)
-                    # Add first items's attribute to the existing rows
-                    if isinstance(attribute_val[0], dict):
-                        deprecated_keys.add(column_title)
-                        for k, v in attribute_val[0].items():
-                            row[f"{column_title}.{k}"] = v
-                            new_keys.add(f"{column_title}.{k}")
-                    else:
-                        row[column_title] = attribute_val[0]
-                rows += list_new_rows
+                            joined_values.append(str(item))
+                    new_col = "|".join(joined_values)
+                else:
+                    new_col = "|".join(str(item) for item in attribute_val)
+                
+                for row in rows:
+                    row[column_title] = new_col
 
             elif attribute_val and not isinstance(attribute_val, list):
                 new_col = attribute_val if column_key not in timestamp_fields else \
@@ -369,14 +382,15 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
             if record.subpath[0] != "/":
                 record.subpath = f"/{record.subpath}"
 
+            record_schema_shortname = record.attributes.get("payload", {}).get(
+                        "schema_shortname", None
+                    ) if record.attributes.get("payload", {}) is not None else None
             await plugin_manager.before_action(
                 core.Event(
                     space_name=request.space_name,
                     subpath=record.subpath,
                     shortname=record.shortname,
-                    schema_shortname=record.attributes.get("payload", {}).get(
-                        "schema_shortname", None
-                    ),
+                    schema_shortname=record_schema_shortname,
                     action_type=core.ActionType.update,
                     resource_type=record.resource_type,
                     user_shortname=owner_shortname,
@@ -388,16 +402,13 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                     record.resource_type
                 )
             )
-            schema_shortname = record.attributes.get("payload", {}).get(
-                "schema_shortname"
-            )
             old_resource_obj = await db.load(
                 space_name=request.space_name,
                 subpath=record.subpath,
                 shortname=record.shortname,
                 class_type=resource_cls,
                 user_shortname=owner_shortname,
-                schema_shortname=schema_shortname,
+                schema_shortname=record_schema_shortname,
             )
 
             # CHECK PERMISSION
@@ -424,7 +435,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
 
             # GET PAYLOAD DATA
             old_version_flattend, old_resource_payload_body = await serve_request_update_r_replace_fetch_payload(
-                old_resource_obj, record, request, resource_cls, schema_shortname
+                old_resource_obj, record, request, resource_cls, record_schema_shortname
             )
 
             # GENERATE NEW RESOURCE OBJECT
@@ -434,17 +445,17 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
             new_version_flattend = {}
 
             if record.resource_type == ResourceType.log:
-                new_resource_payload_data = record.attributes.get("payload", {}).get(
-                    "body", {}
-                )
+                if payload := record.attributes.get("payload", {}):
+                    new_resource_payload_data = payload.get("body", {})
+                else:
+                    new_resource_payload_data = None
             else:
-                new_resource_payload_data = (
-                    resource_obj.update_from_record(
-                        record=record,
-                        old_body=old_resource_payload_body,
-                        replace=request.request_type == api.RequestType.r_replace,
-                    )
+                new_resource_payload_data = resource_obj.update_from_record(
+                    record=record,
+                    old_body=old_resource_payload_body,
+                    replace=request.request_type == api.RequestType.r_replace,
                 )
+
                 new_version_flattend = resource_obj.model_dump()
                 if new_resource_payload_data:
                     new_version_flattend["payload"] = {
@@ -478,7 +489,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                     new_version_flattend={},
                     updated_attributes_flattend=[],
                     user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
+                    schema_shortname=record_schema_shortname,
                     retrieve_lock_status=record.retrieve_lock_status,
                 )
             else:
@@ -505,7 +516,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                     new_version_flattend=new_version_flattend,
                     updated_attributes_flattend=updated_attributes_flattend,
                     user_shortname=owner_shortname,
-                    schema_shortname=schema_shortname,
+                    schema_shortname=record_schema_shortname,
                     retrieve_lock_status=record.retrieve_lock_status,
                 )
 
@@ -535,9 +546,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                     space_name=request.space_name,
                     subpath=record.subpath,
                     shortname=record.shortname,
-                    schema_shortname=record.attributes.get("payload", {}).get(
-                        "schema_shortname", None
-                    ),
+                    schema_shortname=record_schema_shortname,
                     action_type=core.ActionType.update,
                     resource_type=record.resource_type,
                     user_shortname=owner_shortname,
@@ -613,7 +622,7 @@ async def serve_request_patch(request, owner_shortname: str):
                     api.Error(
                         type="request",
                         code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [5]",
+                        message="You don't have permission to this action [8]",
                     ),
                 )
 
@@ -668,19 +677,6 @@ async def serve_request_patch(request, owner_shortname: str):
                 updated_attributes_flattend = list(
                     flatten_dict(record.attributes).keys()
                 )
-                if request.request_type == RequestType.r_replace:
-                    updated_attributes_flattend = (
-                            list(old_version_flattend.keys()) +
-                            list(new_version_flattend.keys())
-                    )
-
-                if (settings.active_data_db == 'sql'
-                        and resource_obj.payload
-                        and resource_obj.payload.content_type == ContentType.json):
-                    resource_obj.payload.body = {
-                        **resource_obj.payload.body,
-                        **new_resource_payload_data
-                    }  # type: ignore
 
                 # VALIDATE SEPARATE PAYLOAD BODY
                 if (
@@ -690,7 +686,7 @@ async def serve_request_patch(request, owner_shortname: str):
                     and new_resource_payload_data is not None
                 ):
                     await db.validate_payload_with_schema(
-                        payload_data=resource_obj.payload.body,
+                        payload_data=new_resource_payload_data,
                         space_name=request.space_name,
                         schema_shortname=resource_obj.payload.schema_shortname,
                     )
@@ -720,7 +716,8 @@ async def serve_request_patch(request, owner_shortname: str):
                 record.attributes.get("is_active") is False
             ):
                 await db.remove_user_session(record.shortname)
-
+            if resource_obj.payload and new_resource_payload_data:
+                resource_obj.payload.body = new_resource_payload_data
             records.append(
                 resource_obj.to_record(
                     record.subpath, resource_obj.shortname, []
@@ -824,7 +821,7 @@ async def serve_request_assign(request, owner_shortname: str):
                     api.Error(
                         type="request",
                         code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [05]",
+                        message="You don't have permission to this action [25]",
                     ),
                 )
 
@@ -942,7 +939,7 @@ async def serve_request_update_acl(request, owner_shortname: str):
                     api.Error(
                         type="request",
                         code=InternalErrorCode.NOT_ALLOWED,
-                        message="You don't have permission to this action [06]",
+                        message="You don't have permission to this action [26]",
                     ),
                 )
 
@@ -1090,8 +1087,10 @@ async def serve_request_move(request, owner_shortname: str):
             record.subpath = f"/{record.subpath}"
 
         if (
-                not record.attributes.get("src_subpath")
+                not record.attributes.get("src_space_name")
+                or not record.attributes.get("src_subpath")
                 or not record.attributes.get("src_shortname")
+                or not record.attributes.get("dest_space_name")
                 or not record.attributes.get("dest_subpath")
                 or not record.attributes.get("dest_shortname")
         ):
@@ -1113,7 +1112,9 @@ async def serve_request_move(request, owner_shortname: str):
                 resource_type=record.resource_type,
                 user_shortname=owner_shortname,
                 attributes={
-                    "dest_subpath": record.attributes["dest_subpath"]},
+                    "dest_space_name": record.attributes["dest_space_name"],
+                    "dest_subpath": record.attributes["dest_subpath"]
+                },
             )
         )
 
@@ -1158,9 +1159,10 @@ async def serve_request_move(request, owner_shortname: str):
 
         try:
             await db.move(
-                request.space_name,
+                record.attributes["src_space_name"],
                 record.attributes["src_subpath"],
                 record.attributes["src_shortname"],
+                record.attributes["dest_space_name"],
                 record.attributes["dest_subpath"],
                 record.attributes["dest_shortname"],
                 resource_obj,
@@ -1283,9 +1285,6 @@ async def handle_update_state(space_name, logged_in_user, ticket_obj, action, us
         )
 
     old_version_flattend = flatten_dict(ticket_obj.model_dump())
-    old_version_flattend.pop("payload.body", None)
-    old_version_flattend.update(
-        flatten_dict({"payload.body": ticket_obj}))
 
     ticket_obj.state = response["message"]
     ticket_obj.is_open = check_open_state(
@@ -1579,14 +1578,22 @@ async def import_resources_from_csv_handler(
 
             if current_schema_property["type"] in ["number", "integer"]:
                 value = value.replace(",", "")
-
-            print("CURRENT", current_schema_property)
-            print("VALUE", value)
-            value = data_types_mapper[current_schema_property["type"]](value)
-            if current_schema_property["type"] == "array":
-                value = [
-                    str(item) if type(item) in [int, float] else item for item in value
-                ]
+            try:
+                value = data_types_mapper[current_schema_property["type"]](value)
+                if current_schema_property["type"] == "array":
+                    value = [
+                        str(item) if type(item) in [int, float] else item for item in value
+                    ]
+            except ValueError as e:
+                raise api.Exception(
+                    status.HTTP_400_BAD_REQUEST,
+                    api.Error(
+                        type="request",
+                        code=InternalErrorCode.INVALID_DATA,
+                        message=f"Invalid value for {key}: {value}",
+                        info=[{"message": str(e)}],
+                    ),
+                )
 
         match len(keys_list):
             case 1:
@@ -1607,7 +1614,8 @@ async def import_resources_from_csv_handler(
                 ] = value
             case _:
                 continue
-
+    if shortname == "":
+        shortname = settings.auto_uuid_rule
     return payload_object, meta_object, shortname
 
 
@@ -1624,6 +1632,11 @@ async def create_or_update_resource_with_payload_handler(
         record = await set_init_state_from_record(
             record, owner_shortname, space_name
         )
+    
+    file_extension = FilePath(payload_filename).suffix
+    if file_extension.startswith('.'):
+        file_extension = file_extension[1:]  
+    
     resource_obj.payload = core.Payload(
         content_type=resource_content_type,
         checksum=checksum,
@@ -1631,7 +1644,7 @@ async def create_or_update_resource_with_payload_handler(
         schema_shortname="meta_schema"
         if record.resource_type == ResourceType.schema
         else record.attributes.get("payload", {}).get("schema_shortname", None),
-        body=f"{record.shortname}." + payload_filename.split(".")[1],
+        body=f"{record.shortname}.{file_extension}",
     )
     if (
             not isinstance(resource_obj, core.Attachment)
@@ -1648,8 +1661,7 @@ async def create_or_update_resource_with_payload_handler(
             ),
         )
     if settings.active_data_db == "file":
-        resource_obj.payload.body = f"{resource_obj.shortname}." + \
-                                    payload_filename.split(".")[1]
+        resource_obj.payload.body = f"{resource_obj.shortname}.{file_extension}"
     elif not isinstance(resource_obj, core.Attachment):
         resource_obj.payload.body = json.load(payload_file.file)
         payload_file.file.seek(0)
