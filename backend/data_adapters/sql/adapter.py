@@ -261,6 +261,16 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2})"
                                     string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2}))"
                                     conditions.append(f"({number_condition} OR {string_condition})")
+                            else:
+                                for value in values:
+                                    if negative:
+                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float != {value})"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::float != {value})"
+                                        conditions.append(f"({number_condition} OR {string_condition})")
+                                    else:
+                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float = {value})"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::float = {value})"
+                                        conditions.append(f"({number_condition} OR {string_condition})")
                         elif value_type == 'boolean':
                             for value in values:
                                 bool_value = value.lower()
@@ -723,7 +733,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             statement = statement.offset(query.offset)
 
         statement = statement.limit(query.limit)
-
+#    print(f"this is the value type {value_type}")
     return statement
 
 class SQLAdapter(BaseDataAdapter):

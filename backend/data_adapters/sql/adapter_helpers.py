@@ -291,17 +291,23 @@ def parse_search_string(string, entity):
         value_type = 'string'  # Default type
         format_strings = {}
         all_boolean = True
+        all_numeric = True
         for i, val in enumerate(values):
             is_datetime, format_string = is_date_time_value(val)
             if is_datetime:
                 value_type = 'datetime'
                 format_strings[val] = format_string
                 all_boolean = False
+                all_numeric = False
             elif val.lower() not in ['true', 'false']:
                 all_boolean = False
+            if not is_numeric_value(val):
+                all_numeric = False
 
         if all_boolean and value_type == 'string':
             value_type = 'boolean'
+        elif all_numeric and value_type == 'string':
+            value_type = 'numeric'
 
         if field not in result:
             field_data = {
