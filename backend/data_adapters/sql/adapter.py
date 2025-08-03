@@ -538,6 +538,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         conditions.append(f"(CAST({field} AS FLOAT) NOT BETWEEN {val1} AND {val2})")
                                     else:
                                         conditions.append(f"(CAST({field} AS FLOAT) BETWEEN {val1} AND {val2})")
+                                else:
+                                    for value in values:
+                                        if negative:
+                                            conditions.append(f"(CAST({field} AS FLOAT) != {value})")
+                                        else:
+                                            conditions.append(f"(CAST({field} AS FLOAT) = {value})")
 
                                 if conditions:
                                     if negative:
@@ -546,8 +552,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         join_operator = " AND " if operation == 'AND' else " OR "
 
                                     statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
-
-                                    statement = statement.where(text(join_operator.join(conditions)))
                             elif value_type == 'boolean':
                                 conditions = []
                                 for value in values:
