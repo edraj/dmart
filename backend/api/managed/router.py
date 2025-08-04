@@ -826,7 +826,7 @@ async def import_resources_from_csv(
         "integer": int,
         "number": float,
         "string": str,
-        "boolean": str,
+        "boolean": bool,
         "object": json.loads,
         "array": json.loads,
     }
