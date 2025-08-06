@@ -39,10 +39,11 @@ class CustomFormatter(logging.Formatter):
             # "lineno": record.lineno,
             # "funcName": record.funcName,
         }
-        raw_data_str = json.dumps(data, ensure_ascii=False)
-        masked_data_str = mask_sensitive_data(raw_data_str)
+        masked_data = mask_sensitive_data(data)
+        masked_data_str = json.dumps(masked_data, ensure_ascii=False)
 
-        return f"[{hostname}] [{user}] {json.dumps(data)}"
+        return f"[{hostname}] [{user}] {masked_data_str}"
+
 
 
 logging_schema : dict = {
