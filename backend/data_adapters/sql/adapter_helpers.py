@@ -220,11 +220,7 @@ def is_date_time_value(value):
         # ISO format with hours precision: 2025-04-28T12
         (r'^\d{4}-\d{2}-\d{2}T\d{2}$', 'YYYY-MM-DD"T"HH24'),
         # Date only: 2025-04-28
-        (r'^\d{4}-\d{2}-\d{2}$', 'YYYY-MM-DD'),
-        # Year and month only: 2025-04
-        (r'^\d{4}-\d{2}$', 'YYYY-MM'),
-        # Year only: 2025
-        (r'^\d{4}$', 'YYYY')
+        (r'^\d{4}-\d{2}-\d{2}$', 'YYYY-MM-DD')
     ]
 
     for pattern, format_string in patterns:
