@@ -14,6 +14,7 @@ from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
+from utils.masking import mask_sensitive_data
 from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
@@ -39,7 +40,6 @@ from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info, git_info
 from utils.internal_error_code import InternalErrorCode
-from utils.masking import mask_sensitive_data
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -323,11 +323,24 @@ async def middle(request: Request, call_next):
     try:
         user_shortname = str(await JWTBearer().__call__(request))
     except Exception:
-        pass
+        if request.url.path == "/user/login":
+            try:
+                body = getattr(request.state, "request_body", {}) or {}
+                if isinstance(body, dict):
+                    shortname_value = body.get("shortname")
+                    if isinstance(shortname_value, str) and shortname_value.strip():
+                        user_shortname = shortname_value
+            except Exception:
+                pass
 
     extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
 
-   # set_logging(response, extra, request, exception_data)
+
+    masked_extra = mask_sensitive_data(extra)
+    logger.info(masked_extra)
+
+
+
 
     #TODO: CHECK THIS
     # if settings.hide_stack_trace:
