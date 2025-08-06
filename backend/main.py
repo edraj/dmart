@@ -39,7 +39,7 @@ from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info, git_info
 from utils.internal_error_code import InternalErrorCode
-
+from utils.masking import mask_sensitive_data
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

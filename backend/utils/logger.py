@@ -5,6 +5,7 @@ import os
 
 from utils.settings import settings
 import socket
+from utils.masking import mask_sensitive_data
 
 class CustomFormatter(logging.Formatter):
     def __init__(self):
@@ -38,6 +39,9 @@ class CustomFormatter(logging.Formatter):
             # "lineno": record.lineno,
             # "funcName": record.funcName,
         }
+        raw_data_str = json.dumps(data, ensure_ascii=False)
+        masked_data_str = mask_sensitive_data(raw_data_str)
+
         return f"[{hostname}] [{user}] {json.dumps(data)}"
 
 
