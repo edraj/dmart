@@ -290,13 +290,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             if negative:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND NOT (payload::jsonb->'body'->{payload_path} @> '[\"{value}\"]'::jsonb))"
                                 string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->>{payload_path} != '{value}')"
-                                direct_condition = f"(payload::jsonb->'body'->{payload_path} != '\"{value}\"'::jsonb)"
 
                                 if is_numeric:
                                     number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float != {value})"
-                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {number_condition})")
                                 else:
-                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+                                    conditions.append(f"({array_condition} OR {string_condition})")
                             else:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND payload::jsonb->'body'->{payload_path} @> '[\"{value}\"]'::jsonb)"
                                 payload_path_splited = payload_path.split('->')
@@ -405,13 +404,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             if negative:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND NOT (payload::jsonb->{payload_path} @> '[\"{value}\"]'::jsonb))"
                                 string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} != '{value}')"
-                                direct_condition = f"(payload::jsonb->{payload_path} != '\"{value}\"'::jsonb)"
 
                                 if is_numeric:
                                     number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float != {value})"
-                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {number_condition})")
                                 else:
-                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+                                    conditions.append(f"({array_condition} OR {string_condition})")
                             else:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND payload::jsonb->{payload_path} @> '[\"{value}\"]'::jsonb)"
                                 string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} = '{value}')"

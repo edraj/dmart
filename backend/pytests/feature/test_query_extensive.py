@@ -314,19 +314,19 @@ async def test_array_payload_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 1
 
-    # response = await client.post(
-    #     "/managed/query",
-    #     json={
-    #         "type": QueryType.search,
-    #         "space_name": MANAGEMENT_SPACE,
-    #         "subpath": USERS_SUBPATH,
-    #         "search": "-@payload.body.allowed_categories:posts"
-    #     }
-    # )
-    # assert_code_and_status_success(response)
-    # json_response = response.json()
-    # assert json_response["status"] == "success"
-    # assert json_response["attributes"]["returned"] == 2
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.allowed_categories:posts"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
 
     response = await client.post(
         "/managed/query",
@@ -342,19 +342,20 @@ async def test_array_payload_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 1
 
-    # response = await client.post(
-    #     "/managed/query",
-    #     json={
-    #         "type": QueryType.search,
-    #         "space_name": MANAGEMENT_SPACE,
-    #         "subpath": USERS_SUBPATH,
-    #         "search": "-@payload.body.allowed_categories:posts -@payload.body.allowed_categories:edits"
-    #     }
-    # )
-    # assert_code_and_status_success(response)
-    # json_response = response.json()
-    # assert json_response["status"] == "success"
-    # assert json_response["attributes"]["returned"] == 1
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.allowed_categories:posts -@payload.body.allowed_categories:edits"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
     response = await client.post(
         "/managed/query",
         json={
@@ -369,19 +370,19 @@ async def test_array_payload_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 2
 
-    # response = await client.post(
-    #     "/managed/query",
-    #     json={
-    #         "type": QueryType.search,
-    #         "space_name": MANAGEMENT_SPACE,
-    #         "subpath": USERS_SUBPATH,
-    #         "search": "-@payload.body.allowed_categories:posts|reviews"
-    #     }
-    # )
-    # assert_code_and_status_success(response)
-    # json_response = response.json()
-    # assert json_response["status"] == "success"
-    # assert json_response["attributes"]["returned"] == 1
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.allowed_categories:posts|reviews"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 0
 
 @pytest.mark.anyio
 async def test_string_payload_queries(client: AsyncClient) -> None:
@@ -486,19 +487,19 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 1
 
-    # response = await client.post(
-    #     "/managed/query",
-    #     json={
-    #         "type": QueryType.search,
-    #         "space_name": MANAGEMENT_SPACE,
-    #         "subpath": USERS_SUBPATH,
-    #         "search": "-@payload.body.account_number:100"
-    #     }
-    # )
-    # assert_code_and_status_success(response)
-    # json_response = response.json()
-    # assert json_response["status"] == "success"
-    # assert json_response["attributes"]["returned"] == 1
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.account_number:100"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
 
     
 @pytest.mark.anyio
