@@ -14,31 +14,31 @@ class CustomFormatter(logging.Formatter):
             os.mkdir(log_dir)
         super().__init__()
 
-    def format(self, record):
-        correlation_id = getattr(record, "correlation_id", "")
-        if correlation_id == "ROOT" and getattr(record, "props", None):
-            correlation_id = getattr(record, "props", {})\
-                .get("response", {}).get("headers", {}).get("x-correlation-id", "")
+def format(self, record):
+    correlation_id = getattr(record, "correlation_id", "")
+    if correlation_id == "ROOT" and getattr(record, "props", None):
+        correlation_id = getattr(record, "props", {})\
+            .get("response", {}).get("headers", {}).get("x-correlation-id", "")
 
-        props = getattr(record, "props", {})
+    props = getattr(record, "props", {})
+    hostname = socket.gethostname()
 
-        # Extract hostname and user_shortname
-        hostname = socket.gethostname()
-        data = {
-            "hostname": hostname,
-            "correlation_id": correlation_id,
-            "time": self.formatTime(record),
-            "level": record.levelname,
-            "message": record.getMessage(),
-            "props": props,
-            "thread": record.threadName,
-            "process": record.process,
-            # "pathname": record.pathname,
-            # "lineno": record.lineno,
-            # "funcName": record.funcName,
-        }
-        masked_data = mask_sensitive_data(data)
-        return json.dumps(masked_data, indent=2, ensure_ascii=False)
+    data = {
+        "hostname": hostname,
+        "correlation_id": correlation_id,
+        "time": self.formatTime(record),
+        "level": record.levelname,
+        "message": record.msg if isinstance(record.msg, dict) else record.getMessage(),
+        "props": props,
+        "thread": record.threadName,
+        "process": record.process,
+        # "pathname": record.pathname,
+        # "lineno": record.lineno,
+        # "funcName": record.funcName,
+    }
+
+    masked_data = mask_sensitive_data(data)
+    return json.dumps(masked_data, indent=2, ensure_ascii=False)
 
 
 
