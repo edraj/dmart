@@ -38,9 +38,7 @@ class CustomFormatter(logging.Formatter):
             # "funcName": record.funcName,
         }
         masked_data = mask_sensitive_data(data)
-        masked_data_str = json.dumps(masked_data, ensure_ascii=False)
-
-        return masked_data_str
+        return json.dumps(masked_data, indent=2, ensure_ascii=False)
 
 
 
