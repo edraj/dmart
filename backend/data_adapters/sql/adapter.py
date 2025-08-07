@@ -148,7 +148,14 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if query.type == QueryType.tags and not is_for_count:
             # For tags query, return a statement that selects distinct tags from the table
             # This ensures that the tags query uses the same filtering mechanism as other queries
-            return select(func.jsonb_array_elements_text(table.tags).label('tag')).distinct()
+            # If retrieve_json_payload is true, also include the count of occurrences for each tag
+            if query.retrieve_json_payload:
+                return select(
+                    func.jsonb_array_elements_text(table.tags).label('tag'),
+                    func.count('*').label('count')
+                ).group_by('tag')
+            else:
+                return select(func.jsonb_array_elements_text(table.tags).label('tag')).distinct()
 
     except Exception as e:
         print("[!query]", e)
@@ -1139,19 +1146,33 @@ class SQLAdapter(BaseDataAdapter):
 
                     # Process the results
                     tags = []
-                    for result in results:
-                        if result and len(result) > 0 and result[0]:
-                            tags.append(result[0])
+                    tag_counts = {}
+                    if query.retrieve_json_payload:
+                        for result in results:
+                            if result and len(result) > 1 and result[0]:
+                                tag = result[0]
+                                count = result[1]
+                                tags.append(tag)
+                                tag_counts[tag] = count
+                    else:
+                        for result in results:
+                            if result and len(result) > 0 and result[0]:
+                                tags.append(result[0])
                     
                     # Get the total count
                     _total = (await session.execute(statement_total)).one()
                     total = int(_total[0])
+                    
+                    # Prepare the attributes based on whether we're including counts
+                    attributes = {"tags": tags}
+                    if query.retrieve_json_payload and tag_counts:
+                        attributes["tag_counts"] = tag_counts
                             
                     return total, [core.Record(
                         resource_type=core.ResourceType.content,
                         shortname="tags",
                         subpath=query.subpath,
-                        attributes={"tags": tags},
+                        attributes=attributes,
                     )]
                 except Exception as e:
                     print("[!!query_tags]", e)
