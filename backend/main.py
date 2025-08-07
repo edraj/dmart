@@ -14,6 +14,7 @@ from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
+from utils.masking import mask_sensitive_data
 from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
@@ -39,7 +40,6 @@ from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info, git_info
 from utils.internal_error_code import InternalErrorCode
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -149,6 +149,13 @@ app.add_middleware(ChannelMiddleware)
 
 
 def set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body):
+    request_headers = dict(request.headers.items())
+    request_headers["cookie"] = request.headers.get("cookie", "")
+    request_headers["authorization"] = request.headers.get("authorization", "")
+
+    response_headers = dict(response.headers.items())
+    response_headers["set-cookie"] = response.headers.get("set-cookie", "")
+
     extra = {
         "props": {
             "timestamp": start_time,
@@ -161,10 +168,10 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
                 "verb": request.method,
                 "path": quote(str(request.url.path)),
                 "query_params": dict(request.query_params.items()),
-                "headers": dict(request.headers.items()),
+                "headers": request_headers,
             },
             "response": {
-                "headers": dict(response.headers.items()),
+                "headers": response_headers,
                 "http_status": response.status_code,
             },
         }
@@ -172,14 +179,15 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
 
     if exception_data is not None:
         extra["props"]["exception"] = exception_data
-    if (hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict)
-            and isinstance(extra["props"]["request"], dict)):
+
+    if hasattr(request.state, "request_body"):
         extra["props"]["request"]["body"] = request.state.request_body
-    if (response_body and isinstance(extra, dict) and isinstance(extra["props"], dict)
-            and isinstance(extra["props"]["response"], dict)):
+
+    if response_body and isinstance(response_body, dict):
         extra["props"]["response"]["body"] = response_body
 
     return extra
+
 
 
 def set_middleware_response_headers(request, response):
@@ -213,27 +221,6 @@ def set_middleware_response_headers(request, response):
     response.headers["x-server-time"] = datetime.now().isoformat()
     response.headers["Access-Control-Expose-Headers"] = "x-server-time"
     return response
-
-
-def mask_sensitive_data(data):
-    if isinstance(data, dict):
-        return {k: mask_sensitive_data(v) if k not in ['password', 'access_token', 'refresh_token', 'auth_token', 'jwt', 'otp', 'code', 'token'] else '******' for k, v in data.items()}
-    elif isinstance(data, list):
-        return [mask_sensitive_data(item) for item in data]
-    elif isinstance(data, str) and 'auth_token' in data:
-        return '******'
-    return data
-
-
-def set_logging(response, extra, request, exception_data):
-    _extra = mask_sensitive_data(extra)
-    if isinstance(_extra, dict):
-        if 400 <= response.status_code < 500:
-            logger.warning("Served request", extra=_extra)
-        elif response.status_code >= 500 or exception_data is not None:
-            logger.error("Served request", extra=_extra)
-        elif request.method != "OPTIONS":  # Do not log OPTIONS request, to reduce excessive logging
-            logger.info("Served request", extra=_extra)
 
 
 def set_stack(e):
@@ -344,11 +331,24 @@ async def middle(request: Request, call_next):
     try:
         user_shortname = str(await JWTBearer().__call__(request))
     except Exception:
-        pass
+        if request.url.path == "/user/login":
+            try:
+                body = getattr(request.state, "request_body", {}) or {}
+                if isinstance(body, dict):
+                    shortname_value = body.get("shortname")
+                    if isinstance(shortname_value, str) and shortname_value.strip():
+                        user_shortname = shortname_value
+            except Exception:
+                pass
 
     extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
 
-    set_logging(response, extra, request, exception_data)
+
+    masked_extra = mask_sensitive_data(extra)
+    logger.info(masked_extra)
+
+
+
 
     #TODO: CHECK THIS
     # if settings.hide_stack_trace:
