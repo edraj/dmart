@@ -40,7 +40,7 @@ class CustomFormatter(logging.Formatter):
         masked_data = mask_sensitive_data(data)
         masked_data_str = json.dumps(masked_data, ensure_ascii=False)
 
-        return f"[{masked_data_str}"
+        return masked_data_str
 
 
 
