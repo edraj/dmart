@@ -1119,6 +1119,41 @@ class SQLAdapter(BaseDataAdapter):
                 except Exception as e:
                     print(e)
                     return 0, []
+            if query and query.type == QueryType.tags:
+                query.sort_by = "tags"
+                query.aggregation_data = api.RedisAggregate(
+                    group_by=["@tags"],
+                    reducers=[
+                        api.RedisReducer(
+                            reducer_name="count",
+                            alias="freq"
+                        )
+                    ]
+                )
+
+                statement = await set_sql_statement_from_query(table, statement, query, False)
+                statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
+
+                try:
+                    results = list((await session.execute(statement)).all())
+                    if len(results) == 0:
+                        return 0, []
+
+                    rows = []
+                    for result in results:
+                        if result and len(result) > 0:
+                            rows.append(result[0])
+                            
+                    return statement_total, [core.Record(
+                        resource_type=core.ResourceType.content,
+                        shortname="tags_frequency",
+                        subpath=query.subpath,
+                        attributes={"result": rows},
+                    )]
+                except Exception as e:
+                    print("[!!query_tags]", e)
+                    return 0, []
+                    
             is_fetching_spaces = False
             if (query.space_name
                     and query.type == QueryType.spaces
@@ -1988,7 +2023,6 @@ class SQLAdapter(BaseDataAdapter):
                 )
         else:
             for idx, item in enumerate(results):
-                print(item)
                 if is_aggregation:
                     results = set_results_from_aggregation(
                         query, item, results, idx

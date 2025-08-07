@@ -7,6 +7,7 @@ import sys
 import tempfile
 import traceback
 import zipfile
+import codecs
 from datetime import datetime
 from io import StringIO, BytesIO
 from pathlib import Path as FilePath
@@ -283,6 +284,8 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     keys = [key for key in keys if keys_existence[key]]
     v_path = StringIO()
+    v_path.write(codecs.BOM_UTF8.decode('utf-8'))
+    v_path.write(codecs.BOM_UTF8.decode('utf-8'))
 
     list_deprecated_keys = list(deprecated_keys)
     keys = list(filter(lambda item: item not in list_deprecated_keys, keys))
@@ -842,43 +845,43 @@ async def import_resources_from_csv(
             data_types_mapper,
         )
 
-        if shortname:
-            if "is_active" not in meta_object:
-                meta_object["is_active"] = True
-            attributes = meta_object
+        if "is_active" not in meta_object:
+            meta_object["is_active"] = True
 
-            attributes["payload"] = {
-                "content_type": ContentType.json,
-                "body": payload_object,
-            }
+        attributes = meta_object
 
-            if schema_shortname:
-                attributes["payload"]["schema_shortname"] = schema_shortname
+        attributes["payload"] = {
+            "content_type": ContentType.json,
+            "body": payload_object,
+        }
 
-            record = core.Record(
-                resource_type=resource_type,
-                shortname=shortname,
-                subpath=subpath,
-                attributes=attributes,
+        if schema_shortname:
+            attributes["payload"]["schema_shortname"] = schema_shortname
+
+        record = core.Record(
+            resource_type=resource_type,
+            shortname=shortname,
+            subpath=subpath,
+            attributes=attributes,
+        )
+        try:
+            await serve_request(
+                request=api.Request(
+                    space_name=space_name,
+                    request_type=RequestType.create,
+                    records=[record],
+                ),
+                owner_shortname=owner_shortname,
+                is_internal=True,
             )
-            try:
-                await serve_request(
-                    request=api.Request(
-                        space_name=space_name,
-                        request_type=RequestType.create,
-                        records=[record],
-                    ),
-                    owner_shortname=owner_shortname,
-                    is_internal=True,
-                )
-                success_count += 1
-            except api.Exception as e:
-                err = {shortname: e.__str__()}
-                if hasattr(e, "error"):
-                    err["error"] = e.error # type: ignore
-                failed_shortnames.append(err)
-            except Exception as e:
-                failed_shortnames.append({shortname: e.__str__()})
+            success_count += 1
+        except api.Exception as e:
+            err = {shortname: e.__str__()}
+            if hasattr(e, "error"):
+                err["error"] = e.error # type: ignore
+            failed_shortnames.append(err)
+        except Exception as e:
+            failed_shortnames.append({shortname: e.__str__()})
 
     return api.Response(
         status=api.Status.success,
