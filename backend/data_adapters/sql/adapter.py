@@ -144,6 +144,11 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
         if query.type == QueryType.aggregation and not is_for_count:
             statement = query_aggregation(table, query)
+            
+        if query.type == QueryType.tags and not is_for_count:
+            # For tags query, return a statement that selects distinct tags from the table
+            # This ensures that the tags query uses the same filtering mechanism as other queries
+            return select(func.jsonb_array_elements_text(table.tags).label('tag')).distinct()
 
     except Exception as e:
         print("[!query]", e)
@@ -1120,35 +1125,33 @@ class SQLAdapter(BaseDataAdapter):
                     print(e)
                     return 0, []
             if query and query.type == QueryType.tags:
-                query.sort_by = "tags"
-                query.aggregation_data = api.RedisAggregate(
-                    group_by=["@tags"],
-                    reducers=[
-                        api.RedisReducer(
-                            reducer_name="count",
-                            alias="freq"
-                        )
-                    ]
-                )
-
-                statement = await set_sql_statement_from_query(table, statement, query, False)
-                statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
-
                 try:
+                    # For tags query, we use set_sql_statement_from_query for both statement and statement_total
+                    # This ensures that the tags query uses the same filtering mechanism as other queries
+                    # and properly calculates the total count
+                    statement = await set_sql_statement_from_query(table, statement, query, False)
+                    statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
+                    
+                    # Execute the query
                     results = list((await session.execute(statement)).all())
                     if len(results) == 0:
                         return 0, []
 
-                    rows = []
+                    # Process the results
+                    tags = []
                     for result in results:
-                        if result and len(result) > 0:
-                            rows.append(result[0])
+                        if result and len(result) > 0 and result[0]:
+                            tags.append(result[0])
+                    
+                    # Get the total count
+                    _total = (await session.execute(statement_total)).one()
+                    total = int(_total[0])
                             
-                    return statement_total, [core.Record(
+                    return total, [core.Record(
                         resource_type=core.ResourceType.content,
-                        shortname="tags_frequency",
+                        shortname="tags",
                         subpath=query.subpath,
-                        attributes={"result": rows},
+                        attributes={"tags": tags},
                     )]
                 except Exception as e:
                     print("[!!query_tags]", e)
