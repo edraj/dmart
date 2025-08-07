@@ -24,8 +24,6 @@ class CustomFormatter(logging.Formatter):
 
         # Extract hostname and user_shortname
         hostname = socket.gethostname()
-        user = props.get("user_shortname", "guest")
-
         data = {
             "hostname": hostname,
             "correlation_id": correlation_id,
@@ -42,7 +40,7 @@ class CustomFormatter(logging.Formatter):
         masked_data = mask_sensitive_data(data)
         masked_data_str = json.dumps(masked_data, ensure_ascii=False)
 
-        return f"[{hostname}] [{user}] {masked_data_str}"
+        return f"[{masked_data_str}"
 
 
 

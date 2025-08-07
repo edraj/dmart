@@ -149,6 +149,13 @@ app.add_middleware(ChannelMiddleware)
 
 
 def set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body):
+    request_headers = dict(request.headers.items())
+    request_headers["cookie"] = request.headers.get("cookie", "")
+    request_headers["authorization"] = request.headers.get("authorization", "")
+
+    response_headers = dict(response.headers.items())
+    response_headers["set-cookie"] = response.headers.get("set-cookie", "")
+
     extra = {
         "props": {
             "timestamp": start_time,
@@ -161,10 +168,10 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
                 "verb": request.method,
                 "path": quote(str(request.url.path)),
                 "query_params": dict(request.query_params.items()),
-                "headers": dict(request.headers.items()),
+                "headers": request_headers,
             },
             "response": {
-                "headers": dict(response.headers.items()),
+                "headers": response_headers,
                 "http_status": response.status_code,
             },
         }
@@ -172,14 +179,15 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
 
     if exception_data is not None:
         extra["props"]["exception"] = exception_data
-    if (hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict)
-            and isinstance(extra["props"]["request"], dict)):
+
+    if hasattr(request.state, "request_body"):
         extra["props"]["request"]["body"] = request.state.request_body
-    if (response_body and isinstance(extra, dict) and isinstance(extra["props"], dict)
-            and isinstance(extra["props"]["response"], dict)):
+
+    if response_body and isinstance(response_body, dict):
         extra["props"]["response"]["body"] = response_body
 
     return extra
+
 
 
 def set_middleware_response_headers(request, response):

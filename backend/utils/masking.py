@@ -3,7 +3,7 @@ from typing import Any
 
 SENSITIVE_KEYS = {
     "password", "pass", "access_token", "refresh_token",
-    "auth_token", "otp", "authorization", "token", "jwt"
+    "auth_token", "otp", "authorization", "token", "jwt" , "cookie", "set-cookie"
 }
 
 JWT_PATTERN = re.compile(
