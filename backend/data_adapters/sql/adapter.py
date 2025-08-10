@@ -762,16 +762,16 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
     if query.type == QueryType.tags and not is_for_count and hasattr(table, 'tags'):
         if query.retrieve_json_payload:
             statement = select(
-                func.jsonb_array_elements_text(table.tags).label('tag'),
+                func.jsonb_array_elements_text(col(table.tags)).label('tag'),
                 func.count('*').label('count')
             ).where(table.uuid.in_(
-                select(table.uuid).where(statement.whereclause)
+                select(col(table.uuid)).where(statement.whereclause)  # type: ignore
             )).group_by('tag')
         else:
             statement = select(
-                func.jsonb_array_elements_text(table.tags).label('tag')
+                func.jsonb_array_elements_text(col(table.tags)).label('tag')
             ).where(table.uuid.in_(
-                select(table.uuid).where(statement.whereclause)
+                select(col(table.uuid)).where(statement.whereclause)  # type: ignore
             )).distinct()
 
     return statement
@@ -1172,18 +1172,13 @@ class SQLAdapter(BaseDataAdapter):
                     return 0, []
             if query and query.type == QueryType.tags:
                 try:
-                    # For tags query, we use set_sql_statement_from_query for both statement and statement_total
-                    # This ensures that the tags query uses the same filtering mechanism as other queries
-                    # and properly calculates the total count
                     statement = await set_sql_statement_from_query(table, statement, query, False)
                     statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
-                    
-                    # Execute the query
+
                     results = list((await session.execute(statement)).all())
                     if len(results) == 0:
                         return 0, []
 
-                    # Process the results
                     tags = []
                     tag_counts = {}
                     if query.retrieve_json_payload:
@@ -1197,15 +1192,13 @@ class SQLAdapter(BaseDataAdapter):
                         for result in results:
                             if result and len(result) > 0 and result[0]:
                                 tags.append(result[0])
-                    
-                    # Get the total count
+
                     _total = (await session.execute(statement_total)).one()
                     total = int(_total[0])
-                    
-                    # Prepare the attributes based on whether we're including counts
+
                     attributes = {"tags": tags}
                     if query.retrieve_json_payload and tag_counts:
-                        attributes["tag_counts"] = tag_counts
+                        attributes["tag_counts"] = tag_counts # type: ignore
                             
                     return total, [core.Record(
                         resource_type=core.ResourceType.content,
