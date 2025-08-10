@@ -441,6 +441,20 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         else:
                             join_operator = " AND " if operation == 'AND' else " OR "
                         statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                elif field == 'tags':
+                    conditions = []
+                    for value in values:
+                        if negative:
+                            conditions.append(f"NOT (tags @> '[\"{value}\"]'::jsonb)")
+                        else:
+                            conditions.append(f"tags @> '[\"{value}\"]'::jsonb")
+
+                    if conditions:
+                        if negative:
+                            join_operator = " OR " if operation == 'AND' else " AND "
+                        else:
+                            join_operator = " AND " if operation == 'AND' else " OR "
+                        statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                 elif field == 'owner_shortname':
                     if negative:
                         if operation == 'AND' and len(values) > 1:
