@@ -25,6 +25,8 @@ TEST_DATA = [
                 "body": {
                     "is_subscribed": False,
                     "account_type": "business",
+                    "user_gender": "male",
+                    "account_number": 100,
                     "allowed_categories": ["analytics", "reviews"]            
                       }
             }
@@ -46,6 +48,8 @@ TEST_DATA = [
                 "body": {
                     "is_subscribed": True,
                     "account_type": "personal",
+                    "user_gender": "female",
+                    "account_number": 200,
                     "allowed_categories": ["posts", "edits"]                          
                     }
             }
@@ -89,7 +93,7 @@ async def setup_teardown(client: AsyncClient):
         )
 
 @pytest.mark.anyio
-async def test_basic_string_queries(client: AsyncClient) -> None:
+async def test_string_queries(client: AsyncClient) -> None:
 
     response = await client.post(
         "/managed/query",
@@ -147,8 +151,63 @@ async def test_basic_string_queries(client: AsyncClient) -> None:
     json_response = response.json()
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 2
-@pytest.mark.anyio
-async def test_combined_string_queries(client: AsyncClient) -> None:
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@is_active:False @roles:moderator"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@is_active:True -@roles:world"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 2
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@language:english @msisdn:9876543210"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@roles:super_admin -@language:arabic"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 2
+
     response = await client.post(
         "/managed/query",
         json={
@@ -163,10 +222,24 @@ async def test_combined_string_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 2
 
-
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@language:arabic|french"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 2
 
 @pytest.mark.anyio
-async def test_array_field_queries(client: AsyncClient) -> None:
+async def test_array_queries(client: AsyncClient) -> None:
+
+    
     response = await client.post(
         "/managed/query",
         json={
@@ -174,6 +247,35 @@ async def test_array_field_queries(client: AsyncClient) -> None:
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
             "search": "@roles:manager"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@roles:manager @roles:editor"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@roles:manager|moderator"
         }
     )
     assert_code_and_status_success(response)
@@ -196,7 +298,7 @@ async def test_array_field_queries(client: AsyncClient) -> None:
     assert json_response["attributes"]["returned"] == 2
 
 @pytest.mark.anyio
-async def test_nested_payload_queries(client: AsyncClient) -> None:
+async def test_array_payload_queries(client: AsyncClient) -> None:
 
     response = await client.post(
         "/managed/query",
@@ -218,6 +320,78 @@ async def test_nested_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.allowed_categories:posts"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@payload.body.allowed_categories:posts @payload.body.allowed_categories:edits"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.allowed_categories:posts -@payload.body.allowed_categories:edits"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@payload.body.allowed_categories:posts|reviews"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 2
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.allowed_categories:posts|reviews"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 0
+
+@pytest.mark.anyio
+async def test_string_payload_queries(client: AsyncClient) -> None:
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
             "search": "@payload.body.account_type:business"
         }
     )
@@ -227,6 +401,107 @@ async def test_nested_payload_queries(client: AsyncClient) -> None:
     assert json_response["attributes"]["returned"] == 1
 
 
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.account_type:business"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@payload.body.account_type:personal @payload.body.user_gender:female"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.account_type:business -@payload.body.user_gender:male"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@payload.body.account_type:business|personal"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 2
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.account_type:business|personal"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 0
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@payload.body.account_number:100"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.account_number:100"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+    
 @pytest.mark.anyio
 async def test_date_field_queries(client: AsyncClient) -> None:
     current_time = datetime.now()
@@ -263,23 +538,6 @@ async def test_date_field_queries(client: AsyncClient) -> None:
     
     
 @pytest.mark.anyio
-async def test_combined_search_queries(client: AsyncClient) -> None:
-    response = await client.post(
-        "/managed/query",
-        json={
-            "type": QueryType.search,
-            "space_name": MANAGEMENT_SPACE,
-            "subpath": USERS_SUBPATH,
-            "search": "@payload.body.account_type:business @payload.body.allowed_categories:analytics"
-        }
-    )
-    assert_code_and_status_success(response)
-    json_response = response.json()
-    assert json_response["status"] == "success"
-    assert json_response["attributes"]["returned"] == 1
-
-
-@pytest.mark.anyio
 async def test_boolean_field_queries(client: AsyncClient) -> None:
     response = await client.post(
         "/managed/query",
@@ -295,13 +553,28 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 2
 
+
     response = await client.post(
         "/managed/query",
         json={
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.is_subscribed:true @roles:editor"
+            "search": "-@is_active:false @roles:editor"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 0
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@payload.body.is_subscribed:false"
         }
     )
     assert_code_and_status_success(response)
@@ -315,7 +588,7 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.is_subscribed:true @roles:editor"
+            "search": "-@payload.body.is_subscribed:true"
         }
     )
     assert_code_and_status_success(response)

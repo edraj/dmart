@@ -217,7 +217,7 @@ def set_middleware_response_headers(request, response):
 
 def mask_sensitive_data(data):
     if isinstance(data, dict):
-        return {k: mask_sensitive_data(v) if k not in ['password', 'access_token', 'refresh_token', 'auth_token'] else '******' for k, v in data.items()}
+        return {k: mask_sensitive_data(v) if k not in ['password', 'access_token', 'refresh_token', 'auth_token', 'jwt', 'otp', 'code', 'token'] else '******' for k, v in data.items()}
     elif isinstance(data, list):
         return [mask_sensitive_data(item) for item in data]
     elif isinstance(data, str) and 'auth_token' in data:
