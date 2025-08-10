@@ -144,18 +144,15 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
         if query.type == QueryType.aggregation and not is_for_count:
             statement = query_aggregation(table, query)
-            
+
         if query.type == QueryType.tags and not is_for_count:
-            # For tags query, return a statement that selects distinct tags from the table
-            # This ensures that the tags query uses the same filtering mechanism as other queries
-            # If retrieve_json_payload is true, also include the count of occurrences for each tag
             if query.retrieve_json_payload:
-                return select(
+                statement = select(
                     func.jsonb_array_elements_text(table.tags).label('tag'),
                     func.count('*').label('count')
                 ).group_by('tag')
             else:
-                return select(func.jsonb_array_elements_text(table.tags).label('tag')).distinct()
+                statement = select(func.jsonb_array_elements_text(table.tags).label('tag')).distinct()
 
     except Exception as e:
         print("[!query]", e)
@@ -762,7 +759,23 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
         statement = statement.limit(query.limit)
 
+    if query.type == QueryType.tags and not is_for_count and hasattr(table, 'tags'):
+        if query.retrieve_json_payload:
+            statement = select(
+                func.jsonb_array_elements_text(table.tags).label('tag'),
+                func.count('*').label('count')
+            ).where(table.id.in_(
+                select(table.id).where(statement.whereclause)
+            )).group_by('tag')
+        else:
+            statement = select(
+                func.jsonb_array_elements_text(table.tags).label('tag')
+            ).where(table.id.in_(
+                select(table.id).where(statement.whereclause)
+            )).distinct()
+
     return statement
+
 
 class SQLAdapter(BaseDataAdapter):
     session: Session
