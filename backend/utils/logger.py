@@ -1,48 +1,64 @@
+from __future__ import annotations
+
 import json
 import logging
 import logging.config
 import os
+from typing import Any, Dict
 
 from utils.settings import settings
-import socket
 from utils.masking import mask_sensitive_data
 
 class CustomFormatter(logging.Formatter):
-    def __init__(self):
+    """
+    Emits one JSON line with this exact key order:
+    correlation_id, time, level, message, props, thread, process
+    """
+    def __init__(self) -> None:
         log_dir = os.path.dirname(settings.log_file)
-        if not os.path.exists(log_dir):
-            os.mkdir(log_dir)
+        if log_dir and not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
         super().__init__()
 
-def format(self, record):
-    correlation_id = getattr(record, "correlation_id", "")
-    if correlation_id == "ROOT" and getattr(record, "props", None):
-        correlation_id = getattr(record, "props", {})\
-            .get("response", {}).get("headers", {}).get("x-correlation-id", "")
+    def format(self, record: logging.LogRecord) -> str:  # type: ignore
+        correlation_id = getattr(record, "correlation_id", "")
+        props = getattr(record, "props", "") or ""
 
-    props = getattr(record, "props", {})
-    hostname = socket.gethostname()
+        if correlation_id == "ROOT" and isinstance(props, dict):
+            try:
+                resp_headers = props.get("response", {}).get("headers", {}) or {}
+                correlation_id = (
+                    resp_headers.get("correlation_id")
+                    or resp_headers.get("x-correlation-id")
+                    or correlation_id
+                )
+            except Exception:
+                pass
 
-    data = {
-        "hostname": hostname,
-        "correlation_id": correlation_id,
-        "time": self.formatTime(record),
-        "level": record.levelname,
-        "message": record.msg if isinstance(record.msg, dict) else record.getMessage(),
-        "props": props,
-        "thread": record.threadName,
-        "process": record.process,
-        # "pathname": record.pathname,
-        # "lineno": record.lineno,
-        # "funcName": record.funcName,
-    }
+        if isinstance(record.msg, dict):
+            safe_message: Any = mask_sensitive_data(record.msg)
+        else:
+            safe_message = record.getMessage()
 
-    masked_data = mask_sensitive_data(data)
-    return json.dumps(masked_data, indent=2, ensure_ascii=False)
+        if isinstance(props, dict):
+            safe_props: Any = mask_sensitive_data(props)
+        else:
+            safe_props = props
+
+        out: Dict[str, Any] = {
+            "correlation_id": correlation_id,
+            "time": self.formatTime(record),
+            "level": record.levelname,
+            "message": safe_message,
+            "props": safe_props,
+            "thread": record.threadName,
+            "process": record.process,
+        }
+
+        return json.dumps(out, ensure_ascii=False, separators=(",", ":"), sort_keys=False)
 
 
-
-logging_schema : dict = {
+logging_schema: Dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
@@ -52,7 +68,9 @@ logging_schema : dict = {
             "default_value": "ROOT",
         },
     },
-    "formatters": {"json": {"()": CustomFormatter}},
+    "formatters": {
+        "json": {"()": "utils.logger.CustomFormatter"},
+    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
@@ -71,12 +89,31 @@ logging_schema : dict = {
             "formatter": "json",
         },
     },
+    "root": {
+        "handlers": settings.log_handlers,
+        "level": "INFO",
+    },
     "loggers": {
         "fastapi": {
             "handlers": settings.log_handlers,
             "level": logging.INFO,
-            "propagate": True,
-        }
+            "propagate": False,
+        },
+        "hypercorn": {
+            "handlers": settings.log_handlers,
+            "level": logging.INFO,
+            "propagate": False,
+        },
+        "hypercorn.error": {
+            "handlers": settings.log_handlers,
+            "level": logging.INFO,
+            "propagate": False,
+        },
+        "hypercorn.access": {
+            "handlers": settings.log_handlers,
+            "level": logging.INFO,
+            "propagate": False,
+        },
     },
 }
 
