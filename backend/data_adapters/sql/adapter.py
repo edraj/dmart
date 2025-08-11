@@ -427,58 +427,58 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         else:
                             join_operator = " AND " if operation == 'AND' else " OR "
                         statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
-                elif field == 'roles':
-                    conditions = []
-                    for value in values:
-                        if negative:
-                            conditions.append(f"NOT (roles @> '[\"{value}\"]'::jsonb)")
-                        else:
-                            conditions.append(f"roles @> '[\"{value}\"]'::jsonb")
-
-                    if conditions:
-                        if negative:
-                            join_operator = " OR " if operation == 'AND' else " AND "
-                        else:
-                            join_operator = " AND " if operation == 'AND' else " OR "
-                        statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
-                elif field == 'tags':
-                    conditions = []
-                    for value in values:
-                        if negative:
-                            conditions.append(f"NOT (tags @> '[\"{value}\"]'::jsonb)")
-                        else:
-                            conditions.append(f"tags @> '[\"{value}\"]'::jsonb")
-
-                    if conditions:
-                        if negative:
-                            join_operator = " OR " if operation == 'AND' else " AND "
-                        else:
-                            join_operator = " AND " if operation == 'AND' else " OR "
-                        statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
-                elif field == 'owner_shortname':
-                    if negative:
-                        if operation == 'AND' and len(values) > 1:
-                            conditions = []
-                            for value in values:
-                                conditions.append(f"owner_shortname != '{value}'")
-                            statement = statement.where(text(" OR ".join(conditions)))
-                        else:
-                            if len(values) == 1:
-                                statement = statement.where(table.owner_shortname != values[0])
-                            else:
-                                statement = statement.where(~col(table.owner_shortname).in_(values))
-                    else:
-                        if operation == 'AND' and len(values) > 1:
-                            for value in values:
-                                statement = statement.where(table.owner_shortname == value)
-                        else:
-                            if len(values) == 1:
-                                statement = statement.where(table.owner_shortname == values[0])
-                            else:
-                                statement = statement.where(col(table.owner_shortname).in_(values))
                 else:
                     try:
-                        if hasattr(table, field):
+                        if field == 'roles':
+                            conditions = []
+                            for value in values:
+                                if negative:
+                                    conditions.append(f"NOT (roles @> '[\"{value}\"]'::jsonb)")
+                                else:
+                                    conditions.append(f"roles @> '[\"{value}\"]'::jsonb")
+
+                            if conditions:
+                                if negative:
+                                    join_operator = " OR " if operation == 'AND' else " AND "
+                                else:
+                                    join_operator = " AND " if operation == 'AND' else " OR "
+                                statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                        elif field == 'tags':
+                            conditions = []
+                            for value in values:
+                                if negative:
+                                    conditions.append(f"NOT (tags @> '[\"{value}\"]'::jsonb)")
+                                else:
+                                    conditions.append(f"tags @> '[\"{value}\"]'::jsonb")
+
+                            if conditions:
+                                if negative:
+                                    join_operator = " OR " if operation == 'AND' else " AND "
+                                else:
+                                    join_operator = " AND " if operation == 'AND' else " OR "
+                                statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                        elif field == 'owner_shortname':
+                            if negative:
+                                if operation == 'AND' and len(values) > 1:
+                                    conditions = []
+                                    for value in values:
+                                        conditions.append(f"owner_shortname != '{value}'")
+                                    statement = statement.where(text(" OR ".join(conditions)))
+                                else:
+                                    if len(values) == 1:
+                                        statement = statement.where(table.owner_shortname != values[0])
+                                    else:
+                                        statement = statement.where(~col(table.owner_shortname).in_(values))
+                            else:
+                                if operation == 'AND' and len(values) > 1:
+                                    for value in values:
+                                        statement = statement.where(table.owner_shortname == value)
+                                else:
+                                    if len(values) == 1:
+                                        statement = statement.where(table.owner_shortname == values[0])
+                                    else:
+                                        statement = statement.where(col(table.owner_shortname).in_(values))
+                        elif hasattr(table, field):
                             if value_type == 'datetime':
                                 conditions = []
 
@@ -579,7 +579,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     else:
                                         join_operator = " AND " if operation == 'AND' else " OR "
                                     statement = statement.where(text(join_operator.join(conditions)))
-
                             else:
                                 field_obj = getattr(table, field)
                                 is_timestamp = hasattr(field_obj, 'type') and str(field_obj.type).lower().startswith('timestamp')
