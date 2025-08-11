@@ -14,7 +14,6 @@ from typing import Any
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
-from utils.masking import mask_sensitive_data
 from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
@@ -205,8 +204,6 @@ def set_middleware_response_headers(request, response):
         "Access-Control-Allow-Origin"
     ] = f"{origin.scheme}://{origin.netloc}"
 
-    # if "localhost" in response.headers["Access-Control-Allow-Origin"]:
-    #     response.headers["Access-Control-Allow-Origin"] = "*"
 
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Headers"] = "content-type, charset, authorization, accept-language, content-length"
@@ -237,7 +234,11 @@ def set_stack(e):
 @app.middleware("http")
 async def middle(request: Request, call_next):
     """Wrapper function to manage errors and logging"""
-    if request.url._url.endswith("/docs") or request.url._url.endswith("openapi.json"):
+    if (
+        request.url._url.endswith("/docs")
+        or request.url._url.endswith("openapi.json")
+        or request.url._url.endswith("/favicon.ico")
+    ):
         return await call_next(request)
 
     start_time = time.time()
@@ -343,23 +344,7 @@ async def middle(request: Request, call_next):
 
     extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
 
-
-    masked_extra = mask_sensitive_data(extra)
-    logger.info(masked_extra)
-
-
-
-
-    #TODO: CHECK THIS
-    # if settings.hide_stack_trace:
-    #     if (
-    #         response_body and isinstance(response_body, dict)
-    #         and "error" in response_body
-    #         and "stack" in response_body["error"]
-    #     ):
-    #         response_body["error"].pop("stack", None)
-    #
-    #     response.body_iterator = iterate_in_threadpool(iter([json.dumps(response_body).encode("utf-8")]))
+    logger.info(extra)
 
     return response
 

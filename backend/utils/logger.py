@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
-import logging.config
 import os
 from typing import Any, Dict
 
 from utils.settings import settings
-from utils.masking import mask_sensitive_data
+from utils.masking import mask_sensitive_text
 
 class CustomFormatter(logging.Formatter):
     """
@@ -35,27 +34,21 @@ class CustomFormatter(logging.Formatter):
             except Exception:
                 pass
 
-        if isinstance(record.msg, dict):
-            safe_message: Any = mask_sensitive_data(record.msg)
-        else:
-            safe_message = record.getMessage()
-
-        if isinstance(props, dict):
-            safe_props: Any = mask_sensitive_data(props)
-        else:
-            safe_props = props
+        message = record.msg if isinstance(record.msg, dict) else record.getMessage()
+        safe_props = props
 
         out: Dict[str, Any] = {
             "correlation_id": correlation_id,
             "time": self.formatTime(record),
             "level": record.levelname,
-            "message": safe_message,
+            "message": message,
             "props": safe_props,
             "thread": record.threadName,
             "process": record.process,
         }
 
-        return json.dumps(out, ensure_ascii=False, separators=(",", ":"), sort_keys=False)
+        json_line = json.dumps(out, ensure_ascii=False, separators=(",", ":"), sort_keys=False)
+        return mask_sensitive_text(json_line)
 
 
 logging_schema: Dict[str, Any] = {

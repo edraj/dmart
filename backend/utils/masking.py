@@ -1,43 +1,57 @@
 import re
-from typing import Any
 
-SENSITIVE_KEYS = {
-    "password", "pass", "access_token", "refresh_token",
-    "auth_token", "otp", "authorization", "token", "jwt" , "cookie", "set-cookie"
-}
+def mask_sensitive_text(log_text: str) -> str:
 
-JWT_PATTERN = re.compile(
-    r"^[A-Za-z0-9-_]{10,}\.[A-Za-z0-9-_]{10,}\.[A-Za-z0-9-_]{10,}$"
-)
+    
+    if not log_text:
+        return log_text
 
-LONG_SECRET_PATTERN = re.compile(r"^[0-9]{6,}$")
+    sensitive_keys = (
+        "password", "pass", "access_token", "refresh_token",
+        "auth_token", "otp", "authorization", "token", "jwt",
+        "cookie", "set-cookie"
+    )
+    keys_alt = "|".join(map(re.escape, sensitive_keys))
 
-def mask_sensitive_data(data: Any, parent_key: str = "") -> Any:
+    auth_pattern = re.compile(r'(?is)\b(authorization)\b\s*[:=]\s*(?:("|\')\s*)?(Bearer|Basic)\b\s*([^\s,"\';]+)(?(2)\2)?')
+    cookie_line_pattern = re.compile(r'(?im)^\s*(?:set-cookie|cookie)\s*[:=]\s*[^\r\n]+')
+    kv_pattern = re.compile(
+        rf'(?is)(?P<prefix>["\']?(?:{keys_alt})["\']?\s*[:=]\s*)'
+        r'(?P<val>"[^"]*"|\'[^\']*\'|[^\s,;]+)'
+    )
+    jwt_pattern = re.compile(r'\b[A-Za-z0-9-_]{10,}\.[A-Za-z0-9-_]{10,}\.[A-Za-z0-9-_]{10,}\b')
 
-    if isinstance(data, dict):
-        masked = {}
-        for k, v in data.items():
-            key_lower = k.lower()
+    text = log_text
 
-            if key_lower in SENSITIVE_KEYS:
-                masked[k] = "******"
-            else:
-                masked[k] = mask_sensitive_data(v, parent_key=k)
-        return masked
+    # 1) Authorization: Bearer
+    def _auth_sub(m: re.Match) -> str:
+        key = m.group(1)
+        quote = m.group(2) or ""
+        scheme = m.group(3)
+        return f"{key}: {quote}{scheme} ******{quote}"
+    text = auth_pattern.sub(_auth_sub, text)
 
-    elif isinstance(data, list):
-        return [mask_sensitive_data(item, parent_key=parent_key) for item in data]
+    # 2) cookie/set-cookie
+    def _cookie_line_sub(m: re.Match) -> str:
+        line = m.group(0)
+        if ':' in line:
+            k, _ = line.split(':', 1)
+            return f"{k}: ******"
+        if '=' in line:
+            k, _ = line.split('=', 1)
+            return f"{k}=******"
+        return "******"
+    text = cookie_line_pattern.sub(_cookie_line_sub, text)
 
-    elif isinstance(data, str):
-        if JWT_PATTERN.match(data):
-            return "******"
+    # 3) key:value 
+    def _kv_sub(m: re.Match) -> str:
+        prefix, val = m.group('prefix'), m.group('val')
+        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+            return f"{prefix}{val[0]}******{val[-1]}"
+        return f"{prefix}******"
+    text = kv_pattern.sub(_kv_sub, text)
 
-        if LONG_SECRET_PATTERN.match(data) and parent_key.lower() in SENSITIVE_KEYS:
-            return "******"
+    # 4) JWT
+    text = jwt_pattern.sub("******", text)
 
-        if parent_key.lower() in SENSITIVE_KEYS:
-            return "******"
-
-        return data
-
-    return data
+    return text
