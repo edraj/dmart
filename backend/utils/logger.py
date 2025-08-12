@@ -21,9 +21,8 @@ class CustomFormatter(logging.Formatter):
 
         props = getattr(record, "props", {})
 
-        # Extract hostname and user_shortname
+        # Extract hostname
         hostname = socket.gethostname()
-        user = props.get("user_shortname", "guest")
 
         data = {
             "hostname": hostname,
@@ -38,8 +37,8 @@ class CustomFormatter(logging.Formatter):
             # "lineno": record.lineno,
             # "funcName": record.funcName,
         }
-        return f"[{hostname}] [{user}] {json.dumps(data)}"
-
+        masked_data = json.dumps(data, ensure_ascii=False, separators=(",", ":"), sort_keys=False)
+        return (masked_data)
 
 logging_schema : dict = {
     "version": 1,
@@ -70,12 +69,31 @@ logging_schema : dict = {
             "formatter": "json",
         },
     },
+    "root": {
+        "handlers": settings.log_handlers,
+        "level": "INFO",
+    },
     "loggers": {
         "fastapi": {
             "handlers": settings.log_handlers,
             "level": logging.INFO,
-            "propagate": True,
-        }
+            "propagate": False,
+        },
+        "hypercorn": {
+            "handlers": settings.log_handlers,
+            "level": logging.INFO,
+            "propagate": False,
+        },
+        "hypercorn.error": {
+            "handlers": settings.log_handlers,
+            "level": logging.INFO,
+            "propagate": False,
+        },
+        "hypercorn.access": {
+            "handlers": settings.log_handlers,
+            "level": logging.INFO,
+            "propagate": False,
+        },
     },
 }
 
