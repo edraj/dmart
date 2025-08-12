@@ -148,13 +148,16 @@ app.add_middleware(ChannelMiddleware)
 
 
 def set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body):
-    request_headers = dict(request.headers.items())
-    request_headers["cookie"] = request.headers.get("cookie", "")
-    request_headers["authorization"] = request.headers.get("authorization", "")
+    sensitive = {"authorization", "cookie", "set-cookie", "x-api-key"}
+    request_headers = {
+        k: v for k,v in request.headers.items()
+        if k.lower() not in sensitive
+    }
 
-    response_headers = dict(response.headers.items())
-    response_headers["set-cookie"] = response.headers.get("set-cookie", "")
-
+    response_headers = {
+        k: v for k, v in response.headers.items()
+        if k.lower() not in sensitive 
+    }
     extra = {
         "props": {
             "timestamp": start_time,
@@ -218,6 +221,27 @@ def set_middleware_response_headers(request, response):
     response.headers["x-server-time"] = datetime.now().isoformat()
     response.headers["Access-Control-Expose-Headers"] = "x-server-time"
     return response
+
+
+def mask_sensitive_data(data):
+    if isinstance(data, dict):
+        return {k: mask_sensitive_data(v) if k not in ['password', 'access_token', 'refresh_token', 'auth_token', 'jwt', 'otp', 'code', 'token'] else '******' for k, v in data.items()}
+    elif isinstance(data, list):
+        return [mask_sensitive_data(item) for item in data]
+    elif isinstance(data, str) and 'auth_token' in data:
+        return '******'
+    return data
+
+
+def set_logging(response, extra, request, exception_data):
+    _extra = mask_sensitive_data(extra)
+    if isinstance(_extra, dict):
+        if 400 <= response.status_code < 500:
+            logger.warning("Served request", extra=_extra)
+        elif response.status_code >= 500 or exception_data is not None:
+            logger.error("Served request", extra=_extra)
+        elif request.method != "OPTIONS":  # Do not log OPTIONS request, to reduce excessive logging
+            logger.info("Served request", extra=_extra)
 
 
 def set_stack(e):
@@ -344,7 +368,18 @@ async def middle(request: Request, call_next):
 
     extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
 
-    logger.info(extra)
+    set_logging(response, extra, request, exception_data)
+
+    #TODO: CHECK THIS
+    # if settings.hide_stack_trace:
+    #     if (
+    #         response_body and isinstance(response_body, dict)
+    #         and "error" in response_body
+    #         and "stack" in response_body["error"]
+    #     ):
+    #         response_body["error"].pop("stack", None)
+    #
+    #     response.body_iterator = iterate_in_threadpool(iter([json.dumps(response_body).encode("utf-8")]))
 
     return response
 

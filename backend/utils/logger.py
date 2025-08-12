@@ -1,12 +1,10 @@
-from __future__ import annotations
-
 import json
 import logging
+import logging.config
 import os
-from typing import Any, Dict
 
 from utils.settings import settings
-from utils.masking import mask_sensitive_text
+import socket
 
 class CustomFormatter(logging.Formatter):
     """
@@ -15,43 +13,35 @@ class CustomFormatter(logging.Formatter):
     """
     def __init__(self) -> None:
         log_dir = os.path.dirname(settings.log_file)
-        if log_dir and not os.path.exists(log_dir):
-            os.makedirs(log_dir, exist_ok=True)
+        if not os.path.exists(log_dir):
+            os.mkdir(log_dir)
         super().__init__()
 
-    def format(self, record: logging.LogRecord) -> str:  # type: ignore
+    def format(self, record):
         correlation_id = getattr(record, "correlation_id", "")
-        props = getattr(record, "props", "") or ""
+        if correlation_id == "ROOT" and getattr(record, "props", None):
+            correlation_id = getattr(record, "props", {})\
+                .get("response", {}).get("headers", {}).get("x-correlation-id", "")
 
-        if correlation_id == "ROOT" and isinstance(props, dict):
-            try:
-                resp_headers = props.get("response", {}).get("headers", {}) or {}
-                correlation_id = (
-                    resp_headers.get("correlation_id")
-                    or resp_headers.get("x-correlation-id")
-                    or correlation_id
-                )
-            except Exception:
-                pass
+        props = getattr(record, "props", {})
 
-        message = record.msg if isinstance(record.msg, dict) else record.getMessage()
-        safe_props = props
+        # Extract hostname
+        hostname = socket.gethostname()
 
-        out: Dict[str, Any] = {
+        data = {
+            "hostname": hostname,
             "correlation_id": correlation_id,
             "time": self.formatTime(record),
             "level": record.levelname,
-            "message": message,
-            "props": safe_props,
+            "message": record.getMessage(),
+            "props": props,
             "thread": record.threadName,
             "process": record.process,
         }
-
-        json_line = json.dumps(out, ensure_ascii=False, separators=(",", ":"), sort_keys=False)
-        return mask_sensitive_text(json_line)
+        return f"[{json.dumps(data)}"
 
 
-logging_schema: Dict[str, Any] = {
+logging_schema : dict = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
