@@ -470,7 +470,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         if len(values) == 1:
                                             statement = statement.where(table.owner_shortname == values[0])
                                         else:
-                                            statement = statement.where(col(table.owner_shortname).in_(values))                                                            # Handle foreign key field                            
+                                            statement = statement.where(col(table.owner_shortname).in_(values))                         
                             elif value_type == 'datetime':
                                 conditions = []
 
