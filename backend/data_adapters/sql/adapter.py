@@ -450,27 +450,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     else:
                                         join_operator = " AND " if operation == 'AND' else " OR "
                                     statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
-                            elif field == 'owner_shortname':
-                                if negative:
-                                    if operation == 'AND' and len(values) > 1:
-                                        conditions = []
-                                        for value in values:
-                                            conditions.append(f"owner_shortname != '{value}'")
-                                        statement = statement.where(text(" OR ".join(conditions)))
-                                    else:
-                                        if len(values) == 1:
-                                            statement = statement.where(table.owner_shortname != values[0])
-                                        else:
-                                            statement = statement.where(~col(table.owner_shortname).in_(values))
-                                else:
-                                    if operation == 'AND' and len(values) > 1:
-                                        for value in values:
-                                            statement = statement.where(table.owner_shortname == value)
-                                    else:
-                                        if len(values) == 1:
-                                            statement = statement.where(table.owner_shortname == values[0])
-                                        else:
-                                            statement = statement.where(col(table.owner_shortname).in_(values))                         
                             elif value_type == 'datetime':
                                 conditions = []
 
