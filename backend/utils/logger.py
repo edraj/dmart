@@ -7,7 +7,11 @@ from utils.settings import settings
 import socket
 
 class CustomFormatter(logging.Formatter):
-    def __init__(self):
+    """
+    Emits one JSON line with this exact key order:
+    correlation_id, time, level, message, props, thread, process
+    """
+    def __init__(self) -> None:
         log_dir = os.path.dirname(settings.log_file)
         if not os.path.exists(log_dir):
             os.mkdir(log_dir)
@@ -21,9 +25,8 @@ class CustomFormatter(logging.Formatter):
 
         props = getattr(record, "props", {})
 
-        # Extract hostname and user_shortname
+        # Extract hostname
         hostname = socket.gethostname()
-        user = props.get("user_shortname", "guest")
 
         data = {
             "hostname": hostname,
@@ -34,11 +37,8 @@ class CustomFormatter(logging.Formatter):
             "props": props,
             "thread": record.threadName,
             "process": record.process,
-            # "pathname": record.pathname,
-            # "lineno": record.lineno,
-            # "funcName": record.funcName,
         }
-        return f"[{hostname}] [{user}] {json.dumps(data)}"
+        return f"[{json.dumps(data)}"
 
 
 logging_schema : dict = {
@@ -51,7 +51,9 @@ logging_schema : dict = {
             "default_value": "ROOT",
         },
     },
-    "formatters": {"json": {"()": CustomFormatter}},
+    "formatters": {
+        "json": {"()": "utils.logger.CustomFormatter"},
+    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
@@ -70,12 +72,31 @@ logging_schema : dict = {
             "formatter": "json",
         },
     },
+    "root": {
+        "handlers": settings.log_handlers,
+        "level": "INFO",
+    },
     "loggers": {
         "fastapi": {
             "handlers": settings.log_handlers,
             "level": logging.INFO,
-            "propagate": True,
-        }
+            "propagate": False,
+        },
+        "hypercorn": {
+            "handlers": settings.log_handlers,
+            "level": logging.INFO,
+            "propagate": False,
+        },
+        "hypercorn.error": {
+            "handlers": settings.log_handlers,
+            "level": logging.INFO,
+            "propagate": False,
+        },
+        "hypercorn.access": {
+            "handlers": settings.log_handlers,
+            "level": logging.INFO,
+            "propagate": False,
+        },
     },
 }
 

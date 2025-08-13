@@ -40,7 +40,6 @@ from api.user.router import router as user
 from api.info.router import router as info, git_info
 from utils.internal_error_code import InternalErrorCode
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up")
@@ -149,6 +148,16 @@ app.add_middleware(ChannelMiddleware)
 
 
 def set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body):
+    sensitive = {"authorization", "cookie", "set-cookie", "x-api-key"}
+    request_headers = {
+        k: v for k,v in request.headers.items()
+        if k.lower() not in sensitive
+    }
+
+    response_headers = {
+        k: v for k, v in response.headers.items()
+        if k.lower() not in sensitive 
+    }
     extra = {
         "props": {
             "timestamp": start_time,
@@ -161,10 +170,10 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
                 "verb": request.method,
                 "path": quote(str(request.url.path)),
                 "query_params": dict(request.query_params.items()),
-                "headers": dict(request.headers.items()),
+                "headers": request_headers,
             },
             "response": {
-                "headers": dict(response.headers.items()),
+                "headers": response_headers,
                 "http_status": response.status_code,
             },
         }
@@ -172,14 +181,15 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
 
     if exception_data is not None:
         extra["props"]["exception"] = exception_data
-    if (hasattr(request.state, "request_body") and isinstance(extra, dict) and isinstance(extra["props"], dict)
-            and isinstance(extra["props"]["request"], dict)):
+
+    if hasattr(request.state, "request_body"):
         extra["props"]["request"]["body"] = request.state.request_body
-    if (response_body and isinstance(extra, dict) and isinstance(extra["props"], dict)
-            and isinstance(extra["props"]["response"], dict)):
+
+    if response_body and isinstance(response_body, dict):
         extra["props"]["response"]["body"] = response_body
 
     return extra
+
 
 
 def set_middleware_response_headers(request, response):
@@ -197,8 +207,6 @@ def set_middleware_response_headers(request, response):
         "Access-Control-Allow-Origin"
     ] = f"{origin.scheme}://{origin.netloc}"
 
-    # if "localhost" in response.headers["Access-Control-Allow-Origin"]:
-    #     response.headers["Access-Control-Allow-Origin"] = "*"
 
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Headers"] = "content-type, charset, authorization, accept-language, content-length"
@@ -250,7 +258,11 @@ def set_stack(e):
 @app.middleware("http")
 async def middle(request: Request, call_next):
     """Wrapper function to manage errors and logging"""
-    if request.url._url.endswith("/docs") or request.url._url.endswith("openapi.json"):
+    if (
+        request.url._url.endswith("/docs")
+        or request.url._url.endswith("openapi.json")
+        or request.url._url.endswith("/favicon.ico")
+    ):
         return await call_next(request)
 
     start_time = time.time()
@@ -344,7 +356,15 @@ async def middle(request: Request, call_next):
     try:
         user_shortname = str(await JWTBearer().__call__(request))
     except Exception:
-        pass
+        if request.url.path == "/user/login":
+            try:
+                body = getattr(request.state, "request_body", {}) or {}
+                if isinstance(body, dict):
+                    shortname_value = body.get("shortname")
+                    if isinstance(shortname_value, str) and shortname_value.strip():
+                        user_shortname = shortname_value
+            except Exception:
+                pass
 
     extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
 
