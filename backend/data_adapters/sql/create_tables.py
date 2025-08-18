@@ -46,7 +46,7 @@ class Unique(SQLModel, table=False):
 
 
 class Metas(Unique, table=False):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     is_active: bool = False
     slug: str | None = None
     displayname: dict | core.Translation | None = Field(default=None, sa_type=JSONB)
