@@ -55,7 +55,7 @@ class Metas(Unique, table=False):
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
     owner_shortname: str = Field(foreign_key="users.shortname")
-    acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
+    acl: list[dict[str, Any]] | list[core.ACL] | None = Field(default=[], sa_type=JSONB)
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
     relationships: list[dict[str, Any]] | None = Field(default=[], sa_type=JSONB)
 
@@ -164,7 +164,7 @@ class Users(Metas, table=True):
     password: str | None = None
     roles: list[str] = Field(default_factory=dict, sa_type=JSONB)
     groups: list[str] = Field(default_factory=dict, sa_type=JSONB)
-    acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
+    acl: list[dict[str, Any]] | list[core.ACL] | None = Field(default=[], sa_type=JSONB)
     relationships: list[dict[str, Any]] | None = Field(default_factory=None, sa_type=JSONB)
     type: UserType = Field(default=UserType.web)
     # language: Language = Field(default=Language.en)
@@ -305,7 +305,7 @@ class Aggregated(SQLModel, table=False):
     owner_group_shortname: str | None = None
     payload: dict | core.Payload | None = None
     relationships: list[dict[str, Any]] | None = None
-    acl: list[core.ACL] | None = None
+    acl: list[dict[str, Any]] | list[core.ACL] | None = Field(default=[], sa_type=JSONB)
 
     resource_type: ResourceType | None = None
     attributes: dict[str, Any] | None = None
