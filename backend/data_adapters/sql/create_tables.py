@@ -218,7 +218,7 @@ class Attachments(Metas, table=True):
 
 
 class Histories(SQLModel, table=True):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     request_headers: dict = Field(default_factory=dict, sa_type=JSONB)
     diff: dict = Field(default_factory=dict, sa_type=JSONB)
     timestamp: datetime = Field(default_factory=datetime.now)
@@ -346,7 +346,7 @@ class Aggregated(SQLModel, table=False):
 
 
 class Locks(Unique, table=True):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     owner_shortname: str = Field(regex=regex.SHORTNAME)
     timestamp: datetime = Field(default_factory=datetime.now)
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
@@ -354,19 +354,19 @@ class Locks(Unique, table=True):
 
 class Sessions(SQLModel, table=True):
     shortname: str = Field(regex=regex.SHORTNAME)
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     token: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
 
 class Invitations(SQLModel, table=True):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     invitation_token: str = Field(...)
     invitation_value: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
 class URLShorts(SQLModel, table=True):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     token_uuid: str = Field(...)
     url: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
