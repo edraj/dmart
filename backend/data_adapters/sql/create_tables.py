@@ -46,7 +46,7 @@ class Unique(SQLModel, table=False):
 
 
 class Metas(Unique, table=False):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     is_active: bool = False
     slug: str | None = None
     displayname: dict | core.Translation | None = Field(default=None, sa_type=JSONB)
@@ -55,7 +55,7 @@ class Metas(Unique, table=False):
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
     owner_shortname: str = Field(foreign_key="users.shortname")
-    acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
+    acl: list[dict[str, Any]] | None = Field(default=[], sa_type=JSONB)
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
     relationships: list[dict[str, Any]] | None = Field(default=[], sa_type=JSONB)
 
@@ -164,7 +164,7 @@ class Users(Metas, table=True):
     password: str | None = None
     roles: list[str] = Field(default_factory=dict, sa_type=JSONB)
     groups: list[str] = Field(default_factory=dict, sa_type=JSONB)
-    acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
+    acl: list[dict[str, Any]] | None = Field(default=[], sa_type=JSONB)
     relationships: list[dict[str, Any]] | None = Field(default_factory=None, sa_type=JSONB)
     type: UserType = Field(default=UserType.web)
     # language: Language = Field(default=Language.en)
@@ -218,7 +218,7 @@ class Attachments(Metas, table=True):
 
 
 class Histories(SQLModel, table=True):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     request_headers: dict = Field(default_factory=dict, sa_type=JSONB)
     diff: dict = Field(default_factory=dict, sa_type=JSONB)
     timestamp: datetime = Field(default_factory=datetime.now)
@@ -305,7 +305,7 @@ class Aggregated(SQLModel, table=False):
     owner_group_shortname: str | None = None
     payload: dict | core.Payload | None = None
     relationships: list[dict[str, Any]] | None = None
-    acl: list[core.ACL] | None = None
+    acl: list[dict[str, Any]] | None = None
 
     resource_type: ResourceType | None = None
     attributes: dict[str, Any] | None = None
@@ -346,7 +346,7 @@ class Aggregated(SQLModel, table=False):
 
 
 class Locks(Unique, table=True):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     owner_shortname: str = Field(regex=regex.SHORTNAME)
     timestamp: datetime = Field(default_factory=datetime.now)
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
@@ -354,19 +354,19 @@ class Locks(Unique, table=True):
 
 class Sessions(SQLModel, table=True):
     shortname: str = Field(regex=regex.SHORTNAME)
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     token: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
 
 class Invitations(SQLModel, table=True):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     invitation_token: str = Field(...)
     invitation_value: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
 class URLShorts(SQLModel, table=True):
-    uuid: UUID = Field(default_factory=UUID, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     token_uuid: str = Field(...)
     url: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)

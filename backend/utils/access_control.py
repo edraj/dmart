@@ -73,17 +73,17 @@ class AccessControl:
                 entry_shortname
             )
         
-        # if entry_shortname:
-        #     acl_access = await self.check_access_control_list(
-        #         space_name,
-        #         subpath,
-        #         resource_type,
-        #         entry_shortname,
-        #         action_type,
-        #         user_shortname
-        #     )
-        #     if acl_access:
-        #         return True
+        if entry_shortname:
+            acl_access = await self.check_access_control_list(
+                space_name,
+                subpath,
+                resource_type,
+                entry_shortname,
+                action_type,
+                user_shortname
+            )
+            if acl_access:
+                return True
         
         # print("Checking check_space_access access")
         user_permissions = await db.get_user_permissions(user_shortname)
