@@ -1139,6 +1139,10 @@ class SQLAdapter(BaseDataAdapter):
                     self, user_shortname, query.space_name, f'{query.subpath}/%'
                 )
                 user_query_policies.extend(r)
+
+            if len(user_query_policies) == 0:
+                return 0, []
+
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
