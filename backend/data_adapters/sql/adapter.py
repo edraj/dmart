@@ -145,6 +145,15 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if query.type == QueryType.aggregation and not is_for_count:
             statement = query_aggregation(table, query)
 
+        if query.type == QueryType.tags and not is_for_count:
+            if query.retrieve_json_payload:
+                statement = select(
+                    func.jsonb_array_elements_text(table.tags).label('tag'),
+                    func.count('*').label('count')
+                ).group_by('tag')
+            else:
+                statement = select(func.jsonb_array_elements_text(table.tags).label('tag')).distinct()
+
     except Exception as e:
         print("[!query]", e)
         raise api.Exception(
@@ -720,7 +729,23 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
         statement = statement.limit(query.limit)
 
+    if query.type == QueryType.tags and not is_for_count and hasattr(table, 'tags'):
+        if query.retrieve_json_payload:
+            statement = select(
+                func.jsonb_array_elements_text(col(table.tags)).label('tag'),
+                func.count('*').label('count')
+            ).where(table.uuid.in_(
+                select(col(table.uuid)).where(statement.whereclause)  # type: ignore
+            )).group_by('tag')
+        else:
+            statement = select(
+                func.jsonb_array_elements_text(col(table.tags)).label('tag')
+            ).where(table.uuid.in_(
+                select(col(table.uuid)).where(statement.whereclause)  # type: ignore
+            )).distinct()
+
     return statement
+
 
 class SQLAdapter(BaseDataAdapter):
     session: Session
@@ -1084,6 +1109,10 @@ class SQLAdapter(BaseDataAdapter):
                     self, user_shortname, query.space_name, f'{query.subpath}/%'
                 )
                 user_query_policies.extend(r)
+
+            if len(user_query_policies) == 0:
+                return 0, []
+
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -1115,6 +1144,46 @@ class SQLAdapter(BaseDataAdapter):
                 except Exception as e:
                     print(e)
                     return 0, []
+            if query and query.type == QueryType.tags:
+                try:
+                    statement = await set_sql_statement_from_query(table, statement, query, False)
+                    statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
+
+                    results = list((await session.execute(statement)).all())
+                    if len(results) == 0:
+                        return 0, []
+
+                    tags = []
+                    tag_counts = {}
+                    if query.retrieve_json_payload:
+                        for result in results:
+                            if result and len(result) > 1 and result[0]:
+                                tag = result[0]
+                                count = result[1]
+                                tags.append(tag)
+                                tag_counts[tag] = count
+                    else:
+                        for result in results:
+                            if result and len(result) > 0 and result[0]:
+                                tags.append(result[0])
+
+                    _total = (await session.execute(statement_total)).one()
+                    total = int(_total[0])
+
+                    attributes = {"tags": tags}
+                    if query.retrieve_json_payload and tag_counts:
+                        attributes["tag_counts"] = tag_counts # type: ignore
+                            
+                    return total, [core.Record(
+                        resource_type=core.ResourceType.content,
+                        shortname="tags",
+                        subpath=query.subpath,
+                        attributes=attributes,
+                    )]
+                except Exception as e:
+                    print("[!!query_tags]", e)
+                    return 0, []
+                    
             is_fetching_spaces = False
             if (query.space_name
                     and query.type == QueryType.spaces
