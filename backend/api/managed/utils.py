@@ -923,7 +923,7 @@ async def serve_request_update_acl(request, owner_shortname: str):
             )
 
             # CHECK PERMISSION 
-            has_update_permission = await access_control.check_access(
+            if not await access_control.check_access(
                     user_shortname=owner_shortname,
                     space_name=request.space_name,
                     subpath=record.subpath,
@@ -934,12 +934,7 @@ async def serve_request_update_acl(request, owner_shortname: str):
                     resource_owner_group=resource_obj.owner_group_shortname,
                     record_attributes=record.attributes,
                     entry_shortname=record.shortname
-            )
-            is_owner = resource_obj.owner_shortname == owner_shortname
-            
-            if has_update_permission or is_owner:
-                pass
-            else:
+            ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
