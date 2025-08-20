@@ -937,7 +937,9 @@ async def serve_request_update_acl(request, owner_shortname: str):
             )
             is_owner = resource_obj.owner_shortname == owner_shortname
             
-            if not has_update_permission and not is_owner:
+            if has_update_permission or is_owner:
+                pass
+            else:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
