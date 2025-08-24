@@ -1132,10 +1132,10 @@ class SQLAdapter(BaseDataAdapter):
                     query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
                 )
 
-                # statement = statement.where(
-                #     text(
-                #         "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
-                # )
+                statement = statement.where(
+                    text(
+                        "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
+                )
 
                 statement_total = statement_total.where(
                     text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
@@ -1143,10 +1143,10 @@ class SQLAdapter(BaseDataAdapter):
                     query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
                 )
 
-                # statement_total = statement_total.where(
-                #     text(
-                #         "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
-                # )
+                statement_total = statement_total.where(
+                    text(
+                        "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
+                )
 
             if query and query.type == QueryType.events:
                 try:
