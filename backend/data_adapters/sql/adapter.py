@@ -1506,6 +1506,14 @@ class SQLAdapter(BaseDataAdapter):
                 if isinstance(result, Attachments) and attachment_media:
                     result.media = attachment_media
 
+                result.query_policies = generate_query_policies(
+                    space_name=space_name,
+                    subpath=subpath,
+                    resource_type=result.resource_type,
+                    is_active=result.is_active,
+                    owner_shortname=result.owner_shortname,
+                    owner_group_shortname=result.owner_shortname,
+                )
                 session.add(result)
                 await session.commit()
             except Exception as e:
