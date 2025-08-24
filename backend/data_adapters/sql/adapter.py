@@ -1132,10 +1132,20 @@ class SQLAdapter(BaseDataAdapter):
                     query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
                 )
 
+                statement = statement.where(
+                    text(
+                        "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
+                )
+
                 statement_total = statement_total.where(
                     text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
                 ).params(
                     query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
+                )
+
+                statement_total = statement_total.where(
+                    text(
+                        "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
                 )
 
             if query and query.type == QueryType.events:
@@ -1505,7 +1515,15 @@ class SQLAdapter(BaseDataAdapter):
 
                 if isinstance(result, Attachments) and attachment_media:
                     result.media = attachment_media
-
+                if hasattr(result, 'query_policies'):
+                    result.query_policies = generate_query_policies(
+                        space_name=space_name,
+                        subpath=subpath,
+                        resource_type=result.resource_type, # type: ignore
+                        is_active=result.is_active, # type: ignore
+                        owner_shortname=result.owner_shortname,
+                        owner_group_shortname=result.owner_shortname,
+                    )
                 session.add(result)
                 await session.commit()
             except Exception as e:
