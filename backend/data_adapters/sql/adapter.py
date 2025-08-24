@@ -1102,11 +1102,11 @@ class SQLAdapter(BaseDataAdapter):
         async with self.get_session() as session:
             user_shortname = user_shortname if user_shortname else "anonymous"
             user_query_policies = await get_user_query_policies(
-                self, user_shortname, query.space_name, query.subpath
+                self, user_shortname, query.space_name, query.subpath, query.type == QueryType.spaces
             )
             if not query.exact_subpath:
                 r = await get_user_query_policies(
-                    self, user_shortname, query.space_name, f'{query.subpath}/%'
+                    self, user_shortname, query.space_name, f'{query.subpath}/%', query.type == QueryType.spaces
                 )
                 user_query_policies.extend(r)
 
@@ -1244,6 +1244,7 @@ class SQLAdapter(BaseDataAdapter):
                     )]
                 if query.type != QueryType.aggregation:
                     results = [result[0] for result in results]
+                print(is_fetching_spaces)
                 if is_fetching_spaces:
                     from utils.access_control import access_control
                     results = [result for result in results if await access_control.check_space_access(

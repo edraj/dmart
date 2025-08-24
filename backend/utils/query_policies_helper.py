@@ -56,7 +56,8 @@ async def get_user_query_policies(
     db,
     user_shortname: str,
     space_name: str,
-    subpath: str
+    subpath: str,
+    is_space: bool = False,
 ) -> list:
     """
     Generate list of query policies based on user's permissions
@@ -75,6 +76,7 @@ async def get_user_query_policies(
     sql_query_policies = []
     for perm_key, permission in user_permissions.items():
         if (
+                not is_space and
                 not perm_key.startswith(space_name) and
                 not perm_key.startswith(settings.all_spaces_mw)
         ):
