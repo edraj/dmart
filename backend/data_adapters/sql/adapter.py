@@ -1247,15 +1247,9 @@ class SQLAdapter(BaseDataAdapter):
                 print(is_fetching_spaces)
                 if is_fetching_spaces:
                     from utils.access_control import access_control
-                    print('----------------------------------------------------')
-                    print(results)
-                    print('----------------------------------------------------')
                     results = [result for result in results if await access_control.check_space_access(
                         user_shortname if user_shortname else "anonymous", result.shortname
                     )]
-                    print('----------------------------------------------------')
-                    print(results)
-                    print('----------------------------------------------------')
                 if len(results) == 0:
                     return 0, []
 
