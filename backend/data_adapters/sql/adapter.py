@@ -273,11 +273,11 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             else:
                                 for value in values:
                                     if negative:
-                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float != CAST('{value}' AS float))"
+                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::text != CAST('{value}' AS varchar))"
                                         string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::text != CAST('{value}' AS varchar))"
                                         conditions.append(f"({number_condition} OR {string_condition})")
                                     else:
-                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float = CAST('{value}' AS float))"
+                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::text = CAST('{value}' AS varchar))"
                                         string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::text = CAST('{value}' AS varchar))"
                                         conditions.append(f"({number_condition} OR {string_condition})")
                         elif value_type == 'boolean':
