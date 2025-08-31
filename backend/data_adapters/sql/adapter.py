@@ -422,10 +422,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     conditions.append(f"({number_condition} OR {string_condition})")
                         else:
                             is_numeric = False
-                            try:
+                            if value.isnumeric():
                                 is_numeric = True
-                            except ValueError:
-                                pass
 
                             if negative:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND NOT (payload::jsonb->{payload_path} @> '[\"{value}\"]'::jsonb))"
@@ -455,7 +453,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                 else:
                     try:
-
                         if hasattr(table, field):
                             field_obj = getattr(table, field)                           
                             if hasattr(field_obj, 'type') and str(field_obj.type).lower() == 'jsonb':
@@ -1151,9 +1148,20 @@ class SQLAdapter(BaseDataAdapter):
             for perm_key, perm_value in filtered_permissions.items():
                 if query.search:
                     query.search += f" {build_query_filter_for_allowed_field_values(perm_value)}"
+                    query.search = query.search.replace('  ', ' ')
                 else:
                     query.search = f"{build_query_filter_for_allowed_field_values(perm_value)}"
 
+            # Normalize search string by removing duplicate tokens while preserving order
+            if query.search:
+                parts = [p for p in query.search.split(' ') if p]
+                seen = set()
+                deduped_parts = []
+                for p in parts:
+                    if p not in seen:
+                        seen.add(p)
+                        deduped_parts.append(p)
+                query.search = ' '.join(deduped_parts)
 
             statement_total = select(func.count(col(table.uuid)))
 
