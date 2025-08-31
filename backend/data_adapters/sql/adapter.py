@@ -1140,6 +1140,7 @@ class SQLAdapter(BaseDataAdapter):
             user_permissions = await self.get_user_permissions(user_shortname)
 
             filtered_permissions = {}
+            filtered_policies = []
             if query.filter_types:
                 for ft in query.filter_types:
                     target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}:{ft}'
