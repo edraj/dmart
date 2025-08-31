@@ -34,7 +34,7 @@ def gen_numeric(length=6):
 
 async def mock_sending_otp(msisdn) -> dict:
     key = f"users:otp:otps/{msisdn}"
-    await db.save_otp(key, "123456")
+    await db.save_otp(key, settings.mock_otp_code)
     json = {"status": "success", "data": {"status": "success"}}
     return json
 

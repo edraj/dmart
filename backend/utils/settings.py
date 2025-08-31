@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     mock_smtp_api: bool = True
     files_query: str = "scandir"
     mock_smpp_api: bool = True
+    mock_otp_code: str = "123456"
     invitation_link: str = ""
     ldap_url: str = "ldap://"
     ldap_admin_dn: str = ""
