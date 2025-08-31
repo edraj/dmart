@@ -427,7 +427,11 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                             if negative:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND NOT (payload::jsonb->{payload_path} @> '[\"{value}\"]'::jsonb))"
-                                string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} != '{value}')"
+                                if '*' in value:
+                                    pattern = value.replace('*', '%')
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} NOT ILIKE '{pattern}')"
+                                else:
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} != '{value}')"
 
                                 if is_numeric:
                                     number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float != {value})"
@@ -436,7 +440,11 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     conditions.append(f"({array_condition} OR {string_condition})")
                             else:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND payload::jsonb->{payload_path} @> '[\"{value}\"]'::jsonb)"
-                                string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} = '{value}')"
+                                if '*' in value:
+                                    pattern = value.replace('*', '%')
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} ILIKE '{pattern}')"
+                                else:
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} = '{value}')"
                                 direct_condition = f"(payload::jsonb->{payload_path} = '\"{value}\"'::jsonb)"
 
                                 if is_numeric:
@@ -588,26 +596,21 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     join_operator = " AND " if operation == 'AND' else " OR "
                                     statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                                 else:
-                                    if negative:
-                                        if operation == 'AND' and len(values) > 1:
-                                            conditions = []
-                                            for value in values:
+                                    conditions = []
+                                    for value in values:
+                                        if '*' in value:
+                                            pattern = value.replace('*', '%')
+                                            if negative:
+                                                conditions.append(f"{field} NOT ILIKE '{pattern}'")
+                                            else:
+                                                conditions.append(f"{field} ILIKE '{pattern}'")
+                                        else:
+                                            if negative:
                                                 conditions.append(f"{field} != '{value}'")
-                                            statement = statement.where(text(f'( {" OR ".join(conditions)} )'))
-                                        else:
-                                            if len(values) == 1:
-                                                statement = statement.where(getattr(table, field) != values[0])
                                             else:
-                                                statement = statement.where(~col(getattr(table, field)).in_(values))
-                                    else:
-                                        if operation == 'AND' and len(values) > 1:
-                                            for value in values:
-                                                statement = statement.where(getattr(table, field) == value)
-                                        else:
-                                            if len(values) == 1:
-                                                statement = statement.where(getattr(table, field) == values[0])
-                                            else:
-                                                statement = statement.where(col(getattr(table, field)).in_(values))
+                                                conditions.append(f"{field} = '{value}'")
+                                    join_operator = ' AND ' if operation == 'AND' else ' OR '
+                                    statement = statement.where(text('(' + join_operator.join(conditions) + ')'))
                         else:
                             conditions = []
                             for value in values:
@@ -678,10 +681,17 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     else:
                                         conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'boolean' AND (payload::jsonb->'{field}')::boolean = {bool_value})")
                                 else:
-                                    if negative:
-                                        conditions.append(f"payload::jsonb->'{field}' != '\"{value}\"'::jsonb")
+                                    if '*' in value:
+                                        pattern = value.replace('*', '%')
+                                        if negative:
+                                            conditions.append(f"(payload::jsonb->>'{field}') NOT ILIKE '{pattern}'")
+                                        else:
+                                            conditions.append(f"(payload::jsonb->>'{field}') ILIKE '{pattern}'")
                                     else:
-                                        conditions.append(f"payload::jsonb->'{field}' = '\"{value}\"'::jsonb")
+                                        if negative:
+                                            conditions.append(f"payload::jsonb->'{field}' != '\"{value}\"'::jsonb")
+                                        else:
+                                            conditions.append(f"payload::jsonb->'{field}' = '\"{value}\"'::jsonb")
 
                             if conditions:
                                 if negative:
