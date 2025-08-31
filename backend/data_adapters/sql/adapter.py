@@ -1138,8 +1138,19 @@ class SQLAdapter(BaseDataAdapter):
                 statement = select(table)
 
             user_permissions = await self.get_user_permissions(user_shortname)
+
             filtered_permissions = {}
-            for user_query_policy in user_query_policies:
+            filtered_policies = []
+            if query.filter_types:
+                for ft in query.filter_types:
+                    target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}:{ft}'
+                    filtered_policies = [policy for policy in user_query_policies if
+                                         policy.startswith(target_permissions)]
+            else:
+                target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}'
+                filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
+
+            for user_query_policy in filtered_policies:
                 for perm_key in user_permissions.keys():
                     if user_query_policy.startswith(perm_key):
                         if 'query' in user_permissions[perm_key]['allowed_actions']:

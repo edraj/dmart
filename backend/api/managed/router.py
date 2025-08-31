@@ -180,12 +180,6 @@ async def generate_csv_from_report_saved_query(
         json_data.append(flatten_dict(r.attributes))
 
     v_path = StringIO()
-    if len(json_data) == 0:
-        return api.Response(
-            status=api.Status.success,
-            records=records,
-            attributes={"message": "The records are empty"},
-        )
 
     keys: set = set({})
     for row in json_data:
@@ -275,12 +269,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
             user_shortname=user_shortname,
         )
     )
-
-    if len(json_data) == 0:
-        return api.Response(
-            status=api.Status.success,
-            attributes={"message": "The records are empty"},
-        )
 
     keys = [key for key in keys if keys_existence[key]]
     v_path = StringIO()
