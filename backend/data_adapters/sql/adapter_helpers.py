@@ -479,7 +479,7 @@ def set_table_for_query(query):
         return Entries
 
 
-def build_query_filter_for_allowed_field_values(perm_value):
+def build_query_filter_for_allowed_field_values(perm_value) -> str:
     filters = []
 
     for k, v in perm_value.items():

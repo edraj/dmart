@@ -1149,10 +1149,10 @@ class SQLAdapter(BaseDataAdapter):
                             filtered_permissions[perm_key] = user_permissions[perm_key]['allowed_fields_values']
 
             for perm_key, perm_value in filtered_permissions.items():
-                if query.search == '':
-                    query.search += f"{build_query_filter_for_allowed_field_values(perm_value)}"
-                else:
+                if query.search:
                     query.search += f" {build_query_filter_for_allowed_field_values(perm_value)}"
+                else:
+                    query.search = f"{build_query_filter_for_allowed_field_values(perm_value)}"
 
 
             statement_total = select(func.count(col(table.uuid)))
