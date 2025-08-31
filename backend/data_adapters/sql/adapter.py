@@ -51,7 +51,7 @@ from data_adapters.sql.adapter_helpers import (
     subpath_checker, parse_search_string,
     sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
-    get_next_date_value, is_date_time_value
+    get_next_date_value, is_date_time_value, build_query_filter_for_allowed_field_values
 )
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
@@ -184,7 +184,24 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             ))
         else:
             search_tokens = parse_search_string(query.search, table)
+
+            try:
+                table_columns = set(c.name for c in table.__table__.columns)  # type: ignore[attr-defined]
+            except Exception:
+                table_columns = set()
+
+            def _field_exists_in_table(_field: str) -> bool:
+                if _field in table_columns:
+                    return True
+                if _field.startswith('payload.') and 'payload' in table_columns:
+                    return True
+                if _field.startswith('payload.body.') and 'payload' in table_columns:
+                    return True
+                return False
+
             for field, field_data in search_tokens.items():
+                if not _field_exists_in_table(field):
+                    continue
                 values = field_data['values']
                 operation = field_data['operation']
                 negative = field_data.get('negative', False)
@@ -1122,6 +1139,21 @@ class SQLAdapter(BaseDataAdapter):
             else:
                 table = set_table_for_query(query)
                 statement = select(table)
+
+            user_permissions = await self.get_user_permissions(user_shortname)
+            filtered_permissions = {}
+            for user_query_policy in user_query_policies:
+                for perm_key in user_permissions.keys():
+                    if user_query_policy.startswith(perm_key):
+                        if 'query' in user_permissions[perm_key]['allowed_actions']:
+                            filtered_permissions[perm_key] = user_permissions[perm_key]['allowed_fields_values']
+
+            for perm_key, perm_value in filtered_permissions.items():
+                if query.search:
+                    query.search += f" {build_query_filter_for_allowed_field_values(perm_value)}"
+                else:
+                    query.search = f"{build_query_filter_for_allowed_field_values(perm_value)}"
+
 
             statement_total = select(func.count(col(table.uuid)))
 

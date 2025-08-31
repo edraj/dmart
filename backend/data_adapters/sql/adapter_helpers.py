@@ -477,3 +477,25 @@ def set_table_for_query(query):
                 return Entries
     else:
         return Entries
+
+
+def build_query_filter_for_allowed_field_values(perm_value) -> str:
+    filters = []
+
+    for k, v in perm_value.items():
+        if isinstance(v, str):
+            # String value: @k:v
+            filters.append(f"@{k}:{v}")
+        elif isinstance(v, list) and v:
+            if isinstance(v[0], str):
+                # List of strings: @k:v1|v2|v3
+                values = "|".join(v)
+                filters.append(f"@{k}:{values}")
+            elif isinstance(v[0], list):
+                # List of lists: @k:v1 @k:v2 @k:v3
+                for sublist in v:
+                    if sublist:  # Only if sublist is not empty
+                        values = "|".join(sublist)
+                        filters.append(f"@{k}:{values}")
+
+    return " ".join(filters)
