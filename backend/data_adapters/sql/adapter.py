@@ -51,7 +51,8 @@ from data_adapters.sql.adapter_helpers import (
     subpath_checker, parse_search_string,
     sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
-    get_next_date_value, is_date_time_value, build_query_filter_for_allowed_field_values
+    get_next_date_value, is_date_time_value,
+    #build_query_filter_for_allowed_field_values
 )
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator

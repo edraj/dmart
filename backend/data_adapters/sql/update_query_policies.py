@@ -6,8 +6,10 @@ import asyncio
 from typing import Sequence
 
 from sqlalchemy import URL, select, update as sa_update
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine
+# AsyncSession
 from sqlalchemy.orm import sessionmaker
+from sqlmodel import col
 
 from utils.settings import settings
 from utils.query_policies_helper import generate_query_policies
@@ -25,7 +27,7 @@ async def update_all_entries(batch_size: int = 1000) -> int:
     )
 
     engine = create_async_engine(postgresql_url, echo=False, pool_size=settings.database_pool_size, max_overflow=settings.database_max_overflow)
-    async_session = sessionmaker(engine, class_=AsyncSession)
+    async_session = sessionmaker(engine) # type: ignore
 
     updated = 0
     offset = 0
@@ -58,9 +60,9 @@ async def update_all_entries(batch_size: int = 1000) -> int:
                 if row.query_policies != new_policies:
                     await session.execute(
                         sa_update(Entries)
-                        .where(Entries.space_name == row.space_name)
-                        .where(Entries.subpath == row.subpath)
-                        .where(Entries.shortname == row.shortname)
+                        .where(col(Entries.space_name) == row.space_name)
+                        .where(col(Entries.subpath) == row.subpath)
+                        .where(col(Entries.shortname) == row.shortname)
                         .values(query_policies=new_policies)
                     )
                     updated += 1
