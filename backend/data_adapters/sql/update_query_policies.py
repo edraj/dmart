@@ -6,7 +6,7 @@ import asyncio
 from typing import Sequence
 
 from sqlalchemy import URL, select, update as sa_update
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 # AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import col
@@ -27,12 +27,12 @@ async def update_all_entries(batch_size: int = 1000) -> int:
     )
 
     engine = create_async_engine(postgresql_url, echo=False, pool_size=settings.database_pool_size, max_overflow=settings.database_max_overflow)
-    async_session = sessionmaker(engine) # type: ignore
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False) # type: ignore
 
     updated = 0
     offset = 0
 
-    async with async_session() as session:
+    async with async_session() as session: # type: ignore
         while True:
             result = await session.execute(
                 select(Entries).order_by(Entries.space_name, Entries.subpath, Entries.shortname).offset(offset).limit(batch_size)
