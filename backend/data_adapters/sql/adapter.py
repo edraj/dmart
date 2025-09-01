@@ -1894,6 +1894,11 @@ class SQLAdapter(BaseDataAdapter):
                     await session.execute(statement2)
                     statement = delete(Entries).where(col(Entries.space_name) == space_name)
                     await session.execute(statement)
+                if meta.__class__ == core.Folder:
+                    statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name).where(col(Attachments.subpath).startswith(subpath))
+                    await session.execute(statement2)
+                    statement = delete(Entries).where(col(Entries.space_name) == space_name).where(col(Entries.subpath) == subpath)
+                    await session.execute(statement)
                 await session.commit()
             except Exception as e:
                 print("[!delete]", e)
