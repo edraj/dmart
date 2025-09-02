@@ -102,7 +102,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@language:kurdish"
+            "search": "@language:ku"
         }
     )
     assert_code_and_status_success(response)
