@@ -38,7 +38,7 @@ class CustomFormatter(logging.Formatter):
             "thread": record.threadName,
             "process": record.process,
         }
-        return f"[{json.dumps(data)}"
+        return json.dumps(data)
 
 
 logging_schema : dict = {
