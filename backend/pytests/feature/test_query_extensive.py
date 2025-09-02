@@ -14,7 +14,7 @@ TEST_DATA = [
         "attributes": {
             "tags": ["test_user"],
             "is_active": False,
-            "language": "ku",
+            "language": "kurdish",
             "roles": ["manager","moderator","editor"],
             "email": "user1@example.com",
             "msisdn": "1123456789",
@@ -36,13 +36,12 @@ TEST_DATA = [
         "attributes": {
             "tags": ["test_user"],
             "is_active": False,
-            "language": "en",
+            "language": "english",
             "roles": ["member","subscriber","editor"],
             "email": "user2@example.com",
             "msisdn": "9876543210",
             "type": "mobile",
             "payload": {
-
                 "content_type": "json",
                 "body": {
                     "is_subscribed": True,
