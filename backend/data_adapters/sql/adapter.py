@@ -598,7 +598,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 else:
                                     conditions = []
                                     for value in values:
-                                        if '*' in value:
+                                        if table == Users and field == 'language':
+                                            if negative:
+                                                conditions.append(f"{field} != '{value}'")
+                                            else:
+                                                conditions.append(f"{field} = '{value}'")
+                                        elif '*' in value:
                                             pattern = value.replace('*', '%')
                                             if negative:
                                                 conditions.append(f"{field} NOT ILIKE '{pattern}'")
