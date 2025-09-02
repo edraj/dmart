@@ -101,7 +101,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@language:kurdish"
+            "search": "@language:ku"
         }
     )
     assert_code_and_status_success(response)
@@ -144,7 +144,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@language:arabic"
+            "search": "-@language:ar"
         }
     )
     assert_code_and_status_success(response)
@@ -186,7 +186,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@language:english @msisdn:9876543210"
+            "search": "@language:en @msisdn:9876543210"
         }
     )
     assert_code_and_status_success(response)
@@ -200,7 +200,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@roles:super_admin -@language:arabic"
+            "search": "-@roles:super_admin -@language:ar"
         }
     )
     assert_code_and_status_success(response)
@@ -214,7 +214,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@language:kurdish|english"
+            "search": "@language:ku|en"
         }
     )
     assert_code_and_status_success(response)
@@ -228,7 +228,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@language:arabic|french"
+            "search": "-@language:ar|fr"
         }
     )
     assert_code_and_status_success(response)
