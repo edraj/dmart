@@ -27,7 +27,7 @@ from utils.ticket_sys_utils import set_init_state_from_request
 router = APIRouter()
 
 # Retrieve publically-available content
-
+#ping
 
 @router.post("/query", response_model=api.Response, response_model_exclude_none=True)
 async def query_entries(query: api.Query) -> api.Response:
