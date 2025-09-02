@@ -321,7 +321,6 @@ def parse_search_string(string, entity):
                     if 'format_strings' not in result[field]:
                         result[field]['format_strings'] = {}
                     result[field]['format_strings'].update(format_strings)
-    print(f"this is the value_type: {value_type}")
     return result
 
 
