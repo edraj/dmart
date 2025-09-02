@@ -51,7 +51,8 @@ from data_adapters.sql.adapter_helpers import (
     subpath_checker, parse_search_string,
     sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
-    get_next_date_value, is_date_time_value, build_query_filter_for_allowed_field_values
+    get_next_date_value, is_date_time_value,
+    #build_query_filter_for_allowed_field_values
 )
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
@@ -1147,42 +1148,42 @@ class SQLAdapter(BaseDataAdapter):
                 table = set_table_for_query(query)
                 statement = select(table)
 
-            user_permissions = await self.get_user_permissions(user_shortname)
+            # user_permissions = await self.get_user_permissions(user_shortname)
 
-            filtered_permissions = {}
-            filtered_policies = []
-            if query.filter_types:
-                for ft in query.filter_types:
-                    target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}:{ft}'
-                    filtered_policies = [policy for policy in user_query_policies if
-                                         policy.startswith(target_permissions)]
-            else:
-                target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}'
-                filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
-
-            for user_query_policy in filtered_policies:
-                for perm_key in user_permissions.keys():
-                    if user_query_policy.startswith(perm_key):
-                        if 'query' in user_permissions[perm_key]['allowed_actions']:
-                            filtered_permissions[perm_key] = user_permissions[perm_key]['allowed_fields_values']
-
-            for perm_key, perm_value in filtered_permissions.items():
-                if query.search:
-                    query.search += f" {build_query_filter_for_allowed_field_values(perm_value)}"
-                    query.search = query.search.replace('  ', ' ')
-                else:
-                    query.search = f"{build_query_filter_for_allowed_field_values(perm_value)}"
-
-            # Normalize search string by removing duplicate tokens while preserving order
-            if query.search:
-                parts = [p for p in query.search.split(' ') if p]
-                seen = set()
-                deduped_parts = []
-                for p in parts:
-                    if p not in seen:
-                        seen.add(p)
-                        deduped_parts.append(p)
-                query.search = ' '.join(deduped_parts)
+            # filtered_permissions = {}
+            # filtered_policies = []
+            # if query.filter_types:
+            #     for ft in query.filter_types:
+            #         target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}:{ft}'
+            #         filtered_policies = [policy for policy in user_query_policies if
+            #                              policy.startswith(target_permissions)]
+            # else:
+            #     target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}'
+            #     filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
+            #
+            # for user_query_policy in filtered_policies:
+            #     for perm_key in user_permissions.keys():
+            #         if user_query_policy.startswith(perm_key):
+            #             if 'query' in user_permissions[perm_key]['allowed_actions']:
+            #                 filtered_permissions[perm_key] = user_permissions[perm_key]['allowed_fields_values']
+            #
+            # for perm_key, perm_value in filtered_permissions.items():
+            #     if query.search:
+            #         query.search += f" {build_query_filter_for_allowed_field_values(perm_value)}"
+            #         query.search = query.search.replace('  ', ' ')
+            #     else:
+            #         query.search = f"{build_query_filter_for_allowed_field_values(perm_value)}"
+            #
+            # # Normalize search string by removing duplicate tokens while preserving order
+            # if query.search:
+            #     parts = [p for p in query.search.split(' ') if p]
+            #     seen = set()
+            #     deduped_parts = []
+            #     for p in parts:
+            #         if p not in seen:
+            #             seen.add(p)
+            #             deduped_parts.append(p)
+            #     query.search = ' '.join(deduped_parts)
 
             statement_total = select(func.count(col(table.uuid)))
 
@@ -1893,6 +1894,11 @@ class SQLAdapter(BaseDataAdapter):
                     statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name)
                     await session.execute(statement2)
                     statement = delete(Entries).where(col(Entries.space_name) == space_name)
+                    await session.execute(statement)
+                if meta.__class__ == core.Folder:
+                    statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name).where(col(Attachments.subpath).startswith(subpath))
+                    await session.execute(statement2)
+                    statement = delete(Entries).where(col(Entries.space_name) == space_name).where(col(Entries.subpath) == subpath)
                     await session.execute(statement)
                 await session.commit()
             except Exception as e:
