@@ -267,36 +267,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
                                         fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::text >= '{value}' AND (payload::jsonb->'body'->>{payload_path})::text < '{next_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
-                        elif value_type == 'numeric':
-                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
-                                range_values = field_data['range_values']
-                                val1, val2 = range_values
-                                try:
-                                    num1 = float(val1)
-                                    num2 = float(val2)
-                                    if num1 > num2:
-                                        val1, val2 = val2, val1
-                                except ValueError:
-                                    pass
-
-                                if negative:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
-                                else:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
-                            else:
-                                for value in values:
-                                    if negative:
-                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float != {value})"
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::float != {value})"
-                                        conditions.append(f"({number_condition} OR {string_condition})")
-                                    else:
-                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float = {value})"
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::float = {value})"
-                                        conditions.append(f"({number_condition} OR {string_condition})")
                         elif value_type == 'boolean':
                             for value in values:
                                 bool_value = value.lower()
@@ -400,26 +370,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
                                         fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (payload::jsonb->>{payload_path})::text >= '{value}' AND (payload::jsonb->>{payload_path})::text < '{next_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
-                        elif value_type == 'numeric':
-                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
-                                range_values = field_data['range_values']
-                                val1, val2 = range_values
-                                try:
-                                    num1 = float(val1)
-                                    num2 = float(val2)
-                                    if num1 > num2:
-                                        val1, val2 = val2, val1
-                                except ValueError:
-                                    pass
-
-                                if negative:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
-                                else:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
                         else:
                             is_numeric = False
                             if value.isnumeric():
@@ -609,7 +559,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                                 conditions.append(f"{field} != '{value}'")
                                             else:
                                                 conditions.append(f"{field} = '{value}'")
-                                    join_operator = ' AND ' if operation == 'AND' else ' OR '
+                                    if negative:
+                                        join_operator = ' AND '
+                                    else:
+                                        join_operator = ' AND ' if operation == 'AND' else ' OR '
                                     statement = statement.where(text('(' + join_operator.join(conditions) + ')'))
                         else:
                             conditions = []
