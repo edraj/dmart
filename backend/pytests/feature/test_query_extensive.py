@@ -27,6 +27,7 @@ TEST_DATA = [
                     "account_type": "business",
                     "user_gender": "male",
                     "account_number": 100,
+                    "rating": "5",
                     "allowed_categories": ["analytics", "reviews"]            
                       }
             }
@@ -50,6 +51,7 @@ TEST_DATA = [
                     "account_type": "personal",
                     "user_gender": "female",
                     "account_number": 200,
+                    "rating": "4",
                     "allowed_categories": ["posts", "edits"]                          
                     }
             }
@@ -101,7 +103,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@language:kurdish"
+            "search": "@language:ku"
         }
     )
     assert_code_and_status_success(response)
@@ -144,7 +146,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@language:arabic"
+            "search": "-@language:ar"
         }
     )
     assert_code_and_status_success(response)
@@ -186,7 +188,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@language:english @msisdn:9876543210"
+            "search": "@language:en @msisdn:9876543210"
         }
     )
     assert_code_and_status_success(response)
@@ -200,7 +202,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@roles:super_admin -@language:arabic"
+            "search": "-@roles:super_admin -@language:ar"
         }
     )
     assert_code_and_status_success(response)
@@ -214,7 +216,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@language:kurdish|english"
+            "search": "@language:ku|en"
         }
     )
     assert_code_and_status_success(response)
@@ -228,7 +230,7 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@language:arabic|french"
+            "search": "-@language:ar|fr"
         }
     )
     assert_code_and_status_success(response)
@@ -501,7 +503,62 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 1
 
-    
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@payload.body.rating:5"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.rating:5"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@payload.body.rating:5|4"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 2
+
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "-@payload.body.rating:5|4"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 0
+
 @pytest.mark.anyio
 async def test_date_field_queries(client: AsyncClient) -> None:
     current_time = datetime.now()
