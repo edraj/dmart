@@ -2337,7 +2337,8 @@ class SQLAdapter(BaseDataAdapter):
                 role_record = await self.load_or_none(
                     settings.management_space, 'roles', 'logged_in', core.Role
                 )
-                user_roles['logged_in'] = role_record
+                if role_record is not None:
+                    user_roles['logged_in'] = role_record
 
             for role in user.roles:
                 role_record = await self.load_or_none(
