@@ -1143,20 +1143,22 @@ class SQLAdapter(BaseDataAdapter):
             statement_total = select(func.count(col(table.uuid)))
 
             if table not in [Attachments, Histories] and hasattr(table, 'query_policies'):
-                conditions = [
-                    "owner_shortname = :user_shortname",
-                    "EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(acl::jsonb) = 'array' THEN acl::jsonb ELSE '[]'::jsonb END) AS elem WHERE elem->>'user_shortname' = :user_shortname AND (elem->'allowed_actions') ? 'query')"
-                ]
-                
-                params = {'user_shortname': user_shortname}
-                
                 if filtered_policies:
-                    conditions.insert(0, "EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-                    params['query_policies'] = [policy.replace('*', '%') for policy in filtered_policies]
-                
-                access_filter = text(f"({' OR '.join(conditions)})")
-                statement = statement.where(access_filter).params(**params)
-                statement_total = statement_total.where(access_filter).params(**params)
+                    policy_patterns = [str(policy).replace('*', '%') for policy in filtered_policies]
+                    policy_condition = "EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))"
+                    acl_condition = "EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(acl::jsonb) = 'array' THEN acl::jsonb ELSE '[]'::jsonb END) AS elem WHERE elem->>'user_shortname' = :user_shortname AND (elem->'allowed_actions') ? 'query')"
+                    owner_condition = "owner_shortname = :user_shortname"
+                    
+                    access_filter = text(f"({policy_condition} OR {acl_condition} OR {owner_condition})")
+                    statement = statement.where(access_filter).params(query_policies=policy_patterns, user_shortname=user_shortname)
+                    statement_total = statement_total.where(access_filter).params(query_policies=policy_patterns, user_shortname=user_shortname)
+                else:
+                    acl_condition = "EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(acl::jsonb) = 'array' THEN acl::jsonb ELSE '[]'::jsonb END) AS elem WHERE elem->>'user_shortname' = :user_shortname AND (elem->'allowed_actions') ? 'query')"
+                    owner_condition = "owner_shortname = :user_shortname"
+                    
+                    access_filter = text(f"({acl_condition} OR {owner_condition})")
+                    statement = statement.where(access_filter).params(user_shortname=user_shortname)
+                    statement_total = statement_total.where(access_filter).params(user_shortname=user_shortname)
 
             if query and query.type == QueryType.events:
                 try:
