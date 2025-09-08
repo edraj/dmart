@@ -1102,30 +1102,29 @@ class SQLAdapter(BaseDataAdapter):
 
             user_permissions = await self.get_user_permissions(user_shortname)
 
-            filtered_permissions = {}
-            filtered_policies = []
-            if query.filter_types:
-                for ft in query.filter_types:
-                    target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}:{ft}'
-                    filtered_policies = [policy for policy in user_query_policies if
-                                         policy.startswith(target_permissions)]
-            else:
-                target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}'
-                filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
-
-            for user_query_policy in filtered_policies:
-                for perm_key in user_permissions.keys():
-                    if user_query_policy.startswith(perm_key):
-                        if 'query' in user_permissions[perm_key]['allowed_actions']:
-                            filtered_permissions[perm_key] = user_permissions[perm_key]['allowed_fields_values']
-
-            for perm_key, perm_value in filtered_permissions.items():
-                if query.search:
-                    query.search += f" {build_query_filter_for_allowed_field_values(perm_value)}"
-                    query.search = query.search.replace('  ', ' ')
-                else:
-                    query.search = f"{build_query_filter_for_allowed_field_values(perm_value)}"
-
+            # filtered_permissions = {}
+            # filtered_policies = []
+            # if query.filter_types:
+            #     for ft in query.filter_types:
+            #         target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}:{ft}'
+            #         filtered_policies = [policy for policy in user_query_policies if
+            #                              policy.startswith(target_permissions)]
+            # else:
+            #     target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}'
+            #     filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
+            #
+            # for user_query_policy in filtered_policies:
+            #     for perm_key in user_permissions.keys():
+            #         if user_query_policy.startswith(perm_key):
+            #             if 'query' in user_permissions[perm_key]['allowed_actions']:
+            #                 filtered_permissions[perm_key] = user_permissions[perm_key]['allowed_fields_values']
+            #
+            # for perm_key, perm_value in filtered_permissions.items():
+            #     if query.search:
+            #         query.search += f" {build_query_filter_for_allowed_field_values(perm_value)}"
+            #         query.search = query.search.replace('  ', ' ')
+            #     else:
+            #         query.search = f"{build_query_filter_for_allowed_field_values(perm_value)}"
             # Normalize search string by removing duplicate tokens while preserving order
             if query.search:
                 parts = [p for p in query.search.split(' ') if p]
@@ -1243,8 +1242,16 @@ class SQLAdapter(BaseDataAdapter):
                 #     cols = list(table.model_fields.keys())
                 #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
                 #     statement = statement.options(load_only(*cols))
-
+                print('==============================')
+                print(user_query_policies)
+                print('==============================')
+                print('==============================')
+                print(str(statement))
+                print('==============================')
                 results = list((await session.execute(statement)).all())
+                print('==============================')
+                print(len(results))
+                print('==============================')
                 if query.type == QueryType.attachments_aggregation:
                     attributes = {}
                     for item in results:
