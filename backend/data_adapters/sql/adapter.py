@@ -1273,9 +1273,6 @@ class SQLAdapter(BaseDataAdapter):
                 #     cols = list(table.model_fields.keys())
                 #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
                 #     statement = statement.options(load_only(*cols))
-                print("=======================================")
-                print(str(statement))
-                print("=======================================")
                 results = list((await session.execute(statement)).all())
 
                 if query.type == QueryType.attachments_aggregation:
