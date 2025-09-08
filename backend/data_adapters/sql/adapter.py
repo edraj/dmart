@@ -2362,10 +2362,11 @@ class SQLAdapter(BaseDataAdapter):
 
         for _, role in user_roles.items():
             role_permissions = await self.get_role_permissions(role)
-            permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
-                                                            core.Permission)
-            if permission_world_record:
-                role_permissions.append(permission_world_record)
+            if user_shortname == "anonymous":
+                permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
+                                                                core.Permission)
+                if permission_world_record:
+                    role_permissions.append(permission_world_record)
 
             for permission in role_permissions:
                 for space_name, permission_subpaths in permission.subpaths.items():
