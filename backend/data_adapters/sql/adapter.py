@@ -1100,7 +1100,7 @@ class SQLAdapter(BaseDataAdapter):
                 table = set_table_for_query(query)
                 statement = select(table)
 
-            user_permissions = await self.get_user_permissions(user_shortname)
+            # user_permissions = await self.get_user_permissions(user_shortname)
 
             # filtered_permissions = {}
             # filtered_policies = []
