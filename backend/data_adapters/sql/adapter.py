@@ -51,7 +51,8 @@ from data_adapters.sql.adapter_helpers import (
     subpath_checker, parse_search_string,
     sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
-    get_next_date_value, is_date_time_value, build_query_filter_for_allowed_field_values
+    get_next_date_value, is_date_time_value,
+    # build_query_filter_for_allowed_field_values
 )
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
@@ -1129,6 +1130,32 @@ class SQLAdapter(BaseDataAdapter):
                 else:
                     query.search = f"{build_query_filter_for_allowed_field_values(perm_value)}"
 
+
+            # user_permissions = await self.get_user_permissions(user_shortname)
+
+            # filtered_permissions = {}
+            # filtered_policies = []
+            # if query.filter_types:
+            #     for ft in query.filter_types:
+            #         target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}:{ft}'
+            #         filtered_policies = [policy for policy in user_query_policies if
+            #                              policy.startswith(target_permissions)]
+            # else:
+            #     target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}'
+            #     filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
+            #
+            # for user_query_policy in filtered_policies:
+            #     for perm_key in user_permissions.keys():
+            #         if user_query_policy.startswith(perm_key):
+            #             if 'query' in user_permissions[perm_key]['allowed_actions']:
+            #                 filtered_permissions[perm_key] = user_permissions[perm_key]['allowed_fields_values']
+            #
+            # for perm_key, perm_value in filtered_permissions.items():
+            #     if query.search:
+            #         query.search += f" {build_query_filter_for_allowed_field_values(perm_value)}"
+            #         query.search = query.search.replace('  ', ' ')
+            #     else:
+            #         query.search = f"{build_query_filter_for_allowed_field_values(perm_value)}"
             # Normalize search string by removing duplicate tokens while preserving order
             if query.search:
                 parts = [p for p in query.search.split(' ') if p]
@@ -1243,6 +1270,7 @@ class SQLAdapter(BaseDataAdapter):
                 #     statement = statement.options(load_only(*cols))
 
                 results = list((await session.execute(statement)).all())
+
                 if query.type == QueryType.attachments_aggregation:
                     attributes = {}
                     for item in results:
@@ -2360,10 +2388,11 @@ class SQLAdapter(BaseDataAdapter):
 
         for _, role in user_roles.items():
             role_permissions = await self.get_role_permissions(role)
-            permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
-                                                            core.Permission)
-            if permission_world_record:
-                role_permissions.append(permission_world_record)
+            if user_shortname == "anonymous":
+                permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
+                                                                core.Permission)
+                if permission_world_record:
+                    role_permissions.append(permission_world_record)
 
             for permission in role_permissions:
                 for space_name, permission_subpaths in permission.subpaths.items():
