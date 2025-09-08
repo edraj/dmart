@@ -51,7 +51,8 @@ from data_adapters.sql.adapter_helpers import (
     subpath_checker, parse_search_string,
     sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
-    get_next_date_value, is_date_time_value, build_query_filter_for_allowed_field_values
+    get_next_date_value, is_date_time_value,
+    # build_query_filter_for_allowed_field_values
 )
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
@@ -1242,16 +1243,9 @@ class SQLAdapter(BaseDataAdapter):
                 #     cols = list(table.model_fields.keys())
                 #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
                 #     statement = statement.options(load_only(*cols))
-                print('==============================')
-                print(user_query_policies)
-                print('==============================')
-                print('==============================')
-                print(str(statement))
-                print('==============================')
+
                 results = list((await session.execute(statement)).all())
-                print('==============================')
-                print(len(results))
-                print('==============================')
+
                 if query.type == QueryType.attachments_aggregation:
                     attributes = {}
                     for item in results:
