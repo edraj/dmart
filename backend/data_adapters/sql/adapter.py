@@ -2332,6 +2332,13 @@ class SQLAdapter(BaseDataAdapter):
                 return {}
 
             user_roles: dict[str, core.Role] = {}
+
+            if user_shortname != "anonymous":
+                role_record = await self.load_or_none(
+                    settings.management_space, 'roles', 'logged_in', core.Role
+                )
+                user_roles['logged_in'] = role_record
+
             for role in user.roles:
                 role_record = await self.load_or_none(
                     settings.management_space, 'roles', role, core.Role
