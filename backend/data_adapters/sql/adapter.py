@@ -1087,8 +1087,7 @@ class SQLAdapter(BaseDataAdapter):
                 )
                 user_query_policies.extend(r)
 
-            if len(user_query_policies) == 0:
-                return 0, []
+
 
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
@@ -1107,11 +1106,15 @@ class SQLAdapter(BaseDataAdapter):
             if query.filter_types:
                 for ft in query.filter_types:
                     target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}:{ft}'
-                    filtered_policies = [policy for policy in user_query_policies if
+                    matching_policies = [policy for policy in user_query_policies if
                                          policy.startswith(target_permissions)]
+                    filtered_policies.extend(matching_policies)
             else:
-                target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}'
-                filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
+                target_permissions_base = f'{query.space_name}:{query.subpath.removeprefix('/')}'
+                filtered_policies = [policy for policy in user_query_policies if 
+                                   policy.startswith(target_permissions_base)]
+            
+
 
             for user_query_policy in filtered_policies:
                 for perm_key in user_permissions.keys():
@@ -1139,28 +1142,21 @@ class SQLAdapter(BaseDataAdapter):
 
             statement_total = select(func.count(col(table.uuid)))
 
-            if table not in [Attachments, Histories] and user_query_policies and hasattr(table, 'query_policies'):
-                statement = statement.where(
-                    text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-                ).params(
-                    query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
-                )
-
-                statement = statement.where(
-                    text(
-                        "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
-                )
-
-                statement_total = statement_total.where(
-                    text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-                ).params(
-                    query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
-                )
-
-                statement_total = statement_total.where(
-                    text(
-                        "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
-                )
+            if table not in [Attachments, Histories] and hasattr(table, 'query_policies'):
+                conditions = [
+                    "owner_shortname = :user_shortname",
+                    "EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(acl::jsonb) = 'array' THEN acl::jsonb ELSE '[]'::jsonb END) AS elem WHERE elem->>'user_shortname' = :user_shortname AND (elem->'allowed_actions') ? 'query')"
+                ]
+                
+                params = {'user_shortname': user_shortname}
+                
+                if filtered_policies:
+                    conditions.insert(0, "EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
+                    params['query_policies'] = [policy.replace('*', '%') for policy in filtered_policies]
+                
+                access_filter = text(f"({' OR '.join(conditions)})")
+                statement = statement.where(access_filter).params(**params)
+                statement_total = statement_total.where(access_filter).params(**params)
 
             if query and query.type == QueryType.events:
                 try:
