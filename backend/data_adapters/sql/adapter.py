@@ -148,7 +148,7 @@ def query_aggregation(table, query):
                     getattr(func, reducer.reducer_name)(text(field_expr_str)).label(reducer.alias)
                 )
         if agg_selects:
-            statement = select(*statement.selected_columns, *agg_selects, text(f"'{query.aggregation_data.reducers[0].alias}' AS key"))
+            statement = select(*statement.selected_columns, *agg_selects, text(f"'{query.aggregation_data.reducers[0].alias}' AS key")) # type: ignore
 
     return statement
 
