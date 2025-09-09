@@ -123,7 +123,7 @@ def validate_search_range(v_str):
         # Date with hours, minutes, and seconds: [2025-04-28T12:30:45 2025-01-15T09:45:30] or [2025-04-28T12:30:45,2025-01-15T09:45:30]
         r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]$",
         # Full ISO format with microseconds: [2025-04-28T12:30:45.123456 2025-01-15T09:45:30.654321] or [2025-04-28T12:30:45.123456,2025-01-15T09:45:30.654321]
-        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\]$"
+        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\]$",
     ]
 
     for pattern in date_patterns:
@@ -135,9 +135,7 @@ def validate_search_range(v_str):
                 range_values = v_str[1:-1].split()
             return True, range_values
 
-    # Check for general numeric range pattern after checking date patterns
-    if re.match(r"^\[\d+[\s,]\d+\]$", v_str):
-        # Split on either space or comma
+    if re.match(r"^\[-?\d+(?:\.\d+)?[\s,]-?\d+(?:\.\d+)?\]$", v_str):
         if ',' in v_str[1:-1]:
             v_list = v_str[1:-1].split(',')
         else:
@@ -246,11 +244,17 @@ def parse_search_string(string, entity):
             value_type = 'string'
             format_strings = {}
 
+            all_numeric = True
             for val in range_values:
                 is_datetime, format_string = is_date_time_value(val)
                 if is_datetime:
                     value_type = 'datetime'
                     format_strings[val] = format_string
+                if not re.match(r'^-?\d+(?:\.\d+)?$', val):
+                    all_numeric = False
+
+            if value_type != 'datetime' and all_numeric:
+                value_type = 'numeric'
 
             field_data = {
                 'values': range_values,

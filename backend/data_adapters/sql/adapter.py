@@ -216,6 +216,21 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                     payload_field = field.replace('payload.body.', '')
                     payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
                     conditions = []
+
+                    if value_type == 'numeric' and field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                        val1, val2 = field_data['range_values']
+                        try:
+                            num1 = float(val1)
+                            num2 = float(val2)
+                            if num1 > num2:
+                                val1, val2 = val2, val1
+                        except ValueError:
+                            pass
+                        if negative:
+                            conditions.append(f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN {val1} AND {val2})")
+                        else:
+                            conditions.append(f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2})")
+
                     for value in values:
                         if value_type == 'datetime':
                             if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
@@ -319,6 +334,21 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                     payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
 
                     conditions = []
+
+                    if value_type == 'numeric' and field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                        val1, val2 = field_data['range_values']
+                        try:
+                            num1 = float(val1)
+                            num2 = float(val2)
+                            if num1 > num2:
+                                val1, val2 = val2, val1
+                        except ValueError:
+                            pass
+                        if negative:
+                            conditions.append(f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2})")
+                        else:
+                            conditions.append(f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2})")
+
                     for value in values:
                         if value_type == 'datetime':
                             if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
@@ -1243,7 +1273,6 @@ class SQLAdapter(BaseDataAdapter):
                 #     cols = list(table.model_fields.keys())
                 #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
                 #     statement = statement.options(load_only(*cols))
-
                 results = list((await session.execute(statement)).all())
 
                 if query.type == QueryType.attachments_aggregation:
