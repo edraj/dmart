@@ -147,6 +147,9 @@ def query_aggregation(table, query):
                 agg_selects.append(
                     getattr(func, reducer.reducer_name)(text(field_expr_str)).label(reducer.alias)
                 )
+        if agg_selects:
+            cols = list(statement.selected_columns) + agg_selects
+            statement = statement.with_only_columns(*cols)
     return statement
 
 
