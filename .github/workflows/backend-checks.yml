@@ -22,7 +22,7 @@ jobs:
       run: |
         source $HOME/.venv/bin/activate
         cd backend; 
-        pip install -r requirements/core.txt  -r requirements/extra.txt  -r requirements/plugins.txt  -r requirements/test.txt
+        uv pip install -r requirements/core.txt  -r requirements/extra.txt  -r requirements/plugins.txt  -r requirements/test.txt
         mkdir logs/
         cp ~/login_creds.sh ./
         cp ~/config.env ./
