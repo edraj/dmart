@@ -79,51 +79,77 @@ def query_aggregation(table, query):
     elif "postgresql" in settings.database_driver:
         aggregate_functions = postgres_aggregate_functions
 
-    statement = select(
-        *[
-            getattr(table, ll.replace("@", ""))
-            for ll in query.aggregation_data.load
-        ]
-    )
+    def _normalize_json_path(path: str) -> str:
+        if path.startswith("body."):
+            return f"payload.{path}"
+        return path
+
+    def _selectable_for_load(item: str):
+        if item.startswith("@"):
+            col_name = item.replace("@", "")
+            return getattr(table, col_name)
+
+        if hasattr(table, item):
+            return getattr(table, item)
+
+        json_path = _normalize_json_path(item)
+        expr = transform_keys_to_sql(json_path)
+        alias = item.replace(".", "_")
+        return text(expr).label(alias)
+
+    statement = select(*[_selectable_for_load(ll) for ll in query.aggregation_data.load])
 
     if bool(query.aggregation_data.group_by):
-        statement = statement.group_by(
-            *[
-                table.__dict__[column]
-                for column in [
-                    group_by.replace("@", "")
-                    for group_by in query.aggregation_data.group_by
-                ]
-            ]
-        )
+        group_by_exprs = []
+        for gb in query.aggregation_data.group_by:
+            if gb.startswith("@"):
+                group_by_exprs.append(table.__dict__[gb.replace("@", "")])
+            elif hasattr(table, gb):
+                group_by_exprs.append(getattr(table, gb))
+            else:
+                json_path = _normalize_json_path(gb)
+                expr = transform_keys_to_sql(json_path)
+                group_by_exprs.append(text(expr))
+        if group_by_exprs:
+            statement = statement.group_by(*group_by_exprs)
 
     if bool(query.aggregation_data.reducers):
+        agg_selects = []
         for reducer in query.aggregation_data.reducers:
             if reducer.reducer_name in aggregate_functions:
+                field_expr_str: str
                 if len(reducer.args) == 0:
-                    field = "*"
+                    field_expr_str = "*"
                 else:
-                    if not hasattr(table, reducer.args[0]):
-                        continue
-
-                    field = getattr(table, reducer.args[0])
-
-                    if field is None:
-                        continue
-
-                    if isinstance(field.type, Integer) \
-                            or isinstance(field.type, Boolean):
-                        field = f"{field}::int"
-                    elif isinstance(field.type, Float):
-                        field = f"{field}::float"
+                    arg0 = reducer.args[0]
+                    arg0 = _normalize_json_path(arg0)
+                    base_arg = arg0
+                    if hasattr(table, base_arg):
+                        field = getattr(table, base_arg)
+                        if field is None:
+                            continue
+                        if isinstance(field.type, Integer) or isinstance(field.type, Boolean):
+                            field_expr_str = f"{field}::int"
+                        elif isinstance(field.type, Float):
+                            field_expr_str = f"{field}::float"
+                        else:
+                            field_expr_str = f"{field}::text"
                     else:
-                        field = f"{field}::text"
-
-                statement = select(
-                    getattr(func, reducer.reducer_name)(text(field)).label(reducer.alias),
-                    text(f"'{reducer.alias}' AS key")
+                        jp = transform_keys_to_sql(arg0)
+                        if reducer.reducer_name in ("sum", "avg", "total"):
+                            field_expr_str = f"({jp})::float"
+                        elif reducer.reducer_name in ("count", "r_count"):
+                            field_expr_str = "*"
+                        elif reducer.reducer_name in ("min", "max", "group_concat"):
+                            field_expr_str = f"({jp})::text"
+                        else:
+                            field_expr_str = f"({jp})"
+                agg_selects.append(
+                    getattr(func, reducer.reducer_name)(text(field_expr_str)).label(reducer.alias)
                 )
-
+        if agg_selects:
+            cols = list(statement.selected_columns) + agg_selects
+            statement = statement.with_only_columns(*cols)
     return statement
 
 
