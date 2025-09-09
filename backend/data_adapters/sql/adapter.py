@@ -80,6 +80,8 @@ def query_aggregation(table, query):
         aggregate_functions = postgres_aggregate_functions
 
     def _normalize_json_path(path: str) -> str:
+        if path.startswith("@"):
+            path = path[1:]
         if path.startswith("body."):
             return f"payload.{path}"
         return path
@@ -744,7 +746,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 if query.sort_by.startswith('attributes.'):
                     query.sort_by = query.sort_by[11:]
                 if "." in query.sort_by:
-                    sort_expression = transform_keys_to_sql(query.sort_by)
+                    # Normalize JSON path for sorting as well (handle leading '@' and body.* shortcut)
+                    sort_expression = transform_keys_to_sql(query.sort_by.replace("@", "", 1) if query.sort_by.startswith("@") else (f"payload.{query.sort_by}" if query.sort_by.startswith("body.") else query.sort_by))
                     sort_type = " DESC" if query.sort_type == SortType.descending else ""
                     sort_expression = f"CASE WHEN ({sort_expression}) ~ '^[0-9]+$' THEN ({sort_expression})::float END {sort_type}, ({sort_expression}) {sort_type}"
                     statement = statement.order_by(text(sort_expression))
