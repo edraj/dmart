@@ -1147,9 +1147,6 @@ class SQLAdapter(BaseDataAdapter):
                 )
                 user_query_policies.extend(r)
 
-            if len(user_query_policies) == 0:
-                return 0, []
-
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -1198,28 +1195,27 @@ class SQLAdapter(BaseDataAdapter):
 
             statement_total = select(func.count(col(table.uuid)))
 
-            if table not in [Attachments, Histories] and user_query_policies and hasattr(table, 'query_policies'):
-                statement = statement.where(
-                    text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-                ).params(
-                    query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
-                )
-
-                statement = statement.where(
-                    text(
-                        "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
-                )
-
-                statement_total = statement_total.where(
-                    text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-                ).params(
-                    query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
-                )
-
-                statement_total = statement_total.where(
-                    text(
-                        "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
-                )
+            if table not in [Attachments, Histories] and hasattr(table, 'query_policies'):
+                access_conditions = [
+                    "owner_shortname = :user_shortname",
+                    "EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(acl::jsonb) = 'array' THEN acl::jsonb ELSE '[]'::jsonb END) AS elem WHERE elem->>'user_shortname' = :user_shortname AND (elem->'allowed_actions') ? 'query')"
+                ]
+                
+                if user_query_policies:
+                    access_conditions.insert(0, "EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
+                    access_filter = text(f"({' OR '.join(access_conditions)})")
+                    statement = statement.where(access_filter).params(
+                        query_policies=[p.replace('*', '%') for p in user_query_policies],
+                        user_shortname=user_shortname
+                    )
+                    statement_total = statement_total.where(access_filter).params(
+                        query_policies=[p.replace('*', '%') for p in user_query_policies],
+                        user_shortname=user_shortname
+                    )
+                else:
+                    access_filter = text(f"({' OR '.join(access_conditions)})")
+                    statement = statement.where(access_filter).params(user_shortname=user_shortname)
+                    statement_total = statement_total.where(access_filter).params(user_shortname=user_shortname)
 
             if query and query.type == QueryType.events:
                 try:
