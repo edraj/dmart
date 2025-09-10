@@ -799,6 +799,7 @@ async def import_resources_from_csv(
         space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
         subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
         schema_shortname = None,
+        is_update: bool = False,
         owner_shortname=Depends(JWTBearer()),
 ):
     contents = await resources_file.read()
@@ -856,7 +857,7 @@ async def import_resources_from_csv(
             await serve_request(
                 request=api.Request(
                     space_name=space_name,
-                    request_type=RequestType.create,
+                    request_type=RequestType.update if is_update else RequestType.create,
                     records=[record],
                 ),
                 owner_shortname=owner_shortname,
