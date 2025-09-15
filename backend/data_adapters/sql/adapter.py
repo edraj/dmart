@@ -208,9 +208,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             )
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
-            statement = statement.where(text(
-                f"(shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload) ILIKE '%' || '{query.search}' || '%'"
-            ))
+            p = f"shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
+            if table is Users:
+                p += " || ' ' || email || ' ' || msisdn || ' ' || roles"
+            if table is Roles:
+                p += " || ' ' || permissions"
+            statement = statement.where(text(f"({p}) ILIKE '%' || '{query.search}' || '%'"))
         else:
             search_tokens = parse_search_string(query.search, table)
 
@@ -1266,7 +1269,7 @@ class SQLAdapter(BaseDataAdapter):
                 except Exception as e:
                     print("[!!query_tags]", e)
                     return 0, []
-                    
+
             is_fetching_spaces = False
             if (query.space_name
                     and query.type == QueryType.spaces
