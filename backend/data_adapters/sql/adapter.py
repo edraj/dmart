@@ -166,6 +166,27 @@ def string_to_list(input_str):
         return [input_str]
 
 
+def apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies):
+    if table not in [Attachments, Histories] and hasattr(table, 'query_policies'):
+        access_conditions = [
+            "owner_shortname = :user_shortname",
+            "EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(acl::jsonb) = 'array' THEN acl::jsonb ELSE '[]'::jsonb END) AS elem WHERE elem->>'user_shortname' = :user_shortname AND (elem->'allowed_actions') ? 'query')"
+        ]
+        
+        if user_query_policies:
+            access_conditions.insert(0, "EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
+            access_filter = text(f"({' OR '.join(access_conditions)})")
+            statement = statement.where(access_filter).params(
+                query_policies=[p.replace('*', '%') for p in user_query_policies],
+                user_shortname=user_shortname
+            )
+        else:
+            access_filter = text(f"({' OR '.join(access_conditions)})")
+            statement = statement.where(access_filter).params(user_shortname=user_shortname)
+    
+    return statement
+
+
 async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
         if query.type == QueryType.attachments_aggregation and not is_for_count:
@@ -1195,27 +1216,6 @@ class SQLAdapter(BaseDataAdapter):
 
             statement_total = select(func.count(col(table.uuid)))
 
-            if table not in [Attachments, Histories] and hasattr(table, 'query_policies'):
-                access_conditions = [
-                    "owner_shortname = :user_shortname",
-                    "EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(acl::jsonb) = 'array' THEN acl::jsonb ELSE '[]'::jsonb END) AS elem WHERE elem->>'user_shortname' = :user_shortname AND (elem->'allowed_actions') ? 'query')"
-                ]
-                
-                if user_query_policies:
-                    access_conditions.insert(0, "EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-                    access_filter = text(f"({' OR '.join(access_conditions)})")
-                    statement = statement.where(access_filter).params(
-                        query_policies=[p.replace('*', '%') for p in user_query_policies],
-                        user_shortname=user_shortname
-                    )
-                    statement_total = statement_total.where(access_filter).params(
-                        query_policies=[p.replace('*', '%') for p in user_query_policies],
-                        user_shortname=user_shortname
-                    )
-                else:
-                    access_filter = text(f"({' OR '.join(access_conditions)})")
-                    statement = statement.where(access_filter).params(user_shortname=user_shortname)
-                    statement_total = statement_total.where(access_filter).params(user_shortname=user_shortname)
 
             if query and query.type == QueryType.events:
                 try:
@@ -1279,6 +1279,9 @@ class SQLAdapter(BaseDataAdapter):
                 #     for query_allowed_fields_value in query_allowed_fields_values:
                 #         statement = statement.where(text(query_allowed_fields_value))
                 #         statement_total = statement_total.where(text(query_allowed_fields_value))
+
+            statement = apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies)
+            statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname, user_query_policies)
 
             try:
                 if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
