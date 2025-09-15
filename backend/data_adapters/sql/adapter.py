@@ -774,13 +774,13 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             statement = select(
                 func.jsonb_array_elements_text(col(table.tags)).label('tag'),
                 func.count('*').label('count')
-            ).where(table.uuid.in_(
+            ).where(col(table.uuid).in_(
                 select(col(table.uuid)).where(statement.whereclause)  # type: ignore
             )).group_by('tag')
         else:
             statement = select(
                 func.jsonb_array_elements_text(col(table.tags)).label('tag')
-            ).where(table.uuid.in_(
+            ).where(col(table.uuid).in_(
                 select(col(table.uuid)).where(statement.whereclause)  # type: ignore
             )).distinct()
 
