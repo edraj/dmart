@@ -208,7 +208,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             )
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
-            p = f"shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
+            p = "shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
             if table is Users:
                 p += " || ' ' || email || ' ' || msisdn || ' ' || roles"
             if table is Roles:
