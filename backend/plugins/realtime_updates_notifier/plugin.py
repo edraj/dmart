@@ -53,20 +53,6 @@ class Plugin(PluginBase):
                         "action_type": data.action_type,
                         "owner_shortname": data.user_shortname
                     }
-                }
-                
+                }                
             )
-            print("=================",
-                {
-                    "type": "notification_subscription",
-                    "channels": [*set(channels)],
-                    "message": {
-                        "title": "updated",
-                        "subpath": data.subpath,
-                        "space": data.space_name,
-                        "shortname": data.shortname,
-                        "action_type": data.action_type,
-                        "owner_shortname": data.user_shortname
-                    }
-                })
             
