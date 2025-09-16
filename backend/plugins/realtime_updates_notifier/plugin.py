@@ -6,8 +6,6 @@ from utils.settings import settings
 class Plugin(PluginBase):
 
     async def hook(self, data: Event):
-        if settings.active_data_db != "file":
-            return
         all_MKW = "__ALL__"
 
         state = data.attributes.get("state", all_MKW)
@@ -22,19 +20,21 @@ class Plugin(PluginBase):
             subpath += subpath_part
             
             # Consider channels with __ALL__ magic word
+            if not subpath.startswith("/"):
+                subpath = "/" + subpath
             channels.extend([
-                f"{data.space_name}:{subpath}:{data.schema_shortname}:{data.action_type}:{state}",
-
                 f"{data.space_name}:{subpath}:{all_MKW}:{data.action_type}:{state}",
-                f"{data.space_name}:{subpath}:{data.schema_shortname}:{all_MKW}:{state}",
-                f"{data.space_name}:{subpath}:{data.schema_shortname}:{data.action_type}:{all_MKW}",
-
                 f"{data.space_name}:{subpath}:{all_MKW}:{all_MKW}:{state}",
-                f"{data.space_name}:{subpath}:{data.schema_shortname}:{all_MKW}:{all_MKW}",
                 f"{data.space_name}:{subpath}:{all_MKW}:{data.action_type}:{all_MKW}",
-
                 f"{data.space_name}:{subpath}:{all_MKW}:{all_MKW}:{all_MKW}",
             ])
+            if data.schema_shortname:
+                channels.extend([
+                    f"{data.space_name}:{subpath}:{data.schema_shortname}:{data.action_type}:{state}",
+                    f"{data.space_name}:{subpath}:{data.schema_shortname}:{all_MKW}:{state}",
+                    f"{data.space_name}:{subpath}:{data.schema_shortname}:{data.action_type}:{all_MKW}",
+                    f"{data.space_name}:{subpath}:{data.schema_shortname}:{all_MKW}:{all_MKW}",
+                ])
             subpath += "/"
         if not settings.websocket_url:
             return
@@ -54,5 +54,19 @@ class Plugin(PluginBase):
                         "owner_shortname": data.user_shortname
                     }
                 }
+                
             )
+            print("=================",
+                {
+                    "type": "notification_subscription",
+                    "channels": [*set(channels)],
+                    "message": {
+                        "title": "updated",
+                        "subpath": data.subpath,
+                        "space": data.space_name,
+                        "shortname": data.shortname,
+                        "action_type": data.action_type,
+                        "owner_shortname": data.user_shortname
+                    }
+                })
             
