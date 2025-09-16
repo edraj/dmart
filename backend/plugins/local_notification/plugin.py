@@ -1,5 +1,5 @@
 import sys
-from models.core import Content, Payload, PluginBase, Event, Ticket, Reaction, Comment, Relationship, Locator
+from models.core import Content, Payload, PluginBase, Event, Reaction, Comment, Relationship, Locator
 from models.enums import ContentType, ResourceType
 from utils.helpers import camel_case
 from data_adapters.adapter import data_adapter as db
