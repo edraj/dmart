@@ -52,7 +52,7 @@ from data_adapters.sql.adapter_helpers import (
     sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
     get_next_date_value, is_date_time_value,
-    #build_query_filter_for_allowed_field_values
+    # build_query_filter_for_allowed_field_values
 )
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
@@ -79,51 +79,79 @@ def query_aggregation(table, query):
     elif "postgresql" in settings.database_driver:
         aggregate_functions = postgres_aggregate_functions
 
-    statement = select(
-        *[
-            getattr(table, ll.replace("@", ""))
-            for ll in query.aggregation_data.load
-        ]
-    )
+    def _normalize_json_path(path: str) -> str:
+        if path.startswith("@"):
+            path = path[1:]
+        if path.startswith("body."):
+            return f"payload.{path}"
+        return path
+
+    def _selectable_for_load(item: str):
+        if item.startswith("@"):
+            col_name = item.replace("@", "")
+            return getattr(table, col_name)
+
+        if hasattr(table, item):
+            return getattr(table, item)
+
+        json_path = _normalize_json_path(item)
+        expr = transform_keys_to_sql(json_path)
+        alias = item.replace(".", "_")
+        return text(expr).label(alias)
+
+    statement = select(*[_selectable_for_load(ll) for ll in query.aggregation_data.load])
 
     if bool(query.aggregation_data.group_by):
-        statement = statement.group_by(
-            *[
-                table.__dict__[column]
-                for column in [
-                    group_by.replace("@", "")
-                    for group_by in query.aggregation_data.group_by
-                ]
-            ]
-        )
+        group_by_exprs = []
+        for gb in query.aggregation_data.group_by:
+            if gb.startswith("@"):
+                group_by_exprs.append(table.__dict__[gb.replace("@", "")])
+            elif hasattr(table, gb):
+                group_by_exprs.append(getattr(table, gb))
+            else:
+                json_path = _normalize_json_path(gb)
+                expr = transform_keys_to_sql(json_path)
+                group_by_exprs.append(text(expr))
+        if group_by_exprs:
+            statement = statement.group_by(*group_by_exprs)
 
     if bool(query.aggregation_data.reducers):
+        agg_selects = []
         for reducer in query.aggregation_data.reducers:
             if reducer.reducer_name in aggregate_functions:
+                field_expr_str: str
                 if len(reducer.args) == 0:
-                    field = "*"
+                    field_expr_str = "*"
                 else:
-                    if not hasattr(table, reducer.args[0]):
-                        continue
-
-                    field = getattr(table, reducer.args[0])
-
-                    if field is None:
-                        continue
-
-                    if isinstance(field.type, Integer) \
-                            or isinstance(field.type, Boolean):
-                        field = f"{field}::int"
-                    elif isinstance(field.type, Float):
-                        field = f"{field}::float"
+                    arg0 = reducer.args[0]
+                    arg0 = _normalize_json_path(arg0)
+                    base_arg = arg0
+                    if hasattr(table, base_arg):
+                        field = getattr(table, base_arg)
+                        if field is None:
+                            continue
+                        if isinstance(field.type, Integer) or isinstance(field.type, Boolean):
+                            field_expr_str = f"{field}::int"
+                        elif isinstance(field.type, Float):
+                            field_expr_str = f"{field}::float"
+                        else:
+                            field_expr_str = f"{field}::text"
                     else:
-                        field = f"{field}::text"
-
-                statement = select(
-                    getattr(func, reducer.reducer_name)(text(field)).label(reducer.alias),
-                    text(f"'{reducer.alias}' AS key")
+                        jp = transform_keys_to_sql(arg0)
+                        if reducer.reducer_name in ("sum", "avg", "total"):
+                            field_expr_str = f"({jp})::float"
+                        elif reducer.reducer_name in ("count", "r_count"):
+                            field_expr_str = "*"
+                        elif reducer.reducer_name in ("min", "max", "group_concat"):
+                            field_expr_str = f"({jp})::text"
+                        else:
+                            field_expr_str = f"({jp})"
+                agg_selects.append(
+                    getattr(func, reducer.reducer_name)(text(field_expr_str)).label(reducer.alias)
                 )
-
+        if agg_selects:
+            cols = list(statement.selected_columns) + agg_selects
+            statement = statement.with_only_columns(*cols)
     return statement
 
 
@@ -136,6 +164,27 @@ def string_to_list(input_str):
             return result
     except (ValueError, SyntaxError):
         return [input_str]
+
+
+def apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies):
+    if table not in [Attachments, Histories] and hasattr(table, 'query_policies'):
+        access_conditions = [
+            "owner_shortname = :user_shortname",
+            "EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(acl::jsonb) = 'array' THEN acl::jsonb ELSE '[]'::jsonb END) AS elem WHERE elem->>'user_shortname' = :user_shortname AND (elem->'allowed_actions') ? 'query')"
+        ]
+        
+        if user_query_policies:
+            access_conditions.insert(0, "EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
+            access_filter = text(f"({' OR '.join(access_conditions)})")
+            statement = statement.where(access_filter).params(
+                query_policies=[p.replace('*', '%') for p in user_query_policies],
+                user_shortname=user_shortname
+            )
+        else:
+            access_filter = text(f"({' OR '.join(access_conditions)})")
+            statement = statement.where(access_filter).params(user_shortname=user_shortname)
+    
+    return statement
 
 
 async def set_sql_statement_from_query(table, statement, query, is_for_count):
@@ -180,9 +229,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             )
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
-            statement = statement.where(text(
-                f"(shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload) ILIKE '%' || '{query.search}' || '%'"
-            ))
+            p = "shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
+            if table is Users:
+                p += " || ' ' || email || ' ' || msisdn || ' ' || roles"
+            if table is Roles:
+                p += " || ' ' || permissions"
+            statement = statement.where(text(f"({p}) ILIKE '%' || '{query.search}' || '%'"))
         else:
             search_tokens = parse_search_string(query.search, table)
 
@@ -216,6 +268,21 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                     payload_field = field.replace('payload.body.', '')
                     payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
                     conditions = []
+
+                    if value_type == 'numeric' and field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                        val1, val2 = field_data['range_values']
+                        try:
+                            num1 = float(val1)
+                            num2 = float(val2)
+                            if num1 > num2:
+                                val1, val2 = val2, val1
+                        except ValueError:
+                            pass
+                        if negative:
+                            conditions.append(f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN {val1} AND {val2})")
+                        else:
+                            conditions.append(f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2})")
+
                     for value in values:
                         if value_type == 'datetime':
                             if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
@@ -268,36 +335,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
                                         fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::text >= '{value}' AND (payload::jsonb->'body'->>{payload_path})::text < '{next_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
-                        elif value_type == 'numeric':
-                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
-                                range_values = field_data['range_values']
-                                val1, val2 = range_values
-                                try:
-                                    num1 = float(val1)
-                                    num2 = float(val2)
-                                    if num1 > num2:
-                                        val1, val2 = val2, val1
-                                except ValueError:
-                                    pass
-
-                                if negative:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
-                                else:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
-                            else:
-                                for value in values:
-                                    if negative:
-                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float != {value})"
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::float != {value})"
-                                        conditions.append(f"({number_condition} OR {string_condition})")
-                                    else:
-                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float = {value})"
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::float = {value})"
-                                        conditions.append(f"({number_condition} OR {string_condition})")
                         elif value_type == 'boolean':
                             for value in values:
                                 bool_value = value.lower()
@@ -349,6 +386,21 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                     payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
 
                     conditions = []
+
+                    if value_type == 'numeric' and field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                        val1, val2 = field_data['range_values']
+                        try:
+                            num1 = float(val1)
+                            num2 = float(val2)
+                            if num1 > num2:
+                                val1, val2 = val2, val1
+                        except ValueError:
+                            pass
+                        if negative:
+                            conditions.append(f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2})")
+                        else:
+                            conditions.append(f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2})")
+
                     for value in values:
                         if value_type == 'datetime':
                             if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
@@ -401,26 +453,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
                                         fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (payload::jsonb->>{payload_path})::text >= '{value}' AND (payload::jsonb->>{payload_path})::text < '{next_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
-                        elif value_type == 'numeric':
-                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
-                                range_values = field_data['range_values']
-                                val1, val2 = range_values
-                                try:
-                                    num1 = float(val1)
-                                    num2 = float(val2)
-                                    if num1 > num2:
-                                        val1, val2 = val2, val1
-                                except ValueError:
-                                    pass
-
-                                if negative:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
-                                else:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
                         else:
                             is_numeric = False
                             if value.isnumeric():
@@ -610,7 +642,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                                 conditions.append(f"{field} != '{value}'")
                                             else:
                                                 conditions.append(f"{field} = '{value}'")
-                                    join_operator = ' AND ' if operation == 'AND' else ' OR '
+                                    if negative:
+                                        join_operator = ' AND '
+                                    else:
+                                        join_operator = ' AND ' if operation == 'AND' else ' OR '
                                     statement = statement.where(text('(' + join_operator.join(conditions) + ')'))
                         else:
                             conditions = []
@@ -735,7 +770,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 if query.sort_by.startswith('attributes.'):
                     query.sort_by = query.sort_by[11:]
                 if "." in query.sort_by:
-                    sort_expression = transform_keys_to_sql(query.sort_by)
+                    # Normalize JSON path for sorting as well (handle leading '@' and body.* shortcut)
+                    sort_expression = transform_keys_to_sql(query.sort_by.replace("@", "", 1) if query.sort_by.startswith("@") else (f"payload.{query.sort_by}" if query.sort_by.startswith("body.") else query.sort_by))
                     sort_type = " DESC" if query.sort_type == SortType.descending else ""
                     sort_expression = f"CASE WHEN ({sort_expression}) ~ '^[0-9]+$' THEN ({sort_expression})::float END {sort_type}, ({sort_expression}) {sort_type}"
                     statement = statement.order_by(text(sort_expression))
@@ -759,13 +795,13 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             statement = select(
                 func.jsonb_array_elements_text(col(table.tags)).label('tag'),
                 func.count('*').label('count')
-            ).where(table.uuid.in_(
+            ).where(col(table.uuid).in_(
                 select(col(table.uuid)).where(statement.whereclause)  # type: ignore
             )).group_by('tag')
         else:
             statement = select(
                 func.jsonb_array_elements_text(col(table.tags)).label('tag')
-            ).where(table.uuid.in_(
+            ).where(col(table.uuid).in_(
                 select(col(table.uuid)).where(statement.whereclause)  # type: ignore
             )).distinct()
 
@@ -1135,9 +1171,6 @@ class SQLAdapter(BaseDataAdapter):
                 )
                 user_query_policies.extend(r)
 
-            if len(user_query_policies) == 0:
-                return 0, []
-
             if not query.subpath.startswith("/"):
                 query.subpath = f"/{query.subpath}"
 
@@ -1173,42 +1206,19 @@ class SQLAdapter(BaseDataAdapter):
             #         query.search = query.search.replace('  ', ' ')
             #     else:
             #         query.search = f"{build_query_filter_for_allowed_field_values(perm_value)}"
-            #
-            # # Normalize search string by removing duplicate tokens while preserving order
-            # if query.search:
-            #     parts = [p for p in query.search.split(' ') if p]
-            #     seen = set()
-            #     deduped_parts = []
-            #     for p in parts:
-            #         if p not in seen:
-            #             seen.add(p)
-            #             deduped_parts.append(p)
-            #     query.search = ' '.join(deduped_parts)
+            # Normalize search string by removing duplicate tokens while preserving order
+            if query.search:
+                parts = [p for p in query.search.split(' ') if p]
+                seen = set()
+                deduped_parts = []
+                for p in parts:
+                    if p not in seen:
+                        seen.add(p)
+                        deduped_parts.append(p)
+                query.search = ' '.join(deduped_parts)
 
             statement_total = select(func.count(col(table.uuid)))
 
-            if table not in [Attachments, Histories] and user_query_policies and hasattr(table, 'query_policies'):
-                statement = statement.where(
-                    text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-                ).params(
-                    query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
-                )
-
-                statement = statement.where(
-                    text(
-                        "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
-                )
-
-                statement_total = statement_total.where(
-                    text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-                ).params(
-                    query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
-                )
-
-                statement_total = statement_total.where(
-                    text(
-                        "(acl = 'null' or acl = '[]' or exists (select 1 from jsonb_array_elements( case when jsonb_typeof(acl::jsonb) = 'array' then acl::jsonb else '[]'::jsonb end ) as elem where elem->>'user_shortname' = owner_shortname and (elem->'allowed_actions') ? 'query'))")
-                )
 
             if query and query.type == QueryType.events:
                 try:
@@ -1255,7 +1265,7 @@ class SQLAdapter(BaseDataAdapter):
                 except Exception as e:
                     print("[!!query_tags]", e)
                     return 0, []
-                    
+
             is_fetching_spaces = False
             if (query.space_name
                     and query.type == QueryType.spaces
@@ -1272,6 +1282,9 @@ class SQLAdapter(BaseDataAdapter):
                 #     for query_allowed_fields_value in query_allowed_fields_values:
                 #         statement = statement.where(text(query_allowed_fields_value))
                 #         statement_total = statement_total.where(text(query_allowed_fields_value))
+
+            statement = apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies)
+            statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname, user_query_policies)
 
             try:
                 if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
@@ -1291,8 +1304,8 @@ class SQLAdapter(BaseDataAdapter):
                 #     cols = list(table.model_fields.keys())
                 #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
                 #     statement = statement.options(load_only(*cols))
-
                 results = list((await session.execute(statement)).all())
+
                 if query.type == QueryType.attachments_aggregation:
                     attributes = {}
                     for item in results:
@@ -1895,11 +1908,6 @@ class SQLAdapter(BaseDataAdapter):
                     await session.execute(statement2)
                     statement = delete(Entries).where(col(Entries.space_name) == space_name)
                     await session.execute(statement)
-                if meta.__class__ == core.Folder:
-                    statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name).where(col(Attachments.subpath).startswith(subpath))
-                    await session.execute(statement2)
-                    statement = delete(Entries).where(col(Entries.space_name) == space_name).where(col(Entries.subpath) == subpath)
-                    await session.execute(statement)
                 await session.commit()
             except Exception as e:
                 print("[!delete]", e)
@@ -2384,6 +2392,14 @@ class SQLAdapter(BaseDataAdapter):
                 return {}
 
             user_roles: dict[str, core.Role] = {}
+
+            if user_shortname != "anonymous":
+                role_record = await self.load_or_none(
+                    settings.management_space, 'roles', 'logged_in', core.Role
+                )
+                if role_record is not None:
+                    user_roles['logged_in'] = role_record
+
             for role in user.roles:
                 role_record = await self.load_or_none(
                     settings.management_space, 'roles', role, core.Role
@@ -2415,10 +2431,11 @@ class SQLAdapter(BaseDataAdapter):
 
         for _, role in user_roles.items():
             role_permissions = await self.get_role_permissions(role)
-            permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
-                                                            core.Permission)
-            if permission_world_record:
-                role_permissions.append(permission_world_record)
+            if user_shortname == "anonymous":
+                permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
+                                                                core.Permission)
+                if permission_world_record:
+                    role_permissions.append(permission_world_record)
 
             for permission in role_permissions:
                 for space_name, permission_subpaths in permission.subpaths.items():

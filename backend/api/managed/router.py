@@ -509,7 +509,7 @@ async def update_state(
         new_version_flattend = flatten_dict(ticket_obj.model_dump())
         new_version_flattend.pop("payload.body", None)
         new_version_flattend.update(
-            flatten_dict({"payload.body": ticket_obj}))
+            flatten_dict({"payload.body": ticket_obj.model_dump(mode='json')}))
 
         if comment:
             time = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -799,6 +799,7 @@ async def import_resources_from_csv(
         space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
         subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
         schema_shortname = None,
+        is_update: bool = False,
         owner_shortname=Depends(JWTBearer()),
 ):
     contents = await resources_file.read()
@@ -856,7 +857,7 @@ async def import_resources_from_csv(
             await serve_request(
                 request=api.Request(
                     space_name=space_name,
-                    request_type=RequestType.create,
+                    request_type=RequestType.update if is_update else RequestType.create,
                     records=[record],
                 ),
                 owner_shortname=owner_shortname,

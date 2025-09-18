@@ -54,6 +54,10 @@ def write_json_file(path, data):
         clean = clean_json(data)
         json.dump(clean, f, indent=2, default=str)
 
+def write_file(path, data):
+    with open(path, "w") as f:
+        f.write(data)
+
 def write_binary_file(path, data):
     with open(path, "wb") as f:
         f.write(data)
@@ -430,18 +434,16 @@ async def export_data_with_query(query, user_shortname):
                         attachment_body = attachment.payload["body"]
 
                 if attachment_body is not None:
-                    if (isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == 'json') \
-                        or (isinstance(attachment.payload, Payload) and attachment.payload.content_type == 'json'):
-                        if isinstance(attachment_body, dict):
-                            write_json_file(f"{media_path}/{attachment.shortname}.json", attachment_body)
-                            if isinstance(attachment.payload, Payload):
-                                attachment.payload.body = f"{attachment.shortname}.json"
-                            elif isinstance(attachment.payload, dict):
-                                attachment.payload["body"] = f"{attachment.shortname}.json"
+                    if isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == 'json':
+                        write_json_file(f"{media_path}/{attachment.shortname}.json", attachment_body)
+                        attachment.payload["body"] = f"{attachment.shortname}.json"
+                    elif isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == 'comment':
+                        write_json_file(f"{media_path}/{attachment.shortname}.json", attachment_body)
+                        attachment.payload["body"] = f"{attachment.shortname}.json"
                     else:
-                        if attachment.media is None:
-                            continue
-                        write_binary_file(f"{media_path}/{attachment_body}", attachment.media)
+                        if attachment.media:
+                            write_binary_file(f"{media_path}/{attachment_body}", attachment.media)
+
                     _attachment = attachment.model_dump()
 
                     del _attachment["media"]
