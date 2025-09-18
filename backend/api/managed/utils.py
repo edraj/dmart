@@ -38,6 +38,7 @@ from api.user.service import (
 from languages.loader import languages
 from data_adapters.adapter import data_adapter as db
 from pathlib import Path as FilePath
+import asyncio
 
 
 def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
@@ -209,7 +210,8 @@ def set_resource_object(record, resource_obj, is_internal):
 async def serve_request_create(request: api.Request, owner_shortname: str, token: str, is_internal: bool = False):
     failed_records = []
     records = []
-    for record in request.records:
+
+    async def process_record(record):
         if record.subpath[0] != "/":
             record.subpath = f"/{record.subpath}"
         try:
@@ -219,9 +221,7 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                 and isinstance(record.attributes.get("payload", None), dict)
                 and "schema_shortname" in record.attributes["payload"]
             ):
-                schema_shortname = record.attributes["payload"][
-                    "schema_shortname"
-                ]
+                schema_shortname = record.attributes["payload"]["schema_shortname"]
             await plugin_manager.before_action(
                 core.Event(
                     space_name=request.space_name,
@@ -234,22 +234,17 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                 )
             )
 
-            await serve_request_create_check_access(
-                request, record, owner_shortname
-            )
+            await serve_request_create_check_access(request, record, owner_shortname)
 
             if record.resource_type == ResourceType.ticket:
-                record = await set_init_state_from_request(
-                    request, owner_shortname
-                )
+                record = await set_init_state_from_request(request, owner_shortname)
 
             shortname_exists = await db.is_entry_exist(
                 space_name=request.space_name,
                 subpath=record.subpath,
                 shortname=record.shortname,
                 resource_type=record.resource_type,
-                schema_shortname=record.attributes.get(
-                    "schema_shortname", None)
+                schema_shortname=record.attributes.get("schema_shortname", None),
             )
 
             if record.shortname != settings.auto_uuid_rule and shortname_exists:
@@ -262,13 +257,17 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                     ),
                 )
 
-            await db.validate_uniqueness(request.space_name, record, RequestType.create, owner_shortname)
+            await db.validate_uniqueness(
+                request.space_name, record, RequestType.create, owner_shortname
+            )
 
             resource_obj = core.Meta.from_record(
                 record=record, owner_shortname=owner_shortname
             )
 
-            separate_payload_data, resource_obj = set_resource_object(record, resource_obj, is_internal)
+            separate_payload_data, resource_obj = set_resource_object(
+                record, resource_obj, is_internal
+            )
 
             if (
                 resource_obj.payload
@@ -292,18 +291,20 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                 await send_sms_email_invitation(resource_obj, record)
 
             if separate_payload_data is not None and isinstance(
-                    separate_payload_data, dict
+                separate_payload_data, dict
             ):
                 await db.update_payload(
-                    request.space_name, record.subpath, resource_obj, separate_payload_data, owner_shortname
+                    request.space_name,
+                    record.subpath,
+                    resource_obj,
+                    separate_payload_data,
+                    owner_shortname,
                 )
 
-            records.append(
-                resource_obj.to_record(
-                    record.subpath,
-                    resource_obj.shortname,
-                    [],
-                )
+            rec = resource_obj.to_record(
+                record.subpath,
+                resource_obj.shortname,
+                [],
             )
             record.attributes["logged_in_user_token"] = token
             await plugin_manager.after_action(
@@ -312,25 +313,30 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                     subpath=record.subpath,
                     shortname=resource_obj.shortname,
                     action_type=core.ActionType.create,
-                    schema_shortname=record.attributes["payload"].get(
-                        "schema_shortname", None
-                    )
-                    if record.attributes.get("payload")
-                    else None,
+                    schema_shortname=(
+                        record.attributes["payload"].get("schema_shortname", None)
+                        if record.attributes.get("payload")
+                        else None
+                    ),
                     resource_type=record.resource_type,
                     user_shortname=owner_shortname,
                     attributes=record.attributes,
                 )
             )
-
+            return rec, None
         except api.Exception as e:
-            failed_records.append(
-                {
-                    "record": record,
-                    "error": e.error.message,
-                    "error_code": e.error.code,
-                }
-            )
+            return None, {
+                "record": record,
+                "error": e.error.message,
+                "error_code": e.error.code,
+            }
+
+    results = await asyncio.gather(*(process_record(r) for r in request.records))
+    for rec, failed in results:
+        if rec is not None:
+            records.append(rec)
+        if failed is not None:
+            failed_records.append(failed)
 
     return records, failed_records
 
