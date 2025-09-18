@@ -195,6 +195,7 @@ class Permissions(Metas, table=True):
     conditions: list[str] = Field(default_factory=dict, sa_type=JSONB)
     restricted_fields: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     allowed_fields_values: dict | list[dict] | None = Field(default_factory=None, sa_type=JSONB)
+    filter_fields_values: str | None = None
 
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))  # type: ignore
 

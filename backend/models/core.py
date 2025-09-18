@@ -456,6 +456,7 @@ class Permission(Meta):
     conditions: list[ConditionType] = list()
     restricted_fields: list[str] = []
     allowed_fields_values: dict[str, list[str] | list[list[str]]] = {}
+    filter_fields_values: str|None
 
 
 class Role(Meta):
