@@ -1914,9 +1914,13 @@ class SQLAdapter(BaseDataAdapter):
                     await session.execute(statement)
                 if meta.__class__ == core.Folder:
                     _subpath = f"{subpath}/{meta.shortname}".replace('//','/')
-                    statement2 = delete(Attachments).where(col(Attachments.subpath) == _subpath)
+                    statement2 = delete(Attachments)\
+                        .where(col(Attachments.space_name) == space_name)\
+                        .where(col(Attachments.subpath).startswith(_subpath))
                     await session.execute(statement2)
-                    statement = delete(Entries).where(col(Entries.subpath) == _subpath)
+                    statement = delete(Entries)\
+                        .where(col(Entries.space_name) == space_name)\
+                        .where(col(Entries.subpath).startswith(_subpath))
                     await session.execute(statement)
                 await session.commit()
             except Exception as e:
