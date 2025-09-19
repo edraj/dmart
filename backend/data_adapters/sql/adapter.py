@@ -1181,32 +1181,37 @@ class SQLAdapter(BaseDataAdapter):
                 table = set_table_for_query(query)
                 statement = select(table)
 
-            # user_permissions = await self.get_user_permissions(user_shortname)
+            user_permissions = await self.get_user_permissions(user_shortname)
+            filtered_policies = []
 
-            # filtered_permissions = {}
-            # filtered_policies = []
-            # if query.filter_types:
-            #     for ft in query.filter_types:
-            #         target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}:{ft}'
-            #         filtered_policies = [policy for policy in user_query_policies if
-            #                              policy.startswith(target_permissions)]
-            # else:
-            #     target_permissions = f'{query.space_name}:{query.subpath.removeprefix('/')}'
-            #     filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
-            #
-            # for user_query_policy in filtered_policies:
-            #     for perm_key in user_permissions.keys():
-            #         if user_query_policy.startswith(perm_key):
-            #             if 'query' in user_permissions[perm_key]['allowed_actions']:
-            #                 filtered_permissions[perm_key] = user_permissions[perm_key]['allowed_fields_values']
-            #
-            # for perm_key, perm_value in filtered_permissions.items():
-            #     if query.search:
-            #         query.search += f" {build_query_filter_for_allowed_field_values(perm_value)}"
-            #         query.search = query.search.replace('  ', ' ')
-            #     else:
-            #         query.search = f"{build_query_filter_for_allowed_field_values(perm_value)}"
-            # Normalize search string by removing duplicate tokens while preserving order
+            _subpath_target_permissions = '/' if query.subpath == '/' else query.subpath.removeprefix('/')
+            if query.filter_types:
+                for ft in query.filter_types:
+                    target_permissions = f'{query.space_name}:{_subpath_target_permissions}:{ft}'
+                    filtered_policies = [policy for policy in user_query_policies if
+                                         policy.startswith(target_permissions)]
+            else:
+                target_permissions = f'{query.space_name}:{_subpath_target_permissions}'
+                filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
+
+            ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
+            for user_query_policy in filtered_policies:
+                for perm_key in user_permissions.keys():
+                    if user_query_policy.startswith(perm_key):
+                        if ffv := user_permissions[perm_key]['filter_fields_values']:
+                            if ffv not in ffv_query:
+                                ffv_query.append(ffv)
+                            perm_key_splited = perm_key.split(':')
+                            ffv_spaces.append(perm_key_splited[0])
+                            ffv_subpath.append(perm_key_splited[1])
+                            ffv_resource_type.append(perm_key_splited[2])
+            if len(ffv_spaces):
+                perm_key_splited_query = f'@space_name:{'|'.join(ffv_spaces)} @subpath:{f"/{'|/'.join(ffv_subpath)}"} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}'
+                if query.search:
+                    query.search += f' {perm_key_splited_query}'
+                else:
+                    query.search = perm_key_splited_query
+            print(f"query: {query.search}")
             if query.search:
                 parts = [p for p in query.search.split(' ') if p]
                 seen = set()
@@ -1255,7 +1260,7 @@ class SQLAdapter(BaseDataAdapter):
                     attributes = {"tags": tags}
                     if query.retrieve_json_payload and tag_counts:
                         attributes["tag_counts"] = tag_counts # type: ignore
-                            
+
                     return total, [core.Record(
                         resource_type=core.ResourceType.content,
                         shortname="tags",
@@ -1319,7 +1324,7 @@ class SQLAdapter(BaseDataAdapter):
                     )]
                 if query.type != QueryType.aggregation:
                     results = [result[0] for result in results]
-                print(is_fetching_spaces)
+
                 if is_fetching_spaces:
                     from utils.access_control import access_control
                     results = [result for result in results if await access_control.check_space_access(
@@ -1908,6 +1913,16 @@ class SQLAdapter(BaseDataAdapter):
                     await session.execute(statement2)
                     statement = delete(Entries).where(col(Entries.space_name) == space_name)
                     await session.execute(statement)
+                if meta.__class__ == core.Folder:
+                    _subpath = f"{subpath}/{meta.shortname}".replace('//','/')
+                    statement2 = delete(Attachments)\
+                        .where(col(Attachments.space_name) == space_name)\
+                        .where(col(Attachments.subpath).startswith(_subpath))
+                    await session.execute(statement2)
+                    statement = delete(Entries)\
+                        .where(col(Entries.space_name) == space_name)\
+                        .where(col(Entries.subpath).startswith(_subpath))
+                    await session.execute(statement)
                 await session.commit()
             except Exception as e:
                 print("[!delete]", e)
@@ -2466,7 +2481,8 @@ class SQLAdapter(BaseDataAdapter):
                                 "allowed_actions": list(actions),
                                 "conditions": list(conditions),
                                 "restricted_fields": permission.restricted_fields,
-                                "allowed_fields_values": permission.allowed_fields_values
+                                "allowed_fields_values": permission.allowed_fields_values,
+                                "filter_fields_values": permission.filter_fields_values
                             }
         return user_permissions
 
