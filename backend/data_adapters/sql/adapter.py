@@ -1176,22 +1176,24 @@ class SQLAdapter(BaseDataAdapter):
                 target_permissions = f'{query.space_name}:{_subpath_target_permissions}'
                 filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
 
-            ffv_spaces, ffv_subpath, ffv_resource_type = [], [], []
+            ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
             for user_query_policy in filtered_policies:
                 for perm_key in user_permissions.keys():
                     if user_query_policy.startswith(perm_key):
                         if ffv := user_permissions[perm_key]['filter_fields_values']:
+                            if ffv not in ffv_query:
+                                ffv_query.append(ffv)
                             perm_key_splited = perm_key.split(':')
                             ffv_spaces.append(perm_key_splited[0])
                             ffv_subpath.append(perm_key_splited[1])
                             ffv_resource_type.append(perm_key_splited[2])
             if len(ffv_spaces):
-                perm_key_splited_query = f'@space_name:{'|'.join(ffv_spaces)} @subpath:{f"/{'|/'.join(ffv_subpath)}"} @resource_type:{'|'.join(ffv_resource_type)} {ffv}'
+                perm_key_splited_query = f'@space_name:{'|'.join(ffv_spaces)} @subpath:{f"/{'|/'.join(ffv_subpath)}"} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}'
                 if query.search:
                     query.search += f' {perm_key_splited_query}'
                 else:
                     query.search = perm_key_splited_query
-
+            print(f"query: {query.search}")
             if query.search:
                 parts = [p for p in query.search.split(' ') if p]
                 seen = set()
