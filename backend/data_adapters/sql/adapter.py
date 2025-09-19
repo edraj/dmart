@@ -1288,8 +1288,9 @@ class SQLAdapter(BaseDataAdapter):
                 #         statement = statement.where(text(query_allowed_fields_value))
                 #         statement_total = statement_total.where(text(query_allowed_fields_value))
 
-            statement = apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies)
-            statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname, user_query_policies)
+            if query.type != QueryType.spaces:
+                statement = apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies)
+                statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname, user_query_policies)
 
             try:
                 if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
