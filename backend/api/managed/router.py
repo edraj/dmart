@@ -760,13 +760,38 @@ async def create_or_update_resource_with_payload(
         )
     await payload_file.seek(0)
     resource_obj, record = await create_or_update_resource_with_payload_handler(
-            record, owner_shortname, space_name, payload_file, payload_filename, checksum, sha, resource_content_type
+        record, owner_shortname, space_name, payload_file, payload_filename, checksum, sha, resource_content_type
     )
+    try:
+        _attachement = await db.load(
+            space_name,
+            record.subpath,
+            record.shortname,
+            getattr(sys.modules["models.core"], camel_case(record.resource_type)),
+            owner_shortname
+        )
 
-    await db.save(space_name, record.subpath, resource_obj)
-    await db.save_payload(
-        space_name, record.subpath, resource_obj, payload_file
-    )
+        resource_meta = core.Meta.from_record(
+            record=record, owner_shortname=owner_shortname
+        )
+        resource_meta.payload = resource_obj.payload
+
+        db.update_payload(
+            space_name,
+            record.subpath,
+            resource_meta,
+            resource_obj,
+            owner_shortname
+        )
+        await db.save_payload(
+            space_name, record.subpath, resource_obj, payload_file
+        )
+    except api.Exception as e:
+        if e.error.code == InternalErrorCode.OBJECT_NOT_FOUND:
+            await db.save(space_name, record.subpath, resource_obj)
+            await db.save_payload(
+                space_name, record.subpath, resource_obj, payload_file
+            )
 
     await plugin_manager.after_action(
         core.Event(
