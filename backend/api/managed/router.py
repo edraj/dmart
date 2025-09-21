@@ -776,11 +776,11 @@ async def create_or_update_resource_with_payload(
         )
         resource_meta.payload = resource_obj.payload
 
-        db.update_payload(
+        await db.update_payload(
             space_name,
             record.subpath,
             resource_meta,
-            resource_obj,
+            resource_obj, #type: ignore
             owner_shortname
         )
         await db.save_payload(
