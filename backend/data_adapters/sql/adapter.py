@@ -1161,18 +1161,20 @@ class SQLAdapter(BaseDataAdapter):
         total : int
         results : list
         async with self.get_session() as session:
+            if not query.subpath.startswith("/"):
+                query.subpath = f"/{query.subpath}"
+            if query.subpath == "//":
+                query.subpath = "/"
+
             user_shortname = user_shortname if user_shortname else "anonymous"
             user_query_policies = await get_user_query_policies(
                 self, user_shortname, query.space_name, query.subpath, query.type == QueryType.spaces
             )
             if not query.exact_subpath:
                 r = await get_user_query_policies(
-                    self, user_shortname, query.space_name, f'{query.subpath}/%', query.type == QueryType.spaces
+                    self, user_shortname, query.space_name, f'{query.subpath}/%'.replace('//','/'), query.type == QueryType.spaces
                 )
                 user_query_policies.extend(r)
-
-            if not query.subpath.startswith("/"):
-                query.subpath = f"/{query.subpath}"
 
             if query.type in [QueryType.attachments, QueryType.attachments_aggregation]:
                 table = Attachments
@@ -1211,7 +1213,6 @@ class SQLAdapter(BaseDataAdapter):
                     query.search += f' {perm_key_splited_query}'
                 else:
                     query.search = perm_key_splited_query
-            print(f"query: {query.search}")
             if query.search:
                 parts = [p for p in query.search.split(' ') if p]
                 seen = set()
@@ -1221,9 +1222,7 @@ class SQLAdapter(BaseDataAdapter):
                         seen.add(p)
                         deduped_parts.append(p)
                 query.search = ' '.join(deduped_parts)
-
             statement_total = select(func.count(col(table.uuid)))
-
 
             if query and query.type == QueryType.events:
                 try:
@@ -1231,6 +1230,7 @@ class SQLAdapter(BaseDataAdapter):
                 except Exception as e:
                     print(e)
                     return 0, []
+
             if query and query.type == QueryType.tags:
                 try:
                     statement = await set_sql_statement_from_query(table, statement, query, False)
@@ -1283,11 +1283,6 @@ class SQLAdapter(BaseDataAdapter):
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
-                # if query_allowed_fields_values:
-                #     for query_allowed_fields_value in query_allowed_fields_values:
-                #         statement = statement.where(text(query_allowed_fields_value))
-                #         statement_total = statement_total.where(text(query_allowed_fields_value))
-
             if query.type != QueryType.spaces:
                 statement = apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies)
                 statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname, user_query_policies)
@@ -1298,18 +1293,12 @@ class SQLAdapter(BaseDataAdapter):
                         func.sum(statement_total.c["count"]).label('total_count')
                     )
 
-
                 _total = (await session.execute(statement_total)).one()
 
                 total = int(_total[0])
                 if query.type == QueryType.counters:
                     return total, []
 
-                # TODO EFFECIVENESS
-                # if not query.retrieve_json_payload:
-                #     cols = list(table.model_fields.keys())
-                #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
-                #     statement = statement.options(load_only(*cols))
                 results = list((await session.execute(statement)).all())
 
                 if query.type == QueryType.attachments_aggregation:
