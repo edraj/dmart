@@ -1248,6 +1248,8 @@ def get_resource_content_type_from_payload_content_type(payload_file, payload_fi
         return ContentType.json
     elif payload_file.content_type == "application/pdf":
         return ContentType.pdf
+    elif payload_file.content_type == "application/vnd.android.package-archive":
+        return ContentType.apk
     elif payload_file.content_type == "text/csv":
         return ContentType.csv
     elif payload_file.content_type == "application/octet-stream":
