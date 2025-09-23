@@ -1,6 +1,6 @@
 from models.enums import ResourceType, ConditionType
 from utils.settings import settings
-
+from models.enums import ActionType
 
 def generate_query_policies(
         space_name: str,
@@ -75,6 +75,8 @@ async def get_user_query_policies(
 
     sql_query_policies = []
     for perm_key, permission in user_permissions.items():
+        if ActionType.query not in permission["allowed_actions"]:
+            continue
         if (
                 not is_space and
                 not perm_key.startswith(space_name) and
