@@ -20,7 +20,6 @@ from data_adapters.adapter import data_adapter as db
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
-        print("SYSTEM NOTIFACTION IS RUNINNNNNNNNG---------------------------------------------------")
         """
         after any action
         1- get the matching SystemNotificationRequest for this action

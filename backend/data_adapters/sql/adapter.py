@@ -2638,7 +2638,7 @@ class SQLAdapter(BaseDataAdapter):
 
     async def get_group_users(self, group_name: str):
         async with self.get_session() as session:
-            statement = select(Users.shortname).where(Users.groups.contains([group_name])) # type: ignore
+            statement = select(Users.shortname).where(col(Users.groups).contains([group_name])) 
             result = await session.execute(statement)
             shortnames = result.scalars().all()
             return shortnames
