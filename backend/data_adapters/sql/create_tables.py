@@ -398,6 +398,47 @@ def generate_tables():
 
     SQLModel.metadata.create_all(engine)
 
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS authz_mv_meta (
+                id INT PRIMARY KEY,
+                last_source_ts TIMESTAMPTZ,
+                refreshed_at TIMESTAMPTZ
+            )
+        """))
+        conn.execute(text("""
+            INSERT INTO authz_mv_meta(id, last_source_ts, refreshed_at)
+            VALUES (1, to_timestamp(0), now())
+            ON CONFLICT (id) DO NOTHING
+        """))
+
+        conn.execute(text("""
+            CREATE MATERIALIZED VIEW IF NOT EXISTS mv_user_roles AS
+            SELECT u.shortname AS user_shortname,
+                   r.shortname AS role_shortname
+            FROM users u
+            JOIN LATERAL jsonb_array_elements_text(u.roles) AS role_name ON TRUE
+            JOIN roles r ON r.shortname = role_name
+        """))
+        conn.execute(text("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_roles_unique
+            ON mv_user_roles (user_shortname, role_shortname)
+        """))
+
+        conn.execute(text("""
+            CREATE MATERIALIZED VIEW IF NOT EXISTS mv_role_permissions AS
+            SELECT r.shortname AS role_shortname,
+                   p.shortname AS permission_shortname
+            FROM roles r
+            JOIN LATERAL jsonb_array_elements_text(r.permissions) AS perm_name ON TRUE
+            JOIN permissions p ON p.shortname = perm_name
+        """))
+        conn.execute(text("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_role_permissions_unique
+            ON mv_role_permissions (role_shortname, permission_shortname)
+        """))
+        conn.commit()
+
 # ALERMBIC
 def init_db():
     generate_tables()
