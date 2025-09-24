@@ -2637,7 +2637,11 @@ class SQLAdapter(BaseDataAdapter):
         pass
 
     async def get_group_users(self, group_name: str):
-        return []
+        async with self.get_session() as session:
+            statement = select(Users.shortname).where(Users.groups.contains([group_name])) # type: ignore
+            result = await session.execute(statement)
+            shortnames = result.scalars().all()
+            return shortnames
 
     async def is_user_verified(self, user_shortname: str | None, identifier: str | None) -> bool:
         async with self.get_session() as session:
