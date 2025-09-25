@@ -1528,6 +1528,12 @@ class SQLAdapter(BaseDataAdapter):
                 except Exception as e:
                     await session.rollback()
                     raise e
+                # Refresh authz MVs only when Users/Roles/Permissions changed
+                try:
+                    if isinstance(data, (Users, Roles, Permissions)):
+                        await self._ensure_authz_materialized_views_fresh()
+                except Exception as _e:
+                    logger.warning(f"AuthZ MV refresh after save skipped: {_e}")
                 return data
 
         except Exception as e:
@@ -1668,6 +1674,12 @@ class SQLAdapter(BaseDataAdapter):
                     )
                 session.add(result)
                 await session.commit()
+                # Refresh authz MVs only when Users/Roles/Permissions changed
+                try:
+                    if isinstance(result, (Users, Roles, Permissions)):
+                        await self._ensure_authz_materialized_views_fresh()
+                except Exception as _e:
+                    logger.warning(f"AuthZ MV refresh after update skipped: {_e}")
             except Exception as e:
                 print("[!update]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -1989,6 +2001,12 @@ class SQLAdapter(BaseDataAdapter):
                         .where(col(Entries.subpath).startswith(_subpath))
                     await session.execute(statement)
                 await session.commit()
+                # Refresh authz MVs only when Users/Roles/Permissions changed
+                try:
+                    if meta.__class__ in (core.User, core.Role, core.Permission):
+                        await self._ensure_authz_materialized_views_fresh()
+                except Exception as _e:
+                    logger.warning(f"AuthZ MV refresh after delete skipped: {_e}")
             except Exception as e:
                 print("[!delete]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -2495,7 +2513,6 @@ class SQLAdapter(BaseDataAdapter):
         return items
 
     async def get_role_permissions(self, role: core.Role) -> list[core.Permission]:
-        await self._ensure_authz_materialized_views_fresh()
         try:
             async with self.get_session() as session:
                 res = await session.execute(
@@ -2523,7 +2540,6 @@ class SQLAdapter(BaseDataAdapter):
             return role_permissions
 
     async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
-        await self._ensure_authz_materialized_views_fresh()
         try:
             user = await self.load_or_none(
                 settings.management_space, settings.users_subpath, user_shortname, core.User
