@@ -2581,7 +2581,7 @@ class SQLAdapter(BaseDataAdapter):
                 )
                 if user is None:
                     return {}
-                user_roles: dict[str, core.Role] = {}
+
                 if user_shortname != "anonymous":
                     role_record = await self.load_or_none(
                         settings.management_space, 'roles', 'logged_in', core.Role
