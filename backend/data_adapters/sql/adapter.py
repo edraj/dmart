@@ -2510,7 +2510,7 @@ class SQLAdapter(BaseDataAdapter):
         items: dict[str, MetaChild] = {}
         async with self.get_session() as session:
             res = await session.execute(
-                select(table).where(table.shortname.in_(shortnames))
+                select(table).where(col(table.shortname).in_(shortnames))
             )
             rows = [r[0] for r in res.all()]
             for row in rows:
