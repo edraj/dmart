@@ -1530,7 +1530,7 @@ class SQLAdapter(BaseDataAdapter):
                 # Refresh authz MVs only when Users/Roles/Permissions changed
                 try:
                     if isinstance(data, (Users, Roles, Permissions)):
-                        await self._ensure_authz_materialized_views_fresh()
+                        await self.ensure_authz_materialized_views_fresh()
                 except Exception as _e:
                     logger.warning(f"AuthZ MV refresh after save skipped: {_e}")
                 return data
@@ -1676,7 +1676,7 @@ class SQLAdapter(BaseDataAdapter):
                 # Refresh authz MVs only when Users/Roles/Permissions changed
                 try:
                     if isinstance(result, (Users, Roles, Permissions)):
-                        await self._ensure_authz_materialized_views_fresh()
+                        await self.ensure_authz_materialized_views_fresh()
                 except Exception as _e:
                     logger.warning(f"AuthZ MV refresh after update skipped: {_e}")
             except Exception as e:
@@ -2003,7 +2003,7 @@ class SQLAdapter(BaseDataAdapter):
                 # Refresh authz MVs only when Users/Roles/Permissions changed
                 try:
                     if meta.__class__ in (core.User, core.Role, core.Permission):
-                        await self._ensure_authz_materialized_views_fresh()
+                        await self.ensure_authz_materialized_views_fresh()
                 except Exception as _e:
                     logger.warning(f"AuthZ MV refresh after delete skipped: {_e}")
             except Exception as e:
@@ -2471,7 +2471,7 @@ class SQLAdapter(BaseDataAdapter):
 
         return {"unique": True}
 
-    async def _ensure_authz_materialized_views_fresh(self) -> None:
+    async def ensure_authz_materialized_views_fresh(self) -> None:
         try:
             async with self.get_session() as session:
                 latest_q = text(
