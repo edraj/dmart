@@ -1365,13 +1365,12 @@ class SQLAdapter(BaseDataAdapter):
                     )
 
                 _total = (await session.execute(statement_total)).one()
-
                 total = int(_total[0])
                 if query.type == QueryType.counters:
                     return total, []
 
                 results = list((await session.execute(statement)).all())
-
+                await session.close()
                 if query.type == QueryType.attachments_aggregation:
                     attributes = {}
                     for item in results:
