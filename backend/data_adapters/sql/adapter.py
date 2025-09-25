@@ -2581,21 +2581,21 @@ class SQLAdapter(BaseDataAdapter):
                 )
                 if user is None:
                     return {}
-
+                euser_roles: dict[str, core.Role] = {}
                 if user_shortname != "anonymous":
                     role_record = await self.load_or_none(
                         settings.management_space, 'roles', 'logged_in', core.Role
                     )
                     if role_record is not None:
-                        user_roles['logged_in'] = role_record
+                        euser_roles['logged_in'] = role_record
                 for role in user.roles:
                     role_record = await self.load_or_none(
                         settings.management_space, 'roles', role, core.Role
                     )
                     if role_record is None:
                         continue
-                    user_roles[role] = role_record
-                return user_roles
+                    euser_roles[role] = role_record
+                return euser_roles
             except Exception as e2:
                 print(f"Error: {e2}")
                 return {}
