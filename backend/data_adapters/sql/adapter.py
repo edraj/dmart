@@ -2243,32 +2243,46 @@ class SQLAdapter(BaseDataAdapter):
                     results[idx].subpath, item.shortname
                 )
         else:
-            for idx, item in enumerate(results):
-                if is_aggregation:
+            if is_aggregation:
+                # Keep aggregation behavior unchanged
+                for idx, item in enumerate(results):
                     results = set_results_from_aggregation(
                         query, item, results, idx
                     )
-                else:
+            else:
+                # Convert rows to records and prepare concurrent attachment retrieval
+                attachment_coros = []
+                attachment_indices = []
+                for idx, item in enumerate(results):
                     results[idx] = item.to_record(
                         item.subpath, item.shortname
                     )
 
-                if not_history_event:
-                    if not query.retrieve_json_payload:
-                        attrb = results[idx].attributes
-                        if (
+                    if not_history_event:
+                        if not query.retrieve_json_payload:
+                            attrb = results[idx].attributes
+                            if (
                                 attrb
                                 and attrb.get("payload", {})
                                 and attrb.get("payload", {}).get("body", False)
-                        ):
-                            attrb["payload"]["body"] = None
+                            ):
+                                attrb["payload"]["body"] = None
 
-                    if query.retrieve_attachments:
-                        results[idx].attachments = await self.get_entry_attachments(
-                            results[idx].subpath,
-                            Path(f"{query.space_name}/{results[idx].shortname}"),
-                            retrieve_json_payload=True,
-                        )
+                        if query.retrieve_attachments:
+                            attachment_coros.append(
+                                self.get_entry_attachments(
+                                    results[idx].subpath,
+                                    Path(f"{query.space_name}/{results[idx].shortname}"),
+                                    retrieve_json_payload=True,
+                                )
+                            )
+                            attachment_indices.append(idx)
+
+                # Run all attachment retrievals concurrently
+                if attachment_coros:
+                    attachments_list = await asyncio.gather(*attachment_coros)
+                    for i, attachments in zip(attachment_indices, attachments_list):
+                        results[i].attachments = attachments
 
         return results
 
