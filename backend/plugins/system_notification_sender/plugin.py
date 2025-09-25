@@ -46,11 +46,7 @@ class Plugin(PluginBase):
                     data.user_shortname,
                 )
             ).model_dump()
-            if (
-                entry["payload"]
-                and entry["payload"]["content_type"] == ContentType.json
-                and entry["payload"]["body"]
-            ):
+            if entry["payload"] is not None:
                 try:
                     entry["payload"]["body"] = await db.load_resource_payload(
                         space_name=data.space_name,
@@ -60,8 +56,10 @@ class Plugin(PluginBase):
                             sys_modules["models.core"], camel_case(data.resource_type)
                         ),
                     )
-                except Exception as _:
-                    return
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to load payload for entry {data.space_name}/{data.subpath}/{data.shortname}: {e}"
+                    )
         entry["space_name"] = data.space_name
         entry["resource_type"] = str(data.resource_type)
         entry["subpath"] = data.subpath
