@@ -1,7 +1,7 @@
 """add authz materialized views and meta table
 
 Revision ID: 0f3d2b1a7c21
-Revises: 1cf4e1ee3cb8
+Revises: 98ecd6f56f9a
 Create Date: 2025-09-25 07:40:00.000000
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '0f3d2b1a7c21'
-down_revision: Union[str, None] = '1cf4e1ee3cb8'
+down_revision: Union[str, None] = '98ecd6f56f9a'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
