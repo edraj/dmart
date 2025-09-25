@@ -447,6 +447,8 @@ async def main():
 
     await save_health_check_entry()
 
+    await SQLAdapter().ensure_authz_materialized_views_fresh()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
