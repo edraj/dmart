@@ -877,6 +877,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
 
 class SQLAdapter(BaseDataAdapter):
+    _engine = None
+    _async_session_factory = None
     session: Session
     async_session: sessionmaker
     engine: Any
@@ -966,24 +968,30 @@ class SQLAdapter(BaseDataAdapter):
         return (Path(), "")
 
     def __init__(self):
-        self.engine = create_async_engine(
-            URL.create(
-                drivername=settings.database_driver,
-                host=settings.database_host,
-                port=settings.database_port,
-                username=settings.database_username,
-                password=settings.database_password,
-                database=settings.database_name,
-            ),
-            echo=False,
-            max_overflow=settings.database_max_overflow,
-            pool_size=settings.database_pool_size,
-            pool_pre_ping=True,
-        )
+        if SQLAdapter._engine is None:
+            SQLAdapter._engine = create_async_engine(
+                URL.create(
+                    drivername=settings.database_driver,
+                    host=settings.database_host,
+                    port=settings.database_port,
+                    username=settings.database_username,
+                    password=settings.database_password,
+                    database=settings.database_name,
+                ),
+                echo=False,
+                pool_pre_ping=True,
+                pool_size=settings.database_pool_size,
+                max_overflow=settings.database_max_overflow,
+                pool_timeout=settings.database_pool_timeout,
+                pool_recycle=settings.database_pool_recycle,
+            )
+        self.engine = SQLAdapter._engine
         try:
-            self.async_session = sessionmaker(
-                self.engine, class_=AsyncSession, expire_on_commit=False
-            )  # type: ignore
+            if SQLAdapter._async_session_factory is None:
+                SQLAdapter._async_session_factory = sessionmaker(
+                    self.engine, class_=AsyncSession, expire_on_commit=False
+                )  # type: ignore
+            self.async_session = SQLAdapter._async_session_factory
         except Exception as e:
             print("[!FATAL]", e)
             sys.exit(127)
