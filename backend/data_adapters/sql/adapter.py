@@ -1174,54 +1174,48 @@ class SQLAdapter(BaseDataAdapter):
     async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
         async with self.get_session() as session:
             results: list[core.Record] = []
+            def _apply_filters(_table, _statement, exact_for_strings: bool = False):
+                for k, v in criteria.items():
+                    col_attr = getattr(_table, k, None)
+                    if col_attr is None:
+                        continue
+                    if isinstance(v, str):
+                        if exact_for_strings:
+                            _statement = _statement.where(col_attr == v)
+                        else:
+                            _statement = _statement.where(col_attr.startswith(v))
+                    else:
+                        _statement = _statement.where(col_attr == v)
+                return _statement
+
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
                 for _table in tables:
                     statement = select(_table)
-                    for k, v in criteria.items():
-                        if isinstance(v, str):
-                            statement = statement.where(
-                                text(f"{k}::text LIKE :{k}")
-                            ).params({k: f"{v}%"})
-                        else:
-                            statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-                        _results = (await session.execute(statement)).all()
-                        _results = [result[0] for result in _results]
-                        if len(_results) > 0:
-                            for result in _results:
-                                core_model_class: core.Meta = getattr(sys.modules["models.core"],
-                                                                      camel_case(result.resource_type))
-                                results.append(
-                                    core_model_class.model_validate(
-                                        result.model_dump()
-                                    ).to_record(result.subpath, result.shortname)
-                                )
-
-                            return results
+                    statement = _apply_filters(_table, statement)
+                    _rows = (await session.execute(statement)).scalars().all()
+                    if not _rows:
+                        continue
+                    for row in _rows:
+                        core_model_class: core.Meta = getattr(sys.modules["models.core"], camel_case(row.resource_type))
+                        results.append(
+                            core_model_class.model_validate(row.model_dump()).to_record(row.subpath, row.shortname)
+                        )
+                    if results:
+                        return results
                 return None
             else:
                 statement = select(table)
-                for k, v in criteria.items():
-                    if isinstance(v, str):
-                        statement = statement.where(
-                            text(f"{k}::text=:{k}")
-                        ).params({k: f"{v}"})
-                    else:
-                        statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-
-                    _results = (await session.execute(statement)).all()
-                    _results = [result[0] for result in _results]
-                    if len(_results) > 0:
-                        for result in _results:
-                            _core_model_class: core.Meta = getattr(sys.modules["models.core"],
-                                                                   camel_case(result.resource_type))
-                            results.append(
-                                _core_model_class.model_validate(
-                                    result.model_dump()
-                                ).to_record(result.subpath, result.shortname)
-                            )
-                        return results
-                return None
+                statement = _apply_filters(table, statement)
+                _rows = (await session.execute(statement)).scalars().all()
+                if not _rows:
+                    return None
+                for row in _rows:
+                    _core_model_class: core.Meta = getattr(sys.modules["models.core"], camel_case(row.resource_type))
+                    results.append(
+                        _core_model_class.model_validate(row.model_dump()).to_record(row.subpath, row.shortname)
+                    )
+                return results
 
     async def query(
             self, query: api.Query, user_shortname: str | None = None
