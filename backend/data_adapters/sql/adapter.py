@@ -877,6 +877,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
 
 class SQLAdapter(BaseDataAdapter):
+    _engine = None
+    _async_session_factory = None
     session: Session
     async_session: sessionmaker
     engine: Any
@@ -966,24 +968,30 @@ class SQLAdapter(BaseDataAdapter):
         return (Path(), "")
 
     def __init__(self):
-        self.engine = create_async_engine(
-            URL.create(
-                drivername=settings.database_driver,
-                host=settings.database_host,
-                port=settings.database_port,
-                username=settings.database_username,
-                password=settings.database_password,
-                database=settings.database_name,
-            ),
-            echo=False,
-            max_overflow=settings.database_max_overflow,
-            pool_size=settings.database_pool_size,
-            pool_pre_ping=True,
-        )
+        if SQLAdapter._engine is None:
+            SQLAdapter._engine = create_async_engine(
+                URL.create(
+                    drivername=settings.database_driver,
+                    host=settings.database_host,
+                    port=settings.database_port,
+                    username=settings.database_username,
+                    password=settings.database_password,
+                    database=settings.database_name,
+                ),
+                echo=False,
+                pool_pre_ping=True,
+                pool_size=settings.database_pool_size,
+                max_overflow=settings.database_max_overflow,
+                pool_timeout=settings.database_pool_timeout,
+                pool_recycle=settings.database_pool_recycle,
+            )
+        self.engine = SQLAdapter._engine
         try:
-            self.async_session = sessionmaker(
-                self.engine, class_=AsyncSession, expire_on_commit=False
-            )  # type: ignore
+            if SQLAdapter._async_session_factory is None:
+                SQLAdapter._async_session_factory = sessionmaker(
+                    self.engine, class_=AsyncSession, expire_on_commit=False
+                )  # type: ignore
+            self.async_session = SQLAdapter._async_session_factory
         except Exception as e:
             print("[!FATAL]", e)
             sys.exit(127)
@@ -1154,18 +1162,20 @@ class SQLAdapter(BaseDataAdapter):
         async with self.get_session() as session:
             table = self.get_table(class_type)
 
-            statement = select(table).where(table.space_name == space_name)
-            statement = statement.where(table.shortname == shortname)
+            if table is Attachments:
+                statement = select(table).options(defer(Attachments.media))  # type: ignore
+            else:
+                statement = select(table)
+            statement = statement.where(table.space_name == space_name).where(table.shortname == shortname)
 
             if table in [Entries, Attachments]:
                 statement = statement.where(table.subpath == subpath)
 
-            _result = (await session.execute(statement)).one_or_none()
-            if _result is None:
+            result = (await session.execute(statement)).scalars().one_or_none()
+            if result is None:
                 return None
-            result: Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None = _result[0]
             try:
-                return result
+                return result # type: ignore
             except Exception as e:
                 print("[!load_or_none]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -1369,9 +1379,10 @@ class SQLAdapter(BaseDataAdapter):
                 if query.type == QueryType.counters:
                     return total, []
 
-                results = list((await session.execute(statement)).all())
-                await session.close()
                 if query.type == QueryType.attachments_aggregation:
+                    # For aggregation, we need tuples
+                    results = list((await session.execute(statement)).all())
+                    await session.close()
                     attributes = {}
                     for item in results:
                         attributes.update({item[0]: item[1]})
@@ -1382,8 +1393,13 @@ class SQLAdapter(BaseDataAdapter):
                         subpath=query.subpath,
                         attributes=attributes
                     )]
-                if query.type != QueryType.aggregation:
-                    results = [result[0] for result in results]
+                elif query.type == QueryType.aggregation:
+                    results = list((await session.execute(statement)).all())
+                    await session.close()
+                else:
+                    # Non-aggregation: fetch ORM instances directly
+                    results = (await session.execute(statement)).scalars().all()
+                    await session.close()
 
                 if is_fetching_spaces:
                     from utils.access_control import access_control

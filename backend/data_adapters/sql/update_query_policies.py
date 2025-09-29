@@ -26,7 +26,14 @@ async def update_all_entries(batch_size: int = 1000) -> int:
         database=settings.database_name,
     )
 
-    engine = create_async_engine(postgresql_url, echo=False, pool_size=settings.database_pool_size, max_overflow=settings.database_max_overflow)
+    engine = create_async_engine(
+            postgresql_url,
+            echo=False,
+            pool_size=settings.database_pool_size,
+            max_overflow=settings.database_max_overflow,
+            pool_timeout=settings.database_pool_timeout,
+            pool_recycle=settings.database_pool_recycle,
+        )
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False) # type: ignore
 
     updated = 0
