@@ -1175,7 +1175,7 @@ class SQLAdapter(BaseDataAdapter):
             if result is None:
                 return None
             try:
-                return result
+                return result # type: ignore
             except Exception as e:
                 print("[!load_or_none]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
