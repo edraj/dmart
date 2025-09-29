@@ -1154,16 +1154,18 @@ class SQLAdapter(BaseDataAdapter):
         async with self.get_session() as session:
             table = self.get_table(class_type)
 
-            statement = select(table).where(table.space_name == space_name)
-            statement = statement.where(table.shortname == shortname)
+            if table is Attachments:
+                statement = select(table).options(defer(Attachments.media))  # type: ignore
+            else:
+                statement = select(table)
+            statement = statement.where(table.space_name == space_name).where(table.shortname == shortname)
 
             if table in [Entries, Attachments]:
                 statement = statement.where(table.subpath == subpath)
 
-            _result = (await session.execute(statement)).one_or_none()
-            if _result is None:
+            result = (await session.execute(statement)).scalars().one_or_none()
+            if result is None:
                 return None
-            result: Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None = _result[0]
             try:
                 return result
             except Exception as e:
@@ -1191,7 +1193,10 @@ class SQLAdapter(BaseDataAdapter):
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
                 for _table in tables:
-                    statement = select(_table)
+                    if _table is Attachments:
+                        statement = select(_table).options(defer(Attachments.media))  # type: ignore
+                    else:
+                        statement = select(_table)
                     statement = _apply_filters(_table, statement)
                     _rows = (await session.execute(statement)).scalars().all()
                     if not _rows:
@@ -1205,7 +1210,10 @@ class SQLAdapter(BaseDataAdapter):
                         return results
                 return None
             else:
-                statement = select(table)
+                if table is Attachments:
+                    statement = select(table).options(defer(Attachments.media))  # type: ignore
+                else:
+                    statement = select(table)
                 statement = _apply_filters(table, statement)
                 _rows = (await session.execute(statement)).scalars().all()
                 if not _rows:
@@ -1363,9 +1371,10 @@ class SQLAdapter(BaseDataAdapter):
                 if query.type == QueryType.counters:
                     return total, []
 
-                results = list((await session.execute(statement)).all())
-                await session.close()
                 if query.type == QueryType.attachments_aggregation:
+                    # For aggregation, we need tuples
+                    results = list((await session.execute(statement)).all())
+                    await session.close()
                     attributes = {}
                     for item in results:
                         attributes.update({item[0]: item[1]})
@@ -1376,8 +1385,13 @@ class SQLAdapter(BaseDataAdapter):
                         subpath=query.subpath,
                         attributes=attributes
                     )]
-                if query.type != QueryType.aggregation:
-                    results = [result[0] for result in results]
+                elif query.type == QueryType.aggregation:
+                    results = list((await session.execute(statement)).all())
+                    await session.close()
+                else:
+                    # Non-aggregation: fetch ORM instances directly
+                    results = (await session.execute(statement)).scalars().all()
+                    await session.close()
 
                 if is_fetching_spaces:
                     from utils.access_control import access_control
