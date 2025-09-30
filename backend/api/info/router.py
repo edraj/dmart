@@ -15,9 +15,11 @@ router = APIRouter()
 
 git_info: dict[str,str|None] = {}
 service_start_time: datetime = datetime.now()
-if __file__.endswith(".pyc"):
-    info = open(Path(__file__).resolve().parent.parent.parent / "info.json")
-    git_info = json.load(info)
+
+info_json_path = Path(__file__).resolve().parent.parent.parent / "info.json"
+if info_json_path.exists():
+    with open(info_json_path) as info:
+        git_info = json.load(info)
 else:
     branch_cmd = "git rev-parse --abbrev-ref HEAD"
     result, _ = subprocess.Popen(branch_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
