@@ -1999,6 +1999,23 @@ class SQLAdapter(BaseDataAdapter):
                     subpath = f"/{subpath}"
 
                 result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+
+                if meta.__class__ == core.User:
+                    try:
+                        await session.execute(update(Spaces).where(col(Spaces.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(update(Entries).where(col(Entries.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(update(Attachments).where(col(Attachments.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(update(Roles).where(col(Roles.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(update(Permissions).where(col(Permissions.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+
+                        await session.execute(update(Locks).where(col(Locks.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(update(Histories).where(col(Histories.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+
+                        await session.execute(delete(Sessions).where(col(Sessions.shortname) == meta.shortname))
+                        await session.commit()
+                    except Exception as _e:
+                        logger.warning(f"Failed to reassign ownership to anonymous for user {meta.shortname}: {_e}")
+
                 await session.delete(result)
                 if meta.__class__ == core.Space:
                     statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name)
