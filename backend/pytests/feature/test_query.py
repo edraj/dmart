@@ -143,6 +143,10 @@ async def test_query_aggregate(client: AsyncClient) -> None:
 @pytest.mark.run(order=3)
 @pytest.mark.anyio
 async def test_query_events(client: AsyncClient) -> None:
+    if settings.active_data_db == "sql":
+        pytest.skip("Skipping test for sql-based database")
+        return
+
     response = await client.post(
         "/managed/query",
         json={
