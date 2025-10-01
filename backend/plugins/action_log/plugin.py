@@ -14,7 +14,9 @@ from data_adapters.adapter import data_adapter as db
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
-        # Type narrowing for PyRight
+        if settings.active_data_db == "sql":
+            return
+
         if (
             not isinstance(data.shortname, str)
             or not isinstance(data.action_type, ActionType)
