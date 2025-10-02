@@ -268,7 +268,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 if field.startswith('payload.body.'):
                     payload_field = field.replace('payload.body.', '')
                     payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
-                    # Build correct text-extract expression: use -> for all but last, ->> for last key
+
                     payload_path_splited = payload_path.split('->')
                     if len(payload_path_splited) > 1:
                         _nested_no_last = '->'.join(payload_path_splited[:-1])
@@ -402,7 +402,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                     payload_field = field.replace('payload.', '')
                     payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
 
-                    # Build correct text-extract expression for payload root
                     payload_path_splited = payload_path.split('->')
                     if len(payload_path_splited) > 1:
                         _nested_no_last = '->'.join(payload_path_splited[:-1])
