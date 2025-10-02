@@ -15,12 +15,11 @@ TEST_DATA = [
             "tags": ["test_user"],
             "is_active": False,
             "language": "kurdish",
-            "roles": ["manager","moderator","editor"],
+            "roles": ["manager", "moderator", "editor"],
             "email": "user1@example.com",
             "msisdn": "1123456789",
             "type": "bot",
             "payload": {
-
                 "content_type": "json",
                 "body": {
                     "is_subscribed": False,
@@ -28,8 +27,8 @@ TEST_DATA = [
                     "user_gender": "male",
                     "account_number": 100,
                     "rating": "5",
-                    "allowed_categories": ["analytics", "reviews"]            
-                      }
+                    "allowed_categories": ["analytics", "reviews"]
+                }
             }
         }
     },
@@ -39,12 +38,11 @@ TEST_DATA = [
             "tags": ["test_user"],
             "is_active": False,
             "language": "english",
-            "roles": ["member","subscriber","editor"],
+            "roles": ["member", "subscriber", "editor"],
             "email": "user2@example.com",
             "msisdn": "9876543210",
             "type": "mobile",
             "payload": {
-
                 "content_type": "json",
                 "body": {
                     "is_subscribed": True,
@@ -52,15 +50,17 @@ TEST_DATA = [
                     "user_gender": "female",
                     "account_number": 200,
                     "rating": "4",
-                    "allowed_categories": ["posts", "edits"]                          
-                    }
+                    "allowed_categories": ["posts", "edits"],
+                    "x":{"y": {"z":5}}
+                }
             }
         }
     }
 ]
 
+
 @pytest.fixture(autouse=True)
-async def setup_teardown(client: AsyncClient):    
+async def setup_teardown(client: AsyncClient):
     for data in TEST_DATA:
         response = await client.post(
             "/managed/request",
@@ -76,9 +76,9 @@ async def setup_teardown(client: AsyncClient):
             }
         )
         assert_code_and_status_success(response)
-    
+
     yield
-    
+
     for data in TEST_DATA:
         await client.post(
             "/managed/request",
@@ -94,9 +94,9 @@ async def setup_teardown(client: AsyncClient):
             }
         )
 
+
 @pytest.mark.anyio
 async def test_string_queries(client: AsyncClient) -> None:
-
     response = await client.post(
         "/managed/query",
         json={
@@ -124,7 +124,6 @@ async def test_string_queries(client: AsyncClient) -> None:
     json_response = response.json()
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 1
-    
 
     response = await client.post(
         "/managed/query",
@@ -238,10 +237,9 @@ async def test_string_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 2
 
+
 @pytest.mark.anyio
 async def test_array_queries(client: AsyncClient) -> None:
-
-    
     response = await client.post(
         "/managed/query",
         json={
@@ -269,7 +267,6 @@ async def test_array_queries(client: AsyncClient) -> None:
     json_response = response.json()
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 1
-
 
     response = await client.post(
         "/managed/query",
@@ -299,9 +296,9 @@ async def test_array_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 2
 
+
 @pytest.mark.anyio
 async def test_array_payload_queries(client: AsyncClient) -> None:
-
     response = await client.post(
         "/managed/query",
         json={
@@ -386,6 +383,7 @@ async def test_array_payload_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 0
 
+
 @pytest.mark.anyio
 async def test_string_payload_queries(client: AsyncClient) -> None:
     response = await client.post(
@@ -402,7 +400,6 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 1
 
-
     response = await client.post(
         "/managed/query",
         json={
@@ -417,7 +414,6 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 1
 
-
     response = await client.post(
         "/managed/query",
         json={
@@ -431,7 +427,6 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
     json_response = response.json()
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 1
-
 
     response = await client.post(
         "/managed/query",
@@ -559,6 +554,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 0
 
+
 @pytest.mark.anyio
 async def test_date_field_queries(client: AsyncClient) -> None:
     current_time = datetime.now()
@@ -591,9 +587,9 @@ async def test_date_field_queries(client: AsyncClient) -> None:
     assert_code_and_status_success(response)
     json_response = response.json()
     assert json_response["status"] == "success"
-    assert json_response["attributes"]["returned"] == 2    
-    
-    
+    assert json_response["attributes"]["returned"] == 2
+
+
 @pytest.mark.anyio
 async def test_boolean_field_queries(client: AsyncClient) -> None:
     response = await client.post(
@@ -609,7 +605,6 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
     json_response = response.json()
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 2
-
 
     response = await client.post(
         "/managed/query",
@@ -638,7 +633,7 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
     json_response = response.json()
     assert json_response["status"] == "success"
     assert json_response["attributes"]["returned"] == 1
-    
+
     response = await client.post(
         "/managed/query",
         json={
@@ -646,6 +641,23 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
             "search": "-@payload.body.is_subscribed:true"
+        }
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert json_response["status"] == "success"
+    assert json_response["attributes"]["returned"] == 1
+
+
+@pytest.mark.anyio
+async def test_nested_queries(client: AsyncClient) -> None:
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.search,
+            "space_name": MANAGEMENT_SPACE,
+            "subpath": USERS_SUBPATH,
+            "search": "@payload.body.x.y.z:5"
         }
     )
     assert_code_and_status_success(response)
