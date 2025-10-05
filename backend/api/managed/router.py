@@ -776,13 +776,14 @@ async def create_or_update_resource_with_payload(
         )
         resource_meta.payload = resource_obj.payload
 
-        await db.update_payload(
-            space_name,
-            record.subpath,
-            resource_meta,
-            resource_obj, #type: ignore
-            owner_shortname
-        )
+        if resource_obj.payload and isinstance(resource_obj.payload.body, dict):
+            await db.update_payload(
+                space_name,
+                record.subpath,
+                resource_meta,
+                resource_obj.payload.body,
+                owner_shortname
+            )
         await db.save_payload(
             space_name, record.subpath, resource_obj, payload_file
         )
