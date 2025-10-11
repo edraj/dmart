@@ -1171,27 +1171,27 @@ class SQLAdapter(BaseDataAdapter):
 
         shortname = shortname.replace("/", "")
 
+        table = self.get_table(class_type)
+
+        if table is Attachments:
+            statement = select(table).options(defer(Attachments.media))  # type: ignore
+        else:
+            statement = select(table)
+        statement = statement.where(col(table.space_name) == space_name).where(table.shortname == shortname)
+
+        if table in [Entries, Attachments]:
+            statement = statement.where(col(table.subpath) == subpath)
+
         async with self.get_session() as session:
-            table = self.get_table(class_type)
-
-            if table is Attachments:
-                statement = select(table).options(defer(Attachments.media))  # type: ignore
-            else:
-                statement = select(table)
-            statement = statement.where(table.space_name == space_name).where(table.shortname == shortname)
-
-            if table in [Entries, Attachments]:
-                statement = statement.where(table.subpath == subpath)
-
             result = (await session.execute(statement)).scalars().one_or_none()
             if result is None:
                 return None
-            try:
-                return result # type: ignore
-            except Exception as e:
-                print("[!load_or_none]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
-                return None
+        try:
+            return result # type: ignore
+        except Exception as e:
+            print("[!load_or_none]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            return None
 
     async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
         async with self.get_session() as session:
