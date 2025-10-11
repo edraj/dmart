@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import time
+import logging
 from contextlib import asynccontextmanager
 from copy import copy
 from datetime import datetime
@@ -14,6 +15,7 @@ from fastapi import status
 from fastapi.logger import logger
 from sqlalchemy import literal_column, or_
 from sqlalchemy.orm import sessionmaker, defer
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean, func, text
 import io
 from sys import modules as sys_modules
@@ -59,6 +61,35 @@ from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+
+# Configure SQLAlchemy logging for monitoring slow queries and errors
+logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+logging.getLogger("sqlalchemy.pool").setLevel(logging.INFO)
+
+# Simple retry decorator for database operations
+def retry_db_operation(max_retries: int = 3, base_delay: float = 0.1):
+    """Decorator for retrying database operations with exponential backoff"""
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            last_exception = None
+            for attempt in range(max_retries):
+                try:
+                    return await func(*args, **kwargs)
+                except (OperationalError, SQLAlchemyError) as e:
+                    last_exception = e
+                    if attempt < max_retries - 1:
+                        delay = base_delay * (2 ** attempt)
+                        logger.warning(f"DB operation failed (attempt {attempt + 1}/{max_retries}), retrying in {delay}s: {str(e)}")
+                        await asyncio.sleep(delay)
+                    else:
+                        logger.error(f"DB operation failed after {max_retries} attempts: {str(e)}")
+                        raise e
+                except Exception as e:
+                    # Don't retry non-transient errors
+                    raise e
+            raise last_exception
+        return wrapper
+    return decorator
 
 
 def query_attachment_aggregation(subpath):
@@ -935,13 +966,10 @@ class SQLAdapter(BaseDataAdapter):
                     timestamp=datetime.now()
                 )
                 session.add(otp_entry)
-                await session.commit()
             except Exception as e:
                 if "UniqueViolationError" in str(e) or "unique constraint" in str(e).lower():
-                    await session.rollback()
                     statement = delete(OTP).where(col(OTP.key) == key)
                     await session.execute(statement)
-                    await session.commit()
 
                     otp_entry = OTP(
                         key=key,
@@ -949,9 +977,7 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=datetime.now()
                     )
                     session.add(otp_entry)
-                    await session.commit()
                 else:
-                    await session.rollback()
                     raise e
 
     async def get_otp(
@@ -965,7 +991,6 @@ class SQLAdapter(BaseDataAdapter):
             if otp_entry:
                 if (datetime.now() - otp_entry.timestamp).total_seconds() > settings.otp_token_ttl:
                     await session.delete(otp_entry)
-                    await session.commit()
                     return None
                 return otp_entry.value.get("otp")
             return None
@@ -981,9 +1006,12 @@ class SQLAdapter(BaseDataAdapter):
 
     def __init__(self):
         if SQLAdapter._engine is None:
+            # Use asyncpg driver for high performance
+            driver_name = "postgresql+asyncpg" if settings.database_driver.startswith("postgresql") else settings.database_driver
+            
             SQLAdapter._engine = create_async_engine(
                 URL.create(
-                    drivername=settings.database_driver,
+                    drivername=driver_name,
                     host=settings.database_host,
                     port=settings.database_port,
                     username=settings.database_username,
@@ -991,20 +1019,33 @@ class SQLAdapter(BaseDataAdapter):
                     database=settings.database_name,
                 ),
                 echo=False,
-                pool_pre_ping=True,
-                pool_size=settings.database_pool_size,
-                max_overflow=settings.database_max_overflow,
+                pool_pre_ping=True,  # Prevent stale connections
+                pool_size=max(settings.database_pool_size, 5),  # Minimum 5 for concurrency
+                max_overflow=max(settings.database_max_overflow, 10),  # Allow up to 10 extra connections
                 pool_timeout=settings.database_pool_timeout,
                 pool_recycle=settings.database_pool_recycle,
+                # Enable compiled statement caching for better performance
+                query_cache_size=1200,
+                # AsyncPG specific optimizations
+                connect_args={
+                    "prepared_statement_cache_size": 500,
+                    "statement_cache_size": 500,
+                } if driver_name == "postgresql+asyncpg" else {}
             )
+            logger.info(f"Created async engine with driver: {driver_name}, pool_size: {max(settings.database_pool_size, 5)}, max_overflow: {max(settings.database_max_overflow, 10)}")
+        
         self.engine = SQLAdapter._engine
+        
         try:
             if SQLAdapter._async_session_factory is None:
                 SQLAdapter._async_session_factory = sessionmaker(
-                    self.engine, class_=AsyncSession, expire_on_commit=False
-                )  # type: ignore
-            self.async_session = SQLAdapter._async_session_factory
+                    self.engine, 
+                    class_=AsyncSession, 
+                    expire_on_commit=False  # Important for async operations
+                )
+            self.async_session_factory = SQLAdapter._async_session_factory
         except Exception as e:
+            logger.error(f"Failed to initialize session factory: {e}")
             print("[!FATAL]", e)
             sys.exit(127)
 
@@ -1018,11 +1059,53 @@ class SQLAdapter(BaseDataAdapter):
 
     @asynccontextmanager
     async def get_session(self):
-        async_session = self.async_session()
+        async_session = self.async_session_factory()
         try:
             yield async_session
+            await self._commit_with_retry(async_session)
+        except Exception as e:
+            logger.error(f"Database session error, rolling back transaction: {str(e)}")
+            try:
+                await async_session.rollback()
+            except Exception as rollback_error:
+                logger.error(f"Failed to rollback transaction: {str(rollback_error)}")
+            raise e
         finally:
-            await async_session.close()  # type: ignore
+            try:
+                await async_session.close()
+            except Exception as close_error:
+                logger.warning(f"Failed to close database session: {str(close_error)}")
+
+    async def _commit_with_retry(self, session: AsyncSession, max_retries: int = 3):
+        last_exception = None
+        for attempt in range(max_retries):
+            try:
+                await session.commit()
+                return
+            except (OperationalError, SQLAlchemyError) as e:
+                last_exception = e
+                if attempt < max_retries - 1:
+                    delay = 0.1 * (2 ** attempt)  # Exponential backoff
+                    logger.warning(f"Commit failed (attempt {attempt + 1}/{max_retries}), retrying in {delay}s: {str(e)}")
+                    await asyncio.sleep(delay)
+                    # Rollback and start a new transaction for retry
+                    try:
+                        await session.rollback()
+                        await session.begin()
+                    except Exception as retry_error:
+                        logger.error(f"Failed to prepare for commit retry: {str(retry_error)}")
+                        raise e
+                else:
+                    logger.error(f"Commit failed after {max_retries} attempts: {str(e)}")
+                    raise e
+            except Exception as e:
+                # Don't retry non-transient errors
+                logger.error(f"Non-transient error during commit: {str(e)}")
+                raise e
+        if last_exception:
+            raise last_exception
+
+
 
     def get_table(
             self, class_type: Type[MetaChild]
@@ -1564,12 +1647,7 @@ class SQLAdapter(BaseDataAdapter):
                 )
             async with self.get_session() as session:
                 session.add(data)
-                try:
-                    await session.commit()
-                    await session.refresh(data)
-                except Exception as e:
-                    await session.rollback()
-                    raise e
+                await session.refresh(data)
 
             # Refresh authz MVs only when Users/Roles/Permissions changed
             try:
@@ -1656,7 +1734,6 @@ class SQLAdapter(BaseDataAdapter):
             result.sqlmodel_update(meta.model_dump())
             async with self.get_session() as session:
                 session.add(result)
-                await session.commit()
         except Exception as e:
             print("[!save_payload_from_json]", e)
             logger.error(f"Failed parsing an entry. Error: {e}")
@@ -1716,7 +1793,6 @@ class SQLAdapter(BaseDataAdapter):
                 )
             async with self.get_session() as session:
                 session.add(result)
-                await session.commit()
             # Refresh authz MVs only when Users/Roles/Permissions changed
             try:
                 if isinstance(result, (Users, Roles, Permissions)):
@@ -1815,7 +1891,6 @@ class SQLAdapter(BaseDataAdapter):
             )
             async with self.get_session() as session:
                 session.add(Histories.model_validate(history_obj))
-                await session.commit()
 
             return history_diff
         except Exception as e:
@@ -1907,7 +1982,6 @@ class SQLAdapter(BaseDataAdapter):
                 )
 
                 session.add(origin)
-                await session.commit()
                 try:
                     if table is Spaces:
                         session.add(
@@ -1922,14 +1996,12 @@ class SQLAdapter(BaseDataAdapter):
                             update(Attachments)
                             .where(col(Attachments.space_name) == dest_space_name)
                             .values(space_name=dest_shortname))
-                        await session.commit()
                 except Exception as e:
                     origin.shortname = old_shortname
                     if hasattr(origin, 'subpath'):
                         origin.subpath = old_subpath
 
                     session.add(origin)
-                    await session.commit()
 
                     print("[!move]", e)
                     logger.error(f"Failed parsing an entry. Error: {e}")
@@ -2038,7 +2110,6 @@ class SQLAdapter(BaseDataAdapter):
                         await session.execute(update(Histories).where(col(Histories.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
 
                         await session.execute(delete(Sessions).where(col(Sessions.shortname) == meta.shortname))
-                        await session.commit()
                     except Exception as _e:
                         logger.warning(f"Failed to reassign ownership to anonymous for user {meta.shortname}: {_e}")
 
@@ -2058,7 +2129,6 @@ class SQLAdapter(BaseDataAdapter):
                         .where(col(Entries.space_name) == space_name) \
                         .where(col(Entries.subpath).startswith(_subpath))
                     await session.execute(statement)
-                await session.commit()
                 # Refresh authz MVs only when Users/Roles/Permissions changed
                 try:
                     if meta.__class__ in (core.User, core.Role, core.Permission):
@@ -2107,7 +2177,6 @@ class SQLAdapter(BaseDataAdapter):
                         owner_shortname=user_shortname,
                     )
                     session.add(lock)
-                    await session.commit()
                     await session.refresh(lock)
                     return lock.model_dump()
                 case LockAction.fetch:
@@ -2125,7 +2194,6 @@ class SQLAdapter(BaseDataAdapter):
                         .where(col(Locks.subpath) == subpath) \
                         .where(col(Locks.shortname) == shortname)
                     await session.execute(statement2)
-                    await session.commit()
         return None
 
     async def fetch_space(self, space_name: str) -> core.Space | None:
@@ -2153,7 +2221,6 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=timestamp,
                     )
                 )
-                await session.commit()
 
                 return True
             except Exception as e:
@@ -2178,7 +2245,6 @@ class SQLAdapter(BaseDataAdapter):
                 if verify_password(token, r.token):
                     r.timestamp = datetime.now()
                     session.add(r)
-                    await session.commit()
                     return len(results), token
                 else:
                     await session.execute(delete(Sessions).where(col(Sessions.uuid) == r.uuid))
@@ -2194,7 +2260,6 @@ class SQLAdapter(BaseDataAdapter):
                 oldest_sessions = [oldest_session[0] for oldest_session in oldest_sessions]
                 for oldest_session in oldest_sessions:
                     await session.delete(oldest_session)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
@@ -2212,7 +2277,6 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=timestamp,
                     )
                 )
-                await session.commit()
             except Exception as e:
                 print("[!set_invitation]", e)
 
@@ -2233,7 +2297,6 @@ class SQLAdapter(BaseDataAdapter):
             try:
                 statement = delete(Invitations).where(col(Invitations.invitation_token) == invitation_token)
                 await session.execute(statement)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
@@ -2250,7 +2313,6 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=datetime.now(),
                     )
                 )
-                await session.commit()
             except Exception as e:
                 print("[!set_url_shortner]", e)
 
@@ -2274,7 +2336,6 @@ class SQLAdapter(BaseDataAdapter):
             try:
                 statement = delete(URLShorts).where(col(URLShorts.token_uuid) == token_uuid)
                 await session.execute(statement)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
@@ -2285,7 +2346,6 @@ class SQLAdapter(BaseDataAdapter):
             try:
                 statement = delete(URLShorts).where(col(URLShorts.url).ilike(f"%{invitation_token}%"))
                 await session.execute(statement)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!delete_url_shortner_by_token]", e)
@@ -2347,7 +2407,6 @@ class SQLAdapter(BaseDataAdapter):
                 result = result[0]
                 result.attempt_count = 0
                 session.add(result)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!clear_failed_password_attempts]", e)
@@ -2374,7 +2433,6 @@ class SQLAdapter(BaseDataAdapter):
                 result = result[0]
                 result.attempt_count = attempt_count
                 session.add(result)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!set_failed_password_attempt_count]", e)
@@ -2552,7 +2610,6 @@ class SQLAdapter(BaseDataAdapter):
                         DO UPDATE SET last_source_ts = EXCLUDED.last_source_ts,
                                       refreshed_at = now()
                     """), {"ts": max_ts})
-                    await session.commit()
         except Exception as e:
             logger.warning(f"AuthZ MV refresh failed or skipped: {e}")
 
