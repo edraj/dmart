@@ -1053,8 +1053,10 @@ class SQLAdapter(BaseDataAdapter):
         return Entries
 
     def get_base_model(self, class_type: Type[MetaChild], data,
-                       update=None) -> Roles | Permissions | Users | Spaces | Locks | Attachments | Entries:
+                       update=None) -> Roles | Permissions | Users | Spaces | Locks | Attachments | Entries | Histories:
         match class_type:
+            case core.History:
+                return Histories.model_validate(data, update=update)
             case core.User:
                 return Users.model_validate(data, update=update)
             case core.Role:
@@ -1088,47 +1090,49 @@ class SQLAdapter(BaseDataAdapter):
             retrieve_json_payload: bool = False,
     ) -> dict:
         attachments_dict: dict[str, list] = {}
-        async with self.get_session() as session:
-            if not subpath.startswith("/"):
-                subpath = f"/{subpath}"
 
-            if str(settings.spaces_folder) in str(attachments_path):
-                attachments_path = attachments_path.relative_to(settings.spaces_folder)
-            space_name = attachments_path.parts[0]
-            shortname = attachments_path.parts[-1]
-            statement = (
-                select(Attachments)
-                .where(Attachments.space_name == space_name)
-                .where(Attachments.subpath == f"{subpath}/{shortname}".replace('//', '/'))
-            )
+        if not subpath.startswith("/"):
+            subpath = f"/{subpath}"
+
+        if str(settings.spaces_folder) in str(attachments_path):
+            attachments_path = attachments_path.relative_to(settings.spaces_folder)
+        space_name = attachments_path.parts[0]
+        shortname = attachments_path.parts[-1]
+        statement = (
+            select(Attachments)
+            .where(Attachments.space_name == space_name)
+            .where(Attachments.subpath == f"{subpath}/{shortname}".replace('//', '/'))
+        )
+
+        async with self.get_session() as session:
             results = list((await session.execute(statement)).all())
 
-            if len(results) == 0:
-                return attachments_dict
+        if len(results) == 0:
+            return attachments_dict
 
-            for idx, item in enumerate(results):
-                item = item[0]
-                attachment_record = Attachments.model_validate(item)
-                attachment_json = attachment_record.model_dump()
-                attachment = {
-                    "resource_type": attachment_json["resource_type"],
-                    "uuid": attachment_json["uuid"],
-                    "shortname": attachment_json["shortname"],
-                    "subpath": "/".join(attachment_json["subpath"].split("/")[:-1])  # join(),
-                }
-                del attachment_json["resource_type"]
-                del attachment_json["uuid"]
-                del attachment_json["media"]
-                del attachment_json["shortname"]
-                del attachment_json["subpath"]
-                del attachment_json["relationships"]
-                del attachment_json["acl"]
-                del attachment_json["space_name"]
-                attachment["attributes"] = {**attachment_json}
-                if attachment_record.resource_type in attachments_dict:
-                    attachments_dict[attachment_record.resource_type].append(attachment)
-                else:
-                    attachments_dict[attachment_record.resource_type] = [attachment]
+        for idx, item in enumerate(results):
+            item = item[0]
+            attachment_record = Attachments.model_validate(item)
+            attachment_json = attachment_record.model_dump()
+            attachment = {
+                "resource_type": attachment_json["resource_type"],
+                "uuid": attachment_json["uuid"],
+                "shortname": attachment_json["shortname"],
+                "subpath": "/".join(attachment_json["subpath"].split("/")[:-1])  # join(),
+            }
+            del attachment_json["resource_type"]
+            del attachment_json["uuid"]
+            del attachment_json["media"]
+            del attachment_json["shortname"]
+            del attachment_json["subpath"]
+            del attachment_json["relationships"]
+            del attachment_json["acl"]
+            del attachment_json["space_name"]
+            attachment["attributes"] = {**attachment_json}
+            if attachment_record.resource_type in attachments_dict:
+                attachments_dict[attachment_record.resource_type].append(attachment)
+            else:
+                attachments_dict[attachment_record.resource_type] = [attachment]
 
         return attachments_dict
 
@@ -1171,23 +1175,21 @@ class SQLAdapter(BaseDataAdapter):
 
         shortname = shortname.replace("/", "")
 
+
+        table = self.get_table(class_type)
+
+        if table is Attachments:
+            statement = select(table).options(defer(Attachments.media))  # type: ignore
+        else:
+            statement = select(table)
+        statement = statement.where(table.space_name == space_name).where(table.shortname == shortname)
+
+        if table in [Entries, Attachments]:
+            statement = statement.where(table.subpath == subpath)
+
         async with self.get_session() as session:
-            table = self.get_table(class_type)
-
-            if table is Attachments:
-                statement = select(table).options(defer(Attachments.media))  # type: ignore
-            else:
-                statement = select(table)
-            statement = statement.where(table.space_name == space_name).where(table.shortname == shortname)
-
-            if table in [Entries, Attachments]:
-                statement = statement.where(table.subpath == subpath)
-
-            result = (await session.execute(statement)).scalars().one_or_none()
-            if result is None:
-                return None
             try:
-                return result # type: ignore
+                return (await session.execute(statement)).scalars().one_or_none() # type: ignore
             except Exception as e:
                 print("[!load_or_none]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -1250,189 +1252,199 @@ class SQLAdapter(BaseDataAdapter):
     ) -> Tuple[int, list[core.Record]]:
         total: int
         results: list
-        async with self.get_session() as session:
-            if not query.subpath.startswith("/"):
-                query.subpath = f"/{query.subpath}"
-            if query.subpath == "//":
-                query.subpath = "/"
 
-            user_shortname = user_shortname if user_shortname else "anonymous"
-            user_query_policies = await get_user_query_policies(
-                self, user_shortname, query.space_name, query.subpath, query.type == QueryType.spaces
+        if not query.subpath.startswith("/"):
+            query.subpath = f"/{query.subpath}"
+        if query.subpath == "//":
+            query.subpath = "/"
+
+        user_shortname = user_shortname if user_shortname else "anonymous"
+        user_query_policies = await get_user_query_policies(
+            self, user_shortname, query.space_name, query.subpath, query.type == QueryType.spaces
+        )
+        if not query.exact_subpath:
+            r = await get_user_query_policies(
+                self, user_shortname, query.space_name, f'{query.subpath}/%'.replace('//', '/'),
+                query.type == QueryType.spaces
             )
-            if not query.exact_subpath:
-                r = await get_user_query_policies(
-                    self, user_shortname, query.space_name, f'{query.subpath}/%'.replace('//', '/'),
-                    query.type == QueryType.spaces
-                )
-                user_query_policies.extend(r)
+            user_query_policies.extend(r)
 
-            if query.type in [QueryType.attachments, QueryType.attachments_aggregation]:
-                table = Attachments
-                statement = select(table).options(defer(table.media))  # type: ignore
-            else:
-                table = set_table_for_query(query)
-                statement = select(table)
+        if query.type in [QueryType.attachments, QueryType.attachments_aggregation]:
+            table = Attachments
+            statement = select(table).options(defer(table.media))  # type: ignore
+        else:
+            table = set_table_for_query(query)
+            statement = select(table)
 
-            user_permissions = await self.get_user_permissions(user_shortname)
-            filtered_policies = []
+        user_permissions = await self.get_user_permissions(user_shortname)
+        filtered_policies = []
 
-            _subpath_target_permissions = '/' if query.subpath == '/' else query.subpath.removeprefix('/')
-            if query.filter_types:
-                for ft in query.filter_types:
-                    target_permissions = f'{query.space_name}:{_subpath_target_permissions}:{ft}'
-                    filtered_policies = [policy for policy in user_query_policies if
-                                         policy.startswith(target_permissions)]
-            else:
-                target_permissions = f'{query.space_name}:{_subpath_target_permissions}'
-                filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
+        _subpath_target_permissions = '/' if query.subpath == '/' else query.subpath.removeprefix('/')
+        if query.filter_types:
+            for ft in query.filter_types:
+                target_permissions = f'{query.space_name}:{_subpath_target_permissions}:{ft}'
+                filtered_policies = [policy for policy in user_query_policies if
+                                     policy.startswith(target_permissions)]
+        else:
+            target_permissions = f'{query.space_name}:{_subpath_target_permissions}'
+            filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
 
-            ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
-            for user_query_policy in filtered_policies:
-                for perm_key in user_permissions.keys():
-                    if user_query_policy.startswith(perm_key):
-                        if ffv := user_permissions[perm_key]['filter_fields_values']:
-                            if ffv not in ffv_query:
-                                ffv_query.append(ffv)
-                            perm_key_splited = perm_key.split(':')
-                            ffv_spaces.append(perm_key_splited[0])
-                            ffv_subpath.append(perm_key_splited[1])
-                            ffv_resource_type.append(perm_key_splited[2])
-            if len(ffv_spaces):
-                perm_key_splited_query = f'@space_name:{'|'.join(ffv_spaces)} @subpath:{f"/{'|/'.join(ffv_subpath)}"} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}'
-                if query.search:
-                    query.search += f' {perm_key_splited_query}'
-                else:
-                    query.search = perm_key_splited_query
+        ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
+        for user_query_policy in filtered_policies:
+            for perm_key in user_permissions.keys():
+                if user_query_policy.startswith(perm_key):
+                    if ffv := user_permissions[perm_key]['filter_fields_values']:
+                        if ffv not in ffv_query:
+                            ffv_query.append(ffv)
+                        perm_key_splited = perm_key.split(':')
+                        ffv_spaces.append(perm_key_splited[0])
+                        ffv_subpath.append(perm_key_splited[1])
+                        ffv_resource_type.append(perm_key_splited[2])
+        if len(ffv_spaces):
+            perm_key_splited_query = f'@space_name:{'|'.join(ffv_spaces)} @subpath:{f"/{'|/'.join(ffv_subpath)}"} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}'
             if query.search:
-                parts = [p for p in query.search.split(' ') if p]
-                seen = set()
-                deduped_parts = []
-                for p in parts:
-                    if p not in seen:
-                        seen.add(p)
-                        deduped_parts.append(p)
-                query.search = ' '.join(deduped_parts)
-            statement_total = select(func.count(col(table.uuid)))
-
-            if query and query.type == QueryType.events:
-                try:
-                    return await events_query(query, user_shortname)
-                except Exception as e:
-                    print(e)
-                    return 0, []
-
-            if query and query.type == QueryType.tags:
-                try:
-                    statement = await set_sql_statement_from_query(table, statement, query, False)
-                    statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
-
-                    results = list((await session.execute(statement)).all())
-                    if len(results) == 0:
-                        return 0, []
-
-                    tags = []
-                    tag_counts = {}
-                    if query.retrieve_json_payload:
-                        for result in results:
-                            if result and len(result) > 1 and result[0]:
-                                tag = result[0]
-                                count = result[1]
-                                tags.append(tag)
-                                tag_counts[tag] = count
-                    else:
-                        for result in results:
-                            if result and len(result) > 0 and result[0]:
-                                tags.append(result[0])
-
-                    _total = (await session.execute(statement_total)).one()
-                    total = int(_total[0])
-
-                    attributes = {"tags": tags}
-                    if query.retrieve_json_payload and tag_counts:
-                        attributes["tag_counts"] = tag_counts  # type: ignore
-
-                    return total, [core.Record(
-                        resource_type=core.ResourceType.content,
-                        shortname="tags",
-                        subpath=query.subpath,
-                        attributes=attributes,
-                    )]
-                except Exception as e:
-                    print("[!!query_tags]", e)
-                    return 0, []
-
-            is_fetching_spaces = False
-            if (query.space_name
-                    and query.type == QueryType.spaces
-                    and query.space_name == "management"
-                    and query.subpath == "/"):
-                is_fetching_spaces = True
-                statement = select(Spaces)  # type: ignore
-                statement_total = select(func.count(col(Spaces.uuid)))
+                query.search += f' {perm_key_splited_query}'
             else:
+                query.search = perm_key_splited_query
+        if query.search:
+            parts = [p for p in query.search.split(' ') if p]
+            seen = set()
+            deduped_parts = []
+            for p in parts:
+                if p not in seen:
+                    seen.add(p)
+                    deduped_parts.append(p)
+            query.search = ' '.join(deduped_parts)
+        statement_total = select(func.count(col(table.uuid)))
+
+        if query and query.type == QueryType.events:
+            try:
+                return await events_query(query, user_shortname)
+            except Exception as e:
+                print(e)
+                return 0, []
+
+        if query and query.type == QueryType.tags:
+            try:
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
-            if query.type != QueryType.spaces:
-                statement = apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies)
-                statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname,
-                                                               user_query_policies)
-
-            try:
-                if query.type == QueryType.aggregation and query.aggregation_data and bool(
-                        query.aggregation_data.group_by):
-                    statement_total = select(
-                        func.sum(statement_total.c["count"]).label('total_count')
-                    )
-
-                _total = (await session.execute(statement_total)).one()
-                total = int(_total[0])
-                if query.type == QueryType.counters:
-                    return total, []
-
-                if query.type == QueryType.attachments_aggregation:
-                    # For aggregation, we need tuples
+                async with self.get_session() as session:
                     results = list((await session.execute(statement)).all())
-                    await session.close()
-                    attributes = {}
-                    for item in results:
-                        attributes.update({item[0]: item[1]})
-                    return 1, [core.Record(
-                        resource_type=ResourceType.content,
-                        uuid=uuid4(),
-                        shortname='aggregation_result',
-                        subpath=query.subpath,
-                        attributes=attributes
-                    )]
-                elif query.type == QueryType.aggregation:
-                    results = list((await session.execute(statement)).all())
-                    await session.close()
-                else:
-                    # Non-aggregation: fetch ORM instances directly
-                    results = (await session.execute(statement)).scalars().all()
-                    await session.close()
 
-                if is_fetching_spaces:
-                    from utils.access_control import access_control
-                    results = [result for result in results if await access_control.check_space_access(
-                        user_shortname if user_shortname else "anonymous", result.shortname
-                    )]
                 if len(results) == 0:
                     return 0, []
 
-                results = await self._set_query_final_results(query, results)
+                tags = []
+                tag_counts = {}
+                if query.retrieve_json_payload:
+                    for result in results:
+                        if result and len(result) > 1 and result[0]:
+                            tag = result[0]
+                            count = result[1]
+                            tags.append(tag)
+                            tag_counts[tag] = count
+                else:
+                    for result in results:
+                        if result and len(result) > 0 and result[0]:
+                            tags.append(result[0])
 
+                async with self.get_session() as session:
+                    _total = (await session.execute(statement_total)).one()
+
+                total = int(_total[0])
+
+                attributes = {"tags": tags}
+                if query.retrieve_json_payload and tag_counts:
+                    attributes["tag_counts"] = tag_counts  # type: ignore
+
+                return total, [core.Record(
+                    resource_type=core.ResourceType.content,
+                    shortname="tags",
+                    subpath=query.subpath,
+                    attributes=attributes,
+                )]
             except Exception as e:
-                print("[!!query]", e)
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(
-                        type="query",
-                        code=InternalErrorCode.SOMETHING_WRONG,
-                        message=str(e),
-                    ),
+                print("[!!query_tags]", e)
+                return 0, []
+
+        is_fetching_spaces = False
+        if (query.space_name
+                and query.type == QueryType.spaces
+                and query.space_name == "management"
+                and query.subpath == "/"):
+            is_fetching_spaces = True
+            statement = select(Spaces)  # type: ignore
+            statement_total = select(func.count(col(Spaces.uuid)))
+        else:
+            statement = await set_sql_statement_from_query(table, statement, query, False)
+            statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
+
+        if query.type != QueryType.spaces:
+            statement = apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies)
+            statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname,
+                                                           user_query_policies)
+
+        try:
+            if query.type == QueryType.aggregation and query.aggregation_data and bool(
+                    query.aggregation_data.group_by):
+                statement_total = select(
+                    func.sum(statement_total.c["count"]).label('total_count')
                 )
+
+            async with self.get_session() as session:
+                _total = (await session.execute(statement_total)).one()
+
+            total = int(_total[0])
+            if query.type == QueryType.counters:
+                return total, []
+
+            if query.type == QueryType.attachments_aggregation:
+                # For aggregation, we need tuples
+                async with self.get_session() as session:
+                    results = list((await session.execute(statement)).all())
+                    await session.close()
+                attributes = {}
+                for item in results:
+                    attributes.update({item[0]: item[1]})
+                return 1, [core.Record(
+                    resource_type=ResourceType.content,
+                    uuid=uuid4(),
+                    shortname='aggregation_result',
+                    subpath=query.subpath,
+                    attributes=attributes
+                )]
+            elif query.type == QueryType.aggregation:
+                async with self.get_session() as session:
+                    results = list((await session.execute(statement)).all())
+                    await session.close()
+            else:
+                # Non-aggregation: fetch ORM instances directly
+                async with self.get_session() as session:
+                    results = (await session.execute(statement)).scalars().all()
+                    await session.close()
+
+            if is_fetching_spaces:
+                from utils.access_control import access_control
+                results = [result for result in results if await access_control.check_space_access(
+                    user_shortname if user_shortname else "anonymous", result.shortname
+                )]
+            if len(results) == 0:
+                return 0, []
+
+            results = await self._set_query_final_results(query, results)
+
+        except Exception as e:
+            print("[!!query]", e)
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="query",
+                    code=InternalErrorCode.SOMETHING_WRONG,
+                    message=str(e),
+                ),
+            )
+
         return total, results
 
     async def load_or_none(
@@ -1492,62 +1504,61 @@ class SQLAdapter(BaseDataAdapter):
             schema_shortname: str | None = None,
     ) -> dict[str, Any] | None:
         """Load a Meta class payload file"""
+        table = self.get_table(class_type)
+        if not subpath.startswith("/"):
+            subpath = f"/{subpath}"
+        statement = select(table).where(table.space_name == space_name)
+
+        if table in [Roles, Permissions, Users]:
+            statement = statement.where(table.shortname == filename.replace('.json', ''))
+        elif table in [Entries, Attachments, Histories]:
+            statement = statement.where(table.subpath == subpath).where(
+                table.shortname == filename.replace('.json', '')
+            )
         async with self.get_session() as session:
-            table = self.get_table(class_type)
-            if not subpath.startswith("/"):
-                subpath = f"/{subpath}"
-            statement = select(table).where(table.space_name == space_name)
-
-            if table in [Roles, Permissions, Users]:
-                statement = statement.where(table.shortname == filename.replace('.json', ''))
-            elif table in [Entries, Attachments, Histories]:
-                statement = statement.where(table.subpath == subpath).where(
-                    table.shortname == filename.replace('.json', '')
-                )
-
             result = (await session.execute(statement)).one_or_none()
-            if result is None:
-                return None
-            result = result[0]
-            var: dict = result.model_dump().get("payload", {}).get("body", {})
-            return var
+        if result is None:
+            return None
+        result = result[0]
+        var: dict = result.model_dump().get("payload", {}).get("body", {})
+        return var
 
     async def save(
             self, space_name: str, subpath: str, meta: core.Meta
     ) -> Any:
         """Save"""
         try:
-            async with self.get_session() as session:
-                entity = {
-                    **meta.model_dump(),
-                    "space_name": space_name,
-                    "subpath": subpath,
-                }
+            entity = {
+                **meta.model_dump(),
+                "space_name": space_name,
+                "subpath": subpath,
+            }
 
-                if meta.__class__ is core.Folder:
-                    if entity["subpath"] != "/":
-                        if not entity["subpath"].startswith("/"):
-                            entity["subpath"] = f'/{entity["subpath"]}'
-                        if entity["subpath"].endswith("/"):
-                            entity["subpath"] = entity["subpath"][:-1]
-
-                if "subpath" in entity:
-                    if entity["subpath"] != "/" and entity["subpath"].endswith("/"):
+            if meta.__class__ is core.Folder:
+                if entity["subpath"] != "/":
+                    if not entity["subpath"].startswith("/"):
+                        entity["subpath"] = f'/{entity["subpath"]}'
+                    if entity["subpath"].endswith("/"):
                         entity["subpath"] = entity["subpath"][:-1]
-                    entity["subpath"] = subpath_checker(entity["subpath"])
 
-                entity['resource_type'] = meta.__class__.__name__.lower()
-                data = self.get_base_model(meta.__class__, entity)
+            if "subpath" in entity:
+                if entity["subpath"] != "/" and entity["subpath"].endswith("/"):
+                    entity["subpath"] = entity["subpath"][:-1]
+                entity["subpath"] = subpath_checker(entity["subpath"])
 
-                if not isinstance(data, Attachments) and not isinstance(data, Histories):
-                    data.query_policies = generate_query_policies(
-                        space_name=space_name,
-                        subpath=subpath,
-                        resource_type=entity['resource_type'],
-                        is_active=entity['is_active'],
-                        owner_shortname=entity.get('owner_shortname', 'dmart'),
-                        owner_group_shortname=entity.get('owner_group_shortname', None),
-                    )
+            entity['resource_type'] = meta.__class__.__name__.lower()
+            data = self.get_base_model(meta.__class__, entity)
+
+            if not isinstance(data, Attachments) and not isinstance(data, Histories):
+                data.query_policies = generate_query_policies(
+                    space_name=space_name,
+                    subpath=subpath,
+                    resource_type=entity['resource_type'],
+                    is_active=entity['is_active'],
+                    owner_shortname=entity.get('owner_shortname', 'dmart'),
+                    owner_group_shortname=entity.get('owner_group_shortname', None),
+                )
+            async with self.get_session() as session:
                 session.add(data)
                 try:
                     await session.commit()
@@ -1555,13 +1566,14 @@ class SQLAdapter(BaseDataAdapter):
                 except Exception as e:
                     await session.rollback()
                     raise e
-                # Refresh authz MVs only when Users/Roles/Permissions changed
-                try:
-                    if isinstance(data, (Users, Roles, Permissions)):
-                        await self.ensure_authz_materialized_views_fresh()
-                except Exception as _e:
-                    logger.warning(f"AuthZ MV refresh after save skipped: {_e}")
-                return data
+
+            # Refresh authz MVs only when Users/Roles/Permissions changed
+            try:
+                if isinstance(data, (Users, Roles, Permissions)):
+                    await self.ensure_authz_materialized_views_fresh()
+            except Exception as _e:
+                logger.warning(f"AuthZ MV refresh after save skipped: {_e}")
+            return data
 
         except Exception as e:
             print("[!save]", e)
@@ -1593,7 +1605,7 @@ class SQLAdapter(BaseDataAdapter):
     async def save_payload(
             self, space_name: str, subpath: str, meta: core.Meta, attachment
     ):
-        if meta.__class__ != core.Content:
+        if meta.__class__ is not core.Content:
             media = await attachment.read()
             await self.update(
                 space_name, subpath, meta,
@@ -1617,41 +1629,41 @@ class SQLAdapter(BaseDataAdapter):
             meta: core.Meta,
             payload_data: dict[str, Any],
     ):
-        async with self.get_session() as session:
-            try:
-                result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
-                if result is None:
-                    raise api.Exception(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        error=api.Error(
-                            type="create",
-                            code=InternalErrorCode.MISSING_METADATA,
-                            message="metadata is missing",
-                        ),
-                    )
-                if meta.payload:
-                    if isinstance(meta.payload.body, dict):
-                        meta.payload.body = {
-                            **meta.payload.body,
-                            **payload_data,
-                        }
-                    else:
-                        meta.payload.body = payload_data
-                result.sqlmodel_update(meta.model_dump())
-
-                session.add(result)
-                await session.commit()
-            except Exception as e:
-                print("[!save_payload_from_json]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
+        try:
+            result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+            if result is None:
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     error=api.Error(
-                        type="update",
-                        code=InternalErrorCode.SOMETHING_WRONG,
-                        message="failed to update entry",
+                        type="create",
+                        code=InternalErrorCode.MISSING_METADATA,
+                        message="metadata is missing",
                     ),
                 )
+
+            if meta.payload:
+                if isinstance(meta.payload.body, dict):
+                    meta.payload.body = {
+                        **meta.payload.body,
+                        **payload_data,
+                    }
+                else:
+                    meta.payload.body = payload_data
+            result.sqlmodel_update(meta.model_dump())
+            async with self.get_session() as session:
+                session.add(result)
+                await session.commit()
+        except Exception as e:
+            print("[!save_payload_from_json]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="update",
+                    code=InternalErrorCode.SOMETHING_WRONG,
+                    message="failed to update entry",
+                ),
+            )
 
     async def update(
             self,
@@ -1667,57 +1679,57 @@ class SQLAdapter(BaseDataAdapter):
             attachment_media: Any | None = None,
     ) -> dict:
         """Update the entry, store the difference and return it"""
-        async with self.get_session() as session:
-            try:
-                result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
-                if result is None:
-                    raise api.Exception(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        error=api.Error(
-                            type="create",
-                            code=InternalErrorCode.MISSING_METADATA,
-                            message="metadata is missing",
-                        ),
-                    )
-
-                if isinstance(result, Users) and not result.is_active and meta.is_active:
-                    await self.set_failed_password_attempt_count(result.shortname, 0)
-
-                result.sqlmodel_update(meta.model_dump())
-
-                if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
-                    result.subpath = f"/{result.subpath}"
-
-                if isinstance(result, Attachments) and attachment_media:
-                    result.media = attachment_media
-                if hasattr(result, 'query_policies'):
-                    result.query_policies = generate_query_policies(
-                        space_name=space_name,
-                        subpath=subpath,
-                        resource_type=result.resource_type,  # type: ignore
-                        is_active=result.is_active,  # type: ignore
-                        owner_shortname=result.owner_shortname,
-                        owner_group_shortname=result.owner_shortname,
-                    )
-                session.add(result)
-                await session.commit()
-                # Refresh authz MVs only when Users/Roles/Permissions changed
-                try:
-                    if isinstance(result, (Users, Roles, Permissions)):
-                        await self.ensure_authz_materialized_views_fresh()
-                except Exception as _e:
-                    logger.warning(f"AuthZ MV refresh after update skipped: {_e}")
-            except Exception as e:
-                print("[!update]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
+        try:
+            result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+            if result is None:
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     error=api.Error(
-                        type="update",
-                        code=InternalErrorCode.SOMETHING_WRONG,
-                        message="failed to update entry",
+                        type="create",
+                        code=InternalErrorCode.MISSING_METADATA,
+                        message="metadata is missing",
                     ),
                 )
+
+            if isinstance(result, Users) and not result.is_active and meta.is_active:
+                await self.set_failed_password_attempt_count(result.shortname, 0)
+
+            result.sqlmodel_update(meta.model_dump())
+
+            if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
+                result.subpath = f"/{result.subpath}"
+
+            if isinstance(result, Attachments) and attachment_media:
+                result.media = attachment_media
+            if hasattr(result, 'query_policies'):
+                result.query_policies = generate_query_policies(
+                    space_name=space_name,
+                    subpath=subpath,
+                    resource_type=result.resource_type,  # type: ignore
+                    is_active=result.is_active,  # type: ignore
+                    owner_shortname=result.owner_shortname,
+                    owner_group_shortname=result.owner_shortname,
+                )
+            async with self.get_session() as session:
+                session.add(result)
+                await session.commit()
+            # Refresh authz MVs only when Users/Roles/Permissions changed
+            try:
+                if isinstance(result, (Users, Roles, Permissions)):
+                    await self.ensure_authz_materialized_views_fresh()
+            except Exception as _e:
+                logger.warning(f"AuthZ MV refresh after update skipped: {_e}")
+        except Exception as e:
+            print("[!update]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="update",
+                    code=InternalErrorCode.SOMETHING_WRONG,
+                    message="failed to update entry",
+                ),
+            )
 
         history_diff = await self.store_entry_diff(
             space_name,
@@ -1757,56 +1769,55 @@ class SQLAdapter(BaseDataAdapter):
             updated_attributes_flattend: list,
             resource_type,
     ) -> dict:
-        async with self.get_session() as session:
-            try:
-                diff_keys = list(old_version_flattend.keys())
-                diff_keys.extend(list(new_version_flattend.keys()))
-                history_diff = {}
-                for key in set(diff_keys):
-                    if key in ["updated_at"]:
-                        continue
-                    # if key in updated_attributes_flattend:
-                    old = copy(old_version_flattend.get(key, "null"))
-                    new = copy(new_version_flattend.get(key, "null"))
+        try:
+            diff_keys = list(old_version_flattend.keys())
+            diff_keys.extend(list(new_version_flattend.keys()))
+            history_diff = {}
+            for key in set(diff_keys):
+                if key in ["updated_at"]:
+                    continue
+                # if key in updated_attributes_flattend:
+                old = copy(old_version_flattend.get(key, "null"))
+                new = copy(new_version_flattend.get(key, "null"))
 
-                    if old != new:
-                        if isinstance(old, list) and isinstance(new, list):
-                            old, new = arr_remove_common(old, new)
+                if old != new:
+                    if isinstance(old, list) and isinstance(new, list):
+                        old, new = arr_remove_common(old, new)
 
-                        removed = get_removed_items(list(old_version_flattend.keys()),
-                                                    list(new_version_flattend.keys()))
+                    removed = get_removed_items(list(old_version_flattend.keys()),
+                                                list(new_version_flattend.keys()))
 
-                        history_diff[key] = {
-                            "old": old,
-                            "new": new,
+                    history_diff[key] = {
+                        "old": old,
+                        "new": new,
+                    }
+                    for r in removed:
+                        history_diff[r] = {
+                            "old": old_version_flattend[r],
+                            "new": None,
                         }
-                        for r in removed:
-                            history_diff[r] = {
-                                "old": old_version_flattend[r],
-                                "new": None,
-                            }
-                if not history_diff:
-                    return {}
+            if not history_diff:
+                return {}
 
-                history_obj = Histories(
-                    space_name=space_name,
-                    uuid=uuid4(),
-                    shortname=shortname,
-                    owner_shortname=owner_shortname or "__system__",
-                    timestamp=datetime.now(),
-                    request_headers=get_request_data().get("request_headers", {}),
-                    diff=history_diff,
-                    subpath=subpath,
-                )
-
+            history_obj = Histories(
+                space_name=space_name,
+                uuid=uuid4(),
+                shortname=shortname,
+                owner_shortname=owner_shortname or "__system__",
+                timestamp=datetime.now(),
+                request_headers=get_request_data().get("request_headers", {}),
+                diff=history_diff,
+                subpath=subpath,
+            )
+            async with self.get_session() as session:
                 session.add(Histories.model_validate(history_obj))
                 await session.commit()
 
-                return history_diff
-            except Exception as e:
-                print("[!store_entry_diff]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
-                return {}
+            return history_diff
+        except Exception as e:
+            print("[!store_entry_diff]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            return {}
 
     async def move(
             self,
@@ -1959,41 +1970,40 @@ class SQLAdapter(BaseDataAdapter):
                              shortname: str,
                              resource_type: ResourceType,
                              schema_shortname: str | None = None, ) -> bool:
-        async with self.get_session() as session:
-            resource_cls = getattr(
-                sys.modules["models.core"], camel_case(resource_type)
+        resource_cls = getattr(
+            sys.modules["models.core"], camel_case(resource_type)
+        )
+
+        table = self.get_table(resource_cls)
+        if not subpath.startswith("/"):
+            subpath = f"/{subpath}"
+
+        statement = select(table).where(table.space_name == space_name)
+
+        if table in [Roles, Permissions, Users]:
+            statement = statement.where(table.shortname == shortname)
+        elif resource_cls in [
+            core.Alteration,
+            core.Media,
+            core.Lock,
+            core.Comment,
+            core.Reply,
+            core.Reaction,
+            core.Json,
+            core.DataAsset,
+        ]:
+            statement = statement.where(table.subpath == subpath).where(
+                table.shortname == shortname
             )
 
-            table = self.get_table(resource_cls)
-            if not subpath.startswith("/"):
-                subpath = f"/{subpath}"
-
-            statement = select(table).where(table.space_name == space_name)
-
-            if table in [Roles, Permissions, Users]:
-                statement = statement.where(table.shortname == shortname)
-            elif resource_cls in [
-                core.Alteration,
-                core.Media,
-                core.Lock,
-                core.Comment,
-                core.Reply,
-                core.Reaction,
-                core.Json,
-                core.DataAsset,
-            ]:
-                statement = statement.where(table.subpath == subpath).where(
-                    table.shortname == shortname
-                )
-
-            else:
-                statement = statement.where(table.subpath == subpath).where(
-                    table.shortname == shortname
-                )
-
+        else:
+            statement = statement.where(table.subpath == subpath).where(
+                table.shortname == shortname
+            )
+        async with self.get_session() as session:
             result = (await session.execute(statement)).fetchall()
-            result = [result[0] for result in result]
-            return False if len(result) == 0 else True
+        result = [result[0] for result in result]
+        return False if len(result) == 0 else True
 
     async def delete(
             self,
@@ -2012,7 +2022,7 @@ class SQLAdapter(BaseDataAdapter):
 
                 result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
 
-                if meta.__class__ == core.User:
+                if meta.__class__ is core.User:
                     try:
                         await session.execute(update(Spaces).where(col(Spaces.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
                         await session.execute(update(Entries).where(col(Entries.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
@@ -2029,12 +2039,12 @@ class SQLAdapter(BaseDataAdapter):
                         logger.warning(f"Failed to reassign ownership to anonymous for user {meta.shortname}: {_e}")
 
                 await session.delete(result)
-                if meta.__class__ == core.Space:
+                if meta.__class__ is core.Space:
                     statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name)
                     await session.execute(statement2)
                     statement = delete(Entries).where(col(Entries.space_name) == space_name)
                     await session.execute(statement)
-                if meta.__class__ == core.Folder:
+                if meta.__class__ is core.Folder:
                     _subpath = f"{subpath}/{meta.shortname}".replace('//', '/')
                     statement2 = delete(Attachments) \
                         .where(col(Attachments.space_name) == space_name) \
@@ -2279,54 +2289,47 @@ class SQLAdapter(BaseDataAdapter):
 
     async def _set_query_final_results(self, query, results):
         is_aggregation = query.type == QueryType.aggregation
-        not_history_event = query.type not in [QueryType.history, QueryType.events]
+        is_attachment_query = query.type == QueryType.attachments
+        process_payload = query.type not in [QueryType.history, QueryType.events]
 
-        if query.type == QueryType.attachments:
+        if is_attachment_query:
+            return [
+                item.to_record(item.subpath, item.shortname)
+                for item in results
+            ]
+
+        if is_aggregation:
             for idx, item in enumerate(results):
-                results[idx] = item.to_record(
-                    results[idx].subpath, item.shortname
-                )
-        else:
-            if is_aggregation:
-                # Keep aggregation behavior unchanged
-                for idx, item in enumerate(results):
-                    results = set_results_from_aggregation(
-                        query, item, results, idx
+                results = set_results_from_aggregation(query, item, results, idx)
+            return results
+
+        attachment_tasks = []
+        attachment_indices = []
+
+        for idx, item in enumerate(results):
+            rec = item.to_record(item.subpath, item.shortname)
+            results[idx] = rec
+
+            if process_payload:
+                if not query.retrieve_json_payload:
+                    payload = rec.attributes.get("payload", {})
+                    if payload.get("body"):
+                        payload["body"] = None
+
+                if query.retrieve_attachments:
+                    attachment_tasks.append(
+                        self.get_entry_attachments(
+                            rec.subpath,
+                            Path(f"{query.space_name}/{rec.shortname}"),
+                            retrieve_json_payload=True,
+                        )
                     )
-            else:
-                # Convert rows to records and prepare concurrent attachment retrieval
-                attachment_coros = []
-                attachment_indices = []
-                for idx, item in enumerate(results):
-                    results[idx] = item.to_record(
-                        item.subpath, item.shortname
-                    )
+                    attachment_indices.append(idx)
 
-                    if not_history_event:
-                        if not query.retrieve_json_payload:
-                            attrb = results[idx].attributes
-                            if (
-                                attrb
-                                and attrb.get("payload", {})
-                                and attrb.get("payload", {}).get("body", False)
-                            ):
-                                attrb["payload"]["body"] = None
-
-                        if query.retrieve_attachments:
-                            attachment_coros.append(
-                                self.get_entry_attachments(
-                                    results[idx].subpath,
-                                    Path(f"{query.space_name}/{results[idx].shortname}"),
-                                    retrieve_json_payload=True,
-                                )
-                            )
-                            attachment_indices.append(idx)
-
-                # Run all attachment retrievals concurrently
-                if attachment_coros:
-                    attachments_list = await asyncio.gather(*attachment_coros)
-                    for i, attachments in zip(attachment_indices, attachments_list):
-                        results[i].attachments = attachments
+        if attachment_tasks:
+            attachments_list = await asyncio.gather(*attachment_tasks)
+            for idx, attachments in zip(attachment_indices, attachments_list):
+                results[idx].attachments = attachments
 
         return results
 
@@ -2875,12 +2878,12 @@ class SQLAdapter(BaseDataAdapter):
             statement = select(Users).where(Users.shortname == user_shortname)
             result = (await session.execute(statement)).one_or_none()
 
-            if result is None:
-                return False
-            user = Users.model_validate(result[0])
-
-            if identifier == "msisdn":
-                return user.is_msisdn_verified
-            if identifier == "email":
-                return user.is_email_verified
+        if result is None:
             return False
+        user = Users.model_validate(result[0])
+
+        if identifier == "msisdn":
+            return user.is_msisdn_verified
+        if identifier == "email":
+            return user.is_email_verified
+        return False
