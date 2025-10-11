@@ -1189,7 +1189,10 @@ class SQLAdapter(BaseDataAdapter):
 
         async with self.get_session() as session:
             try:
-                return (await session.execute(statement)).scalars().one_or_none() # type: ignore
+                result = (await session.execute(statement)).scalars().one_or_none() # type: ignore
+                if result:
+                    session.expunge(result)
+                return result
             except Exception as e:
                 print("[!load_or_none]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -1213,6 +1216,7 @@ class SQLAdapter(BaseDataAdapter):
                         _results = [result[0] for result in _results]
                         if len(_results) > 0:
                             for result in _results:
+                                session.expunge(result)
                                 core_model_class: core.Meta = getattr(sys.modules["models.core"],
                                                                       camel_case(result.resource_type))
                                 results.append(
@@ -1237,6 +1241,7 @@ class SQLAdapter(BaseDataAdapter):
                     _results = [result[0] for result in _results]
                     if len(_results) > 0:
                         for result in _results:
+                            session.expunge(result)
                             _core_model_class: core.Meta = getattr(sys.modules["models.core"],
                                                                    camel_case(result.resource_type))
                             results.append(
@@ -2383,6 +2388,7 @@ class SQLAdapter(BaseDataAdapter):
             results = [result[0] for result in results]
             spaces = {}
             for idx, item in enumerate(results):
+                session.expunge(item)
                 space = Spaces.model_validate(item)
                 spaces[space.shortname] = space.model_dump()
             return spaces
