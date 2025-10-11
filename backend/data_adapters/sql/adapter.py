@@ -1187,16 +1187,15 @@ class SQLAdapter(BaseDataAdapter):
         if table in [Entries, Attachments]:
             statement = statement.where(table.subpath == subpath)
 
-        async with self.get_session() as session:
-            try:
+        try:
+            async with self.get_session() as session:
                 result = (await session.execute(statement)).scalars().one_or_none() # type: ignore
-                if result:
-                    session.expunge(result)
-                return result
-            except Exception as e:
-                print("[!load_or_none]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
-                return None
+
+            return result
+        except Exception as e:
+            print("[!load_or_none]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            return None
 
     async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
         async with self.get_session() as session:
@@ -2397,16 +2396,17 @@ class SQLAdapter(BaseDataAdapter):
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
 
-        async with self.get_session() as session:
-            statement = select(Attachments.media) \
-                .where(Attachments.space_name == space_name) \
-                .where(Attachments.subpath == subpath) \
-                .where(Attachments.shortname == shortname)
+        statement = select(Attachments.media) \
+            .where(Attachments.space_name == space_name) \
+            .where(Attachments.subpath == subpath) \
+            .where(Attachments.shortname == shortname)
 
+        async with self.get_session() as session:
             result = (await session.execute(statement)).one_or_none()
-            if result:
-                result = result[0]
-                return io.BytesIO(result)
+
+        if result:
+            result = result[0]
+            return io.BytesIO(result)
         return None
 
     async def validate_uniqueness(
