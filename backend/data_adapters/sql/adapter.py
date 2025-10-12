@@ -935,13 +935,11 @@ class SQLAdapter(BaseDataAdapter):
                     timestamp=datetime.now()
                 )
                 session.add(otp_entry)
-                await session.commit()
             except Exception as e:
                 if "UniqueViolationError" in str(e) or "unique constraint" in str(e).lower():
                     await session.rollback()
                     statement = delete(OTP).where(col(OTP.key) == key)
                     await session.execute(statement)
-                    await session.commit()
 
                     otp_entry = OTP(
                         key=key,
@@ -949,7 +947,6 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=datetime.now()
                     )
                     session.add(otp_entry)
-                    await session.commit()
                 else:
                     await session.rollback()
                     raise e
@@ -965,10 +962,9 @@ class SQLAdapter(BaseDataAdapter):
             if otp_entry:
                 if (datetime.now() - otp_entry.timestamp).total_seconds() > settings.otp_token_ttl:
                     await session.delete(otp_entry)
-                    await session.commit()
                     return None
                 return otp_entry.value.get("otp")
-            return None
+        return None
 
     def metapath(self,
                  space_name: str,
@@ -1021,6 +1017,7 @@ class SQLAdapter(BaseDataAdapter):
         async_session = self.async_session()
         try:
             yield async_session
+            await async_session.commit()
         finally:
             await async_session.close()  # type: ignore
 
@@ -1182,12 +1179,9 @@ class SQLAdapter(BaseDataAdapter):
         if table in [Entries, Attachments]:
             statement = statement.where(col(table.subpath) == subpath)
 
-        async with self.get_session() as session:
-            result = (await session.execute(statement)).scalars().one_or_none()
-            if result is None:
-                return None
         try:
-            return result # type: ignore
+            async with self.get_session() as session:
+                return (await session.execute(statement)).scalars().one_or_none() # type: ignore
         except Exception as e:
             print("[!load_or_none]", e)
             logger.error(f"Failed parsing an entry. Error: {e}")
@@ -1250,142 +1244,143 @@ class SQLAdapter(BaseDataAdapter):
     ) -> Tuple[int, list[core.Record]]:
         total: int
         results: list
-        async with self.get_session() as session:
-            if not query.subpath.startswith("/"):
-                query.subpath = f"/{query.subpath}"
-            if query.subpath == "//":
-                query.subpath = "/"
 
-            user_shortname = user_shortname if user_shortname else "anonymous"
-            user_query_policies = await get_user_query_policies(
-                self, user_shortname, query.space_name, query.subpath, query.type == QueryType.spaces
+        if not query.subpath.startswith("/"):
+            query.subpath = f"/{query.subpath}"
+        if query.subpath == "//":
+            query.subpath = "/"
+
+        user_shortname = user_shortname if user_shortname else "anonymous"
+        user_query_policies = await get_user_query_policies(
+            self, user_shortname, query.space_name, query.subpath, query.type == QueryType.spaces
+        )
+        if not query.exact_subpath:
+            r = await get_user_query_policies(
+                self, user_shortname, query.space_name, f'{query.subpath}/%'.replace('//', '/'),
+                query.type == QueryType.spaces
             )
-            if not query.exact_subpath:
-                r = await get_user_query_policies(
-                    self, user_shortname, query.space_name, f'{query.subpath}/%'.replace('//', '/'),
-                    query.type == QueryType.spaces
-                )
-                user_query_policies.extend(r)
+            user_query_policies.extend(r)
 
-            if query.type in [QueryType.attachments, QueryType.attachments_aggregation]:
-                table = Attachments
-                statement = select(table).options(defer(table.media))  # type: ignore
-            else:
-                table = set_table_for_query(query)
-                statement = select(table)
+        if query.type in [QueryType.attachments, QueryType.attachments_aggregation]:
+            table = Attachments
+            statement = select(table).options(defer(table.media))  # type: ignore
+        else:
+            table = set_table_for_query(query)
+            statement = select(table)
 
-            user_permissions = await self.get_user_permissions(user_shortname)
-            filtered_policies = []
+        user_permissions = await self.get_user_permissions(user_shortname)
+        filtered_policies = []
 
-            _subpath_target_permissions = '/' if query.subpath == '/' else query.subpath.removeprefix('/')
-            if query.filter_types:
-                for ft in query.filter_types:
-                    target_permissions = f'{query.space_name}:{_subpath_target_permissions}:{ft}'
-                    filtered_policies = [policy for policy in user_query_policies if
-                                         policy.startswith(target_permissions)]
-            else:
-                target_permissions = f'{query.space_name}:{_subpath_target_permissions}'
-                filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
+        _subpath_target_permissions = '/' if query.subpath == '/' else query.subpath.removeprefix('/')
+        if query.filter_types:
+            for ft in query.filter_types:
+                target_permissions = f'{query.space_name}:{_subpath_target_permissions}:{ft}'
+                filtered_policies = [policy for policy in user_query_policies if
+                                     policy.startswith(target_permissions)]
+        else:
+            target_permissions = f'{query.space_name}:{_subpath_target_permissions}'
+            filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
 
-            ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
-            for user_query_policy in filtered_policies:
-                for perm_key in user_permissions.keys():
-                    if user_query_policy.startswith(perm_key):
-                        if ffv := user_permissions[perm_key]['filter_fields_values']:
-                            if ffv not in ffv_query:
-                                ffv_query.append(ffv)
-                            perm_key_splited = perm_key.split(':')
-                            ffv_spaces.append(perm_key_splited[0])
-                            ffv_subpath.append(perm_key_splited[1])
-                            ffv_resource_type.append(perm_key_splited[2])
-            if len(ffv_spaces):
-                perm_key_splited_query = f'@space_name:{'|'.join(ffv_spaces)} @subpath:{f"/{'|/'.join(ffv_subpath)}"} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}'
-                if query.search:
-                    query.search += f' {perm_key_splited_query}'
-                else:
-                    query.search = perm_key_splited_query
+        ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
+        for user_query_policy in filtered_policies:
+            for perm_key in user_permissions.keys():
+                if user_query_policy.startswith(perm_key):
+                    if ffv := user_permissions[perm_key]['filter_fields_values']:
+                        if ffv not in ffv_query:
+                            ffv_query.append(ffv)
+                        perm_key_splited = perm_key.split(':')
+                        ffv_spaces.append(perm_key_splited[0])
+                        ffv_subpath.append(perm_key_splited[1])
+                        ffv_resource_type.append(perm_key_splited[2])
+        if len(ffv_spaces):
+            perm_key_splited_query = f'@space_name:{'|'.join(ffv_spaces)} @subpath:{f"/{'|/'.join(ffv_subpath)}"} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}'
             if query.search:
-                parts = [p for p in query.search.split(' ') if p]
-                seen = set()
-                deduped_parts = []
-                for p in parts:
-                    if p not in seen:
-                        seen.add(p)
-                        deduped_parts.append(p)
-                query.search = ' '.join(deduped_parts)
-            statement_total = select(func.count(col(table.uuid)))
+                query.search += f' {perm_key_splited_query}'
+            else:
+                query.search = perm_key_splited_query
+        if query.search:
+            parts = [p for p in query.search.split(' ') if p]
+            seen = set()
+            deduped_parts = []
+            for p in parts:
+                if p not in seen:
+                    seen.add(p)
+                    deduped_parts.append(p)
+            query.search = ' '.join(deduped_parts)
+        statement_total = select(func.count(col(table.uuid)))
 
-            if query and query.type == QueryType.events:
-                try:
-                    return await events_query(query, user_shortname)
-                except Exception as e:
-                    print(e)
-                    return 0, []
+        if query and query.type == QueryType.events:
+            try:
+                return await events_query(query, user_shortname)
+            except Exception as e:
+                print(e)
+                return 0, []
 
-            if query and query.type == QueryType.tags:
-                try:
-                    statement = await set_sql_statement_from_query(table, statement, query, False)
-                    statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
-
+        if query and query.type == QueryType.tags:
+            try:
+                statement = await set_sql_statement_from_query(table, statement, query, False)
+                statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
+                async with self.get_session() as session:
                     results = list((await session.execute(statement)).all())
                     if len(results) == 0:
                         return 0, []
 
-                    tags = []
-                    tag_counts = {}
-                    if query.retrieve_json_payload:
-                        for result in results:
-                            if result and len(result) > 1 and result[0]:
-                                tag = result[0]
-                                count = result[1]
-                                tags.append(tag)
-                                tag_counts[tag] = count
-                    else:
-                        for result in results:
-                            if result and len(result) > 0 and result[0]:
-                                tags.append(result[0])
-
+                tags = []
+                tag_counts = {}
+                if query.retrieve_json_payload:
+                    for result in results:
+                        if result and len(result) > 1 and result[0]:
+                            tag = result[0]
+                            count = result[1]
+                            tags.append(tag)
+                            tag_counts[tag] = count
+                else:
+                    for result in results:
+                        if result and len(result) > 0 and result[0]:
+                            tags.append(result[0])
+                async with self.get_session() as session:
                     _total = (await session.execute(statement_total)).one()
                     total = int(_total[0])
 
-                    attributes = {"tags": tags}
-                    if query.retrieve_json_payload and tag_counts:
-                        attributes["tag_counts"] = tag_counts  # type: ignore
+                attributes = {"tags": tags}
+                if query.retrieve_json_payload and tag_counts:
+                    attributes["tag_counts"] = tag_counts  # type: ignore
 
-                    return total, [core.Record(
-                        resource_type=core.ResourceType.content,
-                        shortname="tags",
-                        subpath=query.subpath,
-                        attributes=attributes,
-                    )]
-                except Exception as e:
-                    print("[!!query_tags]", e)
-                    return 0, []
+                return total, [core.Record(
+                    resource_type=core.ResourceType.content,
+                    shortname="tags",
+                    subpath=query.subpath,
+                    attributes=attributes,
+                )]
+            except Exception as e:
+                print("[!!query_tags]", e)
+                return 0, []
 
-            is_fetching_spaces = False
-            if (query.space_name
-                    and query.type == QueryType.spaces
-                    and query.space_name == "management"
-                    and query.subpath == "/"):
-                is_fetching_spaces = True
-                statement = select(Spaces)  # type: ignore
-                statement_total = select(func.count(col(Spaces.uuid)))
-            else:
-                statement = await set_sql_statement_from_query(table, statement, query, False)
-                statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
+        is_fetching_spaces = False
+        if (query.space_name
+                and query.type == QueryType.spaces
+                and query.space_name == "management"
+                and query.subpath == "/"):
+            is_fetching_spaces = True
+            statement = select(Spaces)  # type: ignore
+            statement_total = select(func.count(col(Spaces.uuid)))
+        else:
+            statement = await set_sql_statement_from_query(table, statement, query, False)
+            statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
 
-            if query.type != QueryType.spaces:
-                statement = apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies)
-                statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname,
-                                                               user_query_policies)
+        if query.type != QueryType.spaces:
+            statement = apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies)
+            statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname,
+                                                           user_query_policies)
 
-            try:
-                if query.type == QueryType.aggregation and query.aggregation_data and bool(
-                        query.aggregation_data.group_by):
-                    statement_total = select(
-                        func.sum(statement_total.c["count"]).label('total_count')
-                    )
+        try:
+            if query.type == QueryType.aggregation and query.aggregation_data and bool(
+                    query.aggregation_data.group_by):
+                statement_total = select(
+                    func.sum(statement_total.c["count"]).label('total_count')
+                )
 
+            async with self.get_session() as session:
                 _total = (await session.execute(statement_total)).one()
                 total = int(_total[0])
                 if query.type == QueryType.counters:
@@ -1413,26 +1408,26 @@ class SQLAdapter(BaseDataAdapter):
                     results = (await session.execute(statement)).scalars().all()
                     await session.close()
 
-                if is_fetching_spaces:
-                    from utils.access_control import access_control
-                    results = [result for result in results if await access_control.check_space_access(
-                        user_shortname if user_shortname else "anonymous", result.shortname
-                    )]
-                if len(results) == 0:
-                    return 0, []
+            if is_fetching_spaces:
+                from utils.access_control import access_control
+                results = [result for result in results if await access_control.check_space_access(
+                    user_shortname if user_shortname else "anonymous", result.shortname
+                )]
+            if len(results) == 0:
+                return 0, []
 
-                results = await self._set_query_final_results(query, results)
+            results = await self._set_query_final_results(query, results)
 
-            except Exception as e:
-                print("[!!query]", e)
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(
-                        type="query",
-                        code=InternalErrorCode.SOMETHING_WRONG,
-                        message=str(e),
-                    ),
-                )
+        except Exception as e:
+            print("[!!query]", e)
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="query",
+                    code=InternalErrorCode.SOMETHING_WRONG,
+                    message=str(e),
+                ),
+            )
         return total, results
 
     async def load_or_none(
@@ -1617,41 +1612,39 @@ class SQLAdapter(BaseDataAdapter):
             meta: core.Meta,
             payload_data: dict[str, Any],
     ):
-        async with self.get_session() as session:
-            try:
-                result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
-                if result is None:
-                    raise api.Exception(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        error=api.Error(
-                            type="create",
-                            code=InternalErrorCode.MISSING_METADATA,
-                            message="metadata is missing",
-                        ),
-                    )
-                if meta.payload:
-                    if isinstance(meta.payload.body, dict):
-                        meta.payload.body = {
-                            **meta.payload.body,
-                            **payload_data,
-                        }
-                    else:
-                        meta.payload.body = payload_data
-                result.sqlmodel_update(meta.model_dump())
-
-                session.add(result)
-                await session.commit()
-            except Exception as e:
-                print("[!save_payload_from_json]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
+        try:
+            result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+            if result is None:
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     error=api.Error(
-                        type="update",
-                        code=InternalErrorCode.SOMETHING_WRONG,
-                        message="failed to update entry",
+                        type="create",
+                        code=InternalErrorCode.MISSING_METADATA,
+                        message="metadata is missing",
                     ),
                 )
+            if meta.payload:
+                if isinstance(meta.payload.body, dict):
+                    meta.payload.body = {
+                        **meta.payload.body,
+                        **payload_data,
+                    }
+                else:
+                    meta.payload.body = payload_data
+            result.sqlmodel_update(meta.model_dump())
+            async with self.get_session() as session:
+                session.add(result)
+        except Exception as e:
+            print("[!save_payload_from_json]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="update",
+                    code=InternalErrorCode.SOMETHING_WRONG,
+                    message="failed to update entry",
+                ),
+            )
 
     async def update(
             self,
@@ -1667,57 +1660,58 @@ class SQLAdapter(BaseDataAdapter):
             attachment_media: Any | None = None,
     ) -> dict:
         """Update the entry, store the difference and return it"""
-        async with self.get_session() as session:
-            try:
-                result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
-                if result is None:
-                    raise api.Exception(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        error=api.Error(
-                            type="create",
-                            code=InternalErrorCode.MISSING_METADATA,
-                            message="metadata is missing",
-                        ),
-                    )
 
-                if isinstance(result, Users) and not result.is_active and meta.is_active:
-                    await self.set_failed_password_attempt_count(result.shortname, 0)
-
-                result.sqlmodel_update(meta.model_dump())
-
-                if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
-                    result.subpath = f"/{result.subpath}"
-
-                if isinstance(result, Attachments) and attachment_media:
-                    result.media = attachment_media
-                if hasattr(result, 'query_policies'):
-                    result.query_policies = generate_query_policies(
-                        space_name=space_name,
-                        subpath=subpath,
-                        resource_type=result.resource_type,  # type: ignore
-                        is_active=result.is_active,  # type: ignore
-                        owner_shortname=result.owner_shortname,
-                        owner_group_shortname=result.owner_shortname,
-                    )
-                session.add(result)
-                await session.commit()
-                # Refresh authz MVs only when Users/Roles/Permissions changed
-                try:
-                    if isinstance(result, (Users, Roles, Permissions)):
-                        await self.ensure_authz_materialized_views_fresh()
-                except Exception as _e:
-                    logger.warning(f"AuthZ MV refresh after update skipped: {_e}")
-            except Exception as e:
-                print("[!update]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
+        try:
+            result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+            if result is None:
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     error=api.Error(
-                        type="update",
-                        code=InternalErrorCode.SOMETHING_WRONG,
-                        message="failed to update entry",
+                        type="create",
+                        code=InternalErrorCode.MISSING_METADATA,
+                        message="metadata is missing",
                     ),
                 )
+
+            if isinstance(result, Users) and not result.is_active and meta.is_active:
+                await self.set_failed_password_attempt_count(result.shortname, 0)
+
+            result.sqlmodel_update(meta.model_dump())
+
+            if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
+                result.subpath = f"/{result.subpath}"
+
+            if isinstance(result, Attachments) and attachment_media:
+                result.media = attachment_media
+            if hasattr(result, 'query_policies'):
+                result.query_policies = generate_query_policies(
+                    space_name=space_name,
+                    subpath=subpath,
+                    resource_type=result.resource_type,  # type: ignore
+                    is_active=result.is_active,  # type: ignore
+                    owner_shortname=result.owner_shortname,
+                    owner_group_shortname=result.owner_shortname,
+                )
+
+            async with self.get_session() as session:
+                session.add(result)
+
+            try:
+                if isinstance(result, (Users, Roles, Permissions)):
+                    await self.ensure_authz_materialized_views_fresh()
+            except Exception as _e:
+                logger.warning(f"AuthZ MV refresh after update skipped: {_e}")
+        except Exception as e:
+            print("[!update]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="update",
+                    code=InternalErrorCode.SOMETHING_WRONG,
+                    message="failed to update entry",
+                ),
+            )
 
         history_diff = await self.store_entry_diff(
             space_name,
@@ -1757,56 +1751,55 @@ class SQLAdapter(BaseDataAdapter):
             updated_attributes_flattend: list,
             resource_type,
     ) -> dict:
-        async with self.get_session() as session:
-            try:
-                diff_keys = list(old_version_flattend.keys())
-                diff_keys.extend(list(new_version_flattend.keys()))
-                history_diff = {}
-                for key in set(diff_keys):
-                    if key in ["updated_at"]:
-                        continue
-                    # if key in updated_attributes_flattend:
-                    old = copy(old_version_flattend.get(key, "null"))
-                    new = copy(new_version_flattend.get(key, "null"))
+        try:
+            diff_keys = list(old_version_flattend.keys())
+            diff_keys.extend(list(new_version_flattend.keys()))
+            history_diff = {}
+            for key in set(diff_keys):
+                if key in ["updated_at"]:
+                    continue
+                # if key in updated_attributes_flattend:
+                old = copy(old_version_flattend.get(key, "null"))
+                new = copy(new_version_flattend.get(key, "null"))
 
-                    if old != new:
-                        if isinstance(old, list) and isinstance(new, list):
-                            old, new = arr_remove_common(old, new)
+                if old != new:
+                    if isinstance(old, list) and isinstance(new, list):
+                        old, new = arr_remove_common(old, new)
 
-                        removed = get_removed_items(list(old_version_flattend.keys()),
-                                                    list(new_version_flattend.keys()))
+                    removed = get_removed_items(list(old_version_flattend.keys()),
+                                                list(new_version_flattend.keys()))
 
-                        history_diff[key] = {
-                            "old": old,
-                            "new": new,
+                    history_diff[key] = {
+                        "old": old,
+                        "new": new,
+                    }
+                    for r in removed:
+                        history_diff[r] = {
+                            "old": old_version_flattend[r],
+                            "new": None,
                         }
-                        for r in removed:
-                            history_diff[r] = {
-                                "old": old_version_flattend[r],
-                                "new": None,
-                            }
-                if not history_diff:
-                    return {}
-
-                history_obj = Histories(
-                    space_name=space_name,
-                    uuid=uuid4(),
-                    shortname=shortname,
-                    owner_shortname=owner_shortname or "__system__",
-                    timestamp=datetime.now(),
-                    request_headers=get_request_data().get("request_headers", {}),
-                    diff=history_diff,
-                    subpath=subpath,
-                )
-
-                session.add(Histories.model_validate(history_obj))
-                await session.commit()
-
-                return history_diff
-            except Exception as e:
-                print("[!store_entry_diff]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
+            if not history_diff:
                 return {}
+
+            history_obj = Histories(
+                space_name=space_name,
+                uuid=uuid4(),
+                shortname=shortname,
+                owner_shortname=owner_shortname or "__system__",
+                timestamp=datetime.now(),
+                request_headers=get_request_data().get("request_headers", {}),
+                diff=history_diff,
+                subpath=subpath,
+            )
+
+            async with self.get_session() as session:
+                session.add(Histories.model_validate(history_obj))
+
+            return history_diff
+        except Exception as e:
+            print("[!store_entry_diff]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            return {}
 
     async def move(
             self,
@@ -1892,7 +1885,6 @@ class SQLAdapter(BaseDataAdapter):
                 )
 
                 session.add(origin)
-                await session.commit()
                 try:
                     if table is Spaces:
                         session.add(
@@ -1907,14 +1899,12 @@ class SQLAdapter(BaseDataAdapter):
                             update(Attachments)
                             .where(col(Attachments.space_name) == dest_space_name)
                             .values(space_name=dest_shortname))
-                        await session.commit()
                 except Exception as e:
                     origin.shortname = old_shortname
                     if hasattr(origin, 'subpath'):
                         origin.subpath = old_subpath
 
                     session.add(origin)
-                    await session.commit()
 
                     print("[!move]", e)
                     logger.error(f"Failed parsing an entry. Error: {e}")
@@ -2024,7 +2014,6 @@ class SQLAdapter(BaseDataAdapter):
                         await session.execute(update(Histories).where(col(Histories.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
 
                         await session.execute(delete(Sessions).where(col(Sessions.shortname) == meta.shortname))
-                        await session.commit()
                     except Exception as _e:
                         logger.warning(f"Failed to reassign ownership to anonymous for user {meta.shortname}: {_e}")
 
@@ -2044,7 +2033,7 @@ class SQLAdapter(BaseDataAdapter):
                         .where(col(Entries.space_name) == space_name) \
                         .where(col(Entries.subpath).startswith(_subpath))
                     await session.execute(statement)
-                await session.commit()
+
                 # Refresh authz MVs only when Users/Roles/Permissions changed
                 try:
                     if meta.__class__ in (core.User, core.Role, core.Permission):
@@ -2122,15 +2111,15 @@ class SQLAdapter(BaseDataAdapter):
             return None
 
     async def set_user_session(self, user_shortname: str, token: str) -> bool:
-        async with (self.get_session() as session):
-            try:
-                total, last_session = await self.get_user_session(user_shortname, token)
+        try:
+            total, last_session = await self.get_user_session(user_shortname, token)
 
-                if (settings.max_sessions_per_user == 1 and last_session is not None) \
-                        or (settings.max_sessions_per_user != 0 and total >= settings.max_sessions_per_user):
-                    await self.remove_user_session(user_shortname)
+            if (settings.max_sessions_per_user == 1 and last_session is not None) \
+                    or (settings.max_sessions_per_user != 0 and total >= settings.max_sessions_per_user):
+                await self.remove_user_session(user_shortname)
 
-                timestamp = datetime.now()
+            timestamp = datetime.now()
+            async with self.get_session() as session:
                 session.add(
                     Sessions(
                         uuid=uuid4(),
@@ -2139,12 +2128,11 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=timestamp,
                     )
                 )
-                await session.commit()
 
-                return True
-            except Exception as e:
-                print("[!set_sql_user_session]", e)
-                return False
+            return True
+        except Exception as e:
+            print("[!set_sql_user_session]", e)
+            return False
 
     async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
         async with self.get_session() as session:
@@ -2198,7 +2186,6 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=timestamp,
                     )
                 )
-                await session.commit()
             except Exception as e:
                 print("[!set_invitation]", e)
 
@@ -2219,7 +2206,6 @@ class SQLAdapter(BaseDataAdapter):
             try:
                 statement = delete(Invitations).where(col(Invitations.invitation_token) == invitation_token)
                 await session.execute(statement)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
@@ -2236,7 +2222,6 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=datetime.now(),
                     )
                 )
-                await session.commit()
             except Exception as e:
                 print("[!set_url_shortner]", e)
 
@@ -2260,7 +2245,6 @@ class SQLAdapter(BaseDataAdapter):
             try:
                 statement = delete(URLShorts).where(col(URLShorts.token_uuid) == token_uuid)
                 await session.execute(statement)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
@@ -2271,7 +2255,6 @@ class SQLAdapter(BaseDataAdapter):
             try:
                 statement = delete(URLShorts).where(col(URLShorts.url).ilike(f"%{invitation_token}%"))
                 await session.execute(statement)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!delete_url_shortner_by_token]", e)
@@ -2288,13 +2271,11 @@ class SQLAdapter(BaseDataAdapter):
                 )
         else:
             if is_aggregation:
-                # Keep aggregation behavior unchanged
                 for idx, item in enumerate(results):
                     results = set_results_from_aggregation(
                         query, item, results, idx
                     )
             else:
-                # Convert rows to records and prepare concurrent attachment retrieval
                 attachment_coros = []
                 attachment_indices = []
                 for idx, item in enumerate(results):
@@ -2322,7 +2303,6 @@ class SQLAdapter(BaseDataAdapter):
                             )
                             attachment_indices.append(idx)
 
-                # Run all attachment retrievals concurrently
                 if attachment_coros:
                     attachments_list = await asyncio.gather(*attachment_coros)
                     for i, attachments in zip(attachment_indices, attachments_list):
@@ -2340,7 +2320,6 @@ class SQLAdapter(BaseDataAdapter):
                 result = result[0]
                 result.attempt_count = 0
                 session.add(result)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!clear_failed_password_attempts]", e)
@@ -2367,7 +2346,6 @@ class SQLAdapter(BaseDataAdapter):
                 result = result[0]
                 result.attempt_count = attempt_count
                 session.add(result)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!set_failed_password_attempt_count]", e)
@@ -2543,7 +2521,6 @@ class SQLAdapter(BaseDataAdapter):
                         DO UPDATE SET last_source_ts = EXCLUDED.last_source_ts,
                                       refreshed_at = now()
                     """), {"ts": max_ts})
-                    await session.commit()
         except Exception as e:
             logger.warning(f"AuthZ MV refresh failed or skipped: {e}")
 
