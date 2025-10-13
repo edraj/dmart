@@ -2262,51 +2262,53 @@ class SQLAdapter(BaseDataAdapter):
 
     async def _set_query_final_results(self, query, results):
         is_aggregation = query.type == QueryType.aggregation
-        not_history_event = query.type not in [QueryType.history, QueryType.events]
+        is_attachment_query = query.type == QueryType.attachments
+        process_payload = query.type not in [QueryType.history, QueryType.events]
 
-        if query.type == QueryType.attachments:
+        # Case 1: Attachment query  → Direct conversion of all items
+        if is_attachment_query:
+            return [
+                item.to_record(item.subpath, item.shortname)
+                for item in results
+            ]
+
+        # Case 2: Aggregation query → delegate to existing aggregator
+        if is_aggregation:
             for idx, item in enumerate(results):
-                results[idx] = item.to_record(
-                    results[idx].subpath, item.shortname
-                )
-        else:
-            if is_aggregation:
-                for idx, item in enumerate(results):
-                    results = set_results_from_aggregation(
-                        query, item, results, idx
+                results = set_results_from_aggregation(query, item, results, idx)
+            return results
+
+        # Case 3: Standard query → convert and optionally fetch attachments
+        attachment_tasks = []
+        attachment_indices = []
+
+        for idx, item in enumerate(results):
+            rec = item.to_record(item.subpath, item.shortname)
+            results[idx] = rec
+
+            if process_payload:
+                # Strip payload body early (if disabled)
+                if not query.retrieve_json_payload:
+                    payload = rec.attributes.get("payload", {})
+                    if payload.get("body"):
+                        payload["body"] = None
+
+                # Queue attachments if requested
+                if query.retrieve_attachments:
+                    attachment_tasks.append(
+                        self.get_entry_attachments(
+                            rec.subpath,
+                            Path(f"{query.space_name}/{rec.shortname}"),
+                            retrieve_json_payload=True,
+                        )
                     )
-            else:
-                attachment_coros = []
-                attachment_indices = []
-                for idx, item in enumerate(results):
-                    results[idx] = item.to_record(
-                        item.subpath, item.shortname
-                    )
+                    attachment_indices.append(idx)
 
-                    if not_history_event:
-                        if not query.retrieve_json_payload:
-                            attrb = results[idx].attributes
-                            if (
-                                attrb
-                                and attrb.get("payload", {})
-                                and attrb.get("payload", {}).get("body", False)
-                            ):
-                                attrb["payload"]["body"] = None
-
-                        if query.retrieve_attachments:
-                            attachment_coros.append(
-                                self.get_entry_attachments(
-                                    results[idx].subpath,
-                                    Path(f"{query.space_name}/{results[idx].shortname}"),
-                                    retrieve_json_payload=True,
-                                )
-                            )
-                            attachment_indices.append(idx)
-
-                if attachment_coros:
-                    attachments_list = await asyncio.gather(*attachment_coros)
-                    for i, attachments in zip(attachment_indices, attachments_list):
-                        results[i].attachments = attachments
+        # Run all attachment retrievals concurrently
+        if attachment_tasks:
+            attachments_list = await asyncio.gather(*attachment_tasks)
+            for idx, attachments in zip(attachment_indices, attachments_list):
+                results[idx].attachments = attachments
 
         return results
 
