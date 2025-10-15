@@ -1251,6 +1251,15 @@ class SQLAdapter(BaseDataAdapter):
             query.subpath = "/"
 
         user_shortname = user_shortname if user_shortname else "anonymous"
+        if user_shortname == "anonymous" and query.type in [QueryType.history, QueryType.events]:
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="You don't have permission to this action",
+                ),
+            )
         user_query_policies = await get_user_query_policies(
             self, user_shortname, query.space_name, query.subpath, query.type == QueryType.spaces
         )
