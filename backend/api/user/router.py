@@ -433,7 +433,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                      message="Invalid username or password [3]"),
+                      message="Invalid username or password"),
         )
     except api.Exception as e:
         if e.error.type == "db":
@@ -442,7 +442,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 api.Error(
                     type="auth",
                     code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                    message="Invalid username or password [4]",
+                    message="Invalid username or password",
                     info=[{"details": str(e)}],
                 ),
             )
@@ -883,107 +883,53 @@ async def otp_request_login(
     response_model_exclude_none=True,
 )
 async def reset_password(user_request: PasswordResetRequest) -> api.Response:
-    result = user_request.check_fields()
-    exception = api.Exception(
-        status.HTTP_401_UNAUTHORIZED,
-        api.Error(
-            type="request",
-            code=InternalErrorCode.UNMATCHED_DATA,
-            message="mismatch with the information provided",
-        ),
-    )
-
+    result = user_request.check_fields()  
     key, value = list(result.items())[0]
     shortname = await db.get_user_by_criteria(key, value)
-    if shortname is None:
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="auth",
-                code=InternalErrorCode.USERNAME_NOT_EXIST,
-                message="This username does not exist",
-            ),
-        )
+    
 
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-    )
+    if shortname is not None:
+        try:
+            user = await db.load(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                class_type=core.User,
+                user_shortname=shortname,
+            )
 
-    """
-    # Do not set the "force_password_change" flag right away
+            reset_password_message = "Reset password via this link: {link}, This link can be used once and within the next 48 hours."
 
-    old_version_flattend = flatten_dict(user.model_dump())
-    user.force_password_change = True
-
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
-
-    await db.update(
-        MANAGEMENT_SPACE,
-        USERS_SUBPATH,
-        user,
-        old_version_flattend,
-        flatten_dict(user.model_dump()),
-        ["force_password_change"],
-        shortname,
-    )
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
-    """
-
-    reset_password_message = "Reset password via this link: {link}, This link can be used once and within the next 48 hours."
-
-    if "msisdn" in result or "shortname" in result:
-        if not user.msisdn or ("msisdn" in result and user.msisdn != result["msisdn"]):
-            raise exception
-        token = await repository.store_user_invitation_token(
-            user, "SMS"
-        )
-        if not token:
-            raise exception
-        shortened_link = await repository.url_shortner(token)
-        await send_sms(
-            msisdn=user.msisdn,
-            message=reset_password_message.replace("{link}", shortened_link),
-        )
-    else:
-        if not user.email or user.email != result["email"]:
-            raise exception
-        token = await repository.store_user_invitation_token(
-            user, "EMAIL"
-        )
-        if not token:
-            raise exception
-
-        shortened_link = await repository.url_shortner(token)
-        await send_email(
-            from_address=settings.email_sender,
-            to_address=user.email,
-            message=reset_password_message.replace("{link}", shortened_link),
-            subject="Reset password",
-        )
-    return api.Response(status=api.Status.success)
+            if "msisdn" in result or "shortname" in result:
+                if user.msisdn and ("msisdn" not in result or user.msisdn == result["msisdn"]):
+                    token = await repository.store_user_invitation_token(
+                        user, "SMS"
+                    )
+                    if token:
+                        shortened_link = await repository.url_shortner(token)
+                        await send_sms(
+                            msisdn=user.msisdn,
+                            message=reset_password_message.replace("{link}", shortened_link),
+                        )
+            else:
+                if user.email and user.email == result["email"]:
+                    token = await repository.store_user_invitation_token(
+                        user, "EMAIL"
+                    )
+                    if token:
+                        shortened_link = await repository.url_shortner(token)
+                        await send_email(
+                            from_address=settings.email_sender,
+                            to_address=user.email,
+                            message=reset_password_message.replace("{link}", shortened_link),
+                            subject="Reset password",
+                        )
+        except Exception:
+            pass
+    
+    return api.Response(status=api.Status.success ,
+                        attributes={"message": "If the provided email or phone number exists, a password reset link has been sent."},
+                        )
 
 
 @router.post(
