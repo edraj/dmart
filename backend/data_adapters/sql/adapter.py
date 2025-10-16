@@ -1270,6 +1270,9 @@ class SQLAdapter(BaseDataAdapter):
             )
             user_query_policies.extend(r)
 
+        if len(user_query_policies) == 0:
+            return 0, []
+
         if query.type in [QueryType.attachments, QueryType.attachments_aggregation]:
             table = Attachments
             statement = select(table).options(defer(table.media))  # type: ignore
@@ -1301,6 +1304,7 @@ class SQLAdapter(BaseDataAdapter):
                         ffv_spaces.append(perm_key_splited[0])
                         ffv_subpath.append(perm_key_splited[1])
                         ffv_resource_type.append(perm_key_splited[2])
+
         if len(ffv_spaces):
             perm_key_splited_query = f'@space_name:{'|'.join(ffv_spaces)} @subpath:{f"/{'|/'.join(ffv_subpath)}"} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}'
             if query.search:
@@ -2299,7 +2303,7 @@ class SQLAdapter(BaseDataAdapter):
                 # Strip payload body early (if disabled)
                 if not query.retrieve_json_payload:
                     payload = rec.attributes.get("payload", {})
-                    if payload.get("body"):
+                    if payload and payload.get("body"):
                         payload["body"] = None
 
                 # Queue attachments if requested

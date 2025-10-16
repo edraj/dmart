@@ -73,14 +73,19 @@ async def get_user_query_policies(
     user_groups = (await db.load_user_meta(user_shortname)).groups or []
     user_groups.append(user_shortname)
 
-    sql_query_policies = []
-    for perm_key, permission in user_permissions.items():
+    filtered_permissions = {
+        perm_key: permission
+        for perm_key, permission in user_permissions.items()
         if (
-                not is_space and
-                not perm_key.startswith(space_name) and
-                not perm_key.startswith(settings.all_spaces_mw)
-        ):
-            continue
+               is_space or
+               perm_key.startswith(f'{space_name}:{subpath}') or
+               perm_key.startswith(settings.all_spaces_mw)
+           )
+           and 'query' in permission.get('allowed_actions', [])
+    }
+
+    sql_query_policies = []
+    for perm_key, permission in filtered_permissions.items():
         perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
         perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
         perm_key = perm_key.strip("/")
