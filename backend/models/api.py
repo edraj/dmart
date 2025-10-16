@@ -155,8 +155,6 @@ class Response(BaseModel):
     error: Error | None = None
     records: list[core.Record] | Any | None = None
     attributes: dict[str, Any] | None = None
-    message: str | None = None
-
 
 
 class Exception(PyException):

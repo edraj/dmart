@@ -928,7 +928,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
             pass
     
     return api.Response(status=api.Status.success ,
-                        message="If the provided email or phone number exists, a password reset link has been sent.",
+                        attributes={"message": "If the provided email or phone number exists, a password reset link has been sent."},
                         )
 
 
