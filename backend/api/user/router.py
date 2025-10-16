@@ -789,6 +789,17 @@ async def otp_request(
     """Request new OTP"""
     
     user_identifier = user_request.check_fields()
+    key, value = list(user_identifier.items())[0]
+    user = await db.get_user_by_criteria(key, value)
+    if not user:
+        raise api.Exception(
+            status.HTTP_404_NOT_FOUND,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.USERNAME_NOT_EXIST,
+                message="No user found with the provided information",
+            ),
+        )
     otp_key = get_otp_key(user_identifier)
     last_otp_since = await db.otp_created_since(otp_key)
     
