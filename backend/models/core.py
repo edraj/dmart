@@ -553,8 +553,10 @@ class Notification(Meta):
                 == "admin_notification_request"
         ):
             notification_type = NotificationType.admin
-        else:
+        elif notification_req["payload"]["schema_shortname"] == "system_notification_request":
             notification_type = NotificationType.system
+        else:
+            notification_type = NotificationType.admin
 
         entry_locator = None
         if entry:
@@ -576,6 +578,6 @@ class Notification(Meta):
             owner_shortname=notification_req["owner_shortname"],
             type=notification_type,
             is_read=False,
-            priority=notification_req["priority"],
+            priority=notification_req["payload"]["body"]["priority"],
             entry=entry_locator,
         )
