@@ -1,6 +1,5 @@
 from models.enums import ResourceType, ConditionType
 from utils.settings import settings
-from models.enums import ActionType
 
 def generate_query_policies(
         space_name: str,
