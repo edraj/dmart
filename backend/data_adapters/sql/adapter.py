@@ -936,20 +936,21 @@ class SQLAdapter(BaseDataAdapter):
                 )
                 session.add(otp_entry)
         except Exception as e:
-            if "UniqueViolationError" in str(e) or "unique constraint" in str(e).lower():
-                await session.rollback()
-                statement = delete(OTP).where(col(OTP.key) == key)
-                await session.execute(statement)
+            async with self.get_session() as session:
+                if "UniqueViolationError" in str(e) or "unique constraint" in str(e).lower():
+                    await session.rollback()
+                    statement = delete(OTP).where(col(OTP.key) == key)
+                    await session.execute(statement)
 
-                otp_entry = OTP(
-                    key=key,
-                    value={"otp": otp},
-                    timestamp=datetime.now()
-                )
-                session.add(otp_entry)
-            else:
-                await session.rollback()
-                raise e
+                    otp_entry = OTP(
+                        key=key,
+                        value={"otp": otp},
+                        timestamp=datetime.now()
+                    )
+                    session.add(otp_entry)
+                else:
+                    await session.rollback()
+                    raise e
 
     async def get_otp(
             self,
