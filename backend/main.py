@@ -353,18 +353,21 @@ async def middle(request: Request, call_next):
     response = set_middleware_response_headers(request, response)
 
     user_shortname = "guest"
-    try:
-        user_shortname = str(await JWTBearer().__call__(request))
-    except Exception:
-        if request.url.path == "/user/login":
-            try:
-                body = getattr(request.state, "request_body", {}) or {}
-                if isinstance(body, dict):
-                    shortname_value = body.get("shortname")
-                    if isinstance(shortname_value, str) and shortname_value.strip():
-                        user_shortname = shortname_value
-            except Exception:
-                pass
+    if request.url.path == "/user/login":
+        try:
+            body = getattr(request.state, "request_body", {}) or {}
+            if isinstance(body, dict):
+                shortname_value = body.get("shortname")
+                if isinstance(shortname_value, str) and shortname_value.strip():
+                    user_shortname = shortname_value
+        except Exception:
+            pass
+    else:
+        try:
+            user_shortname = str(await JWTBearer().__call__(request))
+        except Exception:
+            user_shortname = "guest"
+
 
     extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
 
