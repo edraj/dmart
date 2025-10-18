@@ -56,12 +56,23 @@ async def set_init_state_from_request(ticket: api.Request, logged_in_user):
             workflows_payload = payload if payload else {}
 
         initial_state = None
+
         for state in workflows_payload["initial_state"]:
             if initial_state is None and "default" in state["roles"]:
                 initial_state = state["name"]
             elif [role in user_roles for role in state["roles"]].count(True):
                 initial_state = state["name"]
                 break
+
+        if initial_state is None:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="The user does not have the required roles to create this ticket",
+                ),
+            )
 
         ticket.records[0].attributes = {
             **workflow_attr,
