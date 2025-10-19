@@ -78,6 +78,7 @@ async def get_user_query_policies(
         if (
                is_space or
                perm_key.startswith(f'{space_name}:{subpath}') or
+               perm_key.startswith(f'{space_name}:__all_subpaths__') or
                perm_key.startswith(settings.all_spaces_mw)
            )
            and 'query' in permission.get('allowed_actions', [])
