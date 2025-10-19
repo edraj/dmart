@@ -232,7 +232,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if not query.search.startswith("@") and not query.search.startswith("-"):
             p = "shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
             if table is Users:
-                p += " || ' ' || email || ' ' || msisdn || ' ' || roles"
+                p += " || ' ' || COALESCE(email, '') || ' ' || COALESCE(msisdn, '') || ' ' || roles"
             if table is Roles:
                 p += " || ' ' || permissions"
             statement = statement.where(text(f"({p}) ILIKE '%' || '{query.search}' || '%'"))
