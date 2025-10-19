@@ -791,7 +791,7 @@ async def otp_request(
     user_identifier = user_request.check_fields()
     key, value = list(user_identifier.items())[0]
     user = await db.get_user_by_criteria(key, value)
-    if not user:
+    if not user and not settings.is_registrable:
         raise api.Exception(
             status.HTTP_404_NOT_FOUND,
             api.Error(
