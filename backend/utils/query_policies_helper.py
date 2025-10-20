@@ -77,7 +77,7 @@ async def get_user_query_policies(
         for perm_key, permission in user_permissions.items()
         if (
                is_space or
-               perm_key.startswith(f'{space_name}:{subpath}') or
+               perm_key.startswith(f'{space_name}:{subpath.lstrip("/")}') or
                perm_key.startswith(f'{space_name}:__all_subpaths__') or
                perm_key.startswith(settings.all_spaces_mw)
            )
