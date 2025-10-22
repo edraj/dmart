@@ -1901,18 +1901,21 @@ class SQLAdapter(BaseDataAdapter):
                 session.add(origin)
                 try:
                     if table is Spaces:
-                        session.add(
+                        await session.execute(
                             update(Spaces)
-                            .where(col(Spaces.space_name) == dest_space_name)
-                            .values(space_name=dest_shortname))
-                        session.add(
+                            .where(col(Spaces.space_name) == src_space_name)
+                            .values(space_name=dest_shortname,shortname=dest_shortname)
+                        )
+                        await session.execute(
                             update(Entries)
-                            .where(col(Entries.space_name) == dest_space_name)
-                            .values(space_name=dest_shortname))
-                        session.add(
+                            .where(col(Entries.space_name) == src_space_name)
+                            .values(space_name=dest_shortname)
+                        )
+                        await session.execute(
                             update(Attachments)
-                            .where(col(Attachments.space_name) == dest_space_name)
-                            .values(space_name=dest_shortname))
+                            .where(col(Attachments.space_name) == src_space_name)
+                            .values(space_name=dest_shortname)
+                        )
                 except Exception as e:
                     origin.shortname = old_shortname
                     if hasattr(origin, 'subpath'):

@@ -39,9 +39,6 @@ from api.managed.utils import (
     serve_request_update_acl,
     serve_request_patch,
     serve_request_update_r_replace,
-    serve_space_create,
-    serve_space_delete,
-    serve_space_update,
     update_state_handle_resolution,
 )
 from data_adapters.adapter import data_adapter as db
@@ -290,50 +287,50 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     return response
 
 
-@router.post("/space", response_model=api.Response, response_model_exclude_none=True)
-async def serve_space(
-        request: api.Request, owner_shortname=Depends(JWTBearer())
-) -> api.Response:
-    record = request.records[0]
-    history_diff = {}
-    _record = None
-    match request.request_type:
-        case api.RequestType.create:
-            _record = await serve_space_create(request, record, owner_shortname)
-
-        case api.RequestType.update:
-            history_diff = await serve_space_update(request, record, owner_shortname)
-
-        case api.RequestType.delete:
-            await serve_space_delete(request, record, owner_shortname)
-
-        case _:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.UNMATCHED_DATA,
-                    message="mismatch with the information provided",
-                ),
-            )
-
-    await db.initialize_spaces()
-
-    await access_control.load_permissions_and_roles()
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=record.shortname,
-            subpath=record.subpath,
-            shortname=record.shortname,
-            action_type=core.ActionType(request.request_type),
-            resource_type=ResourceType.space,
-            user_shortname=owner_shortname,
-            attributes={"history_diff": history_diff},
-        )
-    )
-
-    return api.Response(status=api.Status.success, records=[_record if _record else record])
+# @router.post("/space", response_model=api.Response, response_model_exclude_none=True)
+# async def serve_space(
+#         request: api.Request, owner_shortname=Depends(JWTBearer())
+# ) -> api.Response:
+#     record = request.records[0]
+#     history_diff = {}
+#     _record = None
+#     match request.request_type:
+#         case api.RequestType.create:
+#             _record = await serve_space_create(request, record, owner_shortname)
+#
+#         case api.RequestType.update:
+#             history_diff = await serve_space_update(request, record, owner_shortname)
+#
+#         case api.RequestType.delete:
+#             await serve_space_delete(request, record, owner_shortname)
+#
+#         case _:
+#             raise api.Exception(
+#                 status.HTTP_400_BAD_REQUEST,
+#                 api.Error(
+#                     type="request",
+#                     code=InternalErrorCode.UNMATCHED_DATA,
+#                     message="mismatch with the information provided",
+#                 ),
+#             )
+#
+#     await db.initialize_spaces()
+#
+#     await access_control.load_permissions_and_roles()
+#
+#     await plugin_manager.after_action(
+#         core.Event(
+#             space_name=record.shortname,
+#             subpath=record.subpath,
+#             shortname=record.shortname,
+#             action_type=core.ActionType(request.request_type),
+#             resource_type=ResourceType.space,
+#             user_shortname=owner_shortname,
+#             attributes={"history_diff": history_diff},
+#         )
+#     )
+#
+#     return api.Response(status=api.Status.success, records=[_record if _record else record])
 
 
 @router.post("/query", response_model=api.Response, response_model_exclude_none=True)
@@ -378,7 +375,8 @@ async def serve_request(
         owner_shortname=Depends(JWTBearer()),
         is_internal: bool = False,
 ) -> api.Response:
-    await is_space_exist(request.space_name)
+    for r in request.records:
+        await is_space_exist(request.space_name, not (request.request_type == RequestType.create and r.resource_type == ResourceType.space))
 
     if not request.records:
         raise api.Exception(

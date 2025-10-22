@@ -215,6 +215,23 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
         if record.subpath[0] != "/":
             record.subpath = f"/{record.subpath}"
         try:
+            if record.resource_type == ResourceType.space:
+                created = await serve_space_create(request, record, owner_shortname)
+                await db.initialize_spaces()
+                await access_control.load_permissions_and_roles()
+
+                await plugin_manager.after_action(
+                    core.Event(
+                        space_name=record.shortname,
+                        subpath=record.subpath,
+                        shortname=record.shortname,
+                        action_type=core.ActionType.create,
+                        resource_type=ResourceType.space,
+                        user_shortname=owner_shortname,
+                    )
+                )
+                return created.to_record(record.subpath, created.shortname, []), None # type: ignore
+
             schema_shortname: str | None = None
             if (
                 "payload" in record.attributes
@@ -387,6 +404,29 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
         try:
             if record.subpath[0] != "/":
                 record.subpath = f"/{record.subpath}"
+
+            if record.resource_type == ResourceType.space:
+                history_diff = await serve_space_update(
+                    request,
+                    record,
+                    owner_shortname,
+                    is_replace=(request.request_type == api.RequestType.r_replace),
+                )
+
+                await db.initialize_spaces()
+                await access_control.load_permissions_and_roles()
+                await plugin_manager.after_action(
+                    core.Event(
+                        space_name=record.shortname,
+                        subpath=record.subpath,
+                        shortname=record.shortname,
+                        action_type=core.ActionType.update,
+                        resource_type=ResourceType.space,
+                        user_shortname=owner_shortname,
+                        attributes={"history_diff": history_diff},
+                    )
+                )
+                return record, None
 
             record_schema_shortname = record.attributes.get("payload", {}).get(
                         "schema_shortname", None
@@ -1022,6 +1062,23 @@ async def serve_request_delete(request, owner_shortname: str):
         try:
             if record.subpath[0] != "/":
                 record.subpath = f"/{record.subpath}"
+
+            if record.resource_type == ResourceType.space:
+                await serve_space_delete(request, record, owner_shortname)
+                await db.initialize_spaces()
+                await access_control.load_permissions_and_roles()
+                await plugin_manager.after_action(
+                    core.Event(
+                        space_name=record.shortname,
+                        subpath=record.subpath,
+                        shortname=record.shortname,
+                        action_type=core.ActionType.delete,
+                        resource_type=ResourceType.space,
+                        user_shortname=owner_shortname,
+                    )
+                )
+                return record, None
+
             await plugin_manager.before_action(
                 core.Event(
                     space_name=request.space_name,
@@ -1400,7 +1457,7 @@ async def serve_space_create(request, record, owner_shortname: str):
     )
 
 
-async def serve_space_update(request, record, owner_shortname: str):
+async def serve_space_update(request, record, owner_shortname: str, is_replace: bool = False):
     try:
         space = core.Space.from_record(record, owner_shortname)
         await is_space_exist(request.space_name)
@@ -1454,15 +1511,20 @@ async def serve_space_update(request, record, owner_shortname: str):
         class_type=core.Space,
         user_shortname=owner_shortname,
     )
+    old_flat = flatten_dict(old_space.model_dump())
+    new_flat = flatten_dict(space.model_dump())
+    updated_attributes_flattend = list(
+        flatten_dict(record.attributes).keys()
+    )
+    if is_replace:
+        updated_attributes_flattend = list(old_flat.keys()) + list(new_flat.keys())
     history_diff = await db.update(
         space_name=space.shortname,
         subpath=record.subpath,
         meta=space,
-        old_version_flattend=flatten_dict(old_space.model_dump()),
-        new_version_flattend=flatten_dict(space.model_dump()),
-        updated_attributes_flattend=list(
-            flatten_dict(record.attributes).keys()
-        ),
+        old_version_flattend=old_flat,
+        new_version_flattend=new_flat,
+        updated_attributes_flattend=updated_attributes_flattend,
         user_shortname=owner_shortname,
         retrieve_lock_status=record.retrieve_lock_status,
     )
