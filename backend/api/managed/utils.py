@@ -230,7 +230,7 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                         user_shortname=owner_shortname,
                     )
                 )
-                return created.to_record(record.subpath, created.shortname, []), None
+                return created.to_record(record.subpath, created.shortname, []), None # type: ignore
 
             schema_shortname: str | None = None
             if (

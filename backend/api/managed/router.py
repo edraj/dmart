@@ -39,9 +39,6 @@ from api.managed.utils import (
     serve_request_update_acl,
     serve_request_patch,
     serve_request_update_r_replace,
-    serve_space_create,
-    serve_space_delete,
-    serve_space_update,
     update_state_handle_resolution,
 )
 from data_adapters.adapter import data_adapter as db
