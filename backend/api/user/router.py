@@ -432,8 +432,11 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                      message="Invalid username or password"),
+            api.Error(
+                type="auth",
+                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                message="Invalid username or password"
+            ),
         )
     except api.Exception as e:
         if e.error.type == "db":
@@ -442,8 +445,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 api.Error(
                     type="auth",
                     code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                    message="Invalid username or password",
-                    info=[{"details": str(e)}],
+                    message="Invalid username or password"
                 ),
             )
         else:
