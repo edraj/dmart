@@ -402,7 +402,7 @@ class BaseDataAdapter(ABC):
             retrieve_json_payload: bool = False,
             retrieve_attachments: bool = False,
             retrieve_lock_status: bool = False,
-    ) -> core.Record:
+    ) -> core.Record | None:
         pass
 
     @abstractmethod

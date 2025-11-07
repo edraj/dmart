@@ -1775,7 +1775,7 @@ class FileAdapter(BaseDataAdapter):
             retrieve_json_payload: bool = False,
             retrieve_attachments: bool = False,
             retrieve_lock_status: bool = False,
-    ) -> core.Record:
+    ) -> core.Record | None:
         spaces = await self.get_spaces()
         entry_doc = None
         entry_space = None
