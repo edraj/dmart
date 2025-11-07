@@ -82,7 +82,7 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Record | None:
         pass
 
     @abstractmethod
