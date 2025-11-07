@@ -1271,7 +1271,7 @@ class FileAdapter(BaseDataAdapter):
                 space_name=settings.management_space,
                 search=_search_query,
                 filters={"subpath": [table]},
-                limit=10000,
+                limit=1,
                 offset=0,
             )
         if not r_search["data"]:
@@ -1282,7 +1282,7 @@ class FileAdapter(BaseDataAdapter):
             records.append(
                 json.loads(data)
             )
-        return records
+        return records[0] if len(records) > 0 else None
 
     async def get_media_attachment(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass
