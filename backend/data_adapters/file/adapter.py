@@ -1262,7 +1262,7 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             return await redis_services.get_key(f"short/{token_uuid}")
 
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Record | None:
         async with RedisServices() as redis_services:
             _search_query = ""
             for k, v in criteria.items():
@@ -1271,7 +1271,7 @@ class FileAdapter(BaseDataAdapter):
                 space_name=settings.management_space,
                 search=_search_query,
                 filters={"subpath": [table]},
-                limit=10000,
+                limit=1,
                 offset=0,
             )
         if not r_search["data"]:
@@ -1282,7 +1282,7 @@ class FileAdapter(BaseDataAdapter):
             records.append(
                 json.loads(data)
             )
-        return records
+        return records[0] if len(records) > 0 else None
 
     async def get_media_attachment(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass
@@ -1775,7 +1775,7 @@ class FileAdapter(BaseDataAdapter):
             retrieve_json_payload: bool = False,
             retrieve_attachments: bool = False,
             retrieve_lock_status: bool = False,
-    ) -> core.Record:
+    ) -> core.Record | None:
         spaces = await self.get_spaces()
         entry_doc = None
         entry_space = None
