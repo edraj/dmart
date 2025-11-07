@@ -1207,9 +1207,9 @@ class SQLAdapter(BaseDataAdapter):
                     if _result is None:
                         continue
 
-                    core_model_class: core.Meta = getattr(sys.modules["models.core"],
+                    core_model_class_1: core.Meta = getattr(sys.modules["models.core"],
                                                           camel_case(_result.resource_type))
-                    result = core_model_class.model_validate(
+                    result = core_model_class_1.model_validate(
                         _result.model_dump()
                     ).to_record(_result.subpath, _result.shortname)
 
@@ -1232,10 +1232,10 @@ class SQLAdapter(BaseDataAdapter):
                 if _result is None:
                     return None
 
-                core_model_class: core.Meta = getattr(sys.modules["models.core"],
+                core_model_class_2: core.Meta = getattr(sys.modules["models.core"],
                                                       camel_case(_result.resource_type))
 
-                result = core_model_class.model_validate(
+                result = core_model_class_2.model_validate(
                     _result.model_dump()
                 ).to_record(_result.subpath, _result.shortname)
                 result.attributes = {**result.attributes, "space_name": _result.space_name}
