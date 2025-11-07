@@ -1188,9 +1188,8 @@ class SQLAdapter(BaseDataAdapter):
             logger.error(f"Failed parsing an entry. Error: {e}")
             return None
 
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Record | None:
         async with self.get_session() as session:
-            results: list[core.Record] = []
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
                 for _table in tables:
@@ -1202,19 +1201,21 @@ class SQLAdapter(BaseDataAdapter):
                             ).params({k: f"{v}%"})
                         else:
                             statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-                        _results = (await session.execute(statement)).all()
-                        _results = [result[0] for result in _results]
-                        if len(_results) > 0:
-                            for result in _results:
-                                core_model_class: core.Meta = getattr(sys.modules["models.core"],
-                                                                      camel_case(result.resource_type))
-                                results.append(
-                                    core_model_class.model_validate(
-                                        result.model_dump()
-                                    ).to_record(result.subpath, result.shortname)
-                                )
 
-                            return results
+                    _result = (await session.execute(statement)).scalars().first()
+
+                    if _result is None:
+                        continue
+
+                    core_model_class: core.Meta = getattr(sys.modules["models.core"],
+                                                          camel_case(_result.resource_type))
+                    result = core_model_class.model_validate(
+                        _result.model_dump()
+                    ).to_record(_result.subpath, _result.shortname)
+
+                    result.attributes = {**result.attributes, "space_name": _result.space_name}
+
+                    return result
                 return None
             else:
                 statement = select(table)
@@ -1226,19 +1227,20 @@ class SQLAdapter(BaseDataAdapter):
                     else:
                         statement = statement.where(text(f"{k}=:{k}")).params({k: v})
 
-                    _results = (await session.execute(statement)).all()
-                    _results = [result[0] for result in _results]
-                    if len(_results) > 0:
-                        for result in _results:
-                            _core_model_class: core.Meta = getattr(sys.modules["models.core"],
-                                                                   camel_case(result.resource_type))
-                            results.append(
-                                _core_model_class.model_validate(
-                                    result.model_dump()
-                                ).to_record(result.subpath, result.shortname)
-                            )
-                        return results
-                return None
+                _result = (await session.execute(statement)).scalars().first()
+
+                if _result is None:
+                    return None
+
+                core_model_class: core.Meta = getattr(sys.modules["models.core"],
+                                                      camel_case(_result.resource_type))
+
+                result = core_model_class.model_validate(
+                    _result.model_dump()
+                ).to_record(_result.subpath, _result.shortname)
+                result.attributes = {**result.attributes, "space_name": _result.space_name}
+
+                return result
 
     async def query(
             self, query: api.Query, user_shortname: str | None = None
@@ -2707,9 +2709,9 @@ class SQLAdapter(BaseDataAdapter):
             {key: value},
             Users
         )
-        if _user is None or len(_user) == 0:
+        if _user is None:
             return None
-        return str(_user[0].shortname)
+        return str(_user.shortname)
 
     async def get_payload_from_event(self, event) -> dict:
         notification_request_meta = await self.load(
@@ -2833,7 +2835,7 @@ class SQLAdapter(BaseDataAdapter):
     ) -> core.Record:
         _result = await self.get_entry_by_criteria({key: val})
 
-        if _result is None or len(_result) == 0:
+        if _result is None:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
                 error=api.Error(
@@ -2841,7 +2843,28 @@ class SQLAdapter(BaseDataAdapter):
                 ),
             )
 
-        return _result[0]
+        from utils.access_control import access_control
+        if not await access_control.check_access(
+                user_shortname=logged_in_user,
+                space_name=_result.attributes['space_name'],
+                subpath=_result.subpath,
+                resource_type=_result.resource_type,
+                action_type=core.ActionType.view,
+                resource_is_active=_result.attributes['is_active'],
+                resource_owner_shortname=_result.attributes['owner_shortname'],
+                resource_owner_group=_result.attributes['owner_group_shortname'],
+                entry_shortname=_result.shortname
+        ):
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="You don't have permission to this action [42]",
+                )
+            )
+
+        return _result
 
     async def delete_space(self, space_name, record, owner_shortname):
         resource_obj = core.Meta.from_record(
