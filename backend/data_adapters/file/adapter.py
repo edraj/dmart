@@ -1262,7 +1262,7 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             return await redis_services.get_key(f"short/{token_uuid}")
 
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Record | None:
         async with RedisServices() as redis_services:
             _search_query = ""
             for k, v in criteria.items():
