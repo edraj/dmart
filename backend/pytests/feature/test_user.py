@@ -170,7 +170,7 @@ async def test_otp_login_invalid_otp(client: AsyncClient):
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert json_response.get("status") == "failed"
     assert json_response.get("error", {}).get("type") == "auth"
     assert json_response.get("error", {}).get("code") == InternalErrorCode.INVALID_USERNAME_AND_PASS
@@ -221,7 +221,7 @@ async def test_login_with_empty_otp_field(client: AsyncClient):
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert json_response["error"]["code"] == InternalErrorCode.INVALID_USERNAME_AND_PASS
     assert json_response["error"]["message"] == "Invalid username or password"
 
