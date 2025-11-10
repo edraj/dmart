@@ -212,6 +212,10 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             return await redis_services.get_content_by_id(key)
 
+    async def delete_otp(self, key: str):
+        async with RedisServices() as redis_services:
+            await redis_services.del_keys([key])
+
     def metapath(
             self,
             space_name: str,

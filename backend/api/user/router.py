@@ -230,6 +230,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
     user = None
     user_updates: dict[str, Any] = {}
     identifier: dict[str, str] | None = request.check_fields()
+    key: str | None = None
     try:
         if request.invitation:
             invitation_token = await db.get_invitation(request.invitation)
@@ -305,7 +306,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     )
                 )
 
-            key: str | None = None
             if not shortname and identifier:
                 if isinstance(identifier, dict):
                     key, value = list(identifier.items())[0]
@@ -358,17 +358,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         message="Invalid OTP code."
                     )
                 )
-
-            user = await db.load(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                class_type=core.User,
-                user_shortname=shortname,
-            )
-
-            record = await process_user_login(user, response, {}, request.firebase_token)
-            return api.Response(status=api.Status.success, records=[record])
         else:
             if identifier is None:
                 raise api.Exception(
@@ -410,7 +399,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 class_type=core.User,
                 user_shortname=shortname,
             )
-        
+
         is_password_valid = password_hashing.verify_password(
             request.password or "", user.password or ""
         )
@@ -423,6 +412,9 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             )
         ):
             await db.clear_failed_password_attempts(shortname)
+
+            if request.otp:
+                await db.delete_otp(key)
             
             record = await process_user_login(user, response, user_updates, request.firebase_token)
             await reset_failed_login_attempt(user)
