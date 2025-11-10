@@ -26,6 +26,14 @@ async def serve_query(
 
     total, records = await db.query(query, logged_in_user)
 
+    try:
+        for _r in records or []:
+            attrs = getattr(_r, "attributes", None)
+            if isinstance(attrs, dict):
+                attrs.pop("password", None)
+    except Exception:
+        pass
+
     if query.jq_filter:
         try:
             jq = __import__("jq")

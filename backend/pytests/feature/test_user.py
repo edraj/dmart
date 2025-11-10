@@ -234,7 +234,7 @@ async def test_login_with_otp_but_missing_identifier(client: AsyncClient):
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert json_response["error"]["code"] == InternalErrorCode.OTP_ISSUE
-    assert json_response["error"]["message"] == "Either msisdn or email must be provided."
+    assert json_response["error"]["message"] == "Either msisdn, email or shortname must be provided."
 
 
 @pytest.mark.run(order=1)
