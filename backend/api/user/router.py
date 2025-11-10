@@ -401,15 +401,17 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             user_shortname=shortname,
         )
 
-        is_password_valid = password_hashing.verify_password(
-            request.password or "", user.password or ""
-        )
+        is_password_valid = None
+        if request.password:
+            is_password_valid = password_hashing.verify_password(
+                request.password or "", user.password or ""
+            )
         if (
             user
             and user.is_active
             and (
                 request.invitation
-                or is_password_valid
+                or (is_password_valid is None or is_password_valid)
             )
         ):
             await db.clear_failed_password_attempts(shortname)
