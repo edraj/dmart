@@ -345,7 +345,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     api.Error(
                         type="auth",
                         code=InternalErrorCode.OTP_ISSUE,
-                        message="OTP not found or expired."
+                        message="Invalid OTP code."
                     )
                 )
 
