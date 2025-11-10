@@ -46,6 +46,10 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
+    async def delete_otp(self, key):
+        pass
+
+    @abstractmethod
     def metapath(
             self,
             space_name: str,

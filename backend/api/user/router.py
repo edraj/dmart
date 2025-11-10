@@ -318,45 +318,38 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     api.Error(
                         type="auth",
                         code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                        message="Invalid identifier for OTP login."
+                        message="Invalid username or password"
                     )
                 )
 
-            if request.shortname:
-                user = await db.load_or_none('management', '/users', shortname, core.User)
-                if user and user.msisdn:
-                    key = f"users:otp:otps/{user.msisdn}"
-                else:
-                    raise api.Exception(
-                        status.HTTP_401_UNAUTHORIZED,
-                        api.Error(
-                            type="auth",
-                            code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                            message="Invalid shortname for OTP login."
-                        )
+            user = await db.load_or_none('management', '/users', shortname, core.User)
+            if user is None:
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                        message="Invalid username or password"
                     )
+                )
+
+            key = ""
+            if request.shortname:
+                if user.msisdn:
+                    key = f"users:otp:otps/{user.msisdn}"
             else:
                 key = f"users:otp:otps/{request.msisdn or request.email or request.shortname}"
             stored_otp = await db.get_otp(key)
 
-            if stored_otp is None:
+            if stored_otp is None or stored_otp != otp_code:
+                await handle_failed_login_attempt(user)
                 raise api.Exception(
-                    status.HTTP_400_BAD_REQUEST,
+                    status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="auth",
-                        code=InternalErrorCode.OTP_ISSUE,
-                        message="OTP not found or expired."
-                    )
-                )
-
-            if stored_otp != otp_code:
-                raise api.Exception(
-                    status.HTTP_400_BAD_REQUEST,
-                    api.Error(
-                        type="auth",
-                        code=InternalErrorCode.OTP_ISSUE,
-                        message="Invalid OTP code."
-                    )
+                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                        message="Invalid username or password"
+                    ),
                 )
 
             user = await db.load(
@@ -367,8 +360,54 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 user_shortname=shortname,
             )
 
-            record = await process_user_login(user, response, {}, request.firebase_token)
-            return api.Response(status=api.Status.success, records=[record])
+            is_password_valid = None
+            if request.password:
+                is_password_valid = password_hashing.verify_password(
+                    request.password or "", user.password or ""
+                )
+            if (
+                    user
+                    and user.is_active
+                    and (is_password_valid is None or is_password_valid)
+
+            ):
+                await db.clear_failed_password_attempts(shortname)
+                await reset_failed_login_attempt(user)
+
+                if request.otp:
+                    await db.delete_otp(key)
+
+                record = await process_user_login(user, response, {}, request.firebase_token)
+
+                await plugin_manager.after_action(
+                    core.Event(
+                        space_name=MANAGEMENT_SPACE,
+                        subpath=USERS_SUBPATH,
+                        shortname=shortname,
+                        action_type=core.ActionType.update,
+                        resource_type=ResourceType.user,
+                        user_shortname=shortname,
+                    )
+                )
+                return api.Response(status=api.Status.success, records=[record])
+            else:
+                if is_password_valid is not None and not is_password_valid:
+                    await handle_failed_login_attempt(user)
+                elif not user.is_active:
+                    raise api.Exception(
+                        status.HTTP_401_UNAUTHORIZED,
+                        api.Error(type="auth", code=InternalErrorCode.USER_ACCOUNT_LOCKED,
+                                  message="Account has been locked."),
+                    )
+
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="auth",
+                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                    message="Invalid username or password"
+                ),
+            )
         else:
             if identifier is None:
                 raise api.Exception(
@@ -410,7 +449,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 class_type=core.User,
                 user_shortname=shortname,
             )
-        
+
         is_password_valid = password_hashing.verify_password(
             request.password or "", user.password or ""
         )
@@ -423,7 +462,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             )
         ):
             await db.clear_failed_password_attempts(shortname)
-            
             record = await process_user_login(user, response, user_updates, request.firebase_token)
             await reset_failed_login_attempt(user)
             await plugin_manager.after_action(

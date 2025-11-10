@@ -967,6 +967,11 @@ class SQLAdapter(BaseDataAdapter):
                 return otp_entry.value.get("otp")
         return None
 
+    async def delete_otp(self, key: str):
+        async with self.get_session() as session:
+            statement = delete(OTP).where(col(OTP.key) == key)
+            await session.execute(statement)
+
     def metapath(self,
                  space_name: str,
                  subpath: str,
