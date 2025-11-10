@@ -878,6 +878,7 @@ async def otp_request_login(
             )
         )
 
+    user: str | core.User | None = None
     if shortname:
         user = await db.load_or_none('management', '/users', shortname, core.User)
     else:
