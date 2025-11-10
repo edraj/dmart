@@ -318,12 +318,12 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     api.Error(
                         type="auth",
                         code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                        message="Invalid identifier for OTP login."
+                        message="Invalid username or password"
                     )
                 )
 
+            user = await db.load_or_none('management', '/users', shortname, core.User)
             if request.shortname:
-                user = await db.load_or_none('management', '/users', shortname, core.User)
                 if user and user.msisdn:
                     key = f"users:otp:otps/{user.msisdn}"
                 else:
@@ -332,7 +332,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                         api.Error(
                             type="auth",
                             code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                            message="Invalid shortname for OTP login."
+                            message="Invalid username or password"
                         )
                     )
             else:
@@ -364,9 +364,9 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     request.password or "", user.password or ""
                 )
             if (
-                user
-                and user.is_active
-                and (is_password_valid is None or is_password_valid)
+                    user
+                    and user.is_active
+                    and (is_password_valid is None or is_password_valid)
 
             ):
                 await db.clear_failed_password_attempts(shortname)
