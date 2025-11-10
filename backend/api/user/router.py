@@ -887,58 +887,13 @@ async def otp_request_login(
             value,
         )
 
-    if not user:
-        raise api.Exception(
-            status.HTTP_404_NOT_FOUND,
-            api.Error(
-                type="request",
-                code=InternalErrorCode.USERNAME_NOT_EXIST,
-                message="No user found with the provided information",
-            ),
-        )
-
     if msisdn:
-        if msisdn is None:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_IDENTIFIER,
-                    message="msisdn is not set for this user"
-                )
-            )
         await send_otp(msisdn, skel_accept_language or "")
     elif email:
-        if email is None:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_IDENTIFIER,
-                    message="email is not set for this user"
-                )
-            )
         await email_send_otp(email, skel_accept_language or "")
     elif shortname:
-        if shortname is None:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_IDENTIFIER,
-                    message="shortname is not set for this user"
-                )
-            )
-        if user.msisdn is None:  # type: ignore
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_IDENTIFIER,
-                    message="msisdn is not set for this user"
-                )
-            )
-        await send_otp(user.msisdn, skel_accept_language or "")  # type: ignore
+        if user.msisdn and user.is_active:  # type: ignore
+            await send_otp(user.msisdn, skel_accept_language or "")  # type: ignore
 
     return api.Response(status=api.Status.success)
 
