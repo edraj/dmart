@@ -392,13 +392,14 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                             message="Invalid username or password [1]",
                         ),
                     )
-            user = await db.load(
-                space_name=MANAGEMENT_SPACE,
-                subpath=USERS_SUBPATH,
-                shortname=shortname,
-                class_type=core.User,
-                user_shortname=shortname,
-            )
+
+        user = await db.load(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            class_type=core.User,
+            user_shortname=shortname,
+        )
 
         is_password_valid = password_hashing.verify_password(
             request.password or "", user.password or ""
