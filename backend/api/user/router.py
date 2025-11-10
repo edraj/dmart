@@ -323,18 +323,19 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 )
 
             user = await db.load_or_none('management', '/users', shortname, core.User)
-            if request.shortname:
-                if user and user.msisdn:
-                    key = f"users:otp:otps/{user.msisdn}"
-                else:
-                    raise api.Exception(
-                        status.HTTP_401_UNAUTHORIZED,
-                        api.Error(
-                            type="auth",
-                            code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                            message="Invalid username or password"
-                        )
+            if user is None:
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                        message="Invalid username or password"
                     )
+                )
+
+            if request.shortname:
+                if user.msisdn:
+                    key = f"users:otp:otps/{user.msisdn}"
             else:
                 key = f"users:otp:otps/{request.msisdn or request.email or request.shortname}"
             stored_otp = await db.get_otp(key)
