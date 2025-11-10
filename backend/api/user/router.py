@@ -929,7 +929,7 @@ async def otp_request_login(
                     message="shortname is not set for this user"
                 )
             )
-        if user.msisdn is None:
+        if user.msisdn is None:  # type: ignore
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(
