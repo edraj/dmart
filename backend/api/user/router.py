@@ -291,7 +291,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     api.Error(
                         type="auth",
                         code=InternalErrorCode.OTP_ISSUE,
-                        message="Provide either msisdn or email, not both."
+                        message="Provide either msisdn, email or shortname, not both."
                     )
                 )
 
@@ -301,7 +301,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     api.Error(
                         type="auth",
                         code=InternalErrorCode.OTP_ISSUE,
-                        message="Either msisdn or email must be provided."
+                        message="Either msisdn, email or shortname must be provided."
                     )
                 )
 
@@ -865,7 +865,7 @@ async def otp_request_login(
                 api.Error(
                     type="request",
                     code=InternalErrorCode.INVALID_IDENTIFIER,
-                    message="Expected msisdn or email to be present."
+                    message="Expected msisdn, email or shortname to be present."
                 )
             )
     else:
@@ -874,7 +874,7 @@ async def otp_request_login(
             api.Error(
                 type="auth",
                 code=InternalErrorCode.OTP_ISSUE,
-                message="one of msisdn or email must be provided"
+                message="one of msisdn, email or shortname must be provided"
             )
         )
 
