@@ -375,10 +375,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             if (
                 user
                 and user.is_active
-                and (
-                    request.invitation
-                    or (is_password_valid is None or is_password_valid)
-                )
+                and (is_password_valid is None or is_password_valid)
+
             ):
                 await db.clear_failed_password_attempts(shortname)
                 await reset_failed_login_attempt(user)
