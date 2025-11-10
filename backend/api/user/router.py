@@ -398,7 +398,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 )
                 return api.Response(status=api.Status.success, records=[record])
             else:
-                if not is_password_valid:
+                if is_password_valid is not None and not is_password_valid:
                     await handle_failed_login_attempt(user)
                 elif not user.is_active:
                     raise api.Exception(
