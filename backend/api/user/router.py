@@ -898,11 +898,47 @@ async def otp_request_login(
         )
 
     if msisdn:
+        if msisdn is None:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_IDENTIFIER,
+                    message="msisdn is not set for this user"
+                )
+            )
         await send_otp(msisdn, skel_accept_language or "")
     elif email:
+        if email is None:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_IDENTIFIER,
+                    message="email is not set for this user"
+                )
+            )
         await email_send_otp(email, skel_accept_language or "")
     elif shortname:
-        await send_otp(user.msisdn, skel_accept_language or "") # type: ignore
+        if shortname is None:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_IDENTIFIER,
+                    message="shortname is not set for this user"
+                )
+            )
+        if user.msisdn is None:
+            raise api.Exception(
+                status.HTTP_400_BAD_REQUEST,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.INVALID_IDENTIFIER,
+                    message="msisdn is not set for this user"
+                )
+            )
+        await send_otp(user.msisdn, skel_accept_language or "")  # type: ignore
 
     return api.Response(status=api.Status.success)
 
