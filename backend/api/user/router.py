@@ -9,7 +9,7 @@ from utils.generate_email import generate_email_from_template
 from fastapi import APIRouter, Body, Query, Request, status, Depends, Response, Header
 import models.api as api
 import models.core as core
-from models.enums import ActionType, RequestType, ResourceType, ContentType
+from models.enums import ActionType, RequestType, ResourceType, ContentType, UserType
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
@@ -366,10 +366,9 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     request.password or "", user.password or ""
                 )
             if (
-                    user
-                    and user.is_active
-                    and (is_password_valid is None or is_password_valid)
-
+                user
+                and user.is_active
+                and (is_password_valid is None or is_password_valid)
             ):
                 await db.clear_failed_password_attempts(shortname)
                 await reset_failed_login_attempt(user)
@@ -464,6 +463,12 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             await db.clear_failed_password_attempts(shortname)
             record = await process_user_login(user, response, user_updates, request.firebase_token)
             await reset_failed_login_attempt(user)
+            if user.type == UserType.mobile and (request.firebase_token == '' or user.firebase_token == '' or request.firebase_token != user.firebase_token):
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(type="auth", code=InternalErrorCode.OTP_NEEDED,  message="New device detected, login with otp"),
+                )
+
             await plugin_manager.after_action(
                 core.Event(
                     space_name=MANAGEMENT_SPACE,
