@@ -901,7 +901,7 @@ async def otp_request_login(
     elif email:
         await email_send_otp(email, skel_accept_language or "")
     elif shortname:
-        await send_otp(user.msisdn, skel_accept_language or "")
+        await send_otp(user.msisdn, skel_accept_language or "") # type: ignore
 
     return api.Response(status=api.Status.success)
 
