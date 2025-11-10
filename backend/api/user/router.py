@@ -367,8 +367,47 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 user_shortname=shortname,
             )
 
-            record = await process_user_login(user, response, {}, request.firebase_token)
-            return api.Response(status=api.Status.success, records=[record])
+            is_password_valid = None
+            if request.password:
+                is_password_valid = password_hashing.verify_password(
+                    request.password or "", user.password or ""
+                )
+            if (
+                user
+                and user.is_active
+                and (
+                    request.invitation
+                    or (is_password_valid is None or is_password_valid)
+                )
+            ):
+                await db.clear_failed_password_attempts(shortname)
+                await reset_failed_login_attempt(user)
+
+                if request.otp:
+                    await db.delete_otp(key)
+
+                record = await process_user_login(user, response, {}, request.firebase_token)
+
+                await plugin_manager.after_action(
+                    core.Event(
+                        space_name=MANAGEMENT_SPACE,
+                        subpath=USERS_SUBPATH,
+                        shortname=shortname,
+                        action_type=core.ActionType.update,
+                        resource_type=ResourceType.user,
+                        user_shortname=shortname,
+                    )
+                )
+                return api.Response(status=api.Status.success, records=[record])
+
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="auth",
+                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                    message="Invalid username or password"
+                ),
+            )
         else:
             if identifier is None:
                 raise api.Exception(
@@ -423,10 +462,6 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             )
         ):
             await db.clear_failed_password_attempts(shortname)
-
-            if request.otp:
-                await db.delete_otp(key)
-            
             record = await process_user_login(user, response, user_updates, request.firebase_token)
             await reset_failed_login_attempt(user)
             await plugin_manager.after_action(
