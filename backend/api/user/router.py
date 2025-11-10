@@ -324,7 +324,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
             if request.shortname:
                 user = await db.load_or_none('management', '/users', shortname, core.User)
-                if user:
+                if user and user.msisdn:
                     key = f"users:otp:otps/{user.msisdn}"
                 else:
                     raise api.Exception(
