@@ -333,7 +333,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     )
                 )
 
-            key = f""
+            key = ""
             if request.shortname:
                 if user.msisdn:
                     key = f"users:otp:otps/{user.msisdn}"
