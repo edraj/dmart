@@ -333,11 +333,10 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     )
                 )
 
+            key = f""
             if request.shortname:
                 if user.msisdn:
                     key = f"users:otp:otps/{user.msisdn}"
-                else:
-                    key = f""
             else:
                 key = f"users:otp:otps/{request.msisdn or request.email or request.shortname}"
             stored_otp = await db.get_otp(key)
