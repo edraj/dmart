@@ -283,7 +283,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
         elif request.otp is not None:
             otp_code = request.otp
 
-            if bool(request.email) and bool(request.msisdn):
+            if bool(request.email) and bool(request.msisdn) and bool(request.shortname):
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
@@ -293,7 +293,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     )
                 )
 
-            if not request.email and not request.msisdn:
+            if not request.email and not request.msisdn and not request.shortname:
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
@@ -320,7 +320,21 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     )
                 )
 
-            key = f"users:otp:otps/{request.msisdn or request.email}"
+            if request.shortname:
+                user = await db.load_or_none('management', '/users', shortname, core.User)
+                if user:
+                    key = f"users:otp:otps/{user.msisdn}"
+                else:
+                    raise api.Exception(
+                        status.HTTP_401_UNAUTHORIZED,
+                        api.Error(
+                            type="auth",
+                            code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                            message="Invalid shortname for OTP login."
+                        )
+                    )
+            else:
+                key = f"users:otp:otps/{request.msisdn or request.email or request.shortname}"
             stored_otp = await db.get_otp(key)
 
             if stored_otp is None:
@@ -835,11 +849,12 @@ async def otp_request_login(
     """Request new OTP"""
 
     result = user_request.check_fields()
+    shortname = result.get("shortname")
     msisdn = result.get("msisdn")
     email = result.get("email")
 
-    if bool(msisdn) ^ bool(email):
-        value = msisdn or email
+    if bool(msisdn) ^ bool(email) ^ bool(shortname):
+        value = msisdn or email or shortname
         if value is None:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
@@ -859,10 +874,13 @@ async def otp_request_login(
             )
         )
 
-    user = await db.get_user_by_criteria(
-        "msisdn" if msisdn else "email",
-        value,
-    )
+    if shortname:
+        user = await db.load_or_none('management', '/users', shortname, core.User)
+    else:
+        user = await db.get_user_by_criteria(
+            "msisdn" if msisdn else "email",
+            value,
+        )
 
     if not user:
         raise api.Exception(
@@ -876,17 +894,10 @@ async def otp_request_login(
 
     if msisdn:
         await send_otp(msisdn, skel_accept_language or "")
-    else:
-        if email is None:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_IDENTIFIER,
-                    message="Email must be provided if msisdn is not."
-                )
-            )
+    elif email:
         await email_send_otp(email, skel_accept_language or "")
+    elif shortname:
+        await send_otp(user.msisdn, skel_accept_language or "")
 
     return api.Response(status=api.Status.success)
 
