@@ -339,24 +339,15 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 key = f"users:otp:otps/{request.msisdn or request.email or request.shortname}"
             stored_otp = await db.get_otp(key)
 
-            if stored_otp is None:
+            if stored_otp is None or stored_otp != otp_code:
+                await handle_failed_login_attempt(user)
                 raise api.Exception(
-                    status.HTTP_400_BAD_REQUEST,
+                    status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="auth",
-                        code=InternalErrorCode.OTP_ISSUE,
-                        message="Invalid OTP code."
-                    )
-                )
-
-            if stored_otp != otp_code:
-                raise api.Exception(
-                    status.HTTP_400_BAD_REQUEST,
-                    api.Error(
-                        type="auth",
-                        code=InternalErrorCode.OTP_ISSUE,
-                        message="Invalid OTP code."
-                    )
+                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                        message="Invalid username or password"
+                    ),
                 )
 
             user = await db.load(
