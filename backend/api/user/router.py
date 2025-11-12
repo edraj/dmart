@@ -781,24 +781,6 @@ async def logout(
 
     await db.remove_user_session(shortname)
 
-    user = await db.load(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            class_type=core.User,
-            user_shortname=shortname,
-        )
-    if user.firebase_token:
-        await db.internal_sys_update_model(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            meta=user,
-            updates={
-                "firebase_token": None
-            }
-
-        )
-
     return api.Response(status=api.Status.success, records=[])
 
 
