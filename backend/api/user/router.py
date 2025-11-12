@@ -460,14 +460,15 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 or is_password_valid
             )
         ):
-            await db.clear_failed_password_attempts(shortname)
-            record = await process_user_login(user, response, user_updates, request.firebase_token)
-            await reset_failed_login_attempt(user)
             if user.type == UserType.mobile and (request.firebase_token == '' or user.firebase_token == '' or request.firebase_token != user.firebase_token):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(type="auth", code=InternalErrorCode.OTP_NEEDED,  message="New device detected, login with otp"),
                 )
+
+            await db.clear_failed_password_attempts(shortname)
+            record = await process_user_login(user, response, user_updates, request.firebase_token)
+            await reset_failed_login_attempt(user)
 
             await plugin_manager.after_action(
                 core.Event(
