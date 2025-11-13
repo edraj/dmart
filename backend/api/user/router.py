@@ -460,7 +460,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 or is_password_valid
             )
         ):
-            if request.invitation and user.type == UserType.mobile and (request.firebase_token == '' or user.firebase_token == '' or request.firebase_token != user.firebase_token):
+            if request.invitation is None and user.type == UserType.mobile and (request.firebase_token == '' or user.firebase_token == '' or request.firebase_token != user.firebase_token):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(type="auth", code=InternalErrorCode.OTP_NEEDED,  message="New device detected, login with otp"),
