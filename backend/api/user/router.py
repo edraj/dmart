@@ -347,8 +347,8 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="auth",
-                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                        message="Invalid username or password"
+                        code=InternalErrorCode.OTP_INVALID,
+                        message="Wrong OTP"
                     ),
                 )
 
