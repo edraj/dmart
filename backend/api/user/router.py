@@ -342,7 +342,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
             stored_otp = await db.get_otp(key)
 
             if stored_otp is None or stored_otp != otp_code:
-                await handle_failed_login_attempt(user)
+                # await handle_failed_login_attempt(user)
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
