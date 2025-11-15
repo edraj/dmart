@@ -915,6 +915,7 @@ async def otp_request_login(
 
 
     if user is None:
+        logger.warning("user not found!")
         return api.Response(status=api.Status.success)
 
     if msisdn:
@@ -924,6 +925,8 @@ async def otp_request_login(
     elif shortname:
         if user.msisdn and user.is_active:  # type: ignore
             await send_otp(user.msisdn, skel_accept_language or "")  # type: ignore
+        else:
+            logger.warning(f"bad value for either {user.msisdn if hasattr(user, 'msisdn') else 'msisdn:N/A'} or {user.is_active}") # type: ignore
 
     return api.Response(status=api.Status.success)
 
@@ -962,6 +965,10 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
                             msisdn=user.msisdn,
                             message=reset_password_message.replace("{link}", shortened_link),
                         )
+                    else:
+                        logger.warning("token could not be generated")
+                else:
+                    logger.warning("value mismatch")
             else:
                 if user.email and user.email == result["email"]:
                     token = await repository.store_user_invitation_token(
@@ -975,12 +982,19 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
                             message=reset_password_message.replace("{link}", shortened_link),
                             subject="Reset password",
                         )
-        except Exception:
-            pass
+                    else:
+                        logger.warning("token could not be generated")
+                else:
+                    logger.warning(f"email mismatch {user.email} {result['email']}")
+        except Exception as e:
+            logger.error(f"reset_password failed: {e}")
+    else:
+        logger.warning("user requested not found.")
     
-    return api.Response(status=api.Status.success ,
-                        attributes={"message": "If the provided email or phone number exists, a password reset link has been sent."},
-                        )
+    return api.Response(
+        status=api.Status.success ,
+        attributes={"message": "If the provided email or phone number exists, a password reset link has been sent."},
+    )
 
 
 @router.post(
