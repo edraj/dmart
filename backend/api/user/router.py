@@ -1,6 +1,7 @@
 """ Session Apis """
 import json
 import re
+import traceback
 from pathlib import Path
 import aiofiles
 from utils.async_request import AsyncRequest
@@ -962,6 +963,10 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
                             msisdn=user.msisdn,
                             message=reset_password_message.replace("{link}", shortened_link),
                         )
+                    else:
+                        logger.warning(f"token could not be generated")
+                else:
+                    logger.warning(f"value mismatch")
             else:
                 if user.email and user.email == result["email"]:
                     token = await repository.store_user_invitation_token(
@@ -975,12 +980,19 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
                             message=reset_password_message.replace("{link}", shortened_link),
                             subject="Reset password",
                         )
+                    else:
+                        logger.warning(f"token could not be generated")
+                else:
+                    logger.warning(f"email mismatch {user.email} {result['email']}")
         except Exception:
-            pass
+            logger.error(traceback.format_exc())
+    else:
+        logger.warning(f"user requested not found.")
     
-    return api.Response(status=api.Status.success ,
-                        attributes={"message": "If the provided email or phone number exists, a password reset link has been sent."},
-                        )
+    return api.Response(
+        status=api.Status.success ,
+        attributes={"message": "If the provided email or phone number exists, a password reset link has been sent."},
+    )
 
 
 @router.post(
