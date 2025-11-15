@@ -1,7 +1,6 @@
 """ Session Apis """
 import json
 import re
-import traceback
 from pathlib import Path
 import aiofiles
 from utils.async_request import AsyncRequest
@@ -984,8 +983,8 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
                         logger.warning(f"token could not be generated")
                 else:
                     logger.warning(f"email mismatch {user.email} {result['email']}")
-        except Exception:
-            logger.error(traceback.format_exc())
+        except Exception as e:
+            logger.error(f"reset_password failed: {e}")
     else:
         logger.warning(f"user requested not found.")
     
