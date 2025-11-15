@@ -963,9 +963,9 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
                             message=reset_password_message.replace("{link}", shortened_link),
                         )
                     else:
-                        logger.warning(f"token could not be generated")
+                        logger.warning("token could not be generated")
                 else:
-                    logger.warning(f"value mismatch")
+                    logger.warning("value mismatch")
             else:
                 if user.email and user.email == result["email"]:
                     token = await repository.store_user_invitation_token(
@@ -980,13 +980,13 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
                             subject="Reset password",
                         )
                     else:
-                        logger.warning(f"token could not be generated")
+                        logger.warning("token could not be generated")
                 else:
                     logger.warning(f"email mismatch {user.email} {result['email']}")
         except Exception as e:
             logger.error(f"reset_password failed: {e}")
     else:
-        logger.warning(f"user requested not found.")
+        logger.warning("user requested not found.")
     
     return api.Response(
         status=api.Status.success ,
