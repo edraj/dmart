@@ -926,7 +926,7 @@ async def otp_request_login(
         if user.msisdn and user.is_active:  # type: ignore
             await send_otp(user.msisdn, skel_accept_language or "")  # type: ignore
         else:
-            logger.warning(f"bad value for either {user.msisdn if hasattr(user, 'msisdn') else 'msisdn:N/A'} or {user.is_active}")
+            logger.warning(f"bad value for either {user.msisdn if hasattr(user, 'msisdn') else 'msisdn:N/A'} or {user.is_active}") # type: ignore
 
     return api.Response(status=api.Status.success)
 
