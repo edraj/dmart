@@ -10,7 +10,7 @@ from utils.internal_error_code import InternalErrorCode
 import utils.regex as regex
 import models.core as core
 from api.managed.utils import get_mime_type, get_resource_content_type_from_payload_content_type, \
-    create_or_update_resource_with_payload_handler
+    create_or_update_resource_with_payload_handler, iter_bytesio
 from typing import Any, Union, Optional
 import sys
 import re
@@ -274,7 +274,7 @@ async def retrieve_entry_or_attachment_payload(
 
     data = await db.get_media_attachment(space_name, subpath, shortname)
     if data:
-        return StreamingResponse(data, media_type=get_mime_type(meta.payload.content_type))
+        return StreamingResponse(iter_bytesio(data), media_type=get_mime_type(meta.payload.content_type))
 
     return api.Response(status=api.Status.failed)
 

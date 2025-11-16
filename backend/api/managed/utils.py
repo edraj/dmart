@@ -1,4 +1,5 @@
 from datetime import datetime
+from io import BytesIO
 from typing import Any
 
 from fastapi import status
@@ -40,6 +41,17 @@ from data_adapters.adapter import data_adapter as db
 from pathlib import Path as FilePath
 import asyncio
 
+
+async def iter_bytesio(data: BytesIO, chunk_size: int = 8192):
+    data.seek(0)
+    while True:
+        chunk = data.read(chunk_size)
+        if not chunk:
+            break
+        try:
+            yield chunk
+        except (BrokenPipeError, ConnectionResetError):
+            return
 
 def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
     json_data = []
