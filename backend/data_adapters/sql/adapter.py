@@ -2562,13 +2562,6 @@ class SQLAdapter(BaseDataAdapter):
             )
             rows = [r[0] for r in res.all()]
             for row in rows:
-                try:
-                    if hasattr(row, 'payload') and row.payload and isinstance(row.payload, dict):
-                        if row.payload.get("body", None) is None:
-                            row.payload["body"] = {}
-                        row.payload = core.Payload.model_validate(row.payload, strict=False)
-                except Exception as e:
-                    logger.error(f"Failed parsing row during bulk load: {e}")
                 model_obj = class_type.model_validate(row.model_dump())
                 items[getattr(row, 'shortname')] = model_obj
         return items
