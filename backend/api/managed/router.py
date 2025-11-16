@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import hashlib
 import json
@@ -14,7 +15,7 @@ from pathlib import Path as FilePath
 from re import sub as res_sub
 from time import time
 from typing import Any, Callable
-
+from starlette.concurrency import iterate_in_threadpool
 from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
 from fastapi.responses import RedirectResponse, ORJSONResponse
 from starlette.responses import FileResponse, StreamingResponse
@@ -40,6 +41,7 @@ from api.managed.utils import (
     serve_request_patch,
     serve_request_update_r_replace,
     update_state_handle_resolution,
+    iter_bytesio
 )
 from data_adapters.adapter import data_adapter as db
 from models.enums import (
@@ -671,13 +673,13 @@ async def retrieve_entry_or_attachment_payload(
             attributes=meta.payload.body,
         )
 
-    data = await db.get_media_attachment(space_name, subpath, shortname)
+    data: BytesIO | None = await db.get_media_attachment(space_name, subpath, shortname)
     if data:
         if meta.payload.body.endswith(".svg"):
-            mine_type = "image/svg+xml"
+            mime_type = "image/svg+xml"
         else:
-            mine_type = get_mime_type(meta.payload.content_type)
-        return StreamingResponse(data, media_type=mine_type)
+            mime_type = get_mime_type(meta.payload.content_type)
+        return StreamingResponse(iter_bytesio(data), media_type=mime_type)
     return api.Response(status=api.Status.failed)
 
 @router.post(
