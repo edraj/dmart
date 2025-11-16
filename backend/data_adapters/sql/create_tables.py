@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from typing import Any
 from uuid import UUID
-from sqlalchemy import LargeBinary, text, URL
+from sqlalchemy import LargeBinary, text, URL, BigInteger
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT, HSTORE
 from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
 from sqlmodel._compat import SQLModelConfig # type: ignore
@@ -180,6 +180,7 @@ class Users(Metas, table=True):
     facebook_id: str | None = None
     social_avatar_url: str | None = None
     attempt_count: int | None = None
+    last_login_at: int | None = Field(default=None, sa_column=Column(BigInteger, nullable=True))
 
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 

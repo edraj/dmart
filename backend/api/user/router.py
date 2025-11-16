@@ -48,6 +48,7 @@ from fastapi_sso.sso.facebook import FacebookSSO
 from fastapi_sso.sso.base import OpenID, SSOBase
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
+from datetime import datetime
 
 router = APIRouter(default_response_class=ORJSONResponse)
 
@@ -1197,6 +1198,8 @@ async def process_user_login(
 
     if firebase_token:
         user_updates["firebase_token"] = firebase_token
+
+    user_updates["last_login_at"] = int(datetime.now().timestamp())
 
     if user_updates:
         await db.internal_sys_update_model(
