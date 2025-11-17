@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from typing import Any
 from uuid import UUID
-from sqlalchemy import LargeBinary, text, URL, BigInteger
+from sqlalchemy import LargeBinary, text, URL
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT, HSTORE
 from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
 from sqlmodel._compat import SQLModelConfig # type: ignore
