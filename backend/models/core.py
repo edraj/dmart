@@ -341,6 +341,7 @@ class User(Actor):
     google_id: str | None = None
     facebook_id: str | None = None
     social_avatar_url: str | None = None
+    last_login: dict | None = None
 
     @staticmethod
     def invitation_url_template() -> str:
