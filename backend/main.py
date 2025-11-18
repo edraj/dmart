@@ -407,7 +407,7 @@ async def root():
 #    if key == "alpha":
 #        return settings.dict()
 
-
+"""
 @app.get("/spaces-backup", include_in_schema=False)
 async def space_backup(key: str):
     if not key or key != "ABC":
@@ -429,7 +429,7 @@ async def space_backup(key: str):
         "stderr": result_stderr.decode().split("\n"),
     }
     return api.Response(status=api.Status.success, attributes=attributes)
-
+"""
 
 app.include_router(
     user, prefix="/user", tags=["user"], dependencies=[Depends(capture_body)]

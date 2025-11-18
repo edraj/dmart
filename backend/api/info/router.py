@@ -86,7 +86,7 @@ async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
     }
     return api.Response(status=api.Status.success, attributes=manifest)
 
-
+"""
 @router.get("/in-loop-tasks")
 async def get_in_loop_tasks(_=Depends(JWTBearer())) -> api.Response:
     tasks = asyncio.all_tasks()
@@ -106,3 +106,4 @@ async def get_in_loop_tasks(_=Depends(JWTBearer())) -> api.Response:
             "tasks": tasks_data
         },
     )
+"""

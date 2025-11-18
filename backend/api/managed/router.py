@@ -1397,7 +1397,7 @@ async def apply_alteration(
     )
     return response
 
-
+"""
 @router.post("/data-asset")
 async def data_asset(
         query: api.DataAssetQuery,
@@ -1537,3 +1537,5 @@ async def data_asset_single(
         response.headers["Content-Disposition"] = "attachment; filename=data.csv"
 
     return response
+
+"""
