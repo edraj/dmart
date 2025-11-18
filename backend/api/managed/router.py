@@ -12,7 +12,7 @@ from datetime import datetime
 from io import StringIO, BytesIO
 from pathlib import Path as FilePath
 from re import sub as res_sub
-from time import time
+# from time import time
 from typing import Any, Callable
 from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
 from fastapi.responses import RedirectResponse, ORJSONResponse
@@ -25,8 +25,8 @@ import utils.repository as repository
 from api.managed.utils import (
     create_or_update_resource_with_payload_handler,
     csv_entries_prepare_docs,
-    data_asset_attachments_handler,
-    data_asset_handler,
+    # data_asset_attachments_handler,
+    # data_asset_handler,
     get_mime_type,
     get_resource_content_type_from_payload_content_type,
     handle_update_state,
@@ -44,7 +44,7 @@ from api.managed.utils import (
 from data_adapters.adapter import data_adapter as db
 from models.enums import (
     ContentType,
-    DataAssetType,
+    # DataAssetType,
     LockAction,
     RequestType,
     ResourceType,
@@ -53,7 +53,7 @@ from models.enums import (
 from utils.access_control import access_control
 from utils.helpers import (
     camel_case,
-    csv_file_to_json,
+    # csv_file_to_json,
     flatten_dict,
 )
 from utils.internal_error_code import InternalErrorCode
