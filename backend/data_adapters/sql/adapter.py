@@ -15,6 +15,7 @@ from fastapi.logger import logger
 from sqlalchemy import literal_column, or_
 from sqlalchemy.orm import sessionmaker, defer
 from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean, func, text
+from sqlalchemy import String, cast, bindparam
 import io
 from sys import modules as sys_modules
 import models.api as api
@@ -176,13 +177,15 @@ def apply_acl_and_query_policies(statement, table, user_shortname, user_query_po
         if user_query_policies:
             access_conditions.insert(0,
                                      "EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-            access_filter = text(f"({' OR '.join(access_conditions)})")
+            clause_str = "(" + " OR ".join(access_conditions) + ")"
+            access_filter = text(clause_str)
             statement = statement.where(access_filter).params(
                 query_policies=[p.replace('*', '%') for p in user_query_policies],
                 user_shortname=user_shortname
             )
         else:
-            access_filter = text(f"({' OR '.join(access_conditions)})")
+            clause_str = "(" + " OR ".join(access_conditions) + ")"
+            access_filter = text(clause_str)
             statement = statement.where(access_filter).params(user_shortname=user_shortname)
 
     return statement
@@ -222,12 +225,14 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if query.exact_subpath:
             statement = statement.where(table.subpath == query.subpath)
         else:
+            # Use bind parameter for the ILIKE pattern to avoid string interpolation
+            subpath_like = (f"{query.subpath}/%".replace('//', '/'))
             statement = statement.where(
                 or_(
                     table.subpath == query.subpath,
-                    text(f"subpath ILIKE '{query.subpath}/%'".replace('//', '/'))
+                    text("subpath ILIKE :subpath_like").bindparams(bindparam("subpath_like"))
                 )
-            )
+            ).params(subpath_like=subpath_like)
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
             p = "shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
@@ -235,7 +240,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 p += " || ' ' || COALESCE(email, '') || ' ' || COALESCE(msisdn, '') || ' ' || roles"
             if table is Roles:
                 p += " || ' ' || permissions"
-            statement = statement.where(text(f"({p}) ILIKE '%' || '{query.search}' || '%'"))
+            # Parameterize search string
+            statement = statement.where(
+                text("(" + p + ") ILIKE :search")
+            ).params(search=f"%{query.search}%")
         else:
             search_tokens = parse_search_string(query.search, table)
 
@@ -1200,12 +1208,18 @@ class SQLAdapter(BaseDataAdapter):
                 for _table in tables:
                     statement = select(_table)
                     for k, v in criteria.items():
-                        if isinstance(v, str):
-                            statement = statement.where(
-                                text(f"{k}::text LIKE :{k}")
-                            ).params({k: f"{v}%"})
+                        # Prefer SQLAlchemy column expressions over raw text to avoid injection
+                        if hasattr(_table, k):
+                            column = getattr(_table, k)
+                            if isinstance(v, str):
+                                statement = statement.where(cast(column, String).like(bindparam(k)))
+                                statement = statement.params(**{k: f"{v}%"})
+                            else:
+                                statement = statement.where(column == bindparam(k))
+                                statement = statement.params(**{k: v})
                         else:
-                            statement = statement.where(text(f"{k}=:{k}")).params({k: v})
+                            # Unknown column name; skip to avoid potential SQL injection via dynamic identifiers
+                            continue
 
                     _result = (await session.execute(statement)).scalars().first()
 
@@ -1225,12 +1239,17 @@ class SQLAdapter(BaseDataAdapter):
             else:
                 statement = select(table)
                 for k, v in criteria.items():
-                    if isinstance(v, str):
-                        statement = statement.where(
-                            text(f"{k}::text=:{k}")
-                        ).params({k: f"{v}"})
+                    if hasattr(table, k):
+                        column = getattr(table, k)
+                        if isinstance(v, str):
+                            statement = statement.where(cast(column, String) == bindparam(k))
+                            statement = statement.params(**{k: v})
+                        else:
+                            statement = statement.where(column == bindparam(k))
+                            statement = statement.params(**{k: v})
                     else:
-                        statement = statement.where(text(f"{k}=:{k}")).params({k: v})
+                        # Unknown column name; skip
+                        continue
 
                 _result = (await session.execute(statement)).scalars().first()
 

@@ -1183,7 +1183,7 @@ async def process_user_login(
         key="auth_token",
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="lax",
     )
     record = core.Record(
         resource_type=core.ResourceType.user,
