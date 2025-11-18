@@ -2,6 +2,7 @@ import re
 
 SUBPATH = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669\u064B-\u065F_/]{1,128}$"
 SHORTNAME = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669\u064B-\u065F_]{1,64}$"
+SLUG = "^[a-zA-Z0-9_-]{1,64}$"
 FILENAME = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669\u064B-\u065F_]{1,32}\\.(gif|png|jpeg|jpg|pdf|wsq|mp3|mp4|csv|jsonl|parquet|sqlite|sqlite3|sqlite|db|duckdb|svg|apk)$"
 SPACENAME = "^[a-zA-Z\u0621-\u064A0-9\u0660-\u0669\u064B-\u065F_]{1,32}$"
 EXT = "^(gif|png|jpeg|jpg|webp|json|md|pdf|wsq|mp3|mp4|csv|jsonl|parquet|sqlite|sqlite3|db|db3|s3db|sl3|duckdb|svg|xsls|docx|apk)$"
