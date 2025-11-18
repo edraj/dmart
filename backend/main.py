@@ -287,12 +287,29 @@ async def middle(request: Request, call_next):
             status_code=status.HTTP_504_GATEWAY_TIMEOUT)
         response_body = json.loads(str(response.body, 'utf8'))
     except api.Exception as e:
-        response = ORJSONResponse(
-            status_code=e.status_code,
-            content=jsonable_encoder(
-                api.Response(status=api.Status.failed, error=e.error)
-            ),
-        )
+        if settings.active_data_db == 'sql':
+            if e.error.message.startswith('(sqlalchemy.dialects.postgresql'):
+                response = ORJSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "failed",
+                        "error": 'Something went wrong',
+                    },
+                )
+            else:
+                response = ORJSONResponse(
+                    status_code=e.status_code,
+                    content=jsonable_encoder(
+                        api.Response(status=api.Status.failed, error=e.error)
+                    ),
+                )
+        else:
+            response = ORJSONResponse(
+                status_code=e.status_code,
+                content=jsonable_encoder(
+                    api.Response(status=api.Status.failed, error=e.error)
+                ),
+            )
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
         response_body = json.loads(str(response.body, 'utf8'))

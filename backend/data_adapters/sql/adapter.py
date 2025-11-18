@@ -1000,7 +1000,7 @@ class SQLAdapter(BaseDataAdapter):
                     password=settings.database_password,
                     database=settings.database_name,
                 ),
-                echo=True,
+                echo=False,
                 pool_pre_ping=True,
                 pool_size=settings.database_pool_size,
                 max_overflow=settings.database_max_overflow,
