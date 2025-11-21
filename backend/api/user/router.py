@@ -80,7 +80,7 @@ async def check_existing_user_fields(
 
 
 @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
-async def create_user(response: Response, record: core.Record) -> api.Response:
+async def create_user(response: Response, record: core.Record, http_request: Request) -> api.Response:
     """Register a new user by invitation"""
     if not settings.is_registrable:
         raise api.Exception(
@@ -186,7 +186,7 @@ async def create_user(response: Response, record: core.Record) -> api.Response:
             MANAGEMENT_SPACE, USERS_SUBPATH, user, separate_payload_data, user.owner_shortname
         )
         
-    response_record = await process_user_login(user, response, {})
+    response_record = await process_user_login(user, response, {}, None, http_request.headers)
     
     await plugin_manager.after_action(
         core.Event(
@@ -225,7 +225,7 @@ async def verify_user(user_request: ConfirmOTPRequest):
     response_model=api.Response,
     response_model_exclude_none=True,
 )
-async def login(response: Response, request: UserLoginRequest) -> api.Response:
+async def login(response: Response, request: UserLoginRequest, http_request: Request) -> api.Response:
     """Login and generate refresh token"""
     shortname: str | None = None
     user = None
@@ -377,7 +377,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 if request.otp:
                     await db.delete_otp(key)
 
-                record = await process_user_login(user, response, {}, request.firebase_token)
+                record = await process_user_login(user, response, {}, request.firebase_token, http_request.headers)
 
                 await plugin_manager.after_action(
                     core.Event(
@@ -468,7 +468,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 )
 
             await db.clear_failed_password_attempts(shortname)
-            record = await process_user_login(user, response, user_updates, request.firebase_token)
+            record = await process_user_login(user, response, user_updates, request.firebase_token, http_request.headers)
             await reset_failed_login_attempt(user)
 
             await plugin_manager.after_action(
@@ -1170,7 +1170,8 @@ async def process_user_login(
     user: core.User, 
     response: Response,
     user_updates: dict = {}, 
-    firebase_token: str | None = None
+    firebase_token: str | None = None,
+    request_headers = None
 ) -> core.Record:
     access_token = await sign_jwt(
         {"shortname": user.shortname, "type": user.type}, settings.jwt_access_expires
@@ -1182,7 +1183,7 @@ async def process_user_login(
         key="auth_token",
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="lax",
     )
     record = core.Record(
         resource_type=core.ResourceType.user,
@@ -1199,7 +1200,14 @@ async def process_user_login(
     if firebase_token:
         user_updates["firebase_token"] = firebase_token
 
-    user_updates["last_login_at"] = int(datetime.now().timestamp())
+    if request_headers:
+        headers_dict = dict(request_headers)
+        headers_dict.pop("authorization", None)
+        headers_dict.pop("cookie", None)
+        user_updates["last_login"] = {
+            "timestamp": int(datetime.now().timestamp()),
+            "headers": headers_dict
+        }
 
     if user_updates:
         await db.internal_sys_update_model(
@@ -1278,7 +1286,8 @@ if settings.social_login_allowed:
 
             record = await process_user_login(
                 user=user_model,
-                response=response
+                response=response,
+                request_headers=request.headers
             )
             return api.Response(status=api.Status.success, records=[record])
     
@@ -1293,7 +1302,8 @@ if settings.social_login_allowed:
 
             record = await process_user_login(
                 user=user_model,
-                response=response
+                response=response,
+                request_headers=request.headers
             )
             return api.Response(status=api.Status.success, records=[record])
         
@@ -1308,7 +1318,8 @@ if settings.social_login_allowed:
 
             record = await process_user_login(
                 user=user_model,
-                response=response
+                response=response,
+                request_headers=request.headers
             )
             return api.Response(status=api.Status.success, records=[record])
 

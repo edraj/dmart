@@ -187,7 +187,7 @@ class ACL(BaseModel):
 class Meta(Resource):
     uuid: UUID = Field(default_factory=uuid4)
     shortname: str = Field(pattern=regex.SHORTNAME)
-    slug: str | None = Field(default=None, pattern=regex.SHORTNAME)
+    slug: str | None = Field(default=None, pattern=regex.SLUG)
     is_active: bool = False
     displayname: Translation | None = None
     description: Translation | None = None
@@ -341,7 +341,7 @@ class User(Actor):
     google_id: str | None = None
     facebook_id: str | None = None
     social_avatar_url: str | None = None
-    last_login_at: int | None = None
+    last_login: dict | None = None
 
     @staticmethod
     def invitation_url_template() -> str:
