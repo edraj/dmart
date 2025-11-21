@@ -1591,11 +1591,11 @@ class SQLAdapter(BaseDataAdapter):
                     await session.rollback()
                     raise e
                 # Refresh authz MVs only when Users/Roles/Permissions changed
-                try:
-                    if isinstance(data, (Users, Roles, Permissions)):
-                        await self.ensure_authz_materialized_views_fresh()
-                except Exception as _e:
-                    logger.warning(f"AuthZ MV refresh after save skipped: {_e}")
+                # try:
+                #     if isinstance(data, (Users, Roles, Permissions)):
+                #         await self.ensure_authz_materialized_views_fresh()
+                # except Exception as _e:
+                #     logger.warning(f"AuthZ MV refresh after save skipped: {_e}")
                 return data
 
         except Exception as e:
@@ -1736,11 +1736,11 @@ class SQLAdapter(BaseDataAdapter):
             async with self.get_session() as session:
                 session.add(result)
 
-            try:
-                if isinstance(result, (Users, Roles, Permissions)):
-                    await self.ensure_authz_materialized_views_fresh()
-            except Exception as _e:
-                logger.warning(f"AuthZ MV refresh after update skipped: {_e}")
+            # try:
+            #     if isinstance(result, (Users, Roles, Permissions)):
+            #         await self.ensure_authz_materialized_views_fresh()
+            # except Exception as _e:
+            #     logger.warning(f"AuthZ MV refresh after update skipped: {_e}")
         except Exception as e:
             print("[!update]", e)
             logger.error(f"Failed parsing an entry. Error: {e}")
@@ -2078,11 +2078,11 @@ class SQLAdapter(BaseDataAdapter):
                     await session.execute(statement)
 
                 # Refresh authz MVs only when Users/Roles/Permissions changed
-                try:
-                    if meta.__class__ in (core.User, core.Role, core.Permission):
-                        await self.ensure_authz_materialized_views_fresh()
-                except Exception as _e:
-                    logger.warning(f"AuthZ MV refresh after delete skipped: {_e}")
+                # try:
+                #     if meta.__class__ in (core.User, core.Role, core.Permission):
+                #         await self.ensure_authz_materialized_views_fresh()
+                # except Exception as _e:
+                #     logger.warning(f"AuthZ MV refresh after delete skipped: {_e}")
             except Exception as e:
                 print("[!delete]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -2539,78 +2539,67 @@ class SQLAdapter(BaseDataAdapter):
 
         return {"unique": True}
 
-    async def ensure_authz_materialized_views_fresh(self) -> None:
-        try:
-            async with self.get_session() as session:
-                latest_q = text(
-                    """
-                    SELECT GREATEST(
-                        COALESCE((SELECT MAX(updated_at) FROM users), to_timestamp(0)),
-                        COALESCE((SELECT MAX(updated_at) FROM roles), to_timestamp(0)),
-                        COALESCE((SELECT MAX(updated_at) FROM permissions), to_timestamp(0))
-                    ) AS max_ts
-                    """
-                )
-                latest_ts_row = (await session.execute(latest_q)).one()
-                max_ts = latest_ts_row[0]
-
-                meta_row = (
-                    await session.execute(text("SELECT last_source_ts FROM authz_mv_meta WHERE id = 1"))).one_or_none()
-                if meta_row is None or (meta_row[0] is None) or (max_ts is not None and max_ts > meta_row[0]):
-                    await session.execute(text("REFRESH MATERIALIZED VIEW mv_user_roles"))
-                    await session.execute(text("REFRESH MATERIALIZED VIEW mv_role_permissions"))
-                    await session.execute(text("""
-                        INSERT INTO authz_mv_meta(id, last_source_ts, refreshed_at)
-                        VALUES (1, :ts, now())
-                        ON CONFLICT (id)
-                        DO UPDATE SET last_source_ts = EXCLUDED.last_source_ts,
-                                      refreshed_at = now()
-                    """), {"ts": max_ts})
-        except Exception as e:
-            logger.warning(f"AuthZ MV refresh failed or skipped: {e}")
-
-    async def _bulk_load_by_shortnames(self, class_type: Type[MetaChild], shortnames: list[str]) -> dict[
-        str, MetaChild]:
-        if not shortnames:
-            return {}
-        table = self.get_table(class_type)
-        items: dict[str, MetaChild] = {}
-        async with self.get_session() as session:
-            res = await session.execute(
-                select(table).where(col(table.shortname).in_(shortnames))
-            )
-            rows = [r[0] for r in res.all()]
-            for row in rows:
-                model_obj = class_type.model_validate(row.model_dump())
-                items[getattr(row, 'shortname')] = model_obj
-        return items
+    # async def ensure_authz_materialized_views_fresh(self) -> None:
+    #     try:
+    #         async with self.get_session() as session:
+    #             latest_q = text(
+    #                 """
+    #                 SELECT GREATEST(
+    #                     COALESCE((SELECT MAX(updated_at) FROM users), to_timestamp(0)),
+    #                     COALESCE((SELECT MAX(updated_at) FROM roles), to_timestamp(0)),
+    #                     COALESCE((SELECT MAX(updated_at) FROM permissions), to_timestamp(0))
+    #                 ) AS max_ts
+    #                 """
+    #             )
+    #             latest_ts_row = (await session.execute(latest_q)).one()
+    #             max_ts = latest_ts_row[0]
+    #
+    #             meta_row = (
+    #                 await session.execute(text("SELECT last_source_ts FROM authz_mv_meta WHERE id = 1"))).one_or_none()
+    #             if meta_row is None or (meta_row[0] is None) or (max_ts is not None and max_ts > meta_row[0]):
+    #                 await session.execute(text("REFRESH MATERIALIZED VIEW mv_user_roles"))
+    #                 await session.execute(text("REFRESH MATERIALIZED VIEW mv_role_permissions"))
+    #                 await session.execute(text("""
+    #                     INSERT INTO authz_mv_meta(id, last_source_ts, refreshed_at)
+    #                     VALUES (1, :ts, now())
+    #                     ON CONFLICT (id)
+    #                     DO UPDATE SET last_source_ts = EXCLUDED.last_source_ts,
+    #                                   refreshed_at = now()
+    #                 """), {"ts": max_ts})
+    #     except Exception as e:
+    #         logger.warning(f"AuthZ MV refresh failed or skipped: {e}")
+    #
+    # async def _bulk_load_by_shortnames(self, class_type: Type[MetaChild], shortnames: list[str]) -> dict[
+    #     str, MetaChild]:
+    #     if not shortnames:
+    #         return {}
+    #     table = self.get_table(class_type)
+    #     items: dict[str, MetaChild] = {}
+    #     async with self.get_session() as session:
+    #         res = await session.execute(
+    #             select(table).where(col(table.shortname).in_(shortnames))
+    #         )
+    #         rows = [r[0] for r in res.all()]
+    #         for row in rows:
+    #             model_obj = class_type.model_validate(row.model_dump())
+    #             items[getattr(row, 'shortname')] = model_obj
+    #     return items
 
     async def get_role_permissions(self, role: core.Role) -> list[core.Permission]:
-        try:
-            async with self.get_session() as session:
-                res = await session.execute(
-                    text("SELECT permission_shortname FROM mv_role_permissions WHERE role_shortname = :r"),
-                    {"r": role.shortname},
-                )
-                perm_shortnames = [row[0] for row in res.all()]
-            perms_map = await self._bulk_load_by_shortnames(core.Permission, perm_shortnames)
-            return [perms_map[name] for name in perm_shortnames if name in perms_map]
-        except Exception as e:
-            logger.warning(f"Optimized get_role_permissions failed, falling back. Error: {e}")
-            role_records = await self.load_or_none(
-                settings.management_space, 'roles', role.shortname, core.Role
+        role_records = await self.load_or_none(
+            settings.management_space, 'roles', role.shortname, core.Role
+        )
+        if role_records is None:
+            return []
+        role_permissions: list[core.Permission] = []
+        for permission in role_records.permissions:
+            permission_record = await self.load_or_none(
+                settings.management_space, 'permissions', permission, core.Permission
             )
-            if role_records is None:
-                return []
-            role_permissions: list[core.Permission] = []
-            for permission in role_records.permissions:
-                permission_record = await self.load_or_none(
-                    settings.management_space, 'permissions', permission, core.Permission
-                )
-                if permission_record is None:
-                    continue
-                role_permissions.append(permission_record)
-            return role_permissions
+            if permission_record is None:
+                continue
+            role_permissions.append(permission_record)
+        return role_permissions
 
     async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
         try:
@@ -2619,46 +2608,24 @@ class SQLAdapter(BaseDataAdapter):
             )
             if user is None:
                 return {}
-
-            async with self.get_session() as session:
-                res = await session.execute(
-                    text("SELECT role_shortname FROM mv_user_roles WHERE user_shortname = :u"),
-                    {"u": user_shortname},
-                )
-                role_shortnames = [row[0] for row in res.all()]
-
+            euser_roles: dict[str, core.Role] = {}
             if user_shortname != "anonymous":
-                role_shortnames = list(dict.fromkeys(["logged_in", *role_shortnames]))
-
-            roles_map = await self._bulk_load_by_shortnames(core.Role, role_shortnames)
-            user_roles: dict[str, core.Role] = {k: v for k, v in roles_map.items()}
-            return user_roles
-        except Exception as e:
-            print(f"Error: {e}")
-            try:
-                user = await self.load_or_none(
-                    settings.management_space, settings.users_subpath, user_shortname, core.User
+                role_record = await self.load_or_none(
+                    settings.management_space, 'roles', 'logged_in', core.Role
                 )
-                if user is None:
-                    return {}
-                euser_roles: dict[str, core.Role] = {}
-                if user_shortname != "anonymous":
-                    role_record = await self.load_or_none(
-                        settings.management_space, 'roles', 'logged_in', core.Role
-                    )
-                    if role_record is not None:
-                        euser_roles['logged_in'] = role_record
-                for role in user.roles:
-                    role_record = await self.load_or_none(
-                        settings.management_space, 'roles', role, core.Role
-                    )
-                    if role_record is None:
-                        continue
-                    euser_roles[role] = role_record
-                return euser_roles
-            except Exception as e2:
-                print(f"Error: {e2}")
-                return {}
+                if role_record is not None:
+                    euser_roles['logged_in'] = role_record
+            for role in user.roles:
+                role_record = await self.load_or_none(
+                    settings.management_space, 'roles', role, core.Role
+                )
+                if role_record is None:
+                    continue
+                euser_roles[role] = role_record
+            return euser_roles
+        except Exception as e2:
+            print(f"Error: {e2}")
+            return {}
 
     async def load_user_meta(self, user_shortname: str) -> Any:
         user = await self.load(
