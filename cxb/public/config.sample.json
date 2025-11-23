@@ -1,0 +1,11 @@
+{
+  "title": "DMART Unified Data Platform",
+  "footer": "dmart.cc unified data platform",
+  "short_name": "dmart",
+  "display_name": "dmart",
+  "description": "dmart unified data platform",
+  "default_language": "en",
+  "languages": { "ar": "العربية", "en": "English" },
+  "backend": "http://localhost:8282",
+  "websocket": "ws://0.0.0.0:8484/ws"
+}
