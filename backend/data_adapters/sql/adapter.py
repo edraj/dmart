@@ -1733,7 +1733,7 @@ class SQLAdapter(BaseDataAdapter):
                     owner_group_shortname=result.owner_shortname,
                 )
 
-            if  meta.__class__ is not core.Lock:
+            if  meta.__class__ is not core.Lock or isinstance(result, Locks):
                 result.updated_at = datetime.now()
                 new_version_flattend['updated_at'] = result.updated_at.isoformat()
                 if "updated_at" not in updated_attributes_flattend:
