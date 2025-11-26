@@ -1735,7 +1735,7 @@ class SQLAdapter(BaseDataAdapter):
 
             if  meta.__class__ is not core.Lock or not isinstance(result, Locks):
                 result.updated_at = datetime.now()
-                new_version_flattend['updated_at'] = result.updated_at.isoformat()
+                new_version_flattend['updated_at'] = result.updated_at.isoformat() # type: ignore
                 if "updated_at" not in updated_attributes_flattend:
                     updated_attributes_flattend.append("updated_at")
                 if 'updated_at' in old_version_flattend:
