@@ -1733,6 +1733,13 @@ class SQLAdapter(BaseDataAdapter):
                     owner_group_shortname=result.owner_shortname,
                 )
 
+            result.updated_at = datetime.now()
+            new_version_flattend['updated_at'] = result.updated_at.isoformat()
+            if "updated_at" not in updated_attributes_flattend:
+                updated_attributes_flattend.append("updated_at")
+            if 'updated_at' in old_version_flattend:
+                old_version_flattend['updated_at'] = old_version_flattend['updated_at'].isoformat()
+
             async with self.get_session() as session:
                 session.add(result)
 
@@ -1796,8 +1803,6 @@ class SQLAdapter(BaseDataAdapter):
             diff_keys.extend(list(new_version_flattend.keys()))
             history_diff = {}
             for key in set(diff_keys):
-                if key in ["updated_at"]:
-                    continue
                 # if key in updated_attributes_flattend:
                 old = copy(old_version_flattend.get(key, "null"))
                 new = copy(new_version_flattend.get(key, "null"))
@@ -1806,18 +1811,14 @@ class SQLAdapter(BaseDataAdapter):
                     if isinstance(old, list) and isinstance(new, list):
                         old, new = arr_remove_common(old, new)
 
-                    removed = get_removed_items(list(old_version_flattend.keys()),
-                                                list(new_version_flattend.keys()))
-
-                    history_diff[key] = {
-                        "old": old,
-                        "new": new,
-                    }
-                    for r in removed:
-                        history_diff[r] = {
-                            "old": old_version_flattend[r],
-                            "new": None,
-                        }
+                    history_diff[key] = {"old": old, "new": new}
+            removed = get_removed_items(list(old_version_flattend.keys()),
+                                        list(new_version_flattend.keys()))
+            for r in removed:
+                history_diff[r] = {
+                    "old": old_version_flattend[r],
+                    "new": None,
+                }
             if not history_diff:
                 return {}
 
