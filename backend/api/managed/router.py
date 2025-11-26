@@ -505,9 +505,9 @@ async def update_state(
             ticket_obj = await update_state_handle_resolution(ticket_obj, workflows_payload, response, resolution)
 
         new_version_flattend = flatten_dict(ticket_obj.model_dump())
-        new_version_flattend.pop("payload.body", None)
-        new_version_flattend.update(
-            flatten_dict({"payload.body": ticket_obj.model_dump(mode='json')}))
+        # new_version_flattend.pop("payload.body", None)
+        # new_version_flattend.update(
+        #     flatten_dict({"payload.body": ticket_obj.model_dump(mode='json')}))
 
         if comment:
             time = datetime.now().strftime("%Y%m%d%H%M%S")
