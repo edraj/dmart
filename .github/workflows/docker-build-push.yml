@@ -6,7 +6,6 @@ on:
       - 'v*' # Triggers on tags matching the pattern 'v*'
     branches:
       - master
-      - gitleaks
   release:
     types: [published] # Triggers when a new release is published
 
