@@ -1733,12 +1733,13 @@ class SQLAdapter(BaseDataAdapter):
                     owner_group_shortname=result.owner_shortname,
                 )
 
-            result.updated_at = datetime.now()
-            new_version_flattend['updated_at'] = result.updated_at.isoformat()
-            if "updated_at" not in updated_attributes_flattend:
-                updated_attributes_flattend.append("updated_at")
-            if 'updated_at' in old_version_flattend:
-                old_version_flattend['updated_at'] = old_version_flattend['updated_at'].isoformat()
+            if  meta.__class__ is not core.Lock:
+                result.updated_at = datetime.now()
+                new_version_flattend['updated_at'] = result.updated_at.isoformat()
+                if "updated_at" not in updated_attributes_flattend:
+                    updated_attributes_flattend.append("updated_at")
+                if 'updated_at' in old_version_flattend:
+                    old_version_flattend['updated_at'] = old_version_flattend['updated_at'].isoformat()
 
             async with self.get_session() as session:
                 session.add(result)
