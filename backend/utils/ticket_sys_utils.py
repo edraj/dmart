@@ -27,15 +27,15 @@ async def get_init_state_from_workflow(space_name: str, workflow_shortname: str)
 
     return payload['initial_state'][0]['name']
 
-async def set_init_state_from_request(ticket: api.Request, logged_in_user):
-    workflow_attr = ticket.records[0].attributes
+async def set_init_state_for_record(record: core.Record, space_name: str, logged_in_user: str):
+    workflow_attr = record.attributes
     workflow_shortname = workflow_attr["workflow_shortname"]
 
     _user_roles = await db.get_user_roles(logged_in_user)
     user_roles = _user_roles.keys()
 
     workflows_data: core.Content = await db.load(
-        space_name=ticket.space_name,
+        space_name=space_name,
         subpath="workflows",
         shortname=workflow_shortname,
         class_type=core.Content,
@@ -48,7 +48,7 @@ async def set_init_state_from_request(ticket: api.Request, logged_in_user):
             workflows_payload = workflows_data.payload.body
         else:
             payload = await db.load_resource_payload(
-                space_name=ticket.space_name,
+                space_name=space_name,
                 subpath="workflows",
                 filename=str(workflows_data.payload.body),
                 class_type=core.Content,
@@ -74,12 +74,12 @@ async def set_init_state_from_request(ticket: api.Request, logged_in_user):
                 ),
             )
 
-        ticket.records[0].attributes = {
+        record.attributes = {
             **workflow_attr,
             "state": initial_state,
             "is_open": True,
         }
-        return ticket.records[0]
+        return record
 
     raise api.Exception(
         status.HTTP_400_BAD_REQUEST,

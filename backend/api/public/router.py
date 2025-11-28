@@ -22,7 +22,7 @@ from utils.router_helper import is_space_exist
 from utils.settings import settings
 from starlette.responses import FileResponse, StreamingResponse
 
-from utils.ticket_sys_utils import set_init_state_from_request
+from utils.ticket_sys_utils import set_init_state_for_record
 from fastapi.responses import ORJSONResponse
 
 router = APIRouter(default_response_class=ORJSONResponse)
@@ -499,24 +499,16 @@ async def create_entry(
                 ),
             )
 
-        record = await set_init_state_from_request(
-            api.Request(
-                space_name=space_name,
-                request_type=RequestType.create,
-                records=[
-                    core.Record(
-                        subpath=subpath,
-                        shortname=shortname,
-                        resource_type=entry_resource_type,
-                        attributes={
-                            "workflow_shortname": workflow_shortname,
-                            **body_dict
-                        }
-                    )
-                ]
-            ),
-            "anonymous"
+        record = core.Record(
+            subpath=subpath,
+            shortname=shortname,
+            resource_type=entry_resource_type,
+            attributes={
+                "workflow_shortname": workflow_shortname,
+                **body_dict
+            }
         )
+        record = await set_init_state_for_record(record, space_name, "anonymous")
         if not record or not record.attributes.get("state"):
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
