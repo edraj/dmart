@@ -8,8 +8,8 @@ from data_adapters.file.custom_validations import validate_csv_with_schema, vali
 from utils.internal_error_code import InternalErrorCode
 from utils.router_helper import is_space_exist
 from utils.ticket_sys_utils import (
-    set_init_state_from_request,
     set_init_state_from_record,
+    set_init_state_for_record,
     transite,
     post_transite,
     check_open_state,
@@ -266,7 +266,7 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
             await serve_request_create_check_access(request, record, owner_shortname)
 
             if record.resource_type == ResourceType.ticket:
-                record = await set_init_state_from_request(request, owner_shortname)
+                record = await set_init_state_for_record(record, request.space_name, owner_shortname)
 
             shortname_exists = await db.is_entry_exist(
                 space_name=request.space_name,
