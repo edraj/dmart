@@ -175,19 +175,22 @@ def apply_acl_and_query_policies(statement, table, user_shortname, user_query_po
         ]
 
         if user_query_policies:
+            transformed = [str(p).replace('*', '%') for p in user_query_policies]
+            alternation = "|".join(transformed) if transformed else "%"
+            qp_pattern = f"({alternation})"
+
             access_conditions.insert(0,
-                                     "EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
+                                     "array_to_string(query_policies, '||') SIMILAR TO :qp_pattern")
             clause_str = "(" + " OR ".join(access_conditions) + ")"
             access_filter = text(clause_str)
             statement = statement.where(access_filter).params(
-                query_policies=[p.replace('*', '%') for p in user_query_policies],
+                qp_pattern=qp_pattern,
                 user_shortname=user_shortname
             )
         else:
             clause_str = "(" + " OR ".join(access_conditions) + ")"
             access_filter = text(clause_str)
             statement = statement.where(access_filter).params(user_shortname=user_shortname)
-
     return statement
 
 
