@@ -1424,8 +1424,11 @@ class SQLAdapter(BaseDataAdapter):
                 )
 
             async with self.get_session() as session:
-                _total = (await session.execute(statement_total)).one()
-                total = int(_total[0])
+                if query.retrieve_total:
+                    _total = (await session.execute(statement_total)).one()
+                    total = int(_total[0])
+                else:
+                    total = -1
                 if query.type == QueryType.counters:
                     return total, []
 

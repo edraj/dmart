@@ -100,6 +100,7 @@ class Query(BaseModel):
     sort_type: SortType | None = None
     retrieve_json_payload: bool = False
     retrieve_attachments: bool = False
+    retrieve_total: bool = True
     validate_schema: bool = True
     retrieve_lock_status: bool = False
     jq_filter: str | None = None
