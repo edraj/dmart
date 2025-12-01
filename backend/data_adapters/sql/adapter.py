@@ -175,18 +175,42 @@ def apply_acl_and_query_policies(statement, table, user_shortname, user_query_po
         ]
 
         if user_query_policies:
-            transformed = [str(p).replace('*', '%') for p in user_query_policies]
-            alternation = "|".join(transformed) if transformed else "%"
-            qp_pattern = f"({alternation})"
+            raw_items = [str(p) for p in user_query_policies]
+            patterns = []
+            for item in raw_items:
+                for part in str(item).split('|'):
+                    part = part.strip()
+                    if part:
+                        patterns.append(part.replace('*', '%'))
 
-            access_conditions.insert(0,
-                                     "array_to_string(query_policies, '||') SIMILAR TO :qp_pattern")
-            clause_str = "(" + " OR ".join(access_conditions) + ")"
-            access_filter = text(clause_str)
-            statement = statement.where(access_filter).params(
-                qp_pattern=qp_pattern,
-                user_shortname=user_shortname
-            )
+            seen = set()
+            dedup_patterns = []
+            for pat in patterns:
+                if pat not in seen:
+                    seen.add(pat)
+                    dedup_patterns.append(pat)
+
+            if dedup_patterns:
+                like_clauses = []
+                like_params = {}
+                for idx, pat in enumerate(dedup_patterns):
+                    param_name = f"qp_like_{idx}"
+                    like_clauses.append(f"qp LIKE :{param_name}")
+                    like_params[param_name] = pat
+
+                qp_exists = "EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE " + " OR ".join(like_clauses) + ")"
+                access_conditions.insert(1, qp_exists)
+
+                clause_str = "(" + " OR ".join(access_conditions) + ")"
+                access_filter = text(clause_str)
+                statement = statement.where(access_filter).params(
+                    user_shortname=user_shortname,
+                    **like_params
+                )
+            else:
+                clause_str = "(" + " OR ".join(access_conditions) + ")"
+                access_filter = text(clause_str)
+                statement = statement.where(access_filter).params(user_shortname=user_shortname)
         else:
             clause_str = "(" + " OR ".join(access_conditions) + ")"
             access_filter = text(clause_str)
@@ -1424,8 +1448,11 @@ class SQLAdapter(BaseDataAdapter):
                 )
 
             async with self.get_session() as session:
-                _total = (await session.execute(statement_total)).one()
-                total = int(_total[0])
+                if query.retrieve_total:
+                    _total = (await session.execute(statement_total)).one()
+                    total = int(_total[0])
+                else:
+                    total = -1
                 if query.type == QueryType.counters:
                     return total, []
 
