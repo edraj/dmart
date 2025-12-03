@@ -149,16 +149,6 @@ app.add_middleware(ChannelMiddleware)
 
 
 def set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body):
-    sensitive = {"authorization", "cookie", "set-cookie", "x-api-key"}
-    request_headers = {
-        k: v for k,v in request.headers.items()
-        if k.lower() not in sensitive
-    }
-
-    response_headers = {
-        k: v for k, v in response.headers.items()
-        if k.lower() not in sensitive 
-    }
     extra = {
         "props": {
             "timestamp": start_time,
@@ -171,10 +161,10 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
                 "verb": request.method,
                 "path": quote(str(request.url.path)),
                 "query_params": dict(request.query_params.items()),
-                "headers": request_headers,
+                "headers": dict(request.headers.items()),
             },
             "response": {
-                "headers": response_headers,
+                "headers": dict(response.headers.items()),
                 "http_status": response.status_code,
             },
         }
