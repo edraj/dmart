@@ -25,6 +25,7 @@ class Plugin(PluginBase):
                 ("personal", f"people/{data.shortname}", "private"),
                 ("personal", f"people/{data.shortname}", "protected"),
                 ("personal", f"people/{data.shortname}", "public"),
+                ("personal", f"people/{data.shortname}", "inbox"),
             ]
         elif data.resource_type == ResourceType.space:
             # sys_schemas = ["meta_schema", "folder_rendering"]
