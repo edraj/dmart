@@ -11,6 +11,7 @@ from utils.settings import settings
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
+        print("------------------------------------------------------", data)
         if not isinstance(data.shortname, str):
             logger.error("data.shortname is None and str is required at local_notification")
             return
