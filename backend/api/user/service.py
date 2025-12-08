@@ -176,6 +176,15 @@ async def send_email(from_address: str, to_address: str, message: str, subject: 
 async def get_shortname_from_identifier(key, value):
     if isinstance(value, str) and isinstance(key, str):
         shortname = await db.get_user_by_criteria(key, value)
+        if shortname is None:
+            raise Exception(
+                status.HTTP_404_NOT_FOUND,
+                Error(
+                    type="auth",
+                    code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+                    message="User not found",
+                )
+            )
         if not (await db.is_user_verified(shortname, key)):
             raise Exception(
                 status.HTTP_401_UNAUTHORIZED,
