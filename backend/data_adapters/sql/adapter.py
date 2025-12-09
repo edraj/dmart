@@ -272,7 +272,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 text("(" + p + ") ILIKE :search")
             ).params(search=f"%{query.search}%")
         else:
-            search_tokens = parse_search_string(query.search, table)
+            search_tokens = parse_search_string(query.search)
 
             try:
                 table_columns = set(c.name for c in table.__table__.columns)  # type: ignore[attr-defined]

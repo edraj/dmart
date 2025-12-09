@@ -221,7 +221,7 @@ def is_date_time_value(value):
     return False, None
 
 
-def parse_search_string(string, entity):
+def parse_search_string(string):
     result = {}
     terms = string.split()
 
