@@ -228,7 +228,8 @@ async def set_user_profile(profile, profile_user, user):
         user.description = profile_user.description.model_dump()
     if "language" in profile.attributes:
         user.language = profile_user.language
-
+    if "is_active" in profile.attributes:
+        user.is_active = profile_user.is_active
     return user
 
 
