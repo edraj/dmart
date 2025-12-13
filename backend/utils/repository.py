@@ -1,6 +1,9 @@
 import os
 import re
 import sys
+import asyncio
+import json
+import subprocess
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -36,14 +39,61 @@ async def serve_query(
 
     if query.jq_filter:
         try:
-            jq = __import__("jq")
+            def _run_jq_subprocess() -> list:
+                _input_local = [record.model_dump() for record in records]
+                _input_local = jq_dict_parser(_input_local)
+                input_json = json.dumps(_input_local)
 
-            _input = [record.model_dump() for record in records]
-            _input = jq_dict_parser(_input)
+                cmd = ["jq", "-c", query.jq_filter]
 
-            records = jq.compile(query.jq_filter).input(_input).all()
+                try:
+                    completed = subprocess.run(
+                        cmd, # type: ignore
+                        input=input_json.encode("utf-8"),
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        timeout=settings.jq_timeout,
+                        check=False,
+                    )
+                except subprocess.TimeoutExpired:
+                    raise api.Exception(
+                        status.HTTP_400_BAD_REQUEST,
+                        api.Error(
+                            type="request",
+                            code=InternalErrorCode.JQ_TIMEOUT,
+                            message="jq filter took too long to execute",
+                        ),
+                    )
 
-        except ModuleNotFoundError:
+                if completed.returncode != 0:
+                    raise api.Exception(
+                        status.HTTP_400_BAD_REQUEST,
+                        api.Error(
+                            type="request",
+                            code=InternalErrorCode.JQ_ERROR,
+                            message="jq filter failed to be executed",
+                        ),
+                    )
+
+                stdout = completed.stdout.decode("utf-8")
+                results: list = []
+                if stdout.startswith("[") and stdout.endswith("]\n"):
+                    results = json.loads(stdout)
+                else:
+                    for line in stdout.splitlines():
+                        line = line.strip()
+                        if not line:
+                            continue
+                        results.append(json.loads(line))
+                return results
+
+            loop = asyncio.get_running_loop()
+            records = await asyncio.wait_for(
+                loop.run_in_executor(None, _run_jq_subprocess),
+                timeout=settings.jq_timeout,
+            )
+
+        except FileNotFoundError:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(

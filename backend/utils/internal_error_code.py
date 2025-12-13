@@ -55,3 +55,5 @@ class InternalErrorCode:
     NOT_AUTHENTICATED = 49
     SESSION = 50
     OBJECT_NOT_SAVED = 51
+    JQ_TIMEOUT = 120
+    JQ_ERROR = 121
