@@ -48,7 +48,7 @@ async def serve_query(
 
                 try:
                     completed = subprocess.run(
-                        cmd,
+                        cmd, # type: ignore
                         input=input_json.encode("utf-8"),
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
