@@ -77,6 +77,7 @@ class Settings(BaseSettings):
     max_query_limit: int = 10000
     session_inactivity_ttl: int = 0 # Set initially to 0 to disable session timeout. Possible value : 60 * 60 * 24 * 7  # 7 days
     request_timeout: int = 35 # In seconds the time of dmart requests.
+    jq_timeout: int = 2 # secs
 
     url_shorter_expires: int = 60 * 60 * 48  # 48 hours
 

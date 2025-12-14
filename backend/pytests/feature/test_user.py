@@ -205,8 +205,8 @@ async def test_login_with_otp_unresolvable_identifier(client: AsyncClient):
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
 
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert json_response["error"]["code"] == InternalErrorCode.USER_ISNT_VERIFIED
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert json_response["error"]["code"] == InternalErrorCode.SHORTNAME_DOES_NOT_EXIST
 
 
 
