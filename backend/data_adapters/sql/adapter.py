@@ -1511,14 +1511,14 @@ class SQLAdapter(BaseDataAdapter):
             parts = [p.strip() for p in expr.split(':', 1)]
             if len(parts) != 2:
                 raise ValueError(f"Invalid join_on expression: {expr}")
-            l, r = parts[0], parts[1]
-            l_arr = l.endswith('[]')
-            r_arr = r.endswith('[]')
+            left, right = parts[0], parts[1]
+            _l_arr = left.endswith('[]')
+            _r_arr = right.endswith('[]')
             if l_arr:
-                l = l[:-2]
+                l = left[:-2]
             if r_arr:
-                r = r[:-2]
-            return l, l_arr, r, r_arr
+                right = right[:-2]
+            return left, _l_arr, right, _r_arr
 
         def get_values_from_record(rec: core.Record, path: str, array_hint: bool) -> list:
             if path in ("shortname", "resource_type", "subpath", "uuid"):
@@ -1550,9 +1550,9 @@ class SQLAdapter(BaseDataAdapter):
 
         import models.api as api
         for join_item in joins:
-            join_on = getattr(join_item, 'join_on', None) or join_item.get('join_on')
-            alias = getattr(join_item, 'alias', None) or join_item.get('alias')
-            q = getattr(join_item, 'query', None) if hasattr(join_item, 'query') else join_item.get('query')
+            join_on = getattr(join_item, 'join_on', None)
+            alias = getattr(join_item, 'alias', None)
+            q = getattr(join_item, 'query', None)
             if not join_on or not alias or q is None:
                 continue
 
