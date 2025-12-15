@@ -811,7 +811,6 @@ class SQLAdapter(BaseDataAdapter):
                  ) -> tuple[Path, str]:
         return (Path(), "")
 
-
     def __init__(self):
         self.engine = create_async_engine(
             URL.create(
@@ -850,7 +849,6 @@ class SQLAdapter(BaseDataAdapter):
             yield async_session
         finally:
             await async_session.close() # type: ignore
-
 
     def get_table(
             self, class_type: Type[MetaChild]
@@ -1138,7 +1136,6 @@ class SQLAdapter(BaseDataAdapter):
                         func.sum(statement_total.c["count"]).label('total_count')
                     )
 
-
                 _total = (await session.execute(statement_total)).one()
 
                 total = int(_total[0])
@@ -1210,7 +1207,6 @@ class SQLAdapter(BaseDataAdapter):
             print("[!load]", e)
             logger.error(f"Failed parsing an entry. Error: {e}")
         return class_type.model_validate(result.model_dump())
-
 
     async def load(
             self,
@@ -1286,7 +1282,6 @@ class SQLAdapter(BaseDataAdapter):
                     if entity["subpath"] != "/" and entity["subpath"].endswith("/"):
                         entity["subpath"] = entity["subpath"][:-1]
                     entity["subpath"] = subpath_checker(entity["subpath"])
-
 
                 entity['resource_type'] = meta.__class__.__name__.lower()
                 data = self.get_base_model(meta.__class__, entity)
@@ -1765,9 +1760,12 @@ class SQLAdapter(BaseDataAdapter):
         async with self.get_session() as session:
             match action:
                 case LockAction.lock:
-                    statement = select(Locks).where(Locks.space_name == space_name) \
-                        .where(Locks.subpath == subpath) \
+                    statement = (
+                        select(Locks)
+                        .where(Locks.space_name == space_name)
+                        .where(Locks.subpath == subpath)
                         .where(Locks.shortname == shortname)
+                    )
                     result = (await session.execute(statement)).one_or_none()
                     if result:
                         raise api.Exception(
@@ -1776,7 +1774,7 @@ class SQLAdapter(BaseDataAdapter):
                                 type="lock",
                                 code=InternalErrorCode.LOCKED_ENTRY,
                                 message="entry already locked already exists!",
-                            )
+                            ),
                         )
 
                     lock = Locks(
@@ -1840,7 +1838,6 @@ class SQLAdapter(BaseDataAdapter):
                 print("[!set_sql_user_session]", e)
                 return False
 
-
     async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
         async with self.get_session() as session:
             statement = select(Sessions) \
@@ -1864,7 +1861,6 @@ class SQLAdapter(BaseDataAdapter):
                 else:
                     await session.execute(delete(Sessions).where(col(Sessions.uuid) == r.uuid))
         return len(results), None
-
 
     async def remove_user_session(self, user_shortname: str) -> bool:
         async with self.get_session() as session:
@@ -2104,7 +2100,6 @@ class SQLAdapter(BaseDataAdapter):
         current_user = None
         if action is api.RequestType.update and record.resource_type is ResourceType.user:
             current_user = await self.load(space_name, record.subpath, record.shortname, core.User)
-
 
         for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
             query_string = ""
@@ -2375,11 +2370,16 @@ class SQLAdapter(BaseDataAdapter):
 
         if not payload_dict:
             try:
-                body = str(meta.payload.body) if meta and meta.payload else ""
-                mydict = await self.load_resource_payload(
-                    space_name, subpath, body, core.Content
-                )
-                payload_dict = mydict if mydict else {}
+                if meta.payload and isinstance(meta.payload.body, dict):
+                    # Payload body is already loaded
+                    payload_dict = meta.payload.body
+                    
+                elif meta.payload and isinstance(meta.payload.body, str):
+                    # Payload body is the filename string
+                    mydict = await self.load_resource_payload(
+                        space_name, subpath, meta.payload.body, type(meta)
+                    )
+                    payload_dict = mydict if mydict else {}
             except Exception:
                 pass
 
