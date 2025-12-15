@@ -62,12 +62,20 @@ class Plugin(PluginBase):
             folders = [(data.shortname, "/", "schema")]
 
         for folder in folders:
-            await db.internal_save_model(
+            existing_folder = await db.load_or_none(
                 space_name=folder[0],
                 subpath=folder[1],
-                meta=Folder(
-                    shortname=folder[2],
-                    is_active=True,
-                    owner_shortname=data.user_shortname,
-                ),
+                shortname=folder[2],
+                class_type=Folder,
+                user_shortname=data.user_shortname,
             )
+            if existing_folder is None:
+                await db.internal_save_model(
+                    space_name=folder[0],
+                    subpath=folder[1],
+                    meta=Folder(
+                        shortname=folder[2],
+                        is_active=True,
+                        owner_shortname=data.user_shortname,
+                    ),
+                )
