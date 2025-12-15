@@ -78,6 +78,12 @@ class RedisAggregate(BaseModel):
     load: list = []
 
 
+class JoinQuery(BaseModel):
+    join_on: str
+    alias: str
+    query: Any
+
+
 class Query(BaseModel):
     __pydantic_extra__ = None
     type: QueryType
@@ -107,6 +113,7 @@ class Query(BaseModel):
     limit: int = 10
     offset: int = 0
     aggregation_data: RedisAggregate | None = None
+    join: list[JoinQuery] | None = None
 
     # Replace -1 limit by settings.max_query_limit
     def __init__(self, **data):
@@ -142,6 +149,8 @@ class Query(BaseModel):
             ]
         }
     }
+
+    JoinQuery.model_rebuild()
 
 
 class Error(BaseModel):
