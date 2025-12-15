@@ -1488,6 +1488,12 @@ class SQLAdapter(BaseDataAdapter):
 
             results = await self._set_query_final_results(query, results)
 
+            if getattr(query, 'join', None):
+                try:
+                    results = await self._apply_client_joins(results, query.join, user_shortname or "anonymous")
+                except Exception as e:
+                    print("[!client_join]", e)
+
         except Exception as e:
             print("[!!query]", e)
             raise api.Exception(
@@ -1499,6 +1505,93 @@ class SQLAdapter(BaseDataAdapter):
                 ),
             )
         return total, results
+
+    async def _apply_client_joins(self, base_records: list[core.Record], joins: list[api.JoinQuery], user_shortname: str) -> list[core.Record]:
+        def parse_join_on(expr: str) -> tuple[str, bool, str, bool]:
+            parts = [p.strip() for p in expr.split(':', 1)]
+            if len(parts) != 2:
+                raise ValueError(f"Invalid join_on expression: {expr}")
+            l, r = parts[0], parts[1]
+            l_arr = l.endswith('[]')
+            r_arr = r.endswith('[]')
+            if l_arr:
+                l = l[:-2]
+            if r_arr:
+                r = r[:-2]
+            return l, l_arr, r, r_arr
+
+        def get_values_from_record(rec: core.Record, path: str, array_hint: bool) -> list:
+            if path in ("shortname", "resource_type", "subpath", "uuid"):
+                val = getattr(rec, path, None)
+            elif path == "space_name":
+                val = rec.attributes.get("space_name") if rec.attributes else None
+            else:
+                container = rec.attributes or {}
+                val = get_nested_value(container, path)
+
+            if val is None:
+                return []
+            if isinstance(val, list):
+                out = []
+                for item in val:
+                    if isinstance(item, (str, int, float, bool)) or item is None:
+                        out.append(item)
+                return out
+
+            if array_hint:
+                return [val]
+            return [val]
+
+        for rec in base_records:
+            if rec.attributes is None:
+                rec.attributes = {}
+            if rec.attributes.get('join') is None:
+                rec.attributes['join'] = {}
+
+        import models.api as api
+        for join_item in joins:
+            join_on = getattr(join_item, 'join_on', None) or join_item.get('join_on')
+            alias = getattr(join_item, 'alias', None) or join_item.get('alias')
+            q = getattr(join_item, 'query', None) if hasattr(join_item, 'query') else join_item.get('query')
+            if not join_on or not alias or q is None:
+                continue
+
+            sub_query = q if isinstance(q, api.Query) else api.Query.model_validate(q)
+
+            _total, right_records = await self.query(sub_query, user_shortname)
+
+            l_path, l_arr, r_path, r_arr = parse_join_on(join_on)
+
+            right_index: dict[str, list[core.Record]] = {}
+            for rr in right_records:
+                r_vals = get_values_from_record(rr, r_path, r_arr)
+                for v in r_vals:
+                    if v is None:
+                        continue
+                    key = str(v)
+                    right_index.setdefault(key, []).append(rr)
+
+            for br in base_records:
+                l_vals = get_values_from_record(br, l_path, l_arr)
+                matched: list[core.Record] = []
+                for v in l_vals:
+                    if v is None:
+                        continue
+                    key = str(v)
+                    if key in right_index:
+                        matched.extend(right_index[key])
+
+                seen = set()
+                unique_matched: list[core.Record] = []
+                for m in matched:
+                    uid = f"{m.space_name if hasattr(m, 'space_name') else ''}:{m.subpath}:{m.shortname}:{m.resource_type}"
+                    if uid in seen:
+                        continue
+                    seen.add(uid)
+                    unique_matched.append(m)
+                br.attributes['join'][alias] = unique_matched
+
+        return base_records
 
     async def load_or_none(
             self,
