@@ -1514,9 +1514,9 @@ class SQLAdapter(BaseDataAdapter):
             left, right = parts[0], parts[1]
             _l_arr = left.endswith('[]')
             _r_arr = right.endswith('[]')
-            if l_arr:
+            if _l_arr:
                 left = left[:-2]
-            if r_arr:
+            if _r_arr:
                 right = right[:-2]
             return left, _l_arr, right, _r_arr
 
