@@ -53,7 +53,7 @@ async def set_alibaba_cookie(client):
 async def init_test_db(client) -> None:
     # Create the space
     await client.post(
-        "managed/space",
+        "managed/request",
         json={
             "space_name": DEMO_SPACE,
             "request_type": RequestType.create,
@@ -88,7 +88,7 @@ async def init_test_db(client) -> None:
 
 async def delete_space(client) -> None:
     headers = {"Content-Type": "application/json"}
-    endpoint = "/managed/space"
+    endpoint = "/managed/request"
     request_data = {
         "space_name": DEMO_SPACE,
         "request_type": RequestType.delete,

@@ -170,11 +170,11 @@ async def test_otp_login_invalid_otp(client: AsyncClient):
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert json_response.get("status") == "failed"
     assert json_response.get("error", {}).get("type") == "auth"
-    assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_ISSUE
-    assert json_response.get("error", {}).get("message") == "Invalid OTP code."
+    assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_INVALID
+    assert json_response.get("error", {}).get("message") == "Wrong OTP"
 
 
 @pytest.mark.run(order=1)
@@ -205,8 +205,8 @@ async def test_login_with_otp_unresolvable_identifier(client: AsyncClient):
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
 
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert json_response["error"]["code"] == InternalErrorCode.USER_ISNT_VERIFIED
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert json_response["error"]["code"] == InternalErrorCode.SHORTNAME_DOES_NOT_EXIST
 
 
 
@@ -221,9 +221,9 @@ async def test_login_with_empty_otp_field(client: AsyncClient):
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert json_response["error"]["code"] == InternalErrorCode.OTP_ISSUE
-    assert json_response["error"]["message"] == "Invalid OTP code."
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert json_response["error"]["code"] == InternalErrorCode.OTP_INVALID
+    assert json_response["error"]["message"] == "Wrong OTP"
 
 
 @pytest.mark.run(order=1)
@@ -234,7 +234,7 @@ async def test_login_with_otp_but_missing_identifier(client: AsyncClient):
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert json_response["error"]["code"] == InternalErrorCode.OTP_ISSUE
-    assert json_response["error"]["message"] == "Either msisdn or email must be provided."
+    assert json_response["error"]["message"] == "Either msisdn, email or shortname must be provided."
 
 
 @pytest.mark.run(order=1)

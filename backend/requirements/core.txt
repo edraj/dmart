@@ -14,10 +14,11 @@ asgi-correlation-id
 pydantic-settings
 fastapi-sso
 sqlmodel
-psycopg
+psycopg[binary]
 asyncpg
 greenlet
 alembic
 jinja2
 pytest-cov
 argon2-cffi
+orjson

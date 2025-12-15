@@ -69,12 +69,12 @@ RESULT+=$?
 
 echo -n -e "Delete dummy space: \t\t" >&2
 DELETE=$(jq -c -n '{ "space_name": "dummy", "request_type": "delete", "records": [{ "resource_type": "space", "subpath": "/", "shortname": "dummy","attributes": {} } ]}')
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$DELETE" ${API_URL}/managed/space | jq .status | tee /dev/stderr | grep -q "success"
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$DELETE" ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 # RESULT+=$?
 
 echo -n -e "Create a new space (dummy): \t" >&2
 CREATE=$(jq -c -n '{ "space_name": "dummy", "request_type": "create", "records": [{ "resource_type": "space", "subpath": "/", "shortname": "dummy","attributes": {"hide_space": true} } ]}')
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$CREATE" ${API_URL}/managed/space | jq .status | tee /dev/stderr | grep -q "success"
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$CREATE" ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
 echo -n -e "Query spaces: \t\t\t" >&2
@@ -185,7 +185,7 @@ RESULT+=$?
 
 echo -n -e "Delete dummy space: \t\t" >&2
 DELETE=$(jq -c -n '{ "space_name": "dummy", "request_type": "delete", "records": [{ "resource_type": "space", "subpath": "/", "shortname": "dummy","attributes": {} } ]}')
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$DELETE" ${API_URL}/managed/space | jq .status | tee /dev/stderr | grep -q "success"
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d "$DELETE" ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
 echo -n -e "Server manifest: " >&2

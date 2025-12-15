@@ -12,11 +12,10 @@ from datetime import datetime
 from io import StringIO, BytesIO
 from pathlib import Path as FilePath
 from re import sub as res_sub
-from time import time
+# from time import time
 from typing import Any, Callable
-
 from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, ORJSONResponse
 from starlette.responses import FileResponse, StreamingResponse
 
 import models.api as api
@@ -26,8 +25,8 @@ import utils.repository as repository
 from api.managed.utils import (
     create_or_update_resource_with_payload_handler,
     csv_entries_prepare_docs,
-    data_asset_attachments_handler,
-    data_asset_handler,
+    # data_asset_attachments_handler,
+    # data_asset_handler,
     get_mime_type,
     get_resource_content_type_from_payload_content_type,
     handle_update_state,
@@ -39,15 +38,13 @@ from api.managed.utils import (
     serve_request_update_acl,
     serve_request_patch,
     serve_request_update_r_replace,
-    serve_space_create,
-    serve_space_delete,
-    serve_space_update,
     update_state_handle_resolution,
+    iter_bytesio
 )
 from data_adapters.adapter import data_adapter as db
 from models.enums import (
     ContentType,
-    DataAssetType,
+    # DataAssetType,
     LockAction,
     RequestType,
     ResourceType,
@@ -56,7 +53,7 @@ from models.enums import (
 from utils.access_control import access_control
 from utils.helpers import (
     camel_case,
-    csv_file_to_json,
+    # csv_file_to_json,
     flatten_dict,
 )
 from utils.internal_error_code import InternalErrorCode
@@ -66,7 +63,7 @@ from utils.router_helper import is_space_exist
 from utils.settings import settings
 from data_adapters.sql.json_to_db_migration import main as json_to_db_main
 
-router = APIRouter()
+router = APIRouter(default_response_class=ORJSONResponse)
 
 @router.post(
     "/import",
@@ -180,12 +177,6 @@ async def generate_csv_from_report_saved_query(
         json_data.append(flatten_dict(r.attributes))
 
     v_path = StringIO()
-    if len(json_data) == 0:
-        return api.Response(
-            status=api.Status.success,
-            records=records,
-            attributes={"message": "The records are empty"},
-        )
 
     keys: set = set({})
     for row in json_data:
@@ -276,12 +267,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
     )
 
-    if len(json_data) == 0:
-        return api.Response(
-            status=api.Status.success,
-            attributes={"message": "The records are empty"},
-        )
-
     keys = [key for key in keys if keys_existence[key]]
     v_path = StringIO()
     v_path.write(codecs.BOM_UTF8.decode('utf-8'))
@@ -302,50 +287,50 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     return response
 
 
-@router.post("/space", response_model=api.Response, response_model_exclude_none=True)
-async def serve_space(
-        request: api.Request, owner_shortname=Depends(JWTBearer())
-) -> api.Response:
-    record = request.records[0]
-    history_diff = {}
-    _record = None
-    match request.request_type:
-        case api.RequestType.create:
-            _record = await serve_space_create(request, record, owner_shortname)
-
-        case api.RequestType.update:
-            history_diff = await serve_space_update(request, record, owner_shortname)
-
-        case api.RequestType.delete:
-            await serve_space_delete(request, record, owner_shortname)
-
-        case _:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.UNMATCHED_DATA,
-                    message="mismatch with the information provided",
-                ),
-            )
-
-    await db.initialize_spaces()
-
-    await access_control.load_permissions_and_roles()
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=record.shortname,
-            subpath=record.subpath,
-            shortname=record.shortname,
-            action_type=core.ActionType(request.request_type),
-            resource_type=ResourceType.space,
-            user_shortname=owner_shortname,
-            attributes={"history_diff": history_diff},
-        )
-    )
-
-    return api.Response(status=api.Status.success, records=[_record if _record else record])
+# @router.post("/space", response_model=api.Response, response_model_exclude_none=True)
+# async def serve_space(
+#         request: api.Request, owner_shortname=Depends(JWTBearer())
+# ) -> api.Response:
+#     record = request.records[0]
+#     history_diff = {}
+#     _record = None
+#     match request.request_type:
+#         case api.RequestType.create:
+#             _record = await serve_space_create(request, record, owner_shortname)
+#
+#         case api.RequestType.update:
+#             history_diff = await serve_space_update(request, record, owner_shortname)
+#
+#         case api.RequestType.delete:
+#             await serve_space_delete(request, record, owner_shortname)
+#
+#         case _:
+#             raise api.Exception(
+#                 status.HTTP_400_BAD_REQUEST,
+#                 api.Error(
+#                     type="request",
+#                     code=InternalErrorCode.UNMATCHED_DATA,
+#                     message="mismatch with the information provided",
+#                 ),
+#             )
+#
+#     await db.initialize_spaces()
+#
+#     await access_control.load_permissions_and_roles()
+#
+#     await plugin_manager.after_action(
+#         core.Event(
+#             space_name=record.shortname,
+#             subpath=record.subpath,
+#             shortname=record.shortname,
+#             action_type=core.ActionType(request.request_type),
+#             resource_type=ResourceType.space,
+#             user_shortname=owner_shortname,
+#             attributes={"history_diff": history_diff},
+#         )
+#     )
+#
+#     return api.Response(status=api.Status.success, records=[_record if _record else record])
 
 
 @router.post("/query", response_model=api.Response, response_model_exclude_none=True)
@@ -390,7 +375,8 @@ async def serve_request(
         owner_shortname=Depends(JWTBearer()),
         is_internal: bool = False,
 ) -> api.Response:
-    await is_space_exist(request.space_name)
+    for r in request.records:
+        await is_space_exist(request.space_name, not (request.request_type == RequestType.create and r.resource_type == ResourceType.space))
 
     if not request.records:
         raise api.Exception(
@@ -519,9 +505,9 @@ async def update_state(
             ticket_obj = await update_state_handle_resolution(ticket_obj, workflows_payload, response, resolution)
 
         new_version_flattend = flatten_dict(ticket_obj.model_dump())
-        new_version_flattend.pop("payload.body", None)
-        new_version_flattend.update(
-            flatten_dict({"payload.body": ticket_obj}))
+        # new_version_flattend.pop("payload.body", None)
+        # new_version_flattend.update(
+        #     flatten_dict({"payload.body": ticket_obj.model_dump(mode='json')}))
 
         if comment:
             time = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -685,13 +671,13 @@ async def retrieve_entry_or_attachment_payload(
             attributes=meta.payload.body,
         )
 
-    data = await db.get_media_attachment(space_name, subpath, shortname)
+    data: BytesIO | None = await db.get_media_attachment(space_name, subpath, shortname)
     if data:
         if meta.payload.body.endswith(".svg"):
-            mine_type = "image/svg+xml"
+            mime_type = "image/svg+xml"
         else:
-            mine_type = get_mime_type(meta.payload.content_type)
-        return StreamingResponse(data, media_type=mine_type)
+            mime_type = get_mime_type(meta.payload.content_type)
+        return StreamingResponse(iter_bytesio(data), media_type=mime_type)
     return api.Response(status=api.Status.failed)
 
 @router.post(
@@ -772,13 +758,39 @@ async def create_or_update_resource_with_payload(
         )
     await payload_file.seek(0)
     resource_obj, record = await create_or_update_resource_with_payload_handler(
-            record, owner_shortname, space_name, payload_file, payload_filename, checksum, sha, resource_content_type
+        record, owner_shortname, space_name, payload_file, payload_filename, checksum, sha, resource_content_type
     )
+    try:
+        _attachement = await db.load(
+            space_name,
+            record.subpath,
+            record.shortname,
+            getattr(sys.modules["models.core"], camel_case(record.resource_type)),
+            owner_shortname
+        )
 
-    await db.save(space_name, record.subpath, resource_obj)
-    await db.save_payload(
-        space_name, record.subpath, resource_obj, payload_file
-    )
+        resource_meta = core.Meta.from_record(
+            record=record, owner_shortname=owner_shortname
+        )
+        resource_meta.payload = resource_obj.payload
+
+        if resource_obj.payload and isinstance(resource_obj.payload.body, dict):
+            await db.update_payload(
+                space_name,
+                record.subpath,
+                resource_meta,
+                resource_obj.payload.body,
+                owner_shortname
+            )
+        await db.save_payload(
+            space_name, record.subpath, resource_obj, payload_file
+        )
+    except api.Exception as e:
+        if e.error.code == InternalErrorCode.OBJECT_NOT_FOUND:
+            await db.save(space_name, record.subpath, resource_obj)
+            await db.save_payload(
+                space_name, record.subpath, resource_obj, payload_file
+            )
 
     await plugin_manager.after_action(
         core.Event(
@@ -811,6 +823,7 @@ async def import_resources_from_csv(
         space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
         subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
         schema_shortname = None,
+        is_update: bool = False,
         owner_shortname=Depends(JWTBearer()),
 ):
     contents = await resources_file.read()
@@ -868,7 +881,7 @@ async def import_resources_from_csv(
             await serve_request(
                 request=api.Request(
                     space_name=space_name,
-                    request_type=RequestType.create,
+                    request_type=RequestType.update if is_update else RequestType.create,
                     records=[record],
                 ),
                 owner_shortname=owner_shortname,
@@ -1384,7 +1397,7 @@ async def apply_alteration(
     )
     return response
 
-
+"""
 @router.post("/data-asset")
 async def data_asset(
         query: api.DataAssetQuery,
@@ -1524,3 +1537,5 @@ async def data_asset_single(
         response.headers["Content-Disposition"] = "attachment; filename=data.csv"
 
     return response
+
+"""

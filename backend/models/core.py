@@ -187,7 +187,7 @@ class ACL(BaseModel):
 class Meta(Resource):
     uuid: UUID = Field(default_factory=uuid4)
     shortname: str = Field(pattern=regex.SHORTNAME)
-    slug: str | None = Field(default=None, pattern=regex.SHORTNAME)
+    slug: str | None = Field(default=None, pattern=regex.SLUG)
     is_active: bool = False
     displayname: Translation | None = None
     description: Translation | None = None
@@ -341,6 +341,7 @@ class User(Actor):
     google_id: str | None = None
     facebook_id: str | None = None
     social_avatar_url: str | None = None
+    last_login: dict | None = None
 
     @staticmethod
     def invitation_url_template() -> str:
@@ -456,6 +457,7 @@ class Permission(Meta):
     conditions: list[ConditionType] = list()
     restricted_fields: list[str] = []
     allowed_fields_values: dict[str, list[str] | list[list[str]]] = {}
+    filter_fields_values: str | None = None
 
 
 class Role(Meta):
@@ -552,8 +554,10 @@ class Notification(Meta):
                 == "admin_notification_request"
         ):
             notification_type = NotificationType.admin
-        else:
+        elif notification_req["payload"]["schema_shortname"] == "system_notification_request":
             notification_type = NotificationType.system
+        else:
+            notification_type = NotificationType.admin
 
         entry_locator = None
         if entry:
@@ -575,6 +579,6 @@ class Notification(Meta):
             owner_shortname=notification_req["owner_shortname"],
             type=notification_type,
             is_read=False,
-            priority=notification_req["priority"],
+            priority=notification_req["payload"]["body"]["priority"],
             entry=entry_locator,
         )

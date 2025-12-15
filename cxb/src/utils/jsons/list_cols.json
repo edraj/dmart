@@ -1,0 +1,32 @@
+{
+  "shortname": {
+    "path": "shortname",
+    "title": "shortname",
+    "type": "string",
+    "width": "20%"
+  },
+  "resource_type": {
+    "path": "resource_type",
+    "title": "Resource type",
+    "type": "string",
+    "width": "20%"
+  },
+  "owner_shortname": {
+    "path": "attributes.payload.schema_shortname",
+    "title": "Schema shortname",
+    "type": "string",
+    "width": "20%"
+  },
+  "created_at": {
+    "path": "attributes.created_at",
+    "title": "Created At",
+    "type": "string",
+    "width": "20%"
+  },
+  "updated_at": {
+    "path": "attributes.updated_at",
+    "title": "Updated At",
+    "type": "string",
+    "width": "20%"
+  }
+}

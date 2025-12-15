@@ -123,7 +123,7 @@ def validate_search_range(v_str):
         # Date with hours, minutes, and seconds: [2025-04-28T12:30:45 2025-01-15T09:45:30] or [2025-04-28T12:30:45,2025-01-15T09:45:30]
         r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]$",
         # Full ISO format with microseconds: [2025-04-28T12:30:45.123456 2025-01-15T09:45:30.654321] or [2025-04-28T12:30:45.123456,2025-01-15T09:45:30.654321]
-        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\]$"
+        r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[\s,]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\]$",
     ]
 
     for pattern in date_patterns:
@@ -135,9 +135,7 @@ def validate_search_range(v_str):
                 range_values = v_str[1:-1].split()
             return True, range_values
 
-    # Check for general numeric range pattern after checking date patterns
-    if re.match(r"^\[\d+[\s,]\d+\]$", v_str):
-        # Split on either space or comma
+    if re.match(r"^\[-?\d+(?:\.\d+)?[\s,]-?\d+(?:\.\d+)?\]$", v_str):
         if ',' in v_str[1:-1]:
             v_list = v_str[1:-1].split(',')
         else:
@@ -201,13 +199,6 @@ def get_next_date_value(value, format_string):
     return value
 
 
-def is_numeric_value(value):
-    try:
-        float(value)
-        return True
-    except ValueError:
-        return False
-
 
 def is_date_time_value(value):
     patterns = [
@@ -230,7 +221,7 @@ def is_date_time_value(value):
     return False, None
 
 
-def parse_search_string(string, entity):
+def parse_search_string(string):
     result = {}
     terms = string.split()
 
@@ -252,18 +243,17 @@ def parse_search_string(string, entity):
         if is_range:
             value_type = 'string'
             format_strings = {}
-            all_numeric = True
 
+            all_numeric = True
             for val in range_values:
                 is_datetime, format_string = is_date_time_value(val)
                 if is_datetime:
                     value_type = 'datetime'
                     format_strings[val] = format_string
-                    all_numeric = False
-                elif not is_numeric_value(val):
+                if not re.match(r'^-?\d+(?:\.\d+)?$', val):
                     all_numeric = False
 
-            if all_numeric and value_type == 'string':
+            if value_type != 'datetime' and all_numeric:
                 value_type = 'numeric'
 
             field_data = {
@@ -284,26 +274,21 @@ def parse_search_string(string, entity):
         values = value.split('|')
         operation = 'OR' if len(values) > 1 else 'AND'
 
-        value_type = 'string'  # Default type
+        value_type = 'string'  # Default type 
         format_strings = {}
         all_boolean = True
-        all_numeric = True
+        
         for i, val in enumerate(values):
             is_datetime, format_string = is_date_time_value(val)
             if is_datetime:
                 value_type = 'datetime'
                 format_strings[val] = format_string
                 all_boolean = False
-                all_numeric = False
             elif val.lower() not in ['true', 'false']:
                 all_boolean = False
-            if not is_numeric_value(val):
-                all_numeric = False
 
         if all_boolean and value_type == 'string':
             value_type = 'boolean'
-        elif all_numeric and value_type == 'string':
-            value_type = 'numeric'
 
         if field not in result:
             field_data = {
@@ -340,7 +325,6 @@ def parse_search_string(string, entity):
                     if 'format_strings' not in result[field]:
                         result[field]['format_strings'] = {}
                     result[field]['format_strings'].update(format_strings)
-
     return result
 
 
@@ -477,3 +461,31 @@ def set_table_for_query(query):
                 return Entries
     else:
         return Entries
+
+
+def build_query_filter_for_allowed_field_values(perm_value) -> str:
+    filters = []
+
+    for k, v in perm_value.items():
+        if isinstance(v, str):
+            filters.append(f"@{k}:{v}")
+        elif isinstance(v, list) and v:
+            flat_values = []
+            for item in v:
+                if isinstance(item, list):
+                    for sub in item:
+                        if isinstance(sub, str) and sub:
+                            flat_values.append(sub)
+                elif isinstance(item, str) and item:
+                    flat_values.append(item)
+            if flat_values:
+                seen_vals = set()
+                uniq_flat_values = []
+                for val in flat_values:
+                    if val not in seen_vals:
+                        seen_vals.add(val)
+                        uniq_flat_values.append(val)
+                values = "|".join(uniq_flat_values)
+                filters.append(f"@{k}:{values}")
+
+    return " ".join(filters)

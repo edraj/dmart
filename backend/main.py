@@ -24,7 +24,7 @@ from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from utils.access_control import access_control
-from fastapi.responses import JSONResponse
+from fastapi.responses import ORJSONResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
 from starlette.concurrency import iterate_in_threadpool
@@ -94,6 +94,7 @@ app = FastAPI(
             "description": "Public api for query and GET access to media",
         },
     ],
+    default_response_class=ORJSONResponse,
 )
 
 
@@ -129,7 +130,7 @@ async def capture_body(request: Request):
 
 @app.exception_handler(StarletteHTTPException)
 async def my_exception_handler(_, exception):
-    return JSONResponse(content=exception.detail, status_code=exception.status_code)
+    return ORJSONResponse(content=exception.detail, status_code=exception.status_code)
 
 
 @app.exception_handler(RequestValidationError)
@@ -148,16 +149,6 @@ app.add_middleware(ChannelMiddleware)
 
 
 def set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body):
-    sensitive = {"authorization", "cookie", "set-cookie", "x-api-key"}
-    request_headers = {
-        k: v for k,v in request.headers.items()
-        if k.lower() not in sensitive
-    }
-
-    response_headers = {
-        k: v for k, v in response.headers.items()
-        if k.lower() not in sensitive 
-    }
     extra = {
         "props": {
             "timestamp": start_time,
@@ -170,10 +161,10 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
                 "verb": request.method,
                 "path": quote(str(request.url.path)),
                 "query_params": dict(request.query_params.items()),
-                "headers": request_headers,
+                "headers": dict(request.headers.items()),
             },
             "response": {
-                "headers": response_headers,
+                "headers": dict(response.headers.items()),
                 "http_status": response.status_code,
             },
         }
@@ -281,24 +272,41 @@ async def middle(request: Request, call_next):
             except Exception:
                 response_body = {}
     except asyncio.TimeoutError:
-        response = JSONResponse(content={'status':'failed',
+        response = ORJSONResponse(content={'status':'failed',
             'error': {"code":504, "message": 'Request processing time excedeed limit'}},
             status_code=status.HTTP_504_GATEWAY_TIMEOUT)
         response_body = json.loads(str(response.body, 'utf8'))
     except api.Exception as e:
-        response = JSONResponse(
-            status_code=e.status_code,
-            content=jsonable_encoder(
-                api.Response(status=api.Status.failed, error=e.error)
-            ),
-        )
+        if settings.active_data_db == 'sql':
+            if e.error.message.startswith('(sqlalchemy.dialects.postgresql'):
+                response = ORJSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "failed",
+                        "error": 'Something went wrong',
+                    },
+                )
+            else:
+                response = ORJSONResponse(
+                    status_code=e.status_code,
+                    content=jsonable_encoder(
+                        api.Response(status=api.Status.failed, error=e.error)
+                    ),
+                )
+        else:
+            response = ORJSONResponse(
+                status_code=e.status_code,
+                content=jsonable_encoder(
+                    api.Response(status=api.Status.failed, error=e.error)
+                ),
+            )
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
         response_body = json.loads(str(response.body, 'utf8'))
     except ValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response = JSONResponse(
+        response = ORJSONResponse(
             status_code=422,
             content={
                 "status": "failed",
@@ -314,7 +322,7 @@ async def middle(request: Request, call_next):
     except SchemaValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response = JSONResponse(
+        response = ORJSONResponse(
             status_code=400,
             content={
                 "status": "failed",
@@ -341,7 +349,7 @@ async def middle(request: Request, call_next):
         error_log = {"type": "general", "code": 99, "message": exception_message}
         if settings.debug_enabled:
             error_log["stack"] = stack
-        response = JSONResponse(
+        response = ORJSONResponse(
             status_code=500,
             content={
                 "status": "failed",
@@ -353,18 +361,21 @@ async def middle(request: Request, call_next):
     response = set_middleware_response_headers(request, response)
 
     user_shortname = "guest"
-    try:
-        user_shortname = str(await JWTBearer().__call__(request))
-    except Exception:
-        if request.url.path == "/user/login":
-            try:
-                body = getattr(request.state, "request_body", {}) or {}
-                if isinstance(body, dict):
-                    shortname_value = body.get("shortname")
-                    if isinstance(shortname_value, str) and shortname_value.strip():
-                        user_shortname = shortname_value
-            except Exception:
-                pass
+    if request.url.path == "/user/login":
+        try:
+            body = getattr(request.state, "request_body", {}) or {}
+            if isinstance(body, dict):
+                shortname_value = body.get("shortname")
+                if isinstance(shortname_value, str) and shortname_value.strip():
+                    user_shortname = shortname_value
+        except Exception:
+            pass
+    else:
+        try:
+            user_shortname = str(await JWTBearer().__call__(request))
+        except Exception:
+            user_shortname = "guest"
+
 
     extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
 
@@ -403,7 +414,7 @@ async def root():
 #    if key == "alpha":
 #        return settings.dict()
 
-
+"""
 @app.get("/spaces-backup", include_in_schema=False)
 async def space_backup(key: str):
     if not key or key != "ABC":
@@ -425,7 +436,7 @@ async def space_backup(key: str):
         "stderr": result_stderr.decode().split("\n"),
     }
     return api.Response(status=api.Status.success, attributes=attributes)
-
+"""
 
 app.include_router(
     user, prefix="/user", tags=["user"], dependencies=[Depends(capture_body)]

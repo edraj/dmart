@@ -107,6 +107,7 @@ class ContentType(StrEnum):
     csv = "csv"
     parquet = "parquet"
     jsonl = "jsonl"
+    apk = "apk"
     duckdb = "duckdb"
     sqlite = "sqlite"
 

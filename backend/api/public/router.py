@@ -2,7 +2,7 @@ import hashlib
 from re import sub as res_sub
 from uuid import uuid4
 from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
-from models.enums import AttachmentType, ContentType, ResourceType, TaskType, PublicSubmitResourceType, RequestType
+from models.enums import AttachmentType, ContentType, ResourceType, TaskType, PublicSubmitResourceType
 from data_adapters.adapter import data_adapter as db
 import models.api as api
 from utils.helpers import camel_case
@@ -10,7 +10,7 @@ from utils.internal_error_code import InternalErrorCode
 import utils.regex as regex
 import models.core as core
 from api.managed.utils import get_mime_type, get_resource_content_type_from_payload_content_type, \
-    create_or_update_resource_with_payload_handler
+    create_or_update_resource_with_payload_handler, iter_bytesio
 from typing import Any, Union, Optional
 import sys
 import re
@@ -22,9 +22,10 @@ from utils.router_helper import is_space_exist
 from utils.settings import settings
 from starlette.responses import FileResponse, StreamingResponse
 
-from utils.ticket_sys_utils import set_init_state_from_request
+from utils.ticket_sys_utils import set_init_state_for_record
+from fastapi.responses import ORJSONResponse
 
-router = APIRouter()
+router = APIRouter(default_response_class=ORJSONResponse)
 
 # Retrieve publically-available content
 
@@ -273,7 +274,7 @@ async def retrieve_entry_or_attachment_payload(
 
     data = await db.get_media_attachment(space_name, subpath, shortname)
     if data:
-        return StreamingResponse(data, media_type=get_mime_type(meta.payload.content_type))
+        return StreamingResponse(iter_bytesio(data), media_type=get_mime_type(meta.payload.content_type))
 
     return api.Response(status=api.Status.failed)
 
@@ -498,24 +499,16 @@ async def create_entry(
                 ),
             )
 
-        record = await set_init_state_from_request(
-            api.Request(
-                space_name=space_name,
-                request_type=RequestType.create,
-                records=[
-                    core.Record(
-                        subpath=subpath,
-                        shortname=shortname,
-                        resource_type=entry_resource_type,
-                        attributes={
-                            "workflow_shortname": workflow_shortname,
-                            **body_dict
-                        }
-                    )
-                ]
-            ),
-            "anonymous"
+        record = core.Record(
+            subpath=subpath,
+            shortname=shortname,
+            resource_type=entry_resource_type,
+            attributes={
+                "workflow_shortname": workflow_shortname,
+                **body_dict
+            }
         )
+        record = await set_init_state_for_record(record, space_name, "anonymous")
         if not record or not record.attributes.get("state"):
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,

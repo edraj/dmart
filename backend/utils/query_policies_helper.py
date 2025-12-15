@@ -1,7 +1,6 @@
 from models.enums import ResourceType, ConditionType
 from utils.settings import settings
 
-
 def generate_query_policies(
         space_name: str,
         subpath: str,
@@ -56,7 +55,8 @@ async def get_user_query_policies(
     db,
     user_shortname: str,
     space_name: str,
-    subpath: str
+    subpath: str,
+    is_space: bool = False,
 ) -> list:
     """
     Generate list of query policies based on user's permissions
@@ -72,13 +72,20 @@ async def get_user_query_policies(
     user_groups = (await db.load_user_meta(user_shortname)).groups or []
     user_groups.append(user_shortname)
 
-    sql_query_policies = []
-    for perm_key, permission in user_permissions.items():
+    filtered_permissions = {
+        perm_key: permission
+        for perm_key, permission in user_permissions.items()
         if (
-                not perm_key.startswith(space_name) and
-                not perm_key.startswith(settings.all_spaces_mw)
-        ):
-            continue
+               is_space or
+               perm_key.startswith(f'{space_name}:{subpath.lstrip("/")}') or
+               perm_key.startswith(f'{space_name}:__all_subpaths__') or
+               perm_key.startswith(settings.all_spaces_mw)
+           )
+           and 'query' in permission.get('allowed_actions', [])
+    }
+
+    sql_query_policies = []
+    for perm_key, permission in filtered_permissions.items():
         perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
         perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
         perm_key = perm_key.strip("/")

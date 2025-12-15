@@ -72,6 +72,18 @@ class AccessControl:
                 user_shortname,
                 entry_shortname
             )
+        
+        if entry_shortname:
+            acl_access = await self.check_access_control_list(
+                space_name,
+                subpath,
+                resource_type,
+                entry_shortname,
+                action_type,
+                user_shortname
+            )
+            if acl_access:
+                return True
         # print("Checking check_space_access access")
         user_permissions = await db.get_user_permissions(user_shortname)
 
@@ -144,12 +156,17 @@ class AccessControl:
         resource_cls = getattr(
             sys.modules["models.core"], camel_case(resource_type)
         )
-        entry = await db.load(
-            space_name=space_name,
-            subpath=subpath,
-            shortname=entry_shortname,
-            class_type=resource_cls
-        )
+        
+        try:
+            entry = await db.load(
+                space_name=space_name,
+                subpath=subpath,
+                shortname=entry_shortname,
+                class_type=resource_cls
+            )
+        except Exception:
+            return False
+            
         if not entry.acl:
             return False
 

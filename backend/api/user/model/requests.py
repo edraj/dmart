@@ -12,21 +12,22 @@ class OTPType(StrEnum):
 
 
 class SendOTPRequest(BaseModel):
+    shortname: str | None = Field(None, pattern=rgx.SHORTNAME)
     msisdn: str | None = Field(None, pattern=rgx.MSISDN)
     email: str | None = Field(None, pattern=rgx.EMAIL)
 
     def check_fields(self) -> Dict[str, str]:
-        if self.email is None and self.msisdn is None:
+        if self.email is None and self.msisdn is None and self.shortname is None:
             raise Exception(
                 422,
                 Error(
                     type="OTP",
                     code=InternalErrorCode.EMAIL_OR_MSISDN_REQUIRED,
-                    message="One of these [email, msisdn] should be set!",
+                    message="One of these [email, msisdn, shortname] should be set!",
                 ),
             )
 
-        if [self.email, self.msisdn].count(None) != 1:
+        if [self.email, self.msisdn, self.shortname].count(None) != 2:
             raise Exception(
                 422,
                 Error(
@@ -40,6 +41,8 @@ class SendOTPRequest(BaseModel):
             return {"msisdn": self.msisdn}
         elif self.email:
             return {"email": self.email}
+        elif self.shortname:
+            return {"shortname": self.shortname}
 
         raise Exception(
             500,

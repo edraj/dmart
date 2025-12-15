@@ -15,6 +15,7 @@ from fastapi.logger import logger
 from sqlalchemy import literal_column, or_
 from sqlalchemy.orm import sessionmaker, defer
 from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean, func, text
+from sqlalchemy import String, cast, bindparam
 import io
 from sys import modules as sys_modules
 import models.api as api
@@ -51,7 +52,8 @@ from data_adapters.sql.adapter_helpers import (
     subpath_checker, parse_search_string,
     sqlite_aggregate_functions, mysql_aggregate_functions,
     postgres_aggregate_functions, transform_keys_to_sql,
-    get_next_date_value, is_date_time_value
+    get_next_date_value, is_date_time_value,
+    # build_query_filter_for_allowed_field_values
 )
 from data_adapters.helpers import get_nested_value, trans_magic_words
 from jsonschema import Draft7Validator
@@ -65,7 +67,7 @@ def query_attachment_aggregation(subpath):
         literal_column("resource_type").label("resource_type"),
         func.count(text("*")).label("count")
     ).group_by(text("resource_type")) \
-     .where(col(Attachments.subpath) == subpath)
+        .where(col(Attachments.subpath) == subpath)
 
 
 def query_aggregation(table, query):
@@ -78,51 +80,79 @@ def query_aggregation(table, query):
     elif "postgresql" in settings.database_driver:
         aggregate_functions = postgres_aggregate_functions
 
-    statement = select(
-        *[
-            getattr(table, ll.replace("@", ""))
-            for ll in query.aggregation_data.load
-        ]
-    )
+    def _normalize_json_path(path: str) -> str:
+        if path.startswith("@"):
+            path = path[1:]
+        if path.startswith("body."):
+            return f"payload.{path}"
+        return path
+
+    def _selectable_for_load(item: str):
+        if item.startswith("@"):
+            col_name = item.replace("@", "")
+            return getattr(table, col_name)
+
+        if hasattr(table, item):
+            return getattr(table, item)
+
+        json_path = _normalize_json_path(item)
+        expr = transform_keys_to_sql(json_path)
+        alias = item.replace(".", "_")
+        return text(expr).label(alias)
+
+    statement = select(*[_selectable_for_load(ll) for ll in query.aggregation_data.load])
 
     if bool(query.aggregation_data.group_by):
-        statement = statement.group_by(
-            *[
-                table.__dict__[column]
-                for column in [
-                    group_by.replace("@", "")
-                    for group_by in query.aggregation_data.group_by
-                ]
-            ]
-        )
+        group_by_exprs = []
+        for gb in query.aggregation_data.group_by:
+            if gb.startswith("@"):
+                group_by_exprs.append(table.__dict__[gb.replace("@", "")])
+            elif hasattr(table, gb):
+                group_by_exprs.append(getattr(table, gb))
+            else:
+                json_path = _normalize_json_path(gb)
+                expr = transform_keys_to_sql(json_path)
+                group_by_exprs.append(text(expr))
+        if group_by_exprs:
+            statement = statement.group_by(*group_by_exprs)
 
     if bool(query.aggregation_data.reducers):
+        agg_selects = []
         for reducer in query.aggregation_data.reducers:
             if reducer.reducer_name in aggregate_functions:
+                field_expr_str: str
                 if len(reducer.args) == 0:
-                    field = "*"
+                    field_expr_str = "*"
                 else:
-                    if not hasattr(table, reducer.args[0]):
-                        continue
-
-                    field = getattr(table, reducer.args[0])
-
-                    if field is None:
-                        continue
-
-                    if isinstance(field.type, Integer) \
-                            or isinstance(field.type, Boolean):
-                        field = f"{field}::int"
-                    elif isinstance(field.type, Float):
-                        field = f"{field}::float"
+                    arg0 = reducer.args[0]
+                    arg0 = _normalize_json_path(arg0)
+                    base_arg = arg0
+                    if hasattr(table, base_arg):
+                        field = getattr(table, base_arg)
+                        if field is None:
+                            continue
+                        if isinstance(field.type, Integer) or isinstance(field.type, Boolean):
+                            field_expr_str = f"{field}::int"
+                        elif isinstance(field.type, Float):
+                            field_expr_str = f"{field}::float"
+                        else:
+                            field_expr_str = f"{field}::text"
                     else:
-                        field = f"{field}::text"
-
-                statement = select(
-                    getattr(func, reducer.reducer_name)(text(field)).label(reducer.alias),
-                    text(f"'{reducer.alias}' AS key")
+                        jp = transform_keys_to_sql(arg0)
+                        if reducer.reducer_name in ("sum", "avg", "total"):
+                            field_expr_str = f"({jp})::float"
+                        elif reducer.reducer_name in ("count", "r_count"):
+                            field_expr_str = "*"
+                        elif reducer.reducer_name in ("min", "max", "group_concat"):
+                            field_expr_str = f"({jp})::text"
+                        else:
+                            field_expr_str = f"({jp})"
+                agg_selects.append(
+                    getattr(func, reducer.reducer_name)(text(field_expr_str)).label(reducer.alias)
                 )
-
+        if agg_selects:
+            cols = list(statement.selected_columns) + agg_selects
+            statement = statement.with_only_columns(*cols)
     return statement
 
 
@@ -137,6 +167,57 @@ def string_to_list(input_str):
         return [input_str]
 
 
+def apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies):
+    if table not in [Attachments, Histories] and hasattr(table, 'query_policies'):
+        access_conditions = [
+            "owner_shortname = :user_shortname",
+            "EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(acl::jsonb) = 'array' THEN acl::jsonb ELSE '[]'::jsonb END) AS elem WHERE elem->>'user_shortname' = :user_shortname AND (elem->'allowed_actions') ? 'query')"
+        ]
+
+        if user_query_policies:
+            raw_items = [str(p) for p in user_query_policies]
+            patterns = []
+            for item in raw_items:
+                for part in str(item).split('|'):
+                    part = part.strip()
+                    if part:
+                        patterns.append(part.replace('*', '%'))
+
+            seen = set()
+            dedup_patterns = []
+            for pat in patterns:
+                if pat not in seen:
+                    seen.add(pat)
+                    dedup_patterns.append(pat)
+
+            if dedup_patterns:
+                like_clauses = []
+                like_params = {}
+                for idx, pat in enumerate(dedup_patterns):
+                    param_name = f"qp_like_{idx}"
+                    like_clauses.append(f"qp LIKE :{param_name}")
+                    like_params[param_name] = pat
+
+                qp_exists = "EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE " + " OR ".join(like_clauses) + ")"
+                access_conditions.insert(1, qp_exists)
+
+                clause_str = "(" + " OR ".join(access_conditions) + ")"
+                access_filter = text(clause_str)
+                statement = statement.where(access_filter).params(
+                    user_shortname=user_shortname,
+                    **like_params
+                )
+            else:
+                clause_str = "(" + " OR ".join(access_conditions) + ")"
+                access_filter = text(clause_str)
+                statement = statement.where(access_filter).params(user_shortname=user_shortname)
+        else:
+            clause_str = "(" + " OR ".join(access_conditions) + ")"
+            access_filter = text(clause_str)
+            statement = statement.where(access_filter).params(user_shortname=user_shortname)
+    return statement
+
+
 async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
         if query.type == QueryType.attachments_aggregation and not is_for_count:
@@ -144,6 +225,15 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
         if query.type == QueryType.aggregation and not is_for_count:
             statement = query_aggregation(table, query)
+
+        if query.type == QueryType.tags and not is_for_count:
+            if query.retrieve_json_payload:
+                statement = select(
+                    func.jsonb_array_elements_text(table.tags).label('tag'),
+                    func.count('*').label('count')
+                ).group_by('tag')
+            else:
+                statement = select(func.jsonb_array_elements_text(table.tags).label('tag')).distinct()
 
     except Exception as e:
         print("[!query]", e)
@@ -162,20 +252,45 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if query.exact_subpath:
             statement = statement.where(table.subpath == query.subpath)
         else:
+            # Use bind parameter for the ILIKE pattern to avoid string interpolation
+            subpath_like = (f"{query.subpath}/%".replace('//', '/'))
             statement = statement.where(
                 or_(
                     table.subpath == query.subpath,
-                    text(f"subpath ILIKE '{query.subpath}/%'".replace('//', '/'))
+                    text("subpath ILIKE :subpath_like").bindparams(bindparam("subpath_like"))
                 )
-            )
+            ).params(subpath_like=subpath_like)
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
-            statement = statement.where(text(
-                f"(shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload) ILIKE '%' || '{query.search}' || '%'"
-            ))
+            p = "shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
+            if table is Users:
+                p += " || ' ' || COALESCE(email, '') || ' ' || COALESCE(msisdn, '') || ' ' || roles"
+            if table is Roles:
+                p += " || ' ' || permissions"
+            # Parameterize search string
+            statement = statement.where(
+                text("(" + p + ") ILIKE :search")
+            ).params(search=f"%{query.search}%")
         else:
-            search_tokens = parse_search_string(query.search, table)
+            search_tokens = parse_search_string(query.search)
+
+            try:
+                table_columns = set(c.name for c in table.__table__.columns)  # type: ignore[attr-defined]
+            except Exception:
+                table_columns = set()
+
+            def _field_exists_in_table(_field: str) -> bool:
+                if _field in table_columns:
+                    return True
+                if _field.startswith('payload.') and 'payload' in table_columns:
+                    return True
+                if _field.startswith('payload.body.') and 'payload' in table_columns:
+                    return True
+                return False
+
             for field, field_data in search_tokens.items():
+                if not _field_exists_in_table(field):
+                    continue
                 values = field_data['values']
                 operation = field_data['operation']
                 negative = field_data.get('negative', False)
@@ -188,7 +303,33 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 if field.startswith('payload.body.'):
                     payload_field = field.replace('payload.body.', '')
                     payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
+
+                    payload_path_splited = payload_path.split('->')
+                    if len(payload_path_splited) > 1:
+                        _nested_no_last = '->'.join(payload_path_splited[:-1])
+                        _last = payload_path_splited[-1]
+                        _payload_text_extract = f"payload::jsonb->'body'->{_nested_no_last}->>{_last}"
+                    else:
+                        _payload_text_extract = f"payload::jsonb->'body'->>{payload_path}"
                     conditions = []
+
+                    if value_type == 'numeric' and field_data.get('is_range', False) and len(
+                            field_data.get('range_values', [])) == 2:
+                        val1, val2 = field_data['range_values']
+                        try:
+                            num1 = float(val1)
+                            num2 = float(val2)
+                            if num1 > num2:
+                                val1, val2 = val2, val1
+                        except ValueError:
+                            pass
+                        if negative:
+                            conditions.append(
+                                f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN {val1} AND {val2})")
+                        else:
+                            conditions.append(
+                                f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2})")
+
                     for value in values:
                         if value_type == 'datetime':
                             if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
@@ -204,8 +345,14 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         else:
                                             try:
                                                 from datetime import datetime
-                                                dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
-                                                dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM',
+                                                                                                                 '%m').replace(
+                                                    'DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace(
+                                                    'SS', '%S').replace('US', '%f'))
+                                                dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM',
+                                                                                                                 '%m').replace(
+                                                    'DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace(
+                                                    'SS', '%S').replace('US', '%f'))
                                                 if dt1 > dt2:
                                                     val1, val2 = val2, val1
                                             except Exception:
@@ -221,12 +368,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                                 if start_format and end_format:
                                     if negative:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{start_format}') NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::text NOT BETWEEN '{start_value}' AND '{end_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP({_payload_text_extract}, '{start_format}') NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ({_payload_text_extract})::text NOT BETWEEN '{start_value}' AND '{end_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                                     else:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{start_format}') BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::text BETWEEN '{start_value}' AND '{end_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP({_payload_text_extract}, '{start_format}') BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ({_payload_text_extract})::text BETWEEN '{start_value}' AND '{end_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                             else:
                                 format_string = format_strings.get(value)
@@ -234,53 +381,23 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     next_value = get_next_date_value(value, format_string)
 
                                     if negative:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{value}', '{format_string}') OR TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{next_value}', '{format_string}')))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->>{payload_path})::text < '{value}' OR (payload::jsonb->'body'->>{payload_path})::text >= '{next_value}'))"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (TO_TIMESTAMP({_payload_text_extract}, '{format_string}') < TO_TIMESTAMP('{value}', '{format_string}') OR TO_TIMESTAMP({_payload_text_extract}, '{format_string}') >= TO_TIMESTAMP('{next_value}', '{format_string}')))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (({_payload_text_extract})::text < '{value}' OR ({_payload_text_extract})::text >= '{next_value}'))"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                                     else:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->'body'->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::text >= '{value}' AND (payload::jsonb->'body'->>{payload_path})::text < '{next_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND TO_TIMESTAMP({_payload_text_extract}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP({_payload_text_extract}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ({_payload_text_extract})::text >= '{value}' AND ({_payload_text_extract})::text < '{next_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
-                        elif value_type == 'numeric':
-                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
-                                range_values = field_data['range_values']
-                                val1, val2 = range_values
-                                try:
-                                    num1 = float(val1)
-                                    num2 = float(val2)
-                                    if num1 > num2:
-                                        val1, val2 = val2, val1
-                                except ValueError:
-                                    pass
-
-                                if negative:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
-                                else:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ((payload::jsonb->'body'->>{payload_path})::float BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
-                            else:
-                                for value in values:
-                                    if negative:
-                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float != {value})"
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::float != {value})"
-                                        conditions.append(f"({number_condition} OR {string_condition})")
-                                    else:
-                                        number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float = {value})"
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::float = {value})"
-                                        conditions.append(f"({number_condition} OR {string_condition})")
                         elif value_type == 'boolean':
                             for value in values:
                                 bool_value = value.lower()
                                 if negative:
-                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND (payload::jsonb->'body'->>{payload_path})::boolean != {bool_value})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::boolean != {bool_value})"
+                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND ({_payload_text_extract})::boolean != {bool_value})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ({_payload_text_extract})::boolean != {bool_value})"
                                     conditions.append(f"({bool_condition} OR {string_condition})")
                                 else:
-                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND (payload::jsonb->'body'->>{payload_path})::boolean = {bool_value})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND (payload::jsonb->'body'->>{payload_path})::boolean = {bool_value})"
+                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND ({_payload_text_extract})::boolean = {bool_value})"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ({_payload_text_extract})::boolean = {bool_value})"
                                     conditions.append(f"({bool_condition} OR {string_condition})")
                         else:
                             is_numeric = False
@@ -289,27 +406,26 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                             if negative:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND NOT (payload::jsonb->'body'->{payload_path} @> '[\"{value}\"]'::jsonb))"
-                                string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->>{payload_path} != '{value}')"
+                                string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND {_payload_text_extract} != '{value}')"
 
                                 if is_numeric:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float != {value})"
-                                    conditions.append(f"({array_condition} OR {string_condition} OR {number_condition})")
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float != {value})"
+                                    conditions.append(
+                                        f"({array_condition} OR {string_condition} OR {number_condition})")
                                 else:
                                     conditions.append(f"({array_condition} OR {string_condition})")
                             else:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND payload::jsonb->'body'->{payload_path} @> '[\"{value}\"]'::jsonb)"
-                                payload_path_splited = payload_path.split('->')
-                                if len(payload_path_splited) > 1:
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->>{'->'.join(payload_path_splited[:-1]) + '->>' + payload_path_splited[-1]} = '\"{value}\"')"
-                                else:
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND payload::jsonb->'body'->>{payload_path} = '{value}')"
+                                string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND {_payload_text_extract} = '{value}')"
                                 direct_condition = f"(payload::jsonb->'body'->{payload_path} = '\"{value}\"'::jsonb)"
 
                                 if is_numeric:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float = {value})"
-                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float = {value})"
+                                    conditions.append(
+                                        f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
                                 else:
-                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+                                    conditions.append(
+                                        f"({array_condition} OR {string_condition} OR {direct_condition})")
 
                     if conditions:
                         if negative:
@@ -321,7 +437,33 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                     payload_field = field.replace('payload.', '')
                     payload_path = '->'.join([f"'{part}'" for part in payload_field.split('.')])
 
+                    payload_path_splited = payload_path.split('->')
+                    if len(payload_path_splited) > 1:
+                        _nested_no_last = '->'.join(payload_path_splited[:-1])
+                        _last = payload_path_splited[-1]
+                        _payload_text_extract = f"payload::jsonb->{_nested_no_last}->>{_last}"
+                    else:
+                        _payload_text_extract = f"payload::jsonb->>{payload_path}"
+
                     conditions = []
+
+                    if value_type == 'numeric' and field_data.get('is_range', False) and len(
+                            field_data.get('range_values', [])) == 2:
+                        val1, val2 = field_data['range_values']
+                        try:
+                            num1 = float(val1)
+                            num2 = float(val2)
+                            if num1 > num2:
+                                val1, val2 = val2, val1
+                        except ValueError:
+                            pass
+                        if negative:
+                            conditions.append(
+                                f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND ({_payload_text_extract})::float NOT BETWEEN {val1} AND {val2})")
+                        else:
+                            conditions.append(
+                                f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND ({_payload_text_extract})::float BETWEEN {val1} AND {val2})")
+
                     for value in values:
                         if value_type == 'datetime':
                             if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
@@ -337,8 +479,14 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         else:
                                             try:
                                                 from datetime import datetime
-                                                dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
-                                                dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM',
+                                                                                                                 '%m').replace(
+                                                    'DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace(
+                                                    'SS', '%S').replace('US', '%f'))
+                                                dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM',
+                                                                                                                 '%m').replace(
+                                                    'DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace(
+                                                    'SS', '%S').replace('US', '%f'))
                                                 if dt1 > dt2:
                                                     val1, val2 = val2, val1
                                             except Exception:
@@ -354,12 +502,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                                 if start_format and end_format:
                                     if negative:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{start_format}') NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (payload::jsonb->>{payload_path})::text NOT BETWEEN '{start_value}' AND '{end_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP({_payload_text_extract}, '{start_format}') NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ({_payload_text_extract})::text NOT BETWEEN '{start_value}' AND '{end_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                                     else:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{start_format}') BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (payload::jsonb->>{payload_path})::text BETWEEN '{start_value}' AND '{end_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP({_payload_text_extract}, '{start_format}') BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}') AND TO_TIMESTAMP('{end_value}', '{end_format}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ({_payload_text_extract})::text BETWEEN '{start_value}' AND '{end_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                             else:
                                 format_string = format_strings.get(value)
@@ -367,59 +515,48 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     next_value = get_next_date_value(value, format_string)
 
                                     if negative:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{value}', '{format_string}') OR TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{next_value}', '{format_string}')))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::text < '{value}' OR (payload::jsonb->>{payload_path})::text >= '{next_value}'))"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (TO_TIMESTAMP({_payload_text_extract}, '{format_string}') < TO_TIMESTAMP('{value}', '{format_string}') OR TO_TIMESTAMP({_payload_text_extract}, '{format_string}') >= TO_TIMESTAMP('{next_value}', '{format_string}')))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (({_payload_text_extract})::text < '{value}' OR ({_payload_text_extract})::text >= '{next_value}'))"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
                                     else:
-                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP(payload::jsonb->>{payload_path}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
-                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND (payload::jsonb->>{payload_path})::text >= '{value}' AND (payload::jsonb->>{payload_path})::text < '{next_value}')"
+                                        string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP({_payload_text_extract}, '{format_string}') >= TO_TIMESTAMP('{value}', '{format_string}') AND TO_TIMESTAMP({_payload_text_extract}, '{format_string}') < TO_TIMESTAMP('{next_value}', '{format_string}'))"
+                                        fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ({_payload_text_extract})::text >= '{value}' AND ({_payload_text_extract})::text < '{next_value}')"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
-                        elif value_type == 'numeric':
-                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
-                                range_values = field_data['range_values']
-                                val1, val2 = range_values
-                                try:
-                                    num1 = float(val1)
-                                    num2 = float(val2)
-                                    if num1 > num2:
-                                        val1, val2 = val2, val1
-                                except ValueError:
-                                    pass
-
-                                if negative:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::float NOT BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
-                                else:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ((payload::jsonb->>{payload_path})::float BETWEEN {val1} AND {val2}))"
-                                    conditions.append(f"({number_condition} OR {string_condition})")
                         else:
                             is_numeric = False
-                            try:
+                            if value.isnumeric():
                                 is_numeric = True
-                            except ValueError:
-                                pass
 
                             if negative:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND NOT (payload::jsonb->{payload_path} @> '[\"{value}\"]'::jsonb))"
-                                string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} != '{value}')"
+                                if '*' in value:
+                                    pattern = value.replace('*', '%')
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND {_payload_text_extract} NOT ILIKE '{pattern}')"
+                                else:
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND {_payload_text_extract} != '{value}')"
 
                                 if is_numeric:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float != {value})"
-                                    conditions.append(f"({array_condition} OR {string_condition} OR {number_condition})")
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND ({_payload_text_extract})::float != {value})"
+                                    conditions.append(
+                                        f"({array_condition} OR {string_condition} OR {number_condition})")
                                 else:
                                     conditions.append(f"({array_condition} OR {string_condition})")
                             else:
                                 array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND payload::jsonb->{payload_path} @> '[\"{value}\"]'::jsonb)"
-                                string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND payload::jsonb->>{payload_path} = '{value}')"
+                                if '*' in value:
+                                    pattern = value.replace('*', '%')
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND {_payload_text_extract} ILIKE '{pattern}')"
+                                else:
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND {_payload_text_extract} = '{value}')"
                                 direct_condition = f"(payload::jsonb->{payload_path} = '\"{value}\"'::jsonb)"
 
                                 if is_numeric:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->>{payload_path})::float = {value})"
-                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND ({_payload_text_extract})::float = {value})"
+                                    conditions.append(
+                                        f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
                                 else:
-                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
+                                    conditions.append(
+                                        f"({array_condition} OR {string_condition} OR {direct_condition})")
 
                     if conditions:
                         if negative:
@@ -429,9 +566,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                 else:
                     try:
-
                         if hasattr(table, field):
-                            field_obj = getattr(table, field)                           
+                            field_obj = getattr(table, field)
                             if hasattr(field_obj, 'type') and str(field_obj.type).lower() == 'jsonb':
                                 conditions = []
                                 for value in values:
@@ -466,8 +602,20 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                             else:
                                                 try:
                                                     from datetime import datetime
-                                                    dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
-                                                    dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                    dt1 = datetime.strptime(val1,
+                                                                            fmt1.replace('YYYY', '%Y').replace('MM',
+                                                                                                               '%m').replace(
+                                                                                'DD', '%d').replace('"T"HH24',
+                                                                                                    'T%H').replace('MI',
+                                                                                                                   '%M').replace(
+                                                                                'SS', '%S').replace('US', '%f'))
+                                                    dt2 = datetime.strptime(val2,
+                                                                            fmt2.replace('YYYY', '%Y').replace('MM',
+                                                                                                               '%m').replace(
+                                                                                'DD', '%d').replace('"T"HH24',
+                                                                                                    'T%H').replace('MI',
+                                                                                                                   '%M').replace(
+                                                                                'SS', '%S').replace('US', '%f'))
                                                     if dt1 > dt2:
                                                         val1, val2 = val2, val1
                                                 except Exception:
@@ -483,9 +631,11 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                                     if start_format and end_format:
                                         if negative:
-                                            conditions.append(f"({field}::timestamp NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
+                                            conditions.append(
+                                                f"({field}::timestamp NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
                                         else:
-                                            conditions.append(f"({field}::timestamp BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
+                                            conditions.append(
+                                                f"({field}::timestamp BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
                                 else:
                                     for value in values:
                                         format_string = format_strings.get(value)
@@ -493,9 +643,11 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                             next_value = get_next_date_value(value, format_string)
 
                                             if negative:
-                                                conditions.append(f"({field}::timestamp < TO_TIMESTAMP('{value}', '{format_string}')::timestamp OR {field}::timestamp >= TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
+                                                conditions.append(
+                                                    f"({field}::timestamp < TO_TIMESTAMP('{value}', '{format_string}')::timestamp OR {field}::timestamp >= TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
                                             else:
-                                                conditions.append(f"({field}::timestamp >= TO_TIMESTAMP('{value}', '{format_string}')::timestamp AND {field}::timestamp < TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
+                                                conditions.append(
+                                                    f"({field}::timestamp >= TO_TIMESTAMP('{value}', '{format_string}')::timestamp AND {field}::timestamp < TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
 
                                 if conditions:
                                     if negative:
@@ -552,7 +704,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     statement = statement.where(text(join_operator.join(conditions)))
                             else:
                                 field_obj = getattr(table, field)
-                                is_timestamp = hasattr(field_obj, 'type') and str(field_obj.type).lower().startswith('timestamp')
+                                is_timestamp = hasattr(field_obj, 'type') and str(field_obj.type).lower().startswith(
+                                    'timestamp')
 
                                 if is_timestamp:
                                     conditions = []
@@ -565,32 +718,31 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     join_operator = " AND " if operation == 'AND' else " OR "
                                     statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                                 else:
-                                    if negative:
-                                        if operation == 'AND' and len(values) > 1:
-                                            conditions = []
-                                            for value in values:
+                                    conditions = []
+                                    for value in values:
+                                        if '*' in value:
+                                            pattern = value.replace('*', '%')
+                                            if negative:
+                                                conditions.append(f"{field} NOT ILIKE '{pattern}'")
+                                            else:
+                                                conditions.append(f"{field} ILIKE '{pattern}'")
+                                        else:
+                                            if negative:
                                                 conditions.append(f"{field} != '{value}'")
-                                            statement = statement.where(text(f'( {" OR ".join(conditions)} )'))
-                                        else:
-                                            if len(values) == 1:
-                                                statement = statement.where(getattr(table, field) != values[0])
                                             else:
-                                                statement = statement.where(~col(getattr(table, field)).in_(values))
+                                                conditions.append(f"{field} = '{value}'")
+                                    if negative:
+                                        join_operator = ' AND '
                                     else:
-                                        if operation == 'AND' and len(values) > 1:
-                                            for value in values:
-                                                statement = statement.where(getattr(table, field) == value)
-                                        else:
-                                            if len(values) == 1:
-                                                statement = statement.where(getattr(table, field) == values[0])
-                                            else:
-                                                statement = statement.where(col(getattr(table, field)).in_(values))
+                                        join_operator = ' AND ' if operation == 'AND' else ' OR '
+                                    statement = statement.where(text('(' + join_operator.join(conditions) + ')'))
                         else:
                             conditions = []
                             for value in values:
                                 if value_type == 'datetime':
 
-                                    if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                    if field_data.get('is_range', False) and len(
+                                            field_data.get('range_values', [])) == 2:
                                         range_values = field_data['range_values']
                                         val1, val2 = range_values
                                         if is_date_time_value(val1)[0] and is_date_time_value(val2)[0]:
@@ -603,8 +755,22 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                                 else:
                                                     try:
                                                         from datetime import datetime
-                                                        dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
-                                                        dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM', '%m').replace('DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace('SS', '%S').replace('US', '%f'))
+                                                        dt1 = datetime.strptime(val1,
+                                                                                fmt1.replace('YYYY', '%Y').replace('MM',
+                                                                                                                   '%m').replace(
+                                                                                    'DD', '%d').replace('"T"HH24',
+                                                                                                        'T%H').replace(
+                                                                                    'MI', '%M').replace('SS',
+                                                                                                        '%S').replace(
+                                                                                    'US', '%f'))
+                                                        dt2 = datetime.strptime(val2,
+                                                                                fmt2.replace('YYYY', '%Y').replace('MM',
+                                                                                                                   '%m').replace(
+                                                                                    'DD', '%d').replace('"T"HH24',
+                                                                                                        'T%H').replace(
+                                                                                    'MI', '%M').replace('SS',
+                                                                                                        '%S').replace(
+                                                                                    'US', '%f'))
                                                         if dt1 > dt2:
                                                             val1, val2 = val2, val1
                                                     except Exception:
@@ -620,20 +786,25 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                                         if start_format and end_format:
                                             if negative:
-                                                conditions.append(f"(payload::jsonb->'{field}'::timestamp NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
+                                                conditions.append(
+                                                    f"(payload::jsonb->'{field}'::timestamp NOT BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
                                             else:
-                                                conditions.append(f"(payload::jsonb->'{field}'::timestamp BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
+                                                conditions.append(
+                                                    f"(payload::jsonb->'{field}'::timestamp BETWEEN TO_TIMESTAMP('{start_value}', '{start_format}')::timestamp AND TO_TIMESTAMP('{end_value}', '{end_format}')::timestamp)")
                                     else:
                                         format_string = format_strings.get(value)
                                         if format_string:
                                             next_value = get_next_date_value(value, format_string)
 
                                             if negative:
-                                                conditions.append(f"(payload::jsonb->'{field}'::timestamp < TO_TIMESTAMP('{value}', '{format_string}')::timestamp OR payload::jsonb->'{field}'::timestamp >= TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
+                                                conditions.append(
+                                                    f"(payload::jsonb->'{field}'::timestamp < TO_TIMESTAMP('{value}', '{format_string}')::timestamp OR payload::jsonb->'{field}'::timestamp >= TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
                                             else:
-                                                conditions.append(f"(payload::jsonb->'{field}'::timestamp >= TO_TIMESTAMP('{value}', '{format_string}')::timestamp AND payload::jsonb->'{field}'::timestamp < TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
+                                                conditions.append(
+                                                    f"(payload::jsonb->'{field}'::timestamp >= TO_TIMESTAMP('{value}', '{format_string}')::timestamp AND payload::jsonb->'{field}'::timestamp < TO_TIMESTAMP('{next_value}', '{format_string}')::timestamp)")
                                 elif value_type == 'numeric':
-                                    if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
+                                    if field_data.get('is_range', False) and len(
+                                            field_data.get('range_values', [])) == 2:
                                         range_values = field_data['range_values']
                                         val1, val2 = range_values
                                         try:
@@ -645,20 +816,31 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                             pass
 
                                         if negative:
-                                            conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'number' AND (payload::jsonb->'{field}')::float NOT BETWEEN {val1} AND {val2})")
+                                            conditions.append(
+                                                f"(jsonb_typeof(payload::jsonb->'{field}') = 'number' AND (payload::jsonb->'{field}')::float NOT BETWEEN {val1} AND {val2})")
                                         else:
-                                            conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'number' AND (payload::jsonb->'{field}')::float BETWEEN {val1} AND {val2})")
+                                            conditions.append(
+                                                f"(jsonb_typeof(payload::jsonb->'{field}') = 'number' AND (payload::jsonb->'{field}')::float BETWEEN {val1} AND {val2})")
                                 elif value_type == 'boolean':
                                     bool_value = value.lower()
                                     if negative:
-                                        conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'boolean' AND (payload::jsonb->'{field}')::boolean != {bool_value})")
+                                        conditions.append(
+                                            f"(jsonb_typeof(payload::jsonb->'{field}') = 'boolean' AND (payload::jsonb->'{field}')::boolean != {bool_value})")
                                     else:
-                                        conditions.append(f"(jsonb_typeof(payload::jsonb->'{field}') = 'boolean' AND (payload::jsonb->'{field}')::boolean = {bool_value})")
+                                        conditions.append(
+                                            f"(jsonb_typeof(payload::jsonb->'{field}') = 'boolean' AND (payload::jsonb->'{field}')::boolean = {bool_value})")
                                 else:
-                                    if negative:
-                                        conditions.append(f"payload::jsonb->'{field}' != '\"{value}\"'::jsonb")
+                                    if '*' in value:
+                                        pattern = value.replace('*', '%')
+                                        if negative:
+                                            conditions.append(f"(payload::jsonb->>'{field}') NOT ILIKE '{pattern}'")
+                                        else:
+                                            conditions.append(f"(payload::jsonb->>'{field}') ILIKE '{pattern}'")
                                     else:
-                                        conditions.append(f"payload::jsonb->'{field}' = '\"{value}\"'::jsonb")
+                                        if negative:
+                                            conditions.append(f"payload::jsonb->'{field}' != '\"{value}\"'::jsonb")
+                                        else:
+                                            conditions.append(f"payload::jsonb->'{field}' = '\"{value}\"'::jsonb")
 
                             if conditions:
                                 if negative:
@@ -701,7 +883,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 if query.sort_by.startswith('attributes.'):
                     query.sort_by = query.sort_by[11:]
                 if "." in query.sort_by:
-                    sort_expression = transform_keys_to_sql(query.sort_by)
+                    # Normalize JSON path for sorting as well (handle leading '@' and body.* shortcut)
+                    sort_expression = transform_keys_to_sql(
+                        query.sort_by.replace("@", "", 1) if query.sort_by.startswith("@") else (
+                            f"payload.{query.sort_by}" if query.sort_by.startswith("body.") else query.sort_by))
                     sort_type = " DESC" if query.sort_type == SortType.descending else ""
                     sort_expression = f"CASE WHEN ({sort_expression}) ~ '^[0-9]+$' THEN ({sort_expression})::float END {sort_type}, ({sort_expression}) {sort_type}"
                     statement = statement.order_by(text(sort_expression))
@@ -720,9 +905,27 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
         statement = statement.limit(query.limit)
 
+    if query.type == QueryType.tags and not is_for_count and hasattr(table, 'tags'):
+        if query.retrieve_json_payload:
+            statement = select(
+                func.jsonb_array_elements_text(col(table.tags)).label('tag'),
+                func.count('*').label('count')
+            ).where(col(table.uuid).in_(
+                select(col(table.uuid)).where(statement.whereclause)  # type: ignore
+            )).group_by('tag')
+        else:
+            statement = select(
+                func.jsonb_array_elements_text(col(table.tags)).label('tag')
+            ).where(col(table.uuid).in_(
+                select(col(table.uuid)).where(statement.whereclause)  # type: ignore
+            )).distinct()
+
     return statement
 
+
 class SQLAdapter(BaseDataAdapter):
+    _engine = None
+    _async_session_factory = None
     session: Session
     async_session: sessionmaker
     engine: Any
@@ -733,7 +936,7 @@ class SQLAdapter(BaseDataAdapter):
         match query.type:
             case api.QueryType.subpath:
                 pass
-                #!TODO finsih...
+                # !TODO finsih...
         return total, locators
 
     def folder_path(
@@ -759,21 +962,20 @@ class SQLAdapter(BaseDataAdapter):
             key: str,
             otp: str,
     ):
-        async with self.get_session() as session:
-            try:
+        try:
+            async with self.get_session() as session:
                 otp_entry = OTP(
                     key=key,
                     value={"otp": otp},
                     timestamp=datetime.now()
                 )
                 session.add(otp_entry)
-                await session.commit()
-            except Exception as e:
+        except Exception as e:
+            async with self.get_session() as session:
                 if "UniqueViolationError" in str(e) or "unique constraint" in str(e).lower():
                     await session.rollback()
                     statement = delete(OTP).where(col(OTP.key) == key)
                     await session.execute(statement)
-                    await session.commit()
 
                     otp_entry = OTP(
                         key=key,
@@ -781,14 +983,13 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=datetime.now()
                     )
                     session.add(otp_entry)
-                    await session.commit()
                 else:
                     await session.rollback()
                     raise e
 
     async def get_otp(
-        self,
-        key: str,
+            self,
+            key: str,
     ):
         async with self.get_session() as session:
             result = await session.execute(select(OTP).where(OTP.key == key))
@@ -797,10 +998,14 @@ class SQLAdapter(BaseDataAdapter):
             if otp_entry:
                 if (datetime.now() - otp_entry.timestamp).total_seconds() > settings.otp_token_ttl:
                     await session.delete(otp_entry)
-                    await session.commit()
                     return None
                 return otp_entry.value.get("otp")
-            return None
+        return None
+
+    async def delete_otp(self, key: str):
+        async with self.get_session() as session:
+            statement = delete(OTP).where(col(OTP.key) == key)
+            await session.execute(statement)
 
     def metapath(self,
                  space_name: str,
@@ -812,24 +1017,30 @@ class SQLAdapter(BaseDataAdapter):
         return (Path(), "")
 
     def __init__(self):
-        self.engine = create_async_engine(
-            URL.create(
-                drivername=settings.database_driver,
-                host=settings.database_host,
-                port=settings.database_port,
-                username=settings.database_username,
-                password=settings.database_password,
-                database=settings.database_name,
-            ),
-            echo=False,
-            max_overflow=settings.database_max_overflow,
-            pool_size=settings.database_pool_size,
-            pool_pre_ping=True,
-        )
+        if SQLAdapter._engine is None:
+            SQLAdapter._engine = create_async_engine(
+                URL.create(
+                    drivername=settings.database_driver,
+                    host=settings.database_host,
+                    port=settings.database_port,
+                    username=settings.database_username,
+                    password=settings.database_password,
+                    database=settings.database_name,
+                ),
+                echo=False,
+                pool_pre_ping=True,
+                pool_size=settings.database_pool_size,
+                max_overflow=settings.database_max_overflow,
+                pool_timeout=settings.database_pool_timeout,
+                pool_recycle=settings.database_pool_recycle,
+            )
+        self.engine = SQLAdapter._engine
         try:
-            self.async_session = sessionmaker(
-                self.engine, class_=AsyncSession, expire_on_commit=False
-            ) # type: ignore
+            if SQLAdapter._async_session_factory is None:
+                SQLAdapter._async_session_factory = sessionmaker(
+                    self.engine, class_=AsyncSession, expire_on_commit=False
+                )  # type: ignore
+            self.async_session = SQLAdapter._async_session_factory
         except Exception as e:
             print("[!FATAL]", e)
             sys.exit(127)
@@ -847,8 +1058,9 @@ class SQLAdapter(BaseDataAdapter):
         async_session = self.async_session()
         try:
             yield async_session
+            await async_session.commit()
         finally:
-            await async_session.close() # type: ignore
+            await async_session.close()  # type: ignore
 
     def get_table(
             self, class_type: Type[MetaChild]
@@ -878,7 +1090,8 @@ class SQLAdapter(BaseDataAdapter):
                 return Attachments
         return Entries
 
-    def get_base_model(self, class_type : Type[MetaChild], data, update=None) -> Roles | Permissions | Users | Spaces | Locks | Attachments | Entries:
+    def get_base_model(self, class_type: Type[MetaChild], data,
+                       update=None) -> Roles | Permissions | Users | Spaces | Locks | Attachments | Entries:
         match class_type:
             case core.User:
                 return Users.model_validate(data, update=update)
@@ -939,7 +1152,7 @@ class SQLAdapter(BaseDataAdapter):
                     "resource_type": attachment_json["resource_type"],
                     "uuid": attachment_json["uuid"],
                     "shortname": attachment_json["shortname"],
-                    "subpath": "/".join(attachment_json["subpath"].split("/")[:-1])#join(),
+                    "subpath": "/".join(attachment_json["subpath"].split("/")[:-1])  # join(),
                 }
                 del attachment_json["resource_type"]
                 del attachment_json["uuid"]
@@ -996,160 +1209,257 @@ class SQLAdapter(BaseDataAdapter):
 
         shortname = shortname.replace("/", "")
 
+        table = self.get_table(class_type)
+
+        if table is Attachments:
+            statement = select(table).options(defer(Attachments.media))  # type: ignore
+        else:
+            statement = select(table)
+        statement = statement.where(col(table.space_name) == space_name).where(table.shortname == shortname)
+
+        if table in [Entries, Attachments]:
+            statement = statement.where(col(table.subpath) == subpath)
+
+        try:
+            async with self.get_session() as session:
+                return (await session.execute(statement)).scalars().one_or_none() # type: ignore
+        except Exception as e:
+            print("[!load_or_none]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            return None
+
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Record | None:
         async with self.get_session() as session:
-            table = self.get_table(class_type)
-
-            statement = select(table).where(table.space_name == space_name)
-            statement = statement.where(table.shortname == shortname)
-
-            if table in [Entries, Attachments]:
-                statement = statement.where(table.subpath == subpath)
-
-            _result = (await session.execute(statement)).one_or_none()
-            if _result is None:
-                return None
-            result : Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None = _result[0]
-            try:
-                return result
-            except Exception as e:
-                print("[!load_or_none]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
-                return None
-
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
-        async with self.get_session() as session:
-            results: list[core.Record] = []
             if table is None:
                 tables = [Entries, Users, Roles, Permissions, Spaces, Attachments]
                 for _table in tables:
                     statement = select(_table)
                     for k, v in criteria.items():
-                        if isinstance(v, str):
-                            statement = statement.where(
-                                text(f"{k}::text LIKE :{k}")
-                            ).params({k: f"{v}%"})
+                        # Prefer SQLAlchemy column expressions over raw text to avoid injection
+                        if hasattr(_table, k):
+                            column = getattr(_table, k)
+                            if isinstance(v, str):
+                                statement = statement.where(cast(column, String).like(bindparam(k)))
+                                statement = statement.params(**{k: f"{v}%"})
+                            else:
+                                statement = statement.where(column == bindparam(k))
+                                statement = statement.params(**{k: v})
                         else:
-                            statement = statement.where(text(f"{k}=:{k}")).params({k: v})
-                        _results = (await session.execute(statement)).all()
-                        _results = [result[0] for result in _results]
-                        if len(_results) > 0:
-                            for result in _results:
-                                core_model_class : core.Meta = getattr(sys.modules["models.core"], camel_case(result.resource_type))
-                                results.append(
-                                    core_model_class.model_validate(
-                                        result.model_dump()
-                                    ).to_record(result.subpath, result.shortname)
-                               )
+                            # Unknown column name; skip to avoid potential SQL injection via dynamic identifiers
+                            continue
 
-                            return results
+                    _result = (await session.execute(statement)).scalars().first()
+
+                    if _result is None:
+                        continue
+
+                    core_model_class_1: core.Meta = getattr(sys.modules["models.core"],
+                                                          camel_case(_result.resource_type))
+                    result = core_model_class_1.model_validate(
+                        _result.model_dump()
+                    ).to_record(_result.subpath, _result.shortname)
+
+                    result.attributes = {**result.attributes, "space_name": _result.space_name}
+
+                    return result
                 return None
             else:
                 statement = select(table)
                 for k, v in criteria.items():
-                    if isinstance(v, str):
-                        statement = statement.where(
-                            text(f"{k}::text=:{k}")
-                        ).params({k: f"{v}"})
+                    if hasattr(table, k):
+                        column = getattr(table, k)
+                        if isinstance(v, str):
+                            statement = statement.where(cast(column, String) == bindparam(k))
+                            statement = statement.params(**{k: v})
+                        else:
+                            statement = statement.where(column == bindparam(k))
+                            statement = statement.params(**{k: v})
                     else:
-                        statement = statement.where(text(f"{k}=:{k}")).params({k: v})
+                        # Unknown column name; skip
+                        continue
 
-                    _results = (await session.execute(statement)).all()
-                    _results = [result[0] for result in _results]
-                    if len(_results) > 0:
-                        for result in _results:
-                            _core_model_class: core.Meta = getattr(sys.modules["models.core"],
-                                                                   camel_case(result.resource_type))
-                            results.append(
-                                _core_model_class.model_validate(
-                                    result.model_dump()
-                                ).to_record(result.subpath, result.shortname)
-                            )
-                        return results
-                return None
+                _result = (await session.execute(statement)).scalars().first()
+
+                if _result is None:
+                    return None
+
+                core_model_class_2: core.Meta = getattr(sys.modules["models.core"],
+                                                      camel_case(_result.resource_type))
+
+                result = core_model_class_2.model_validate(
+                    _result.model_dump()
+                ).to_record(_result.subpath, _result.shortname)
+                result.attributes = {**result.attributes, "space_name": _result.space_name}
+
+                return result
 
     async def query(
-        self, query: api.Query, user_shortname: str | None = None
+            self, query: api.Query, user_shortname: str | None = None
     ) -> Tuple[int, list[core.Record]]:
-        total : int
-        results : list
-        async with self.get_session() as session:
-            user_shortname = user_shortname if user_shortname else "anonymous"
-            user_query_policies = await get_user_query_policies(
-                self, user_shortname, query.space_name, query.subpath
+        total: int
+        results: list
+
+        if not query.subpath.startswith("/"):
+            query.subpath = f"/{query.subpath}"
+        if query.subpath == "//":
+            query.subpath = "/"
+
+        user_shortname = user_shortname if user_shortname else "anonymous"
+        if user_shortname == "anonymous" and query.type in [QueryType.history, QueryType.events]:
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="You don't have permission to this action",
+                ),
             )
-            if not query.exact_subpath:
-                r = await get_user_query_policies(
-                    self, user_shortname, query.space_name, f'{query.subpath}/%'
-                )
-                user_query_policies.extend(r)
-            if not query.subpath.startswith("/"):
-                query.subpath = f"/{query.subpath}"
+        user_query_policies = await get_user_query_policies(
+            self, user_shortname, query.space_name, query.subpath, query.type == QueryType.spaces
+        )
+        if not query.exact_subpath:
+            r = await get_user_query_policies(
+                self, user_shortname, query.space_name, f'{query.subpath}/%'.replace('//', '/'),
+                query.type == QueryType.spaces
+            )
+            user_query_policies.extend(r)
 
-            if query.type in [QueryType.attachments, QueryType.attachments_aggregation]:
-                table = Attachments
-                statement = select(table).options(defer(table.media)) # type: ignore
+        if len(user_query_policies) == 0:
+            return 0, []
+
+        if query.type in [QueryType.attachments, QueryType.attachments_aggregation]:
+            table = Attachments
+            statement = select(table).options(defer(table.media))  # type: ignore
+        else:
+            table = set_table_for_query(query)
+            statement = select(table)
+
+        user_permissions = await self.get_user_permissions(user_shortname)
+        filtered_policies = []
+
+        _subpath_target_permissions = '/' if query.subpath == '/' else query.subpath.removeprefix('/')
+        if query.filter_types:
+            for ft in query.filter_types:
+                target_permissions = f'{query.space_name}:{_subpath_target_permissions}:{ft}'
+                filtered_policies = [policy for policy in user_query_policies if
+                                     policy.startswith(target_permissions)]
+        else:
+            target_permissions = f'{query.space_name}:{_subpath_target_permissions}'
+            filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
+
+        ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
+        for user_query_policy in filtered_policies:
+            for perm_key in user_permissions.keys():
+                if user_query_policy.startswith(perm_key):
+                    if ffv := user_permissions[perm_key]['filter_fields_values']:
+                        if ffv not in ffv_query:
+                            ffv_query.append(ffv)
+                        perm_key_splited = perm_key.split(':')
+                        ffv_spaces.append(perm_key_splited[0])
+                        ffv_subpath.append(perm_key_splited[1])
+                        ffv_resource_type.append(perm_key_splited[2])
+
+        if len(ffv_spaces):
+            perm_key_splited_query = f'@space_name:{'|'.join(ffv_spaces)} @subpath:{f"/{'|/'.join(ffv_subpath)}"} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}'
+            if query.search:
+                query.search += f' {perm_key_splited_query}'
             else:
-                table = set_table_for_query(query)
-                statement = select(table)
+                query.search = perm_key_splited_query
+        if query.search:
+            parts = [p for p in query.search.split(' ') if p]
+            seen = set()
+            deduped_parts = []
+            for p in parts:
+                if p not in seen:
+                    seen.add(p)
+                    deduped_parts.append(p)
+            query.search = ' '.join(deduped_parts)
+        statement_total = select(func.count(col(table.uuid)))
 
-            statement_total = select(func.count(col(table.uuid)))
+        if query and query.type == QueryType.events:
+            try:
+                return await events_query(query, user_shortname)
+            except Exception as e:
+                print(e)
+                return 0, []
 
-            if table not in [Attachments, Histories] and user_query_policies and hasattr(table, 'query_policies'):
-                statement = statement.where(
-                    text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-                ).params(
-                    query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
-                )
-
-                statement_total = statement_total.where(
-                    text("EXISTS (SELECT 1 FROM unnest(query_policies) AS qp WHERE qp ILIKE ANY (:query_policies))")
-                ).params(
-                    query_policies=[user_query_policy.replace('*', '%') for user_query_policy in user_query_policies]
-                )
-
-            if query and query.type == QueryType.events:
-                try:
-                    return await events_query(query, user_shortname)
-                except Exception as e:
-                    print(e)
-                    return 0, []
-            is_fetching_spaces = False
-            if (query.space_name
-                    and query.type == QueryType.spaces
-                    and query.space_name == "management"
-                    and query.subpath == "/"):
-                is_fetching_spaces = True
-                statement = select(Spaces) # type: ignore
-                statement_total = select(func.count(col(Spaces.uuid)))
-            else:
+        if query and query.type == QueryType.tags:
+            try:
                 statement = await set_sql_statement_from_query(table, statement, query, False)
                 statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
+                async with self.get_session() as session:
+                    results = list((await session.execute(statement)).all())
+                    if len(results) == 0:
+                        return 0, []
 
-                # if query_allowed_fields_values:
-                #     for query_allowed_fields_value in query_allowed_fields_values:
-                #         statement = statement.where(text(query_allowed_fields_value))
-                #         statement_total = statement_total.where(text(query_allowed_fields_value))
+                tags = []
+                tag_counts = {}
+                if query.retrieve_json_payload:
+                    for result in results:
+                        if result and len(result) > 1 and result[0]:
+                            tag = result[0]
+                            count = result[1]
+                            tags.append(tag)
+                            tag_counts[tag] = count
+                else:
+                    for result in results:
+                        if result and len(result) > 0 and result[0]:
+                            tags.append(result[0])
+                async with self.get_session() as session:
+                    _total = (await session.execute(statement_total)).one()
+                    total = int(_total[0])
 
-            try:
-                if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
-                    statement_total = select(
-                        func.sum(statement_total.c["count"]).label('total_count')
-                    )
+                attributes = {"tags": tags}
+                if query.retrieve_json_payload and tag_counts:
+                    attributes["tag_counts"] = tag_counts  # type: ignore
 
-                _total = (await session.execute(statement_total)).one()
+                return total, [core.Record(
+                    resource_type=core.ResourceType.content,
+                    shortname="tags",
+                    subpath=query.subpath,
+                    attributes=attributes,
+                )]
+            except Exception as e:
+                print("[!!query_tags]", e)
+                return 0, []
 
-                total = int(_total[0])
+        is_fetching_spaces = False
+        if (query.space_name
+                and query.type == QueryType.spaces
+                and query.space_name == "management"
+                and query.subpath == "/"):
+            is_fetching_spaces = True
+            statement = select(Spaces)  # type: ignore
+            statement_total = select(func.count(col(Spaces.uuid)))
+        else:
+            statement = await set_sql_statement_from_query(table, statement, query, False)
+            statement_total = await set_sql_statement_from_query(table, statement_total, query, True)
+
+        if query.type != QueryType.spaces:
+            statement = apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies)
+            statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname,
+                                                           user_query_policies)
+
+        try:
+            if query.type == QueryType.aggregation and query.aggregation_data and bool(
+                    query.aggregation_data.group_by):
+                statement_total = select(
+                    func.sum(statement_total.c["count"]).label('total_count')
+                )
+
+            async with self.get_session() as session:
+                if query.retrieve_total:
+                    _total = (await session.execute(statement_total)).one()
+                    total = int(_total[0])
+                else:
+                    total = -1
                 if query.type == QueryType.counters:
                     return total, []
 
-                # TODO EFFECIVENESS
-                # if not query.retrieve_json_payload:
-                #     cols = list(table.model_fields.keys())
-                #     cols = [getattr(table, xcol) for xcol in cols if xcol not in ["payload", "media"]]
-                #     statement = statement.options(load_only(*cols))
-
-                results = list((await session.execute(statement)).all())
                 if query.type == QueryType.attachments_aggregation:
+                    # For aggregation, we need tuples
+                    results = list((await session.execute(statement)).all())
+                    await session.close()
                     attributes = {}
                     for item in results:
                         attributes.update({item[0]: item[1]})
@@ -1160,29 +1470,128 @@ class SQLAdapter(BaseDataAdapter):
                         subpath=query.subpath,
                         attributes=attributes
                     )]
-                if query.type != QueryType.aggregation:
-                    results = [result[0] for result in results]
-                if is_fetching_spaces:
-                    from utils.access_control import access_control
-                    results = [result for result in results if await access_control.check_space_access(
-                        user_shortname if user_shortname else "anonymous", result.shortname
-                    )]
-                if len(results) == 0:
-                    return 0, []
+                elif query.type == QueryType.aggregation:
+                    results = list((await session.execute(statement)).all())
+                    await session.close()
+                else:
+                    # Non-aggregation: fetch ORM instances directly
+                    results = (await session.execute(statement)).scalars().all()
+                    await session.close()
 
-                results = await self._set_query_final_results(query, results)
+            if is_fetching_spaces:
+                from utils.access_control import access_control
+                results = [result for result in results if await access_control.check_space_access(
+                    user_shortname if user_shortname else "anonymous", result.shortname
+                )]
+            if len(results) == 0:
+                return 0, []
 
-            except Exception as e:
-                print("[!!query]", e)
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(
-                        type="query",
-                        code=InternalErrorCode.SOMETHING_WRONG,
-                        message=str(e),
-                    ),
-                )
+            results = await self._set_query_final_results(query, results)
+
+            if getattr(query, 'join', None):
+                try:
+                    results = await self._apply_client_joins(results, query.join, user_shortname or "anonymous") # type: ignore
+                except Exception as e:
+                    print("[!client_join]", e)
+
+        except Exception as e:
+            print("[!!query]", e)
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="query",
+                    code=InternalErrorCode.SOMETHING_WRONG,
+                    message=str(e),
+                ),
+            )
         return total, results
+
+    async def _apply_client_joins(self, base_records: list[core.Record], joins: list[api.JoinQuery], user_shortname: str) -> list[core.Record]:
+        def parse_join_on(expr: str) -> tuple[str, bool, str, bool]:
+            parts = [p.strip() for p in expr.split(':', 1)]
+            if len(parts) != 2:
+                raise ValueError(f"Invalid join_on expression: {expr}")
+            left, right = parts[0], parts[1]
+            _l_arr = left.endswith('[]')
+            _r_arr = right.endswith('[]')
+            if _l_arr:
+                left = left[:-2]
+            if _r_arr:
+                right = right[:-2]
+            return left, _l_arr, right, _r_arr
+
+        def get_values_from_record(rec: core.Record, path: str, array_hint: bool) -> list:
+            if path in ("shortname", "resource_type", "subpath", "uuid"):
+                val = getattr(rec, path, None)
+            elif path == "space_name":
+                val = rec.attributes.get("space_name") if rec.attributes else None
+            else:
+                container = rec.attributes or {}
+                val = get_nested_value(container, path)
+
+            if val is None:
+                return []
+            if isinstance(val, list):
+                out = []
+                for item in val:
+                    if isinstance(item, (str, int, float, bool)) or item is None:
+                        out.append(item)
+                return out
+
+            if array_hint:
+                return [val]
+            return [val]
+
+        for rec in base_records:
+            if rec.attributes is None:
+                rec.attributes = {}
+            if rec.attributes.get('join') is None:
+                rec.attributes['join'] = {}
+
+        import models.api as api
+        for join_item in joins:
+            join_on = getattr(join_item, 'join_on', None)
+            alias = getattr(join_item, 'alias', None)
+            q = getattr(join_item, 'query', None)
+            if not join_on or not alias or q is None:
+                continue
+
+            sub_query = q if isinstance(q, api.Query) else api.Query.model_validate(q)
+
+            _total, right_records = await self.query(sub_query, user_shortname)
+
+            l_path, l_arr, r_path, r_arr = parse_join_on(join_on)
+
+            right_index: dict[str, list[core.Record]] = {}
+            for rr in right_records:
+                r_vals = get_values_from_record(rr, r_path, r_arr)
+                for v in r_vals:
+                    if v is None:
+                        continue
+                    key = str(v)
+                    right_index.setdefault(key, []).append(rr)
+
+            for br in base_records:
+                l_vals = get_values_from_record(br, l_path, l_arr)
+                matched: list[core.Record] = []
+                for v in l_vals:
+                    if v is None:
+                        continue
+                    key = str(v)
+                    if key in right_index:
+                        matched.extend(right_index[key])
+
+                seen = set()
+                unique_matched: list[core.Record] = []
+                for m in matched:
+                    uid = f"{m.subpath}:{m.shortname}:{m.resource_type}"
+                    if uid in seen:
+                        continue
+                    seen.add(uid)
+                    unique_matched.append(m)
+                br.attributes['join'][alias] = unique_matched
+
+        return base_records
 
     async def load_or_none(
             self,
@@ -1194,7 +1603,8 @@ class SQLAdapter(BaseDataAdapter):
             schema_shortname: str | None = None,
     ) -> MetaChild | None:
 
-        result = await self.db_load_or_none(space_name, subpath, shortname, class_type, user_shortname,schema_shortname)
+        result = await self.db_load_or_none(space_name, subpath, shortname, class_type, user_shortname,
+                                            schema_shortname)
         if not result:
             return None
 
@@ -1217,7 +1627,8 @@ class SQLAdapter(BaseDataAdapter):
             user_shortname: str | None = None,
             schema_shortname: str | None = None,
     ) -> MetaChild:
-        meta: MetaChild | None = await self.load_or_none(space_name, subpath, shortname, class_type, user_shortname, schema_shortname)
+        meta: MetaChild | None = await self.load_or_none(space_name, subpath, shortname, class_type, user_shortname,
+                                                         schema_shortname)
         if meta is None:
             raise api.Exception(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -1256,7 +1667,7 @@ class SQLAdapter(BaseDataAdapter):
             if result is None:
                 return None
             result = result[0]
-            var : dict = result.model_dump().get("payload", {}).get("body", {})
+            var: dict = result.model_dump().get("payload", {}).get("body", {})
             return var
 
     async def save(
@@ -1302,6 +1713,12 @@ class SQLAdapter(BaseDataAdapter):
                 except Exception as e:
                     await session.rollback()
                     raise e
+                # Refresh authz MVs only when Users/Roles/Permissions changed
+                # try:
+                #     if isinstance(data, (Users, Roles, Permissions)):
+                #         await self.ensure_authz_materialized_views_fresh()
+                # except Exception as _e:
+                #     logger.warning(f"AuthZ MV refresh after save skipped: {_e}")
                 return data
 
         except Exception as e:
@@ -1358,41 +1775,39 @@ class SQLAdapter(BaseDataAdapter):
             meta: core.Meta,
             payload_data: dict[str, Any],
     ):
-        async with self.get_session() as session:
-            try:
-                result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
-                if result is None:
-                    raise api.Exception(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        error=api.Error(
-                            type="create",
-                            code=InternalErrorCode.MISSING_METADATA,
-                            message="metadata is missing",
-                        ),
-                    )
-                if meta.payload:
-                    if isinstance(meta.payload.body, dict):
-                        meta.payload.body = {
-                            **meta.payload.body,
-                            **payload_data,
-                        }
-                    else:
-                        meta.payload.body = payload_data
-                result.sqlmodel_update(meta.model_dump())
-
-                session.add(result)
-                await session.commit()
-            except Exception as e:
-                print("[!save_payload_from_json]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
+        try:
+            result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+            if result is None:
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     error=api.Error(
-                        type="update",
-                        code=InternalErrorCode.SOMETHING_WRONG,
-                        message="failed to update entry",
+                        type="create",
+                        code=InternalErrorCode.MISSING_METADATA,
+                        message="metadata is missing",
                     ),
                 )
+            if meta.payload:
+                if isinstance(meta.payload.body, dict):
+                    meta.payload.body = {
+                        **meta.payload.body,
+                        **payload_data,
+                    }
+                else:
+                    meta.payload.body = payload_data
+            result.sqlmodel_update(meta.model_dump())
+            async with self.get_session() as session:
+                session.add(result)
+        except Exception as e:
+            print("[!save_payload_from_json]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="update",
+                    code=InternalErrorCode.SOMETHING_WRONG,
+                    message="failed to update entry",
+                ),
+            )
 
     async def update(
             self,
@@ -1408,43 +1823,66 @@ class SQLAdapter(BaseDataAdapter):
             attachment_media: Any | None = None,
     ) -> dict:
         """Update the entry, store the difference and return it"""
-        async with self.get_session() as session:
-            try:
-                result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
-                if result is None:
-                    raise api.Exception(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        error=api.Error(
-                            type="create",
-                            code=InternalErrorCode.MISSING_METADATA,
-                            message="metadata is missing",
-                        ),
-                    )
 
-                if isinstance(result, Users) and not result.is_active and meta.is_active:
-                    await self.set_failed_password_attempt_count(result.shortname, 0)
-
-                result.sqlmodel_update(meta.model_dump())
-
-                if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
-                    result.subpath = f"/{result.subpath}"
-
-                if isinstance(result, Attachments) and attachment_media:
-                    result.media = attachment_media
-
-                session.add(result)
-                await session.commit()
-            except Exception as e:
-                print("[!update]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
+        try:
+            result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+            if result is None:
                 raise api.Exception(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     error=api.Error(
-                        type="update",
-                        code=InternalErrorCode.SOMETHING_WRONG,
-                        message="failed to update entry",
+                        type="create",
+                        code=InternalErrorCode.MISSING_METADATA,
+                        message="metadata is missing",
                     ),
                 )
+
+            if isinstance(result, Users) and not result.is_active and meta.is_active:
+                await self.set_failed_password_attempt_count(result.shortname, 0)
+
+            result.sqlmodel_update(meta.model_dump())
+
+            if hasattr(result, "subpath") and (not result.subpath.startswith("/")):
+                result.subpath = f"/{result.subpath}"
+
+            if isinstance(result, Attachments) and attachment_media:
+                result.media = attachment_media
+            if hasattr(result, 'query_policies'):
+                result.query_policies = generate_query_policies(
+                    space_name=space_name,
+                    subpath=subpath,
+                    resource_type=result.resource_type,  # type: ignore
+                    is_active=result.is_active,  # type: ignore
+                    owner_shortname=result.owner_shortname,
+                    owner_group_shortname=result.owner_shortname,
+                )
+
+            if  meta.__class__ is not core.Lock or not isinstance(result, Locks):
+                result.updated_at = datetime.now()
+                new_version_flattend['updated_at'] = result.updated_at.isoformat() # type: ignore
+                if "updated_at" not in updated_attributes_flattend:
+                    updated_attributes_flattend.append("updated_at")
+                if 'updated_at' in old_version_flattend:
+                    old_version_flattend['updated_at'] = old_version_flattend['updated_at'].isoformat()
+
+            async with self.get_session() as session:
+                session.add(result)
+
+            # try:
+            #     if isinstance(result, (Users, Roles, Permissions)):
+            #         await self.ensure_authz_materialized_views_fresh()
+            # except Exception as _e:
+            #     logger.warning(f"AuthZ MV refresh after update skipped: {_e}")
+        except Exception as e:
+            print("[!update]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="update",
+                    code=InternalErrorCode.SOMETHING_WRONG,
+                    message="failed to update entry",
+                ),
+            )
 
         history_diff = await self.store_entry_diff(
             space_name,
@@ -1484,55 +1922,49 @@ class SQLAdapter(BaseDataAdapter):
             updated_attributes_flattend: list,
             resource_type,
     ) -> dict:
-        async with self.get_session() as session:
-            try:
-                diff_keys = list(old_version_flattend.keys())
-                diff_keys.extend(list(new_version_flattend.keys()))
-                history_diff = {}
-                for key in set(diff_keys):
-                    if key in ["updated_at"]:
-                        continue
-                    # if key in updated_attributes_flattend:
-                    old = copy(old_version_flattend.get(key, "null"))
-                    new = copy(new_version_flattend.get(key, "null"))
+        try:
+            diff_keys = list(old_version_flattend.keys())
+            diff_keys.extend(list(new_version_flattend.keys()))
+            history_diff = {}
+            for key in set(diff_keys):
+                # if key in updated_attributes_flattend:
+                old = copy(old_version_flattend.get(key, "null"))
+                new = copy(new_version_flattend.get(key, "null"))
 
-                    if old != new:
-                        if isinstance(old, list) and isinstance(new, list):
-                            old, new = arr_remove_common(old, new)
+                if old != new:
+                    if isinstance(old, list) and isinstance(new, list):
+                        old, new = arr_remove_common(old, new)
 
-                        removed = get_removed_items(list(old_version_flattend.keys()), list(new_version_flattend.keys()))
-
-                        history_diff[key] = {
-                            "old": old,
-                            "new": new,
-                        }
-                        for r in removed:
-                            history_diff[r] = {
-                                "old": old_version_flattend[r],
-                                "new": None,
-                            }
-                if not history_diff:
-                    return {}
-
-                history_obj = Histories(
-                    space_name=space_name,
-                    uuid=uuid4(),
-                    shortname=shortname,
-                    owner_shortname=owner_shortname or "__system__",
-                    timestamp=datetime.now(),
-                    request_headers=get_request_data().get("request_headers", {}),
-                    diff=history_diff,
-                    subpath=subpath,
-                )
-
-                session.add(Histories.model_validate(history_obj))
-                await session.commit()
-
-                return history_diff
-            except Exception as e:
-                print("[!store_entry_diff]", e)
-                logger.error(f"Failed parsing an entry. Error: {e}")
+                    history_diff[key] = {"old": old, "new": new}
+            removed = get_removed_items(list(old_version_flattend.keys()),
+                                        list(new_version_flattend.keys()))
+            for r in removed:
+                history_diff[r] = {
+                    "old": old_version_flattend[r],
+                    "new": None,
+                }
+            if not history_diff:
                 return {}
+
+            history_obj = Histories(
+                space_name=space_name,
+                uuid=uuid4(),
+                shortname=shortname,
+                owner_shortname=owner_shortname or "__system__",
+                timestamp=datetime.now(),
+                request_headers=get_request_data().get("request_headers", {}),
+                diff=history_diff,
+                subpath=subpath,
+            )
+
+            async with self.get_session() as session:
+                session.add(Histories.model_validate(history_obj))
+
+            return history_diff
+        except Exception as e:
+            print("[!store_entry_diff]", e)
+            logger.error(f"Failed parsing an entry. Error: {e}")
+            return {}
 
     async def move(
             self,
@@ -1551,7 +1983,7 @@ class SQLAdapter(BaseDataAdapter):
             dest_subpath = f"/{dest_subpath}"
 
         origin = await self.db_load_or_none(src_space_name, src_subpath, src_shortname, meta.__class__)
-        if isinstance(origin,  Locks):
+        if isinstance(origin, Locks):
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 error=api.Error(
@@ -1609,36 +2041,38 @@ class SQLAdapter(BaseDataAdapter):
                 origin.query_policies = generate_query_policies(
                     space_name=dest_space_name,
                     subpath=dest_subpath,
-                    resource_type=origin.resource_type if hasattr(origin, 'resource_type') else origin.__class__.__name__.lower()[:-1],
+                    resource_type=origin.resource_type if hasattr(origin,
+                                                                  'resource_type') else origin.__class__.__name__.lower()[
+                        :-1],
                     is_active=origin.is_active if hasattr(origin, 'is_active') else True,
                     owner_shortname=origin.owner_shortname,
                     owner_group_shortname=None,
                 )
 
                 session.add(origin)
-                await session.commit()
                 try:
                     if table is Spaces:
-                        session.add(
+                        await session.execute(
                             update(Spaces)
-                            .where(col(Spaces.space_name) == dest_space_name)
-                            .values(space_name=dest_shortname))
-                        session.add(
+                            .where(col(Spaces.space_name) == src_space_name)
+                            .values(space_name=dest_shortname,shortname=dest_shortname)
+                        )
+                        await session.execute(
                             update(Entries)
-                            .where(col(Entries.space_name) == dest_space_name)
-                            .values(space_name=dest_shortname))
-                        session.add(
+                            .where(col(Entries.space_name) == src_space_name)
+                            .values(space_name=dest_shortname)
+                        )
+                        await session.execute(
                             update(Attachments)
-                            .where(col(Attachments.space_name) == dest_space_name)
-                            .values(space_name=dest_shortname))
-                        await session.commit()
+                            .where(col(Attachments.space_name) == src_space_name)
+                            .values(space_name=dest_shortname)
+                        )
                 except Exception as e:
                     origin.shortname = old_shortname
                     if hasattr(origin, 'subpath'):
                         origin.subpath = old_subpath
 
                     session.add(origin)
-                    await session.commit()
 
                     print("[!move]", e)
                     logger.error(f"Failed parsing an entry. Error: {e}")
@@ -1661,6 +2095,7 @@ class SQLAdapter(BaseDataAdapter):
                         message="failed to move entry",
                     ),
                 )
+
     def delete_empty(self, path: Path):
         pass
 
@@ -1677,11 +2112,11 @@ class SQLAdapter(BaseDataAdapter):
         pass
 
     async def is_entry_exist(self,
-                       space_name: str,
-                       subpath: str,
-                       shortname: str,
-                       resource_type: ResourceType,
-                       schema_shortname: str | None = None, ) -> bool:
+                             space_name: str,
+                             subpath: str,
+                             shortname: str,
+                             resource_type: ResourceType,
+                             schema_shortname: str | None = None, ) -> bool:
         async with self.get_session() as session:
             resource_cls = getattr(
                 sys.modules["models.core"], camel_case(resource_type)
@@ -1734,13 +2169,45 @@ class SQLAdapter(BaseDataAdapter):
                     subpath = f"/{subpath}"
 
                 result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
+
+                if meta.__class__ == core.User:
+                    try:
+                        await session.execute(update(Spaces).where(col(Spaces.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(update(Entries).where(col(Entries.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(update(Attachments).where(col(Attachments.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(update(Roles).where(col(Roles.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(update(Permissions).where(col(Permissions.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+
+                        await session.execute(update(Locks).where(col(Locks.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(update(Histories).where(col(Histories.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+
+                        await session.execute(delete(Sessions).where(col(Sessions.shortname) == meta.shortname))
+                    except Exception as _e:
+                        logger.warning(f"Failed to reassign ownership to anonymous for user {meta.shortname}: {_e}")
+
                 await session.delete(result)
                 if meta.__class__ == core.Space:
                     statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name)
                     await session.execute(statement2)
                     statement = delete(Entries).where(col(Entries.space_name) == space_name)
                     await session.execute(statement)
-                await session.commit()
+                if meta.__class__ == core.Folder:
+                    _subpath = f"{subpath}/{meta.shortname}".replace('//', '/')
+                    statement2 = delete(Attachments) \
+                        .where(col(Attachments.space_name) == space_name) \
+                        .where(col(Attachments.subpath).startswith(_subpath))
+                    await session.execute(statement2)
+                    statement = delete(Entries) \
+                        .where(col(Entries.space_name) == space_name) \
+                        .where(col(Entries.subpath).startswith(_subpath))
+                    await session.execute(statement)
+
+                # Refresh authz MVs only when Users/Roles/Permissions changed
+                # try:
+                #     if meta.__class__ in (core.User, core.Role, core.Permission):
+                #         await self.ensure_authz_materialized_views_fresh()
+                # except Exception as _e:
+                #     logger.warning(f"AuthZ MV refresh after delete skipped: {_e}")
             except Exception as e:
                 print("[!delete]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -1753,19 +2220,17 @@ class SQLAdapter(BaseDataAdapter):
                     ),
                 )
 
-    async def lock_handler(self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction) -> dict | None:
+    async def lock_handler(self, space_name: str, subpath: str, shortname: str, user_shortname: str,
+                           action: LockAction) -> dict | None:
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
 
         async with self.get_session() as session:
             match action:
                 case LockAction.lock:
-                    statement = (
-                        select(Locks)
-                        .where(Locks.space_name == space_name)
-                        .where(Locks.subpath == subpath)
+                    statement = select(Locks).where(Locks.space_name == space_name) \
+                        .where(Locks.subpath == subpath) \
                         .where(Locks.shortname == shortname)
-                    )
                     result = (await session.execute(statement)).one_or_none()
                     if result:
                         raise api.Exception(
@@ -1774,7 +2239,7 @@ class SQLAdapter(BaseDataAdapter):
                                 type="lock",
                                 code=InternalErrorCode.LOCKED_ENTRY,
                                 message="entry already locked already exists!",
-                            ),
+                            )
                         )
 
                     lock = Locks(
@@ -1814,15 +2279,15 @@ class SQLAdapter(BaseDataAdapter):
             return None
 
     async def set_user_session(self, user_shortname: str, token: str) -> bool:
-        async with (self.get_session() as session):
-            try:
-                total, last_session = await self.get_user_session(user_shortname, token)
+        try:
+            total, last_session = await self.get_user_session(user_shortname, token)
 
-                if (settings.max_sessions_per_user == 1 and last_session is not None) \
+            if (settings.max_sessions_per_user == 1 and last_session is not None) \
                     or (settings.max_sessions_per_user != 0 and total >= settings.max_sessions_per_user):
-                    await self.remove_user_session(user_shortname)
+                await self.remove_user_session(user_shortname)
 
-                timestamp = datetime.now()
+            timestamp = datetime.now()
+            async with self.get_session() as session:
                 session.add(
                     Sessions(
                         uuid=uuid4(),
@@ -1831,12 +2296,11 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=timestamp,
                     )
                 )
-                await session.commit()
 
-                return True
-            except Exception as e:
-                print("[!set_sql_user_session]", e)
-                return False
+            return True
+        except Exception as e:
+            print("[!set_sql_user_session]", e)
+            return False
 
     async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
         async with self.get_session() as session:
@@ -1867,7 +2331,7 @@ class SQLAdapter(BaseDataAdapter):
             try:
                 statement = select(Sessions).where(col(Sessions.shortname) == user_shortname).order_by(
                     col(Sessions.timestamp).desc()
-                ).offset(settings.max_sessions_per_user-1)
+                ).offset(settings.max_sessions_per_user - 1)
                 oldest_sessions = (await session.execute(statement)).all()
                 oldest_sessions = [oldest_session[0] for oldest_session in oldest_sessions]
                 for oldest_session in oldest_sessions:
@@ -1890,7 +2354,6 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=timestamp,
                     )
                 )
-                await session.commit()
             except Exception as e:
                 print("[!set_invitation]", e)
 
@@ -1911,7 +2374,6 @@ class SQLAdapter(BaseDataAdapter):
             try:
                 statement = delete(Invitations).where(col(Invitations.invitation_token) == invitation_token)
                 await session.execute(statement)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
@@ -1928,7 +2390,6 @@ class SQLAdapter(BaseDataAdapter):
                         timestamp=datetime.now(),
                     )
                 )
-                await session.commit()
             except Exception as e:
                 print("[!set_url_shortner]", e)
 
@@ -1952,7 +2413,6 @@ class SQLAdapter(BaseDataAdapter):
             try:
                 statement = delete(URLShorts).where(col(URLShorts.token_uuid) == token_uuid)
                 await session.execute(statement)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
@@ -1963,7 +2423,6 @@ class SQLAdapter(BaseDataAdapter):
             try:
                 statement = delete(URLShorts).where(col(URLShorts.url).ilike(f"%{invitation_token}%"))
                 await session.execute(statement)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!delete_url_shortner_by_token]", e)
@@ -1971,40 +2430,53 @@ class SQLAdapter(BaseDataAdapter):
 
     async def _set_query_final_results(self, query, results):
         is_aggregation = query.type == QueryType.aggregation
-        not_history_event = query.type not in [QueryType.history, QueryType.events]
+        is_attachment_query = query.type == QueryType.attachments
+        process_payload = query.type not in [QueryType.history, QueryType.events]
 
-        if query.type == QueryType.attachments:
+        # Case 1: Attachment query  → Direct conversion of all items
+        if is_attachment_query:
+            return [
+                item.to_record(item.subpath, item.shortname)
+                for item in results
+            ]
+
+        # Case 2: Aggregation query → delegate to existing aggregator
+        if is_aggregation:
             for idx, item in enumerate(results):
-                results[idx] = item.to_record(
-                    results[idx].subpath, item.shortname
-                )
-        else:
-            for idx, item in enumerate(results):
-                if is_aggregation:
-                    results = set_results_from_aggregation(
-                        query, item, results, idx
-                    )
-                else:
-                    results[idx] = item.to_record(
-                        item.subpath, item.shortname
-                    )
+                results = set_results_from_aggregation(query, item, results, idx)
+            return results
 
-                if not_history_event:
-                    if not query.retrieve_json_payload:
-                        attrb = results[idx].attributes
-                        if (
-                            attrb
-                            and attrb.get("payload", {})
-                            and attrb.get("payload", {}).get("body", False)
-                        ):
-                            attrb["payload"]["body"] = None
+        # Case 3: Standard query → convert and optionally fetch attachments
+        attachment_tasks = []
+        attachment_indices = []
 
-                    if query.retrieve_attachments:
-                        results[idx].attachments = await self.get_entry_attachments(
-                            results[idx].subpath,
-                            Path(f"{query.space_name}/{results[idx].shortname}"),
+        for idx, item in enumerate(results):
+            rec = item.to_record(item.subpath, item.shortname)
+            results[idx] = rec
+
+            if process_payload:
+                # Strip payload body early (if disabled)
+                if not query.retrieve_json_payload:
+                    payload = rec.attributes.get("payload", {})
+                    if payload and payload.get("body"):
+                        payload["body"] = None
+
+                # Queue attachments if requested
+                if query.retrieve_attachments:
+                    attachment_tasks.append(
+                        self.get_entry_attachments(
+                            rec.subpath,
+                            Path(f"{query.space_name}/{rec.shortname}"),
                             retrieve_json_payload=True,
                         )
+                    )
+                    attachment_indices.append(idx)
+
+        # Run all attachment retrievals concurrently
+        if attachment_tasks:
+            attachments_list = await asyncio.gather(*attachment_tasks)
+            for idx, attachments in zip(attachment_indices, attachments_list):
+                results[idx].attachments = attachments
 
         return results
 
@@ -2018,7 +2490,6 @@ class SQLAdapter(BaseDataAdapter):
                 result = result[0]
                 result.attempt_count = 0
                 session.add(result)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!clear_failed_password_attempts]", e)
@@ -2045,7 +2516,6 @@ class SQLAdapter(BaseDataAdapter):
                 result = result[0]
                 result.attempt_count = attempt_count
                 session.add(result)
-                await session.commit()
                 return True
             except Exception as e:
                 print("[!set_failed_password_attempt_count]", e)
@@ -2079,7 +2549,7 @@ class SQLAdapter(BaseDataAdapter):
         return None
 
     async def validate_uniqueness(
-        self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
+            self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
     ) -> bool:
         """
         Get list of unique fields from entry's folder meta data
@@ -2093,8 +2563,8 @@ class SQLAdapter(BaseDataAdapter):
             folder_meta = None
 
         if folder_meta is None or folder_meta.payload is None or not isinstance(folder_meta.payload.body,
-                                                                            dict) or not isinstance(
-                folder_meta.payload.body.get("unique_fields", None), list):  # type: ignore
+                                                                                dict) or not isinstance(
+            folder_meta.payload.body.get("unique_fields", None), list):  # type: ignore
             return True
 
         current_user = None
@@ -2107,8 +2577,8 @@ class SQLAdapter(BaseDataAdapter):
                 value = get_nested_value(record.attributes, composite_unique_key)
                 if value is None or value == "":
                     continue
-                if current_user is not None and hasattr(current_user,composite_unique_key) \
-                        and getattr(current_user,composite_unique_key) == value:
+                if current_user is not None and hasattr(current_user, composite_unique_key) \
+                        and getattr(current_user, composite_unique_key) == value:
                     continue
 
                 query_string += f"@{composite_unique_key}:{value} "
@@ -2194,16 +2664,59 @@ class SQLAdapter(BaseDataAdapter):
 
         return {"unique": True}
 
+    # async def ensure_authz_materialized_views_fresh(self) -> None:
+    #     try:
+    #         async with self.get_session() as session:
+    #             latest_q = text(
+    #                 """
+    #                 SELECT GREATEST(
+    #                     COALESCE((SELECT MAX(updated_at) FROM users), to_timestamp(0)),
+    #                     COALESCE((SELECT MAX(updated_at) FROM roles), to_timestamp(0)),
+    #                     COALESCE((SELECT MAX(updated_at) FROM permissions), to_timestamp(0))
+    #                 ) AS max_ts
+    #                 """
+    #             )
+    #             latest_ts_row = (await session.execute(latest_q)).one()
+    #             max_ts = latest_ts_row[0]
+    #
+    #             meta_row = (
+    #                 await session.execute(text("SELECT last_source_ts FROM authz_mv_meta WHERE id = 1"))).one_or_none()
+    #             if meta_row is None or (meta_row[0] is None) or (max_ts is not None and max_ts > meta_row[0]):
+    #                 await session.execute(text("REFRESH MATERIALIZED VIEW mv_user_roles"))
+    #                 await session.execute(text("REFRESH MATERIALIZED VIEW mv_role_permissions"))
+    #                 await session.execute(text("""
+    #                     INSERT INTO authz_mv_meta(id, last_source_ts, refreshed_at)
+    #                     VALUES (1, :ts, now())
+    #                     ON CONFLICT (id)
+    #                     DO UPDATE SET last_source_ts = EXCLUDED.last_source_ts,
+    #                                   refreshed_at = now()
+    #                 """), {"ts": max_ts})
+    #     except Exception as e:
+    #         logger.warning(f"AuthZ MV refresh failed or skipped: {e}")
+    #
+    # async def _bulk_load_by_shortnames(self, class_type: Type[MetaChild], shortnames: list[str]) -> dict[
+    #     str, MetaChild]:
+    #     if not shortnames:
+    #         return {}
+    #     table = self.get_table(class_type)
+    #     items: dict[str, MetaChild] = {}
+    #     async with self.get_session() as session:
+    #         res = await session.execute(
+    #             select(table).where(col(table.shortname).in_(shortnames))
+    #         )
+    #         rows = [r[0] for r in res.all()]
+    #         for row in rows:
+    #             model_obj = class_type.model_validate(row.model_dump())
+    #             items[getattr(row, 'shortname')] = model_obj
+    #     return items
+
     async def get_role_permissions(self, role: core.Role) -> list[core.Permission]:
         role_records = await self.load_or_none(
             settings.management_space, 'roles', role.shortname, core.Role
         )
-
         if role_records is None:
             return []
-
         role_permissions: list[core.Permission] = []
-
         for permission in role_records.permissions:
             permission_record = await self.load_or_none(
                 settings.management_space, 'permissions', permission, core.Permission
@@ -2211,7 +2724,6 @@ class SQLAdapter(BaseDataAdapter):
             if permission_record is None:
                 continue
             role_permissions.append(permission_record)
-
         return role_permissions
 
     async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
@@ -2219,22 +2731,25 @@ class SQLAdapter(BaseDataAdapter):
             user = await self.load_or_none(
                 settings.management_space, settings.users_subpath, user_shortname, core.User
             )
-
             if user is None:
                 return {}
-
-            user_roles: dict[str, core.Role] = {}
+            euser_roles: dict[str, core.Role] = {}
+            if user_shortname != "anonymous":
+                role_record = await self.load_or_none(
+                    settings.management_space, 'roles', 'logged_in', core.Role
+                )
+                if role_record is not None:
+                    euser_roles['logged_in'] = role_record
             for role in user.roles:
                 role_record = await self.load_or_none(
                     settings.management_space, 'roles', role, core.Role
                 )
                 if role_record is None:
                     continue
-
-                user_roles[role] = role_record
-            return user_roles
-        except Exception as e:
-            print(f"Error: {e}")
+                euser_roles[role] = role_record
+            return euser_roles
+        except Exception as e2:
+            print(f"Error: {e2}")
             return {}
 
     async def load_user_meta(self, user_shortname: str) -> Any:
@@ -2255,10 +2770,11 @@ class SQLAdapter(BaseDataAdapter):
 
         for _, role in user_roles.items():
             role_permissions = await self.get_role_permissions(role)
-            permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
-                                                            core.Permission)
-            if permission_world_record:
-                role_permissions.append(permission_world_record)
+            if user_shortname == "anonymous":
+                permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
+                                                                  core.Permission)
+                if permission_world_record:
+                    role_permissions.append(permission_world_record)
 
             for permission in role_permissions:
                 for space_name, permission_subpaths in permission.subpaths.items():
@@ -2289,7 +2805,8 @@ class SQLAdapter(BaseDataAdapter):
                                 "allowed_actions": list(actions),
                                 "conditions": list(conditions),
                                 "restricted_fields": permission.restricted_fields,
-                                "allowed_fields_values": permission.allowed_fields_values
+                                "allowed_fields_values": permission.allowed_fields_values,
+                                "filter_fields_values": permission.filter_fields_values
                             }
         return user_permissions
 
@@ -2301,9 +2818,9 @@ class SQLAdapter(BaseDataAdapter):
             {key: value},
             Users
         )
-        if _user is None or len(_user) == 0:
+        if _user is None:
             return None
-        return str(_user[0].shortname)
+        return str(_user.shortname)
 
     async def get_payload_from_event(self, event) -> dict:
         notification_request_meta = await self.load(
@@ -2313,7 +2830,7 @@ class SQLAdapter(BaseDataAdapter):
             getattr(sys_modules["models.core"], camel_case(event.resource_type)),
             event.user_shortname,
         )
-        return notification_request_meta.payload.body # type: ignore
+        return notification_request_meta.payload.body  # type: ignore
 
     async def get_user_roles_from_groups(self, user_meta: core.User) -> list:
         return []
@@ -2432,7 +2949,7 @@ class SQLAdapter(BaseDataAdapter):
     ) -> core.Record:
         _result = await self.get_entry_by_criteria({key: val})
 
-        if _result is None or len(_result) == 0:
+        if _result is None:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
                 error=api.Error(
@@ -2440,7 +2957,28 @@ class SQLAdapter(BaseDataAdapter):
                 ),
             )
 
-        return _result[0]
+        from utils.access_control import access_control
+        if not await access_control.check_access(
+                user_shortname=logged_in_user,
+                space_name=_result.attributes['space_name'],
+                subpath=_result.subpath,
+                resource_type=_result.resource_type,
+                action_type=core.ActionType.view,
+                resource_is_active=_result.attributes['is_active'],
+                resource_owner_shortname=_result.attributes['owner_shortname'],
+                resource_owner_group=_result.attributes['owner_group_shortname'],
+                entry_shortname=_result.shortname
+        ):
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="You don't have permission to this action [42]",
+                )
+            )
+
+        return _result
 
     async def delete_space(self, space_name, record, owner_shortname):
         resource_obj = core.Meta.from_record(
@@ -2459,7 +2997,11 @@ class SQLAdapter(BaseDataAdapter):
         pass
 
     async def get_group_users(self, group_name: str):
-        return []
+        async with self.get_session() as session:
+            statement = select(Users.shortname).where(col(Users.groups).contains([group_name])) 
+            result = await session.execute(statement)
+            shortnames = result.scalars().all()
+            return shortnames
 
     async def is_user_verified(self, user_shortname: str | None, identifier: str | None) -> bool:
         async with self.get_session() as session:

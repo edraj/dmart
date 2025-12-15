@@ -1,5 +1,5 @@
 import sys
-from models.core import Content, Payload, PluginBase, Event, Ticket, Reaction, Comment, Relationship, Locator
+from models.core import Content, Payload, PluginBase, Event, Reaction, Comment, Relationship, Locator
 from models.enums import ContentType, ResourceType
 from utils.helpers import camel_case
 from data_adapters.adapter import data_adapter as db
@@ -14,7 +14,6 @@ class Plugin(PluginBase):
         if not isinstance(data.shortname, str):
             logger.error("data.shortname is None and str is required at local_notification")
             return
-
         if data.resource_type not in [ResourceType.ticket, ResourceType.reaction, ResourceType.comment, ResourceType.media]:
             return
 
@@ -33,12 +32,11 @@ class Plugin(PluginBase):
         relationship = None
         if class_type in [Reaction, Comment]:
             parent_subpath, parent_shortname = data.subpath.rsplit("/", 1)
-
             parent = await db.load(
                 space_name=data.space_name,
                 subpath=parent_subpath,
                 shortname=parent_shortname,
-                class_type=Ticket,
+                class_type=Content,
                 user_shortname=data.user_shortname
             )
             if parent.owner_shortname == data.user_shortname:
@@ -48,7 +46,7 @@ class Plugin(PluginBase):
 
             relationship = Relationship(
                 related_to=Locator(
-                    type=ResourceType.ticket,
+                    type=ResourceType(data.resource_type),
                     space_name=data.space_name,
                     subpath=parent_subpath,
                     shortname=parent_shortname
@@ -76,6 +74,7 @@ class Plugin(PluginBase):
                 body=f"{str(uuid)[:8]}.json"
             ),
         )
+        
         if relationship is not None:
             meta_obj.relationships = [relationship]
 
@@ -95,7 +94,6 @@ class Plugin(PluginBase):
             "resource_type": data.resource_type,
             "is_read": "no"
         }
-
         await db.save_payload_from_json(
             "personal",
             f"people/{parent_owner}/notifications",

@@ -1,0 +1,26 @@
+{
+  "shortname": {
+    "key": "shortname",
+    "name": "shortname",
+    "type": "string",
+    "width": "25%"
+  },
+  "resource_type": {
+    "key": "resource_type",
+    "name": "Resource type",
+    "type": "string",
+    "width": "15%"
+  },
+  "event": {
+    "key": "attributes.request",
+    "name": "Event",
+    "type": "string",
+    "width": "15%"
+  },
+  "timestamp": {
+    "key": "attributes.timestamp",
+    "title": "Timestamp",
+    "type": "string",
+    "width": "15%"
+  }
+}

@@ -46,6 +46,10 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
+    async def delete_otp(self, key):
+        pass
+
+    @abstractmethod
     def metapath(
             self,
             space_name: str,
@@ -82,7 +86,7 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Record | None:
         pass
 
     @abstractmethod
@@ -402,7 +406,7 @@ class BaseDataAdapter(ABC):
             retrieve_json_payload: bool = False,
             retrieve_attachments: bool = False,
             retrieve_lock_status: bool = False,
-    ) -> core.Record:
+    ) -> core.Record | None:
         pass
 
     @abstractmethod

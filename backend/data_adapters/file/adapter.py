@@ -212,6 +212,10 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             return await redis_services.get_content_by_id(key)
 
+    async def delete_otp(self, key: str):
+        async with RedisServices() as redis_services:
+            await redis_services.del_keys([key])
+
     def metapath(
             self,
             space_name: str,
@@ -319,7 +323,98 @@ class FileAdapter(BaseDataAdapter):
             case api.QueryType.aggregation:
                 total, records = await serve_query_aggregation(self, query, user_shortname)
 
+        if getattr(query, 'join', None):
+            try:
+                records = await self._apply_client_joins(records, query.join, (user_shortname or "anonymous")) # type: ignore
+            except Exception as e:
+                print("[!client_join(file)]", e)
+
         return total, records
+
+    async def _apply_client_joins(self, base_records: list[core.Record], joins: list, user_shortname: str) -> list[core.Record]:
+        def parse_join_on(expr: str) -> tuple[str, bool, str, bool]:
+            parts = [p.strip() for p in expr.split(':', 1)]
+            if len(parts) != 2:
+                raise ValueError(f"Invalid join_on expression: {expr}")
+            left, right = parts[0], parts[1]
+            _l_arr = left.endswith('[]')
+            _r_arr = right.endswith('[]')
+            if _l_arr:
+                left = left[:-2]
+            if _r_arr:
+                right = right[:-2]
+            return left, _l_arr, right, _r_arr
+
+        def get_values_from_record(rec: core.Record, path: str, array_hint: bool) -> list:
+            if path in ("shortname", "resource_type", "subpath", "uuid"):
+                val = getattr(rec, path, None)
+            elif path == "space_name":
+                val = rec.attributes.get("space_name") if rec.attributes else None
+            else:
+                container = rec.attributes or {}
+                # lazy import to reuse same helper as SQL
+                from data_adapters.helpers import get_nested_value as _get
+                val = _get(container, path)
+
+            if val is None:
+                return []
+            if isinstance(val, list):
+                out = []
+                for item in val:
+                    if isinstance(item, (str, int, float, bool)) or item is None:
+                        out.append(item)
+                return out
+            if array_hint:
+                return [val]
+            return [val]
+
+        for rec in base_records:
+            if rec.attributes is None:
+                rec.attributes = {}
+            if rec.attributes.get('join') is None:
+                rec.attributes['join'] = {}
+
+        import models.api as api
+        for join_item in joins:
+            join_on = getattr(join_item, 'join_on', None)
+            alias = getattr(join_item, 'alias', None)
+            q = getattr(join_item, 'query', None)
+            if not join_on or not alias or q is None:
+                continue
+
+            sub_query = q if isinstance(q, api.Query) else api.Query.model_validate(q)
+
+            _total, right_records = await self.query(sub_query, user_shortname)
+
+            l_path, l_arr, r_path, r_arr = parse_join_on(join_on)
+
+            right_index: dict[str, list[core.Record]] = {}
+            for rr in right_records:
+                r_vals = get_values_from_record(rr, r_path, r_arr)
+                for v in r_vals:
+                    if v is None:
+                        continue
+                    right_index.setdefault(str(v), []).append(rr)
+
+            for br in base_records:
+                l_vals = get_values_from_record(br, l_path, l_arr)
+                matched: list[core.Record] = []
+                for v in l_vals:
+                    if v is None:
+                        continue
+                    matched.extend(right_index.get(str(v), []))
+
+                seen = set()
+                unique: list[core.Record] = []
+                for m in matched:
+                    uid = f"{m.subpath}:{m.shortname}:{m.resource_type}"
+                    if uid in seen:
+                        continue
+                    seen.add(uid)
+                    unique.append(m)
+                br.attributes['join'][alias] = unique
+
+        return base_records
 
     async def load(
             self,
@@ -1262,7 +1357,7 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             return await redis_services.get_key(f"short/{token_uuid}")
 
-    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> list[core.Record] | None:
+    async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Record | None:
         async with RedisServices() as redis_services:
             _search_query = ""
             for k, v in criteria.items():
@@ -1271,7 +1366,7 @@ class FileAdapter(BaseDataAdapter):
                 space_name=settings.management_space,
                 search=_search_query,
                 filters={"subpath": [table]},
-                limit=10000,
+                limit=1,
                 offset=0,
             )
         if not r_search["data"]:
@@ -1282,7 +1377,7 @@ class FileAdapter(BaseDataAdapter):
             records.append(
                 json.loads(data)
             )
-        return records
+        return records[0] if len(records) > 0 else None
 
     async def get_media_attachment(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass
@@ -1775,7 +1870,7 @@ class FileAdapter(BaseDataAdapter):
             retrieve_json_payload: bool = False,
             retrieve_attachments: bool = False,
             retrieve_lock_status: bool = False,
-    ) -> core.Record:
+    ) -> core.Record | None:
         spaces = await self.get_spaces()
         entry_doc = None
         entry_space = None

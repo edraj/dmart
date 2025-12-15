@@ -54,6 +54,10 @@ def write_json_file(path, data):
         clean = clean_json(data)
         json.dump(clean, f, indent=2, default=str)
 
+def write_file(path, data):
+    with open(path, "w") as f:
+        f.write(data)
+
 def write_binary_file(path, data):
     with open(path, "wb") as f:
         f.write(data)
@@ -272,9 +276,6 @@ async def export_data_with_query(query, user_shortname):
 
     total, records = await serve_query(query, user_shortname)
 
-    print(query)
-    print(f"LEN RECORDS: {len(records)}/{total}")
-
     with (Session(engine) as session):
         space = session.exec(select(Spaces).where(col(Spaces.space_name) == query.space_name)).first()
         if space:
@@ -293,8 +294,6 @@ async def export_data_with_query(query, user_shortname):
             for part in path_parts:
                 current_path += f"/{part}"
 
-                # Find folder entry for this path
-                print(current_path.rsplit("/", 1)[0] or "/")
                 folder = session.exec(select(Entries).where(
                     (Entries.space_name == query.space_name) &
                     (Entries.subpath == str(current_path.rsplit("/", 1)[0] or "/")) &
@@ -311,6 +310,11 @@ async def export_data_with_query(query, user_shortname):
                     ensure_directory_exists(dir_meta_path)
 
                     _folder = folder.model_dump()
+                    _folder = {
+                        **_folder,
+                        **_folder.get("attributes", {})
+                    }
+                    del _folder["attributes"]
                     body = None
                     if _folder and _folder.get("payload", None) is not None:
                         if _folder and _folder.get("payload", {}).get("body", None) is not None:
@@ -343,6 +347,12 @@ async def export_data_with_query(query, user_shortname):
                 del _entry["subpath"]
                 del _entry["resource_type"]
 
+                _entry = {
+                    **_entry,
+                    **_entry.get("attributes", {})
+                }
+                del _entry["attributes"]
+
                 write_json_file(f"{dir_meta_path}/meta.folder.json", _entry)
                 if body is not None:
                     write_json_file(f"{dir_path}/{entry.shortname}.json", body)
@@ -362,14 +372,6 @@ async def export_data_with_query(query, user_shortname):
                             write_json_file(f"{dir_path}/{entry.shortname}.json",  _entry.get("attributes",{}).get("payload").get("body", None))
                         _entry.get("attributes",{}).get("payload")["body"] = f"{entry.shortname}.json"
 
-
-            # if entry.resource_type != "ticket":
-            #     del _entry["state"]
-            #     del _entry["is_open"]
-            #     del _entry["reporter"]
-            #     del _entry["workflow_shortname"]
-            #     del _entry["collaborators"]
-            #     del _entry["resolution_reason"]
             _entry = {
                 **_entry,
                 **_entry.get("attributes",{})
@@ -406,7 +408,7 @@ async def export_data_with_query(query, user_shortname):
                 (Attachments.space_name == query.space_name) &
                 (Attachments.subpath == f"/{entry.subpath}/{entry.shortname}")
             )).all()
-            print(f"Attachments: {len(attachments)}", f"{entry.subpath}/{entry.shortname}")
+
             __attachment = None
             for attachment in attachments:
                 __attachment = attachment
@@ -430,18 +432,16 @@ async def export_data_with_query(query, user_shortname):
                         attachment_body = attachment.payload["body"]
 
                 if attachment_body is not None:
-                    if (isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == 'json') \
-                        or (isinstance(attachment.payload, Payload) and attachment.payload.content_type == 'json'):
-                        if isinstance(attachment_body, dict):
-                            write_json_file(f"{media_path}/{attachment.shortname}.json", attachment_body)
-                            if isinstance(attachment.payload, Payload):
-                                attachment.payload.body = f"{attachment.shortname}.json"
-                            elif isinstance(attachment.payload, dict):
-                                attachment.payload["body"] = f"{attachment.shortname}.json"
+                    if isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == 'json':
+                        write_json_file(f"{media_path}/{attachment.shortname}.json", attachment_body)
+                        attachment.payload["body"] = f"{attachment.shortname}.json"
+                    elif isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == 'comment':
+                        write_json_file(f"{media_path}/{attachment.shortname}.json", attachment_body)
+                        attachment.payload["body"] = f"{attachment.shortname}.json"
                     else:
-                        if attachment.media is None:
-                            continue
-                        write_binary_file(f"{media_path}/{attachment_body}", attachment.media)
+                        if attachment.media:
+                            write_binary_file(f"{media_path}/{attachment_body}", attachment.media)
+
                     _attachment = attachment.model_dump()
 
                     del _attachment["media"]

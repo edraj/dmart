@@ -55,7 +55,8 @@ class Metas(Unique, table=False):
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
     owner_shortname: str = Field(foreign_key="users.shortname")
-    acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
+    owner_group_shortname: str | None = None
+    acl: list[dict[str, Any]] | list[core.ACL] | None = Field(default_factory=list, sa_type=JSONB)
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
     relationships: list[dict[str, Any]] | None = Field(default=[], sa_type=JSONB)
 
@@ -164,7 +165,7 @@ class Users(Metas, table=True):
     password: str | None = None
     roles: list[str] = Field(default_factory=dict, sa_type=JSONB)
     groups: list[str] = Field(default_factory=dict, sa_type=JSONB)
-    acl: list[core.ACL] | None = Field(default=[], sa_type=JSONB)
+    acl: list[dict[str, Any]] | list[core.ACL] | None = Field(default_factory=list, sa_type=JSONB)
     relationships: list[dict[str, Any]] | None = Field(default_factory=None, sa_type=JSONB)
     type: UserType = Field(default=UserType.web)
     # language: Language = Field(default=Language.en)
@@ -179,6 +180,7 @@ class Users(Metas, table=True):
     facebook_id: str | None = None
     social_avatar_url: str | None = None
     attempt_count: int | None = None
+    last_login: dict | None = Field(default=None, sa_type=JSONB)
 
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
@@ -195,6 +197,7 @@ class Permissions(Metas, table=True):
     conditions: list[str] = Field(default_factory=dict, sa_type=JSONB)
     restricted_fields: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     allowed_fields_values: dict | list[dict] | None = Field(default_factory=None, sa_type=JSONB)
+    filter_fields_values: str | None = None
 
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))  # type: ignore
 
@@ -305,7 +308,7 @@ class Aggregated(SQLModel, table=False):
     owner_group_shortname: str | None = None
     payload: dict | core.Payload | None = None
     relationships: list[dict[str, Any]] | None = None
-    acl: list[core.ACL] | None = None
+    acl: list[dict[str, Any]] | None = None
 
     resource_type: ResourceType | None = None
     attributes: dict[str, Any] | None = None
@@ -395,6 +398,47 @@ def generate_tables():
         conn.commit()
 
     SQLModel.metadata.create_all(engine)
+
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS authz_mv_meta (
+                id INT PRIMARY KEY,
+                last_source_ts TIMESTAMPTZ,
+                refreshed_at TIMESTAMPTZ
+            )
+        """))
+        conn.execute(text("""
+            INSERT INTO authz_mv_meta(id, last_source_ts, refreshed_at)
+            VALUES (1, to_timestamp(0), now())
+            ON CONFLICT (id) DO NOTHING
+        """))
+
+        conn.execute(text("""
+            CREATE MATERIALIZED VIEW IF NOT EXISTS mv_user_roles AS
+            SELECT u.shortname AS user_shortname,
+                   r.shortname AS role_shortname
+            FROM users u
+            JOIN LATERAL jsonb_array_elements_text(u.roles) AS role_name ON TRUE
+            JOIN roles r ON r.shortname = role_name
+        """))
+        conn.execute(text("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_roles_unique
+            ON mv_user_roles (user_shortname, role_shortname)
+        """))
+
+        conn.execute(text("""
+            CREATE MATERIALIZED VIEW IF NOT EXISTS mv_role_permissions AS
+            SELECT r.shortname AS role_shortname,
+                   p.shortname AS permission_shortname
+            FROM roles r
+            JOIN LATERAL jsonb_array_elements_text(r.permissions) AS perm_name ON TRUE
+            JOIN permissions p ON p.shortname = perm_name
+        """))
+        conn.execute(text("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_role_permissions_unique
+            ON mv_role_permissions (role_shortname, permission_shortname)
+        """))
+        conn.commit()
 
 # ALERMBIC
 def init_db():

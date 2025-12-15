@@ -1,12 +1,12 @@
-import json
 from sys import modules as sys_modules
-
+from uuid import uuid4
 from models import api
-from models.enums import ContentType
+from models.enums import ContentType, QueryType
 from models.core import (
     ActionType,
-    Notification,
+    Content,
     NotificationData,
+    Payload,
     PluginBase,
     Event,
     Translation,
@@ -46,11 +46,7 @@ class Plugin(PluginBase):
                     data.user_shortname,
                 )
             ).model_dump()
-            if (
-                entry["payload"]
-                and entry["payload"]["content_type"] == ContentType.json
-                and entry["payload"]["body"]
-            ):
+            if entry["payload"] is not None:
                 try:
                     entry["payload"]["body"] = await db.load_resource_payload(
                         space_name=data.space_name,
@@ -60,41 +56,47 @@ class Plugin(PluginBase):
                             sys_modules["models.core"], camel_case(data.resource_type)
                         ),
                     )
-                except Exception as _:
-                    return
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to load payload for entry {data.space_name}/{data.subpath}/{data.shortname}: {e}"
+                    )
         entry["space_name"] = data.space_name
         entry["resource_type"] = str(data.resource_type)
         entry["subpath"] = data.subpath
-
         # 1- get the matching SystemNotificationRequests
-        search_subpaths = list(filter(None, data.subpath.split("/")))
         total, matching_notification_requests = await db.query(api.Query(
-            space_name=settings.management_space,
+            type=QueryType.search,
+            retrieve_json_payload=True,
+            space_name="management",
             subpath="notifications/system",
-            search=f"@on_space:{data.space_name} @on_subpath:({'|'.join(search_subpaths)}) @on_action:{data.action_type}",
+            search=f"@payload.body.on_space:{data.space_name} @payload.body.on_subpath:{data.subpath.lstrip("/")} @payload.body.on_action:{data.action_type}",
             limit=30,
             offset=0
-        ))
-
+        ), "dmart")
         if total == 0:
             return
 
         sub_matching_notification_requests = matching_notification_requests[0].model_dump()
+        notification_dict = sub_matching_notification_requests
+        if (
+            "state" in entry
+            and notification_dict.get("on_state", "") != ""
+            and notification_dict["on_state"] != entry["state"]
+        ):
+            return
+
 
         # 2- get list of subscribed users
-        notification_subscribers = [entry["owner_shortname"]]
+        notification_subscribers =[]
         # if entry.get("collaborators", None):
         #     notification_subscribers.extend(entry["collaborators"].values())
+
+        data_owner_shortname = entry["owner_shortname"]
         if entry.get("owner_group_shortname", None):
             group_users = await db.get_group_users(entry["owner_group_shortname"])
-            group_members = [
-                json.loads(user_doc)["shortname"] for user_doc in group_users
-            ]
-            notification_subscribers.extend(group_members)
-
-        if data.user_shortname in notification_subscribers:
-            notification_subscribers.remove(data.user_shortname)
-
+            notification_subscribers.extend(group_users)        
+        if data_owner_shortname in notification_subscribers:
+            notification_subscribers.remove(data_owner_shortname)
         users_objects: dict[str, dict] = {}
 
         for subscriber in notification_subscribers:
@@ -105,51 +107,63 @@ class Plugin(PluginBase):
                 getattr(sys_modules["models.core"], camel_case("user")),
                 data.user_shortname,
             )).model_dump()
-
         # 3- send the notification
         notification_manager = NotificationManager()
-        for redis_document in sub_matching_notification_requests["data"]:
-            notification_dict = json.loads(redis_document)
-            if (
-                "state" in entry
-                and notification_dict.get("on_state", "") != ""
-                and notification_dict["on_state"] != entry["state"]
-            ):
-                continue
 
-            formatted_req = await self.prepare_request(notification_dict, entry)
-            for receiver in set(notification_subscribers):
-                if not formatted_req["push_only"]:
-                    notification_obj = await Notification.from_request(
-                        notification_dict, entry
+        formatted_req = await self.prepare_request(notification_dict, entry)
+        for receiver in set(notification_subscribers):
+            if not formatted_req["push_only"]:
+                notification_content = Content(
+                    shortname=str(uuid4())[:8],
+                    is_active=True,
+                    displayname=notification_dict["attributes"]["displayname"],
+                    description=notification_dict["attributes"]["description"],
+                    owner_shortname=receiver,
+                    payload=Payload(
+                        content_type=ContentType.json,
+                        body={
+                            "type": "system",
+                            "is_read": False,
+                            "priority": notification_dict["attributes"]["payload"]["body"]["priority"],
+                            "entry_space": entry["space_name"],
+                            "entry_subpath": entry["subpath"],
+                            "entry_shortname": entry["shortname"],
+                            "resource_type": entry["resource_type"],
+                            "created_by": data.user_shortname,
+                            "action_type": str(data.action_type)
+                        }
                     )
-                    await db.internal_save_model(
-                        "personal",
-                        f"people/{receiver}/notifications",
-                        notification_obj,
-                    )
+                )
+                await db.internal_save_model(
+                    space_name="personal",
+                    subpath=f"people/{receiver}/notifications",
+                    meta=notification_content
+                )
 
-                for platform in formatted_req["platforms"]:
-                    await notification_manager.send(
-                        platform=platform,
-                        data=NotificationData(
-                            receiver=users_objects[receiver],
-                            title=formatted_req["title"],
-                            body=formatted_req["body"],
-                            image_urls=formatted_req["images_urls"],
-                            deep_link=notification_dict.get("deep_link", {}),
-                            entry_id=entry["shortname"],
-                        ),
-                    )
+            for platform in formatted_req["platforms"]:
+                await notification_manager.send(
+                    platform=platform,
+                    data=NotificationData(
+                        receiver=users_objects[receiver],
+                        title=formatted_req["title"],
+                        body=formatted_req["body"],
+                        image_urls=formatted_req["images_urls"],
+                        deep_link=notification_dict.get("deep_link", {}),
+                        entry_id=entry["shortname"],
+                    ),
+                )
 
     async def prepare_request(self, notification_dict: dict, entry: dict) -> dict:
         for locale in ["ar", "en", "ku"]:
-            notification_dict["displayname"][locale] = replace_message_vars(
-                notification_dict["displayname"][locale], entry, locale
-            )
-            notification_dict["description"][locale] = replace_message_vars(
-                notification_dict["description"][locale], entry, locale
-            )
+            if "displayname" in notification_dict:
+                notification_dict["displayname"][locale] = replace_message_vars(
+                    notification_dict["displayname"][locale], entry, locale
+                )
+            if "description" in notification_dict:
+                notification_dict["description"][locale] = replace_message_vars(
+                    notification_dict["description"][locale], entry, locale
+                )
+            
         # Get Notification Request Images
         attachments_path = (
             settings.spaces_folder
@@ -165,11 +179,10 @@ class Plugin(PluginBase):
             "ar": notification_attachments.get("media", {}).get("ar"),
             "ku": notification_attachments.get("media", {}).get("ku"),
         }
-
         return {
-            "platforms": notification_dict["types"],
-            "title": Translation(**notification_dict["displayname"]),
-            "body": Translation(**notification_dict["description"]),
+            "platforms": notification_dict.get("types", []),
+            "title": Translation(**notification_dict.get("displayname", {})),
+            "body": Translation(**notification_dict.get("description", {})),
             "images_urls": Translation(**notification_images),
             "push_only": notification_dict.get("push_only", False),
         }

@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     websocket_port: int = 8484
     base_path: str = ""
     debug_enabled: bool = True
-    log_handlers: list[str] = ['console', 'file']
+    log_handlers: list[str] = ['file']
     log_file: str = "../logs/dmart.ljson.log"
     ws_log_file: str = "../logs/websocket.ljson.log"
     jwt_secret: str = "".join(random.sample(string.ascii_letters + string.digits,12))
@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     mock_smtp_api: bool = True
     files_query: str = "scandir"
     mock_smpp_api: bool = True
+    mock_otp_code: str = "123456"
     invitation_link: str = ""
     ldap_url: str = "ldap://"
     ldap_admin_dn: str = ""
@@ -76,6 +77,7 @@ class Settings(BaseSettings):
     max_query_limit: int = 10000
     session_inactivity_ttl: int = 0 # Set initially to 0 to disable session timeout. Possible value : 60 * 60 * 24 * 7  # 7 days
     request_timeout: int = 35 # In seconds the time of dmart requests.
+    jq_timeout: int = 2 # secs
 
     url_shorter_expires: int = 60 * 60 * 48  # 48 hours
 
@@ -100,8 +102,10 @@ class Settings(BaseSettings):
     database_host: str = 'localhost'
     database_port: int = 5432
     database_name: str = 'dmart'
-    database_pool_size: int = 15
-    database_max_overflow: int = 30
+    database_pool_size: int = 2
+    database_max_overflow: int = 2
+    database_pool_timeout: int = 30
+    database_pool_recycle: int = 30
 
     hide_stack_trace: bool = False
     max_failed_login_attempts: int = 5

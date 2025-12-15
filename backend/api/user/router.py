@@ -9,7 +9,7 @@ from utils.generate_email import generate_email_from_template
 from fastapi import APIRouter, Body, Query, Request, status, Depends, Response, Header
 import models.api as api
 import models.core as core
-from models.enums import ActionType, RequestType, ResourceType, ContentType
+from models.enums import ActionType, RequestType, ResourceType, ContentType, UserType
 from data_adapters.adapter import data_adapter as db
 from utils.access_control import access_control
 from utils.helpers import flatten_dict
@@ -47,8 +47,10 @@ from fastapi_sso.sso.google import GoogleSSO
 from fastapi_sso.sso.facebook import FacebookSSO
 from fastapi_sso.sso.base import OpenID, SSOBase
 from fastapi.logger import logger
+from fastapi.responses import ORJSONResponse
+from datetime import datetime
 
-router = APIRouter()
+router = APIRouter(default_response_class=ORJSONResponse)
 
 MANAGEMENT_SPACE: str = settings.management_space
 USERS_SUBPATH: str = "users"
@@ -78,7 +80,7 @@ async def check_existing_user_fields(
 
 
 @router.post("/create", response_model=api.Response, response_model_exclude_none=True)
-async def create_user(response: Response, record: core.Record) -> api.Response:
+async def create_user(response: Response, record: core.Record, http_request: Request) -> api.Response:
     """Register a new user by invitation"""
     if not settings.is_registrable:
         raise api.Exception(
@@ -151,6 +153,7 @@ async def create_user(response: Response, record: core.Record) -> api.Response:
         is_valid_otp = True if not settings.is_otp_for_create_required else await verify_user(ConfirmOTPRequest(
             msisdn=record.attributes.get("msisdn"),
             email=None,
+            shortname=None,
             code=record.attributes.get("msisdn_otp", "")
         ))
         if not is_valid_otp:
@@ -164,6 +167,7 @@ async def create_user(response: Response, record: core.Record) -> api.Response:
         is_valid_otp = True if not settings.is_otp_for_create_required else await verify_user(ConfirmOTPRequest(
             email=record.attributes.get("email"),
             msisdn=None,
+            shortname=None,
             code=record.attributes.get("email_otp", "")
         ))
         if not is_valid_otp:
@@ -182,7 +186,7 @@ async def create_user(response: Response, record: core.Record) -> api.Response:
             MANAGEMENT_SPACE, USERS_SUBPATH, user, separate_payload_data, user.owner_shortname
         )
         
-    response_record = await process_user_login(user, response, {})
+    response_record = await process_user_login(user, response, {}, None, http_request.headers)
     
     await plugin_manager.after_action(
         core.Event(
@@ -221,7 +225,7 @@ async def verify_user(user_request: ConfirmOTPRequest):
     response_model=api.Response,
     response_model_exclude_none=True,
 )
-async def login(response: Response, request: UserLoginRequest) -> api.Response:
+async def login(response: Response, request: UserLoginRequest, http_request: Request) -> api.Response:
     """Login and generate refresh token"""
     shortname: str | None = None
     user = None
@@ -282,23 +286,23 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
         elif request.otp is not None:
             otp_code = request.otp
 
-            if bool(request.email) and bool(request.msisdn):
+            if bool(request.email) and bool(request.msisdn) and bool(request.shortname):
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="auth",
                         code=InternalErrorCode.OTP_ISSUE,
-                        message="Provide either msisdn or email, not both."
+                        message="Provide either msisdn, email or shortname, not both."
                     )
                 )
 
-            if not request.email and not request.msisdn:
+            if not request.email and not request.msisdn and not request.shortname:
                 raise api.Exception(
                     status.HTTP_400_BAD_REQUEST,
                     api.Error(
                         type="auth",
                         code=InternalErrorCode.OTP_ISSUE,
-                        message="Either msisdn or email must be provided."
+                        message="Either msisdn, email or shortname must be provided."
                     )
                 )
 
@@ -315,31 +319,38 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                     api.Error(
                         type="auth",
                         code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                        message="Invalid identifier for OTP login."
+                        message="Invalid username or password"
                     )
                 )
 
-            key = f"users:otp:otps/{request.msisdn or request.email}"
+            user = await db.load_or_none('management', '/users', shortname, core.User)
+            if user is None:
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                        message="Invalid username or password"
+                    )
+                )
+
+            key = ""
+            if request.shortname:
+                if user.msisdn:
+                    key = f"users:otp:otps/{user.msisdn}"
+            else:
+                key = f"users:otp:otps/{request.msisdn or request.email or request.shortname}"
             stored_otp = await db.get_otp(key)
 
-            if stored_otp is None:
+            if stored_otp is None or stored_otp != otp_code:
+                # await handle_failed_login_attempt(user)
                 raise api.Exception(
-                    status.HTTP_400_BAD_REQUEST,
+                    status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="auth",
-                        code=InternalErrorCode.OTP_ISSUE,
-                        message="OTP not found or expired."
-                    )
-                )
-
-            if stored_otp != otp_code:
-                raise api.Exception(
-                    status.HTTP_400_BAD_REQUEST,
-                    api.Error(
-                        type="auth",
-                        code=InternalErrorCode.OTP_ISSUE,
-                        message="Invalid OTP code."
-                    )
+                        code=InternalErrorCode.OTP_INVALID,
+                        message="Wrong OTP"
+                    ),
                 )
 
             user = await db.load(
@@ -350,8 +361,53 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 user_shortname=shortname,
             )
 
-            record = await process_user_login(user, response, {}, request.firebase_token)
-            return api.Response(status=api.Status.success, records=[record])
+            is_password_valid = None
+            if request.password:
+                is_password_valid = password_hashing.verify_password(
+                    request.password or "", user.password or ""
+                )
+            if (
+                user
+                and user.is_active
+                and (is_password_valid is None or is_password_valid)
+            ):
+                await db.clear_failed_password_attempts(shortname)
+                await reset_failed_login_attempt(user)
+
+                if request.otp:
+                    await db.delete_otp(key)
+
+                record = await process_user_login(user, response, {}, request.firebase_token, http_request.headers)
+
+                await plugin_manager.after_action(
+                    core.Event(
+                        space_name=MANAGEMENT_SPACE,
+                        subpath=USERS_SUBPATH,
+                        shortname=shortname,
+                        action_type=core.ActionType.update,
+                        resource_type=ResourceType.user,
+                        user_shortname=shortname,
+                    )
+                )
+                return api.Response(status=api.Status.success, records=[record])
+            else:
+                if is_password_valid is not None and not is_password_valid:
+                    await handle_failed_login_attempt(user)
+                elif not user.is_active:
+                    raise api.Exception(
+                        status.HTTP_401_UNAUTHORIZED,
+                        api.Error(type="auth", code=InternalErrorCode.USER_ACCOUNT_LOCKED,
+                                  message="Account has been locked."),
+                    )
+
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="auth",
+                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                    message="Invalid username or password"
+                ),
+            )
         else:
             if identifier is None:
                 raise api.Exception(
@@ -393,7 +449,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 class_type=core.User,
                 user_shortname=shortname,
             )
-        
+
         is_password_valid = password_hashing.verify_password(
             request.password or "", user.password or ""
         )
@@ -405,10 +461,16 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 or is_password_valid
             )
         ):
+            if request.invitation is None and user.type == UserType.mobile and (not request.firebase_token or not user.firebase_token or request.firebase_token != user.firebase_token):
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(type="auth", code=InternalErrorCode.OTP_NEEDED,  message="New device detected, login with otp"),
+                )
+
             await db.clear_failed_password_attempts(shortname)
-            
-            record = await process_user_login(user, response, user_updates, request.firebase_token)
+            record = await process_user_login(user, response, user_updates, request.firebase_token, http_request.headers)
             await reset_failed_login_attempt(user)
+
             await plugin_manager.after_action(
                 core.Event(
                     space_name=MANAGEMENT_SPACE,
@@ -432,8 +494,11 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
 
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                      message="Invalid username or password [3]"),
+            api.Error(
+                type="auth",
+                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                message="Invalid username or password"
+            ),
         )
     except api.Exception as e:
         if e.error.type == "db":
@@ -442,8 +507,7 @@ async def login(response: Response, request: UserLoginRequest) -> api.Response:
                 api.Error(
                     type="auth",
                     code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                    message="Invalid username or password [4]",
-                    info=[{"details": str(e)}],
+                    message="Invalid username or password"
                 ),
             )
         else:
@@ -634,6 +698,7 @@ async def update_profile(
             is_valid_otp = await verify_user(ConfirmOTPRequest(
                 email=profile.attributes.get("email"),
                 msisdn=None,
+                shortname=None,
                 code=profile.attributes.get("email_otp", "")
             ))
             if not is_valid_otp:
@@ -649,6 +714,7 @@ async def update_profile(
             is_valid_otp = await verify_user(ConfirmOTPRequest(
                 msisdn=profile.attributes.get("msisdn"),
                 email=None,
+                shortname=None,
                 code=profile.attributes.get("msisdn_otp", "")
             ))
             if not is_valid_otp:
@@ -717,24 +783,6 @@ async def logout(
 
     await db.remove_user_session(shortname)
 
-    user = await db.load(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            class_type=core.User,
-            user_shortname=shortname,
-        )
-    if user.firebase_token:
-        await db.internal_sys_update_model(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            meta=user,
-            updates={
-                "firebase_token": None
-            }
-
-        )
-
     return api.Response(status=api.Status.success, records=[])
 
 
@@ -789,6 +837,17 @@ async def otp_request(
     """Request new OTP"""
     
     user_identifier = user_request.check_fields()
+    key, value = list(user_identifier.items())[0]
+    user = await db.get_user_by_criteria(key, value)
+    if not user and not settings.is_registrable:
+        raise api.Exception(
+            status.HTTP_404_NOT_FOUND,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.USERNAME_NOT_EXIST,
+                message="No user found with the provided information",
+            ),
+        )
     otp_key = get_otp_key(user_identifier)
     last_otp_since = await db.otp_created_since(otp_key)
     
@@ -821,18 +880,19 @@ async def otp_request_login(
     """Request new OTP"""
 
     result = user_request.check_fields()
+    shortname = result.get("shortname")
     msisdn = result.get("msisdn")
     email = result.get("email")
 
-    if bool(msisdn) ^ bool(email):
-        value = msisdn or email
+    if bool(msisdn) ^ bool(email) ^ bool(shortname):
+        value = msisdn or email or shortname
         if value is None:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(
                     type="request",
                     code=InternalErrorCode.INVALID_IDENTIFIER,
-                    message="Expected msisdn or email to be present."
+                    message="Expected msisdn, email or shortname to be present."
                 )
             )
     else:
@@ -841,38 +901,33 @@ async def otp_request_login(
             api.Error(
                 type="auth",
                 code=InternalErrorCode.OTP_ISSUE,
-                message="one of msisdn or email must be provided"
+                message="one of msisdn, email or shortname must be provided"
             )
         )
 
-    user = await db.get_user_by_criteria(
-        "msisdn" if msisdn else "email",
-        value,
-    )
-
-    if not user:
-        raise api.Exception(
-            status.HTTP_404_NOT_FOUND,
-            api.Error(
-                type="request",
-                code=InternalErrorCode.USERNAME_NOT_EXIST,
-                message="No user found with the provided information",
-            ),
+    user: str | core.User | None = None
+    if shortname:
+        user = await db.load_or_none('management', '/users', shortname, core.User)
+    else:
+        user = await db.get_user_by_criteria(
+            "msisdn" if msisdn else "email",
+            value,
         )
+
+
+    if user is None:
+        logger.warning("user not found!")
+        return api.Response(status=api.Status.success)
 
     if msisdn:
         await send_otp(msisdn, skel_accept_language or "")
-    else:
-        if email is None:
-            raise api.Exception(
-                status.HTTP_400_BAD_REQUEST,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.INVALID_IDENTIFIER,
-                    message="Email must be provided if msisdn is not."
-                )
-            )
+    elif email:
         await email_send_otp(email, skel_accept_language or "")
+    elif shortname:
+        if user.msisdn and user.is_active:  # type: ignore
+            await send_otp(user.msisdn, skel_accept_language or "")  # type: ignore
+        else:
+            logger.warning(f"bad value for either {user.msisdn if hasattr(user, 'msisdn') else 'msisdn:N/A'} or {user.is_active}") # type: ignore
 
     return api.Response(status=api.Status.success)
 
@@ -883,107 +938,64 @@ async def otp_request_login(
     response_model_exclude_none=True,
 )
 async def reset_password(user_request: PasswordResetRequest) -> api.Response:
-    result = user_request.check_fields()
-    exception = api.Exception(
-        status.HTTP_401_UNAUTHORIZED,
-        api.Error(
-            type="request",
-            code=InternalErrorCode.UNMATCHED_DATA,
-            message="mismatch with the information provided",
-        ),
-    )
-
+    result = user_request.check_fields()  
     key, value = list(result.items())[0]
     shortname = await db.get_user_by_criteria(key, value)
-    if shortname is None:
-        raise api.Exception(
-            status.HTTP_401_UNAUTHORIZED,
-            api.Error(
-                type="auth",
-                code=InternalErrorCode.USERNAME_NOT_EXIST,
-                message="This username does not exist",
-            ),
-        )
+    
 
-    user = await db.load(
-        space_name=MANAGEMENT_SPACE,
-        subpath=USERS_SUBPATH,
-        shortname=shortname,
-        class_type=core.User,
-        user_shortname=shortname,
-    )
+    if shortname is not None:
+        try:
+            user = await db.load(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                class_type=core.User,
+                user_shortname=shortname,
+            )
 
-    """
-    # Do not set the "force_password_change" flag right away
+            reset_password_message = "Reset password via this link: {link}, This link can be used once and within the next 48 hours."
 
-    old_version_flattend = flatten_dict(user.model_dump())
-    user.force_password_change = True
-
-    await plugin_manager.before_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
-
-    await db.update(
-        MANAGEMENT_SPACE,
-        USERS_SUBPATH,
-        user,
-        old_version_flattend,
-        flatten_dict(user.model_dump()),
-        ["force_password_change"],
-        shortname,
-    )
-
-    await plugin_manager.after_action(
-        core.Event(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            shortname=shortname,
-            action_type=core.ActionType.update,
-            resource_type=ResourceType.user,
-            user_shortname=shortname,
-        )
-    )
-    """
-
-    reset_password_message = "Reset password via this link: {link}, This link can be used once and within the next 48 hours."
-
-    if "msisdn" in result or "shortname" in result:
-        if not user.msisdn or ("msisdn" in result and user.msisdn != result["msisdn"]):
-            raise exception
-        token = await repository.store_user_invitation_token(
-            user, "SMS"
-        )
-        if not token:
-            raise exception
-        shortened_link = await repository.url_shortner(token)
-        await send_sms(
-            msisdn=user.msisdn,
-            message=reset_password_message.replace("{link}", shortened_link),
-        )
+            if "msisdn" in result or "shortname" in result:
+                if user.msisdn and ("msisdn" not in result or user.msisdn == result["msisdn"]):
+                    token = await repository.store_user_invitation_token(
+                        user, "SMS"
+                    )
+                    if token:
+                        shortened_link = await repository.url_shortner(token)
+                        await send_sms(
+                            msisdn=user.msisdn,
+                            message=reset_password_message.replace("{link}", shortened_link),
+                        )
+                    else:
+                        logger.warning("token could not be generated")
+                else:
+                    logger.warning("value mismatch")
+            else:
+                if user.email and user.email == result["email"]:
+                    token = await repository.store_user_invitation_token(
+                        user, "EMAIL"
+                    )
+                    if token:
+                        shortened_link = await repository.url_shortner(token)
+                        await send_email(
+                            from_address=settings.email_sender,
+                            to_address=user.email,
+                            message=reset_password_message.replace("{link}", shortened_link),
+                            subject="Reset password",
+                        )
+                    else:
+                        logger.warning("token could not be generated")
+                else:
+                    logger.warning(f"email mismatch {user.email} {result['email']}")
+        except Exception as e:
+            logger.error(f"reset_password failed: {e}")
     else:
-        if not user.email or user.email != result["email"]:
-            raise exception
-        token = await repository.store_user_invitation_token(
-            user, "EMAIL"
-        )
-        if not token:
-            raise exception
-
-        shortened_link = await repository.url_shortner(token)
-        await send_email(
-            from_address=settings.email_sender,
-            to_address=user.email,
-            message=reset_password_message.replace("{link}", shortened_link),
-            subject="Reset password",
-        )
-    return api.Response(status=api.Status.success)
+        logger.warning("user requested not found.")
+    
+    return api.Response(
+        status=api.Status.success ,
+        attributes={"message": "If the provided email or phone number exists, a password reset link has been sent."},
+    )
 
 
 @router.post(
@@ -1158,7 +1170,8 @@ async def process_user_login(
     user: core.User, 
     response: Response,
     user_updates: dict = {}, 
-    firebase_token: str | None = None
+    firebase_token: str | None = None,
+    request_headers = None
 ) -> core.Record:
     access_token = await sign_jwt(
         {"shortname": user.shortname, "type": user.type}, settings.jwt_access_expires
@@ -1170,7 +1183,7 @@ async def process_user_login(
         key="auth_token",
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="lax",
     )
     record = core.Record(
         resource_type=core.ResourceType.user,
@@ -1186,6 +1199,15 @@ async def process_user_login(
 
     if firebase_token:
         user_updates["firebase_token"] = firebase_token
+
+    if request_headers:
+        headers_dict = dict(request_headers)
+        headers_dict.pop("authorization", None)
+        headers_dict.pop("cookie", None)
+        user_updates["last_login"] = {
+            "timestamp": int(datetime.now().timestamp()),
+            "headers": headers_dict
+        }
 
     if user_updates:
         await db.internal_sys_update_model(
@@ -1264,7 +1286,8 @@ if settings.social_login_allowed:
 
             record = await process_user_login(
                 user=user_model,
-                response=response
+                response=response,
+                request_headers=request.headers
             )
             return api.Response(status=api.Status.success, records=[record])
     
@@ -1279,7 +1302,8 @@ if settings.social_login_allowed:
 
             record = await process_user_login(
                 user=user_model,
-                response=response
+                response=response,
+                request_headers=request.headers
             )
             return api.Response(status=api.Status.success, records=[record])
         
@@ -1294,7 +1318,8 @@ if settings.social_login_allowed:
 
             record = await process_user_login(
                 user=user_model,
-                response=response
+                response=response,
+                request_headers=request.headers
             )
             return api.Response(status=api.Status.success, records=[record])
 

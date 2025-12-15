@@ -880,7 +880,7 @@ class RedisServices(Redis):
 
         if sort_by:
             aggr_request.sort_by(
-                [
+                [# type: ignore
                     str(
                         aggregation.Desc(f"@{sort_by}")
                         if sort_type == SortType.ascending
