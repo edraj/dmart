@@ -14,7 +14,7 @@ asgi-correlation-id
 pydantic-settings
 fastapi-sso
 sqlmodel
-psycopg
+psycopg[binary]
 asyncpg
 greenlet
 alembic
