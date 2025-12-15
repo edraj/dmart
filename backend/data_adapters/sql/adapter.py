@@ -1584,7 +1584,7 @@ class SQLAdapter(BaseDataAdapter):
                 seen = set()
                 unique_matched: list[core.Record] = []
                 for m in matched:
-                    uid = f"{m.space_name if hasattr(m, 'space_name') else ''}:{m.subpath}:{m.shortname}:{m.resource_type}"
+                    uid = f"{m.subpath}:{m.shortname}:{m.resource_type}"
                     if uid in seen:
                         continue
                     seen.add(uid)
