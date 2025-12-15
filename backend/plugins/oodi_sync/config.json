@@ -1,0 +1,13 @@
+{
+  "shortname": "oodi_sync",
+  "is_active": true,
+	"filters": {
+		"subpaths": ["users"],
+		"resource_types": ["user"],
+		"schema_shortnames": ["customer", "user"],
+		"actions": ["create"]
+	},
+	"type": "hook",
+	"ordinal": 1,
+	"listen_time": "after"
+}
