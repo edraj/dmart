@@ -1,4 +1,3 @@
-from typing import Any
 from aiohttp import ClientResponse
 from models.core import Payload, PluginBase, Event, User
 from data_adapters.adapter import data_adapter as db
