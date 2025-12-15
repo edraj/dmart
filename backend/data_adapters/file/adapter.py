@@ -323,10 +323,9 @@ class FileAdapter(BaseDataAdapter):
             case api.QueryType.aggregation:
                 total, records = await serve_query_aggregation(self, query, user_shortname)
 
-        # Apply optional client-side joins if provided
         if getattr(query, 'join', None):
             try:
-                records = await self._apply_client_joins(records, query.join, (user_shortname or "anonymous"))
+                records = await self._apply_client_joins(records, query.join, (user_shortname or "anonymous")) # type: ignore
             except Exception as e:
                 print("[!client_join(file)]", e)
 

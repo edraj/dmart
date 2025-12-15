@@ -1490,7 +1490,7 @@ class SQLAdapter(BaseDataAdapter):
 
             if getattr(query, 'join', None):
                 try:
-                    results = await self._apply_client_joins(results, query.join, user_shortname or "anonymous")
+                    results = await self._apply_client_joins(results, query.join, user_shortname or "anonymous") # type: ignore
                 except Exception as e:
                     print("[!client_join]", e)
 
