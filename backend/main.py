@@ -169,7 +169,7 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
             },
         }
     }
-    #
+
     if exception_data is not None:
         extra["props"]["exception"] = exception_data
 
