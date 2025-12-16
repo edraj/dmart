@@ -2887,11 +2887,16 @@ class SQLAdapter(BaseDataAdapter):
 
         if not payload_dict:
             try:
-                body = str(meta.payload.body) if meta and meta.payload else ""
-                mydict = await self.load_resource_payload(
-                    space_name, subpath, body, core.Content
-                )
-                payload_dict = mydict if mydict else {}
+                if meta.payload and isinstance(meta.payload.body, dict):
+                    # Payload body is already loaded
+                    payload_dict = meta.payload.body
+                    
+                elif meta.payload and isinstance(meta.payload.body, str):
+                    # Payload body is the filename string
+                    mydict = await self.load_resource_payload(
+                        space_name, subpath, meta.payload.body, type(meta)
+                    )
+                    payload_dict = mydict if mydict else {}
             except Exception:
                 pass
 
