@@ -15,7 +15,10 @@ class Plugin(PluginBase):
             logger.error("data.shortname is None and str is required at local_notification")
             return
         
-        resource_type = ResourceType(data.resource_type)
+        if data.resource_type is None:
+            return
+        
+        resource_type = data.resource_type
         try:
             class_type = getattr(sys.modules["models.core"], camel_case(resource_type))
         except AttributeError:
