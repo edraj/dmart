@@ -1,6 +1,6 @@
 import sys
 from models.core import Content, Payload, PluginBase, Event, Reaction, Comment, Relationship, Locator
-from models.enums import ContentType, ResourceType
+from models.enums import ContentType
 from utils.helpers import camel_case
 from data_adapters.adapter import data_adapter as db
 from uuid import uuid4
@@ -14,12 +14,18 @@ class Plugin(PluginBase):
         if not isinstance(data.shortname, str):
             logger.error("data.shortname is None and str is required at local_notification")
             return
-        if data.resource_type not in [ResourceType.ticket, ResourceType.reaction, ResourceType.comment, ResourceType.media]:
+        
+        if data.resource_type is None:
             return
-
-        class_type = getattr(
-            sys.modules["models.core"], camel_case(ResourceType(data.resource_type))
-        )
+        
+        resource_type = data.resource_type
+        try:
+            class_type = getattr(sys.modules["models.core"], camel_case(resource_type))
+        except AttributeError:
+            logger.warning(
+                f"local_notification: unsupported resource_type={resource_type!s} (no model class found)"
+            )
+            return
         parent_subpath, parent_shortname, parent_owner = None, None, None
 
         entry = await db.load(
@@ -46,7 +52,7 @@ class Plugin(PluginBase):
 
             relationship = Relationship(
                 related_to=Locator(
-                    type=ResourceType(data.resource_type),
+                    type=resource_type,
                     space_name=data.space_name,
                     subpath=parent_subpath,
                     shortname=parent_shortname
