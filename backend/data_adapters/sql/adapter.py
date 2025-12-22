@@ -2322,8 +2322,8 @@ class SQLAdapter(BaseDataAdapter):
                     session.add(r)
                     await session.commit()
                     return len(results), token
-                else:
-                    await session.execute(delete(Sessions).where(col(Sessions.uuid) == r.uuid))
+                # else:
+                #     await session.execute(delete(Sessions).where(col(Sessions.uuid) == r.uuid))
         return len(results), None
 
     async def remove_user_session(self, user_shortname: str) -> bool:
