@@ -1588,7 +1588,7 @@ class SQLAdapter(BaseDataAdapter):
                 search_terms.append(f"@{r_path}:{search_val}")
 
             if not possible_match:
-                right_records = []
+                right_records: list[core.Record] = []
             else:
                 search_term = " ".join(search_terms)
                 if sub_query.search:
