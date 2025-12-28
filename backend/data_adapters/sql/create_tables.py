@@ -181,6 +181,7 @@ class Users(Metas, table=True):
     social_avatar_url: str | None = None
     attempt_count: int | None = None
     last_login: dict | None = Field(default=None, sa_type=JSONB)
+    notes: str | None = None
 
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
