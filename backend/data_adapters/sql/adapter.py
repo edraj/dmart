@@ -1507,18 +1507,24 @@ class SQLAdapter(BaseDataAdapter):
         return total, results
 
     async def _apply_client_joins(self, base_records: list[core.Record], joins: list[api.JoinQuery], user_shortname: str) -> list[core.Record]:
-        def parse_join_on(expr: str) -> tuple[str, bool, str, bool]:
-            parts = [p.strip() for p in expr.split(':', 1)]
-            if len(parts) != 2:
-                raise ValueError(f"Invalid join_on expression: {expr}")
-            left, right = parts[0], parts[1]
-            _l_arr = left.endswith('[]')
-            _r_arr = right.endswith('[]')
-            if _l_arr:
-                left = left[:-2]
-            if _r_arr:
-                right = right[:-2]
-            return left, _l_arr, right, _r_arr
+        def parse_join_on(expr: str) -> list[tuple[str, bool, str, bool]]:
+            joins_list = []
+            for part in expr.split(','):
+                part = part.strip()
+                if not part:
+                    continue
+                parts = [p.strip() for p in part.split(':', 1)]
+                if len(parts) != 2:
+                    raise ValueError(f"Invalid join_on expression: {expr}")
+                left, right = parts[0], parts[1]
+                _l_arr = left.endswith('[]')
+                _r_arr = right.endswith('[]')
+                if _l_arr:
+                    left = left[:-2]
+                if _r_arr:
+                    right = right[:-2]
+                joins_list.append((left, _l_arr, right, _r_arr))
+            return joins_list
 
         def get_values_from_record(rec: core.Record, path: str, array_hint: bool) -> list:
             if path in ("shortname", "resource_type", "subpath", "uuid"):
@@ -1556,15 +1562,48 @@ class SQLAdapter(BaseDataAdapter):
             if not join_on or not alias or q is None:
                 continue
 
+            parsed_joins = parse_join_on(join_on)
+            if not parsed_joins:
+                continue
+
             sub_query = q if isinstance(q, api.Query) else api.Query.model_validate(q)
+            sub_query = copy(sub_query)
 
-            _total, right_records = await self.query(sub_query, user_shortname)
+            search_terms = []
+            possible_match = True
 
-            l_path, l_arr, r_path, r_arr = parse_join_on(join_on)
+            for l_path, l_arr, r_path, r_arr in parsed_joins:
+                left_values = set()
+                for br in base_records:
+                    l_vals = get_values_from_record(br, l_path, l_arr)
+                    for v in l_vals:
+                        if v is not None:
+                            left_values.add(str(v))
+
+                if not left_values:
+                    possible_match = False
+                    break
+
+                search_val = "|".join(left_values)
+                search_terms.append(f"@{r_path}:{search_val}")
+
+            if not possible_match:
+                right_records = []
+            else:
+                search_term = " ".join(search_terms)
+                if sub_query.search:
+                    sub_query.search = f"{sub_query.search} {search_term}"
+                else:
+                    sub_query.search = search_term
+
+                _total, right_records = await self.query(sub_query, user_shortname)
+
+            first_join = parsed_joins[0]
+            l_path_0, l_arr_0, r_path_0, r_arr_0 = first_join
 
             right_index: dict[str, list[core.Record]] = {}
             for rr in right_records:
-                r_vals = get_values_from_record(rr, r_path, r_arr)
+                r_vals = get_values_from_record(rr, r_path_0, r_arr_0)
                 for v in r_vals:
                     if v is None:
                         continue
@@ -1572,24 +1611,40 @@ class SQLAdapter(BaseDataAdapter):
                     right_index.setdefault(key, []).append(rr)
 
             for br in base_records:
-                l_vals = get_values_from_record(br, l_path, l_arr)
-                matched: list[core.Record] = []
+                l_vals = get_values_from_record(br, l_path_0, l_arr_0)
+                candidates: list[core.Record] = []
                 for v in l_vals:
                     if v is None:
                         continue
                     key = str(v)
                     if key in right_index:
-                        matched.extend(right_index[key])
+                        candidates.extend(right_index[key])
 
                 seen = set()
-                unique_matched: list[core.Record] = []
-                for m in matched:
-                    uid = f"{m.subpath}:{m.shortname}:{m.resource_type}"
+                unique_candidates = []
+                for c in candidates:
+                    uid = f"{c.subpath}:{c.shortname}:{c.resource_type}"
                     if uid in seen:
                         continue
                     seen.add(uid)
-                    unique_matched.append(m)
-                br.attributes['join'][alias] = unique_matched
+                    unique_candidates.append(c)
+
+                matched = []
+                for cand in unique_candidates:
+                    all_match = True
+                    for i in range(1, len(parsed_joins)):
+                        l_p, l_a, r_p, r_a = parsed_joins[i]
+                        l_vs = set(str(x) for x in get_values_from_record(br, l_p, l_a) if x is not None)
+                        r_vs = set(str(x) for x in get_values_from_record(cand, r_p, r_a) if x is not None)
+
+                        if not l_vs.intersection(r_vs):
+                            all_match = False
+                            break
+
+                    if all_match:
+                        matched.append(cand)
+
+                br.attributes['join'][alias] = matched
 
         return base_records
 
