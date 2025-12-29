@@ -8,7 +8,6 @@ from uuid import uuid4
 from pydantic import Field
 from datetime import datetime
 import sys
-from pydantic.v1.utils import deep_update
 from models.enums import (
     ActionType,
     ContentType,
@@ -26,6 +25,16 @@ import utils.regex as regex
 from utils.settings import settings
 import utils.password_hashing as password_hashing
 from hashlib import sha1 as hashlib_sha1
+
+
+def deep_update(base: dict, update: dict) -> dict:
+    result = copy.deepcopy(base)
+    for key, value in update.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_update(result[key], value)
+        else:
+            result[key] = value
+    return result
 
 
 # class MoveModel(BaseModel):
