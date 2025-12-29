@@ -28,18 +28,18 @@ from hashlib import sha1 as hashlib_sha1
 
 
 def deep_update(base: dict, update: dict) -> dict:
-    res = base.copy()
-    for update in update:
-        for k, v in update.items():
-            if isinstance(v, dict):
-                old_v = res.get(k)
-                if isinstance(old_v, dict):
-                    res[k] = deep_update(old_v, v)
-                else:
-                    res[k] = v
+    updated_mapping = base.copy()
+    for updating_mapping in update:
+        for k, v in updating_mapping.items():
+            if k in updated_mapping and isinstance(updated_mapping[k], dict) and isinstance(v, dict):
+                updated_mapping[k] = deep_update(updated_mapping[k].copy(), v)
             else:
-                res[k] = v
-    return res
+                if isinstance(v, dict):
+                    updated_mapping[k] = copy.deepcopy(v)
+                else:
+                    updated_mapping[k] = v
+
+    return updated_mapping
 
 
 # class MoveModel(BaseModel):
