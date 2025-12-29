@@ -10,7 +10,7 @@ import sys
 import time
 import traceback
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
@@ -493,14 +493,14 @@ async def main():
     config.errorlog = logger
 
     try:
-        await serve(app, config)  # type: ignore
+        await serve(cast(Any, app), config)
     except OSError as e:
         print("[!1server]", e)
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main()) # type: ignore
+        asyncio.run(main())
     except Exception as e:
         print("[!1server]", e)
 

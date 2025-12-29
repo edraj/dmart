@@ -13,3 +13,5 @@ types-ldap3
 types-jsonschema
 types-psutil
 types-requests
+types-PyYAML
+types-ujson

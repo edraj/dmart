@@ -229,20 +229,21 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
         try:
             if record.resource_type == ResourceType.space:
                 created = await serve_space_create(request, record, owner_shortname)
-                await db.initialize_spaces()
-                await access_control.load_permissions_and_roles()
+                if created:
+                    await db.initialize_spaces()
+                    await access_control.load_permissions_and_roles()
 
-                await plugin_manager.after_action(
-                    core.Event(
-                        space_name=record.shortname,
-                        subpath=record.subpath,
-                        shortname=record.shortname,
-                        action_type=core.ActionType.create,
-                        resource_type=ResourceType.space,
-                        user_shortname=owner_shortname,
+                    await plugin_manager.after_action(
+                        core.Event(
+                            space_name=record.shortname,
+                            subpath=record.subpath,
+                            shortname=record.shortname,
+                            action_type=core.ActionType.create,
+                            resource_type=ResourceType.space,
+                            user_shortname=owner_shortname,
+                        )
                     )
-                )
-                return created.to_record(record.subpath, created.shortname, []), None # type: ignore
+                    return created.to_record(record.subpath, created.shortname, []), None
 
             schema_shortname: str | None = None
             if (
@@ -1672,7 +1673,7 @@ async def import_resources_from_csv_handler(
                         meta_object[keys_list[0].strip()] = value
                 case 2:
                     if keys_list[0].strip() not in meta_object:
-                        meta_object[keys_list[0].strip()] = {} # type: ignore
+                        meta_object[keys_list[0].strip()] = []
                     meta_object[keys_list[0].strip(
                     )][keys_list[1].strip()] = value
             continue

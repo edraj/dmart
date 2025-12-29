@@ -891,7 +891,7 @@ async def import_resources_from_csv(
         except api.Exception as e:
             err = {shortname: e.__str__()}
             if hasattr(e, "error"):
-                err["error"] = e.error # type: ignore
+                err["error"] = str(e.error)
             failed_shortnames.append(err)
         except Exception as e:
             failed_shortnames.append({shortname: e.__str__()})
@@ -1436,12 +1436,12 @@ async def data_asset(
         )
 
     if query.data_asset_type in [DataAssetType.sqlite, DataAssetType.duckdb]:
-        conn: duckdb.DuckDBPyConnection = duckdb.connect(str(files_paths[0]))  # type: ignore
+        conn: duckdb.DuckDBPyConnection = duckdb.connect(str(files_paths[0]))
     else:
         conn = duckdb.connect(":default:")
         await data_asset_handler(conn, query, files_paths, attachments)
 
-    data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)  # type: ignore
+    data: duckdb.DuckDBPyRelation = conn.sql(query=query.query_string)
 
     temp_file = f"temp_file_from_duckdb_{int(round(time() * 1000))}.csv"
     data.write_csv(file_name=temp_file)
