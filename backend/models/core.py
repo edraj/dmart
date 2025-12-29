@@ -32,13 +32,9 @@ def deep_update(base: dict, update: dict) -> dict:
     for updating_mapping in update:
         for k, v in updating_mapping.items():
             if k in updated_mapping and isinstance(updated_mapping[k], dict) and isinstance(v, dict):
-                updated_mapping[k] = deep_update(updated_mapping[k].copy(), v)
+                updated_mapping[k] = deep_update(updated_mapping[k], v)
             else:
-                if isinstance(v, dict):
-                    updated_mapping[k] = copy.deepcopy(v)
-                else:
-                    updated_mapping[k] = v
-
+                updated_mapping[k] = v
     return updated_mapping
 
 
