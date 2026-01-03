@@ -2,6 +2,7 @@
 import json
 from contextlib import asynccontextmanager
 
+from typing import Any, cast
 from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect, status
 from utils.jwt import decode_jwt
 import asyncio
@@ -223,7 +224,7 @@ async def main():
     config.logconfig_dict = logging_schema
     config.errorlog = logger
     config.accesslog = logger
-    await serve(app, config)  # type: ignore
+    await serve(cast(Any, app), config)
 
 if __name__ == "__main__":
 

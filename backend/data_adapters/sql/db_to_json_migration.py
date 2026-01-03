@@ -314,7 +314,8 @@ async def export_data_with_query(query, user_shortname):
                         **_folder,
                         **_folder.get("attributes", {})
                     }
-                    del _folder["attributes"]
+                    if "attributes" in _folder:
+                        del _folder["attributes"]
                     body = None
                     if _folder and _folder.get("payload", None) is not None:
                         if _folder and _folder.get("payload", {}).get("body", None) is not None:
@@ -351,7 +352,8 @@ async def export_data_with_query(query, user_shortname):
                     **_entry,
                     **_entry.get("attributes", {})
                 }
-                del _entry["attributes"]
+                if "attributes" in _entry:
+                    del _entry["attributes"]
 
                 write_json_file(f"{dir_meta_path}/meta.folder.json", _entry)
                 if body is not None:

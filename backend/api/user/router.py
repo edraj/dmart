@@ -126,7 +126,7 @@ async def create_user(response: Response, record: core.Record, http_request: Req
         record=record,
         owner_shortname="dmart"
     )
-    separate_payload_data: str | dict[str, Any] = {}
+    separate_payload_data: str | dict[str, Any] | None = {}
     if record.attributes.get("payload", {}).get("body"):
         schema_shortname = getattr(user.payload, "schema_shortname", None)
         user.payload = core.Payload(
@@ -135,7 +135,7 @@ async def create_user(response: Response, record: core.Record, http_request: Req
             body=record.attributes["payload"].get("body", ""),
         )
         if user.payload:
-            separate_payload_data = user.payload.body # type: ignore
+            separate_payload_data = user.payload.body
             user.payload.body = record.shortname + ".json"
 
         if user.payload and separate_payload_data:
@@ -923,11 +923,14 @@ async def otp_request_login(
         await send_otp(msisdn, skel_accept_language or "")
     elif email:
         await email_send_otp(email, skel_accept_language or "")
-    elif shortname:
-        if user.msisdn and user.is_active:  # type: ignore
-            await send_otp(user.msisdn, skel_accept_language or "")  # type: ignore
+    elif shortname and type(user) is core.User:
+        if user.msisdn and user.is_active:
+            await send_otp(user.msisdn, skel_accept_language or "")
         else:
-            logger.warning(f"bad value for either {user.msisdn if hasattr(user, 'msisdn') else 'msisdn:N/A'} or {user.is_active}") # type: ignore
+            logger.warning(f"bad value for either {user.msisdn if hasattr(user, 'msisdn') else 'msisdn:N/A'} or {user.is_active}")
+    else:
+        logger.warning(f"Bad user object value {user} type {type(user)}")
+
 
     return api.Response(status=api.Status.success)
 

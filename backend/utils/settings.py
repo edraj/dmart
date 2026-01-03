@@ -137,7 +137,7 @@ class Settings(BaseSettings):
 
     raw_allowed_submit_models: str = Field(default="",alias="allowed_submit_models")
 
-    @property # type: ignore
+    @property
     def allowed_submit_models(self) -> dict[str, list[str]]:
         allowed_models_str = self.raw_allowed_submit_models
         result: dict = {}
