@@ -29,7 +29,7 @@ curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" $API_URL/user/profile | 
 RESULT+=$?
 
 echo -n -e "Create user from admin: \t" >&2
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"create","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"roles": ["test_role"], "msisdn": "7895412658", "email": "dummy_unqiue@gmail.com"}}]}' ${API_URL}/managed/request #| jq .status | tee /dev/stderr | grep -q "success"
+curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" -d '{"space_name":"management","request_type":"create","records":[{"resource_type":"user","subpath":"users","shortname":"distributor","attributes":{"roles": ["test_role"], "msisdn": "7895412658", "email": "dummy_unqiue@gmail.com"}}]}' ${API_URL}/managed/request | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
 echo -n -e "update user from admin: \t" >&2
