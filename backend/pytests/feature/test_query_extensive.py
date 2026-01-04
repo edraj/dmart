@@ -38,7 +38,7 @@ TEST_DATA = [
             "tags": ["test_user"],
             "is_active": False,
             "language": "english",
-            "roles": ["member"],
+            "roles": ["manager"],
             "email": "user2@example.com",
             "msisdn": "9876543210",
             "type": "mobile",
