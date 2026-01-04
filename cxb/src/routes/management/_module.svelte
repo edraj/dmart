@@ -18,7 +18,7 @@
     const dmartAxios = axios.create({
         baseURL: website.backend,
         withCredentials: true,
-        timeout: 30000,
+        timeout: website.backend_timeout,
     });
     dmartAxios.interceptors.response.use((request) => {
         return request;

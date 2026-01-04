@@ -7,7 +7,9 @@ interface WebsiteConfig {
   default_language: string;
   languages: Record<string, string>;
   backend: string;
+  backend_timeout: number;
   websocket?: string;
+  delay_total_count?: boolean;
 }
 
 const loadConfig = async (): Promise<WebsiteConfig> => {
@@ -30,7 +32,9 @@ const loadConfig = async (): Promise<WebsiteConfig> => {
       default_language: "ar",
       languages: { ar: "العربية", en: "English" },
       backend: "http://localhost:8282",
-      websocket: "ws://0.0.0.0:8484/ws"
+      websocket: "ws://0.0.0.0:8484/ws",
+      backend_timeout:30000,
+      delay_total_count: false
     };
   }
 };
@@ -44,7 +48,9 @@ export let website: WebsiteConfig = {
   default_language: "ar",
   languages: { ar: "العربية", en: "English" },
   backend: "http://localhost:8282",
-  websocket: "ws://0.0.0.0:8484/ws"
+  websocket: "ws://0.0.0.0:8484/ws",
+  backend_timeout: 30000,
+  delay_total_count:false
 };
 
 loadConfig().then(config => {

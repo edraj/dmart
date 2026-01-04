@@ -2,9 +2,9 @@
 // <reference types="vitest" />
 import {defineConfig} from "vite";
 import {mdsvex} from "mdsvex";
-import preprocess from "svelte-preprocess";
+// import preprocess from "svelte-preprocess";
 import routify from "@roxi/routify/vite-plugin";
-import {svelte} from "@sveltejs/vite-plugin-svelte";
+import {svelte, vitePreprocess} from "@sveltejs/vite-plugin-svelte";
 import {viteStaticCopy} from "vite-plugin-static-copy";
 import * as path from "path";
 import plantuml from "@akebifiky/remark-simple-plantuml";
@@ -54,7 +54,7 @@ export default defineConfig({
       },
       extensions: [".md", ".svelte"],
       preprocess: [
-        preprocess(),
+        vitePreprocess(),
         mdsvex({
           extension: "md",
           remarkPlugins: [
@@ -62,14 +62,21 @@ export default defineConfig({
               baseUrl: "https://www.plantuml.com/plantuml/svg"
             }
           ],
-        })
+        }) as any
       ],
       onwarn: (warning, defaultHandler) => {
+        const ignoredWarnings = [
+                    'non_reactive_update',
+                    'state_referenced_locally',
+                    'element_invalid_self_closing_tag',
+                    'event_directive_deprecated'
+                ];
         // Ignore a11y_click_events_have_key_events warning from sveltestrap
         if (
             warning.code?.startsWith("a11y") ||
             // warning.filename?.startsWith("/node_modules/svelte-jsoneditor")
-            warning.filename?.startsWith("/node_modules")
+            warning.filename?.startsWith("/node_modules") ||
+            ignoredWarnings.includes(warning.code)
         )
           return;
         if (typeof defaultHandler != "undefined") defaultHandler(warning);

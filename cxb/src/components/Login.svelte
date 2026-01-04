@@ -59,8 +59,7 @@
               maxlength={24}
               required
             />
-          <InputAddon>
-            <Button class="absolute inset-y-0 right-0 flex items-center px-3" color="light"
+            <Button class="flex items-center border-s-0" color="light"
                     onclick={togglePasswordVisibility} aria-controls="password">
               {#if showPassword}
                 <EyeSolid />
@@ -68,7 +67,6 @@
                 <EyeSlashSolid />
               {/if}
             </Button>
-          </InputAddon>
         </ButtonGroup>
       <div class="mt-6"></div>
         <Button type="submit" class="w-full bg-primary" style="cursor: pointer">

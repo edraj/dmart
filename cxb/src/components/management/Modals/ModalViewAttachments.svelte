@@ -5,10 +5,10 @@
     import {getFileExtension} from "@/utils/getFileExtension";
 
     let {
-        space_name, subpath, parent_shortname,
+        space_name, subpath, parent_resource_type, parent_shortname,
         openViewContentModal = $bindable(), selectedAttachment
     }: {
-        space_name: string, subpath: string, parent_shortname: string,
+        space_name: string, subpath: string, parent_resource_type: string, parent_shortname: string,
         openViewContentModal: boolean, selectedAttachment: any
     } = $props();
 
@@ -45,12 +45,12 @@
                     attributes={selectedAttachment.attributes}
                     displayname={selectedAttachment.shortname}
                     url={Dmart.getAttachmentUrl({
-                    resource_type: selectedAttachment.resource_type,
-                    space_name: space_name,
-                    subpath: subpath,
-                    parent_shortname: parent_shortname,
-                    shortname: selectedAttachment.shortname,
-                    ext: getFileExtension(selectedAttachment.attributes?.payload?.body)
+                        resource_type: selectedAttachment.resource_type,
+                        space_name: space_name,
+                        subpath: subpath,
+                        parent_shortname: (parent_resource_type === ResourceType.folder ? '' : parent_shortname),
+                        shortname: selectedAttachment.shortname,
+                        ext: getFileExtension(selectedAttachment.attributes?.payload?.body)
                     }
                 )}
             />
