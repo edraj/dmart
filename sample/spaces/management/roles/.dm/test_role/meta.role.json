@@ -1,0 +1,13 @@
+{
+  "uuid": "90263ff1-c57e-4b79-925f-87695b68edc5",
+  "shortname": "test_role",
+  "is_active": true,
+  "tags": [],
+  "created_at": "2022-10-06T10:21:33.912450",
+  "updated_at": "2023-07-27T17:00:58.549838",
+  "owner_shortname": "dmart",
+  "permissions": [
+    "super_manager",
+    "manage_spaces"
+  ]
+}

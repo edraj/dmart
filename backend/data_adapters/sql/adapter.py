@@ -1725,10 +1725,99 @@ class SQLAdapter(BaseDataAdapter):
             var: dict = result.model_dump().get("payload", {}).get("body", {})
             return var
 
+    async def _validate_referential_integrity(self, meta: core.Meta):
+        if isinstance(meta, core.User):
+            if meta.roles:
+                for role in meta.roles:
+                    if not await self.load_or_none(settings.management_space, 'roles', role, core.Role):
+                        raise api.Exception(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            error=api.Error(
+                                type="validation",
+                                code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+                                message=f"Role '{role}' does not exist",
+                            ),
+                        )
+            if meta.groups:
+                for group in meta.groups:
+                    if not await self.load_or_none(settings.management_space, 'groups', group, core.Group):
+                        raise api.Exception(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            error=api.Error(
+                                type="validation",
+                                code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+                                message=f"Group '{group}' does not exist",
+                            ),
+                        )
+        elif isinstance(meta, core.Role):
+            if meta.permissions:
+                for permission in meta.permissions:
+                    if not await self.load_or_none(settings.management_space, 'permissions', permission, core.Permission):
+                        raise api.Exception(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            error=api.Error(
+                                type="validation",
+                                code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+                                message=f"Permission '{permission}' does not exist",
+                            ),
+                        )
+        elif isinstance(meta, core.Group):
+            if hasattr(meta, 'roles') and meta.roles:
+                for role in meta.roles:
+                    if not await self.load_or_none(settings.management_space, 'roles', role, core.Role):
+                        raise api.Exception(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            error=api.Error(
+                                type="validation",
+                                code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+                                message=f"Role '{role}' does not exist",
+                            ),
+                        )
+
+    async def _check_in_use(self, meta: core.Meta):
+        async with self.get_session() as session:
+            if isinstance(meta, core.Role):
+                statement = select(Users.shortname).where(col(Users.roles).contains([meta.shortname]))
+                result = await session.execute(statement)
+                if result.first():
+                    raise api.Exception(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        error=api.Error(
+                            type="delete",
+                            code=InternalErrorCode.CANNT_DELETE,
+                            message=f"Role '{meta.shortname}' is in use by one or more users",
+                        ),
+                    )
+            elif isinstance(meta, core.Group):
+                statement = select(Users.shortname).where(col(Users.groups).contains([meta.shortname]))
+                result = await session.execute(statement)
+                if result.first():
+                    raise api.Exception(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        error=api.Error(
+                            type="delete",
+                            code=InternalErrorCode.CANNT_DELETE,
+                            message=f"Group '{meta.shortname}' is in use by one or more users",
+                        ),
+                    )
+            elif isinstance(meta, core.Permission):
+                statement = select(Roles.shortname).where(col(Roles.permissions).contains([meta.shortname]))
+                result = await session.execute(statement)
+                if result.first():
+                    raise api.Exception(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        error=api.Error(
+                            type="delete",
+                            code=InternalErrorCode.CANNT_DELETE,
+                            message=f"Permission '{meta.shortname}' is in use by one or more roles",
+                        ),
+                    )
+
     async def save(
             self, space_name: str, subpath: str, meta: core.Meta
     ) -> Any:
         """Save"""
+        await self._validate_referential_integrity(meta)
         try:
             async with self.get_session() as session:
                 entity = {
@@ -1849,6 +1938,8 @@ class SQLAdapter(BaseDataAdapter):
                     }
                 else:
                     meta.payload.body = payload_data
+            
+            await self._validate_referential_integrity(meta)
             result.sqlmodel_update(meta.model_dump())
             async with self.get_session() as session:
                 session.add(result)
@@ -1878,6 +1969,7 @@ class SQLAdapter(BaseDataAdapter):
             attachment_media: Any | None = None,
     ) -> dict:
         """Update the entry, store the difference and return it"""
+        await self._validate_referential_integrity(meta)
 
         try:
             result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
@@ -2218,6 +2310,7 @@ class SQLAdapter(BaseDataAdapter):
             retrieve_lock_status: bool | None = False,
     ):
         """Delete the file that match the criteria given, remove folder if empty"""
+        await self._check_in_use(meta)
         async with self.get_session() as session:
             try:
                 if not subpath.startswith("/"):
