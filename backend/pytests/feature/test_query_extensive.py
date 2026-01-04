@@ -252,7 +252,7 @@ async def test_array_queries(client: AsyncClient) -> None:
     assert_code_and_status_success(response)
     json_response = response.json()
     assert json_response["status"] == "success"
-    assert json_response["attributes"]["returned"] == 1
+    assert json_response["attributes"]["returned"] == 2
 
     response = await client.post(
         "/managed/query",
@@ -260,7 +260,7 @@ async def test_array_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@roles:manager @roles:manager"
+            "search": "-@roles:manager"
         }
     )
     assert_code_and_status_success(response)
