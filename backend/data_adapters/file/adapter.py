@@ -383,6 +383,11 @@ class FileAdapter(BaseDataAdapter):
                 continue
 
             sub_query = q if isinstance(q, api.Query) else api.Query.model_validate(q)
+            import models.api as api
+            from utils.settings import settings
+            q_raw = q if isinstance(q, dict) else q.model_dump(exclude_defaults=True)
+            user_limit = q_raw.get('limit') or q_raw.get('limit_')
+            sub_query.limit = settings.max_query_limit
 
             _total, right_records = await self.query(sub_query, user_shortname)
 
@@ -412,6 +417,10 @@ class FileAdapter(BaseDataAdapter):
                         continue
                     seen.add(uid)
                     unique.append(m)
+
+                if user_limit:
+                    unique = unique[:user_limit]
+
                 br.attributes['join'][alias] = unique
 
         return base_records
