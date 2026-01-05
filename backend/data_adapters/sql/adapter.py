@@ -1567,6 +1567,9 @@ class SQLAdapter(BaseDataAdapter):
                 continue
 
             sub_query = q if isinstance(q, api.Query) else api.Query.model_validate(q)
+            q_raw = q if isinstance(q, dict) else q.model_dump(exclude_defaults=True)
+            user_limit = q_raw.get('limit') or q_raw.get('limit_')
+            sub_query.limit = settings.max_query_limit
             sub_query = copy(sub_query)
 
             search_terms = []
@@ -1643,6 +1646,9 @@ class SQLAdapter(BaseDataAdapter):
 
                     if all_match:
                         matched.append(cand)
+
+                if user_limit:
+                    matched = matched[:user_limit]
 
                 br.attributes['join'][alias] = matched
 
