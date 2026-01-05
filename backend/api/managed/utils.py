@@ -371,7 +371,7 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
     return records, failed_records
 
 
-async def serve_request_update_r_replace_fetch_payload(
+async def serve_request_update_fetch_payload(
     old_resource_obj, record, request, resource_cls, schema_shortname
 ):
     old_resource_payload_body : dict[str, Any] = {}
@@ -409,7 +409,7 @@ async def serve_request_update_r_replace_fetch_payload(
     return old_version_flattend, old_resource_payload_body
 
 
-async def serve_request_update_r_replace(request, owner_shortname: str):
+async def serve_request_update(request, owner_shortname: str):
     records: list[core.Record] = []
     failed_records: list[dict] = []
 
@@ -423,7 +423,6 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                     request,
                     record,
                     owner_shortname,
-                    is_replace=(request.request_type == api.RequestType.r_replace),
                 )
 
                 await db.initialize_spaces()
@@ -493,7 +492,7 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 )
 
             # GET PAYLOAD DATA
-            old_version_flattend, old_resource_payload_body = await serve_request_update_r_replace_fetch_payload(
+            old_version_flattend, old_resource_payload_body = await serve_request_update_fetch_payload(
                 old_resource_obj, record, request, resource_cls, record_schema_shortname
             )
 
@@ -512,7 +511,6 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 new_resource_payload_data = resource_obj.update_from_record(
                     record=record,
                     old_body=old_resource_payload_body,
-                    replace=request.request_type == api.RequestType.r_replace,
                 )
 
                 new_version_flattend = resource_obj.model_dump()
@@ -555,11 +553,6 @@ async def serve_request_update_r_replace(request, owner_shortname: str):
                 updated_attributes_flattend = list(
                     flatten_dict(record.attributes).keys()
                 )
-                if request.request_type == RequestType.r_replace:
-                    updated_attributes_flattend = (
-                            list(old_version_flattend.keys()) +
-                            list(new_version_flattend.keys())
-                    )
 
                 if (settings.active_data_db == 'sql'
                         and new_resource_payload_data is not None
@@ -690,7 +683,7 @@ async def serve_request_patch(request, owner_shortname: str):
                 )
 
             # GET PAYLOAD DATA
-            old_version_flattend, old_resource_payload_body = await serve_request_update_r_replace_fetch_payload(
+            old_version_flattend, old_resource_payload_body = await serve_request_update_fetch_payload(
                 old_resource_obj, record, request, resource_cls, schema_shortname
             )
 
@@ -709,7 +702,6 @@ async def serve_request_patch(request, owner_shortname: str):
                     resource_obj.update_from_record(
                         record=record,
                         old_body=old_resource_payload_body,
-                        replace=request.request_type == api.RequestType.r_replace,
                     )
                 )
                 new_version_flattend = resource_obj.model_dump()

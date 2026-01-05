@@ -8,7 +8,6 @@ class RequestType(StrEnum):
     patch = "patch"
     update_acl = "update_acl"
     assign = "assign"
-    r_replace = "replace"
     delete = "delete"
     move = "move"
 
