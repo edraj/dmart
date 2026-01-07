@@ -324,6 +324,15 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 )
 
             user = await db.load_or_none('management', '/users', shortname, core.User)
+            if user is None:
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="auth",
+                        code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+                        message="User does not exist"
+                    )
+                )
             if user.type == UserType.mobile and user.locked_to_device and (not request.firebase_token or not user.firebase_token or request.firebase_token != user.firebase_token):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
