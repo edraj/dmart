@@ -172,6 +172,7 @@ class Users(Metas, table=True):
     language: Language = Field(Column(Enum(Language)))
     email: str | None = None
     msisdn: str | None = Field(default=None, regex=regex.MSISDN)
+    locked_to_device: bool = False
     is_email_verified: bool = False
     is_msisdn_verified: bool = False
     force_password_change: bool = True
