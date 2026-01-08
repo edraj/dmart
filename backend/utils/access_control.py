@@ -275,6 +275,9 @@ class AccessControl:
         for restricted_field in restricted_fields:
             if restricted_field in flattened_attributes:
                 return False
+            for flattened_key in flattened_attributes.keys():
+                if flattened_key == restricted_field or flattened_key.startswith(f"{restricted_field}."):
+                    return False
 
         for field_name, field_values in allowed_fields_values.items():
             if field_name not in flattened_attributes:

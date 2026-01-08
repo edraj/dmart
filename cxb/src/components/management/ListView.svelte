@@ -1,6 +1,6 @@
 <script lang="ts">
     import {Engine, functionCreateDatatable, Pagination, RowsPerPage, Sort,} from "svelte-datatables-net";
-    import {Dmart, QueryType, SortyType} from "@edraj/tsdmart";
+    import {Dmart, type QueryRequest, QueryType, SortyType} from "@edraj/tsdmart";
     import cols from "@/utils/jsons/list_cols.json";
     import {searchListView} from "@/stores/management/triggers";
     import Prism from "@/components/Prism.svelte";
@@ -28,6 +28,7 @@
     import {currentListView} from "@/stores/global";
     import {untrack} from "svelte";
     import {getRowsPerPageSetting, getValueByPath} from "@/utils/listViewUtils";
+    import {website} from "@/config";
 
     $goto
 
@@ -124,11 +125,28 @@
   function setNumberOfPages() {
     propNumberOfPages = Math.ceil(total / numberRowsPerPage);
     localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
+    if(website.delay_total_count){
+        objectDatatable.numberRowsPerPage = numberRowsPerPage;
+    }
   }
 
   let old_search = "";
   let queryObject: any = {};
+
+  async function fetchPageRecordsTotal(query: QueryRequest) {
+      query.type = QueryType.counters;
+      query.retrieve_total = true;
+      const resp = await Dmart.query(query, scope);
+      total = resp.attributes.total;
+      objectDatatable.arrayRawData = [...objectDatatable.arrayRawData]
+      setNumberOfPages();
+  }
+
+  let isFetching = $state(false);
   async function fetchPageRecords(isSetPage = true, requestExtra = {}) {
+    const delayTotalCount = website.delay_total_count === true;
+
+    isFetching = true;
     let _search = $searchListView;
 
     if(subpath==="/") {
@@ -161,21 +179,31 @@
               (objectDatatable.numberActivePage - 1),
       search: _search.trim(),
       ...requestExtra,
-      retrieve_json_payload: true
+      retrieve_json_payload: true,
+      retrieve_total: !delayTotalCount,
+    }
+    const resp = await Dmart.query(queryObject, scope);
+    if(delayTotalCount){
+        fetchPageRecordsTotal(queryObject);
     }
 
-    const resp = await Dmart.query(queryObject, scope);
-
     old_search = $searchListView;
-    total = resp.attributes.total;
+    if (delayTotalCount === false){
+        total = resp.attributes.total;
+    } else {
+        total = -1;
+    }
     objectDatatable.arrayRawData = resp.records;
     if (isSetPage) {
       if (objectDatatable.arrayRawData.length === 0) {
         propNumberOfPages = 0;
       } else {
-        setNumberOfPages();
+          if(delayTotalCount === false){
+              setNumberOfPages();
+          }
       }
     }
+   isFetching = false;
   }
 
   let modalData: any = $state({});
@@ -258,18 +286,6 @@
         );
     }
 
-  // $effect(() => {
-  //   if (
-  //     old_search !== $searchListView &&
-  //     type !== QueryType.history &&
-  //     objectDatatable
-  //   ) {
-  //     untrack(()=>{
-  //       fetchPageRecords(true);
-  //     });
-  //   }
-  // });
-
   $effect(() => {
     if (objectDatatable) {
       if (
@@ -289,7 +305,7 @@
         });
 
         untrack(()=>{
-          fetchPageRecordsPromise = fetchPageRecords(true, {
+          fetchPageRecords(true, {
             sort_by: objectDatatable.stringSortBy.toString(),
             sort_type: objectDatatable.stringSortOrder,
           });
@@ -306,22 +322,22 @@
               localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
           }
           (async() => {
-              fetchPageRecordsPromise = fetchPageRecords(true,{});
-              await fetchPageRecordsPromise;
+              await fetchPageRecords(true, {});
               handleAllBulk(null, isAllBulkChecked);
           })();
       }
-
-      if (objectDatatable.numberActivePage !== numberActivePage) {
-          setQueryParam({page: objectDatatable.numberActivePage.toString()});
-          numberActivePage = objectDatatable.numberActivePage;
-          (async() => {
-              fetchPageRecordsPromise = fetchPageRecords(false,{});
-              await fetchPageRecordsPromise;
-              handleAllBulk(null, false);
-          })();
-      }
   });
+
+  $effect(() => {
+      if (objectDatatable.numberActivePage !== numberActivePage) {
+          setQueryParam({...$params, page: objectDatatable.numberActivePage.toString()});
+          // numberActivePage = objectDatatable.numberActivePage;
+          // (async() => {
+          //     await fetchPageRecords(false,{},false);
+          //     handleAllBulk(null, false);
+          // })();
+      }
+  })
 
   const toggleModal = () => {
       open = !open;
@@ -402,12 +418,7 @@
     }
   })
 
-  let fetchPageRecordsPromise = $state(null);
-  $effect(() => {
-    if (!fetchPageRecordsPromise) {
-      fetchPageRecordsPromise = fetchPageRecords(true, {});
-    }
-  });
+  fetchPageRecords(true, {});
 </script>
 
 <Modal
@@ -448,11 +459,11 @@
 {/if}
 
 
-{#await fetchPageRecordsPromise}
+{#if isFetching}
   <div class="flex flex-col w-full">
     <ListPlaceholder class="m-5" size="lg" style="width: 100vw"/>
   </div>
-{:then _}
+{:else}
   <div class="w-full">
     {#if total === null}
       <ListPlaceholder class="m-5" size="lg" style="width: 100vw"/>
@@ -526,15 +537,17 @@
             <p class="text-sm text-gray-600">
               Showing {paginationBottomInfoFrom} to {paginationBottomInfoTo} of {total} entries
             </p>
-            <Pagination
-                bind:propDatatable={objectDatatable}
-                bind:propNumberOfPages
-                maxPageDisplay={5}
-                propSize="default"
-            />
+              {#key propNumberOfPages}
+                <Pagination
+                    bind:propDatatable={objectDatatable}
+                    bind:propNumberOfPages
+                    maxPageDisplay={5}
+                    propSize="default"
+                />
+              {/key}
           </div>
         {/if}
       </div>
     {/if}
   </div>
-{/await}
+{/if}

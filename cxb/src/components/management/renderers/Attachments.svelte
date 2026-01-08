@@ -392,7 +392,9 @@
           </span>
           {#if attachment.resource_type === ResourceType.media}
             <a class="font-semibold text-lg underline text-primary" href={Dmart.getAttachmentUrl({
-                resource_type: attachment.resource_type, space_name, subpath, parent_shortname, shortname: attachment.shortname,
+                resource_type: attachment.resource_type, space_name, subpath,
+                parent_shortname: (resource_type === ResourceType.folder ? '' : parent_shortname),
+                shortname: attachment.shortname,
                 ext: getFileExtension(attachment.attributes?.payload?.body)
             })} target="_blank">{attachment.attributes?.displayname?.en || attachment.shortname}</a>
             {:else}
@@ -429,6 +431,7 @@
   selectedAttachment={selectedAttachment}
   space_name={space_name}
   subpath={subpath}
+  parent_resource_type={resource_type}
   parent_shortname={parent_shortname}
 />
 

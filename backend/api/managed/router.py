@@ -1345,7 +1345,7 @@ async def shoting_url(
     if url := await db.get_url_shortner(token):
         return RedirectResponse(url=url)
 
-    return RedirectResponse(url="/frontend")
+    return RedirectResponse(url="/web")
 
 
 @router.post(
