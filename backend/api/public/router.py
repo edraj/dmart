@@ -23,9 +23,9 @@ from utils.settings import settings
 from starlette.responses import FileResponse, StreamingResponse
 
 from utils.ticket_sys_utils import set_init_state_for_record
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 
-router = APIRouter(default_response_class=ORJSONResponse)
+router = APIRouter(default_response_class=JSONResponse)
 
 # Retrieve publically-available content
 

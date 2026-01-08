@@ -10,9 +10,9 @@ import subprocess
 from os import getpid
 import socket
 from utils.jwt import JWTBearer
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 
-router = APIRouter(default_response_class=ORJSONResponse)
+router = APIRouter(default_response_class=JSONResponse)
 
 git_info: dict[str,str|None] = {}
 service_start_time: datetime = datetime.now()

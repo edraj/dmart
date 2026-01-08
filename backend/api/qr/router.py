@@ -11,9 +11,9 @@ import hmac
 import hashlib
 from utils.settings import settings
 from models.enums import ResourceType
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 
-router = APIRouter(default_response_class=ORJSONResponse)
+router = APIRouter(default_response_class=JSONResponse)
 
 
 @router.get("/generate/{resource_type}/{space_name}/{subpath:path}/{shortname}")
