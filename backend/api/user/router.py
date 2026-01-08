@@ -47,10 +47,10 @@ from fastapi_sso.sso.google import GoogleSSO
 from fastapi_sso.sso.facebook import FacebookSSO
 from fastapi_sso.sso.base import OpenID, SSOBase
 from fastapi.logger import logger
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 from datetime import datetime
 
-router = APIRouter(default_response_class=ORJSONResponse)
+router = APIRouter(default_response_class=JSONResponse)
 
 MANAGEMENT_SPACE: str = settings.management_space
 USERS_SUBPATH: str = "users"

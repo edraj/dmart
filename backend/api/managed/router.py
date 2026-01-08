@@ -15,7 +15,7 @@ from re import sub as res_sub
 # from time import time
 from typing import Any, Callable
 from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
-from fastapi.responses import RedirectResponse, ORJSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from starlette.responses import FileResponse, StreamingResponse
 
 import models.api as api
@@ -63,7 +63,7 @@ from utils.router_helper import is_space_exist
 from utils.settings import settings
 from data_adapters.sql.json_to_db_migration import main as json_to_db_main
 
-router = APIRouter(default_response_class=ORJSONResponse)
+router = APIRouter(default_response_class=JSONResponse)
 
 @router.post(
     "/import",
