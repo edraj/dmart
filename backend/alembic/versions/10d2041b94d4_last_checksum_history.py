@@ -34,6 +34,8 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column('last_checksum_history', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
     with op.batch_alter_table('histories', schema=None) as batch_op:
         batch_op.add_column(sa.Column('last_checksum_history', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
+    with op.batch_alter_table('attachments', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('last_checksum_history', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
 
 
 # ### end Alembic commands ###
@@ -52,6 +54,8 @@ def downgrade() -> None:
     with op.batch_alter_table('spaces', schema=None) as batch_op:
         batch_op.drop_column('last_checksum_history')
     with op.batch_alter_table('histories', schema=None) as batch_op:
+        batch_op.drop_column('last_checksum_history')
+    with op.batch_alter_table('attachments', schema=None) as batch_op:
         batch_op.drop_column('last_checksum_history')
 
 
