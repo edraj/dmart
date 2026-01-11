@@ -1305,7 +1305,7 @@ class SQLAdapter(BaseDataAdapter):
                 col(Histories.space_name) == space_name,
                 col(Histories.subpath) == subpath,
                 col(Histories.shortname) == shortname
-            ).order_by(Histories.timestamp.desc()).limit(1)
+            ).order_by(Histories.timestamp.desc()).limit(1) # type: ignore
             result = await session.execute(statement)
             return result.scalars().first()
 
