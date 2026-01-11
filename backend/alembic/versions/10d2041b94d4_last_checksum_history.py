@@ -28,7 +28,7 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column('last_checksum_history', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
     with op.batch_alter_table('roles', schema=None) as batch_op:
         batch_op.add_column(sa.Column('last_checksum_history', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
-    with op.batch_alter_table('entities', schema=None) as batch_op:
+    with op.batch_alter_table('entries', schema=None) as batch_op:
         batch_op.add_column(sa.Column('last_checksum_history', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
     with op.batch_alter_table('spaces', schema=None) as batch_op:
         batch_op.add_column(sa.Column('last_checksum_history', sqlmodel.sql.sqltypes.AutoString(), nullable=True))
@@ -47,7 +47,7 @@ def downgrade() -> None:
         batch_op.drop_column('last_checksum_history')
     with op.batch_alter_table('roles', schema=None) as batch_op:
         batch_op.drop_column('last_checksum_history')
-    with op.batch_alter_table('entities', schema=None) as batch_op:
+    with op.batch_alter_table('entries', schema=None) as batch_op:
         batch_op.drop_column('last_checksum_history')
     with op.batch_alter_table('spaces', schema=None) as batch_op:
         batch_op.drop_column('last_checksum_history')
