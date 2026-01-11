@@ -39,6 +39,7 @@ from pathlib import Path as FSPath
 import models.api as api
 from fastapi import status
 import json
+import subprocess
 
 
 def sort_alteration(attachments_dict, attachments_path):
@@ -1365,6 +1366,46 @@ class FileAdapter(BaseDataAdapter):
     async def get_url_shortner(self, token_uuid: str) -> str | None:
         async with RedisServices() as redis_services:
             return await redis_services.get_key(f"short/{token_uuid}")
+
+    async def get_latest_history(
+            self,
+            space_name: str,
+            subpath: str,
+            shortname: str,
+    ) -> Any | None:
+        history_path = settings.spaces_folder / space_name
+
+        if subpath == "/" or subpath == "":
+             path1 = history_path / ".dm" / "history.jsonl"
+             path2 = history_path / ".dm" / shortname / "history.jsonl"
+             
+             if path2.is_file():
+                 path = path2
+             elif path1.is_file():
+                 path = path1
+             else:
+                 return None
+        else:
+            path1 = history_path / subpath / ".dm" / shortname / "history.jsonl"
+            path2 = history_path / ".dm" / subpath / "history.jsonl"
+            
+            if path1.is_file():
+                path = path1
+            elif path2.is_file():
+                path = path2
+            else:
+                return None
+
+        try:
+            r1 = subprocess.Popen(
+                ["tail", "-n", "1", str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+            r2, _ = r1.communicate()
+            if r2:
+                return json.loads(r2.decode().strip())
+        except Exception:
+            pass
+        return None
 
     async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Record | None:
         async with RedisServices() as redis_services:
