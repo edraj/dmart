@@ -2355,6 +2355,12 @@ class SQLAdapter(BaseDataAdapter):
                         .where(col(Entries.space_name) == space_name) \
                         .where(col(Entries.subpath).startswith(_subpath))
                     await session.execute(statement)
+                elif isinstance(result, Entries):
+                    entry_attachment_subpath = f"{subpath}/{meta.shortname}".replace('//', '/')
+                    statement = delete(Attachments) \
+                        .where(col(Attachments.space_name) == space_name) \
+                        .where(col(Attachments.subpath).startswith(entry_attachment_subpath))
+                    await session.execute(statement)
 
                 # Refresh authz MVs only when Users/Roles/Permissions changed
                 # try:
