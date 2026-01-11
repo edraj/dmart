@@ -209,6 +209,7 @@ class Meta(Resource):
     payload: Payload | None = None
     relationships: list[Relationship] | list[dict[str, Any]] | None = None
     acl: list[ACL] | None = None
+    last_checksum_history: str | None =  Field(default=None)
 
     model_config = ConfigDict(validate_assignment=True)
 
