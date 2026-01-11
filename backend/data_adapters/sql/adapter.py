@@ -1301,13 +1301,16 @@ class SQLAdapter(BaseDataAdapter):
             shortname: str,
     ) -> Histories | None:
         async with self.get_session() as session:
-            statement = select(Histories).where(
-                col(Histories.space_name) == space_name,
-                col(Histories.subpath) == subpath,
-                col(Histories.shortname) == shortname
-            ).order_by(Histories.timestamp.desc()).limit(1) # type: ignore
-            result = await session.execute(statement)
-            return result.scalars().first()
+            try:
+                statement = select(Histories).where(
+                    col(Histories.space_name) == space_name,
+                    col(Histories.subpath) == subpath,
+                    col(Histories.shortname) == shortname
+                ).order_by(Histories.timestamp.desc()).limit(1)  # type: ignore
+                result = await session.execute(statement)
+                return result.scalars().first()  # type: ignore
+            except:
+                return None
 
     async def query(
             self, query: api.Query, user_shortname: str | None = None
