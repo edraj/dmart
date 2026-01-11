@@ -1309,7 +1309,7 @@ class SQLAdapter(BaseDataAdapter):
                 ).order_by(Histories.timestamp.desc()).limit(1)  # type: ignore
                 result = await session.execute(statement)
                 return result.scalars().first()  # type: ignore
-            except:
+            except Exception as _: # type: ignore
                 return None
 
     async def query(
