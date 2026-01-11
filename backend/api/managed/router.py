@@ -470,7 +470,7 @@ async def update_state(
             space_name=space_name,
             subpath=subpath,
             resource_type=ResourceType.ticket,
-            action_type=core.ActionType.update,
+            action_type=core.ActionType.progress_ticket,
             resource_is_active=ticket_obj.is_active,
             resource_owner_shortname=ticket_obj.owner_shortname,
             resource_owner_group=ticket_obj.owner_group_shortname,
