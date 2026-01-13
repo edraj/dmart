@@ -469,22 +469,23 @@ async def serve_request_update(request, owner_shortname: str):
                 schema_shortname=record_schema_shortname,
             )
 
-            requested_checksum = record.attributes.get("last_checksum_history")
-            if requested_checksum:
-                latest_history = await db.get_latest_history(
-                    space_name=request.space_name,
-                    subpath=record.subpath,
-                    shortname=record.shortname,
-                )
-                if latest_history and latest_history.last_checksum_history != requested_checksum:
-                    raise api.Exception(
-                        status.HTTP_409_CONFLICT,
-                        api.Error(
-                            type="request",
-                            code=InternalErrorCode.CONFLICT,
-                            message="Resource has been updated by another request!",
-                        ),
+            if settings.is_sha_required:
+                requested_checksum = record.attributes.get("last_checksum_history")
+                if requested_checksum:
+                    latest_history = await db.get_latest_history(
+                        space_name=request.space_name,
+                        subpath=record.subpath,
+                        shortname=record.shortname,
                     )
+                    if latest_history and latest_history.last_checksum_history != requested_checksum:
+                        raise api.Exception(
+                            status.HTTP_409_CONFLICT,
+                            api.Error(
+                                type="request",
+                                code=InternalErrorCode.CONFLICT,
+                                message="Resource has been updated by another request!",
+                            ),
+                        )
 
             # CHECK PERMISSION
             if not await access_control.check_access(
@@ -1534,22 +1535,23 @@ async def serve_space_update(request, record, owner_shortname: str, is_replace: 
         user_shortname=owner_shortname,
     )
 
-    requested_checksum = record.attributes.get("last_checksum_history")
-    if requested_checksum:
-        latest_history = await db.get_latest_history(
-            space_name=space.shortname,
-            subpath=record.subpath,
-            shortname=space.shortname,
-        )
-        if latest_history and latest_history.last_checksum_history != requested_checksum:
-            raise api.Exception(
-                status.HTTP_409_CONFLICT,
-                api.Error(
-                    type="request",
-                    code=InternalErrorCode.CONFLICT,
-                    message="Resource has been updated by another request. Please refresh and try again.",
-                ),
+    if settings.is_sha_required:
+        requested_checksum = record.attributes.get("last_checksum_history")
+        if requested_checksum:
+            latest_history = await db.get_latest_history(
+                space_name=space.shortname,
+                subpath=record.subpath,
+                shortname=space.shortname,
             )
+            if latest_history and latest_history.last_checksum_history != requested_checksum:
+                raise api.Exception(
+                    status.HTTP_409_CONFLICT,
+                    api.Error(
+                        type="request",
+                        code=InternalErrorCode.CONFLICT,
+                        message="Resource has been updated by another request. Please refresh and try again.",
+                    ),
+                )
 
     old_flat = flatten_dict(old_space.model_dump())
     new_flat = flatten_dict(space.model_dump())
