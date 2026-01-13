@@ -3,6 +3,7 @@ from importlib.util import find_spec, module_from_spec
 import json
 import sys
 from typing import Any
+from pathlib import Path
 
 from models.core import NotificationData
 from utils.settings import settings
@@ -37,21 +38,23 @@ class NotificationManager:
     def __init__(self) -> None:
         # Load the notifiers depending on config/notification.json file
         if not self.notifiers:
-            with open("config/notification.json") as conf_file:
-                conf_data = json.load(conf_file)
+            config_path = Path(__file__).resolve().parent.parent / "config/notification.json"
+            if config_path.exists():
+                with open(config_path) as conf_file:
+                    conf_data = json.load(conf_file)
 
-            for platform, data in conf_data.items():
-                if not data["active"]:
-                    continue
+                for platform, data in conf_data.items():
+                    if not data["active"]:
+                        continue
 
-                module_name = data["module"]
-                module_specs = find_spec(module_name)
-                if not module_specs or not module_specs.loader:
-                    continue
-                module = module_from_spec(module_specs)
-                sys.modules[module_name] = module
-                module_specs.loader.exec_module(module)
-                self.notifiers[platform] = getattr(module, data["class"])()
+                    module_name = data["module"]
+                    module_specs = find_spec(module_name)
+                    if not module_specs or not module_specs.loader:
+                        continue
+                    module = module_from_spec(module_specs)
+                    sys.modules[module_name] = module
+                    module_specs.loader.exec_module(module)
+                    self.notifiers[platform] = getattr(module, data["class"])()
 
     async def send(self, platform, data: NotificationData) -> bool:
         if platform not in self.notifiers:

@@ -29,24 +29,25 @@ class AccessControl:
                 self_module = {}
                 path = management_path / module_name
                 entries_glob = ".dm/*/meta.*.json"
-                for one in path.glob(entries_glob):
-                    match = FILE_PATTERN.search(str(one))
-                    if not match or not one.is_file():
-                        continue
-                    shortname = match.group(1)
-                    try:
-                        resource_obj: Meta = await db.load(
-                            settings.management_space,
-                            module_name,
-                            shortname,
-                            module_value,
-                            "anonymous",
-                        )
-                        if resource_obj.is_active:
-                            self_module[shortname] = resource_obj  # store in redis doc
-                    except Exception as ex:
-                        # print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
-                        raise ex
+                if path.exists():
+                    for one in path.glob(entries_glob):
+                        match = FILE_PATTERN.search(str(one))
+                        if not match or not one.is_file():
+                            continue
+                        shortname = match.group(1)
+                        try:
+                            resource_obj: Meta = await db.load(
+                                settings.management_space,
+                                module_name,
+                                shortname,
+                                module_value,
+                                "anonymous",
+                            )
+                            if resource_obj.is_active:
+                                self_module[shortname] = resource_obj  # store in redis doc
+                        except Exception as ex:
+                            # print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
+                            raise ex
 
             await db.create_user_premission_index()
             await db.store_modules_to_redis(self.roles, self.groups, self.permissions)
