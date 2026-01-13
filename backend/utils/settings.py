@@ -5,7 +5,6 @@ import os
 import re
 import string
 import random
-import sys
 from venv import logger
 
 from pydantic import Field
@@ -157,7 +156,7 @@ try:
         Settings()
     )
 except Exception as e:
-    # logger.error(f"Failed to load settings.\nError: {e}")
+    logger.error(f"Failed to load settings.\nError: {e}")
     # sys.exit(1)
     pass
 
