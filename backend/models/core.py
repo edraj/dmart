@@ -209,6 +209,7 @@ class Meta(Resource):
     payload: Payload | None = None
     relationships: list[Relationship] | list[dict[str, Any]] | None = None
     acl: list[ACL] | None = None
+    last_checksum_history: str | None =  Field(default=None)
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -340,6 +341,7 @@ class User(Actor):
     password: str | None = None
     email: str | None = None
     msisdn: str | None = Field(default=None, pattern=regex.MSISDN)
+    locked_to_device: bool = False
     is_email_verified: bool = False
     is_msisdn_verified: bool = False
     force_password_change: bool = False

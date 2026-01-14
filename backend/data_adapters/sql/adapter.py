@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import time
+import hashlib
 from contextlib import asynccontextmanager
 from copy import copy
 from datetime import datetime
@@ -1293,6 +1294,24 @@ class SQLAdapter(BaseDataAdapter):
 
                 return result
 
+    async def get_latest_history(
+            self,
+            space_name: str,
+            subpath: str,
+            shortname: str,
+    ) -> Histories | None:
+        async with self.get_session() as session:
+            try:
+                statement = select(Histories).where(
+                    col(Histories.space_name) == space_name,
+                    col(Histories.subpath) == subpath,
+                    col(Histories.shortname) == shortname
+                ).order_by(Histories.timestamp.desc()).limit(1)  # type: ignore
+                result = await session.execute(statement)
+                return result.scalars().first()  # type: ignore
+            except Exception as _: # type: ignore
+                return None
+
     async def query(
             self, query: api.Query, user_shortname: str | None = None
     ) -> Tuple[int, list[core.Record]]:
@@ -2099,6 +2118,9 @@ class SQLAdapter(BaseDataAdapter):
             if not history_diff:
                 return {}
 
+            new_version_json = json.dumps(new_version_flattend, sort_keys=True, default=str)
+            new_checksum = hashlib.sha1(new_version_json.encode()).hexdigest()
+
             history_obj = Histories(
                 space_name=space_name,
                 uuid=uuid4(),
@@ -2108,10 +2130,19 @@ class SQLAdapter(BaseDataAdapter):
                 request_headers=get_request_data().get("request_headers", {}),
                 diff=history_diff,
                 subpath=subpath,
+                last_checksum_history=new_checksum,
             )
 
             async with self.get_session() as session:
                 session.add(Histories.model_validate(history_obj))
+                table = self.get_table(resource_type)
+                await session.execute(
+                    update(table).where(
+                        col(table.space_name) == space_name,
+                        col(table.subpath) == subpath,
+                        col(table.shortname) == shortname
+                    ).values(last_checksum_history=new_checksum)
+                )
 
             return history_diff
         except Exception as e:

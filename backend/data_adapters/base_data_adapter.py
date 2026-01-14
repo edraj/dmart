@@ -86,6 +86,15 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
+    async def get_latest_history(
+            self,
+            space_name: str,
+            subpath: str,
+            shortname: str,
+    ) -> Any | None:
+        pass
+
+    @abstractmethod
     async def get_entry_by_criteria(self, criteria: dict, table: Any = None) -> core.Record | None:
         pass
 
