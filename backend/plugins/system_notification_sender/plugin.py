@@ -69,7 +69,7 @@ class Plugin(PluginBase):
             retrieve_json_payload=True,
             space_name="management",
             subpath="notifications/system",
-            search=f"@payload.body.on_space:{data.space_name} @payload.body.on_subpath:{data.subpath.lstrip("/")} @payload.body.on_action:{data.action_type}",
+            search=f"@payload.body.on_space:{data.space_name} @payload.body.on_subpath:{data.subpath.lstrip('/')} @payload.body.on_action:{data.action_type}",
             limit=30,
             offset=0
         ), "dmart")

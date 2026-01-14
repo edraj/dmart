@@ -1360,7 +1360,7 @@ class SQLAdapter(BaseDataAdapter):
                         ffv_resource_type.append(perm_key_splited[2])
 
         if len(ffv_spaces):
-            perm_key_splited_query = f'@space_name:{'|'.join(ffv_spaces)} @subpath:{f"/{'|/'.join(ffv_subpath)}"} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}'
+            perm_key_splited_query = f'@space_name:{"|".join(ffv_spaces)} @subpath:/{"|/".join(ffv_subpath)} @resource_type:{"|".join(ffv_resource_type)} {" ".join(ffv_query)}'
             if query.search:
                 query.search += f' {perm_key_splited_query}'
             else:
@@ -2115,7 +2115,7 @@ class SQLAdapter(BaseDataAdapter):
 
             return history_diff
         except Exception as e:
-            print("[!store_entry_diff]", e)
+            print("[!store_entry_diff]", e, old_version_flattend, new_version_flattend)
             logger.error(f"Failed parsing an entry. Error: {e}")
             return {}
 
@@ -2435,7 +2435,7 @@ class SQLAdapter(BaseDataAdapter):
         try:
             return await self.load(space_name, "/", space_name, core.Space)
         except Exception as e:
-            print("[!fetch_space]", e)
+            print("[!fetch_space]", e, space_name)
             return None
 
     async def set_user_session(self, user_shortname: str, token: str) -> bool:
