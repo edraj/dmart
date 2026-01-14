@@ -1,6 +1,6 @@
 {
   "shortname": "redis_db_update",
-	"is_active": true,
+	"is_active": false,
 	"filters": {
 		"subpaths": ["__ALL__"],
 		"resource_types": ["content", "ticket", "permission", "role", "group", "user", "schema", "notification", "folder", "comment", "json", "lock", "media", "alteration", "Relationship"],

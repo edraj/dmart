@@ -1,16 +1,17 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 import asyncio
-
-from data_adapters.sql.adapter import SQLAdapter
-from data_adapters.sql.create_tables import Users
-from utils.password_hashing import hash_password
-from utils.settings import settings
 import json
 import getpass
 import subprocess
 import utils.regex as regex
 import re
+from pathlib import Path
 from sqlmodel import select
+
+from data_adapters.sql.adapter import SQLAdapter
+from data_adapters.sql.create_tables import Users
+from utils.password_hashing import hash_password
+from utils.settings import settings
 
 
 users : dict[str, dict]= {"dmart":{}, "alibaba": {}}
@@ -47,7 +48,8 @@ async def main():
 
 asyncio.run(main())
 
-with open("./login_creds.sh", 'w') as creds:
-    subprocess.run( [ "sed", f"s/xxxx/{password}/g", "login_creds.sh.sample" ], stdout=creds)
+login_creds_sample = Path(__file__).resolve().parent / "login_creds.sh.sample"
+if login_creds_sample.exists():
+    with open("./login_creds.sh", 'w') as creds:
+        subprocess.run( [ "sed", f"s/xxxx/{password}/g", str(login_creds_sample) ], stdout=creds)
 print("Done")
-

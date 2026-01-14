@@ -59,6 +59,7 @@ class Metas(Unique, table=False):
     acl: list[dict[str, Any]] | list[core.ACL] | None = Field(default_factory=list, sa_type=JSONB)
     payload: dict | core.Payload | None = Field(default_factory=None, sa_type=JSONB)
     relationships: list[dict[str, Any]] | None = Field(default=[], sa_type=JSONB)
+    last_checksum_history: str | None = Field(default=None)
 
     resource_type: str = Field()
     @staticmethod
@@ -159,7 +160,6 @@ class Metas(Unique, table=False):
         )
 
 
-
 class Users(Metas, table=True):
     shortname: str = Field(regex=regex.SHORTNAME, unique=True)
     password: str | None = None
@@ -172,6 +172,7 @@ class Users(Metas, table=True):
     language: Language = Field(Column(Enum(Language)))
     email: str | None = None
     msisdn: str | None = Field(default=None, regex=regex.MSISDN)
+    locked_to_device: bool = False
     is_email_verified: bool = False
     is_msisdn_verified: bool = False
     force_password_change: bool = True
@@ -182,13 +183,15 @@ class Users(Metas, table=True):
     attempt_count: int | None = None
     last_login: dict | None = Field(default=None, sa_type=JSONB)
     notes: str | None = None
-
+    last_checksum_history: str | None = Field(default=None)
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
+
 
 class Roles(Metas, table=True):
     permissions: list[str] = Field(default_factory=dict, sa_type=JSONB)
     owner_shortname: str = Field(foreign_key="users.shortname")
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
+    last_checksum_history: str | None = Field(default=None)
 
 
 class Permissions(Metas, table=True):
@@ -199,7 +202,7 @@ class Permissions(Metas, table=True):
     restricted_fields: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     allowed_fields_values: dict | list[dict] | None = Field(default_factory=None, sa_type=JSONB)
     filter_fields_values: str | None = None
-
+    last_checksum_history: str | None = Field(default=None)
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))  # type: ignore
 
 
@@ -211,7 +214,7 @@ class Entries(Metas, table=True):
     workflow_shortname: str | None = None
     collaborators: dict[str, str] | None = Field(None, default_factory=None, sa_type=JSONB)
     resolution_reason: str | None = None
-
+    last_checksum_history: str | None = Field(default=None)
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
 
@@ -219,6 +222,7 @@ class Attachments(Metas, table=True):
     media: bytes | None = Field(None, sa_type=LargeBinary)
     body: str | None = None
     state: str | None = None
+    last_checksum_history: str | None = Field(default=None)
 
 
 class Histories(SQLModel, table=True):
@@ -227,7 +231,7 @@ class Histories(SQLModel, table=True):
     diff: dict = Field(default_factory=dict, sa_type=JSONB)
     timestamp: datetime = Field(default_factory=datetime.now)
     owner_shortname: str | None = None
-
+    last_checksum_history: str | None = Field(default=None)
     space_name: str = Field(regex=regex.SPACENAME)
     subpath: str = Field(regex=regex.SUBPATH)
     shortname: str = Field(regex=regex.SHORTNAME)
@@ -277,7 +281,7 @@ class Spaces(Metas, table=True):
     hide_space: bool | None = None
     active_plugins: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     ordinal: int | None = None
-
+    last_checksum_history: str | None = Field(default=None)
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
 
 
@@ -348,7 +352,6 @@ class Aggregated(SQLModel, table=False):
         return AggregatedRecord(**record_fields)
 
 
-
 class Locks(Unique, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     owner_shortname: str = Field(regex=regex.SHORTNAME)
@@ -361,6 +364,7 @@ class Sessions(SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     token: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
+
 
 class Invitations(SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
