@@ -40,3 +40,8 @@ sample/spaces/startappz/**
 .idea/
 pos-spaces/
 spaces/
+
+
+backend/dist
+backend/build
+backend/dmart.egg-info
