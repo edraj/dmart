@@ -28,4 +28,4 @@ if [ -f "dmart" ]; then
 fi
 
 echo "Uploading to PyPI..."
-twine upload --non-interactive dist/*.whl dist/*.tar.gz
+twine upload --non-interactive dist/*.whl
