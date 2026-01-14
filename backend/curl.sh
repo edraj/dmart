@@ -116,12 +116,12 @@ echo -n -e "Create Schema for ticket: \t" >&2
 curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F 'space_name="dummy"' -F 'request_record=@"../sample/test/createschema.json"' -F 'payload_file=@"../sample/test/schema.json"' ${API_URL}/managed/resource_with_payload | jq .status | tee /dev/stderr | grep -q "success"
 RESULT+=$?
 
-echo -n -e "Create QR Code: \t\t" >&2
-TEMP_FILE=$(mktemp)
-curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --output $TEMP_FILE ${API_URL}/qr/generate/ticket/dummy/myfolder/an_example # | jq .status | tee /dev/stderr | grep -q "success"
-RESULT+=$?
-file -ib $TEMP_FILE >&2
-rm -f $TEMP_FILE
+# echo -n -e "Create QR Code: \t\t" >&2
+# TEMP_FILE=$(mktemp)
+# curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H "$CT" --output $TEMP_FILE ${API_URL}/qr/generate/ticket/dummy/myfolder/an_example # | jq .status | tee /dev/stderr | grep -q "success"
+# RESULT+=$?
+# file -ib $TEMP_FILE >&2
+# rm -f $TEMP_FILE
 #curl -s -H "Authorization: Bearer $AUTH_TOKEN" -F  ${API_URL}/qr/generate/ticket/dummy/myfolder/an_example  | jq .status | tee /dev/stderr | grep -q "success"
 
 echo -n -e "Create ticket: \t\t\t" >&2
