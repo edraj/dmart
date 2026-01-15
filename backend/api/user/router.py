@@ -673,7 +673,16 @@ async def update_profile(
 
     old_version_flattened = flatten_dict(user.model_dump())
 
-    if profile_user.password and "old_password" in profile.attributes:
+    if profile_user.password:
+        if "old_password" not in profile.attributes:
+            raise Exception(
+                status.HTTP_403_FORBIDDEN,
+                Error(
+                    type="auth",
+                    code=InternalErrorCode.PASSWORD_RESET_ERROR,
+                    message="Wrong password have been provided!",
+                ),
+            )
         if not password_hashing.verify_password(
             profile.attributes["old_password"], user.password or ""
         ):
