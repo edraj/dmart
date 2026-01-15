@@ -775,6 +775,9 @@ async def update_profile(
         retrieve_lock_status=profile.retrieve_lock_status,
     )
 
+    if settings.logout_on_pwd_change and profile_user.password:
+        await db.remove_user_session(shortname)
+
     await plugin_manager.after_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,

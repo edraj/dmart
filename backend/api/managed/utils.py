@@ -622,7 +622,12 @@ async def serve_request_update(request, owner_shortname: str):
 
             if (
                 isinstance(resource_obj, core.User) and
-                record.attributes.get("is_active", None) is not None
+                (
+                    record.attributes.get("is_active", None) is not None
+                    or (
+                        settings.logout_on_pwd_change and record.attributes.get("password", None) is not None
+                    )
+                )
             ):
                 if not record.attributes.get("is_active"):
                     await db.remove_user_session(record.shortname)
