@@ -142,7 +142,7 @@
     async function handleSave(){
         isActionLoading = true;
         errorMessage = null;
-        
+
         const result = await saveEntry(
             $state.snapshot(jeContent),
             space_name,
@@ -165,7 +165,7 @@
     }
     async function deleteCurrentEntry() {
         isActionLoading = true;
-
+        errorMessage = null
         const result = await deleteEntry(entry, space_name, subpath, resource_type);
         
         if (result.success) {
