@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 import warnings
+import webbrowser
 from multiprocessing import freeze_support
 from pathlib import Path
 
@@ -29,6 +30,7 @@ from utils.settings import settings
 freeze_support()
 
 commands = """    server
+    serve
     hyper
     health-check
     create-index
@@ -49,7 +51,10 @@ sentinel = object()
 def hypercorn_main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "application", help="The application to dispatch to as path.to.module:instance.path"
+        "application",
+        help="The application to dispatch to as path.to.module:instance.path",
+        nargs="?",
+        default="main:app"
     )
     parser.add_argument("--access-log", help="Deprecated, see access-logfile", default=sentinel)
     parser.add_argument(
@@ -83,7 +88,7 @@ def hypercorn_main() -> int:
         "-c",
         "--config",
         help="Location of a TOML config file, or when prefixed with `file:` a Python file, or when prefixed with `python:` a Python module.",  # noqa: E501
-        default=None,
+        default="hypercorn_config.toml",
     )
     parser.add_argument(
         "--debug",
@@ -210,6 +215,17 @@ def hypercorn_main() -> int:
     parser.add_argument(
         "-u", "--user", help="User to own any unix sockets.", default=sentinel, type=int
     )
+    parser.add_argument(
+        "--open-cxb",
+        help="Open CXB page in browser after server starts",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--cxb-config",
+        help="Path to CXB config.json",
+        default=sentinel,
+    )
 
     def _convert_verify_mode(value: str) -> ssl.VerifyMode:
         try:
@@ -314,6 +330,9 @@ def hypercorn_main() -> int:
         config.websocket_ping_interval = args.websocket_ping_interval
     if args.workers is not sentinel:
         config.workers = args.workers
+    
+    if args.cxb_config is not sentinel:
+        os.environ["DMART_CXB_CONFIG"] = args.cxb_config
 
     if len(args.binds) > 0:
         config.bind = args.binds
@@ -323,6 +342,30 @@ def hypercorn_main() -> int:
         config.quic_bind = args.quic_binds
     if len(args.server_names) > 0:
         config.server_names = args.server_names
+    
+    if args.open_cxb:
+        port = 8282
+        host = "127.0.0.1"
+
+        if len(args.binds) > 0:
+            try:
+                bind_parts = args.binds[0].split(":")
+                if len(bind_parts) == 2:
+                    host = bind_parts[0]
+                    port = int(bind_parts[1])
+                elif len(bind_parts) == 1:
+                    host = bind_parts[0]
+            except:
+                pass
+        
+        url = f"http://{host}:{port}{settings.cxb_url}/"
+        
+        def open_browser():
+            time.sleep(2)
+            webbrowser.open(url)
+            
+        import threading
+        threading.Thread(target=open_browser, daemon=True).start()
 
     return run(config)
 
@@ -336,13 +379,29 @@ def main():
 
     match sys.argv[0]:
         case "hyper":
-            if len(sys.argv) == 1:
-                print("Running Hypercorn with default settings")
-                default_params = "main:app --config hypercorn_config.toml"
-                print(f">{default_params}")
-                sys.argv = ["hyper"] + default_params.split(" ")
             hypercorn_main()
-        case "server":
+        case "server" | "serve":
+            open_cxb = False
+            if "--open-cxb" in sys.argv:
+                open_cxb = True
+                sys.argv.remove("--open-cxb")
+            
+            if "--cxb-config" in sys.argv:
+                idx = sys.argv.index("--cxb-config")
+                if idx + 1 < len(sys.argv):
+                    os.environ["DMART_CXB_CONFIG"] = sys.argv[idx + 1]
+                    sys.argv.pop(idx + 1)
+                sys.argv.pop(idx)
+                
+            if open_cxb:
+                url = f"http://{settings.listening_host}:{settings.listening_port}{settings.cxb_url}/"
+                def open_browser():
+                    time.sleep(1)
+                    webbrowser.open(url)
+                
+                import threading
+                threading.Thread(target=open_browser, daemon=True).start()
+
             asyncio.run(server())
         case "health-check":
             parser = argparse.ArgumentParser(

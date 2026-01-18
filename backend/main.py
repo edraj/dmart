@@ -5,6 +5,7 @@ from starlette.datastructures import UploadFile
 from contextlib import asynccontextmanager
 import asyncio
 import json
+import os
 from os import getpid
 import sys
 import time
@@ -24,11 +25,25 @@ from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from utils.access_control import access_control
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import ORJSONResponse, FileResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
 from starlette.concurrency import iterate_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.staticfiles import StaticFiles
+from starlette.responses import Response
+
+class SPAStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope) -> Response:
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as ex:
+            if ex.status_code == 404 and path != "index.html" and not os.path.splitext(path)[1]:
+                try:
+                    return await super().get_response("index.html", scope)
+                except StarletteHTTPException:
+                    pass
+            raise ex
 import models.api as api
 from utils.settings import settings
 from asgi_correlation_id import CorrelationIdMiddleware
@@ -463,6 +478,45 @@ app.include_router(
 asyncio.run(plugin_manager.load_plugins(app, capture_body))
 
 
+cxb_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cxb")
+if not os.path.exists(cxb_path):
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cxb_dist_path = os.path.join(project_root, "cxb", "dist", "client")
+    if os.path.isdir(cxb_dist_path):
+        cxb_path = cxb_dist_path
+
+if os.path.isdir(cxb_path):
+    @app.get(f"{settings.cxb_url}/config.json", include_in_schema=False)
+    async def get_cxb_config():
+        cxb_config = os.getenv("DMART_CXB_CONFIG")
+        if cxb_config and os.path.exists(cxb_config):
+            return FileResponse(cxb_config)
+            
+        if os.path.exists("config.json"):
+            return FileResponse("config.json")
+
+        user_config = settings.spaces_folder / "config.json"
+        if user_config.exists():
+            return FileResponse(user_config)
+
+        bundled_config = os.path.join(cxb_path, "config.json")
+        if os.path.exists(bundled_config):
+            return FileResponse(bundled_config)
+
+        return {
+            "title": "DMART Unified Data Platform",
+            "footer": "dmart.cc unified data platform",
+            "short_name": "dmart",
+            "display_name": "dmart",
+            "description": "dmart unified data platform",
+            "default_language": "en",
+            "languages": { "ar": "العربية", "en": "English" },
+            "backend": f"{settings.app_url}" if settings.app_url else f"http://{settings.listening_host}:{settings.listening_port}",
+            "websocket": settings.websocket_url if settings.websocket_url else f"ws://{settings.listening_host}:{settings.websocket_port}/ws"
+        }
+
+    app.mount(settings.cxb_url, SPAStaticFiles(directory=cxb_path, html=True), name="cxb")
+
 @app.options("/{x:path}", include_in_schema=False)
 async def myoptions():
     return Response(status_code=status.HTTP_200_OK)
@@ -503,4 +557,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as e:
         print("[!1server]", e)
-

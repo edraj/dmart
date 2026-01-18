@@ -16,8 +16,11 @@ plugins_requires = parse_requirements('requirements/plugins.txt')
 
 setup(
     name="dmart",
-    version="1.4.0",
+    version="1.4.4",
     packages=find_packages(),
+    package_data={
+        'cxb': ['**/*'],
+    },
     py_modules=["dmart", "main", "sync", "bundler", "migrate", "password_gen", "get_settings", "data_generator", "schema_modulate", "schema_migration", "set_admin_passwd", "run_notification_campaign", "scheduled_notification_handler", "websocket"],
     install_requires=install_requires,
     extras_require={

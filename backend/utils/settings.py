@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     """Main settings class"""
 
     app_url: str = ""
+    cxb_url: str = "/cxb"
     public_app_url: str = ""
     app_name: str = "dmart"
     websocket_url: str = "" #"http://127.0.0.1:8484"
