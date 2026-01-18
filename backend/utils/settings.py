@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     request_timeout: int = 35 # In seconds the time of dmart requests.
     jq_timeout: int = 2 # secs
     is_sha_required: bool = False
-
+    logout_on_pwd_change: bool = True
     url_shorter_expires: int = 60 * 60 * 48  # 48 hours
 
     google_client_id: str = ""
