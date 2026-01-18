@@ -31,7 +31,17 @@ from hypercorn.config import Config
 from starlette.concurrency import iterate_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.staticfiles import StaticFiles
-from starlette.responses import Response
+import models.api as api
+from utils.settings import settings
+from asgi_correlation_id import CorrelationIdMiddleware
+from data_adapters.adapter import data_adapter as db
+from api.managed.router import router as managed
+from api.qr.router import router as qr
+from api.public.router import router as public
+from api.user.router import router as user
+from api.info.router import router as info, git_info
+from utils.internal_error_code import InternalErrorCode
+
 
 class SPAStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope) -> Response:
@@ -44,16 +54,7 @@ class SPAStaticFiles(StaticFiles):
                 except StarletteHTTPException:
                     pass
             raise ex
-import models.api as api
-from utils.settings import settings
-from asgi_correlation_id import CorrelationIdMiddleware
-from data_adapters.adapter import data_adapter as db
-from api.managed.router import router as managed
-from api.qr.router import router as qr
-from api.public.router import router as public
-from api.user.router import router as user
-from api.info.router import router as info, git_info
-from utils.internal_error_code import InternalErrorCode
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -355,7 +355,8 @@ def hypercorn_main() -> int:
                     port = int(bind_parts[1])
                 elif len(bind_parts) == 1:
                     host = bind_parts[0]
-            except:
+            except Exception as e:
+                print(e)
                 pass
         
         url = f"http://{host}:{port}{settings.cxb_url}/"
