@@ -123,7 +123,7 @@
                 response = await Dmart.request({
                     space_name,
                     request_type: isUpdateMode
-                        ? RequestType.replace
+                        ? RequestType.update
                         : RequestType.create,
                     records: [
                         removeEmpty({
@@ -192,7 +192,7 @@
                         payload_file: ResourceType[resourceType] === ResourceType.json
                             ? jsonToFile(content)
                             : payloadFiles[0],
-                            attributes: removeEmpty({
+                        attributes: removeEmpty({
                             displayname: meta.displayname,
                             description: meta.description,
                             is_active: true,
@@ -215,7 +215,7 @@
                 response = await Dmart.request({
                     space_name,
                     request_type: isUpdateMode
-                        ? RequestType.replace
+                        ? RequestType.update
                         : RequestType.create,
                     records: [
                         removeEmpty({
@@ -276,7 +276,7 @@
         _payloadContent.attributes.description = meta.description
         const request_dict = {
             space_name,
-            request_type: RequestType.replace,
+            request_type: RequestType.update,
             records: [removeEmpty(_payloadContent)],
         };
 

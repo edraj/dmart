@@ -125,7 +125,7 @@
                 modelError = null;
                 await Dmart.request({
                     space_name: selectedSpace.shortname,
-                    request_type: RequestType.replace,
+                    request_type: RequestType.update,
                     records: [
                         {
                             resource_type: ResourceType.space,
