@@ -28,6 +28,12 @@ def get_google_sso() -> GoogleSSO:
         GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET,
         redirect_uri=f"{settings.app_url}/user/google/callback",
+        scope=[
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/user.phonenumbers.read",
+        ],
     )
 
 # Apple SSO
@@ -43,7 +49,7 @@ def apple_response_convertor(response: dict[str, Any], client: Optional[AsyncCli
         picture=response.get("picture"),
         provider="apple",
     )
-    
+
 def get_apple_sso() -> SSOBase:
     apple_discovery = DiscoveryDocument({
         "authorization_endpoint":"https://appleid.apple.com/auth/authorize",

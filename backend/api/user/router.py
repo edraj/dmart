@@ -210,7 +210,6 @@ async def create_user(response: Response, record: core.Record, http_request: Req
             )
         ]
     )
-  
 async def verify_user(user_request: ConfirmOTPRequest):
     user_identifier = user_request.check_fields()
     key = get_otp_key(user_identifier)
@@ -219,7 +218,6 @@ async def verify_user(user_request: ConfirmOTPRequest):
         return False
     
     return True  
-   
 @router.post(
     "/login",
     response_model=api.Response,
@@ -512,7 +510,6 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
             )
         else:
             raise e
-
 
 
 @router.get("/profile", response_model=api.Response, response_model_exclude_none=True)
@@ -1168,7 +1165,6 @@ async def validate_password(
         )
 
 
-
 async def process_user_login(
     user: core.User, 
     response: Response,
@@ -1278,6 +1274,15 @@ async def handle_failed_login_attempt(user: core.User):
 
 if settings.social_login_allowed:
 
+    @router.get("/google/login")
+    async def google_login(google_sso: GoogleSSO = Depends(get_google_sso)):
+        async with google_sso:
+            authorization_url = await google_sso.get_login_url()
+            return {
+                "authorization_url": authorization_url,
+                "instructions": "Open this URL in your browser to login"
+            }
+
     @router.get("/google/callback")
     async def google_profile(
         request: Request,
@@ -1293,7 +1298,16 @@ if settings.social_login_allowed:
                 request_headers=request.headers
             )
             return api.Response(status=api.Status.success, records=[record])
-    
+
+    @router.get("/facebook/login")
+    async def facebook_login(facebook_sso: FacebookSSO = Depends(get_facebook_sso)):
+        async with facebook_sso:
+            authorization_url = await facebook_sso.get_login_url()
+            return {
+                "authorization_url": authorization_url,
+                "instructions": "Open this URL in your browser to login",
+            }
+
     @router.get("/facebook/callback")
     async def facebook_login(
         request: Request,
@@ -1309,7 +1323,7 @@ if settings.social_login_allowed:
                 request_headers=request.headers
             )
             return api.Response(status=api.Status.success, records=[record])
-        
+
     @router.get("/apple/callback")
     async def apple_login(
         request: Request,
@@ -1333,14 +1347,14 @@ if settings.social_login_allowed:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 error=api.Error(type="auth", code=InternalErrorCode.INVALID_DATA, message="Misconfigured provider"),
             )
-            
+
         user: core.User | None = await db.load_or_none(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             shortname=f"{provider}_{provider_user.id}",
             class_type=core.User
         )
-        
+
         if not user:
             msisdn = await get_provider_phone_number(sso, provider)
             user = core.User(
@@ -1360,9 +1374,9 @@ if settings.social_login_allowed:
             setattr(user, f"{provider}_id", provider_user.id)
 
             await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
-            
+
         return user
-    
+
     async def get_provider_phone_number(sso: SSOBase, provider: str,) -> None | str:
         if provider == "google":
             async with AsyncRequest() as session:
