@@ -5,7 +5,6 @@ import os
 import re
 import string
 import random
-import sys
 from venv import logger
 
 from pydantic import Field
@@ -78,7 +77,8 @@ class Settings(BaseSettings):
     session_inactivity_ttl: int = 0 # Set initially to 0 to disable session timeout. Possible value : 60 * 60 * 24 * 7  # 7 days
     request_timeout: int = 35 # In seconds the time of dmart requests.
     jq_timeout: int = 2 # secs
-
+    is_sha_required: bool = False
+    logout_on_pwd_change: bool = True
     url_shorter_expires: int = 60 * 60 * 48  # 48 hours
 
     google_client_id: str = ""
@@ -119,8 +119,8 @@ class Settings(BaseSettings):
     )
     
     def load_config_files(self) -> None:
-        channels_config_file = os.path.join(os.path.dirname(__file__), '../config/channels.json')
-        if os.path.exists(channels_config_file):
+        channels_config_file = Path(__file__).resolve().parent.parent / 'config/channels.json'
+        if channels_config_file.exists():
             try:
                 with open(channels_config_file, 'r') as file:
                     self.channels = json.load(file)
@@ -158,7 +158,8 @@ try:
     )
 except Exception as e:
     logger.error(f"Failed to load settings.\nError: {e}")
-    sys.exit(1)
+    # sys.exit(1)
+    pass
 
 settings = Settings()
 settings.load_config_files()

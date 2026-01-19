@@ -182,10 +182,10 @@
       retrieve_json_payload: true,
       retrieve_total: !delayTotalCount,
     }
-    const resp = await Dmart.query(queryObject, scope);
     if(delayTotalCount){
-        fetchPageRecordsTotal(queryObject);
+        fetchPageRecordsTotal({...queryObject});
     }
+    const resp = await Dmart.query({...queryObject}, scope);
 
     old_search = $searchListView;
     if (delayTotalCount === false){

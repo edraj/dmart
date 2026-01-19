@@ -49,7 +49,7 @@ jobs:
       run: |
         systemctl --user stop dmart
         source $HOME/.venv/bin/activate
-        cd backend; pytest
+        cd backend; export PYTHONPATH="."; pytest
     - name: Install frontend js depdenencies
       run: |
         # cd frontend; yarn install

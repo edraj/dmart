@@ -327,6 +327,21 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="auth",
+                        code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+                        message="User does not exist"
+                    )
+                )
+            if user.type == UserType.mobile and user.locked_to_device and (not request.firebase_token or not user.firebase_token or request.firebase_token != user.firebase_token):
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(type="auth", code=InternalErrorCode.USER_ACCOUNT_LOCKED,  message="This account is locked to a unique device !"),
+                )
+
+            if user is None:
+                raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(
+                        type="auth",
                         code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
                         message="Invalid username or password"
                     )
@@ -460,10 +475,17 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
             )
         ):
             if request.invitation is None and user.type == UserType.mobile and (not request.firebase_token or not user.firebase_token or request.firebase_token != user.firebase_token):
-                raise api.Exception(
-                    status.HTTP_401_UNAUTHORIZED,
-                    api.Error(type="auth", code=InternalErrorCode.OTP_NEEDED,  message="New device detected, login with otp"),
-                )
+                if user.locked_to_device:
+                    raise api.Exception(
+                        status.HTTP_401_UNAUTHORIZED,
+                        api.Error(type="auth", code=InternalErrorCode.USER_ACCOUNT_LOCKED,
+                                  message="This account is locked to a unique device !"),
+                    )
+                else:
+                    raise api.Exception(
+                        status.HTTP_401_UNAUTHORIZED,
+                        api.Error(type="auth", code=InternalErrorCode.OTP_NEEDED,  message="New device detected, login with otp"),
+                    )
 
             await db.clear_failed_password_attempts(shortname)
             record = await process_user_login(user, response, user_updates, request.firebase_token, http_request.headers)
@@ -648,7 +670,16 @@ async def update_profile(
 
     old_version_flattened = flatten_dict(user.model_dump())
 
-    if profile_user.password and "old_password" in profile.attributes:
+    if profile_user.password:
+        if "old_password" not in profile.attributes:
+            raise Exception(
+                status.HTTP_403_FORBIDDEN,
+                Error(
+                    type="auth",
+                    code=InternalErrorCode.PASSWORD_RESET_ERROR,
+                    message="Wrong password have been provided!",
+                ),
+            )
         if not password_hashing.verify_password(
             profile.attributes["old_password"], user.password or ""
         ):
@@ -740,6 +771,9 @@ async def update_profile(
         shortname,
         retrieve_lock_status=profile.retrieve_lock_status,
     )
+
+    if settings.logout_on_pwd_change and profile_user.password:
+        await db.remove_user_session(shortname)
 
     await plugin_manager.after_action(
         core.Event(

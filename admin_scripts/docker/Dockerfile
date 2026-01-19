@@ -1,11 +1,11 @@
-FROM alpine:3.21
+FROM alpine:3.23
 
 RUN set -eux \
-  && apk add postgresql17 postgresql17-contrib postgresql17-openrc \
+  && apk add postgresql18 postgresql18-contrib postgresql18-openrc \
   && mkdir -p /run/postgresql && chown -R postgres:postgres /run/postgresql \
   && tr -dc A-Za-z0-9 </dev/urandom | head -c 13 > /tmp/pgpass \
-  && su - postgres -c 'initdb --auth=md5 -U dmart --pwfile=/tmp/pgpass /var/lib/postgresql/17/data' \
-  && su - postgres -c 'pg_ctl start -t 5000 -D /var/lib/postgresql/17/data' \
+  && su - postgres -c 'initdb --auth=md5 -U dmart --pwfile=/tmp/pgpass /var/lib/postgresql/18/data' \
+  && su - postgres -c 'pg_ctl start -t 5000 -D /var/lib/postgresql/18/data' \
   && export PGPASSWORD=$(cat /tmp/pgpass) \
   && createdb -h 127.0.0.1 -U dmart dmart \
   && apk add git curl jq uv openrc python3 caddy bash file coreutils tzdata \
@@ -56,10 +56,10 @@ RUN set -eux \
   && rm -rf /tmp/* \
   && source /home/venv/bin/activate \
   && cd /home/dmart/backend \
-  # && su - postgres -c 'pg_ctl restart -t 5000 -D /var/lib/postgresql/17/data' \
+  # && su - postgres -c 'pg_ctl restart -t 5000 -D /var/lib/postgresql/18/data' \
   && alembic upgrade head \
   && /home/venv/bin/python ./migrate.py json_to_db \
-  # && echo 'data_dir="/var/lib/postgresql/17/data"' >> /etc/conf.d/postgresql \ 
+  # && echo 'data_dir="/var/lib/postgresql/18/data"' >> /etc/conf.d/postgresql \ 
   && rc-update add postgresql \
   && rc-update add dmart \
   && rc-update add caddy

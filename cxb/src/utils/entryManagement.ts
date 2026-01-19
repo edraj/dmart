@@ -49,7 +49,7 @@ export async function saveEntry(
     try {
         await Dmart.request({
             space_name: space_name,
-            request_type: resource_type === ResourceType.user ? RequestType.update : RequestType.replace,
+            request_type: RequestType.update,
             records: [{
                 resource_type: resource_type,
                 shortname: shortname,
@@ -116,7 +116,7 @@ export async function moveEntryToTrash(
         const moveNewSubpath = moveResourceType === ResourceType.folder
             ? (subpath.split("/").slice(0, -1).join("-") || '/')
             : subpath;
-        
+
         const moveAttrb = {
             src_space_name: space_name,
             src_subpath: moveNewSubpath,

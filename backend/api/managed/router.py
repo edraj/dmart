@@ -37,7 +37,7 @@ from api.managed.utils import (
     serve_request_move,
     serve_request_update_acl,
     serve_request_patch,
-    serve_request_update_r_replace,
+    serve_request_update,
     update_state_handle_resolution,
     iter_bytesio
 )
@@ -393,8 +393,8 @@ async def serve_request(
         case api.RequestType.create:
             records, failed_records = await serve_request_create(request, owner_shortname, token, is_internal)
 
-        case api.RequestType.update | api.RequestType.r_replace:
-            records, failed_records = await serve_request_update_r_replace(request, owner_shortname)
+        case api.RequestType.update:
+            records, failed_records = await serve_request_update(request, owner_shortname)
 
         case api.RequestType.assign:
             records, failed_records = await serve_request_assign(request, owner_shortname)
@@ -470,7 +470,7 @@ async def update_state(
             space_name=space_name,
             subpath=subpath,
             resource_type=ResourceType.ticket,
-            action_type=core.ActionType.update,
+            action_type=core.ActionType.progress_ticket,
             resource_is_active=ticket_obj.is_active,
             resource_owner_shortname=ticket_obj.owner_shortname,
             resource_owner_group=ticket_obj.owner_group_shortname,

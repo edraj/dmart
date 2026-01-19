@@ -15,7 +15,6 @@ pydantic-settings
 fastapi-sso
 sqlmodel
 psycopg[binary]
-asyncpg
 greenlet
 alembic
 jinja2

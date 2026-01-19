@@ -1,0 +1,8 @@
+include *.json
+include *.toml
+include *.sh
+include *.sample
+recursive-include config *.json
+recursive-include languages *.json
+recursive-include requirements *.txt
+recursive-include utils/templates *

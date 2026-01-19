@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import time
+import hashlib
 from contextlib import asynccontextmanager
 from copy import copy
 from datetime import datetime
@@ -1293,6 +1294,24 @@ class SQLAdapter(BaseDataAdapter):
 
                 return result
 
+    async def get_latest_history(
+            self,
+            space_name: str,
+            subpath: str,
+            shortname: str,
+    ) -> Histories | None:
+        async with self.get_session() as session:
+            try:
+                statement = select(Histories).where(
+                    col(Histories.space_name) == space_name,
+                    col(Histories.subpath) == subpath,
+                    col(Histories.shortname) == shortname
+                ).order_by(Histories.timestamp.desc()).limit(1)  # type: ignore
+                result = await session.execute(statement)
+                return result.scalars().first()  # type: ignore
+            except Exception as _: # type: ignore
+                return None
+
     async def query(
             self, query: api.Query, user_shortname: str | None = None
     ) -> Tuple[int, list[core.Record]]:
@@ -1360,7 +1379,7 @@ class SQLAdapter(BaseDataAdapter):
                         ffv_resource_type.append(perm_key_splited[2])
 
         if len(ffv_spaces):
-            perm_key_splited_query = f'@space_name:{'|'.join(ffv_spaces)} @subpath:{f"/{'|/'.join(ffv_subpath)}"} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}'
+            perm_key_splited_query = f'@space_name:{"|".join(ffv_spaces)} @subpath:/{"|/".join(ffv_subpath)} @resource_type:{"|".join(ffv_resource_type)} {" ".join(ffv_query)}'
             if query.search:
                 query.search += f' {perm_key_splited_query}'
             else:
@@ -2099,6 +2118,9 @@ class SQLAdapter(BaseDataAdapter):
             if not history_diff:
                 return {}
 
+            new_version_json = json.dumps(new_version_flattend, sort_keys=True, default=str)
+            new_checksum = hashlib.sha1(new_version_json.encode()).hexdigest()
+
             history_obj = Histories(
                 space_name=space_name,
                 uuid=uuid4(),
@@ -2108,14 +2130,23 @@ class SQLAdapter(BaseDataAdapter):
                 request_headers=get_request_data().get("request_headers", {}),
                 diff=history_diff,
                 subpath=subpath,
+                last_checksum_history=new_checksum,
             )
 
             async with self.get_session() as session:
                 session.add(Histories.model_validate(history_obj))
+                table = self.get_table(resource_type)
+                await session.execute(
+                    update(table).where(
+                        col(table.space_name) == space_name,
+                        col(table.subpath) == subpath,
+                        col(table.shortname) == shortname
+                    ).values(last_checksum_history=new_checksum)
+                )
 
             return history_diff
         except Exception as e:
-            print("[!store_entry_diff]", e)
+            print("[!store_entry_diff]", e, old_version_flattend, new_version_flattend)
             logger.error(f"Failed parsing an entry. Error: {e}")
             return {}
 
@@ -2355,6 +2386,12 @@ class SQLAdapter(BaseDataAdapter):
                         .where(col(Entries.space_name) == space_name) \
                         .where(col(Entries.subpath).startswith(_subpath))
                     await session.execute(statement)
+                elif isinstance(result, Entries):
+                    entry_attachment_subpath = f"{subpath}/{meta.shortname}".replace('//', '/')
+                    statement = delete(Attachments) \
+                        .where(col(Attachments.space_name) == space_name) \
+                        .where(col(Attachments.subpath).startswith(entry_attachment_subpath))
+                    await session.execute(statement)
 
                 # Refresh authz MVs only when Users/Roles/Permissions changed
                 # try:
@@ -2429,7 +2466,7 @@ class SQLAdapter(BaseDataAdapter):
         try:
             return await self.load(space_name, "/", space_name, core.Space)
         except Exception as e:
-            print("[!fetch_space]", e)
+            print("[!fetch_space]", e, space_name)
             return None
 
     async def set_user_session(self, user_shortname: str, token: str) -> bool:

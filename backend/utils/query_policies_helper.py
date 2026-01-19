@@ -51,6 +51,21 @@ def generate_query_policies(
     return query_policies
 
 
+def matches_subpath(perm_key: str, space_name: str, query_subpath: str) -> bool:
+    if not perm_key.startswith(f"{space_name}:"):
+        return False
+
+    parts = perm_key.split(":", 2)
+    if len(parts) < 3:
+        return False
+
+    perm_subpath = parts[1].lstrip("/")
+    return (
+        query_subpath == perm_subpath
+        or query_subpath.startswith(perm_subpath + "/")
+    )
+
+
 async def get_user_query_policies(
     db,
     user_shortname: str,
@@ -72,18 +87,19 @@ async def get_user_query_policies(
     user_groups = (await db.load_user_meta(user_shortname)).groups or []
     user_groups.append(user_shortname)
 
+    query_subpath = subpath.lstrip("/")
+
     filtered_permissions = {
         perm_key: permission
         for perm_key, permission in user_permissions.items()
-        if (
-               is_space or
-               perm_key.startswith(f'{space_name}:{subpath.lstrip("/")}') or
-               perm_key.startswith(f'{space_name}:__all_subpaths__') or
-               perm_key.startswith(settings.all_spaces_mw)
-           )
-           and 'query' in permission.get('allowed_actions', [])
+        if 'query' in permission.get('allowed_actions', [])
+        and (
+            is_space
+            or perm_key.startswith(settings.all_spaces_mw)
+            or perm_key.startswith(f'{space_name}:__all_subpaths__')
+            or matches_subpath(perm_key, space_name, query_subpath)
+        )
     }
-
     sql_query_policies = []
     for perm_key, permission in filtered_permissions.items():
         perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
