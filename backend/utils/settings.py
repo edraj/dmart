@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     auto_uuid_rule: str = "auto"  # Used to generate a shortname from UUID
     google_application_credentials: str = ""
     is_registrable: bool = True
+    require_otp_for_profile_update: bool = True # True to require OTP for profile update, False to allow profile update without OTP
     is_otp_for_create_required: bool = True
     social_login_allowed: bool = True
     all_spaces_mw: str = (

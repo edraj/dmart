@@ -150,12 +150,20 @@ async def create_user(response: Response, record: core.Record, http_request: Req
                     )
                     
     if user.msisdn:
-        is_valid_otp = True if not settings.is_otp_for_create_required else await verify_user(ConfirmOTPRequest(
-            msisdn=record.attributes.get("msisdn"),
-            email=None,
-            shortname=None,
-            code=record.attributes.get("msisdn_otp", "")
-        ))
+        if settings.is_otp_for_create_required:
+            is_valid_otp, _ = await verify_user(
+                ConfirmOTPRequest(
+                    msisdn=record.attributes.get("msisdn"),
+                    email=None,
+                    shortname=None,
+                    code=record.attributes.get("msisdn_otp", "")
+                ),
+                require_otp_check=True,
+                mock_smpp=settings.mock_smpp_api,
+                mock_otp_code=settings.mock_otp_code
+            )
+        else:
+            is_valid_otp = True
         if not is_valid_otp:
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -164,12 +172,20 @@ async def create_user(response: Response, record: core.Record, http_request: Req
             )
         user.is_msisdn_verified = True
     if user.email:
-        is_valid_otp = True if not settings.is_otp_for_create_required else await verify_user(ConfirmOTPRequest(
-            email=record.attributes.get("email"),
-            msisdn=None,
-            shortname=None,
-            code=record.attributes.get("email_otp", "")
-        ))
+        if settings.is_otp_for_create_required:
+            is_valid_otp, _ = await verify_user(
+                ConfirmOTPRequest(
+                    email=record.attributes.get("email"),
+                    msisdn=None,
+                    shortname=None,
+                    code=record.attributes.get("email_otp", "")
+                ),
+                require_otp_check=True,
+                mock_smtp=settings.mock_smtp_api,
+                mock_otp_code=settings.mock_otp_code
+            )
+        else:
+            is_valid_otp = True
         if not is_valid_otp:
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -211,14 +227,36 @@ async def create_user(response: Response, record: core.Record, http_request: Req
         ]
     )
   
-async def verify_user(user_request: ConfirmOTPRequest):
+async def verify_user(
+    user_request: ConfirmOTPRequest,
+    require_otp_check: bool = True,
+    mock_smtp: bool = False,
+    mock_smpp: bool = False,
+    mock_otp_code: str = ""
+) -> tuple[bool, str | None]:
+    """
+    Verify OTP for user request.
+    """
     user_identifier = user_request.check_fields()
     key = get_otp_key(user_identifier)
-    code = await db.get_otp(key)
-    if not code or code != user_request.code:
-        return False
+    stored_otp = await db.get_otp(key)
     
-    return True  
+    if not require_otp_check and stored_otp is None:
+        return (True, key)
+    
+    if stored_otp is None:
+        return (False, key)
+    
+    if user_request.email and mock_smtp and user_request.code == mock_otp_code:
+        return (True, key)
+    
+    if user_request.msisdn and mock_smpp and user_request.code == mock_otp_code:
+        return (True, key)
+    
+    if stored_otp == user_request.code:
+        return (True, key)
+    
+    return (False, key)  
    
 @router.post(
     "/login",
@@ -697,17 +735,18 @@ async def update_profile(
 
     user = await set_user_profile(profile, profile_user, user)
 
-    if profile.attributes.get("email") and user.email != profile.attributes.get("email") and not profile.attributes.get("email_otp"):
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50, message="Email OTP is required to update your email"),
-        )
+    if settings.require_otp_for_profile_update and (profile.attributes.get("email") or profile.attributes.get("msisdn")):
+        if profile.attributes.get("email") and user.email != profile.attributes.get("email") and not profile.attributes.get("email_otp"):
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(type="create", code=50, message="Email OTP is required to update your email"),
+            )
 
-    if profile.attributes.get("msisdn") and user.msisdn != profile.attributes.get("msisdn") and not profile.attributes.get("msisdn_otp"):
-        raise api.Exception(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=api.Error(type="create", code=50, message="msisdn OTP is required to update your msisdn"),
-        )
+        if profile.attributes.get("msisdn") and user.msisdn != profile.attributes.get("msisdn") and not profile.attributes.get("msisdn_otp"):
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(type="create", code=50, message="msisdn OTP is required to update your msisdn"),
+            )
 
     if "confirmation" in profile.attributes:
         result = await get_otp_confirmation_email_or_msisdn(profile_user)
@@ -726,34 +765,54 @@ async def update_profile(
     else:
         await db.validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update, shortname)
         if "email" in profile.attributes and user.email != profile_user.email:
-            is_valid_otp = await verify_user(ConfirmOTPRequest(
-                email=profile.attributes.get("email"),
-                msisdn=None,
-                shortname=None,
-                code=profile.attributes.get("email_otp", "")
-            ))
-            if not is_valid_otp:
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(type="create", code=50,
-                                    message="Invalid Email OTP"),
+            email_otp = profile.attributes.get("email_otp", "")
+            if email_otp and email_otp.strip():
+                is_valid_otp, otp_key = await verify_user(
+                    ConfirmOTPRequest(
+                        email=user.email,
+                        msisdn=None,
+                        shortname=None,
+                        code=email_otp
+                    ),
+                    require_otp_check=settings.require_otp_for_profile_update,
+                    mock_smtp=settings.mock_smtp_api,
+                    mock_otp_code=settings.mock_otp_code
                 )
+                    
+                if not is_valid_otp:
+                    raise api.Exception(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        error=api.Error(type="create", code=50,
+                                        message="Invalid Email OTP"),
+                    )
+                if otp_key and is_valid_otp:
+                    await db.delete_otp(otp_key)
             user.email = profile_user.email
             user.is_email_verified = True
 
         if "msisdn" in profile.attributes and user.msisdn != profile_user.msisdn:
-            is_valid_otp = await verify_user(ConfirmOTPRequest(
-                msisdn=profile.attributes.get("msisdn"),
-                email=None,
-                shortname=None,
-                code=profile.attributes.get("msisdn_otp", "")
-            ))
-            if not is_valid_otp:
-                raise api.Exception(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    error=api.Error(type="create", code=50,
-                                    message="Invalid MSISDN OTP"),
+            msisdn_otp = profile.attributes.get("msisdn_otp", "")
+            if msisdn_otp and msisdn_otp.strip():
+                is_valid_otp, otp_key = await verify_user(
+                    ConfirmOTPRequest(
+                        msisdn=user.msisdn,
+                        email=None,
+                        shortname=None,
+                        code=msisdn_otp
+                    ),
+                    require_otp_check=settings.require_otp_for_profile_update,
+                    mock_smpp=settings.mock_smpp_api,
+                    mock_otp_code=settings.mock_otp_code
                 )
+                        
+                if not is_valid_otp:
+                    raise api.Exception(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        error=api.Error(type="create", code=50,
+                                        message="Invalid MSISDN OTP"),
+                    )
+                if otp_key and is_valid_otp:
+                    await db.delete_otp(otp_key)
             user.msisdn = profile_user.msisdn
             user.is_msisdn_verified = True
 
