@@ -162,15 +162,20 @@ podman pull ghcr.io/edraj/dmart:latest
 
 # Inistantiate the container and map the https port to localhost
 podman run --name dmart -p 4443:4443 -p 8000:8000 -d -it dmart
+## Or if using docker -->
+docker run --name dmart -p 4443:4443 -p 8000:8000 -d -it ghcr.io/edraj/dmart:latest
 
-# Set the admin password
+# Wait ~10 seconds and then Set the admin password
 podman exec -it -w /home/dmart/backend dmart /home/venv/bin/python3 ./set_admin_passwd.py
 
 # Run test to make sure all is good
 podman exec -it -w /home/dmart/backend dmart ./curl.sh
 
-# Open on the browser
+# Open on the browser - use localhost not 127.0.0.1
 https://localhost:4443
+Or
+http://localhost:8000
+
 
 ```
 # Build the container locally
