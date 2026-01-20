@@ -255,7 +255,15 @@ def hypercorn_main() -> int:
         type=int,
     )
     args = parser.parse_args(sys.argv[1:])
-    config = Config.from_toml(args.config)
+    
+    if args.config == "hypercorn_config.toml" and not os.path.exists(args.config):
+        config = Config()
+        config.backlog = 2000
+        config.workers = 1
+        config.bind = ["localhost:8282"]
+    else:
+        config = Config.from_toml(args.config)
+        
     config.application_path = args.application
 
     if args.log_level is not sentinel:
@@ -359,6 +367,9 @@ def hypercorn_main() -> int:
                 print(e)
                 pass
         
+        if host == "0.0.0.0":
+            host = "127.0.0.1"
+
         url = f"http://{host}:{port}{settings.cxb_url}/"
         
         def open_browser():
@@ -372,6 +383,9 @@ def hypercorn_main() -> int:
 
 
 def main():
+    if not os.path.exists("config.env"):
+        print("Notice: config.env not found, using default settings from settings.py")
+
     sys.argv = sys.argv[1:]
     if len(sys.argv) == 0:
         print("You must provide a command to run:")
@@ -395,9 +409,12 @@ def main():
                 sys.argv.pop(idx)
                 
             if open_cxb:
-                url = f"http://{settings.listening_host}:{settings.listening_port}{settings.cxb_url}/"
+                host = settings.listening_host
+                if host == "0.0.0.0":
+                    host = "127.0.0.1"
+                url = f"http://{host}:{settings.listening_port}{settings.cxb_url}/"
                 def open_browser():
-                    time.sleep(1)
+                    time.sleep(2)
                     webbrowser.open(url)
                 
                 import threading

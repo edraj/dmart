@@ -480,7 +480,10 @@ asyncio.run(plugin_manager.load_plugins(app, capture_body))
 
 
 cxb_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cxb")
-if not os.path.exists(cxb_path):
+if os.path.isdir(os.path.join(cxb_path, "client")):
+    cxb_path = os.path.join(cxb_path, "client")
+
+if not os.path.exists(os.path.join(cxb_path, "index.html")):
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     cxb_dist_path = os.path.join(project_root, "cxb", "dist", "client")
     if os.path.isdir(cxb_dist_path):
