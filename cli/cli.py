@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     default_space: str = "management"
     pagination: int = 50
 
-    model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", os.path.dirname(os.path.realpath(__file__)) + "/config.ini"), env_file_encoding = "utf-8")
+    model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", os.path.dirname(os.path.realpath(__file__)) + "/cli.ini"), env_file_encoding = "utf-8")
 
 
 settings = Settings()

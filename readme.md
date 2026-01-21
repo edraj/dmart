@@ -330,7 +330,7 @@ DMART comes with a command line tool that can run from anywhere. It communicates
 cd cli
 
 # Create config.ini with proper access details (url, credentials ...etc)
-cp config.ini.sample config.ini
+cp config.ini.sample cli.ini
 
 # Install additional packages
 uv pip install --user  -r requirements.txt

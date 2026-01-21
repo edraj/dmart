@@ -12,19 +12,12 @@ import sys
 import time
 import warnings
 import webbrowser
+import re
 # from multiprocessing import freeze_support
 from pathlib import Path
 
 from hypercorn.config import Config
 from hypercorn.run import run
-
-from data_adapters.file.archive import archive
-from data_adapters.file.create_index import main as create_index
-from data_adapters.file.health_check import main as health_check
-from data_adapters.sql.json_to_db_migration import main as json_to_db_migration
-from data_adapters.sql.db_to_json_migration import main as db_to_json_migration
-from main import main as server
-from utils.exporter import main as exporter, exit_with_error, OUTPUT_FOLDER_NAME, validate_config, extract
 from utils.settings import settings
 
 # freeze_support()
@@ -429,10 +422,10 @@ def main():
                     sys.argv.pop(idx)
 
             if not config_file:
-                if os.path.exists("config.ini"):
-                    config_file = "config.ini"
+                if os.path.exists("cli.ini"):
+                    config_file = "cli.ini"
                 else:
-                    home_config = Path.home() / ".dmart" / "config.ini"
+                    home_config = Path.home() / ".dmart" / "cli.ini"
                     if home_config.exists():
                         config_file = str(home_config)
                     else:
@@ -454,7 +447,24 @@ def main():
                                     'default_space = "management"\n'
                                     'pagination = 50\n'
                                 )
-                            
+
+                            login_creds_path = Path.home() / ".dmart" / "login_creds.sh"
+                            if login_creds_path.exists():
+                                try:
+                                    with open(login_creds_path, "r") as f:
+                                        creds_content = f.read()
+                                    
+                                    match = re.search(r"export SUPERMAN='(.*?)'", creds_content)
+                                    if match:
+                                        creds_json = match.group(1)
+                                        creds = json.loads(creds_json)
+                                        if "shortname" in creds:
+                                            default_config = re.sub(r'shortname = ".*"', f'shortname = "{creds["shortname"]}"', default_config)
+                                        if "password" in creds:
+                                            default_config = re.sub(r'password = ".*"', f'password = "{creds["password"]}"', default_config)
+                                except Exception as e:
+                                    print(f"Warning: Failed to parse login_creds.sh: {e}")
+
                             with open(home_config, "w") as f:
                                 f.write(default_config)
                             print(f"Created default config at {home_config}")
@@ -528,8 +538,10 @@ def main():
                 import threading
                 threading.Thread(target=open_browser, daemon=True).start()
 
+            from main import main as server
             asyncio.run(server())
         case "health-check":
+            from data_adapters.file.health_check import main as health_check
             parser = argparse.ArgumentParser(
                 description="This created for doing health check functionality",
                 formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -543,6 +555,7 @@ def main():
             asyncio.run(health_check(args.type, args.space, args.schemas))
             print(f'total time: {"{:.2f}".format(time.time() - before_time)} sec')
         case "create-index":
+            from data_adapters.file.create_index import main as create_index
             parser = argparse.ArgumentParser(
                 description="Recreate Redis indices based on the available schema definitions",
                 formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -562,6 +575,7 @@ def main():
 
             asyncio.run(create_index(args.space, args.schemas, args.subpaths, args.flushall))
         case "export":
+            from utils.exporter import main as exporter, exit_with_error, OUTPUT_FOLDER_NAME, validate_config, extract
             parser = argparse.ArgumentParser()
             parser.add_argument(
                 "--config", required=True, help="Json config relative path from the script"
@@ -618,6 +632,7 @@ def main():
         case "set_password":
             import set_admin_passwd  # noqa: F401
         case "archive":
+            from data_adapters.file.archive import archive
             parser = argparse.ArgumentParser(
                 description="Script for archiving records from different spaces and subpaths."
             )
@@ -644,8 +659,10 @@ def main():
             asyncio.run(archive(space, subpath, schema, olderthan))
             print("Done.")
         case "json_to_db":
+            from data_adapters.sql.json_to_db_migration import main as json_to_db_migration
             asyncio.run(json_to_db_migration())
         case "db_to_json":
+            from data_adapters.sql.db_to_json_migration import main as db_to_json_migration
             db_to_json_migration()
         case "help":
             print("Available commands:")

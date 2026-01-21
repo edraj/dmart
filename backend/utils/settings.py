@@ -31,6 +31,7 @@ def get_env_file():
                     dmart_home.mkdir(parents=True, exist_ok=True)
                     (dmart_home / "logs").mkdir(parents=True, exist_ok=True)
                     (dmart_home / "spaces").mkdir(parents=True, exist_ok=True)
+                    (dmart_home / "spaces" / "custom_plugins").mkdir(parents=True, exist_ok=True)
                     
                     jwt_secret = secrets.token_urlsafe(32)
                     

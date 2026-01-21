@@ -12,6 +12,7 @@ login_creds.sh
 *.swp
 mycookies.jar
 config.ini
+cli.ini
 
 .env
 .venv
