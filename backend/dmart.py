@@ -32,6 +32,7 @@ from utils.settings import settings
 commands = """
     serve
     hyper
+    cli
     health-check
     create-index
     export
@@ -418,6 +419,90 @@ def main():
     match sys.argv[0]:
         case "hyper":
             hypercorn_main()
+        case "cli":
+            config_file = None
+            if "--config" in sys.argv:
+                idx = sys.argv.index("--config")
+                if idx + 1 < len(sys.argv):
+                    config_file = sys.argv[idx + 1]
+                    sys.argv.pop(idx + 1)
+                    sys.argv.pop(idx)
+
+            if not config_file:
+                if os.path.exists("config.ini"):
+                    config_file = "config.ini"
+                else:
+                    home_config = Path.home() / ".dmart" / "config.ini"
+                    if home_config.exists():
+                        config_file = str(home_config)
+                    else:
+                        try:
+                            home_config.parent.mkdir(parents=True, exist_ok=True)
+                            
+                            default_config = ""
+                            sample_path = Path(__file__).resolve().parent / "config.ini.sample"
+                            if sample_path.exists():
+                                with open(sample_path, "r") as f:
+                                    default_config = f.read()
+                            else:
+                                default_config = (
+                                    'url = "http://localhost:8282"\n'
+                                    'shortname = "dmart"\n'
+                                    'password = "xxxx"\n'
+                                    'query_limit = 50\n'
+                                    'retrieve_json_payload = True\n'
+                                    'default_space = "management"\n'
+                                    'pagination = 50\n'
+                                )
+                            
+                            with open(home_config, "w") as f:
+                                f.write(default_config)
+                            print(f"Created default config at {home_config}")
+                            config_file = str(home_config)
+                        except Exception as e:
+                            print(f"Warning: Failed to create default config at {home_config}: {e}")
+            
+            if config_file:
+                os.environ["BACKEND_ENV"] = config_file
+            
+            last_import_error = None
+            try:
+                dmart_dir = Path(__file__).resolve().parent
+                if str(dmart_dir) not in sys.path:
+                    sys.path.append(str(dmart_dir))
+                import cli
+                cli.main()
+                return
+            except ImportError as e:
+                last_import_error = e
+                if e.name and e.name != 'cli':
+                    print(f"Error: Missing dependency for CLI: {e}")
+                    sys.exit(1)
+            except Exception as e:
+                print(f"Error: Failed to start CLI: {e}")
+                sys.exit(1)
+
+            cli_path = Path(__file__).resolve().parent.parent / "cli"
+            if cli_path.exists():
+                sys.path.append(str(cli_path))
+                try:
+                    import cli
+                    cli.main()
+                    return
+                except ImportError as e:
+                    last_import_error = e
+                    if e.name and e.name != 'cli':
+                        print(f"Error: Missing dependency for CLI: {e}")
+                        sys.exit(1)
+                except Exception as e:
+                    print(f"Error: Failed to start CLI: {e}")
+                    sys.exit(1)
+
+            if last_import_error:
+                 print(f"Error: Could not load cli.py: {last_import_error}")
+            else:
+                 print("Error: cli.py not found.")
+            sys.exit(1)
         case "serve":
             open_cxb = False
             if "--open-cxb" in sys.argv:

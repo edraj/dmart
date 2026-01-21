@@ -2,6 +2,7 @@ include *.json
 include *.toml
 include *.sh
 include *.sample
+include cli.py
 recursive-include config *.json
 recursive-include languages *.json
 recursive-include requirements *.txt
