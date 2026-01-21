@@ -12,7 +12,7 @@ import sys
 import time
 import warnings
 import webbrowser
-from multiprocessing import freeze_support
+# from multiprocessing import freeze_support
 from pathlib import Path
 
 from hypercorn.config import Config
@@ -27,9 +27,9 @@ from main import main as server
 from utils.exporter import main as exporter, exit_with_error, OUTPUT_FOLDER_NAME, validate_config, extract
 from utils.settings import settings
 
-freeze_support()
+# freeze_support()
 
-commands = """    server
+commands = """
     serve
     hyper
     health-check
@@ -383,9 +383,6 @@ def hypercorn_main() -> int:
 
 
 def main():
-    if not os.path.exists("config.env"):
-        print("Notice: config.env not found, using default settings from settings.py")
-
     sys.argv = sys.argv[1:]
     if len(sys.argv) == 0:
         print("You must provide a command to run:")
@@ -395,7 +392,7 @@ def main():
     match sys.argv[0]:
         case "hyper":
             hypercorn_main()
-        case "server" | "serve":
+        case "serve":
             open_cxb = False
             if "--open-cxb" in sys.argv:
                 open_cxb = True
