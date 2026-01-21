@@ -470,7 +470,7 @@ def main():
                 dmart_dir = Path(__file__).resolve().parent
                 if str(dmart_dir) not in sys.path:
                     sys.path.append(str(dmart_dir))
-                import cli
+                import cli # type: ignore
                 cli.main()
                 return
             except ImportError as e:
@@ -486,7 +486,7 @@ def main():
             if cli_path.exists():
                 sys.path.append(str(cli_path))
                 try:
-                    import cli
+                    import cli # type: ignore
                     cli.main()
                     return
                 except ImportError as e:
