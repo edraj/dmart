@@ -382,6 +382,32 @@ def hypercorn_main() -> int:
     return run(config)
 
 
+def print_formatted(data):
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError:
+            pass
+
+    if isinstance(data, (dict, list)):
+        output = json.dumps(data, indent=4)
+        lexer_name = "json"
+    else:
+        output = str(data)
+        lexer_name = "text"
+
+    if sys.stdout.isatty():
+        try:
+            from pygments import highlight, lexers, formatters
+            lexer = lexers.get_lexer_by_name(lexer_name)
+            print(highlight(output, lexer, formatters.TerminalFormatter()).strip())
+            return
+        except ImportError:
+            pass
+    
+    print(output)
+
+
 def main():
     sys.argv = sys.argv[1:]
     if len(sys.argv) == 0:
@@ -503,7 +529,7 @@ def main():
                 f"Output path: {os.path.abspath(os.path.join(output_path, OUTPUT_FOLDER_NAME))}"
             )
         case "settings":
-            print(settings.model_dump_json())
+            print_formatted(settings.model_dump_json())
         case "set_password":
             import set_admin_passwd  # noqa: F401
         case "archive":
@@ -541,20 +567,22 @@ def main():
             print(commands)
         case "version":
             info_json_path = Path(__file__).resolve().parent / "info.json"
+            tag = None
             if info_json_path.exists():
                 with open(info_json_path) as info:
-                    print(json.load(info).get("tag"))
+                    tag = json.load(info).get("tag")
             else:
                 tag_cmd = "git describe --tags"
                 result, _ = subprocess.Popen(tag_cmd.split(" "), stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE).communicate()
                 tag = None if result is None or len(result) == 0 else result.decode().strip()
-                print(tag)
+            
+            print(tag)
         case "info":
             info_json_path = Path(__file__).resolve().parent / "info.json"
             if info_json_path.exists():
                 with open(info_json_path) as info:
-                    print(json.load(info))
+                    data = json.load(info)
             else:
                 branch_cmd = "git rev-parse --abbrev-ref HEAD"
                 result, _ = subprocess.Popen(branch_cmd.split(" "), stdout=subprocess.PIPE,
@@ -576,12 +604,13 @@ def main():
                                              stderr=subprocess.PIPE).communicate()
                 version_date = None if result is None or len(result) == 0 else result.decode().split("\n")[0]
 
-                print({
+                data = {
                     "commit_hash": version,
                     "date": version_date,
                     "branch": branch,
                     "tag": tag
-                })
+                }
+            print_formatted(data)
 
 if __name__ == "__main__":
     main()
