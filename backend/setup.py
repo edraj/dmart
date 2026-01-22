@@ -12,12 +12,30 @@ config_src = os.path.join(BASE_DIR, '..', 'cli', 'config.ini.sample')
 if os.path.exists(config_src):
     shutil.copy(config_src, os.path.join(BASE_DIR, 'config.ini.sample'))
 
+sample_src = os.path.join(BASE_DIR, '..', 'sample')
+sample_dst = os.path.join(BASE_DIR, 'sample')
+if os.path.exists(sample_src):
+    if os.path.exists(sample_dst):
+        shutil.rmtree(sample_dst)
+    shutil.copytree(sample_src, sample_dst)
+
 def parse_requirements(filename):
     path = os.path.join(BASE_DIR, filename)
     if not os.path.exists(path):
         raise FileNotFoundError(f"Requirements file not found: {path}")
     with open(path, 'r') as f:
         return [line.strip() for line in f if line.strip() and not line.startswith('#')]
+
+def get_sample_files():
+    files = []
+    sample_dir = os.path.join(BASE_DIR, 'sample')
+    if not os.path.exists(sample_dir):
+        return []
+    for root, _, filenames in os.walk(sample_dir):
+        for filename in filenames:
+            rel_dir = os.path.relpath(root, BASE_DIR)
+            files.append(os.path.join(rel_dir, filename))
+    return files
 
 install_requires = parse_requirements('requirements/core.txt')
 extra_requires = parse_requirements('requirements/extra.txt')
@@ -34,7 +52,7 @@ package_dir = {'dmart': '.'}
 
 setup(
     name="dmart",
-    version="1.4.40-3",
+    version="1.4.40-7",
     packages=packages,
     package_dir=package_dir,
     package_data={
@@ -45,7 +63,7 @@ setup(
             'schema_modulate.py', 'schema_migration.py', 'set_admin_passwd.py', 
             'run_notification_campaign.py', 'scheduled_notification_handler.py', 
             'websocket.py', 'test_utils.py', 'conftest.py', 'cli.py'
-        ],
+        ] + get_sample_files(),
         'dmart.cxb': ['**/*'],
         'dmart.languages': ['*.json'],
         'dmart.config': ['*.json'],

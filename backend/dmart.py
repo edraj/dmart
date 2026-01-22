@@ -37,6 +37,7 @@ commands = """
     help
     version 
     info
+    init
 """
 
 sentinel = object()
@@ -713,6 +714,22 @@ def main():
                     "tag": tag
                 }
             print_formatted(data)
+        case "init":
+            sample_spaces_path = Path(__file__).resolve().parent / "sample" / "spaces"
+            if not sample_spaces_path.exists():
+                print("Error: Sample spaces not found in the package.")
+                sys.exit(1)
+            
+            target_path = Path.home() / ".dmart" / "spaces"
+            
+            try:
+                if target_path.exists():
+                    shutil.rmtree(target_path)
+                shutil.copytree(sample_spaces_path, target_path)
+                print(f"Initialized sample spaces at {target_path}")
+            except Exception as e:
+                print(f"Error initializing sample spaces: {e}")
+                sys.exit(1)
 
 if __name__ == "__main__":
     main()
