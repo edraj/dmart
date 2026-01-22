@@ -38,6 +38,7 @@ commands = """
     version 
     info
     init
+    migrate
 """
 
 sentinel = object()
@@ -730,6 +731,62 @@ def main():
             except Exception as e:
                 print(f"Error initializing sample spaces: {e}")
                 sys.exit(1)
+        case "migrate":
+            import configparser
+            import tempfile
+            
+            dmart_root = Path(__file__).resolve().parent
+            alembic_ini_path = dmart_root / "alembic.ini"
+            
+            if not alembic_ini_path.exists():
+                print(f"Error: alembic.ini not found at {alembic_ini_path}")
+                sys.exit(1)
+
+            config = configparser.ConfigParser()
+            config.read(alembic_ini_path)
+
+            if "sqlite" in settings.database_driver:
+                db_url = f"{settings.database_driver}:///{settings.database_name}"
+            else:
+                db_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
+
+            config.set('alembic', 'sqlalchemy.url', db_url)
+            config.set('alembic', 'script_location', str(dmart_root / "alembic"))
+            config.set('alembic', 'prepend_sys_path', str(dmart_root))
+
+            temp_config_path = ""
+            try:
+                with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix=".ini") as temp_config_file:
+                    config.write(temp_config_file)
+                    temp_config_path = temp_config_file.name
+
+                alembic_cli_args = sys.argv[1:]
+                if not alembic_cli_args:
+                    alembic_cli_args = ["upgrade", "head"]
+
+                command = [sys.executable, "-m", "alembic", "-c", temp_config_path] + alembic_cli_args
+                
+                result = subprocess.run(command, capture_output=True, text=True, check=False)
+
+                if result.returncode == 0:
+                    print("Alembic command finished.")
+                    if result.stdout:
+                        print(result.stdout)
+                    if result.stderr:
+                        print(result.stderr)
+                else:
+                    print(f"Error during alembic command (exit code: {result.returncode}):")
+                    if result.stdout:
+                        print("--- stdout ---")
+                        print(result.stdout)
+                    if result.stderr:
+                        print("--- stderr ---")
+                        print(result.stderr)
+                    sys.exit(1)
+
+            finally:
+                if temp_config_path and os.path.exists(temp_config_path):
+                    os.remove(temp_config_path)
 
 if __name__ == "__main__":
     main()

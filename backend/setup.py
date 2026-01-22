@@ -43,6 +43,7 @@ plugins_requires = parse_requirements('requirements/plugins.txt')
 cli_requires = parse_requirements('requirements/cli.txt')
 
 install_requires = install_requires + cli_requires
+install_requires.append('alembic')
 
 sub_packages = find_packages(exclude=['tests', 'pytests', 'loadtest'])
 
@@ -52,7 +53,7 @@ package_dir = {'dmart': '.'}
 
 setup(
     name="dmart",
-    version="1.4.40-7",
+    version="1.4.40-11",
     packages=packages,
     package_dir=package_dir,
     package_data={
