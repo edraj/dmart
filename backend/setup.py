@@ -38,8 +38,6 @@ def get_sample_files():
     return files
 
 install_requires = parse_requirements('requirements/core.txt')
-extra_requires = parse_requirements('requirements/extra.txt')
-plugins_requires = parse_requirements('requirements/plugins.txt')
 cli_requires = parse_requirements('requirements/cli.txt')
 
 install_requires = install_requires + cli_requires
@@ -53,7 +51,7 @@ package_dir = {'dmart': '.'}
 
 setup(
     name="dmart",
-    version="1.4.40-17",
+    version="1.4.40-18",
     packages=packages,
     package_dir=package_dir,
     package_data={
@@ -73,12 +71,6 @@ setup(
         'dmart.alembic': ['**/*'],
     },
     install_requires=install_requires,
-    extras_require={
-        "extra": extra_requires,
-        "plugins": plugins_requires,
-        "cli_requires": cli_requires,
-        "all": extra_requires + plugins_requires + cli_requires,
-    },
     entry_points={
         "console_scripts": [
             "dmart=dmart.dmart:main",
