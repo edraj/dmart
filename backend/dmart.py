@@ -767,7 +767,7 @@ def main():
 
                 command = [sys.executable, "-m", "alembic", "-c", temp_config_path] + alembic_cli_args
                 
-                result = subprocess.run(command, capture_output=True, text=True, check=False)
+                result = subprocess.run(command, capture_output=True, text=True, check=False) # type: ignore
 
                 if result.returncode == 0:
                     print("Alembic command finished.")
