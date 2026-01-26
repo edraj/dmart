@@ -2766,6 +2766,7 @@ class SQLAdapter(BaseDataAdapter):
             query_string = ""
             for composite_unique_key in compound:
                 is_payload_body_field = composite_unique_key.startswith("payload.body.")
+                payload_path = ""
                 
                 if is_payload_body_field:
                     payload_path = composite_unique_key.replace("payload.body.", "", 1)
