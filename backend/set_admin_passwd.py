@@ -50,6 +50,26 @@ asyncio.run(main())
 
 login_creds_sample = Path(__file__).resolve().parent / "login_creds.sh.sample"
 if login_creds_sample.exists():
-    with open("./login_creds.sh", 'w') as creds:
+    home_dmart = Path.home() / ".dmart"
+    home_dmart.mkdir(parents=True, exist_ok=True)
+
+    login_creds_path = home_dmart / "login_creds.sh"
+    with open(login_creds_path, 'w') as creds:
         subprocess.run( [ "sed", f"s/xxxx/{password}/g", str(login_creds_sample) ], stdout=creds)
+
+
+    cli_ini_path = home_dmart / "cli.ini"
+    if cli_ini_path.exists():
+        try:
+            with open(cli_ini_path, 'r') as f:
+                content = f.read()
+
+            new_content = re.sub(r'password\s*=\s*".*"', f'password = "{password}"', content)
+            
+            with open(cli_ini_path, 'w') as f:
+                f.write(new_content)
+            print(f"Updated password in {cli_ini_path}")
+        except Exception as e:
+            print(f"Warning: Failed to update cli.ini: {e}")
+
 print("Done")

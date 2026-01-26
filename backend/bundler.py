@@ -2,7 +2,7 @@
 import json
 import subprocess
 import PyInstaller.__main__
-
+import os
 
 branch_cmd = "git rev-parse --abbrev-ref HEAD"
 result, _ = subprocess.Popen(branch_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
@@ -29,8 +29,7 @@ info = {
 
 json.dump(info, open('info.json', 'w'))
 
-
-PyInstaller.__main__.run([
+args = [
     'dmart.py',
     '--name=dmart',
     '--onefile',
@@ -41,4 +40,13 @@ PyInstaller.__main__.run([
     '--collect-submodules=concurrent_log_handler',
     '--collect-submodules=pythonjsonlogger',
     '--clean',
-])
+]
+
+cxb_path = 'cxb'
+if not os.path.isdir(cxb_path):
+    cxb_path = '../cxb/dist/client'
+
+if os.path.isdir(cxb_path):
+    args.append(f'--add-data={cxb_path}:cxb')
+
+PyInstaller.__main__.run(args)
