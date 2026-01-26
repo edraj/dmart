@@ -39,6 +39,7 @@ commands = """
     info
     init
     migrate
+    test
 """
 
 sentinel = object()
@@ -787,6 +788,32 @@ def main():
             finally:
                 if temp_config_path and os.path.exists(temp_config_path):
                     os.remove(temp_config_path)
+        case "test":
+            script_dir = Path(__file__).resolve().parent
+            source_script_path = script_dir / "curl.pypi.sh"
+            
+            if not source_script_path.exists():
+                print("Error: curl.sh not found in the package.")
+                sys.exit(1)
+            
+            dmart_home_dir = Path.home() / ".dmart"
+            dmart_home_dir.mkdir(parents=True, exist_ok=True)
+            
+            target_script_path = dmart_home_dir / "curl.sh"
+            if not target_script_path.exists():
+                shutil.copy2(source_script_path, target_script_path)
+            
+            source_test_dir = script_dir / "sample" / "test"
+            target_test_dir = dmart_home_dir / "test"
+            
+            if source_test_dir.exists() and not target_test_dir.exists():
+                shutil.copytree(source_test_dir, target_test_dir)
+
+            try:
+                subprocess.run(["bash", str(target_script_path)], check=True, cwd=dmart_home_dir)
+            except subprocess.CalledProcessError as e:
+                print(f"Error: The test script failed with exit code {e.returncode}.")
+                sys.exit(e.returncode)
 
 if __name__ == "__main__":
     main()

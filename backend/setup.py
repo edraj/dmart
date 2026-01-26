@@ -53,7 +53,7 @@ package_dir = {'dmart': '.'}
 
 setup(
     name="dmart",
-    version="1.4.40-11",
+    version="1.4.40-17",
     packages=packages,
     package_dir=package_dir,
     package_data={
