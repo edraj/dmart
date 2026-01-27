@@ -9,6 +9,9 @@ import shutil
 import ssl
 import subprocess
 import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+
 import time
 import warnings
 import webbrowser
