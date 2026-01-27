@@ -612,11 +612,13 @@ async def retrieve_entry_or_attachment_payload(
         schema_shortname=schema_shortname,
     )
 
-    if(
+    if (
         resource_type is not ResourceType.json
-        and (meta.payload is None
-        or meta.payload.body is None
-        or meta.payload.body != f"{shortname}.{ext}")
+        and (
+            meta.payload is None
+            or meta.payload.body is None
+            or (settings.active_data_db == 'file' and meta.payload.body != f"{shortname}.{ext}")
+        )
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -673,7 +675,7 @@ async def retrieve_entry_or_attachment_payload(
 
     data: BytesIO | None = await db.get_media_attachment(space_name, subpath, shortname)
     if data:
-        if meta.payload.body.endswith(".svg"):
+        if isinstance(meta.payload.body, str) and meta.payload.body.endswith(".svg"):
             mime_type = "image/svg+xml"
         else:
             mime_type = get_mime_type(meta.payload.content_type)
