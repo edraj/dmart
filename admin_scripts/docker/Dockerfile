@@ -21,7 +21,10 @@ RUN set -eux \
   && source /home/venv/bin/activate \
   && uv pip install dmart \
   && uv cache clean \
-  && mkdir -p /home/logs/dmart \
+  && mkdir -p /home/logs/ \
+  && touch /home/logs/caddy.log \
+  && chmod -R g+xw /home/logs/ \
+  && chown -R root:caddy /home/logs \
   && sed -i 's/^\(tty\d\:\:\)/#\1/g' /etc/inittab \
   && sed -i \
      -e 's/#rc_sys=".*"/rc_sys="docker"/g' \
