@@ -216,9 +216,12 @@ async def retrieve_entry_or_attachment_payload(
         user_shortname="anonymous",
     )
     if (
+        resource_type is not ResourceType.json
+        and (
             meta.payload is None
             or meta.payload.body is None
-            or meta.payload.body != f"{shortname}.{ext}"
+            or (settings.active_data_db == 'file' and meta.payload.body != f"{shortname}.{ext}")
+        )
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,

@@ -68,13 +68,13 @@ pretty.install()
 class Settings(BaseSettings):
     url: str = "http://localhost:8282"
     shortname: str = "dmart"
-    password: str = "password"
-    query_limit: int = 100
+    password: str = "xxxx"
+    query_limit: int = 50
     retrieve_json_payload: bool = True
     default_space: str = "management"
-    pagination: int = 5
+    pagination: int = 50
 
-    model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", os.path.dirname(os.path.realpath(__file__)) + "/config.ini"), env_file_encoding = "utf-8")
+    model_config = SettingsConfigDict(env_file = os.getenv("BACKEND_ENV", os.path.dirname(os.path.realpath(__file__)) + "/cli.ini"), env_file_encoding = "utf-8")
 
 
 settings = Settings()
@@ -932,8 +932,7 @@ def action(text: str):
                             idx += 1
                     finally:
                         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-                        return None
-                # c = input("q: quite, b: previous, n: next = ")
+                    # c = input("q: quite, b: previous, n: next = ")
             # print(tree)
             dmart.current_space, dmart.current_subpath = old_space, old_subpath
             dmart.list()
@@ -988,8 +987,8 @@ def _(event):
     event.current_buffer.validate_and_handle()
 
 
-if __name__ == "__main__":
-    try :
+def main():
+    try:
         # print(Panel.fit("For help, type : [bold]?[/]", title="DMart Cli"))
         print("[bold][green]DMART[/] [yellow]Command line interface[/][/]")
         print(
@@ -1019,6 +1018,7 @@ if __name__ == "__main__":
             key_bindings=key_bindings
         )
 
+        global mode
         if len(sys.argv) >= 2:
             if sys.argv[1] == "s":
                 mode = CLI_MODE.SCRIPT
@@ -1031,8 +1031,34 @@ if __name__ == "__main__":
                 else:
                     check_update_space(sys.argv[2])
                     del sys.argv[2]
-            del sys.argv[0]
-            del sys.argv[0]
+                del sys.argv[0]
+                del sys.argv[0]
+            elif sys.argv[1] == "cli":
+                # When called via 'dmart cli ...'
+                if len(sys.argv) >= 3:
+                    if sys.argv[2] == "s":
+                        mode = CLI_MODE.SCRIPT
+                        del sys.argv[0] # dmart
+                        del sys.argv[0] # cli
+                        del sys.argv[0] # s
+                    elif sys.argv[2] == "c":
+                        mode = CLI_MODE.CMD
+                        if len(sys.argv) >= 5 and sys.argv[4].startswith("/"):
+                            check_update_space(sys.argv[3], sys.argv[4])
+                            del sys.argv[3]
+                            del sys.argv[3]
+                        elif len(sys.argv) >= 4:
+                            check_update_space(sys.argv[3])
+                            del sys.argv[3]
+                        del sys.argv[0] # dmart
+                        del sys.argv[0] # cli
+                        del sys.argv[0] # c
+                else:
+                    del sys.argv[0]
+                    del sys.argv[0]
+            else:
+                del sys.argv[0]
+                del sys.argv[0]
 
         if mode == CLI_MODE.CMD:
             print(sys.argv)
@@ -1099,5 +1125,9 @@ if __name__ == "__main__":
             # else:
             #    print('You entered:', repr(text))
         print("[yellow]Good bye![/]")
-    except requests.exceptions.ConnectionError as _ : 
+    except requests.exceptions.ConnectionError as _ :
         print("[yellow]Connection error[/]")
+
+
+if __name__ == "__main__":
+    main()

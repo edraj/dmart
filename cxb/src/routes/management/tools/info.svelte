@@ -4,12 +4,12 @@
     import {InfoCircleOutline, UserSettingsOutline} from "flowbite-svelte-icons";
     import {onMount} from "svelte";
 
-    enum TabMode {
-        settings = "settings",
-        manifest = "manifest",
+    const TabMode = {
+        settings: "settings",
+        manifest: "manifest",
     }
 
-    let activeTab: TabMode = $state(TabMode.settings);
+    let activeTab = $state(TabMode.settings);
     let settings = $state({});
     let manifest = $state({});
     onMount(async()=>{

@@ -2,20 +2,69 @@
 
 import json
 import os
+import random
 import re
 import string
-import random
+import secrets
 from venv import logger
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
+def get_env_file():
+    env_file = os.getenv("BACKEND_ENV")
+
+    if env_file and os.path.exists(env_file):
+        return env_file
+    
+    if not env_file or env_file == "config.env":
+        if os.path.exists("config.env"):
+            return "config.env"
+
+        dmart_home = Path.home() / ".dmart"
+        home_config = dmart_home / "config.env"
+        
+        if not home_config.exists():
+            if not (os.path.exists(".git") or os.path.exists("setup.py")):
+                try:
+                    dmart_home.mkdir(parents=True, exist_ok=True)
+                    (dmart_home / "logs").mkdir(parents=True, exist_ok=True)
+                    (dmart_home / "spaces").mkdir(parents=True, exist_ok=True)
+                    (dmart_home / "spaces" / "custom_plugins").mkdir(parents=True, exist_ok=True)
+                    
+                    jwt_secret = secrets.token_urlsafe(32)
+                    
+                    config_content = f"""# dmart configuration
+JWT_SECRET="{jwt_secret}"
+JWT_ALGORITHM="HS256"
+LOG_FILE="{dmart_home / 'logs' / 'dmart.ljson.log'}"
+WS_LOG_FILE="{dmart_home / 'logs' / 'websocket.ljson.log'}"
+
+# Database configuration
+ACTIVE_DATA_DB="file"
+SPACES_FOLDER="{dmart_home / 'spaces'}"
+DATABASE_DRIVER="sqlite+pysqlite"
+DATABASE_NAME="{dmart_home / 'dmart.db'}"
+
+# Server configuration
+LISTENING_HOST="0.0.0.0"
+LISTENING_PORT=8282
+"""
+                    home_config.write_text(config_content)
+                except Exception:
+                    pass
+        
+        if home_config.exists():
+            return str(home_config)
+
+    return env_file or "config.env"
 
 class Settings(BaseSettings):
     """Main settings class"""
 
     app_url: str = ""
+    cxb_url: str = "/cxb"
     public_app_url: str = ""
     app_name: str = "dmart"
     websocket_url: str = "" #"http://127.0.0.1:8484"
@@ -96,7 +145,7 @@ class Settings(BaseSettings):
     active_operational_db: str = "redis"  # allowed values: redis, manticore
     active_data_db: str = "file"  # allowed values: file, sql
 
-    database_driver: str = 'postgresql+psycopg'
+    database_driver: str = 'sqlite+pysqlite'
     database_username: str = 'postgres'
     database_password: str = ''
     database_host: str = 'localhost'
@@ -112,10 +161,8 @@ class Settings(BaseSettings):
 
 
     model_config = SettingsConfigDict(
-        env_file=os.getenv(
-            "BACKEND_ENV",
-            str(Path(__file__).resolve().parent.parent.parent / "config.env") if __file__.endswith(".pyc") else "config.env"
-        ), env_file_encoding="utf-8"
+        env_file=get_env_file(),
+        env_file_encoding="utf-8"
     )
     
     def load_config_files(self) -> None:

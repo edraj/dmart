@@ -55,15 +55,15 @@
     const EDITOR_INIT_DELAY = 512;
     const DEFAULT_RECORDS_LIMIT = 50;
 
-    enum TabMode {
-        list = 0,
-        entry = 1,
-        form = 2,
-        attachments = 3,
-        history = 4,
-        diagram = 5,
-        roles_explorer = 6,
-        permissions_explorer = 7,
+    const TabMode = {
+        list: 0,
+        entry: 1,
+        form: 2,
+        attachments: 3,
+        history: 4,
+        diagram: 5,
+        roles_explorer: 6,
+        permissions_explorer: 7,
     }
 
     let {
@@ -117,7 +117,7 @@
         return checkAccess("delete", space_name, subpath, resource_type);
     })();
 
-    let activeTab: TabMode = $state(TabMode.list);
+    let activeTab = $state(TabMode.list);
     let isActionLoading = $state(false);
     let validateMetaForm;
     let validateRTForm;
