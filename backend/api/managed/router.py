@@ -676,7 +676,7 @@ async def retrieve_entry_or_attachment_payload(
 
     data: BytesIO | None = await db.get_media_attachment(space_name, subpath, shortname)
     if data:
-        if meta.payload.body.endswith(".svg"):
+        if isinstance(meta.payload.body, str) and meta.payload.body.endswith(".svg"):
             mime_type = "image/svg+xml"
         else:
             mime_type = get_mime_type(meta.payload.content_type)
