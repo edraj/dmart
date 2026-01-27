@@ -2773,12 +2773,29 @@ class SQLAdapter(BaseDataAdapter):
         for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
             query_string = ""
             for composite_unique_key in compound:
-                value = get_nested_value(record.attributes, composite_unique_key)
+                is_payload_body_field = composite_unique_key.startswith("payload.body.")
+                payload_path = ""
+                
+                if is_payload_body_field:
+                    payload_path = composite_unique_key.replace("payload.body.", "", 1)
+                    payload_body = record.attributes.get("payload", {}).get("body", {})
+                    value = get_nested_value(payload_body, payload_path) if isinstance(payload_body, dict) else None
+                else:
+                    value = get_nested_value(record.attributes, composite_unique_key)
+                
                 if value is None or value == "":
                     continue
-                if current_user is not None and hasattr(current_user, composite_unique_key) \
-                        and getattr(current_user, composite_unique_key) == value:
-                    continue
+                    
+                if current_user is not None:
+                    if is_payload_body_field:
+                        user_payload = getattr(current_user, "payload", None)
+                        if user_payload and isinstance(user_payload.body, dict):
+                            user_value = get_nested_value(user_payload.body, payload_path) if isinstance(user_payload.body, dict) else None
+                            if user_value == value:
+                                continue
+                    else:
+                        if hasattr(current_user, composite_unique_key) and getattr(current_user, composite_unique_key) == value:
+                            continue
 
                 query_string += f"@{composite_unique_key}:{value} "
 
