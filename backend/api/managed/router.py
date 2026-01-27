@@ -618,7 +618,6 @@ async def retrieve_entry_or_attachment_payload(
             meta.payload is None
             or meta.payload.body is None
             or (settings.active_data_db == 'file' and meta.payload.body != f"{shortname}.{ext}")
-            or (settings.active_data_db == 'sql' and not isinstance(meta.payload.body, dict))
         )
     ):
         raise api.Exception(
