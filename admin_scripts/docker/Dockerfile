@@ -3,6 +3,7 @@ FROM python:3.14-alpine
 
 ADD https://raw.githubusercontent.com/edraj/dmart/refs/heads/master/admin_scripts/docker/dmart.sysv /root/dmart.sysv
 ADD https://raw.githubusercontent.com/edraj/dmart/refs/heads/master/admin_scripts/docker/Caddyfile /root/Caddyfile
+ADD https://raw.githubusercontent.com/edraj/dmart/refs/heads/master/admin_scripts/docker/config.json /root/config.json
 
 RUN set -eux \
   && apk add postgresql18 postgresql18-contrib postgresql18-openrc \
@@ -52,6 +53,7 @@ RUN set -eux \
   && echo "DATABASE_PASSWORD='$(cat /tmp/pgpass)'" >> /root/.dmart/config.env \
   && echo "ACTIVE_DATA_DB='sql'" >> /root/.dmart/config.env \
   && echo "BASE_PATH='/dmart'" >> /root/.dmart/config.env \
+  && cp /root/config.json /root/.dmart/ \
   && rm -rf /tmp/* \
   # && cd /home/dmart/backend \
   # && su - postgres -c 'pg_ctl restart -t 5000 -D /var/lib/postgresql/18/data' \
