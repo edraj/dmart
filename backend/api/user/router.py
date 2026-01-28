@@ -673,7 +673,7 @@ async def update_profile(
 
     old_version_flattened = flatten_dict(user.model_dump())
 
-    if profile_user.password and user.password:
+    if profile_user.password and user.password and not user.force_password_change:
         if "old_password" not in profile.attributes:
             raise Exception(
                 status.HTTP_403_FORBIDDEN,
