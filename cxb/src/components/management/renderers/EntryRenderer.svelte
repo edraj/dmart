@@ -147,7 +147,8 @@
             $state.snapshot(jeContent),
             space_name,
             subpath,
-            resource_type
+            resource_type,
+            $state.snapshot(originalJeContent)
         );
         
         if (result.success) {
