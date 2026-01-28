@@ -1,6 +1,8 @@
 FROM python:3.14-alpine
 # FROM alpine:latest
 
+ARG VERSION=unknown
+
 ADD https://raw.githubusercontent.com/edraj/dmart/refs/heads/master/admin_scripts/docker/dmart.sysv /root/dmart.sysv
 ADD https://raw.githubusercontent.com/edraj/dmart/refs/heads/master/admin_scripts/docker/Caddyfile /root/Caddyfile
 ADD https://raw.githubusercontent.com/edraj/dmart/refs/heads/master/admin_scripts/docker/config.json /root/config.json
@@ -64,12 +66,17 @@ RUN set -eux \
   && rc-update add dmart \
   && rc-update add caddy
 
-LABEL org.label-schema.name="dmart" \
-      org.label-schema.vendor="dmart.cc" \
-      org.label-schema.description="Docker image for DMART with PostgreSQL (SQL MODE)" \
-      org.label-schema.vcs-url="https://github.com/edraj/dmart" \
-      org.label-schema.version="1.0" \
-      org.label-schema.license="AGPLv3+"
+LABEL name="dmart" \
+      vendor="dmart.cc" \
+      version="${VERSION}" \
+      license="AGPLv3+" \
+      org.opencontainers.image.name="dmart" \
+      org.opencontainers.image.vendor="dmart.cc" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.description="Continer image for DMART with PostgreSQL (SQL MODE)" \
+      org.opencontainers.image.url="https://dmart.cc" \
+      org.opencontainers.image.source="https://github.com/edraj/dmart" \
+      org.opencontainers.image.license="AGPLv3+"
 
 # Optional external mount points
 # VOLUME ["/home"]
