@@ -5,7 +5,7 @@ description="Headless content respository"
 
 command="/home/venv/bin/dmart"
 # To run as a single process/thread mode
-command_args="serve"
+command_args="serve --cxb-config /root/.dmart/config.json"
 # TO RUN via hypercorn (multi process)
 # command_args="hyper"
 # command_user="imx:imx"
