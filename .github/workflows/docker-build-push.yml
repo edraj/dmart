@@ -53,11 +53,13 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v6.18.0
         with:
-          context: . 
+          context: .
           file: admin_scripts/docker/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
 
       - name: Verify image push
         run: |
