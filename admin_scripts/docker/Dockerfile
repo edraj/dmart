@@ -12,7 +12,7 @@ RUN set -eux \
   && su - postgres -c 'pg_ctl start -t 5000 -D /var/lib/postgresql/18/data' \
   && export PGPASSWORD=$(cat /tmp/pgpass) \
   && createdb -h 127.0.0.1 -U dmart dmart \
-  && apk add curl jq uv openrc python3 caddy bash file coreutils tzdata \
+  && apk add curl jq uv openrc caddy bash file coreutils tzdata \
   && adduser -DH dmart \
   && cp /root/dmart.sysv /etc/init.d/dmart \
   && chmod a+x /etc/init.d/dmart \
