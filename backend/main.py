@@ -25,7 +25,7 @@ from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from utils.access_control import access_control
-from fastapi.responses import ORJSONResponse, FileResponse
+from fastapi.responses import ORJSONResponse, FileResponse, RedirectResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
 from starlette.concurrency import iterate_in_threadpool
@@ -531,11 +531,13 @@ async def myoptions():
 @app.put("/{x:path}", include_in_schema=False)
 @app.patch("/{x:path}", include_in_schema=False)
 @app.delete("/{x:path}", include_in_schema=False)
-async def catchall() -> None:
+async def catchall(x):
+    if x.startswith("cxb"):
+        return RedirectResponse(f"{settings.cxb_url}/")
     raise api.Exception(
         status_code=status.HTTP_404_NOT_FOUND,
         error=api.Error(
-            type="catchall", code=InternalErrorCode.INVALID_ROUTE, message="Requested method or path is invalid"
+            type="catchall", code=InternalErrorCode.INVALID_ROUTE, message=f"Requested method or path is invalid : {x}"
         ),
     )
 
