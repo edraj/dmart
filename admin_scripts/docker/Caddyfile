@@ -23,6 +23,10 @@ http://localhost:8000, https://localhost:4443 {
 		reverse_proxy localhost:8484
 	}
 
+  handle /cxb/* {
+          reverse_proxy localhost:8282
+  }
+
 	handle /* {
 		root * /home/dmart/frontend/dist/client/
 		encode gzip
