@@ -2766,9 +2766,19 @@ class SQLAdapter(BaseDataAdapter):
             folder_meta.payload.body.get("unique_fields", None), list):  # type: ignore
             return True
 
+        current_record = None
+        if action is api.RequestType.update:
+            try:
+                resource_class = getattr(
+                    sys_modules["models.core"], camel_case(record.resource_type)
+                )
+                current_record = await self.load(space_name, record.subpath, record.shortname, resource_class)
+            except Exception:
+                current_record = None
+
         current_user = None
         if action is api.RequestType.update and record.resource_type is ResourceType.user:
-            current_user = await self.load(space_name, record.subpath, record.shortname, core.User)
+            current_user = current_record
 
         for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
             query_string = ""
@@ -2809,7 +2819,14 @@ class SQLAdapter(BaseDataAdapter):
                 search=query_string
             )
             owner = record.attributes.get("owner_shortname", None) if user_shortname is None else user_shortname
-            total, _ = await self.query(q, owner)
+            total, records = await self.query(q, owner)
+
+            if action is api.RequestType.update and current_record is not None:
+                records = [r for r in records if not (r.shortname == record.shortname and r.subpath == record.subpath)]
+                if total == 1:
+                    total = 0
+                else:
+                    total = len(records)
 
             if total != 0:
                 raise API_Exception(
