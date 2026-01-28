@@ -41,6 +41,7 @@ from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info, git_info
 from utils.internal_error_code import InternalErrorCode
+from pathlib import Path
 
 
 class SPAStaticFiles(StaticFiles):
@@ -502,6 +503,10 @@ if os.path.isdir(cxb_path):
         user_config = settings.spaces_folder / "config.json"
         if user_config.exists():
             return FileResponse(user_config)
+
+        home_config = Path.home() / ".dmart" / "config.json"
+        if home_config.exists():
+            return FileResponse(home_config)
 
         bundled_config = os.path.join(cxb_path, "config.json")
         if os.path.exists(bundled_config):

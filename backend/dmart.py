@@ -9,8 +9,10 @@ import ssl
 import subprocess
 import sys
 import os
+import secrets
 sys.path.append(os.path.dirname(__file__))
 
+from utils.settings import settings
 import time
 import warnings
 import webbrowser
@@ -20,7 +22,6 @@ from pathlib import Path
 
 from hypercorn.config import Config
 from hypercorn.run import run
-from utils.settings import settings
 
 # freeze_support()
 
@@ -46,6 +47,108 @@ commands = """
 
 sentinel = object()
 
+def ensure_dmart_home():
+    dmart_home = Path.home() / ".dmart"
+    dmart_home.mkdir(parents=True, exist_ok=True)
+
+    config_env = dmart_home / "config.env"
+    if not config_env.exists():
+        try:
+            (dmart_home / "logs").mkdir(parents=True, exist_ok=True)
+            (dmart_home / "spaces").mkdir(parents=True, exist_ok=True)
+            (dmart_home / "spaces" / "custom_plugins").mkdir(parents=True, exist_ok=True)
+            
+            jwt_secret = secrets.token_urlsafe(32)
+            
+            config_content = f"""# dmart configuration
+JWT_SECRET="{jwt_secret}"
+JWT_ALGORITHM="HS256"
+LOG_FILE="{dmart_home / 'logs' / 'dmart.ljson.log'}"
+WS_LOG_FILE="{dmart_home / 'logs' / 'websocket.ljson.log'}"
+
+# Database configuration
+ACTIVE_DATA_DB="file"
+SPACES_FOLDER="{dmart_home / 'spaces'}"
+DATABASE_DRIVER="sqlite+pysqlite"
+DATABASE_NAME="{dmart_home / 'dmart.db'}"
+
+# Server configuration
+LISTENING_HOST="0.0.0.0"
+LISTENING_PORT=8282
+"""
+            config_env.write_text(config_content)
+            print(f"Created default config.env at {config_env}")
+        except Exception as e:
+            print(f"Warning: Failed to create default config.env at {config_env}: {e}")
+
+    cli_ini = dmart_home / "cli.ini"
+    if not cli_ini.exists():
+        try:
+            default_config = ""
+            sample_path = Path(__file__).resolve().parent / "config.ini.sample"
+            if sample_path.exists():
+                with open(sample_path, "r") as f:
+                    default_config = f.read()
+            else:
+                default_config = (
+                    'url = "http://localhost:8282"\n'
+                    'shortname = "dmart"\n'
+                    'password = "xxxx"\n'
+                    'query_limit = 50\n'
+                    'retrieve_json_payload = True\n'
+                    'default_space = "management"\n'
+                    'pagination = 50\n'
+                )
+
+            login_creds_path = dmart_home / "login_creds.sh"
+            if login_creds_path.exists():
+                try:
+                    with open(login_creds_path, "r") as f:
+                        creds_content = f.read()
+                    
+                    match = re.search(r"export SUPERMAN='(.*?)'", creds_content)
+                    if match:
+                        creds_json = match.group(1)
+                        creds = json.loads(creds_json)
+                        if "shortname" in creds:
+                            default_config = re.sub(r'shortname = ".*"', f'shortname = "{creds["shortname"]}"', default_config)
+                        if "password" in creds:
+                            default_config = re.sub(r'password = ".*"', f'password = "{creds["password"]}"', default_config)
+                except Exception as e:
+                    print(f"Warning: Failed to parse login_creds.sh: {e}")
+
+            with open(cli_ini, "w") as f:
+                f.write(default_config)
+            print(f"Created default cli.ini at {cli_ini}")
+        except Exception as e:
+            print(f"Warning: Failed to create default cli.ini at {cli_ini}: {e}")
+
+    cxb_config = dmart_home / "config.json"
+    if not cxb_config.exists():
+        try:
+            sample_cxb_path = Path(__file__).resolve().parent / "cxb" / "config.sample.json"
+            if sample_cxb_path.exists():
+                shutil.copy2(sample_cxb_path, cxb_config)
+                print(f"Created default config.json at {cxb_config}")
+            else:
+                default_cxb_config = {
+                  "title": "DMART Unified Data Platform",
+                  "footer": "dmart.cc unified data platform",
+                  "short_name": "dmart",
+                  "display_name": "dmart",
+                  "description": "dmart unified data platform",
+                  "default_language": "en",
+                  "languages": { "ar": "العربية", "en": "English" },
+                  "backend": "http://localhost:8282",
+                  "websocket": "ws://0.0.0.0:8484/ws"
+                }
+                with open(cxb_config, "w") as f:
+                    json.dump(default_cxb_config, f, indent=2)
+                print(f"Created default config.json at {cxb_config}")
+        except Exception as e:
+            print(f"Warning: Failed to create default config.json at {cxb_config}: {e}")
+
+ensure_dmart_home()
 
 def hypercorn_main() -> int:
     parser = argparse.ArgumentParser()
@@ -433,49 +536,6 @@ def main():
                     home_config = Path.home() / ".dmart" / "cli.ini"
                     if home_config.exists():
                         config_file = str(home_config)
-                    else:
-                        try:
-                            home_config.parent.mkdir(parents=True, exist_ok=True)
-                            
-                            default_config = ""
-                            sample_path = Path(__file__).resolve().parent / "config.ini.sample"
-                            if sample_path.exists():
-                                with open(sample_path, "r") as f:
-                                    default_config = f.read()
-                            else:
-                                default_config = (
-                                    'url = "http://localhost:8282"\n'
-                                    'shortname = "dmart"\n'
-                                    'password = "xxxx"\n'
-                                    'query_limit = 50\n'
-                                    'retrieve_json_payload = True\n'
-                                    'default_space = "management"\n'
-                                    'pagination = 50\n'
-                                )
-
-                            login_creds_path = Path.home() / ".dmart" / "login_creds.sh"
-                            if login_creds_path.exists():
-                                try:
-                                    with open(login_creds_path, "r") as f:
-                                        creds_content = f.read()
-                                    
-                                    match = re.search(r"export SUPERMAN='(.*?)'", creds_content)
-                                    if match:
-                                        creds_json = match.group(1)
-                                        creds = json.loads(creds_json)
-                                        if "shortname" in creds:
-                                            default_config = re.sub(r'shortname = ".*"', f'shortname = "{creds["shortname"]}"', default_config)
-                                        if "password" in creds:
-                                            default_config = re.sub(r'password = ".*"', f'password = "{creds["password"]}"', default_config)
-                                except Exception as e:
-                                    print(f"Warning: Failed to parse login_creds.sh: {e}")
-
-                            with open(home_config, "w") as f:
-                                f.write(default_config)
-                            print(f"Created default config at {home_config}")
-                            config_file = str(home_config)
-                        except Exception as e:
-                            print(f"Warning: Failed to create default config at {home_config}: {e}")
             
             if config_file:
                 os.environ["BACKEND_ENV"] = config_file
@@ -723,9 +783,9 @@ def main():
             if not sample_spaces_path.exists():
                 print("Error: Sample spaces not found in the package.")
                 sys.exit(1)
-            
+
             target_path = Path.home() / ".dmart" / "spaces"
-            
+
             try:
                 if target_path.exists():
                     shutil.rmtree(target_path)

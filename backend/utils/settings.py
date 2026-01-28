@@ -5,7 +5,6 @@ import os
 import random
 import re
 import string
-import secrets
 from venv import logger
 
 from pydantic import Field
@@ -24,36 +23,6 @@ def get_env_file():
 
         dmart_home = Path.home() / ".dmart"
         home_config = dmart_home / "config.env"
-        
-        if not home_config.exists():
-            if not (os.path.exists(".git") or os.path.exists("setup.py")):
-                try:
-                    dmart_home.mkdir(parents=True, exist_ok=True)
-                    (dmart_home / "logs").mkdir(parents=True, exist_ok=True)
-                    (dmart_home / "spaces").mkdir(parents=True, exist_ok=True)
-                    (dmart_home / "spaces" / "custom_plugins").mkdir(parents=True, exist_ok=True)
-                    
-                    jwt_secret = secrets.token_urlsafe(32)
-                    
-                    config_content = f"""# dmart configuration
-JWT_SECRET="{jwt_secret}"
-JWT_ALGORITHM="HS256"
-LOG_FILE="{dmart_home / 'logs' / 'dmart.ljson.log'}"
-WS_LOG_FILE="{dmart_home / 'logs' / 'websocket.ljson.log'}"
-
-# Database configuration
-ACTIVE_DATA_DB="file"
-SPACES_FOLDER="{dmart_home / 'spaces'}"
-DATABASE_DRIVER="sqlite+pysqlite"
-DATABASE_NAME="{dmart_home / 'dmart.db'}"
-
-# Server configuration
-LISTENING_HOST="0.0.0.0"
-LISTENING_PORT=8282
-"""
-                    home_config.write_text(config_content)
-                except Exception:
-                    pass
         
         if home_config.exists():
             return str(home_config)
