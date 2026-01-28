@@ -296,6 +296,78 @@ class FileAdapter(BaseDataAdapter):
         records: list[core.Record] = []
         total: int = 0
 
+        if not query.subpath.startswith("/"):
+            query.subpath = f"/{query.subpath}"
+        if query.subpath == "//":
+            query.subpath = "/"
+
+        user_shortname = user_shortname if user_shortname else "anonymous"
+        if user_shortname == "anonymous" and query.type in [api.QueryType.history, api.QueryType.events]:
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="request",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="You don't have permission to this action",
+                ),
+            )
+
+        from utils.query_policies_helper import get_user_query_policies
+        user_query_policies = await get_user_query_policies(
+            self, user_shortname, query.space_name, query.subpath, query.type == api.QueryType.spaces
+        )
+        if not query.exact_subpath:
+            r = await get_user_query_policies(
+                self, user_shortname, query.space_name, f'{query.subpath}/%'.replace('//', '/'),
+                query.type == api.QueryType.spaces
+            )
+            user_query_policies.extend(r)
+
+        if len(user_query_policies) == 0:
+            return 0, []
+
+        user_permissions = await self.get_user_permissions(user_shortname)
+        filtered_policies = []
+
+        _subpath_target_permissions = '/' if query.subpath == '/' else query.subpath.removeprefix('/')
+        if query.filter_types:
+            for ft in query.filter_types:
+                target_permissions = f'{query.space_name}:{_subpath_target_permissions}:{ft}'
+                filtered_policies = [policy for policy in user_query_policies if
+                                     policy.startswith(target_permissions)]
+        else:
+            target_permissions = f'{query.space_name}:{_subpath_target_permissions}'
+            filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
+
+        ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
+        for user_query_policy in filtered_policies:
+            for perm_key in user_permissions.keys():
+                if user_query_policy.startswith(perm_key):
+                    if ffv := user_permissions[perm_key].get('filter_fields_values'):
+                        if ffv not in ffv_query:
+                            ffv_query.append(ffv)
+                        perm_key_splited = perm_key.split(':')
+                        ffv_spaces.append(perm_key_splited[0])
+                        ffv_subpath.append(perm_key_splited[1])
+                        ffv_resource_type.append(perm_key_splited[2])
+
+        if len(ffv_spaces):
+            perm_key_splited_query = f'@space_name:{"|".join(ffv_spaces)} @subpath:/{"|/".join(ffv_subpath)} @resource_type:{"|".join(ffv_resource_type)} {" ".join(ffv_query)}'
+            if query.search:
+                query.search += f' {perm_key_splited_query}'
+            else:
+                query.search = perm_key_splited_query
+
+        if query.search:
+            parts = [p for p in query.search.split(' ') if p]
+            seen = set()
+            deduped_parts = []
+            for p in parts:
+                if p not in seen:
+                    seen.add(p)
+                    deduped_parts.append(p)
+            query.search = ' '.join(deduped_parts)
+
         match query.type:
             case api.QueryType.spaces:
                 total, records = await serve_query_space(self, query, user_shortname)
