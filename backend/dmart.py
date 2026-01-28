@@ -12,6 +12,7 @@ import os
 import secrets
 sys.path.append(os.path.dirname(__file__))
 
+from utils.settings import settings
 import time
 import warnings
 import webbrowser
@@ -148,7 +149,6 @@ LISTENING_PORT=8282
             print(f"Warning: Failed to create default config.json at {cxb_config}: {e}")
 
 ensure_dmart_home()
-from utils.settings import settings
 
 def hypercorn_main() -> int:
     parser = argparse.ArgumentParser()
