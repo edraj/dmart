@@ -8,7 +8,7 @@ http://localhost:8000, https://localhost:4443 {
 		reverse_proxy localhost:8282
 	}
 
-	handle /dmart/* {
+	handle /dmart* {
 		uri strip_prefix /dmart
 		reverse_proxy localhost:8282
 	}
@@ -28,10 +28,7 @@ http://localhost:8000, https://localhost:4443 {
   }
 
 	handle /* {
-		root * /home/dmart/frontend/dist/client/
-		encode gzip
-		try_files {path} /index.html
-		file_server
+    redir /cxb/
 	}
 
 	log {
