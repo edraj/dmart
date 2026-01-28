@@ -28,7 +28,7 @@ http://localhost:8000, https://localhost:4443 {
   }
 
 	handle /* {
-    redir /cxb/
+    redir /* /cxb/
 	}
 
 	log {
