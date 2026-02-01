@@ -30,8 +30,8 @@ else
 fi
 
 echo "Installing dependencies..."
-python3 -m pip install --upgrade pip build twine
-python3 -m pip install .
+uv pip install --upgrade pip build twine
+uv pip install .
 
 echo "Creating standalone bundle..."
 python3 bundler.py
