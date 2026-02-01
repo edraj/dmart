@@ -5,7 +5,7 @@
     import {currentListView} from "@/stores/global";
     import {bulkBucket} from "@/stores/management/bulk_bucket";
     import {spaces} from "@/stores/management/spaces";
-    import {getChildren} from "@/lib/dmart_services";
+    import {getChildren, getChildrenAndSubChildren} from "@/lib/dmart_services";
 
     let {
         space_name,
@@ -35,19 +35,20 @@
     async function fetchSubpaths(space) {
         if (!space) return;
         try {
-            // Fetch root folders
             const response = await getChildren(space, "/", 100);
             let options = [{name: "/", value: "/"}];
-            if (response && response.records) {
-                response.records.forEach(record => {
-                    if (record.resource_type === ResourceType.folder) {
-                        options.push({
-                            name: record.shortname,
-                            value: "/" + record.shortname
-                        });
-                    }
+
+            const subpaths = [];
+            await getChildrenAndSubChildren(subpaths, space, "", response);
+            subpaths.sort();
+
+            subpaths.forEach(path => {
+                options.push({
+                    name: path,
+                    value: path
                 });
-            }
+            });
+
             subpathOptions = options;
         } catch (e) {
             console.error("Failed to fetch subpaths", e);
@@ -140,7 +141,7 @@
         </Label>
 
         <Label>
-            Destination Subpath (Root Folders)
+            Destination Subpath (All Folders)
             <Select class="mt-2" items={subpathOptions} bind:value={selectedSubpath} />
         </Label>
     </div>
