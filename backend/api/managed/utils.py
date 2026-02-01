@@ -91,7 +91,7 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
                         ]
                         attribute_val = [val for val in attribute_val if val is not None]
 
-            if attribute_val:
+            if attribute_val is not None:
                 keys_existence[column_title] = True
             """
             Extract array items in a separate row per item
@@ -121,7 +121,7 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
                 for row in rows:
                     row[column_title] = new_col
 
-            elif attribute_val and not isinstance(attribute_val, list):
+            elif attribute_val is not None and not isinstance(attribute_val, list):
                 new_col = attribute_val if column_key not in timestamp_fields else \
                     datetime.fromtimestamp(attribute_val).strftime(
                         '%Y-%m-%d %H:%M:%S')
