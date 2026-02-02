@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     comms_api: str = ""
     send_sms_otp_api: str = ""
     smpp_auth_key: str = ""
+    sms_sender: str = ""
     send_sms_api: str = ""
     mock_smtp_api: bool = True
 

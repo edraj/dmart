@@ -68,11 +68,15 @@ async def send_otp(msisdn: str, language: str):
 
     await db.save_otp(f"users:otp:otps/{msisdn}", code)
     
+    sms_payload: dict = {"msisdn": msisdn, "text": message}
+    if settings.sms_sender:
+        sms_payload["sender"] = settings.sms_sender
+
     async with AsyncRequest() as client:
         response = await client.post(
             settings.send_sms_otp_api,
             headers={**headers, "skel-accept-language": language},
-            json={"msisdn": msisdn, "text": message},
+            json=sms_payload,
         )
         json = await response.json()
         status = response.status
@@ -101,11 +105,15 @@ async def send_sms(msisdn: str, message: str) -> bool:
     if settings.mock_smpp_api:
         return True
         
+    sms_payload: dict = {"msisdn": msisdn, "text": message}
+    if settings.sms_sender:
+        sms_payload["sender"] = settings.sms_sender
+
     async with AsyncRequest() as client:
         response = await client.post(
             settings.send_sms_api,
             headers={**headers},
-            json={"msisdn": msisdn, "text": message},
+            json=sms_payload,
         )
         json = await response.json()
         status = response.status
