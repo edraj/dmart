@@ -87,7 +87,7 @@ class Settings(BaseSettings):
     mail_username: str = ""
     mail_password: str = ""
     mail_encryption: str = "tls"
-    mail_from_address: str = "noreply@zainmart.com"
+    mail_from_address: str = ""
     mail_from_name: str = ""
 
     files_query: str = "scandir"
