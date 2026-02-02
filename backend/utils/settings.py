@@ -79,6 +79,7 @@ class Settings(BaseSettings):
     comms_api: str = ""
     send_sms_otp_api: str = ""
     smpp_auth_key: str = ""
+    sms_sender: str = ""
     send_email_otp_api: str = ""
     send_sms_api: str = ""
     send_email_api: str = ""
