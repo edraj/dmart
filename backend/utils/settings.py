@@ -82,13 +82,13 @@ class Settings(BaseSettings):
     mock_smtp_api: bool = True
 
     mail_driver: str = "smtp"
-    mail_host: str = "email-smtp.eu-central-1.amazonaws.com"
+    mail_host: str = ""
     mail_port: int = 587
-    mail_username: str = "AKIARXE6PAH7JZTYWPXL  "
-    mail_password: str = "BPn9sC24rZG4FvnHLK6n53g5uJxpFyScuQRQSIkGDhAW"
+    mail_username: str = ""
+    mail_password: str = ""
     mail_encryption: str = "tls"
     mail_from_address: str = "noreply@zainmart.com"
-    mail_from_name: str = "Zainmart"
+    mail_from_name: str = ""
 
     files_query: str = "scandir"
     mock_smpp_api: bool = True
