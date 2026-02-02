@@ -1015,10 +1015,9 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
                     if token:
                         shortened_link = await repository.url_shortner(token)
                         await send_email(
-                            from_address=settings.email_sender,
-                            to_address=user.email,
-                            message=reset_password_message.replace("{link}", shortened_link),
-                            subject="Reset password",
+                            user.email,
+                            reset_password_message.replace("{link}", shortened_link),
+                            "Reset password",
                         )
                     else:
                         logger.warning("token could not be generated")
@@ -1160,9 +1159,8 @@ async def user_reset(
         if token:
             email_link = await repository.url_shortner(token)
             await send_email(
-                from_address=settings.email_sender,
-                to_address=user.email,
-                message=generate_email_from_template(
+                user.email,
+                generate_email_from_template(
                     "activation",
                     {
                         "link": email_link,
@@ -1171,7 +1169,7 @@ async def user_reset(
                         "msisdn": user.msisdn,
                     },
                 ),
-                subject=generate_subject("activation"),
+                generate_subject("activation"),
             )
 
     return api.Response(
