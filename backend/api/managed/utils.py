@@ -182,9 +182,8 @@ async def send_sms_email_invitation(resource_obj, record):
         )
         if inv_link:
             await send_email(
-                from_address=settings.email_sender,
-                to_address=resource_obj.email,
-                message=generate_email_from_template(
+                resource_obj.email,
+                generate_email_from_template(
                     "activation",
                     {
                         "link": await repository.url_shortner(
@@ -197,7 +196,7 @@ async def send_sms_email_invitation(resource_obj, record):
                         "msisdn": resource_obj.msisdn,
                     },
                 ),
-                subject=generate_subject("activation"),
+                generate_subject("activation"),
             )
 
 
