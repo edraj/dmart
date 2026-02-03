@@ -1,7 +1,11 @@
+import asyncio
 import os
 import random
 import string
 import time
+from email.message import EmailMessage
+
+import aiosmtplib
 from data_adapters.adapter import data_adapter as db
 from models import core
 from models.api import Error, Exception
@@ -64,11 +68,15 @@ async def send_otp(msisdn: str, language: str):
 
     await db.save_otp(f"users:otp:otps/{msisdn}", code)
     
+    sms_payload: dict = {"msisdn": msisdn, "text": message}
+    if settings.sms_sender:
+        sms_payload["sender"] = settings.sms_sender
+
     async with AsyncRequest() as client:
         response = await client.post(
             settings.send_sms_otp_api,
             headers={**headers, "skel-accept-language": language},
-            json={"msisdn": msisdn, "text": message},
+            json=sms_payload,
         )
         json = await response.json()
         status = response.status
@@ -88,7 +96,7 @@ async def email_send_otp(email: str, language: str):
     code = "".join(random.choice("0123456789") for _ in range(6))
     await db.save_otp(f"users:otp:otps/{email}", code)
     message = f"<p>Your OTP code is <b>{code}</b></p>"
-    return await send_email(settings.email_sender, email, message, "OTP", settings.send_email_otp_api)
+    return await send_email(email, message, "OTP")
 
 
 async def send_sms(msisdn: str, message: str) -> bool:
@@ -97,11 +105,15 @@ async def send_sms(msisdn: str, message: str) -> bool:
     if settings.mock_smpp_api:
         return True
         
+    sms_payload: dict = {"msisdn": msisdn, "text": message}
+    if settings.sms_sender:
+        sms_payload["sender"] = settings.sms_sender
+
     async with AsyncRequest() as client:
         response = await client.post(
             settings.send_sms_api,
             headers={**headers},
-            json={"msisdn": msisdn, "text": message},
+            json=sms_payload,
         )
         json = await response.json()
         status = response.status
@@ -122,55 +134,64 @@ async def send_sms(msisdn: str, message: str) -> bool:
     return True
 
 
-async def send_email(from_address: str, to_address: str, message: str, subject: str, send_email_api=settings.send_email_api) -> bool:
-    json = {}
-    status: int
+async def _do_send_email(to_address: str, message: str, subject: str) -> None:
+    """Actual SMTP send; runs in background."""
     start_time = time.time()
-    if settings.mock_smtp_api:
-        return True
-    
-    async with AsyncRequest() as client:
-        response = await client.post(
-            send_email_api,
-            headers={**headers},
-            json={
-                "from_address": from_address,
-                "to": to_address,
-                "msg": message,
-                "subject": subject,
-            },
+    from_header = f"{settings.mail_from_name} <{settings.mail_from_address}>" if settings.mail_from_name else settings.mail_from_address
+    msg = EmailMessage()
+    msg["From"] = from_header
+    msg["To"] = to_address
+    msg["Subject"] = subject
+    msg.set_content(message, subtype="html")
+    use_tls = settings.mail_port == 465
+    try:
+        await aiosmtplib.send(
+            msg,
+            hostname=settings.mail_host,
+            port=settings.mail_port,
+            username=settings.mail_username or None,
+            password=settings.mail_password or None,
+            use_tls=use_tls,
         )
-        json = await response.json()
-        status = response.status
         logger.info(
             "Email Service",
             extra={
                 "props": {
                     "duration": 1000 * (time.time() - start_time),
-                    "request": {
-                        "from_address": from_address,
-                        "to": to_address,
-                        "msg": message,
-                    },
-                    "response": {"status": status, "json": json},
+                    "to": to_address,
+                    "subject": subject,
                 }
             },
         )
-
-    if status != 200:
+    except Exception as e:
         logger.warning(
             "Email Service",
             extra={
                 "props": {
-                    "status": status,
-                    "response": json,
+                    "error": str(e),
                     "target": to_address,
-                    "sender": from_address
+                    "sender": settings.mail_from_address,
                 }
             },
         )
-        return False
 
+
+def _log_send_email_failure(t: asyncio.Task) -> None:
+    if t.cancelled():
+        logger.warning("Email send was cancelled")
+    elif t.exception() is not None:
+        logger.exception("Email send failed: %s", t.exception())
+
+
+async def send_email(to_address: str, message: str, subject: str) -> bool:
+    """Schedule email send in background and return immediately."""
+    if settings.mock_smtp_api:
+        return True
+    if settings.mail_driver != "smtp" or not settings.mail_host:
+        logger.warning("Email Service", extra={"props": {"reason": "mail_driver not smtp or mail_host missing"}})
+        return False
+    task = asyncio.create_task(_do_send_email(to_address, message, subject))
+    task.add_done_callback(_log_send_email_failure)
     return True
 
 async def get_shortname_from_identifier(key, value):

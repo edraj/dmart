@@ -73,17 +73,25 @@ class Settings(BaseSettings):
         "__current_user__"  # used in access control refers to current logged-in user
     )
     root_subpath_mw : str = "__root__"
-    email_sender: str = "dmart@dmart.com"
 
     otp_token_ttl: int = 60 * 5
     allow_otp_resend_after: int = 60
     comms_api: str = ""
     send_sms_otp_api: str = ""
     smpp_auth_key: str = ""
-    send_email_otp_api: str = ""
+    sms_sender: str = ""
     send_sms_api: str = ""
-    send_email_api: str = ""
     mock_smtp_api: bool = True
+
+    mail_driver: str = "smtp"
+    mail_host: str = ""
+    mail_port: int = 587
+    mail_username: str = ""
+    mail_password: str = ""
+    mail_encryption: str = "tls"
+    mail_from_address: str = "noreply@admin.com"
+    mail_from_name: str = ""
+
     files_query: str = "scandir"
     mock_smpp_api: bool = True
     mock_otp_code: str = "123456"
