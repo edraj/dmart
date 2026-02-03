@@ -68,7 +68,7 @@ class SPAStaticFiles(StaticFiles):
             raise ex
 
     async def serve_file(self, path, media_type=None):
-        full_path = os.path.join(self.directory, path)
+        full_path = os.path.join(self.directory, path) # type: ignore
         if not os.path.exists(full_path):
              raise StarletteHTTPException(status_code=404)
         
