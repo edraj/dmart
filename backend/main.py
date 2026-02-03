@@ -1,6 +1,7 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 """ Main module """
 import socket
+import mimetypes
 from starlette.datastructures import UploadFile
 from contextlib import asynccontextmanager
 import asyncio
@@ -46,15 +47,51 @@ from pathlib import Path
 
 class SPAStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope) -> Response:
+        if path == "" or path == "index.html":
+            return await self.serve_file("index.html", "text/html")
+            
+        ext = os.path.splitext(path)[1]
+        if ext in [".js", ".css", ".html"]:
+             try:
+                 return await self.serve_file(path)
+             except StarletteHTTPException:
+                 pass
+
         try:
             return await super().get_response(path, scope)
         except StarletteHTTPException as ex:
             if ex.status_code == 404 and path != "index.html" and not os.path.splitext(path)[1]:
                 try:
-                    return await super().get_response("index.html", scope)
-                except StarletteHTTPException:
+                    return await self.serve_file("index.html", "text/html")
+                except Exception:
                     pass
             raise ex
+
+    async def serve_file(self, path, media_type=None):
+        full_path = os.path.join(self.directory, path)
+        if not os.path.exists(full_path):
+             raise StarletteHTTPException(status_code=404)
+        
+        if media_type is None:
+            media_type, _ = mimetypes.guess_type(full_path)
+        
+        try:
+            with open(full_path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except UnicodeDecodeError:
+             return FileResponse(full_path, media_type=media_type)
+
+        target_url = settings.cxb_url
+        if not target_url.endswith("/"):
+            target_url += "/"
+            
+        content = content.replace("/cxb/", target_url)
+        
+        cxb_name = settings.cxb_url.strip("/")
+        if cxb_name != "cxb":
+             content = content.replace('"cxb"', f'"{cxb_name}"')
+        
+        return Response(content, media_type=media_type)
 
 
 @asynccontextmanager
@@ -493,9 +530,8 @@ if not os.path.exists(os.path.join(cxb_path, "index.html")):
 if os.path.isdir(cxb_path):
     @app.get(f"{settings.cxb_url}/config.json", include_in_schema=False)
     async def get_cxb_config():
-        cxb_config = os.getenv("DMART_CXB_CONFIG")
-        if cxb_config and os.path.exists(cxb_config):
-            return FileResponse(cxb_config)
+        if settings.cxb_config_path and os.path.exists(settings.cxb_config_path):
+            return FileResponse(settings.cxb_config_path)
             
         if os.path.exists("config.json"):
             return FileResponse("config.json")
@@ -521,7 +557,8 @@ if os.path.isdir(cxb_path):
             "default_language": "en",
             "languages": { "ar": "العربية", "en": "English" },
             "backend": f"{settings.app_url}" if settings.app_url else f"http://{settings.listening_host}:{settings.listening_port}",
-            "websocket": settings.websocket_url if settings.websocket_url else f"ws://{settings.listening_host}:{settings.websocket_port}/ws"
+            "websocket": settings.websocket_url if settings.websocket_url else f"ws://{settings.listening_host}:{settings.websocket_port}/ws",
+            "cxb_url": settings.cxb_url
         }
 
     app.mount(settings.cxb_url, SPAStaticFiles(directory=cxb_path, html=True), name="cxb")
@@ -537,7 +574,7 @@ async def myoptions():
 @app.patch("/{x:path}", include_in_schema=False)
 @app.delete("/{x:path}", include_in_schema=False)
 async def catchall(x):
-    if x.startswith("cxb"):
+    if x.startswith(settings.cxb_url.strip("/")):
         return RedirectResponse(f"{settings.cxb_url}/")
     raise api.Exception(
         status_code=status.HTTP_404_NOT_FOUND,

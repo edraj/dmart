@@ -34,6 +34,7 @@ class Settings(BaseSettings):
 
     app_url: str = ""
     cxb_url: str = "/cxb"
+    cxb_config_path: str = ""
     public_app_url: str = ""
     app_name: str = "dmart"
     websocket_url: str = "" #"http://127.0.0.1:8484"
@@ -150,6 +151,46 @@ class Settings(BaseSettings):
                     
             except Exception as e:
                 logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")
+        
+        self.load_cxb_config()
+
+    def load_cxb_config(self) -> None:
+        backend_dir = Path(__file__).resolve().parent.parent
+        cxb_path = backend_dir / "cxb"
+        if (cxb_path / "client").is_dir():
+            cxb_path = cxb_path / "client"
+        
+        if not (cxb_path / "index.html").exists():
+            project_root = backend_dir.parent
+            cxb_dist_path = project_root / "cxb" / "dist" / "client"
+            if cxb_dist_path.is_dir():
+                cxb_path = cxb_dist_path
+
+        config_path = None
+        cxb_config_env = os.getenv("DMART_CXB_CONFIG")
+        if cxb_config_env and os.path.exists(cxb_config_env):
+            config_path = cxb_config_env
+        elif os.path.exists("config.json"):
+            config_path = "config.json"
+        elif (self.spaces_folder / "config.json").exists():
+            config_path = str(self.spaces_folder / "config.json")
+        elif (Path.home() / ".dmart" / "config.json").exists():
+            config_path = str(Path.home() / ".dmart" / "config.json")
+        elif (cxb_path / "config.json").exists():
+            config_path = str(cxb_path / "config.json")
+            
+        if config_path:
+            self.cxb_config_path = config_path
+            try:
+                with open(config_path, "r") as f:
+                    config_data = json.load(f)
+                    if "cxb_url" in config_data:
+                        url = config_data["cxb_url"]
+                        if not url.startswith("/"):
+                            url = "/" + url
+                        self.cxb_url = url
+            except Exception as e:
+                logger.error(f"Failed to read CXB config at {config_path}. Error: {e}")
 
     raw_allowed_submit_models: str = Field(default="",alias="allowed_submit_models")
 

@@ -12,7 +12,7 @@ import os
 import secrets
 sys.path.append(os.path.dirname(__file__))
 
-from utils.settings import settings
+from utils.settings import settings, get_env_file
 import time
 import warnings
 import webbrowser
@@ -37,6 +37,7 @@ commands = """
     archive
     json_to_db
     db_to_json
+    update_query_policies
     help
     version 
     info
@@ -140,7 +141,8 @@ LISTENING_PORT=8282
                   "default_language": "en",
                   "languages": { "ar": "العربية", "en": "English" },
                   "backend": "http://localhost:8282",
-                  "websocket": "ws://0.0.0.0:8484/ws"
+                  "websocket": "ws://0.0.0.0:8484/ws",
+                  "cxb_url": "/cxb"
                 }
                 with open(cxb_config, "w") as f:
                     json.dump(default_cxb_config, f, indent=2)
@@ -443,6 +445,11 @@ def hypercorn_main() -> int:
     
     if args.cxb_config is not sentinel:
         os.environ["DMART_CXB_CONFIG"] = args.cxb_config
+        settings.load_cxb_config()
+
+    env_file = get_env_file()
+    if env_file and os.path.exists(env_file):
+        config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
 
     if len(args.binds) > 0:
         config.bind = args.binds
@@ -452,7 +459,7 @@ def hypercorn_main() -> int:
         config.quic_bind = args.quic_binds
     if len(args.server_names) > 0:
         config.server_names = args.server_names
-    
+
     if args.open_cxb:
         port = 8282
         host = "127.0.0.1"
@@ -590,6 +597,8 @@ def main():
                     os.environ["DMART_CXB_CONFIG"] = sys.argv[idx + 1]
                     sys.argv.pop(idx + 1)
                 sys.argv.pop(idx)
+            
+            settings.load_cxb_config()
                 
             if open_cxb:
                 host = settings.listening_host
@@ -729,6 +738,9 @@ def main():
         case "db_to_json":
             from data_adapters.sql.db_to_json_migration import main as db_to_json_migration
             db_to_json_migration()
+        case "update_query_policies":
+            from data_adapters.sql.update_query_policies import main as update_query_policies
+            update_query_policies()
         case "help":
             print("Available commands:")
             print(commands)
