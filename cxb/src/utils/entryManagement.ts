@@ -48,14 +48,16 @@ export async function saveEntry(
     }
 
     if (originalJeContent) {
-        const originalContent = jsonEditorContentParser(originalJeContent);
-        if (originalContent.payload && originalContent.payload.body && content.payload && content.payload.body) {
-            const originalKeys = Object.keys(originalContent.payload.body);
-            const currentKeys = Object.keys(content.payload.body);
-            const removedKeys = originalKeys.filter(key => !currentKeys.includes(key));
-            removedKeys.forEach(key => {
-                content.payload.body[key] = null;
-            });
+        if(originalJeContent.payload.content_type === 'json'){
+            const originalContent = jsonEditorContentParser(originalJeContent);
+            if (originalContent.payload && originalContent.payload.body && content.payload && content.payload.body) {
+                const originalKeys = Object.keys(originalContent.payload.body);
+                const currentKeys = Object.keys(content.payload.body);
+                const removedKeys = originalKeys.filter(key => !currentKeys.includes(key));
+                removedKeys.forEach(key => {
+                    content.payload.body[key] = null;
+                });
+            }
         }
     }
 
