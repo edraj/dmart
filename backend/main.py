@@ -48,7 +48,8 @@ from pathlib import Path
 class SPAStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope) -> Response:
         if path == "" or path == "index.html":
-            return await self.serve_file("index.html", "text/html")
+            response: Response = await self.serve_file("index.html", "text/html")
+            return response
             
         ext = os.path.splitext(path)[1]
         if ext in [".js", ".css", ".html"]:
