@@ -54,7 +54,7 @@ class SPAStaticFiles(StaticFiles):
         ext = os.path.splitext(path)[1]
         if ext in [".js", ".css", ".html"]:
              try:
-                 return await self.serve_file(path)
+                 return await self.serve_file(path) # type: ignore
              except StarletteHTTPException:
                  pass
 
