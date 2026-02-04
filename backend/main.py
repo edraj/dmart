@@ -493,9 +493,8 @@ if not os.path.exists(os.path.join(cxb_path, "index.html")):
 if os.path.isdir(cxb_path):
     @app.get(f"{settings.cxb_url}/config.json", include_in_schema=False)
     async def get_cxb_config():
-        cxb_config = os.getenv("DMART_CXB_CONFIG")
-        if cxb_config and os.path.exists(cxb_config):
-            return FileResponse(cxb_config)
+        if settings.cxb_config_path and os.path.exists(settings.cxb_config_path):
+            return FileResponse(settings.cxb_config_path)
             
         if os.path.exists("config.json"):
             return FileResponse("config.json")
@@ -521,7 +520,8 @@ if os.path.isdir(cxb_path):
             "default_language": "en",
             "languages": { "ar": "العربية", "en": "English" },
             "backend": f"{settings.app_url}" if settings.app_url else f"http://{settings.listening_host}:{settings.listening_port}",
-            "websocket": settings.websocket_url if settings.websocket_url else f"ws://{settings.listening_host}:{settings.websocket_port}/ws"
+            "websocket": settings.websocket_url if settings.websocket_url else f"ws://{settings.listening_host}:{settings.websocket_port}/ws",
+            "cxb_url": settings.cxb_url
         }
 
     app.mount(settings.cxb_url, SPAStaticFiles(directory=cxb_path, html=True), name="cxb")
@@ -537,7 +537,7 @@ async def myoptions():
 @app.patch("/{x:path}", include_in_schema=False)
 @app.delete("/{x:path}", include_in_schema=False)
 async def catchall(x):
-    if x.startswith("cxb"):
+    if x.startswith(settings.cxb_url.strip("/")):
         return RedirectResponse(f"{settings.cxb_url}/")
     raise api.Exception(
         status_code=status.HTTP_404_NOT_FOUND,
