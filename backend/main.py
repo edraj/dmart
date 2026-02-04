@@ -63,7 +63,7 @@ class SPAStaticFiles(StaticFiles):
         except StarletteHTTPException as ex:
             if ex.status_code == 404 and path != "index.html" and not os.path.splitext(path)[1]:
                 try:
-                    return await self.serve_file("index.html", "text/html")
+                    return await self.serve_file("index.html", "text/html")  # type: ignore
                 except Exception:
                     pass
             raise ex
