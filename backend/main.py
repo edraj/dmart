@@ -47,52 +47,15 @@ from pathlib import Path
 
 class SPAStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope) -> Response:
-        if path == "" or path == "index.html":
-            response: Response = await self.serve_file("index.html", "text/html")
-            return response
-            
-        ext = os.path.splitext(path)[1]
-        if ext in [".js", ".css", ".html"]:
-             try:
-                 return await self.serve_file(path) # type: ignore
-             except StarletteHTTPException:
-                 pass
-
         try:
             return await super().get_response(path, scope)
         except StarletteHTTPException as ex:
             if ex.status_code == 404 and path != "index.html" and not os.path.splitext(path)[1]:
                 try:
-                    return await self.serve_file("index.html", "text/html")  # type: ignore
-                except Exception:
+                    return await super().get_response("index.html", scope)
+                except StarletteHTTPException:
                     pass
             raise ex
-
-    async def serve_file(self, path, media_type=None):
-        full_path = os.path.join(self.directory, path) # type: ignore
-        if not os.path.exists(full_path):
-             raise StarletteHTTPException(status_code=404)
-        
-        if media_type is None:
-            media_type, _ = mimetypes.guess_type(full_path)
-        
-        try:
-            with open(full_path, "r", encoding="utf-8") as f:
-                content = f.read()
-        except UnicodeDecodeError:
-             return FileResponse(full_path, media_type=media_type)
-
-        target_url = settings.cxb_url
-        if not target_url.endswith("/"):
-            target_url += "/"
-            
-        content = content.replace("/cxb/", target_url)
-        
-        cxb_name = settings.cxb_url.strip("/")
-        if cxb_name != "cxb":
-             content = content.replace('"cxb"', f'"{cxb_name}"')
-        
-        return Response(content, media_type=media_type)
 
 
 @asynccontextmanager

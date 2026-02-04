@@ -211,9 +211,6 @@
     }
 
     $effect(() => {
-        console.log({t: editor.getHTML()});
-    });
-    $effect(() => {
         if (editor && typeof editor.setHTML === 'function') {
             const currentHtml = editor.getHTML();
             if (content !== currentHtml) {
