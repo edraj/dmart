@@ -48,7 +48,7 @@ export async function saveEntry(
     }
 
     if (originalJeContent) {
-        if(originalJeContent.payload.content_type === 'json'){
+        if(originalJeContent?.payload?.content_type === 'json'){
             const originalContent = jsonEditorContentParser(originalJeContent);
             if (originalContent.payload && originalContent.payload.body && content.payload && content.payload.body) {
                 const originalKeys = Object.keys(originalContent.payload.body);
