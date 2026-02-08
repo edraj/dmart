@@ -977,6 +977,10 @@ async def retrieve_entry_meta(
             )
         )
 
+    if resource_type is ResourceType.user:
+        if hasattr(meta, 'password'):
+            setattr(meta, 'password', None)
+
     attachments = {}
     entry_path = (
             settings.spaces_folder
