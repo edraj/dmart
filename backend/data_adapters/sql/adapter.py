@@ -2129,6 +2129,11 @@ class SQLAdapter(BaseDataAdapter):
             new_version_json = json.dumps(new_version_flattend, sort_keys=True, default=str)
             new_checksum = hashlib.sha1(new_version_json.encode()).hexdigest()
 
+            if 'headers' in history_diff['new']:
+                del history_diff['new']['headers']
+            if 'headers' in history_diff['old']:
+                del history_diff['old']['headers']
+
             history_obj = Histories(
                 space_name=space_name,
                 uuid=uuid4(),
