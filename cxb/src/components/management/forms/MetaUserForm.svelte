@@ -40,6 +40,7 @@
         ...formData,
         email: formData.email || null,
         password: formData.password || null,
+        old_password: formData.old_password || null,
         msisdn: formData.msisdn || null,
         is_email_verified: formData.is_email_verified || false,
         is_msisdn_verified: formData.is_msisdn_verified || false,
@@ -207,10 +208,22 @@
         <div class="mb-4">
             <Label for="password" class="mb-2">
                 <span class="text-red-500 text-lg" style="vertical-align: center">*</span>
-                Password
+                Old Password
             </Label>
             <Input required
                    id="password"
+                   type="password"
+                   placeholder="••••••••"
+                   bind:value={formData.old_password}
+                   minlength={8} />
+        </div>
+        <div class="mb-4">
+            <Label for="password" class="mb-2">
+                <span class="text-red-500 text-lg" style="vertical-align: center">*</span>
+                New Password
+            </Label>
+            <Input required
+                   id="old_password"
                    type="password"
                    placeholder="••••••••"
                    bind:value={formData.password}
