@@ -524,7 +524,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 message="Invalid username or password"
             ),
         )
-    except api.Exception as e:
+    except api.Exception as _:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
