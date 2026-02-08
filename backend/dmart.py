@@ -44,6 +44,7 @@ commands = """
     init
     migrate
     test
+    apply_plugin_config
 """
 
 sentinel = object()
@@ -491,6 +492,61 @@ def hypercorn_main() -> int:
     return run(config)
 
 
+def patch_plugin_configs():
+    dmart_home = Path.home() / ".dmart"
+    plugins_config_path = dmart_home / "plugins_config.json"
+    
+    if not plugins_config_path.exists():
+        print(f"No plugins_config.json found at {plugins_config_path}")
+        return
+
+    try:
+        with open(plugins_config_path, "r") as f:
+            patches = json.load(f)
+    except Exception as e:
+        print(f"Error reading {plugins_config_path}: {e}")
+        return
+
+    backend_dir = Path(__file__).resolve().parent
+    plugins_dir = backend_dir / "plugins"
+
+    if not plugins_dir.exists():
+        print(f"Plugins directory not found at {plugins_dir}")
+        return
+
+    def deep_update(source, overrides):
+        for key, value in overrides.items():
+            if isinstance(value, dict) and value:
+                node = source.get(key, {})
+                if not isinstance(node, dict):
+                    node = {}
+                source[key] = deep_update(node, value)
+            else:
+                source[key] = value
+        return source
+
+    for plugin_name, patch_data in patches.items():
+        plugin_config_path = plugins_dir / plugin_name / "config.json"
+        
+        if not plugin_config_path.exists():
+            print(f"Warning: Config for plugin '{plugin_name}' not found at {plugin_config_path}")
+            continue
+            
+        try:
+            with open(plugin_config_path, "r") as f:
+                original_config = json.load(f)
+            
+            updated_config = deep_update(original_config, patch_data)
+            
+            with open(plugin_config_path, "w") as f:
+                json.dump(updated_config, f, indent=2)
+                
+            print(f"Patched config for plugin: {plugin_name}")
+            
+        except Exception as e:
+            print(f"Error patching plugin '{plugin_name}': {e}")
+
+
 def print_formatted(data):
     if isinstance(data, str):
         try:
@@ -888,6 +944,8 @@ def main():
             except subprocess.CalledProcessError as e:
                 print(f"Error: The test script failed with exit code {e.returncode}.")
                 sys.exit(e.returncode)
+        case "apply_plugin_config":
+            patch_plugin_configs()
 
 if __name__ == "__main__":
     main()
