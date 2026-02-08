@@ -2658,6 +2658,15 @@ class SQLAdapter(BaseDataAdapter):
             rec = item.to_record(item.subpath, item.shortname)
             results[idx] = rec
 
+            if query.type == QueryType.history:
+                for main_key, changes in rec.attributes.items():
+                    if not isinstance(changes, dict):
+                        continue
+                    for state in ("old", "new"):
+                        value = changes.get(state)
+                        if isinstance(value, dict):
+                            value.pop("headers", None)
+
             if process_payload:
                 # Strip payload body early (if disabled)
                 if not query.retrieve_json_payload:
