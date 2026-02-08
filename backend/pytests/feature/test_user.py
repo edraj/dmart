@@ -173,8 +173,8 @@ async def test_otp_login_invalid_otp(client: AsyncClient):
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert json_response.get("status") == "failed"
     assert json_response.get("error", {}).get("type") == "auth"
-    assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_INVALID
-    assert json_response.get("error", {}).get("message") == "Wrong OTP"
+    assert json_response.get("error", {}).get("code") == InternalErrorCode.INVALID_USERNAME_AND_PASS
+    assert json_response.get("error", {}).get("message") == "Invalid username or password"
 
 
 @pytest.mark.run(order=1)
@@ -205,8 +205,8 @@ async def test_login_with_otp_unresolvable_identifier(client: AsyncClient):
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
 
-    assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert json_response["error"]["code"] == InternalErrorCode.SHORTNAME_DOES_NOT_EXIST
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert json_response["error"]["code"] == InternalErrorCode.INVALID_USERNAME_AND_PASS
 
 
 
@@ -222,8 +222,8 @@ async def test_login_with_empty_otp_field(client: AsyncClient):
     json_response = response.json()
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert json_response["error"]["code"] == InternalErrorCode.OTP_INVALID
-    assert json_response["error"]["message"] == "Wrong OTP"
+    assert json_response["error"]["code"] == InternalErrorCode.INVALID_USERNAME_AND_PASS
+    assert json_response["error"]["message"] == "Invalid username or password"
 
 
 @pytest.mark.run(order=1)
@@ -232,9 +232,9 @@ async def test_login_with_otp_but_missing_identifier(client: AsyncClient):
     response = await client.post("/user/login", json={"otp": "123456"})
     json_response = response.json()
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert json_response["error"]["code"] == InternalErrorCode.OTP_ISSUE
-    assert json_response["error"]["message"] == "Either msisdn, email or shortname must be provided."
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert json_response["error"]["code"] == InternalErrorCode.INVALID_USERNAME_AND_PASS
+    assert json_response["error"]["message"] == "Invalid username or password"
 
 
 @pytest.mark.run(order=1)

@@ -329,8 +329,8 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="auth",
-                        code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
-                        message="User does not exist"
+                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                        message="Invalid username or password"
                     )
                 )
             if user.type == UserType.mobile and user.locked_to_device and user.firebase_token and (not request.firebase_token or request.firebase_token != user.firebase_token):
@@ -426,10 +426,12 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
         else:
             if identifier is None:
                 raise api.Exception(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_401_UNAUTHORIZED,
                     api.Error(
-                        type="request", code=InternalErrorCode.INVALID_IDENTIFIER, message="Invalid identifier [2]"
-                    ),
+                        type="auth",
+                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                        message="Invalid username or password"
+                    )
                 )
 
             if "shortname" in identifier:
@@ -454,7 +456,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                         api.Error(
                             type="auth",
                             code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                            message="Invalid username or password [1]",
+                            message="Invalid username or password",
                         ),
                     )
             user = await db.load(
@@ -522,18 +524,26 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 message="Invalid username or password"
             ),
         )
-    except api.Exception as e:
-        if e.error.type == "db":
-            raise api.Exception(
-                status.HTTP_401_UNAUTHORIZED,
-                api.Error(
-                    type="auth",
-                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                    message="Invalid username or password"
-                ),
+    except api.Exception as _:
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="auth",
+                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                message="Invalid username or password"
             )
-        else:
-            raise e
+        )
+        # if e.error.type == "db":
+        #     raise api.Exception(
+        #         status.HTTP_401_UNAUTHORIZED,
+        #         api.Error(
+        #             type="auth",
+        #             code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+        #             message="Invalid username or password"
+        #         ),
+        #     )
+        # else:
+        #     raise e
 
 
 
