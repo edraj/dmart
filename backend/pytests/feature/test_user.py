@@ -232,7 +232,7 @@ async def test_login_with_otp_but_missing_identifier(client: AsyncClient):
     response = await client.post("/user/login", json={"otp": "123456"})
     json_response = response.json()
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert json_response["error"]["code"] == InternalErrorCode.INVALID_USERNAME_AND_PASS
     assert json_response["error"]["message"] == "Invalid username or password"
 
