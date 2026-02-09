@@ -57,11 +57,28 @@ jobs:
         run: pip install uv
 
       - name: Update backend/setup.py version
+        id: pypi_version
         run: |
-          VERSION=${{ steps.version.outputs.version }}
-          sed -i.bak "s/version=\".*\"/version=\"$VERSION\"/" backend/setup.py
-          echo "Updated setup.py with version: $VERSION"
+          # Read current version from setup.py
+          CURRENT_VERSION=$(grep 'version=' backend/setup.py | sed -E 's/.*version="([^"]+)".*/\1/')
+          echo "Current version: $CURRENT_VERSION"
+
+          # Extract the base version and last number (e.g., 1.4.41-47 -> 1.4.41 and 47)
+          BASE_VERSION=$(echo $CURRENT_VERSION | sed -E 's/(.*)-([0-9]+)$/\1/')
+          LAST_NUMBER=$(echo $CURRENT_VERSION | sed -E 's/.*-([0-9]+)$/\1/')
+
+          # Increment the last number
+          NEW_NUMBER=$((LAST_NUMBER + 1))
+          NEW_VERSION="${BASE_VERSION}-${NEW_NUMBER}"
+
+          echo "New version: $NEW_VERSION"
+
+          # Update setup.py with new version
+          sed -i.bak "s/version=\".*\"/version=\"$NEW_VERSION\"/" backend/setup.py
           cat backend/setup.py | grep "version="
+
+          # Export for later steps
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Create virtual environment
         run: |
@@ -74,7 +91,6 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-          UV_SYSTEM_PYTHON: 1
         run: |
           cd backend
           bash publish.sh
