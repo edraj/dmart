@@ -40,6 +40,32 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Update backend/setup.py version
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          sed -i.bak "s/version=\".*\"/version=\"$VERSION\"/" backend/setup.py
+          echo "Updated setup.py with version: $VERSION"
+          cat backend/setup.py | grep "version="
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          cd backend
+          bash publish.sh
+
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5.9.0
