@@ -80,15 +80,12 @@ jobs:
           # Export for later steps
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create virtual environment
+      - name: Create virtual environment and install dependencies
         run: |
           python -m venv .venv
           source .venv/bin/activate
           echo "VIRTUAL_ENV=$VIRTUAL_ENV" >> $GITHUB_ENV
           echo "PATH=$VIRTUAL_ENV/bin:$PATH" >> $GITHUB_ENV
-
-      - name: Install build dependencies
-        run: |
           uv pip install setuptools pyinstaller
 
       - name: Publish to PyPI
@@ -96,6 +93,7 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
+          source .venv/bin/activate
           cd backend
           bash publish.sh
 
