@@ -40,6 +40,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -57,6 +62,13 @@ jobs:
           sed -i.bak "s/version=\".*\"/version=\"$VERSION\"/" backend/setup.py
           echo "Updated setup.py with version: $VERSION"
           cat backend/setup.py | grep "version="
+
+      - name: Create virtual environment
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          echo "VIRTUAL_ENV=$VIRTUAL_ENV" >> $GITHUB_ENV
+          echo "PATH=$VIRTUAL_ENV/bin:$PATH" >> $GITHUB_ENV
 
       - name: Publish to PyPI
         env:
