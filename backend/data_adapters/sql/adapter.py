@@ -18,6 +18,7 @@ from sqlalchemy.orm import sessionmaker, defer
 from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean, func, text
 from sqlalchemy import String, cast, bindparam
 import io
+import shutil
 from sys import modules as sys_modules
 import models.api as api
 from models.api import Exception as API_Exception, Error as API_Error
@@ -3230,7 +3231,7 @@ class SQLAdapter(BaseDataAdapter):
             record=record, owner_shortname=owner_shortname
         )
         await self.delete(space_name, record.subpath, resource_obj, owner_shortname)
-        os.system(f"rm -r {settings.spaces_folder}/{space_name}")
+        shutil.rmtree(settings.spaces_folder / space_name, ignore_errors=True)
 
     async def get_last_updated_entry(
             self,

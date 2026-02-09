@@ -25,7 +25,7 @@ from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
 from models.enums import ContentType, ResourceType, LockAction
 
 from utils.helpers import arr_remove_common, read_jsonl_file, snake_case, camel_case, flatten_list_of_dicts_in_dict, \
-    flatten_dict, resolve_schema_references
+    flatten_dict, resolve_schema_references, process_jsonl_file
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
 from data_adapters.file.redis_services import RedisServices
@@ -1469,12 +1469,13 @@ class FileAdapter(BaseDataAdapter):
                 return None
 
         try:
-            r1 = subprocess.Popen(
-                ["tail", "-n", "1", str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            _, result = process_jsonl_file(
+                path,
+                limit=1,
+                reverse=True
             )
-            r2, _ = r1.communicate()
-            if r2:
-                return json.loads(r2.decode().strip())
+            if result:
+                return json.loads(result[0].strip())
         except Exception:
             pass
         return None
@@ -2077,7 +2078,7 @@ class FileAdapter(BaseDataAdapter):
         return resource_base_record
 
     async def delete_space(self, space_name, record, owner_shortname):
-        os.system(f"rm -r {settings.spaces_folder}/{space_name}")
+        shutil.rmtree(settings.spaces_folder / space_name, ignore_errors=True)
 
     async def get_last_updated_entry(
             self,

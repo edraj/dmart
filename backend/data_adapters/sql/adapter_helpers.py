@@ -16,7 +16,7 @@ from data_adapters.sql.create_tables import (
     Aggregated
 )
 from utils.helpers import (
-    str_to_datetime,
+    str_to_datetime, process_jsonl_file,
 )
 from utils.settings import settings
 
@@ -340,58 +340,14 @@ async def events_query(
     if not path.is_file():
         return total, records
 
-    result = []
-    if query.search:
-        p = subprocess.Popen(
-            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-        )
-        p = subprocess.Popen(
-            ["tail", "-n", f"{query.limit + query.offset}"],
-            stdin=p.stdout,
-            stdout=subprocess.PIPE,
-        )
-        p = subprocess.Popen(["tac"], stdin=p.stdout, stdout=subprocess.PIPE)
-        if query.offset > 0:
-            p = subprocess.Popen(
-                ["sed", f"1,{query.offset}d"],
-                stdin=p.stdout,
-                stdout=subprocess.PIPE,
-            )
-        r, _ = p.communicate()
-        result = list(filter(None, r.decode("utf-8").split("\n")))
-    else:
-        cmd = f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
-        if query.offset > 0:
-            cmd += f" | sed '1,{query.offset}d'"
-        result = list(
-            filter(
-                None,
-                subprocess.run(
-                    [cmd], capture_output=True, text=True, shell=True
-                ).stdout.split("\n"),
-            )
-        )
+    total, result = process_jsonl_file(
+        path,
+        limit=query.limit,
+        offset=query.offset,
+        search=query.search,
+        reverse=True
+    )
 
-    if query.search:
-        p1 = subprocess.Popen(
-            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-        )
-        p2 = subprocess.Popen(["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE)
-        r, _ = p2.communicate()
-        total = int(
-            r.decode(),
-            10,
-        )
-    else:
-        total = int(
-            subprocess.run(
-                [f"wc -l < {path}"],
-                capture_output=True,
-                text=True,
-                shell=True,
-            ).stdout,
-            10,
-        )
     for line in result:
         action_obj = json.loads(line)
         if (
