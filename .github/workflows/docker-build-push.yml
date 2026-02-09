@@ -74,6 +74,7 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+          UV_SYSTEM_PYTHON: 1
         run: |
           cd backend
           bash publish.sh
