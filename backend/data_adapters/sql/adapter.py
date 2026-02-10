@@ -2659,6 +2659,11 @@ class SQLAdapter(BaseDataAdapter):
             if query.type == QueryType.history:
                 del rec.attributes['request_headers']
                 for main_key, changes in rec.attributes['diff'].items():
+                    if main_key == 'password':
+                        rec.attributes['diff'][main_key] = {
+                            'old': '********',
+                            'new': '********'
+                        }
                     if not isinstance(changes, dict):
                         continue
                     for state in ("old", "new"):
