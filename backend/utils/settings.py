@@ -133,7 +133,7 @@ class Settings(BaseSettings):
     database_max_overflow: int = 2
     database_pool_timeout: int = 30
     database_pool_recycle: int = 30
-
+    user_profile_payload_protected_fields: list[str] = []
     hide_stack_trace: bool = False
     max_failed_login_attempts: int = 5
 

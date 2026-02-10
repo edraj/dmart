@@ -262,20 +262,20 @@ async def get_otp_confirmation_email_or_msisdn(profile_user):
     return None
 
 
-async def update_user_payload(profile, profile_user, user, shortname):
+async def update_user_payload(profile, user):
     separate_payload_data = {}
     user.payload = core.Payload(
         content_type=ContentType.json,
-        schema_shortname=profile_user.payload.schema_shortname,
+        schema_shortname=user.payload.schema_shortname,
         body="",
     )
     if profile.attributes["payload"]["body"]:
         separate_payload_data = profile.attributes["payload"]["body"]
         if settings.active_data_db == "file":
-            user.payload.body = f"{shortname}.json"
+            user.payload.body = f"{user.shortname}.json"
 
     if user.payload and separate_payload_data:
-        if profile_user.payload.schema_shortname:
+        if user.payload.schema_shortname:
             await db.validate_payload_with_schema(
                 payload_data=separate_payload_data,
                 space_name=MANAGEMENT_SPACE,

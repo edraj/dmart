@@ -681,6 +681,12 @@ async def update_profile(
         user_shortname=shortname,
     )
 
+    for field in settings.user_profile_payload_protected_fields:
+        if 'payload' in profile.attributes and 'body' in profile.attributes['payload']\
+                and (field in profile.attributes['payload']['body'] or field in user.payload.body):
+            profile.attributes['payload']['body'][field] = user.payload.body.get(field)
+
+
     old_version_flattened = flatten_dict(user.model_dump())
 
     if profile_user.password and user.password and not user.force_password_change:
@@ -768,7 +774,7 @@ async def update_profile(
             user.is_msisdn_verified = True
 
         if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
-            await update_user_payload(profile, profile_user, user, shortname)
+            await update_user_payload(profile, user)
 
     if user.is_active and profile.attributes.get("is_active", None) is not None:
         if not profile.attributes.get("is_active"):
