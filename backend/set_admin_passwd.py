@@ -2,7 +2,6 @@
 import asyncio
 import json
 import getpass
-import subprocess
 import utils.regex as regex
 import re
 from pathlib import Path
