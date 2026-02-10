@@ -540,7 +540,7 @@
                 {#if jeContent.json}
                     <MetaForm bind:formData={jeContent.json} bind:validateFn={validateMetaForm} isCreate={false}/>
                     {#if resource_type === ResourceType.user}
-                        <MetaUserForm bind:formData={jeContent.json} bind:validateFn={validateRTForm}/>
+                        <MetaUserForm bind:formData={jeContent.json} bind:validateFn={validateRTForm} isCreate={false}/>
                     {:else if resource_type === ResourceType.role}
                         <MetaRoleForm bind:formData={jeContent.json} bind:validateFn={validateRTForm} />
                     {:else if resource_type === ResourceType.permission}

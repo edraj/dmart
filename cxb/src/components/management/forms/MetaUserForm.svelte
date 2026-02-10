@@ -17,7 +17,8 @@
 
     let {
         formData = $bindable(),
-        validateFn = $bindable()
+        validateFn = $bindable(),
+        isCreate = false
     } = $props();
 
     let form;
@@ -40,7 +41,6 @@
         ...formData,
         email: formData.email || null,
         password: formData.password || null,
-        old_password: formData.old_password || null,
         msisdn: formData.msisdn || null,
         is_email_verified: formData.is_email_verified || false,
         is_msisdn_verified: formData.is_msisdn_verified || false,
@@ -53,6 +53,12 @@
         google_id: formData.google_id || null,
         facebook_id: formData.facebook_id || null,
         social_avatar_url: formData.social_avatar_url || null
+    }
+
+    if (!isCreate) {
+        formData.old_password = formData.old_password || null;
+    } else {
+        delete formData.old_password;
     }
 
     const userTypeOptions = ["bot", "mobile", "web", "admin", "api"]
@@ -205,18 +211,20 @@
     <h2 class="text-2xl font-bold mb-4">User Information</h2>
 
     <form bind:this={form} class="space-y-4">
-        <div class="mb-4">
-            <Label for="password" class="mb-2">
-                <span class="text-red-500 text-lg" style="vertical-align: center">*</span>
-                Old Password
-            </Label>
-            <Input required
-                   id="password"
-                   type="password"
-                   placeholder="••••••••"
-                   bind:value={formData.old_password}
-                   minlength={8} />
-        </div>
+        {#if !isCreate}
+            <div class="mb-4">
+                <Label for="password" class="mb-2">
+                    <span class="text-red-500 text-lg" style="vertical-align: center">*</span>
+                    Old Password
+                </Label>
+                <Input required
+                       id="password"
+                       type="password"
+                       placeholder="••••••••"
+                       bind:value={formData.old_password}
+                       minlength={8} />
+            </div>
+        {/if}
         <div class="mb-4">
             <Label for="password" class="mb-2">
                 <span class="text-red-500 text-lg" style="vertical-align: center">*</span>
