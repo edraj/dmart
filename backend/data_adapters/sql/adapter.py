@@ -1227,9 +1227,7 @@ class SQLAdapter(BaseDataAdapter):
             statement = select(table)
 
         statement = statement.where(col(table.space_name) == space_name).where(table.shortname == shortname)
-        if table is Users:
-            statement = statement.where(col(table.subpath) == '/users')
-        if table in [Entries, Attachments]:
+        if table in [Users, Entries, Attachments]:
             statement = statement.where(col(table.subpath) == subpath)
 
         try:
