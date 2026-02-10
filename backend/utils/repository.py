@@ -1,4 +1,5 @@
 import os
+import shutil
 import re
 import sys
 import asyncio
@@ -526,4 +527,4 @@ async def delete_space(space_name, record, owner_shortname):
         )
         await db.delete(space_name, record.subpath, resource_obj, owner_shortname)
 
-    os.system(f"rm -r {settings.spaces_folder}/{space_name}")
+    shutil.rmtree(settings.spaces_folder / space_name, ignore_errors=True)

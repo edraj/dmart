@@ -27,6 +27,11 @@
     $effect(() => {
         if (isOpen) {
             selectedSpace = space_name;
+        }
+    });
+
+    $effect(() => {
+        if (isOpen && selectedSpace) {
             selectedSubpath = "/";
             fetchSubpaths(selectedSpace);
         }
@@ -54,11 +59,6 @@
             console.error("Failed to fetch subpaths", e);
             subpathOptions = [{name: "/", value: "/"}];
         }
-    }
-
-    function handleSpaceChange() {
-        selectedSubpath = "/";
-        fetchSubpaths(selectedSpace);
     }
 
     async function handleBulkAction() {
@@ -137,7 +137,7 @@
     <div class="space-y-4">
         <Label>
             Destination Space
-            <Select class="mt-2" items={spaceOptions} bind:value={selectedSpace} onchange={handleSpaceChange} />
+            <Select class="mt-2" items={spaceOptions} bind:value={selectedSpace} />
         </Label>
 
         <Label>

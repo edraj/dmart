@@ -331,7 +331,7 @@
         <MetaForm bind:formData={metaContent} bind:validateFn={validateMetaForm} isCreate={true}/>
 
         {#if selectedResourceType === ResourceType.user}
-            <MetaUserForm bind:formData={metaContent} bind:validateFn={validateRTForm}/>
+            <MetaUserForm bind:formData={metaContent} bind:validateFn={validateRTForm} isCreate={true}/>
         {:else if selectedResourceType === ResourceType.role}
             <MetaRoleForm bind:formData={metaContent} bind:validateFn={validateRTForm} />
         {:else if selectedResourceType === ResourceType.permission}

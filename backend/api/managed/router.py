@@ -2,6 +2,7 @@ import csv
 import hashlib
 import json
 import os
+import subprocess
 import re
 import sys
 import tempfile
@@ -1100,8 +1101,12 @@ async def get_space_report(
             ),
         )
 
-    os.system(
-        f"./health_check.py -t {health_type} -s {space_name} &")
+    subprocess.Popen(
+        [sys.executable, "./health_check.py", "-t", health_type, "-s", space_name],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True
+    )
     return api.Response(
         status=api.Status.success,
     )

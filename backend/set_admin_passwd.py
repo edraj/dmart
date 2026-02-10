@@ -2,7 +2,6 @@
 import asyncio
 import json
 import getpass
-import subprocess
 import utils.regex as regex
 import re
 from pathlib import Path
@@ -54,8 +53,11 @@ if login_creds_sample.exists():
     home_dmart.mkdir(parents=True, exist_ok=True)
 
     login_creds_path = home_dmart / "login_creds.sh"
+    with open(login_creds_sample, 'r') as sample_f:
+        sample_content = sample_f.read()
+    
     with open(login_creds_path, 'w') as creds:
-        subprocess.run( [ "sed", f"s/xxxx/{password}/g", str(login_creds_sample) ], stdout=creds)
+        creds.write(sample_content.replace("xxxx", password))
 
 
     cli_ini_path = home_dmart / "cli.ini"

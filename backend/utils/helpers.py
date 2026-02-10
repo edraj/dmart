@@ -331,12 +331,49 @@ async def csv_file_to_json(csv_file_path: Path) -> list[dict[str, Any]]:
 
     return data
 
-def read_jsonl_file(file_path):
+async def read_jsonl_file(file_path):
     data = []
-    with open(file_path, 'r') as file:
-        for line in file:
+    async with aiofiles.open(file_path, 'r') as file:
+        async for line in file:
             data.append(json.loads(line))
     return data
+
+
+async def process_jsonl_file(
+    file_path: Path,
+    limit: int | None = None,
+    offset: int = 0,
+    search: str | None = None,
+    reverse: bool = False,
+):
+    """
+    Python implementation of tail, grep, tac, head, sed for JSONL files.
+    """
+    if not file_path.is_file():
+        return 0, []
+
+    async with aiofiles.open(file_path, "r") as f:
+        lines = await f.readlines()
+
+    if search:
+        # Simple string search like grep
+        lines = [line for line in lines if search in line]
+
+    total = len(lines)
+
+    if reverse:
+        lines.reverse()
+
+    # Apply offset and limit
+    # If reverse is True, it's like (tac | head -n limit+offset | tail -n limit)
+    # But more simply, we just slice the list.
+    
+    start = offset
+    end = (offset + limit) if limit is not None else None
+    
+    result_lines = lines[start:end]
+    
+    return total, result_lines
 
 
 def jq_dict_parser(data):

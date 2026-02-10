@@ -43,7 +43,7 @@ export async function saveEntry(
         };
     }
 
-    if (resource_type === ResourceType.user && content.password===null || (content.password.startsWith("$argon2id")||content.password==='')) {
+    if (resource_type === ResourceType.user && content.password===null || (content.password && content.password.startsWith("$argon2id")||content.password==='')) {
         delete content.password;
     }
 
