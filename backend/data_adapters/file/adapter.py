@@ -39,7 +39,6 @@ from pathlib import Path as FSPath
 import models.api as api
 from fastapi import status
 import json
-import subprocess
 
 
 def sort_alteration(attachments_dict, attachments_path):
