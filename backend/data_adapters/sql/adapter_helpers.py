@@ -340,7 +340,7 @@ async def events_query(
     if not path.is_file():
         return total, records
 
-    total, result = process_jsonl_file(
+    total, result = await process_jsonl_file(
         path,
         limit=query.limit,
         offset=query.offset,

@@ -553,9 +553,10 @@ class FileAdapter(BaseDataAdapter):
             return None
         try:
             if class_type == core.Log:
-                return {"log_entry_items": read_jsonl_file(path)}
+                return {"log_entry_items": await read_jsonl_file(path)}
 
-            bytes = path.read_bytes()
+            async with aiofiles.open(path, "rb") as f:
+                bytes = await f.read()
             return json.loads(bytes)
         except Exception as _:
             raise api.Exception(
@@ -1469,7 +1470,7 @@ class FileAdapter(BaseDataAdapter):
                 return None
 
         try:
-            _, result = process_jsonl_file(
+            _, result = await process_jsonl_file(
                 path,
                 limit=1,
                 reverse=True

@@ -331,15 +331,15 @@ async def csv_file_to_json(csv_file_path: Path) -> list[dict[str, Any]]:
 
     return data
 
-def read_jsonl_file(file_path):
+async def read_jsonl_file(file_path):
     data = []
-    with open(file_path, 'r') as file:
-        for line in file:
+    async with aiofiles.open(file_path, 'r') as file:
+        async for line in file:
             data.append(json.loads(line))
     return data
 
 
-def process_jsonl_file(
+async def process_jsonl_file(
     file_path: Path,
     limit: int | None = None,
     offset: int = 0,
@@ -352,8 +352,8 @@ def process_jsonl_file(
     if not file_path.is_file():
         return 0, []
 
-    with open(file_path, "r") as f:
-        lines = f.readlines()
+    async with aiofiles.open(file_path, "r") as f:
+        lines = await f.readlines()
 
     if search:
         # Simple string search like grep

@@ -766,7 +766,7 @@ async def serve_query_history(query, logged_in_user):
     path = Path(f"{settings.spaces_folder}/{query.space_name}/"
                 f"{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
     if path.is_file():
-        total, result = process_jsonl_file(
+        total, result = await process_jsonl_file(
             path,
             limit=query.limit,
             offset=query.offset,
@@ -799,7 +799,7 @@ async def serve_query_events(query, logged_in_user):
     path = Path(
         f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
     if path.is_file():
-        total, result = process_jsonl_file(
+        total, result = await process_jsonl_file(
             path,
             limit=query.limit,
             offset=query.offset,
