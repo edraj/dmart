@@ -1225,9 +1225,9 @@ class SQLAdapter(BaseDataAdapter):
             statement = select(table).options(defer(Attachments.media))  # type: ignore
         else:
             statement = select(table)
-        statement = statement.where(col(table.space_name) == space_name).where(table.shortname == shortname)
 
-        if table in [Entries, Attachments]:
+        statement = statement.where(col(table.space_name) == space_name).where(table.shortname == shortname)
+        if table in [Users, Entries, Attachments]:
             statement = statement.where(col(table.subpath) == subpath)
 
         try:
