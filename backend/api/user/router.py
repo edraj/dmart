@@ -681,10 +681,11 @@ async def update_profile(
         user_shortname=shortname,
     )
 
-    for field in settings.user_profile_payload_protected_fields:
-        if 'payload' in profile.attributes and 'body' in profile.attributes['payload']\
-                and (field in profile.attributes['payload']['body'] or field in user.payload.body):
-            profile.attributes['payload']['body'][field] = user.payload.body.get(field)
+    if isinstance(user.payload.body, dict):
+        for field in settings.user_profile_payload_protected_fields:
+            if 'payload' in profile.attributes and 'body' in profile.attributes['payload']\
+                    and (field in profile.attributes['payload']['body'] or field in user.payload.body): # type: ignore
+                profile.attributes['payload']['body'][field] = user.payload.body.get(field) # type: ignore
 
 
     old_version_flattened = flatten_dict(user.model_dump())
