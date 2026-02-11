@@ -1,6 +1,6 @@
 import asyncio
 import os
-import random
+import secrets
 import string
 import time
 from email.message import EmailMessage
@@ -28,12 +28,12 @@ headers = {"Content-Type": "application/json", "auth-key": settings.smpp_auth_ke
 
 def gen_alphanumeric(length=16):
     return "".join(
-        random.choice(string.ascii_letters + string.digits) for _ in range(length)
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(length)
     )
 
 
 def gen_numeric(length=6):
-    return "".join(random.choice(string.digits) for _ in range(length))
+    return "".join(secrets.choice(string.digits) for _ in range(length))
 
 
 async def mock_sending_otp(msisdn) -> dict:
@@ -93,7 +93,7 @@ async def email_send_otp(email: str, language: str):
     if settings.mock_smtp_api:
         return await mock_sending_otp(email)
 
-    code = "".join(random.choice("0123456789") for _ in range(6))
+    code = "".join(secrets.choice("0123456789") for _ in range(6))
     await db.save_otp(f"users:otp:otps/{email}", code)
     message = f"<p>Your OTP code is <b>{code}</b></p>"
     return await send_email(email, message, "OTP")

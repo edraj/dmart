@@ -650,15 +650,13 @@ async def serve_request_update(request, owner_shortname: str):
             return rec, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
     return records, failed_records
@@ -838,15 +836,13 @@ async def serve_request_patch(request, owner_shortname: str):
             return rec, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
     return records, failed_records
@@ -966,15 +962,13 @@ async def serve_request_assign(request, owner_shortname: str):
             return rec, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
 
@@ -1089,15 +1083,13 @@ async def serve_request_update_acl(request, owner_shortname: str):
             return rec, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
     
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
     return records, failed_records
@@ -1184,7 +1176,7 @@ async def serve_request_delete(request, owner_shortname: str):
                 )
             except api.Exception as e:
                 return None, {
-                    "record": record,
+                    "record": record.shortname,
                     "error": e.error.message,
                     "error_code": e.error.code,
                 }
@@ -1204,15 +1196,13 @@ async def serve_request_delete(request, owner_shortname: str):
             return record, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
 
@@ -1334,15 +1324,13 @@ async def serve_request_move(request, owner_shortname: str):
             return record, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
 
