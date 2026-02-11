@@ -69,10 +69,13 @@ class AccessControl:
     ):
         # print("Checking access for", user_shortname, space_name, subpath, resource_type, action_type)
         if resource_type == ResourceType.space and entry_shortname:
-            return await self.check_space_access(
+            has_access = await self.check_space_access(
                 user_shortname,
                 entry_shortname
             )
+            if settings.debug_perm and not has_access:
+                print(f"Debug Access: Access to space {entry_shortname} denied for user {user_shortname}")
+            return has_access
         
         if entry_shortname:
             acl_access = await self.check_access_control_list(
@@ -137,12 +140,31 @@ class AccessControl:
                 )
             ):
                 return True
+            elif settings.debug_perm and permission_key in user_permissions:
+                print(f"Debug Access: Permission found for {permission_key} but access denied.")
+                if action_type not in user_permissions[permission_key]["allowed_actions"]:
+                    print(f"Debug Access: Action {action_type} not in allowed actions: {user_permissions[permission_key]['allowed_actions']}")
+                if not self.check_access_conditions(
+                    set(user_permissions[permission_key]["conditions"]),
+                    set(resource_achieved_conditions),
+                    action_type,
+                ):
+                    print(f"Debug Access: Conditions check failed. Required: {user_permissions[permission_key]['conditions']}, Achieved: {resource_achieved_conditions}")
+                if not self.check_access_restriction(
+                    user_permissions[permission_key]["restricted_fields"],
+                    user_permissions[permission_key]["allowed_fields_values"],
+                    action_type,
+                    record_attributes
+                ):
+                    print(f"Debug Access: Restrictions check failed.")
 
             if search_subpath == "/":
                 search_subpath = ""
             else:
                 search_subpath += "/"
 
+        if settings.debug_perm:
+            print(f"Debug Access: No valid permission found for user {user_shortname} accessing {space_name}/{subpath} ({resource_type})")
         return False
 
     async def check_access_control_list(

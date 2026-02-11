@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     websocket_port: int = 8484
     base_path: str = ""
     debug_enabled: bool = True
+    debug_perm: bool = False
     log_handlers: list[str] = ['file']
     log_file: str = "../logs/dmart.ljson.log"
     ws_log_file: str = "../logs/websocket.ljson.log"
