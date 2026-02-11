@@ -338,10 +338,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                         if negative:
                             conditions.append(
-                                f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN :{p1} AND :{p2})")
+                                f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float NOT BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))")
                         else:
                             conditions.append(
-                                f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float BETWEEN :{p1} AND :{p2})")
+                                f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND (payload::jsonb->'body'->>{payload_path})::float BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))")
 
                     for value in values:
                         if value_type == 'datetime':
@@ -423,12 +423,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 bind_params[p_bool] = bool_value
 
                                 if negative:
-                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND ({_payload_text_extract})::boolean != :{p_bool})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ({_payload_text_extract})::boolean != :{p_bool})"
+                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND ({_payload_text_extract})::boolean != CAST(:{p_bool} AS boolean))"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ({_payload_text_extract})::boolean != CAST(:{p_bool} AS boolean))"
                                     conditions.append(f"({bool_condition} OR {string_condition})")
                                 else:
-                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND ({_payload_text_extract})::boolean = :{p_bool})"
-                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ({_payload_text_extract})::boolean = :{p_bool})"
+                                    bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND ({_payload_text_extract})::boolean = CAST(:{p_bool} AS boolean))"
+                                    string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND ({_payload_text_extract})::boolean = CAST(:{p_bool} AS boolean))"
                                     conditions.append(f"({bool_condition} OR {string_condition})")
                         else:
                             is_numeric = False
@@ -448,7 +448,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND {_payload_text_extract} != :{p_val})"
 
                                 if is_numeric:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float != :{p_val})"
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float != CAST(:{p_val} AS float))"
                                     conditions.append(
                                         f"({array_condition} OR {string_condition} OR {number_condition})")
                                 else:
@@ -463,7 +463,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 direct_condition = f"(payload::jsonb->'body'->{payload_path} = CAST(:{p_json_direct} AS jsonb))"
 
                                 if is_numeric:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float = :{p_val})"
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float = CAST(:{p_val} AS float))"
                                     conditions.append(
                                         f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
                                 else:
@@ -610,18 +610,18 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     bind_params[p2] = val2
 
                                     if negative:
-                                        conditions.append(f"(CAST({field} AS FLOAT) NOT BETWEEN :{p1} AND :{p2})")
+                                        conditions.append(f"(CAST({field} AS FLOAT) NOT BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))")
                                     else:
-                                        conditions.append(f"(CAST({field} AS FLOAT) BETWEEN :{p1} AND :{p2})")
+                                        conditions.append(f"(CAST({field} AS FLOAT) BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))")
                                 else:
                                     for value in values:
                                         p_val = f"s_p_{param_counter}"
                                         param_counter += 1
                                         bind_params[p_val] = value
                                         if negative:
-                                            conditions.append(f"(CAST({field} AS FLOAT) != :{p_val})")
+                                            conditions.append(f"(CAST({field} AS FLOAT) != CAST(:{p_val} AS float))")
                                         else:
-                                            conditions.append(f"(CAST({field} AS FLOAT) = :{p_val})")
+                                            conditions.append(f"(CAST({field} AS FLOAT) = CAST(:{p_val} AS float))")
 
                                 if conditions:
                                     if negative:
@@ -638,9 +638,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     param_counter += 1
                                     bind_params[p_bool] = bool_value
                                     if negative:
-                                        conditions.append(f"(CAST({field} AS BOOLEAN) != :{p_bool})")
+                                        conditions.append(f"(CAST({field} AS BOOLEAN) != CAST(:{p_bool} AS boolean))")
                                     else:
-                                        conditions.append(f"(CAST({field} AS BOOLEAN) = :{p_bool})")
+                                        conditions.append(f"(CAST({field} AS BOOLEAN) = CAST(:{p_bool} AS boolean))")
 
                                 if conditions:
                                     if negative:
