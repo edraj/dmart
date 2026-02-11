@@ -2,7 +2,7 @@
 
 import json
 import os
-import random
+import secrets
 import re
 import string
 from venv import logger
@@ -41,10 +41,11 @@ class Settings(BaseSettings):
     websocket_port: int = 8484
     base_path: str = ""
     debug_enabled: bool = True
+    debug_perm: bool = False
     log_handlers: list[str] = ['file']
     log_file: str = "../logs/dmart.ljson.log"
     ws_log_file: str = "../logs/websocket.ljson.log"
-    jwt_secret: str = "".join(random.sample(string.ascii_letters + string.digits,12))
+    jwt_secret: str = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
     jwt_algorithm: str = "HS256"
     jwt_access_expires: int = 30 * 86400  # 30 days
     listening_host: str = "0.0.0.0"
@@ -133,7 +134,7 @@ class Settings(BaseSettings):
     database_max_overflow: int = 2
     database_pool_timeout: int = 30
     database_pool_recycle: int = 30
-
+    user_profile_payload_protected_fields: list[str] = []
     hide_stack_trace: bool = False
     max_failed_login_attempts: int = 5
 
