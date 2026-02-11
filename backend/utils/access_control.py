@@ -156,7 +156,7 @@ class AccessControl:
                     action_type,
                     record_attributes
                 ):
-                    print(f"Debug Access: Restrictions check failed.")
+                    print("Debug Access: Restrictions check failed.")
 
             if search_subpath == "/":
                 search_subpath = ""
