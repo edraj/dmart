@@ -681,7 +681,7 @@ async def update_profile(
         user_shortname=shortname,
     )
 
-    if isinstance(user.payload.body, dict): # type: ignore
+    if user.payload and user.payload.body and isinstance(user.payload.body, dict): # type: ignore
         for field in settings.user_profile_payload_protected_fields:
             if 'payload' in profile.attributes and 'body' in profile.attributes['payload']\
                     and (field in profile.attributes['payload']['body'] or field in user.payload.body): # type: ignore
