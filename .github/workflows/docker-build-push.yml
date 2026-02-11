@@ -29,9 +29,12 @@ jobs:
       - name: Generate version from git describe
         id: version
         run: |
-          VERSION=$(git describe --tags)
+          # Get version from git describe (e.g., v1.4.0-180-gc2eebaa7)
+          GIT_VERSION=$(git describe --tags)
+          # Strip 'v' prefix and '-g<hash>' suffix to get 1.4.0-180
+          VERSION=$(echo $GIT_VERSION | sed -E 's/^v//' | sed -E 's/-g[a-f0-9]+$//')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Generated version: $VERSION"
+          echo "Generated version: $VERSION (from $GIT_VERSION)"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3.3.0
@@ -56,45 +59,12 @@ jobs:
       - name: Install uv
         run: pip install uv
 
-      - name: Fetch latest version from PyPI and increment
+      - name: Update setup.py with version from git
         id: pypi_version
         run: |
-          # Fetch the latest version from PyPI
-          PYPI_VERSION=$(curl -s https://pypi.org/pypi/dmart/json | jq -r '.info.version')
-          echo "Latest PyPI version: $PYPI_VERSION"
-
-          # Read version from setup.py
-          SETUP_VERSION=$(grep 'version=' backend/setup.py | sed -E 's/.*version="([^"]+)".*/\1/')
-          echo "Version in setup.py: $SETUP_VERSION"
-
-          # Extract base versions for comparison
-          PYPI_BASE=$(echo $PYPI_VERSION | sed -E 's/(.*)-([0-9]+)$/\1/')
-          SETUP_BASE=$(echo $SETUP_VERSION | sed -E 's/(.*)-([0-9]+)$/\1/')
-
-          # Compare base versions and decide which to use
-          if [ "$SETUP_BASE" != "$PYPI_BASE" ]; then
-            # Different base versions - compare them
-            if [ "$(printf '%s\n' "$SETUP_BASE" "$PYPI_BASE" | sort -V | tail -n1)" = "$SETUP_BASE" ]; then
-              echo "setup.py has newer base version ($SETUP_BASE > $PYPI_BASE), using it"
-              BASE_VERSION=$SETUP_BASE
-              LAST_NUMBER=$(echo $SETUP_VERSION | sed -E 's/.*-([0-9]+)$/\1/')
-            else
-              echo "PyPI has newer base version, using it"
-              BASE_VERSION=$PYPI_BASE
-              LAST_NUMBER=$(echo $PYPI_VERSION | sed -E 's/.*-([0-9]+)$/\1/')
-            fi
-          else
-            # Same base version - use PyPI's last number
-            echo "Same base version, incrementing from PyPI"
-            BASE_VERSION=$PYPI_BASE
-            LAST_NUMBER=$(echo $PYPI_VERSION | sed -E 's/.*-([0-9]+)$/\1/')
-          fi
-
-          # Increment the last number
-          NEW_NUMBER=$((LAST_NUMBER + 1))
-          NEW_VERSION="${BASE_VERSION}-${NEW_NUMBER}"
-
-          echo "New version: $NEW_VERSION"
+          # Use the version from git describe (already calculated)
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          echo "Using version: $NEW_VERSION"
 
           # Update setup.py with new version (temporary, not committed)
           sed -i.bak "s/version=\".*\"/version=\"$NEW_VERSION\"/" backend/setup.py
