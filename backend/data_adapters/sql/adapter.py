@@ -444,7 +444,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             bind_params[p_json_val] = json.dumps([value])
 
                             if negative:
-                                array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND NOT (payload::jsonb->'body'->{payload_path} @> :{p_json_val}::jsonb))"
+                                array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND NOT (payload::jsonb->'body'->{payload_path} @> CAST(:{p_json_val} AS jsonb)))"
                                 string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND {_payload_text_extract} != :{p_val})"
 
                                 if is_numeric:
@@ -454,13 +454,13 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 else:
                                     conditions.append(f"({array_condition} OR {string_condition})")
                             else:
-                                array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND payload::jsonb->'body'->{payload_path} @> :{p_json_val}::jsonb)"
+                                array_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'array' AND payload::jsonb->'body'->{payload_path} @> CAST(:{p_json_val} AS jsonb))"
                                 string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND {_payload_text_extract} = :{p_val})"
 
                                 p_json_direct = f"s_p_{param_counter}"
                                 param_counter += 1
                                 bind_params[p_json_direct] = json.dumps(value)
-                                direct_condition = f"(payload::jsonb->'body'->{payload_path} = :{p_json_direct}::jsonb)"
+                                direct_condition = f"(payload::jsonb->'body'->{payload_path} = CAST(:{p_json_direct} AS jsonb))"
 
                                 if is_numeric:
                                     number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float = :{p_val})"
@@ -492,11 +492,11 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     bind_params[p_json_val] = json.dumps([value])
 
                                     if negative:
-                                        array_condition = f"(jsonb_typeof({field}) = 'array' AND NOT ({field} @> :{p_json_val}::jsonb))"
+                                        array_condition = f"(jsonb_typeof({field}) = 'array' AND NOT ({field} @> CAST(:{p_json_val} AS jsonb)))"
                                         object_condition = f"(jsonb_typeof({field}) = 'object' AND NOT ({field}::text ILIKE '%' || :{p_val} || '%'))"
                                         conditions.append(f"({array_condition} OR {object_condition})")
                                     else:
-                                        array_condition = f"(jsonb_typeof({field}) = 'array' AND {field} @> :{p_json_val}::jsonb)"
+                                        array_condition = f"(jsonb_typeof({field}) = 'array' AND {field} @> CAST(:{p_json_val} AS jsonb))"
                                         object_condition = f"(jsonb_typeof({field}) = 'object' AND {field}::text ILIKE '%' || :{p_val} || '%')"
                                         conditions.append(f"({array_condition} OR {object_condition})")
 
