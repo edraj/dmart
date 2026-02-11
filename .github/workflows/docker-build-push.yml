@@ -80,6 +80,14 @@ jobs:
           # Export for later steps
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
+      - name: Commit version update
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add backend/setup.py
+          git commit -m "Bump version to ${{ steps.pypi_version.outputs.version }} [skip ci]"
+          git push
+
       - name: Create virtual environment and install dependencies
         run: |
           python -m venv .venv
