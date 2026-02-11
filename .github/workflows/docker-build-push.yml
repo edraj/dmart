@@ -17,7 +17,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Changed from 'read' to 'write' to allow pushing commits
+      contents: read
       packages: write
 
     steps:
@@ -56,16 +56,39 @@ jobs:
       - name: Install uv
         run: pip install uv
 
-      - name: Update backend/setup.py version
+      - name: Fetch latest version from PyPI and increment
         id: pypi_version
         run: |
-          # Read current version from setup.py
-          CURRENT_VERSION=$(grep 'version=' backend/setup.py | sed -E 's/.*version="([^"]+)".*/\1/')
-          echo "Current version: $CURRENT_VERSION"
+          # Fetch the latest version from PyPI
+          PYPI_VERSION=$(curl -s https://pypi.org/pypi/dmart/json | jq -r '.info.version')
+          echo "Latest PyPI version: $PYPI_VERSION"
 
-          # Extract the base version and last number (e.g., 1.4.41-47 -> 1.4.41 and 47)
-          BASE_VERSION=$(echo $CURRENT_VERSION | sed -E 's/(.*)-([0-9]+)$/\1/')
-          LAST_NUMBER=$(echo $CURRENT_VERSION | sed -E 's/.*-([0-9]+)$/\1/')
+          # Read version from setup.py
+          SETUP_VERSION=$(grep 'version=' backend/setup.py | sed -E 's/.*version="([^"]+)".*/\1/')
+          echo "Version in setup.py: $SETUP_VERSION"
+
+          # Extract base versions for comparison
+          PYPI_BASE=$(echo $PYPI_VERSION | sed -E 's/(.*)-([0-9]+)$/\1/')
+          SETUP_BASE=$(echo $SETUP_VERSION | sed -E 's/(.*)-([0-9]+)$/\1/')
+
+          # Compare base versions and decide which to use
+          if [ "$SETUP_BASE" != "$PYPI_BASE" ]; then
+            # Different base versions - compare them
+            if [ "$(printf '%s\n' "$SETUP_BASE" "$PYPI_BASE" | sort -V | tail -n1)" = "$SETUP_BASE" ]; then
+              echo "setup.py has newer base version ($SETUP_BASE > $PYPI_BASE), using it"
+              BASE_VERSION=$SETUP_BASE
+              LAST_NUMBER=$(echo $SETUP_VERSION | sed -E 's/.*-([0-9]+)$/\1/')
+            else
+              echo "PyPI has newer base version, using it"
+              BASE_VERSION=$PYPI_BASE
+              LAST_NUMBER=$(echo $PYPI_VERSION | sed -E 's/.*-([0-9]+)$/\1/')
+            fi
+          else
+            # Same base version - use PyPI's last number
+            echo "Same base version, incrementing from PyPI"
+            BASE_VERSION=$PYPI_BASE
+            LAST_NUMBER=$(echo $PYPI_VERSION | sed -E 's/.*-([0-9]+)$/\1/')
+          fi
 
           # Increment the last number
           NEW_NUMBER=$((LAST_NUMBER + 1))
@@ -73,20 +96,12 @@ jobs:
 
           echo "New version: $NEW_VERSION"
 
-          # Update setup.py with new version
+          # Update setup.py with new version (temporary, not committed)
           sed -i.bak "s/version=\".*\"/version=\"$NEW_VERSION\"/" backend/setup.py
           cat backend/setup.py | grep "version="
 
           # Export for later steps
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Commit version update
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add backend/setup.py
-          git commit -m "Bump version to ${{ steps.pypi_version.outputs.version }} [skip ci]"
-          git push
 
       - name: Create virtual environment and install dependencies
         run: |
