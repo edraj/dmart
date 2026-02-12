@@ -525,6 +525,8 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
             ),
         )
     except api.Exception as _:
+        if getattr(_.error, "code", None) == InternalErrorCode.OTP_NEEDED:
+            raise
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
