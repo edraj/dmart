@@ -652,6 +652,18 @@ async def update_profile(
         record=profile, owner_shortname=profile.shortname
     )
 
+    for field in settings.user_profile_payload_protected_fields:
+        if field in profile.attributes.get('payload', {}).get('body', {}):
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="restriction",
+                    code=InternalErrorCode.PROTECTED_FIELD,
+                    message="Attempt to update a protected field",
+                ),
+            )
+
+
     if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -680,12 +692,6 @@ async def update_profile(
         class_type=core.User,
         user_shortname=shortname,
     )
-
-    if user.payload and user.payload.body and isinstance(user.payload.body, dict): # type: ignore
-        for field in settings.user_profile_payload_protected_fields:
-            if 'payload' in profile.attributes and 'body' in profile.attributes['payload']\
-                    and (field in profile.attributes['payload']['body'] or field in user.payload.body): # type: ignore
-                profile.attributes['payload']['body'][field] = user.payload.body.get(field) # type: ignore
 
 
     old_version_flattened = flatten_dict(user.model_dump())
