@@ -453,7 +453,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 if is_numeric:
                                     p_val_num = f"s_p_{param_counter}"
                                     param_counter += 1
-                                    bind_params[p_val_num] = num_val
+                                    bind_params[p_val_num] = num_val # type: ignore
                                     number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float != CAST(:{p_val_num} AS float))"
                                     conditions.append(
                                         f"({array_condition} OR {string_condition} OR {number_condition})")
@@ -471,7 +471,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 if is_numeric:
                                     p_val_num = f"s_p_{param_counter}"
                                     param_counter += 1
-                                    bind_params[p_val_num] = num_val
+                                    bind_params[p_val_num] = num_val # type: ignore
                                     number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float = CAST(:{p_val_num} AS float))"
                                     conditions.append(
                                         f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
