@@ -13,6 +13,7 @@ import secrets
 sys.path.append(os.path.dirname(__file__))
 
 from utils.settings import settings, get_env_file
+from utils.logger import logging_schema
 import time
 import warnings
 import webbrowser
@@ -444,9 +445,17 @@ def hypercorn_main() -> int:
     if args.workers is not sentinel:
         config.workers = args.workers
     
+    config.logconfig_dict = logging_schema
+
     if args.cxb_config is not sentinel:
         os.environ["DMART_CXB_CONFIG"] = args.cxb_config
         settings.load_cxb_config()
+
+    if config.accesslog is None:
+        config.accesslog = settings.log_file
+
+    if config.errorlog is None:
+        config.errorlog = settings.log_file
 
     env_file = get_env_file()
     if env_file and os.path.exists(env_file):
