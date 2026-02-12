@@ -58,3 +58,4 @@ class InternalErrorCode:
     OBJECT_NOT_SAVED = 51
     JQ_TIMEOUT = 120
     JQ_ERROR = 121
+    PROTECTED_FIELD = 210
