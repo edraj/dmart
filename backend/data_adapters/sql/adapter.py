@@ -322,9 +322,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             field_data.get('range_values', [])) == 2:
                         val1, val2 = field_data['range_values']
                         try:
-                            num1 = float(val1)
-                            num2 = float(val2)
-                            if num1 > num2:
+                            val1 = float(val1)
+                            val2 = float(val2)
+                            if val1 > val2:
                                 val1, val2 = val2, val1
                         except ValueError:
                             pass
@@ -420,7 +420,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 bool_value = value.lower()
                                 p_bool = f"s_p_{param_counter}"
                                 param_counter += 1
-                                bind_params[p_bool] = bool_value
+                                bind_params[p_bool] = bool_value == 'true'
 
                                 if negative:
                                     bool_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'boolean' AND ({_payload_text_extract})::boolean != CAST(:{p_bool} AS boolean))"
@@ -432,8 +432,11 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     conditions.append(f"({bool_condition} OR {string_condition})")
                         else:
                             is_numeric = False
-                            if value.isnumeric():
+                            try:
+                                num_val = float(value)
                                 is_numeric = True
+                            except ValueError:
+                                pass
 
                             p_val = f"s_p_{param_counter}"
                             param_counter += 1
@@ -448,7 +451,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 string_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'string' AND {_payload_text_extract} != :{p_val})"
 
                                 if is_numeric:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float != CAST(:{p_val} AS float))"
+                                    p_val_num = f"s_p_{param_counter}"
+                                    param_counter += 1
+                                    bind_params[p_val_num] = num_val # type: ignore
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float != CAST(:{p_val_num} AS float))"
                                     conditions.append(
                                         f"({array_condition} OR {string_condition} OR {number_condition})")
                                 else:
@@ -463,7 +469,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 direct_condition = f"(payload::jsonb->'body'->{payload_path} = CAST(:{p_json_direct} AS jsonb))"
 
                                 if is_numeric:
-                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float = CAST(:{p_val} AS float))"
+                                    p_val_num = f"s_p_{param_counter}"
+                                    param_counter += 1
+                                    bind_params[p_val_num] = num_val # type: ignore
+                                    number_condition = f"(jsonb_typeof(payload::jsonb->'body'->{payload_path}) = 'number' AND ({_payload_text_extract})::float = CAST(:{p_val_num} AS float))"
                                     conditions.append(
                                         f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
                                 else:
@@ -595,9 +604,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     range_values = field_data['range_values']
                                     val1, val2 = range_values
                                     try:
-                                        num1 = float(val1)
-                                        num2 = float(val2)
-                                        if num1 > num2:
+                                        val1 = float(val1)
+                                        val2 = float(val2)
+                                        if val1 > val2:
                                             val1, val2 = val2, val1
                                     except ValueError:
                                         pass
@@ -615,9 +624,14 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         conditions.append(f"(CAST({field} AS FLOAT) BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))")
                                 else:
                                     for value in values:
+                                        try:
+                                            num_val = float(value)
+                                        except ValueError:
+                                            num_val = value
+
                                         p_val = f"s_p_{param_counter}"
                                         param_counter += 1
-                                        bind_params[p_val] = value
+                                        bind_params[p_val] = num_val
                                         if negative:
                                             conditions.append(f"(CAST({field} AS FLOAT) != CAST(:{p_val} AS float))")
                                         else:
@@ -636,7 +650,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     bool_value = value.lower()
                                     p_bool = f"s_p_{param_counter}"
                                     param_counter += 1
-                                    bind_params[p_bool] = bool_value
+                                    bind_params[p_bool] = bool_value == 'true'
                                     if negative:
                                         conditions.append(f"(CAST({field} AS BOOLEAN) != CAST(:{p_bool} AS boolean))")
                                     else:
