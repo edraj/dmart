@@ -2520,6 +2520,9 @@ class SQLAdapter(BaseDataAdapter):
             rec = item.to_record(item.subpath, item.shortname)
             if rec.resource_type is ResourceType.user and 'password' in rec.attributes:
                 del rec.attributes['password']
+
+            if 'query_policies' in rec.attributes:
+                del rec.attributes['query_policies']
             results[idx] = rec
 
             if query.type == QueryType.history:
