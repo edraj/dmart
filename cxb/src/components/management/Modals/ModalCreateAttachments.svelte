@@ -52,6 +52,7 @@
         meta = {
             shortname: _attachment.shortname,
             is_active: _attachment.attributes.is_active,
+            slug: _attachment.attributes.slug,
             displayname: _attachment.attributes.displayname,
             description: _attachment.attributes.description,
         };
@@ -154,28 +155,51 @@
                     ResourceAttachmentType.parquet,
                 ].includes(resourceType)
             ) {
-                response = await Dmart.uploadWithPayload(
-                    {
-                        space_name,
-                        subpath: parentResourceType === ResourceType.folder ? subpath : subpath + "/" + parent_shortname,
-                        shortname: meta.shortname,
-                        resource_type: ResourceType[resourceType],
-                        payload_file: ResourceType[resourceType] === ResourceType.json
-                            ? jsonToFile(content)
-                            : payloadFiles[0],
-                        attributes: {
-                            slug: meta.slug,
-                            displayname: meta.displayname,
-                            description: meta.description,
-                            is_active: true,
-                            payload: {
-                                content_type: ContentType[resourceType],
-                                schema_shortname: selectedSchema,
-                                body: {}
-                            },
+
+                if(isUpdateMode === false) {
+                    response = await Dmart.uploadWithPayload(
+                        {
+                            space_name,
+                            subpath: parentResourceType === ResourceType.folder ? subpath : subpath + "/" + parent_shortname,
+                            shortname: meta.shortname,
+                            resource_type: ResourceType[resourceType],
+                            payload_file: ResourceType[resourceType] === ResourceType.json
+                                ? jsonToFile(content)
+                                : payloadFiles[0],
+                            attributes: {
+                                slug: meta.slug,
+                                displayname: meta.displayname,
+                                description: meta.description,
+                                is_active: true,
+                                payload: {
+                                    content_type: ContentType[resourceType],
+                                    schema_shortname: selectedSchema,
+                                    body: {}
+                                },
+                            }
                         }
-                    }
-                );
+                    );
+                } else {
+                    response = await Dmart.request({
+                        space_name,
+                        request_type: isUpdateMode
+                            ? RequestType.update
+                            : RequestType.create,
+                        records: [
+                            removeEmpty({
+                                resource_type: ResourceType.comment,
+                                shortname: meta.shortname,
+                                subpath: `${subpath}/${parent_shortname}`.replaceAll("//", "/"),
+                                attributes: {
+                                    slug: meta.slug,
+                                    displayname: meta.displayname,
+                                    description: meta.description,
+                                    is_active: true,
+                                },
+                            }),
+                        ],
+                    });
+                }
             } else if (
                 [
                     ContentType.image,
@@ -185,27 +209,49 @@
                     ContentType.apk,
                 ].includes(contentType)
             ) {
-                response = await Dmart.uploadWithPayload(
-                    {
+                if(isUpdateMode === false) {
+                    response = await Dmart.uploadWithPayload(
+                        {
+                            space_name,
+                            subpath: parentResourceType === ResourceType.folder ? subpath : subpath + "/" + parent_shortname,
+                            shortname: meta.shortname,
+                            resource_type: ResourceType[resourceType],
+                            payload_file: ResourceType[resourceType] === ResourceType.json
+                                ? jsonToFile(content)
+                                : payloadFiles[0],
+                            attributes: removeEmpty({
+                                slug: meta.slug,
+                                displayname: meta.displayname,
+                                description: meta.description,
+                                is_active: true,
+                                payload: {
+                                    content_type: contentType,
+                                    body: {}
+                                },
+                            })
+                        }
+                    );
+                } else {
+                    response = await Dmart.request({
                         space_name,
-                        subpath: parentResourceType === ResourceType.folder ? subpath : subpath + "/" + parent_shortname,
-                        shortname: meta.shortname,
-                        resource_type: ResourceType[resourceType],
-                        payload_file: ResourceType[resourceType] === ResourceType.json
-                            ? jsonToFile(content)
-                            : payloadFiles[0],
-                        attributes: removeEmpty({
-                            slug: meta.slug,
-                            displayname: meta.displayname,
-                            description: meta.description,
-                            is_active: true,
-                            payload: {
-                                content_type: contentType,
-                                body: {}
-                            },
-                        })
-                    }
-                );
+                        request_type: isUpdateMode
+                            ? RequestType.update
+                            : RequestType.create,
+                        records: [
+                            removeEmpty({
+                                resource_type: ResourceType.comment,
+                                shortname: meta.shortname,
+                                subpath: `${subpath}/${parent_shortname}`.replaceAll("//", "/"),
+                                attributes: {
+                                    slug: meta.slug,
+                                    displayname: meta.displayname,
+                                    description: meta.description,
+                                    is_active: true,
+                                },
+                            }),
+                        ],
+                    });
+                }
             } else if (
                 [
                     ContentType.json,
@@ -276,6 +322,7 @@
         let _payloadContent = jsonEditorContentParser($state.snapshot(content));
 
         _payloadContent.subpath = parentResourceType === ResourceType.folder ? subpath : `${subpath}/${parent_shortname}`;
+        _payloadContent.attributes.slug = meta.slug
         _payloadContent.attributes.displayname = meta.displayname
         _payloadContent.attributes.description = meta.description
         const request_dict = {
