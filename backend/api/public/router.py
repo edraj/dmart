@@ -281,7 +281,11 @@ async def retrieve_entry_or_attachment_payload(
 
     data = await db.get_media_attachment(space_name, subpath, shortname)
     if data:
-        return StreamingResponse(iter_bytesio(data), media_type=get_mime_type(meta.payload.content_type))
+        if isinstance(meta.payload.body, str) and meta.payload.body.endswith(".svg"):
+            mime_type = "image/svg+xml"
+        else:
+            mime_type = get_mime_type(meta.payload.content_type)
+        return StreamingResponse(iter_bytesio(data), media_type=mime_type)
 
     return api.Response(status=api.Status.failed)
 
