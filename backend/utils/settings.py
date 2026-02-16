@@ -227,5 +227,11 @@ except Exception as e:
     # sys.exit(1)
     pass
 
+
 settings = Settings()
 settings.load_config_files()
+
+def reload():
+    global settings
+    settings = Settings()
+    settings.load_config_files()
