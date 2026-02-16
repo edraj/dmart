@@ -146,9 +146,9 @@ class Settings(BaseSettings):
     
     def reload(self) -> None:
         env_file = get_env_file()
-        new_settings = self.__class__(_env_file=env_file)
+        new_settings = self.__class__(_env_file=env_file) # type: ignore
         new_settings.load_config_files()
-        self.__dict__.update(new_settings.__dict__)
+        self.__dict__.update(new_settings.__dict__) # type: ignore
 
     def load_config_files(self) -> None:
         channels_config_file = Path(__file__).resolve().parent.parent / 'config/channels.json'
