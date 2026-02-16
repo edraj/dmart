@@ -15,7 +15,6 @@ from typing import Any, cast
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
-from starlette.middleware.gzip import GZipMiddleware
 
 from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
@@ -421,7 +420,6 @@ app.add_middleware(
     validator=None,
 )
 
-app.add_middleware(GZipMiddleware, minimum_size=10000)
 
 @app.get("/", include_in_schema=False)
 async def root():
