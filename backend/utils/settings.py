@@ -144,6 +144,12 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8"
     )
     
+    def reload(self) -> None:
+        env_file = get_env_file()
+        new_settings = self.__class__(_env_file=env_file)
+        new_settings.load_config_files()
+        self.__dict__.update(new_settings.__dict__)
+
     def load_config_files(self) -> None:
         channels_config_file = Path(__file__).resolve().parent.parent / 'config/channels.json'
         if channels_config_file.exists():
@@ -232,6 +238,4 @@ settings = Settings()
 settings.load_config_files()
 
 def reload():
-    global settings
-    settings = Settings()
-    settings.load_config_files()
+    settings.reload()

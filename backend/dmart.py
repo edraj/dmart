@@ -94,13 +94,13 @@ LISTENING_PORT=8282
                     default_config = f.read()
             else:
                 default_config = (
-                    'url = "http://localhost:8282"\n'
-                    'shortname = "dmart"\n'
-                    'password = "xxxx"\n'
-                    'query_limit = 50\n'
-                    'retrieve_json_payload = True\n'
-                    'default_space = "management"\n'
-                    'pagination = 50\n'
+                    'url = "http://localhost:8282"\\n'
+                    'shortname = "dmart"\\n'
+                    'password = "xxxx"\\n'
+                    'query_limit = 50\\n'
+                    'retrieve_json_payload = True\\n'
+                    'default_space = "management"\\n'
+                    'pagination = 50\\n'
                 )
 
             login_creds_path = dmart_home / "login_creds.sh"
