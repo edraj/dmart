@@ -94,13 +94,13 @@ LISTENING_PORT=8282
                     default_config = f.read()
             else:
                 default_config = (
-                    'url = "http://localhost:8282"\n'
-                    'shortname = "dmart"\n'
-                    'password = "xxxx"\n'
-                    'query_limit = 50\n'
-                    'retrieve_json_payload = True\n'
-                    'default_space = "management"\n'
-                    'pagination = 50\n'
+                    'url = "http://localhost:8282"\\n'
+                    'shortname = "dmart"\\n'
+                    'password = "xxxx"\\n'
+                    'query_limit = 50\\n'
+                    'retrieve_json_payload = True\\n'
+                    'default_space = "management"\\n'
+                    'pagination = 50\\n'
                 )
 
             login_creds_path = dmart_home / "login_creds.sh"
@@ -332,6 +332,11 @@ def hypercorn_main() -> int:
         help="Path to CXB config.json",
         default=sentinel,
     )
+    parser.add_argument(
+        "--dmart-config",
+        help="Path to dmart config.env",
+        default=sentinel,
+    )
 
     def _convert_verify_mode(value: str) -> ssl.VerifyMode:
         try:
@@ -447,9 +452,14 @@ def hypercorn_main() -> int:
     
     config.logconfig_dict = logging_schema
 
+    if args.dmart_config is not sentinel:
+        os.environ["BACKEND_ENV"] = args.dmart_config
+
     if args.cxb_config is not sentinel:
         os.environ["DMART_CXB_CONFIG"] = args.cxb_config
-        settings.load_cxb_config()
+        
+    if args.dmart_config is not sentinel or args.cxb_config is not sentinel:
+        settings.reload()
 
     if config.accesslog is None:
         config.accesslog = settings.log_file
@@ -656,14 +666,27 @@ def main():
                 open_cxb = True
                 sys.argv.remove("--open-cxb")
             
+            reload_settings = False
+            if "--dmart-config" in sys.argv:
+                idx = sys.argv.index("--dmart-config")
+                if idx + 1 < len(sys.argv):
+                    os.environ["BACKEND_ENV"] = sys.argv[idx + 1]
+                    sys.argv.pop(idx + 1)
+                sys.argv.pop(idx)
+                reload_settings = True
+
             if "--cxb-config" in sys.argv:
                 idx = sys.argv.index("--cxb-config")
                 if idx + 1 < len(sys.argv):
                     os.environ["DMART_CXB_CONFIG"] = sys.argv[idx + 1]
                     sys.argv.pop(idx + 1)
                 sys.argv.pop(idx)
+                reload_settings = True
             
-            settings.load_cxb_config()
+            if reload_settings:
+                settings.reload()
+            else:
+                settings.load_cxb_config()
                 
             if open_cxb:
                 host = settings.listening_host

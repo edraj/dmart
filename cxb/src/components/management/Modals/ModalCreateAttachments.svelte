@@ -131,6 +131,7 @@
                             shortname: meta.shortname,
                             subpath: `${subpath}/${parent_shortname}`.replaceAll("//", "/"),
                             attributes: {
+                                slug: meta.slug,
                                 displayname: meta.displayname,
                                 description: meta.description,
                                 is_active: true,
@@ -163,6 +164,7 @@
                             ? jsonToFile(content)
                             : payloadFiles[0],
                         attributes: {
+                            slug: meta.slug,
                             displayname: meta.displayname,
                             description: meta.description,
                             is_active: true,
@@ -193,6 +195,7 @@
                             ? jsonToFile(content)
                             : payloadFiles[0],
                         attributes: removeEmpty({
+                            slug: meta.slug,
                             displayname: meta.displayname,
                             description: meta.description,
                             is_active: true,
@@ -223,6 +226,7 @@
                             shortname: meta.shortname,
                             subpath: parentResourceType === ResourceType.folder ? subpath : `${subpath}/${parent_shortname}`,
                             attributes: {
+                                slug: meta.slug,
                                 displayname: meta.displayname,
                                 description: meta.description,
                                 is_active: true,

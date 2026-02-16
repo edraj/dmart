@@ -15,6 +15,8 @@ from typing import Any, cast
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
+from starlette.middleware.gzip import GZipMiddleware
+
 from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
@@ -283,7 +285,7 @@ async def middle(request: Request, call_next):
         raw_response = [section async for section in response.body_iterator]
         response.body_iterator = iterate_in_threadpool(iter(raw_response))
         raw_data = b"".join(raw_response)
-        if raw_data:
+        if raw_data and "application/json" in response.headers.get("content-type", ""):
             try:
                 response_body = json.loads(raw_data)
             except Exception:
@@ -419,6 +421,7 @@ app.add_middleware(
     validator=None,
 )
 
+app.add_middleware(GZipMiddleware, minimum_size=10000)
 
 @app.get("/", include_in_schema=False)
 async def root():
