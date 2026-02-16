@@ -117,7 +117,7 @@ class ContentType(StrEnum):
     @classmethod
     def _missing_(cls, value: object) -> "ContentType | None":
         if value == "image":
-            return cls.image_jpegs
+            return cls.image_jpeg
         return None
 
     @classmethod
