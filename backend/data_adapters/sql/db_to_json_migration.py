@@ -144,7 +144,7 @@ def process_entries(session, space_folder):
                         f.write(_entry["payload"]["body"])
                     _entry["payload"]["body"] = f"{entry.shortname}.html"
                     
-            elif entry.payload["content_type"] == core.ContentType.image:
+            elif core.ContentType(entry.payload["content_type"]) in core.ContentType.image_types():
                 if _entry["payload"].get("body", None) is not None:
                     body_data = _entry["payload"]["body"]
                     
