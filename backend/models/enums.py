@@ -98,7 +98,11 @@ class ContentType(StrEnum):
     markdown = "markdown"
     html = "html"
     json = "json"
-    image = "image"
+    image_jpeg = "image_jpeg"
+    image_png = "image_png"
+    image_svg = "image_svg"
+    image_gif = "image_gif"
+    image_webp = "image_webp"
     python = "python"
     pdf = "pdf"
     audio = "audio"
@@ -109,6 +113,16 @@ class ContentType(StrEnum):
     apk = "apk"
     duckdb = "duckdb"
     sqlite = "sqlite"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "ContentType | None":
+        if value == "image":
+            return cls.image_jpeg
+        return None
+
+    @classmethod
+    def image_types(cls) -> set["ContentType"]:
+        return {cls.image_jpeg, cls.image_png, cls.image_svg, cls.image_gif, cls.image_webp}
 
     @staticmethod
     def inline_types() -> list:

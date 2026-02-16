@@ -1358,7 +1358,16 @@ def get_resource_content_type_from_payload_content_type(payload_file, payload_fi
     elif payload_file.content_type == "text/markdown":
         return ContentType.markdown
     elif payload_file.content_type and "image/" in payload_file.content_type:
-        return ContentType.image
+        mime = payload_file.content_type or ""
+        if "svg" in mime:
+            return ContentType.image_svg
+        if "png" in mime:
+            return ContentType.image_png
+        if "gif" in mime:
+            return ContentType.image_gif
+        if "webp" in mime:
+            return ContentType.image_webp
+        return ContentType.image_jpeg
     elif payload_file.content_type and "audio/" in payload_file.content_type:
         return ContentType.audio
     elif payload_file.content_type and "video/" in payload_file.content_type:
@@ -1846,13 +1855,17 @@ async def create_or_update_resource_with_payload_handler(
     return resource_obj, record
 
 
-def get_mime_type(content_type: ContentType) -> str:
+def get_mime_type(content_type: ContentType, payload_body: str | None = None) -> str:
     mime_types = {
         ContentType.text: "text/plain",
         ContentType.markdown: "text/markdown",
         ContentType.html: "text/html",
         ContentType.json: "application/json",
-        ContentType.image: "image/jpeg",
+        ContentType.image_jpeg: "image/jpeg",
+        ContentType.image_png: "image/png",
+        ContentType.image_svg: "image/svg+xml",
+        ContentType.image_gif: "image/gif",
+        ContentType.image_webp: "image/webp",
         ContentType.python: "text/x-python",
         ContentType.pdf: "application/pdf",
         ContentType.audio: "audio/mpeg",
@@ -1863,4 +1876,16 @@ def get_mime_type(content_type: ContentType) -> str:
         ContentType.duckdb: "application/octet-stream",
         ContentType.sqlite: "application/vnd.sqlite3"
     }
-    return mime_types.get(content_type, "application/octet-stream")
+    # for backward compatibility
+    if content_type in mime_types:
+        if content_type == ContentType.image_jpeg and isinstance(payload_body, str):
+            if payload_body.endswith(".svg"):
+                return "image/svg+xml"
+            if payload_body.endswith(".png"):
+                return "image/png"
+            if payload_body.endswith(".gif"):
+                return "image/gif"
+            if payload_body.endswith(".webp"):
+                return "image/webp"
+        return mime_types[content_type]
+    return "application/octet-stream"
