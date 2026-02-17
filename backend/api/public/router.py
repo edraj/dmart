@@ -606,9 +606,24 @@ async def create_entry(
 @router.post("/attach/{space_name}")
 async def create_attachment(
     space_name: str,
-    record: core.Record
+    record: str = Form(...),
+    payload_file: UploadFile | None = None
 ):
-    if record.resource_type not in AttachmentType.__members__:
+    record_obj = core.Record.model_validate_json(record)
+
+    if (
+            space_name not in settings.allowed_submit_models
+    ):
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(
+                type="request",
+                code=InternalErrorCode.NOT_ALLOWED_LOCATION,
+                message="Selected location is not allowed",
+            ),
+        )
+
+    if record_obj.resource_type not in AttachmentType.__members__:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
@@ -621,10 +636,10 @@ async def create_attachment(
     if not await access_control.check_access(
         user_shortname="anonymous",
         space_name=space_name,
-        subpath=record.subpath,
-        resource_type=record.resource_type,
+        subpath=record_obj.subpath,
+        resource_type=record_obj.resource_type,
         action_type=core.ActionType.create,
-        record_attributes=record.attributes,
+        record_attributes=record_obj.attributes,
     ):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -638,27 +653,47 @@ async def create_attachment(
     await plugin_manager.before_action(
         core.Event(
             space_name=space_name,
-            subpath=record.subpath,
+            subpath=record_obj.subpath,
             action_type=core.ActionType.create,
-            resource_type=record.resource_type,
+            resource_type=record_obj.resource_type,
             user_shortname="anonymous",
         )
     )
 
-    record.shortname = 'auto'
-    attachment_obj = core.Meta.from_record(
-        record=record, owner_shortname="anonymous"
-    )
+    record_obj.shortname = 'auto'
 
-    await db.save(space_name, record.subpath, attachment_obj)
+    if payload_file:
+        payload_filename = payload_file.filename or ""
+        resource_content_type = get_resource_content_type_from_payload_content_type(
+            payload_file, payload_filename, record_obj
+        )
+        sha1 = hashlib.sha1()
+        sha1.update(payload_file.file.read())
+        checksum = sha1.hexdigest()
+        await payload_file.seek(0)
+
+        attachment_obj, record_obj = await create_or_update_resource_with_payload_handler(
+            record_obj, "anonymous", space_name, payload_file, payload_filename, checksum, None, resource_content_type
+        )
+    else:
+        attachment_obj = core.Meta.from_record(
+            record=record_obj, owner_shortname="anonymous"
+        )
+
+    await db.save(space_name, record_obj.subpath, attachment_obj)
+
+    if payload_file:
+        await db.save_payload(
+            space_name, record_obj.subpath, attachment_obj, payload_file
+        )
 
     await plugin_manager.after_action(
         core.Event(
             space_name=space_name,
-            subpath=record.subpath,
+            subpath=record_obj.subpath,
             shortname=attachment_obj.shortname,
             action_type=core.ActionType.create,
-            resource_type=record.resource_type,
+            resource_type=record_obj.resource_type,
             user_shortname="anonymous",
             attributes={}
         )
