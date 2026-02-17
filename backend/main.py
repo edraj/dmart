@@ -250,7 +250,7 @@ def set_logging(response, extra, request, exception_data):
             logger.warning("Served request", extra=_extra)
         elif response.status_code >= 500 or exception_data is not None:
             logger.error("Served request", extra=_extra)
-        elif request.method != "OPTIONS":  # Do not log OPTIONS request, to reduce excessive logging
+        elif request.method != "OPTIONS" and not request.url.path.startswith(settings.cxb_url):  # Do not log OPTIONS request, to reduce excessive logging
             logger.info("Served request", extra=_extra)
 
 
@@ -543,7 +543,7 @@ async def catchall(x):
     if x.startswith(settings.cxb_url.strip("/")):
         return RedirectResponse(f"{settings.cxb_url}/")
     raise api.Exception(
-        status_code=status.HTTP_404_NOT_FOUND,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         error=api.Error(
             type="catchall", code=InternalErrorCode.INVALID_ROUTE, message=f"Requested method or path is invalid : {x}"
         ),
