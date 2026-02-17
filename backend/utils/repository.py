@@ -428,7 +428,7 @@ async def health_check_entry(
     payload_file_path = None
     if (
             entry_meta_obj.payload
-            and entry_meta_obj.payload.content_type == ContentType.image
+            and entry_meta_obj.payload.content_type in ContentType.image_types()
     ):
         payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
         if (
