@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, status
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
+from utils.plugin_manager import plugin_manager
 import models.api as api
 from datetime import datetime
 import subprocess
@@ -79,6 +80,7 @@ async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
             "running_for": str(now - service_start_time)
         },
         "git": git_info,
+        "plugins": plugin_manager.active_plugins
     }
     return api.Response(status=api.Status.success, attributes=manifest)
 
