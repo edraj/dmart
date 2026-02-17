@@ -145,7 +145,7 @@ async def _do_send_email(to_address: str, message: str, subject: str) -> None:
     msg["To"] = to_address
     msg["Subject"] = subject
     msg.set_content(message, subtype="html")
-    use_tls = settings.mail_port == 465
+    use_tls = settings.mail_use_tls
     try:
         await aiosmtplib.send(
             msg,

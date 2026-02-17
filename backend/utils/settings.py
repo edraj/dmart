@@ -92,6 +92,7 @@ class Settings(BaseSettings):
     mail_encryption: str = "tls"
     mail_from_address: str = "noreply@admin.com"
     mail_from_name: str = ""
+    mail_use_tls: bool = False
 
     files_query: str = "scandir"
     mock_smpp_api: bool = True
