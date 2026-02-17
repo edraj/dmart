@@ -33,6 +33,8 @@ class PluginManager:
         ActionType, list[PluginWrapper]
     ] = {}  # {action_type: list_of_plugins_wrappers]}
 
+    active_plugins: list[str] = []
+
     async def load_plugins(self, app: FastAPI, capture_body):
         # Load core plugins
         current = Path(__file__).resolve().parent
@@ -93,6 +95,10 @@ class PluginManager:
                     plugin_wrapper.object = getattr(module, "Plugin")()
 
                     self.store_plugin_in_its_action_dict(plugin_wrapper)
+
+                self.active_plugins.append(plugin_wrapper.shortname)
+                print(f"PLUGIN_LOADED: {plugin_wrapper.shortname}")
+                logger.info(f"PLUGIN_LOADED: {plugin_wrapper.shortname}")
             except Exception as e:
                 logger.error(
                     f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"
