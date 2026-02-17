@@ -3,6 +3,8 @@ import os
 import secrets
 import string
 import time
+import json
+import aiofiles
 from email.message import EmailMessage
 
 import aiosmtplib
@@ -244,9 +246,21 @@ async def set_user_profile(profile, profile_user, user):
         # Clear the failed password attempts
         await db.clear_failed_password_attempts(profile.shortname)
     if "displayname" in profile.attributes:
-        user.displayname = profile_user.displayname.model_dump()
+        if isinstance(profile.attributes["displayname"], dict) and user.displayname:
+            existing = user.displayname
+            if hasattr(existing, "model_dump"):
+                existing = existing.model_dump()
+            user.displayname = core.deep_update(existing, profile.attributes["displayname"])
+        else:
+            user.displayname = profile.attributes["displayname"]
     if "description" in profile.attributes:
-        user.description = profile_user.description.model_dump()
+        if isinstance(profile.attributes["description"], dict) and user.description:
+            existing = user.description
+            if hasattr(existing, "model_dump"):
+                existing = existing.model_dump()
+            user.description = core.deep_update(existing, profile.attributes["description"])
+        else:
+            user.description = profile.attributes["description"]
     if "language" in profile.attributes:
         user.language = profile_user.language
     if "is_active" in profile.attributes:
@@ -264,15 +278,38 @@ async def get_otp_confirmation_email_or_msisdn(profile_user):
 
 async def update_user_payload(profile, user):
     separate_payload_data = {}
-    user.payload = core.Payload(
-        content_type=ContentType.json,
-        schema_shortname=user.payload.schema_shortname,
-        body="",
-    )
-    if profile.attributes["payload"]["body"]:
-        separate_payload_data = profile.attributes["payload"]["body"]
+    
+    if not user.payload:
+        user.payload = core.Payload(
+            content_type=ContentType.json,
+            schema_shortname=None,
+            body="",
+        )
+
+    payload = profile.attributes.get("payload")
+    if payload and isinstance(payload, dict) and payload.get("body") is not None:
+        separate_payload_data = payload["body"]
+        
+        existing_body = {}
+        if user.payload.body:
+            if settings.active_data_db == "file":
+                path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
+                file_path = path / str(user.payload.body)
+                if file_path.is_file():
+                    async with aiofiles.open(file_path, "r") as f:
+                        content = await f.read()
+                        if content:
+                            existing_body = json.loads(content)
+            elif isinstance(user.payload.body, dict):
+                existing_body = user.payload.body
+        
+        if isinstance(separate_payload_data, dict):
+            separate_payload_data = core.deep_update(existing_body, separate_payload_data)
+        
         if settings.active_data_db == "file":
             user.payload.body = f"{user.shortname}.json"
+        else:
+            user.payload.body = separate_payload_data
 
     if user.payload and separate_payload_data:
         if user.payload.schema_shortname:
@@ -288,4 +325,3 @@ async def update_user_payload(profile, user):
         user,
         separate_payload_data,
     )
-    
