@@ -2934,10 +2934,13 @@ class SQLAdapter(BaseDataAdapter):
         return await self.generate_user_permissions(user_shortname)
 
     async def get_user_by_criteria(self, key: str, value: str) -> str | None:
-        _user = await self.get_entry_by_criteria(
-            {key: value},
-            Users
-        )
+        async with self.get_session() as session:
+            statement = select(Users).where(
+                getattr(Users, key) == value,
+                col(Users.space_name) == settings.management_space,
+                col(Users.subpath) == f"/{settings.users_subpath}"
+            )
+            _user = (await session.execute(statement)).scalars().first()
         if _user is None:
             return None
         return str(_user.shortname)
