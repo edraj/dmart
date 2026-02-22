@@ -2545,7 +2545,7 @@ class SQLAdapter(BaseDataAdapter):
         # Case 3: Standard query → convert and optionally fetch attachments
         attachment_tasks = []
         attachment_indices = []
-        valid_results = []
+        valid_results: list[core.Record] = []
 
         for item in results:
             try:
