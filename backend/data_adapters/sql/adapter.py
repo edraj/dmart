@@ -1343,8 +1343,12 @@ class SQLAdapter(BaseDataAdapter):
 
             async with self.get_session() as session:
                 if query.retrieve_total:
-                    _total = (await session.execute(statement_total)).one()
-                    total = int(_total[0])
+                    try:
+                        _total = (await session.execute(statement_total)).one()
+                        total = int(_total[0])
+                    except Exception as e:
+                        logger.warning(f"failed to retrieve total count {e}")
+                        total = -1
                 else:
                     total = -1
                 if query.type == QueryType.counters:
@@ -1369,7 +1373,14 @@ class SQLAdapter(BaseDataAdapter):
                     await session.close()
                 else:
                     # Non-aggregation: fetch ORM instances directly
-                    results = (await session.execute(statement)).scalars().all()
+                    results = []
+                    cursor = (await session.execute(statement)).scalars()
+                    for row in cursor:
+                        try:
+                            _ = row.shortname
+                            results.append(row)
+                        except Exception as e:
+                            logger.warning(f"skipping row due an error: {e}")
                     await session.close()
 
             if is_fetching_spaces:
@@ -2494,6 +2505,19 @@ class SQLAdapter(BaseDataAdapter):
                 print("[!delete_url_shortner_by_token]", e)
                 return False
 
+    @staticmethod
+    def _sanitize_large_integers(obj):
+        _INT64_MIN = -(2 ** 63)
+        _INT64_MAX = 2 ** 63 - 1
+        if isinstance(obj, dict):
+            return {k: SQLAdapter._sanitize_large_integers(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [SQLAdapter._sanitize_large_integers(v) for v in obj]
+        elif isinstance(obj, int) and not isinstance(obj, bool):
+            if obj < _INT64_MIN or obj > _INT64_MAX:
+                return str(obj)
+        return obj
+
     async def _set_query_final_results(self, query, results):
         is_aggregation = query.type == QueryType.aggregation
         is_attachment_query = query.type == QueryType.attachments
@@ -2501,10 +2525,16 @@ class SQLAdapter(BaseDataAdapter):
 
         # Case 1: Attachment query  → Direct conversion of all items
         if is_attachment_query:
-            return [
-                item.to_record(item.subpath, item.shortname)
-                for item in results
-            ]
+            converted = []
+            for item in results:
+                try:
+                    rec = item.to_record(item.subpath, item.shortname)
+                    if rec.attributes:
+                        rec.attributes = self._sanitize_large_integers(rec.attributes)
+                    converted.append(rec)
+                except Exception as e:
+                    logger.warning(f"Skipping attachment record due to conversion error: {e}")
+            return converted
 
         # Case 2: Aggregation query → delegate to existing aggregator
         if is_aggregation:
@@ -2515,15 +2545,20 @@ class SQLAdapter(BaseDataAdapter):
         # Case 3: Standard query → convert and optionally fetch attachments
         attachment_tasks = []
         attachment_indices = []
+        valid_results: list[core.Record] = []
 
-        for idx, item in enumerate(results):
-            rec = item.to_record(item.subpath, item.shortname)
+        for item in results:
+            try:
+                rec = item.to_record(item.subpath, item.shortname)
+            except Exception as e:
+                logger.warning(f"Skipping record due to conversion error: {e}")
+                continue
+
             if rec.resource_type is ResourceType.user and 'password' in rec.attributes:
                 del rec.attributes['password']
 
             if 'query_policies' in rec.attributes:
                 del rec.attributes['query_policies']
-            results[idx] = rec
 
             if query.type == QueryType.history:
                 del rec.attributes['request_headers']
@@ -2556,15 +2591,19 @@ class SQLAdapter(BaseDataAdapter):
                             retrieve_json_payload=True,
                         )
                     )
-                    attachment_indices.append(idx)
+                    attachment_indices.append(len(valid_results))
+
+            if rec.attributes:
+                rec.attributes = self._sanitize_large_integers(rec.attributes)
+            valid_results.append(rec)
 
         # Run all attachment retrievals concurrently
         if attachment_tasks:
             attachments_list = await asyncio.gather(*attachment_tasks)
             for idx, attachments in zip(attachment_indices, attachments_list):
-                results[idx].attachments = attachments
+                valid_results[idx].attachments = attachments
 
-        return results
+        return valid_results
 
     async def clear_failed_password_attempts(self, user_shortname: str) -> bool:
         async with self.get_session() as session:
